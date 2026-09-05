@@ -10,7 +10,7 @@ import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
-import { formatCompactElapsedTime, toNumber, stringOrFallback } from './view-formatters.js';
+import { toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
@@ -461,7 +461,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageDescription = initialPage?.description;
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
-  const latestRetrieval = latestRetrievedAt(sources);
   return h(
     'div',
     { className: 'app-main' },
@@ -478,24 +477,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
           'div',
           { className: 'report-actions' },
           renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState),
-          hasData
-            ? latestRetrieval
-              ? h(
-                  'time',
-                  {
-                    className: 'freshness',
-                    dateTime: latestRetrieval,
-                    title: `Last updated ${formatReportDate(latestRetrieval)} UTC`
-                  },
-                  formatCompactElapsedTime(latestRetrieval, Date.now())
-              )
-              : null
-            : h(
-                'span',
-                { className: 'freshness freshness-skeleton', 'aria-label': 'Last updated date unavailable' },
-                h('span', { 'aria-hidden': 'true' }, 'Last updated'),
-                h('span', { 'aria-hidden': 'true' })
-            ),
           dashboardRepository
             ? h(
               'a',
