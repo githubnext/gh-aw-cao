@@ -1684,6 +1684,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
   await expect(page.getByRole('heading', { name: 'Evals', exact: true, level: 1 })).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Evals Evals Source' }).click();
   await expect(page.getByRole('heading', { name: 'Evals Evals Source' })).toBeVisible();
+  await page.locator('summary').filter({ hasText: 'Evals Observations Source' }).click();
   await expect(page.getByRole('heading', { name: 'Evals Observations Source' })).toBeVisible();
   await expect(page.locator('.data-state-summary')).toBeHidden();
   await expect(page.locator('[data-page-id="evals"] .custom-table').nth(0).locator('tbody tr')).toHaveCount(2);
@@ -1768,6 +1769,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
   await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Findings', exact: true, level: 1 })).toBeVisible();
+  await page.locator('summary').filter({ hasText: 'Findings Source' }).click();
   await expect(page.locator('.data-state-summary')).toBeHidden();
   await expect(page.getByRole('columnheader', { name: 'Issue Link' })).toBeVisible();
   await expect(page.locator('[data-page-id="findings"] .custom-table tbody td').first()).toContainText('<img src=x onerror=alert(1)>');
@@ -2436,7 +2438,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await expect(page.locator('#page-workflow-detail .custom-table .mode-review')).toHaveText('review');
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
-  await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('.dashboard-horizon').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
   await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();
   await expect(page.locator('#page-workflow-runs').getByRole('columnheader', { name: /^Started/ })).toHaveAttribute('aria-sort', 'ascending');

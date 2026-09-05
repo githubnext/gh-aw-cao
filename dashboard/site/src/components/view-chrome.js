@@ -4,8 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { renderStatusBadge } from './badge.js';
-import { formatUtcDateTime, renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
+import { renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
 import { formatCount, titleCase } from './count-formatters.js';
 
 /**
@@ -105,33 +104,6 @@ export function renderContextChrome(contextDetails) {
 }
 
 /**
- * Renders a single `<div><dt>{icon}{label}</dt><dd>{content}</dd></div>` row
- * shared by the "as of", completeness, and freshness entries of the view
- * metadata summary list.
- * @param {string} icon
- * @param {string} label
- * @param {Node | string} content
- * @returns {HTMLElement}
- */
-function renderMetadataRow(icon, label, content) {
-  return renderDlRow([octicon(icon), label], content);
-}
-
-/**
- * @param {{ 'as-of': string, completeness: string, freshness: string }} metadata
- * @returns {HTMLElement[]}
- */
-export function renderViewHeader(metadata) {
-  return [h(
-    'dl',
-    { className: 'view-metadata view-metadata-summary', role: 'group', 'aria-label': 'Data status' },
-    renderMetadataRow('clock', 'As of', h('time', { dateTime: metadata['as-of'] }, formatUtcDateTime(metadata['as-of']))),
-    renderMetadataRow('checklist', 'Completeness', renderStatusBadge(metadata.completeness)),
-    renderMetadataRow('pulse', 'Freshness', renderStatusBadge(metadata.freshness))
-  )];
-}
-
-/**
  * @param {string[]} lines
  * @returns {HTMLElement[]}
  */
@@ -145,7 +117,7 @@ export function renderViewChrome(lines) {
  * @returns {HTMLElement[]}
  */
 export function renderViewSectionChrome(metadata, contextDetails) {
-  return [...renderViewHeader(metadata), ...renderContextChrome(contextDetails)];
+  return renderContextChrome(contextDetails);
 }
 
 /**

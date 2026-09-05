@@ -363,7 +363,8 @@ describe('presenter built-in and custom pages', () => {
     expect(globalThis.document.title).toBe('Workflows · Workflow Topology');
     expect(page?.querySelector('.summary-grid')?.textContent).toBe('Packages1Package workflows2Standalone workflows1');
     expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred');
-    expect(page?.querySelector('#workflows-operation-package-workflows-heading + .view-metadata')).not.toBeNull();
+    expect(page?.querySelector('.view-metadata-summary')).toBeNull();
+    expect(rendered.querySelector('.dashboard-horizon [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
     expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('dependabot.yml');
     expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('release-train-updater.yml');
     expect(page?.querySelector('#workflows-repository-owned-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('ci.yml');
@@ -953,11 +954,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label')).toBe('Horizon unavailable');
     expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(true);
     expect(rendered.querySelectorAll('.dashboard-horizon')).toHaveLength(1);
-    expect(rendered.querySelector('.freshness')?.getAttribute('aria-label')).toBe('Last updated date unavailable');
-    expect(rendered.querySelector('.freshness')?.classList.contains('freshness-skeleton')).toBe(true);
-    expect(rendered.querySelector('.freshness')?.textContent).toBe('Last updated');
-    expect(rendered.querySelector('.freshness')?.hasAttribute('datetime')).toBe(false);
-    expect(rendered.querySelector('.freshness > span:last-child')?.textContent).toBe('');
+    expect(rendered.querySelector('.freshness')).toBeNull();
     const horizonHelp = rendered.querySelector('.dashboard-horizon .tooltip-trigger');
     const horizonTooltip = rendered.querySelector('.dashboard-horizon .tooltip-content');
     expect(horizonHelp).toBeNull();
@@ -3168,8 +3165,7 @@ describe('presenter built-in and custom pages', () => {
     filter.dispatchEvent(new Event('input'));
     expect(rows.map((row) => row.hasAttribute('hidden'))).toEqual([true, false]);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
-    expect(rendered.querySelector('.freshness')?.textContent).toMatch(/^\d+[smhdw] ago$/);
-    expect(rendered.querySelector('.freshness')?.getAttribute('datetime')).toBe('2026-08-30T12:01:00Z');
+    expect(rendered.querySelector('.freshness')).toBeNull();
   });
 
   it('renders report-style semantic badges through the generic table presenter', () => {
