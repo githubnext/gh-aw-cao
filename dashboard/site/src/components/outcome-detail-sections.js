@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderModeBadge, renderStatusBadge } from './badge.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
-import { formatUtcDateTime, isPlainObject } from './ui-primitives.js';
+import { formatUtcDateTime, isPlainObject, isSafeHttpsUrl } from './ui-primitives.js';
 import { text, titleCase } from './count-formatters.js';
 import { renderMetadataSection } from './view-chrome.js';
 
@@ -178,15 +178,15 @@ function copySafeAttributes(source, target) {
   if (safeClasses.length > 0) target.className = safeClasses.join(' ');
 
   if (source.tagName === 'A') {
-    const href = safeHttpsUrl(source.getAttribute('href'));
-    if (href) {
+    const href = source.getAttribute('href');
+    if (href && isSafeHttpsUrl(href)) {
       target.setAttribute('href', href);
       target.setAttribute('target', '_blank');
       target.setAttribute('rel', 'noopener noreferrer');
     }
   } else if (source.tagName === 'IMG') {
-    const src = safeHttpsUrl(source.getAttribute('src'));
-    if (src) target.setAttribute('src', src);
+    const src = source.getAttribute('src');
+    if (src && isSafeHttpsUrl(src)) target.setAttribute('src', src);
     target.setAttribute('alt', source.getAttribute('alt') ?? '');
     target.setAttribute('loading', 'lazy');
   } else if (source.tagName === 'INPUT' && source.getAttribute('type') === 'checkbox') {
@@ -205,17 +205,6 @@ function copySafeAttributes(source, target) {
       const value = source.getAttribute(attribute);
       if (value && /^[1-9]\d{0,2}$/.test(value)) target.setAttribute(attribute, value);
     }
-  }
-}
-
-/** @param {string | null} value */
-function safeHttpsUrl(value) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
-  } catch {
-    return null;
   }
 }
 

@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { isPlainObject } from './ui-primitives.js';
+import { isPlainObject, isSafeHttpsUrl } from './ui-primitives.js';
 
 /**
  * @typedef {{ href: string, label: string, externalHref?: string }} SafeLink
@@ -35,12 +35,7 @@ export function findLink(row, field) {
   if (!isPlainObject(candidate) || typeof candidate.href !== 'string' || typeof candidate.label !== 'string') {
     return null;
   }
-  try {
-    const url = new URL(candidate.href);
-    if (url.protocol !== 'https:' || url.username || url.password || candidate.label.trim().length === 0) {
-      return null;
-    }
-  } catch {
+  if (!isSafeHttpsUrl(candidate.href) || candidate.label.trim().length === 0) {
     return null;
   }
   const dashboardHref = typeof candidate['dashboard-href'] === 'string' && candidate['dashboard-href'].startsWith('#page-')
