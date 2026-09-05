@@ -12,7 +12,7 @@ import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderO
 import { createEntityAwareCellRenderer, renderLinkedText } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, isSafeHttpsUrl, copyTextToClipboard } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl } from './ui-primitives.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 
@@ -482,7 +482,15 @@ export function renderIntentAction(action, row) {
     className: 'table-intent-dialog',
     'aria-label': `${action.label} prompt preview`
   }));
-  const status = h('output', { className: 'table-intent-copy-status', 'aria-live': 'polite' });
+  const { button: copyButton, status, reset: resetCopyControl } = createCopyControl({
+    getContent: () => content,
+    label: 'Copy prompt',
+    buttonClassName: 'table-intent-copy-button',
+    statusClassName: 'table-intent-copy-status',
+    successText: 'Prompt copied.',
+    failureText: 'Could not copy prompt.',
+    trackState: true
+  });
   /** @type {HTMLButtonElement | null} */
   let triggerButton = null;
   const closePreview = () => {
@@ -493,23 +501,6 @@ export function renderIntentAction(action, row) {
       triggerButton?.focus();
     }
   };
-  const copyButton = /** @type {HTMLButtonElement} */ (h(
-    'button',
-    {
-      className: 'table-intent-copy-button',
-      type: 'button',
-      onClick: async () => {
-        copyButton.disabled = true;
-        status.textContent = '';
-        const copied = await copyTextToClipboard(content);
-        copyButton.disabled = false;
-        copyButton.setAttribute('data-copy-state', copied ? 'success' : 'error');
-        status.textContent = copied ? 'Prompt copied.' : 'Could not copy prompt.';
-      }
-    },
-    octicon('copy'),
-    'Copy prompt'
-  ));
   dialog.append(
     h(
       'header',
@@ -538,8 +529,7 @@ export function renderIntentAction(action, row) {
       'aria-label': action.label,
       'data-intent-presentation': action.presentation,
       onClick: () => {
-        status.textContent = '';
-        copyButton.removeAttribute('data-copy-state');
+        resetCopyControl();
         if (typeof dialog.showModal === 'function') {
           dialog.showModal();
         } else {

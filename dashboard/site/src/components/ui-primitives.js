@@ -371,6 +371,63 @@ export async function copyTextToClipboard(content) {
 }
 
 /**
+ * Builds a `button` + `output` pair that copies text to the clipboard via
+ * {@link copyTextToClipboard} and reports the result through the `output`'s
+ * `aria-live` region. Shared by the raw-policy panel and the table
+ * intent-action prompt dialog, which both need a copy button with a status
+ * message but differ in label, styling, and whether the button should be
+ * disabled and flagged with `data-copy-state` while the copy is pending.
+ * @param {{
+ *   getContent: () => string,
+ *   label: string,
+ *   buttonClassName: string,
+ *   statusClassName: string,
+ *   successText?: string,
+ *   failureText?: string,
+ *   trackState?: boolean
+ * }} options
+ * @returns {{ button: HTMLButtonElement, status: HTMLOutputElement, reset: () => void }}
+ */
+export function createCopyControl(options) {
+  const {
+    getContent,
+    label,
+    buttonClassName,
+    statusClassName,
+    successText = 'Copied.',
+    failureText = 'Copy unavailable.',
+    trackState = false
+  } = options;
+  const status = /** @type {HTMLOutputElement} */ (h('output', { className: statusClassName, 'aria-live': 'polite' }));
+  const button = /** @type {HTMLButtonElement} */ (h(
+    'button',
+    {
+      type: 'button',
+      className: buttonClassName,
+      onClick: async () => {
+        if (trackState) {
+          button.disabled = true;
+          status.textContent = '';
+        }
+        const copied = await copyTextToClipboard(getContent());
+        if (trackState) {
+          button.disabled = false;
+          button.setAttribute('data-copy-state', copied ? 'success' : 'error');
+        }
+        status.textContent = copied ? successText : failureText;
+      }
+    },
+    octicon('copy'),
+    label
+  ));
+  const reset = () => {
+    status.textContent = '';
+    button.removeAttribute('data-copy-state');
+  };
+  return { button, status, reset };
+}
+
+/**
  * Checks whether a value is a URL string using the https protocol with no embedded
  * credentials, the safety bar every dashboard link and href renderer applies before
  * trusting externally-sourced link data.

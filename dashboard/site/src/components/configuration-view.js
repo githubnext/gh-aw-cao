@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { isPlainObject, renderSectionHeading, copyTextToClipboard } from './ui-primitives.js';
+import { isPlainObject, renderSectionHeading, createCopyControl } from './ui-primitives.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -119,11 +119,11 @@ function renderDiagnostics(diagnostics) {
 
 /** @param {string} raw */
 function renderRawPolicy(raw) {
-  const copyStatus = h('output', { className: 'configuration-copy-status', 'aria-live': 'polite' });
-  const copyButton = h('button', { type: 'button', className: 'configuration-copy-button' }, octicon('copy'), 'Copy JSON');
-  copyButton.addEventListener('click', async () => {
-    const copied = await copyTextToClipboard(raw);
-    copyStatus.textContent = copied ? 'Copied.' : 'Copy unavailable.';
+  const { button: copyButton, status: copyStatus } = createCopyControl({
+    getContent: () => raw,
+    label: 'Copy JSON',
+    buttonClassName: 'configuration-copy-button',
+    statusClassName: 'configuration-copy-status'
   });
   return h('details', { className: 'configuration-raw' },
     h('summary', null, 'Raw JSON'),
