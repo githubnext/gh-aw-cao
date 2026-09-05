@@ -1324,13 +1324,13 @@ footer { padding: 20px 24px; border-top: 1px solid var(--border); color: var(--m
   .eval-bar-row { grid-template-columns: 1fr; }
   .markdown-body { padding: 20px 16px 24px; }
 }
-@media (max-width: 340px) {
-  .primary-nav, .nav-section-items { gap: 2px; }
-}
 @media (max-width: 350px) {
   .report-actions { flex-wrap: wrap; }
   .dashboard-horizon { max-width: 100%; gap: 2px; padding-right: 4px; }
   .horizon-data-status { gap: 6px; padding-inline: 2px; font-size: .6875rem; }
+}
+@media (max-width: 340px) {
+  .primary-nav, .nav-section-items { gap: 2px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
