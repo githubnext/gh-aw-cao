@@ -2,7 +2,6 @@
  * Declarative experiment view composition primitives.
  */
 
-import { selectConfigBody } from './route-body-composition.js';
 import { EXPERIMENTS_VIEW_BODY_VALUES } from './route-body-specification.js';
 
 export { EXPERIMENTS_VIEW_BODY_VALUES };
@@ -16,11 +15,10 @@ export { EXPERIMENTS_VIEW_BODY_VALUES };
  * @returns {ExperimentViewSection[]}
  */
 export function experimentsViewComposition(selected) {
-  const body = selectConfigBody(
-    { values: EXPERIMENTS_VIEW_BODY_VALUES, fallback: 'detail' },
-    selected
-  );
-  if (body === 'overview') return [{ section: 'overview' }];
-  if (body === 'table') return [{ section: 'table' }];
-  return [{ section: 'overview' }, { section: 'table' }, { section: 'detail' }];
+  if (typeof selected !== 'string' || !EXPERIMENTS_VIEW_BODY_VALUES.includes(selected)) {
+    return [{ section: 'overview' }, { section: 'table' }, { section: 'detail' }];
+  }
+  if (selected === 'overview') return [{ section: 'overview' }];
+  if (selected === 'table') return [{ section: 'table' }];
+  return [{ section: 'detail' }];
 }

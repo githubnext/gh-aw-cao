@@ -168,5 +168,18 @@ describe('experiments and evaluation', () => {
     expect(table.querySelector('.experiment-overview')).toBeNull();
     expect(table.querySelector('.experiment-decision-table')).not.toBeNull();
     expect(table.querySelector('.experiment-detail')).toBeNull();
+
+    const detail = renderExperimentsEvaluation({
+      pageId: 'experiments',
+      title: 'Experiment decisions and evidence',
+      sourceNames: Object.keys(sources),
+      sources,
+      contextDetails: [],
+      elementConfig: { body: 'detail' },
+      headingTag: 'h3'
+    });
+    expect(detail.querySelector('.experiment-overview')).toBeNull();
+    expect(detail.querySelector('.experiment-decision-table')).toBeNull();
+    expect(detail.querySelector('.experiment-detail')).not.toBeNull();
   });
 });
