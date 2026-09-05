@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
 import { renderExperimentDetailSection } from './experiment-detail-sections.js';
-import { renderDlRow } from './ui-primitives.js';
+import { renderDlRow, isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 /** @typedef {Record<string, any>} Row */
@@ -450,13 +450,7 @@ function renderEffect(value) {
 function safeLink(value) {
   if (!value || typeof value !== 'object') return null;
   const candidate = /** @type {{ href: string, label?: unknown }} */ (value);
-  if (typeof candidate.href !== 'string') return null;
-  try {
-    const url = new URL(candidate.href);
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
-  } catch {
-    return null;
-  }
+  if (typeof candidate.href !== 'string' || !isSafeHttpsUrl(candidate.href)) return null;
   return { href: candidate.href, label: text(candidate.label) };
 }
 

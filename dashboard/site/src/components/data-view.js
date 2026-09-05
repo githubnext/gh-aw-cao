@@ -12,7 +12,7 @@ import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderO
 import { createEntityAwareCellRenderer, renderLinkedText } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
-import { renderCloseButton, isPlainObject, copyTextToClipboard } from './ui-primitives.js';
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, copyTextToClipboard } from './ui-primitives.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 
@@ -557,12 +557,7 @@ export function renderIntentAction(action, row) {
 /** @param {unknown} value @returns {string | number | boolean | undefined} */
 function intentValue(value) {
   if (isPlainObject(value) && typeof value.href === 'string') {
-    try {
-      const url = new URL(value.href);
-      return url.protocol === 'https:' && !url.username && !url.password ? value.href : undefined;
-    } catch {
-      return undefined;
-    }
+    return isSafeHttpsUrl(value.href) ? value.href : undefined;
   }
   return ['string', 'number', 'boolean'].includes(typeof value)
     ? /** @type {string | number | boolean} */ (value)

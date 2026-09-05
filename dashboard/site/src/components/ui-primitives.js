@@ -371,6 +371,23 @@ export async function copyTextToClipboard(content) {
 }
 
 /**
+ * Checks whether a value is a URL string using the https protocol with no embedded
+ * credentials, the safety bar every dashboard link and href renderer applies before
+ * trusting externally-sourced link data.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isSafeHttpsUrl(value) {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * @param {unknown} value
  * @returns {value is Record<string, any>}
  */

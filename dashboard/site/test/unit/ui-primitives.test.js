@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, renderCloseButton, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 
 describe('ui primitives', () => {
   it('renders shared section-heading markup with configurable heading levels', () => {
@@ -230,6 +230,17 @@ describe('ui primitives', () => {
     expect(isPlainObject('string')).toBe(false);
     expect(isPlainObject(42)).toBe(false);
     expect(isPlainObject(undefined)).toBe(false);
+  });
+
+  it('accepts https URLs with no embedded credentials and rejects everything else', () => {
+    expect(isSafeHttpsUrl('https://example.com/path')).toBe(true);
+    expect(isSafeHttpsUrl('http://example.com')).toBe(false);
+    expect(isSafeHttpsUrl('https://user:pass@example.com')).toBe(false);
+    expect(isSafeHttpsUrl('javascript:alert(1)')).toBe(false);
+    expect(isSafeHttpsUrl('not a url')).toBe(false);
+    expect(isSafeHttpsUrl('')).toBe(false);
+    expect(isSafeHttpsUrl(null)).toBe(false);
+    expect(isSafeHttpsUrl(42)).toBe(false);
   });
 
   it('renders a labeled control wrapping the given control node', () => {
