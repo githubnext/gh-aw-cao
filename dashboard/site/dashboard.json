@@ -248,6 +248,7 @@
           },
           {
             "id": "readiness-operational-observations",
+            "disclosure": "supplemental",
             "title": "Worker, orchestrator, and no-op evidence",
             "description": "Failures, authored warnings, and no-op reports are attributed to orchestrator and worker workflows from workflow inventory.",
             "data": {
@@ -1706,6 +1707,7 @@
           },
           {
             "id": "mcp-server-inventory",
+            "disclosure": "supplemental",
             "title": "Observed MCP servers",
             "description": "Server identity, available version metadata, call volume, failures, and response payload totals remain attributable to workflow runs.",
             "data": {
@@ -1725,7 +1727,6 @@
             "controls": "interactive",
             "empty-message": "No MCP server activity was observed.",
             "layout": "full",
-            "disclosure": "essential",
             "encoding": {
               "columns": [
                 {
@@ -2141,6 +2142,7 @@
             },
             {
               "id": "repositories-activity",
+              "disclosure": "supplemental",
               "title": "Activity by repository",
               "description": "Repository-local execution health and all attributed package or local-workflow outcomes.",
               "data": {
@@ -2331,6 +2333,7 @@
           },
           {
             "id": "repository-authored-workflows",
+            "disclosure": "supplemental",
             "title": "Agentic workflows",
             "description": "Authored workflows with managed-package membership shown as data.",
             "data": {
@@ -2444,6 +2447,7 @@
           },
           {
             "id": "workflow-report-table",
+            "disclosure": "supplemental",
             "title": "Reports",
             "data": {
               "source": "workflow-reports",
@@ -3036,6 +3040,7 @@
           },
           {
             "id": "package-workflow-table",
+            "disclosure": "supplemental",
             "title": "Orchestrator and workers",
             "data": {
               "source": "packaged-workflows",
@@ -3256,6 +3261,7 @@
           },
           {
             "id": "package-dispatch-table",
+            "disclosure": "supplemental",
             "title": "All dispatches",
             "description": "Workflow dispatch runs attributed to this package, ordered newest first.",
             "data": {
@@ -3366,6 +3372,7 @@
           },
           {
             "id": "package-report-table",
+            "disclosure": "supplemental",
             "title": "Reports",
             "data": {
               "source": "package-reports",
@@ -3868,6 +3875,7 @@
           },
           {
             "id": "runtime-episode-attribution-gap",
+            "disclosure": "supplemental",
             "title": "Worker attribution gaps",
             "description": "Worker runs without a retained safe output carrying an exact root correlation ID remain unattributed.",
             "data": {
@@ -4111,6 +4119,7 @@
             },
             {
               "id": "runs-runs-source",
+              "disclosure": "supplemental",
               "data": {
                 "source": "runs"
               },
@@ -4283,6 +4292,7 @@
           },
           {
             "id": "safe-output-diagnostics",
+            "disclosure": "supplemental",
             "title": "Safe-output diagnostics",
             "description": "Run-level evidence for delivered outputs and explicit noop, missing_data, missing_tool, or report_incomplete signals.",
             "data": {
@@ -5022,6 +5032,7 @@
             },
             {
               "id": "graders-observations-source",
+              "disclosure": "supplemental",
               "data": {
                 "source": "grader-observations"
               },
@@ -5110,6 +5121,7 @@
             },
             {
               "id": "evals-observations-source",
+              "disclosure": "supplemental",
               "data": {
                 "source": "eval-observations"
               },
@@ -5187,6 +5199,7 @@
             },
             {
               "id": "usage-usage-source",
+              "disclosure": "supplemental",
               "data": {
                 "source": "usage"
               },
@@ -5909,6 +5922,7 @@
             },
             {
               "id": "findings-source",
+              "disclosure": "supplemental",
               "data": {
                 "source": "findings"
               },
@@ -6034,6 +6048,7 @@
           },
           {
             "id": "data-health-sources",
+            "disclosure": "supplemental",
             "title": "Cached source shape",
             "description": "Field population and source state help distinguish an empty dataset from a malformed or incomplete one.",
             "data": {
@@ -6248,6 +6263,7 @@
           },
           {
             "id": "workflow-updates",
+            "disclosure": "supplemental",
             "title": "Workflow update inventory",
             "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
             "data": {
@@ -6393,6 +6409,7 @@
           },
           {
             "id": "admission-decision-ledger",
+            "disclosure": "supplemental",
             "title": "Admission evidence",
             "description": "Latest structured pre-activation records preserve the decision, failing gate, reason, role, and run provenance.",
             "data": {
@@ -6536,6 +6553,7 @@
           },
           {
             "id": "preview-issue-ledger",
+            "disclosure": "supplemental",
             "title": "Issues by worker and package",
             "description": "Open an issue to inspect its full report and workflow provenance.",
             "data": {
