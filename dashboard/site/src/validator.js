@@ -80,6 +80,7 @@ import {
 } from './specification.js';
 import {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
+  EXPERIMENTS_VIEW_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
 } from './components/route-body-specification.js';
@@ -1570,13 +1571,15 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'package-route' || view.element === 'outcome-detail-section') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route'
          ? WORKFLOW_ROUTE_BODY_VALUES
          : view.element === 'package-route'
            ? PACKAGE_ROUTE_BODY_VALUES
-           : OUTCOME_DETAIL_SECTION_BODY_VALUES;
+           : view.element === 'experiments-evaluation'
+             ? EXPERIMENTS_VIEW_BODY_VALUES
+             : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -1587,7 +1590,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, package-route, and outcome-detail-section elements.',
+         'config.body is supported only for the workflow-route, package-route, outcome-detail-section, and experiments-evaluation elements.',
          `${path}.config.body`
        ));
       }
