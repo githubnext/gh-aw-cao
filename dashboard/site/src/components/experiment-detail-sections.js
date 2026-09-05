@@ -10,12 +10,13 @@ import { isSafeHttpsUrl } from './ui-primitives.js';
 const UNKNOWN = '—';
 
 /**
+ * Renders the shared heading used by experiment decision and detail sections.
  * @param {string} id
  * @param {string} title
  * @param {string} description
  * @returns {HTMLElement}
  */
-function sectionHeading(id, title, description) {
+export function renderExperimentSectionHeading(id, title, description) {
   return h('header', { className: 'experiment-section-heading' }, h('div', null, h('h2', { id }, title), h('p', null, description)));
 }
 
@@ -94,7 +95,7 @@ function renderMetricComparisonSection(metrics, experiment) {
   return h(
     'section',
     { className: 'experiment-section', 'aria-labelledby': 'metric-comparison-title' },
-    sectionHeading('metric-comparison-title', 'Variant × metric comparison', `${experiment.control} compared with ${experiment.candidate}; arrows account for metric direction.`),
+    renderExperimentSectionHeading('metric-comparison-title', 'Variant × metric comparison', `${experiment.control} compared with ${experiment.candidate}; arrows account for metric direction.`),
     metrics.length === 0
       ? partialState('Assignments exist, but no grader or eval observations are available.')
       : h(
@@ -156,7 +157,7 @@ function renderEvalOutcomesSection(metrics, experiment) {
   return h(
     'section',
     { className: 'experiment-section', 'aria-labelledby': 'eval-outcomes-title' },
-    sectionHeading('eval-outcomes-title', 'Eval outcomes', 'Unknown and missing answers remain separate from NO.'),
+    renderExperimentSectionHeading('eval-outcomes-title', 'Eval outcomes', 'Unknown and missing answers remain separate from NO.'),
     metrics.length === 0
       ? partialState('No eval observations are available for this experiment.')
       : h('div', { className: 'eval-outcome-list' }, ...metrics.map((metric) => {
@@ -180,7 +181,7 @@ function renderGraderDiagnosticsSection(metrics) {
   return h(
     'section',
     { className: 'experiment-section', 'aria-labelledby': 'grader-diagnostics-title' },
-    sectionHeading('grader-diagnostics-title', 'Grader regressions', 'Largest direction-aware regressions are ranked first.'),
+    renderExperimentSectionHeading('grader-diagnostics-title', 'Grader regressions', 'Largest direction-aware regressions are ranked first.'),
     metrics.length === 0
       ? partialState('No grader regressions are present in the available observations.')
       : h(
@@ -215,7 +216,7 @@ function renderObservationQualitySection(experiment) {
   return h(
     'section',
     { className: 'experiment-section observation-quality', 'aria-labelledby': 'observation-quality-title' },
-    sectionHeading('observation-quality-title', 'Observation quality and exclusions', 'Coverage is calculated from observations, not successful workflow executions.'),
+    renderExperimentSectionHeading('observation-quality-title', 'Observation quality and exclusions', 'Coverage is calculated from observations, not successful workflow executions.'),
     coverage !== null && coverage < .9 ? h('div', { className: 'experiment-warning', role: 'note' }, octicon('alert'), h('span', null, 'Large effects require caution because usable observation coverage is below 90%.')) : null,
     h(
       'div',
@@ -269,7 +270,7 @@ function renderRunEvidenceSection(model, experiment) {
   return h(
     'section',
     { className: 'experiment-section', 'aria-labelledby': 'run-evidence-title' },
-    sectionHeading('run-evidence-title', 'Run evidence', 'Inspect assignments, observations, exclusions, and retained supporting evidence.'),
+    renderExperimentSectionHeading('run-evidence-title', 'Run evidence', 'Inspect assignments, observations, exclusions, and retained supporting evidence.'),
     rows.length === 0
       ? partialState('Experiment configured, but no assignments are available.')
       : h(

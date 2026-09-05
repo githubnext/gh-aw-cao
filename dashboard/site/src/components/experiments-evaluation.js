@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { renderExperimentBadge } from './badge.js';
-import { renderExperimentDetailSection } from './experiment-detail-sections.js';
+import { renderExperimentDetailSection, renderExperimentSectionHeading } from './experiment-detail-sections.js';
 import { renderDlRow } from './ui-primitives.js';
 import { experimentsViewComposition } from './experiments-view-composition.js';
 import { renderExperimentsViewShell } from './experiments-view-shell.js';
@@ -61,17 +61,12 @@ function renderDecisionOverview(experiments) {
   );
 }
 
-/** @param {string} id @param {string} title @param {string} description @returns {HTMLElement} */
-function sectionHeading(id, title, description) {
-  return h('header', { className: 'experiment-section-heading' }, h('div', null, h('h2', { id }, title), h('p', null, description)));
-}
-
 /** @param {any[]} experiments @param {string} selectedId @param {(id: string) => void} onSelect @returns {HTMLElement} */
 function renderDecisionTable(experiments, selectedId, onSelect) {
   return h(
     'section',
     { className: 'experiment-section', 'aria-labelledby': 'experiment-decisions-title' },
-    sectionHeading('experiment-decisions-title', 'Experiment decisions', 'Guardrail failures and decision-ready experiments are shown first.'),
+    renderExperimentSectionHeading('experiment-decisions-title', 'Experiment decisions', 'Guardrail failures and decision-ready experiments are shown first.'),
     h(
       'div',
       { className: 'table-region experiment-table-region' },
