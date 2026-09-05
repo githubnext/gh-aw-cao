@@ -611,6 +611,7 @@ function runRows(deployed, usage) {
         "requested-model": firstText(run.requestedModel, run.requested_model, run.model, usageRun.requestedModel, usageRun.requested_model, usageRun.model) || "unknown",
         "resolved-model": firstText(run.resolvedModel, run.resolved_model, run.model, usageRun.resolvedModel, usageRun.resolved_model, usageRun.model) || "unknown",
         data: dataByRun.get(key.toLowerCase()) ?? null,
+        "logs-payload": usageRun.logsPayload ?? null,
         "run-link": link("run", `https://github.com/${workflow.repository}/actions/runs/${run.runId}`, `View run ${run.runId}`),
       });
     }
@@ -673,11 +674,11 @@ function usageRows(usage) {
     "resolved-model": firstText(run.resolvedModel, run.resolved_model, run.model) || "unknown",
     "sandbox-runtime": firstText(run.agentRuntime, run.agent_runtime) || "unknown",
     "rollout-mode": run.mode || "unknown",
-    "input-tokens": null,
-    "output-tokens": null,
-    "cache-read-tokens": null,
-    "cache-write-tokens": null,
-    "reasoning-tokens": null,
+    "input-tokens": finite(run.tokenUsage?.inputTokens),
+    "output-tokens": finite(run.tokenUsage?.outputTokens),
+    "cache-read-tokens": finite(run.tokenUsage?.cacheReadTokens),
+    "cache-write-tokens": finite(run.tokenUsage?.cacheWriteTokens),
+    "reasoning-tokens": finite(run.tokenUsage?.reasoningTokens),
     aic: run.aic,
     "estimated-usd": run.aic !== null && run.aic !== undefined && run.aic !== "" && Number.isFinite(Number(run.aic))
       ? Number(run.aic) * AIC_TO_USD
@@ -685,6 +686,144 @@ function usageRows(usage) {
     "observed-at": run.createdAt || usage.generatedAt,
     "run-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
   }));
+}
+
+function collectedLogRuns(usage) {
+  const runs = new Map();
+  for (const run of [...(usage.runs || []), ...(usage.securityRuns || [])]) {
+    const key = `${String(run.repository || "").toLowerCase()}:${run.runId}`;
+    runs.set(key, { ...(runs.get(key) || {}), ...run });
+  }
+  return [...runs.values()];
+}
+
+function experimentTelemetryRows(usage) {
+  const definitions = new Map();
+  const assignments = [];
+  for (const run of collectedLogRuns(usage)) {
+    const assigned = run.experiments?.assignments;
+    if (!assigned || typeof assigned !== "object" || Array.isArray(assigned)) continue;
+    for (const [experiment, variant] of Object.entries(assigned)) {
+      const names = repositoryParts(run.repository);
+      const workflow = run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "";
+      const observedAt = run.createdAt || usage.generatedAt;
+      definitions.set(`${run.repository}:${workflow}:${experiment}`, {
+        ...names,
+        workflow,
+        experiment,
+        "experiment-name": experiment,
+        "control-variant": "",
+        "candidate-variant": "",
+        "primary-metric": "",
+        "primary-source": "gh-aw-logs",
+        state: "collecting",
+        readiness: "collecting",
+        decision: "collecting",
+        "normalized-effect": null,
+        "evidence-strength": "Observed assignments",
+        "last-observation": observedAt,
+        "observed-at": observedAt,
+      });
+      assignments.push({
+        ...names,
+        workflow,
+        run: String(run.runId),
+        experiment,
+        variant: String(variant),
+        "assignment-at": observedAt,
+        included: "true",
+        "exclusion-reason": "",
+        "observed-at": observedAt,
+        "assignment-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
+      });
+    }
+  }
+  return { definitions: [...definitions.values()], assignments };
+}
+
+function graderTelemetryRows(usage) {
+  const definitions = new Map();
+  const observations = [];
+  for (const run of collectedLogRuns(usage)) {
+    for (const result of run.graders?.results || []) {
+      const grader = firstText(result?.id);
+      if (!grader) continue;
+      const names = repositoryParts(run.repository);
+      const workflow = run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "";
+      const observedAt = run.createdAt || usage.generatedAt;
+      definitions.set(grader, {
+        grader,
+        "grader-name": firstText(result.name) || grader,
+        role: "metric",
+        direction: firstText(result.direction) || "unknown",
+        unit: firstText(result.unit) || "",
+        threshold: finite(result.threshold),
+        "observed-at": observedAt,
+      });
+      observations.push({
+        ...names,
+        workflow,
+        run: String(run.runId),
+        grader,
+        value: finite(result.value),
+        status: firstText(result.status) || "unavailable",
+        included: "true",
+        "exclusion-reason": "",
+        role: "metric",
+        direction: firstText(result.direction) || "unknown",
+        unit: firstText(result.unit) || "",
+        threshold: finite(result.threshold),
+        "rollout-mode": run.mode || "unknown",
+        "maturity-status": "observed",
+        "observed-at": observedAt,
+        "run-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
+      });
+    }
+  }
+  return { definitions: [...definitions.values()], observations };
+}
+
+function evalTelemetryRows(usage) {
+  const definitions = new Map();
+  const observations = [];
+  for (const run of collectedLogRuns(usage)) {
+    for (const result of run.evals || []) {
+      const evalId = firstText(result?.id);
+      if (!evalId) continue;
+      const names = repositoryParts(run.repository);
+      const workflow = run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "";
+      const observedAt = firstText(result.timestamp, run.createdAt, usage.generatedAt);
+      definitions.set(evalId, {
+        eval: evalId,
+        "eval-name": evalId,
+        "eval-question": "",
+        "requested-model": run.requestedModel || "unknown",
+        role: "metric",
+        direction: "maximize",
+        "observed-at": observedAt,
+      });
+      observations.push({
+        ...names,
+        workflow,
+        run: String(run.runId),
+        eval: evalId,
+        "eval-result": firstText(result.answer).toUpperCase() || "UNKNOWN",
+        status: firstText(result.answer).toUpperCase() === "YES"
+          ? "pass"
+          : firstText(result.answer).toUpperCase() === "NO" ? "fail" : "unavailable",
+        included: "true",
+        "exclusion-reason": "",
+        role: "metric",
+        direction: "maximize",
+        "requested-model": run.requestedModel || "unknown",
+        "resolved-model": run.resolvedModel || "unknown",
+        "rollout-mode": run.mode || "unknown",
+        "observed-at": observedAt,
+        "evidence-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
+      });
+    }
+  }
+  return { definitions: [...definitions.values()], observations };
 }
 
 function durationSeconds(start, end) {
@@ -2006,7 +2145,13 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
   const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
   const values = operationalValueRows(operationalValues);
-  const graderObservations = operationalValueGraderRows(operationalValues);
+  const experiments = experimentTelemetryRows(usage);
+  const graders = graderTelemetryRows(usage);
+  const evals = evalTelemetryRows(usage);
+  const graderObservations = [
+    ...operationalValueGraderRows(operationalValues),
+    ...graders.observations,
+  ];
   const repositories = new Map();
   for (const row of [...workflows, ...runs, ...findings, ...values]) {
     if (!row.organization || !row.repository) continue;
@@ -2089,6 +2234,29 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     }
   }
   sources.usage = source("usage", usageRows(usage), generatedAt, usageAvailable, usageComplete);
+  sources.experiments = source(
+    "experiments",
+    experiments.definitions,
+    generatedAt,
+    usageAvailable,
+    usageComplete,
+  );
+  sources["experiment-assignments"] = source(
+    "experiment-assignments",
+    experiments.assignments,
+    generatedAt,
+    usageAvailable,
+    usageComplete,
+  );
+  sources.graders = source("graders", graders.definitions, generatedAt, usageAvailable, usageComplete);
+  sources.evals = source("evals", evals.definitions, generatedAt, usageAvailable, usageComplete);
+  sources["eval-observations"] = source(
+    "eval-observations",
+    evals.observations,
+    generatedAt,
+    usageAvailable,
+    usageComplete,
+  );
   sources["mcp-calls"] = source(
     "mcp-calls",
     mcpCallRows(usage),
@@ -2189,7 +2357,13 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     evidenceAvailable,
     evidenceAvailable && workItemsComplete && reportComplete,
   );
-  sources["grader-observations"] = operationalValueSource("grader-observations", graderObservations, operationalValues, generatedAt, valueAvailable);
+  sources["grader-observations"] = source(
+    "grader-observations",
+    graderObservations,
+    generatedAt,
+    valueAvailable || usageAvailable,
+    operationalValues.complete === true && usageComplete,
+  );
   sources["operational-values"] = operationalValueSource("operational-values", values, operationalValues, generatedAt, valueAvailable);
   const githubAsOf = telemetryAsOf(githubTelemetry, generatedAt);
   const githubFreshness = telemetryFreshness(githubTelemetry, generatedAt);

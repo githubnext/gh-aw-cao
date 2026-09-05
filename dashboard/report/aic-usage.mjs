@@ -14,7 +14,7 @@ function runGhAw(targets, maxRunsPerWorkflow, outputDirectory) {
     const child = spawn("gh", [
       "aw", "logs", "--json",
       "--output", outputDirectory, "--summary-file", "",
-      "--artifacts", "usage,agent,detection,firewall",
+      "--artifacts", "usage,agent,detection,evals,experiment,firewall,graders,mcp",
       "--start-date", `-${FIREWALL_HORIZON_DAYS}d`, "--cache-before", `-${FIREWALL_HORIZON_DAYS}d`,
       "--count", String(maxRunsPerWorkflow), "--timeout", "15",
       "--max-github-api-rate-limit", "-2000", "--max-storage", "1024",
@@ -404,6 +404,47 @@ function securityTelemetryComplete(telemetry) {
     && telemetry.threatDetection.available;
 }
 
+function tokenUsage(run) {
+  const summary = run?.token_usage_summary;
+  return summary && typeof summary === "object" ? {
+    inputTokens: Number(summary.total_input_tokens) || 0,
+    outputTokens: Number(summary.total_output_tokens) || 0,
+    cacheReadTokens: Number(summary.total_cache_read_tokens) || 0,
+    cacheWriteTokens: Number(summary.total_cache_write_tokens) || 0,
+    reasoningTokens: Object.values(summary.by_model || {}).reduce(
+      (total, model) => total + (Number(model?.reasoning_tokens) || 0),
+      0,
+    ),
+  } : null;
+}
+
+async function readRunEvals(outputDirectory, runId) {
+  const runRoot = path.join(outputDirectory, `run-${runId}`);
+  const files = await securityFiles(runRoot);
+  const evalFiles = files.filter((file) => path.basename(file) === "evals.jsonl");
+  const observations = [];
+  for (const file of evalFiles) {
+    const content = await readBounded(file);
+    if (content === null) continue;
+    for (const line of content.split(/\r?\n/).filter((value) => value.trim())) {
+      try {
+        const record = JSON.parse(line);
+        const id = firstText(record?.id);
+        if (!id) continue;
+        observations.push({
+          id,
+          answer: firstText(record?.answer) || "unknown",
+          runId: firstText(record?.runid, record?.run_id) || String(runId),
+          timestamp: firstText(record?.timestamp),
+        });
+      } catch {
+        // Malformed optional eval records remain unavailable.
+      }
+    }
+  }
+  return observations;
+}
+
 async function main() {
   log.group`Collect AI Credit usage`;
   try {
@@ -467,7 +508,9 @@ async function main() {
         const result = JSON.parse(await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot));
         for (const run of result.runs || []) {
           const runId = Number(run.database_id ?? run.run_id ?? run.id);
-          const aic = Number(run.aic);
+          const aic = run.aic === null || run.aic === undefined || run.aic === ""
+            ? null
+            : Number(run.aic);
           const metadata = workflowByRunId.get(runId);
           if (!Number.isFinite(runId) || !metadata) continue;
           const repository = metadata.workflow.repository;
@@ -491,14 +534,21 @@ async function main() {
             missingToolCount: Number(run.missing_tool_count) || 0,
             reportIncompleteCount: Number(run.report_incomplete_count) || 0,
             data: run.data ?? null,
+            tokenUsage: tokenUsage(run),
+            experiments: run.experiments ?? null,
+            graders: run.graders ?? null,
           };
-          if (Number.isFinite(aic)) runs.set(`${repository}:${runId}`, {
+          if (Number.isFinite(aic) || common.tokenUsage) runs.set(`${repository}:${runId}`, {
             ...common,
-            aic,
+            aic: Number.isFinite(aic) ? aic : null,
           });
           let security;
+          let evals = [];
           try {
-            security = await readRunSecurityTelemetry(temporaryRoot, runId);
+            [security, evals] = await Promise.all([
+              readRunSecurityTelemetry(temporaryRoot, runId),
+              readRunEvals(temporaryRoot, runId),
+            ]);
           } catch (error) {
             security = emptySecurityTelemetry();
             security.firewall.firewallEvidenceState = "unavailable";
@@ -518,7 +568,9 @@ async function main() {
           }
           securityRuns.set(`${repository}:${runId}`, {
             ...common,
+            logsPayload: run,
             security,
+            evals,
           });
         }
       } catch (error) {
@@ -548,7 +600,7 @@ async function main() {
       Date.parse(generatedAt) - FIREWALL_HORIZON_DAYS * 86_400_000,
     ).toISOString();
     const usage = {
-      schemaVersion: 4,
+      schemaVersion: 5,
       generatedAt,
       windowStart: inventory.runHealth?.windowStart || null,
       windowHours: inventory.runHealth?.windowHours || null,
