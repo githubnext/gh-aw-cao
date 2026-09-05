@@ -3,8 +3,9 @@
  */
 
 import { selectConfigBody } from './route-body-composition.js';
+import { EXPERIMENTS_VIEW_BODY_VALUES } from './route-body-specification.js';
 
-export const EXPERIMENTS_VIEW_BODY_VALUES = ['overview', 'table', 'detail'];
+export { EXPERIMENTS_VIEW_BODY_VALUES };
 
 /**
  * @typedef {{ section: 'overview'|'table'|'detail' }} ExperimentViewSection
