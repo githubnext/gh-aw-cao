@@ -171,6 +171,99 @@ test("dashboard source bridge declares work-oriented sources unavailable without
   }
 });
 
+test("dashboard source bridge exposes gh aw logs payload data points", () => {
+    const logPayload = {
+      run_id: 42,
+      aic: 2.5,
+      token_usage_summary: { total_input_tokens: 100 },
+    };
+    const run = {
+      repository: "githubnext/gh-aw-cao",
+      runId: 42,
+      workflowPath: ".github/workflows/example.lock.yml",
+      createdAt: "2026-09-05T10:00:00Z",
+      mode: "review",
+      aic: 2.5,
+      logsPayload: logPayload,
+      tokenUsage: {
+        inputTokens: 100,
+        outputTokens: 20,
+        cacheReadTokens: 50,
+        cacheWriteTokens: 10,
+        reasoningTokens: 7,
+      },
+      experiments: {
+        assignments: { prompt: "candidate" },
+        cumulative_counts: { prompt: { control: 1, candidate: 2 } },
+      },
+      graders: {
+        results: [{
+          id: "quality",
+          name: "Quality",
+          status: "pass",
+          value: 0.9,
+          direction: "maximize",
+          threshold: 0.8,
+        }],
+      },
+    };
+    const sources = buildDashboardLanguageSources({
+      deployed: {
+        generatedAt: "2026-09-05T11:00:00Z",
+        discovery: { complete: true },
+        runHealth: { available: true, complete: true, windowHours: 24 },
+        bundles: [],
+        workflows: [{
+          repository: run.repository,
+          path: run.workflowPath,
+          name: "Example",
+          state: "active",
+          runHealth: { runRecords: [{
+            runId: 42,
+            status: "completed",
+            conclusion: "success",
+            startedAt: run.createdAt,
+            updatedAt: "2026-09-05T10:05:00Z",
+          }] },
+        }],
+      },
+      usage: {
+        generatedAt: "2026-09-05T11:00:00Z",
+        windowHours: 24,
+        available: true,
+        complete: true,
+        runs: [run],
+        securityRuns: [{
+          ...run,
+          evals: [{ id: "correctness", answer: "YES", runId: "42", timestamp: "2026-09-05T10:05:00Z" }],
+        }],
+      },
+      operationalValues: { records: [], complete: true },
+      report: { generatedAt: "2026-09-05T11:00:00Z", records: [] },
+    });
+
+    assert.equal(sources.runs.rows[0]["logs-payload"], logPayload);
+    assert.deepEqual({
+      "input-tokens": sources.usage.rows[0]["input-tokens"],
+      "output-tokens": sources.usage.rows[0]["output-tokens"],
+      "cache-read-tokens": sources.usage.rows[0]["cache-read-tokens"],
+      "cache-write-tokens": sources.usage.rows[0]["cache-write-tokens"],
+      "reasoning-tokens": sources.usage.rows[0]["reasoning-tokens"],
+    }, {
+      "input-tokens": 100,
+      "output-tokens": 20,
+      "cache-read-tokens": 50,
+      "cache-write-tokens": 10,
+      "reasoning-tokens": 7,
+    });
+    assert.equal(sources.experiments.rows[0].experiment, "prompt");
+    assert.equal(sources["experiment-assignments"].rows[0].variant, "candidate");
+    assert.equal(sources.graders.rows[0].grader, "quality");
+    assert.equal(sources["grader-observations"].rows[0].value, 0.9);
+    assert.equal(sources.evals.rows[0].eval, "correctness");
+    assert.equal(sources["eval-observations"].rows[0]["eval-result"], "YES");
+});
+
 test("dashboard source bridge derives work-oriented sources from run, admission, and outcome telemetry", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {

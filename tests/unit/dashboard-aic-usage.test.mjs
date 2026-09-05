@@ -30,7 +30,14 @@ test("AI Credit usage collection preserves workflow data payloads", async () => 
   }));
   const ghPath = path.join(bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
-require("node:fs").writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(process.argv.slice(2)));
+const fs = require("node:fs");
+const path = require("node:path");
+const args = process.argv.slice(2);
+fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
+const output = args[args.indexOf("--output") + 1];
+fs.mkdirSync(path.join(output, "run-42", "evals"), { recursive: true });
+fs.writeFileSync(path.join(output, "run-42", "evals", "evals.jsonl"),
+  JSON.stringify({ id: "quality", answer: "YES", runid: "42", timestamp: "2026-08-30T10:05:00Z" }) + "\\n");
 process.stdout.write(JSON.stringify({
   runs: [{
     database_id: 42,
@@ -40,7 +47,21 @@ process.stdout.write(JSON.stringify({
     missing_data_count: 2,
     missing_tool_count: 3,
     report_incomplete_count: 1,
-    data: { findings: [{ severity: "high", total: 3 }] }
+    data: { findings: [{ severity: "high", total: 3 }] },
+    token_usage_summary: {
+      total_input_tokens: 100,
+      total_output_tokens: 20,
+      total_cache_read_tokens: 50,
+      total_cache_write_tokens: 10,
+      by_model: { "gpt-5": { reasoning_tokens: 7 } }
+    },
+    experiments: {
+      assignments: { prompt: "candidate" },
+      cumulative_counts: { prompt: { control: 2, candidate: 3 } }
+    },
+    graders: {
+      results: [{ id: "quality", name: "Quality", status: "pass", value: 0.9, direction: "maximize", threshold: 0.8 }]
+    }
   }]
 }));
 `);
@@ -61,11 +82,11 @@ process.stdout.write(JSON.stringify({
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.equal(usage.schemaVersion, 4);
+    assert.equal(usage.schemaVersion, 5);
     const argumentsList = JSON.parse(await readFile(argumentsPath, "utf8"));
     assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--artifacts"), argumentsList.indexOf("--artifacts") + 2), [
       "--artifacts",
-      "usage,agent,detection,firewall",
+      "usage,agent,detection,evals,experiment,firewall,graders,mcp",
     ]);
     assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--start-date"), argumentsList.indexOf("--start-date") + 2), [
       "--start-date",
@@ -78,6 +99,21 @@ process.stdout.write(JSON.stringify({
     assert.deepEqual(usage.runs[0].data, {
       findings: [{ severity: "high", total: 3 }],
     });
+    assert.equal(usage.securityRuns[0].logsPayload.run_id, undefined);
+    assert.equal(usage.securityRuns[0].logsPayload.database_id, 42);
+    assert.deepEqual(usage.runs[0].tokenUsage, {
+      inputTokens: 100,
+      outputTokens: 20,
+      cacheReadTokens: 50,
+      cacheWriteTokens: 10,
+      reasoningTokens: 7,
+    });
+    assert.deepEqual(usage.securityRuns[0].evals, [{
+      id: "quality",
+      answer: "YES",
+      runId: "42",
+      timestamp: "2026-08-30T10:05:00Z",
+    }]);
     assert.deepEqual({
       safeItemsCount: usage.runs[0].safeItemsCount,
       noopCount: usage.runs[0].noopCount,
