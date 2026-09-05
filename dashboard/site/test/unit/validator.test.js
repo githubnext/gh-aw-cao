@@ -673,6 +673,52 @@ dashboard:
     }
   });
 
+  it('accepts experiments-evaluation config.body and rejects unsupported values', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: experiments-view-config
+  title: Experiments view config
+  pages:
+    - id: experiments-page
+      kind: custom
+      title: Experiments page
+      views:
+        - id: experiments-shell
+          data:
+            sources: [experiments, experiment-assignments, graders, grader-observations, evals, eval-observations, runs]
+          mark: element
+          element: experiments-evaluation
+          config:
+            body: table
+`);
+    expect(accepted.ok).toBe(true);
+
+    const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: experiments-view-config
+  title: Experiments view config
+  pages:
+    - id: experiments-page
+      kind: custom
+      title: Experiments page
+      views:
+        - id: experiments-shell
+          data:
+            sources: [experiments, experiment-assignments, graders, grader-observations, evals, eval-observations, runs]
+          mark: element
+          element: experiments-evaluation
+          config:
+            body: filters
+`);
+    expect(invalidBody.ok).toBe(false);
+    if (!invalidBody.ok) {
+      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.body'
+      }));
+    }
+  });
+
   it('accepts every package dashboard document', () => {
     for (const source of packageDashboardSources) {
       expect(validateDashboardDocument(source).ok).toBe(true);

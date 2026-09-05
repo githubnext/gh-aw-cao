@@ -115,4 +115,58 @@ describe('experiments and evaluation', () => {
     });
     expect(unavailable.textContent).toContain('Experiment source unavailable');
   });
+
+  it('renders overview and table slices declaratively from config.body', () => {
+    const sources = {
+      experiments: source('experiments', [{
+        organization: 'acme',
+        repository: 'tools',
+        workflow: 'triage-agent',
+        experiment: 'routing-v3',
+        'experiment-name': 'Tool routing v3',
+        'control-variant': 'control',
+        'candidate-variant': 'candidate',
+        'primary-metric': 'quality',
+        readiness: 'READY',
+        decision: 'PROMOTE'
+      }]),
+      'experiment-assignments': source('experiment-assignments', [
+        { experiment: 'routing-v3', run: '100', variant: 'control' },
+        { experiment: 'routing-v3', run: '101', variant: 'candidate' }
+      ]),
+      graders: source('graders', [{ grader: 'quality', role: 'PRIMARY', direction: 'higher_is_better', unit: 'raw' }]),
+      'grader-observations': source('grader-observations', [
+        { experiment: 'routing-v3', run: '100', grader: 'quality', value: .72, status: 'complete', 'observed-at': '2026-09-04T10:00:00Z' },
+        { experiment: 'routing-v3', run: '101', grader: 'quality', value: .81, status: 'complete', 'observed-at': '2026-09-05T10:00:00Z' }
+      ]),
+      evals: source('evals', []),
+      'eval-observations': source('eval-observations', []),
+      runs: source('runs', [{ run: '100' }, { run: '101' }])
+    };
+
+    const overview = renderExperimentsEvaluation({
+      pageId: 'experiments',
+      title: 'Experiment readiness overview',
+      sourceNames: Object.keys(sources),
+      sources,
+      contextDetails: [],
+      elementConfig: { body: 'overview' },
+      headingTag: 'h3'
+    });
+    expect(overview.querySelector('.experiment-overview')).not.toBeNull();
+    expect(overview.querySelector('.experiment-decision-table')).toBeNull();
+
+    const table = renderExperimentsEvaluation({
+      pageId: 'experiments',
+      title: 'Experiment decision table',
+      sourceNames: Object.keys(sources),
+      sources,
+      contextDetails: [],
+      elementConfig: { body: 'table' },
+      headingTag: 'h3'
+    });
+    expect(table.querySelector('.experiment-overview')).toBeNull();
+    expect(table.querySelector('.experiment-decision-table')).not.toBeNull();
+    expect(table.querySelector('.experiment-detail')).toBeNull();
+  });
 });

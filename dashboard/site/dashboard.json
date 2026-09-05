@@ -4937,6 +4937,50 @@
               }
             },
             {
+              "id": "experiments-overview",
+              "title": "Experiment readiness overview",
+              "description": "Summarizes readiness, evidence coverage, and decision pressure for the current filters.",
+              "data": {
+                "sources": [
+                  "experiments",
+                  "experiment-assignments",
+                  "graders",
+                  "grader-observations",
+                  "evals",
+                  "eval-observations",
+                  "runs"
+                ]
+              },
+              "mark": "element",
+              "element": "experiments-evaluation",
+              "config": {
+                "body": "overview"
+              },
+              "layout": "full"
+            },
+            {
+              "id": "experiments-table",
+              "title": "Experiment decision table",
+              "description": "Ranks experiments by readiness and guardrail regressions for the current filters.",
+              "data": {
+                "sources": [
+                  "experiments",
+                  "experiment-assignments",
+                  "graders",
+                  "grader-observations",
+                  "evals",
+                  "eval-observations",
+                  "runs"
+                ]
+              },
+              "mark": "element",
+              "element": "experiments-evaluation",
+              "config": {
+                "body": "table"
+              },
+              "layout": "full"
+            },
+            {
               "id": "experiments-evaluation",
               "title": "Experiment decisions and evidence",
               "description": "Controlled comparisons retain distinct experiment, observation, grader or eval, run, and evidence semantics.",
@@ -4956,6 +5000,9 @@
               },
               "mark": "element",
               "element": "experiments-evaluation",
+              "config": {
+                "body": "detail"
+              },
               "layout": "full"
             }
           ]
