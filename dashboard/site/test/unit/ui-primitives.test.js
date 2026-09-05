@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 
 describe('ui primitives', () => {
   it('renders shared section-heading markup with configurable heading levels', () => {
@@ -283,5 +283,54 @@ describe('ui primitives', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
 
     await expect(copyTextToClipboard('hello world')).resolves.toBe(false);
+  });
+
+  it('builds a copy control that reports success and resets its status', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+
+    const { button, status, reset } = createCopyControl({
+      getContent: () => 'copy me',
+      label: 'Copy prompt',
+      buttonClassName: 'table-intent-copy-button',
+      statusClassName: 'table-intent-copy-status',
+      successText: 'Prompt copied.',
+      failureText: 'Could not copy prompt.',
+      trackState: true
+    });
+
+    expect(button.className).toBe('table-intent-copy-button');
+    expect(status.className).toBe('table-intent-copy-status');
+    expect(button.textContent).toBe('Copy prompt');
+
+    button.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(writeText).toHaveBeenCalledWith('copy me');
+    expect(status.textContent).toBe('Prompt copied.');
+    expect(button.getAttribute('data-copy-state')).toBe('success');
+
+    reset();
+    expect(status.textContent).toBe('');
+    expect(button.hasAttribute('data-copy-state')).toBe(false);
+  });
+
+  it('reports failure text without tracking button state when trackState is unset', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+
+    const { button, status } = createCopyControl({
+      getContent: () => 'copy me',
+      label: 'Copy JSON',
+      buttonClassName: 'configuration-copy-button',
+      statusClassName: 'configuration-copy-status'
+    });
+
+    button.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(status.textContent).toBe('Copy unavailable.');
+    expect(button.hasAttribute('data-copy-state')).toBe(false);
   });
 });
