@@ -217,7 +217,7 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(page?.textContent).toContain('5000');
     expect(page?.textContent).toContain('warning');
     expect(page?.textContent).toContain('Last observed (UTC)');
-    expect(page?.textContent).toContain('As ofSep 4, 2026, 1:00 PM');
+    expect(page?.textContent).not.toContain('As of');
   });
 
   it('keeps raw quota and collector/cache diagnostics supplemental and distinct', async () => {
