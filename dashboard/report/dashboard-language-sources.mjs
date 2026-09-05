@@ -790,7 +790,7 @@ function evalTelemetryRows(usage) {
     for (const result of run.evals || []) {
       const evalId = firstText(result?.id);
       if (!evalId) continue;
-      const answer = firstText(result.answer).toUpperCase() || "UNKNOWN";
+      const answer = (firstText(result.answer) || "UNKNOWN").toUpperCase();
       const names = repositoryParts(run.repository);
       const workflow = run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "";
       const observedAt = firstText(result.timestamp, run.createdAt, usage.generatedAt);
