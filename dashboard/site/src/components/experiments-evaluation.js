@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
+import { renderExperimentBadge } from './badge.js';
 import { renderExperimentDetailSection } from './experiment-detail-sections.js';
 import { renderDlRow } from './ui-primitives.js';
 import { experimentsViewComposition } from './experiments-view-composition.js';
@@ -93,10 +93,10 @@ function renderDecisionTable(experiments, selectedId, onSelect) {
             h('td', null, renderEffect(experiment.normalizedEffect)),
             h('td', null, experiment.evidenceStrength),
             h('td', null, experiment.guardrailCount === 0
-              ? statusBadge('Not configured', 'neutral')
-              : statusBadge(`${experiment.guardrailCount - experiment.regressingGuardrails.length}/${experiment.guardrailCount} passing`, experiment.regressingGuardrails.length ? 'danger' : 'success')),
-            h('td', null, statusBadge(experiment.readiness, experiment.readiness === 'READY' ? 'success' : 'attention')),
-            h('td', null, statusBadge(experiment.decision, decisionTone(experiment.decision))),
+              ? renderExperimentBadge('Not configured', 'neutral')
+              : renderExperimentBadge(`${experiment.guardrailCount - experiment.regressingGuardrails.length}/${experiment.guardrailCount} passing`, experiment.regressingGuardrails.length ? 'danger' : 'success')),
+            h('td', null, renderExperimentBadge(experiment.readiness, experiment.readiness === 'READY' ? 'success' : 'attention')),
+            h('td', null, renderExperimentBadge(experiment.decision, decisionTone(experiment.decision))),
             h('td', null, formatDate(experiment.lastObservation))
           ))
         )
@@ -115,7 +115,7 @@ function renderExperimentDetails(model, experimentId) {
   return h(
     'div',
     { className: 'experiment-detail', 'data-selected-experiment': experiment.id },
-    h('div', { className: 'experiment-selection-heading' }, h('div', null, h('span', null, 'Selected experiment'), h('h2', null, experiment.name)), statusBadge(experiment.decision, decisionTone(experiment.decision))),
+    h('div', { className: 'experiment-selection-heading' }, h('div', null, h('span', null, 'Selected experiment'), h('h2', null, experiment.name)), renderExperimentBadge(experiment.decision, decisionTone(experiment.decision))),
     renderExperimentDetailSection('metric-comparison', { metrics, experiment }),
     renderExperimentDetailSection('eval-outcomes', { metrics: evalMetrics, experiment }),
     renderExperimentDetailSection('grader-diagnostics', { metrics: graderRegressions }),
@@ -189,11 +189,6 @@ function renderLegend(counts) {
 /** @param {string} label @param {unknown} value @returns {HTMLElement} */
 function summaryItem(label, value) {
   return renderDlRow(label, String(value));
-}
-
-/** @param {string} label @param {string} tone @returns {HTMLElement} */
-function statusBadge(label, tone) {
-  return h('span', { className: `experiment-badge experiment-badge-${tone}` }, tone === 'danger' ? octicon('alert-fill') : tone === 'success' ? octicon('check-circle-fill') : null, label);
 }
 
 /** @param {number} value @returns {HTMLElement} */

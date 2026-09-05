@@ -3,6 +3,7 @@
  */
 
 import { h } from '../dom.js';
+import { octicon } from '../octicons.js';
 import { stringOrFallback } from '../view-formatters.js';
 
 /**
@@ -69,6 +70,23 @@ export function renderModeBadge(mode) {
   const modeClass = modeBadgeClassName(text.toLowerCase());
 
   return h('span', { className: `mode-badge ${modeClass}`.trim() }, text);
+}
+
+/**
+ * Renders the shared `experiment-badge experiment-badge-<tone>` markup used
+ * by the experiment decision surface (evaluation table and detail sections)
+ * to badge readiness, decision, and metric-role labels.
+ * @param {string} label visible badge label
+ * @param {string} tone one of `danger`, `success`, `attention`, `neutral`
+ * @returns {HTMLElement}
+ */
+export function renderExperimentBadge(label, tone) {
+  return h(
+    'span',
+    { className: `experiment-badge experiment-badge-${tone}` },
+    tone === 'danger' ? octicon('alert-fill') : tone === 'success' ? octicon('check-circle-fill') : null,
+    label
+  );
 }
 
 /**

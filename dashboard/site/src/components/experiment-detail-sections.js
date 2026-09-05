@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { renderExperimentBadge } from './badge.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
@@ -24,15 +25,6 @@ function sectionHeading(id, title, description) {
  */
 function partialState(message) {
   return h('div', { className: 'experiment-partial', role: 'status' }, octicon('info'), h('span', null, message));
-}
-
-/**
- * @param {string} label
- * @param {string} tone
- * @returns {HTMLElement}
- */
-function statusBadge(label, tone) {
-  return h('span', { className: `experiment-badge experiment-badge-${tone}` }, tone === 'danger' ? octicon('alert-fill') : tone === 'success' ? octicon('check-circle-fill') : null, label);
 }
 
 /**
@@ -115,7 +107,7 @@ function renderMetricComparisonSection(metrics, experiment) {
           h('tbody', null, ...metrics.map((metric) => h(
             'tr',
             null,
-            h('td', null, statusBadge(metric.role, metric.role === 'GUARDRAIL' ? 'attention' : 'neutral')),
+            h('td', null, renderExperimentBadge(metric.role, metric.role === 'GUARDRAIL' ? 'attention' : 'neutral')),
             h('th', { scope: 'row' }, metric.identifier),
             h('td', null, metric.sourceType),
             h('td', null, metric.direction.replaceAll('_', ' ')),
@@ -201,7 +193,7 @@ function renderGraderDiagnosticsSection(metrics) {
           h('strong', null, metric.identifier),
           h('span', null, renderEffect(metric.normalizedEffect)),
           h('span', null, `N ${metric.controlN + metric.candidateN}`),
-          statusBadge(metric.role, metric.regression ? 'danger' : 'neutral')
+          renderExperimentBadge(metric.role, metric.regression ? 'danger' : 'neutral')
         ))
       )
   );
@@ -293,7 +285,7 @@ function renderRunEvidenceSection(model, experiment) {
             h('th', { scope: 'row' }, renderEvidenceLink(row.run['run-link'], text(row.assignment.run))),
             h('td', null, text(row.assignment.variant) || UNKNOWN),
             h('td', null, row.primary ? formatMetric(numericObservation(row.primary), row.primary.unit) : UNKNOWN),
-            h('td', null, row.guardrails.length ? statusBadge(row.guardrails.some((observation) => !observation.included) ? 'Review' : `${row.guardrails.length}/${row.guardrails.length}`, row.guardrails.some((observation) => !observation.included) ? 'danger' : 'success') : UNKNOWN),
+            h('td', null, row.guardrails.length ? renderExperimentBadge(row.guardrails.some((observation) => !observation.included) ? 'Review' : `${row.guardrails.length}/${row.guardrails.length}`, row.guardrails.some((observation) => !observation.included) ? 'danger' : 'success') : UNKNOWN),
             h('td', null, row.evals.length ? `${row.evals.filter((observation) => observation.included).length}/${row.evals.length}` : UNKNOWN),
             h('td', null, row.included ? 'Yes' : 'No'),
             h('td', null, row.reason || UNKNOWN),
