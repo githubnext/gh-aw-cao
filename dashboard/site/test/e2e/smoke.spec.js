@@ -2438,7 +2438,8 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await expect(page.locator('#page-workflow-detail .custom-table .mode-review')).toHaveText('review');
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
-  await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('.dashboard-horizon').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
   await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();
   await expect(page.locator('#page-workflow-runs').getByRole('columnheader', { name: /^Started/ })).toHaveAttribute('aria-sort', 'ascending');

@@ -6,6 +6,7 @@ import builtInDashboard from '../dashboard.json' with { type: 'json' };
 import { h } from './dom.js';
 import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
+import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
@@ -164,7 +165,7 @@ export function renderDashboard(input) {
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
   const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon);
+  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(rawSources));
 
   const appShell = h(
     'div',
@@ -450,9 +451,10 @@ function getPageIcon(page) {
  * @param {string} evaluatedAt
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
+ * @param {DataState} effectiveState
  * @returns {HTMLElement}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon) {
+function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState) {
   const initialPage = pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
@@ -475,7 +477,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState),
           hasData
             ? latestRetrieval
               ? h(
@@ -582,9 +584,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {string} evaluatedAt
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
+ * @param {DataState} effectiveState
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState) {
   if (!hasData) {
     return h(
       'span',
@@ -610,9 +613,19 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
     'div',
     { className: 'dashboard-horizon', 'data-dashboard-evaluated-at': evaluatedAt },
     h(
-      'button',
-      { type: 'button', className: 'horizon-toggle', 'aria-expanded': 'false' },
-      `${label} ${duration}`
+      'div',
+      { className: 'horizon-summary' },
+      h(
+        'button',
+        { type: 'button', className: 'horizon-toggle', 'aria-expanded': 'false' },
+        `${label} ${duration}`
+      ),
+      h(
+        'div',
+        { className: 'horizon-data-status', role: 'group', 'aria-label': 'Data status' },
+        h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(effectiveState.completeness)),
+        h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(effectiveState.freshness))
+      )
     ),
     horizon
       ? renderTooltip({

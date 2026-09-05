@@ -155,8 +155,13 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .site-callout-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .dashboard-horizon, .freshness { max-width: none; flex: none; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .75rem; white-space: nowrap; }
 .dashboard-horizon { padding-right: 10px; border-right: 1px solid var(--border); font-weight: 600; }
+.horizon-summary { display: grid; gap: 2px; }
 .horizon-toggle { padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: inherit; cursor: pointer; }
 .horizon-toggle:hover, .horizon-toggle[aria-expanded="true"] { background: var(--neutral-muted); color: var(--fg); }
+.horizon-data-status, .horizon-data-status > span { display: flex; align-items: center; }
+.horizon-data-status { gap: 10px; padding: 0 6px; font-weight: 500; }
+.horizon-data-status > span { gap: 4px; }
+.horizon-data-status .status { font-size: .6875rem; }
 .dashboard-horizon-skeleton > span { width: 78px; height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .freshness-skeleton > span:last-child { width: 118px; height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .tooltip-help { position: relative; display: inline-flex; }

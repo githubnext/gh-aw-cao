@@ -168,7 +168,7 @@ describe('UI elements', () => {
     });
 
     expect(rendered?.getAttribute('aria-labelledby')).toBe('home-need-attention-heading');
-    expect(rendered?.querySelector('.view-metadata-summary')).not.toBeNull();
+    expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered?.querySelector('.canonical-attention-item.signal-action')).not.toBeNull();
     expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(1);
     expect(rendered?.querySelector('.signal-priority-rank strong')?.textContent).toBe('1');
