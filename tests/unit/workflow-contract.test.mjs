@@ -2186,6 +2186,10 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /Use `\$\{\{ github\.run_id \}\}` as the reproducible random seed/);
   assert.match(source, /Launch the `cfo-dashboard-reviewer`, `cso-dashboard-reviewer`, and `cto-dashboard-reviewer` agents in parallel/);
+  assert.match(source, /Audit AIC consistency across the downloaded `runs` and `ai-credit-usage` sources/);
+  assert.match(source, /finite non-negative AIC value/);
+  assert.match(source, /thousands of observed runs with only single-digit AIC-bearing runs/);
+  assert.match(source, /`### AIC consistency`/);
   assert.match(source, /unique Playwright session name/);
   assert.match(source, /3–5 non-repeating routes and visible interactions per persona/);
   assert.match(source, /representative question/);
