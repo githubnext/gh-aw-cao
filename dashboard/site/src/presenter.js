@@ -604,8 +604,8 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
       h(
         'div',
         { className: 'horizon-data-status', role: 'group', 'aria-label': 'Data status' },
-        h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(effectiveState.completeness)),
-        h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(effectiveState.freshness))
+        h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(effectiveState?.completeness ?? 'unknown')),
+        h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(effectiveState?.freshness ?? 'unknown'))
       )
     ),
     horizon
