@@ -3,12 +3,27 @@ import { describe, expect, it } from 'vitest';
 import {
   modeBadgeClassName,
   renderActiveStateBadge,
+  renderExperimentBadge,
   renderGraderStatusBadge,
   renderModeBadge,
   renderStatusBadge,
 } from '../../src/components/badge.js';
 
 describe('badge', () => {
+  it('renders the shared experiment-badge markup used by the experiment decision surface', () => {
+    const danger = renderExperimentBadge('Regression', 'danger');
+    expect(danger.tagName).toBe('SPAN');
+    expect(danger.className).toBe('experiment-badge experiment-badge-danger');
+    expect(danger.textContent).toContain('Regression');
+
+    const success = renderExperimentBadge('Passing', 'success');
+    expect(success.className).toBe('experiment-badge experiment-badge-success');
+
+    const neutral = renderExperimentBadge('Not configured', 'neutral');
+    expect(neutral.className).toBe('experiment-badge experiment-badge-neutral');
+    expect(neutral.textContent).toBe('Not configured');
+  });
+
   it('maps normalized mode labels to the shared mode-badge class suffix', () => {
     expect(modeBadgeClassName('live')).toBe('mode-live');
     expect(modeBadgeClassName('review')).toBe('mode-review');
