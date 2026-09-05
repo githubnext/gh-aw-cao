@@ -240,7 +240,7 @@ test("dashboard source bridge exposes gh aw logs payload data points", () => {
       },
       operationalValues: { records: [], complete: true },
       report: { generatedAt: "2026-09-05T11:00:00Z", records: [] },
-});
+    });
 
     assert.equal(sources.runs.rows[0]["logs-payload"], logPayload);
     assert.deepEqual({
@@ -262,7 +262,7 @@ test("dashboard source bridge exposes gh aw logs payload data points", () => {
     assert.equal(sources["grader-observations"].rows[0].value, 0.9);
     assert.equal(sources.evals.rows[0].eval, "correctness");
     assert.equal(sources["eval-observations"].rows[0]["eval-result"], "YES");
-  });
+});
 
 test("dashboard source bridge derives work-oriented sources from run, admission, and outcome telemetry", () => {
   const sources = buildDashboardLanguageSources({
