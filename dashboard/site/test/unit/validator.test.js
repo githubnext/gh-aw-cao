@@ -523,6 +523,27 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
+  it('defines the packages page through a reusable package activity shell element', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+
+    expect(packagesPage.definition.views).toEqual([
+      expect.objectContaining({
+        id: 'packages-by-aic',
+        mark: 'chart'
+      }),
+      expect.objectContaining({
+        id: 'packages-activity-shell',
+        mark: 'element',
+        element: 'package-activity-shell',
+        data: {
+          sources: ['workflows', 'usage', 'runs', 'outcomes', 'findings']
+        }
+      })
+    ]);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('accepts workflow-route config.body and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:

@@ -2886,44 +2886,19 @@
               }
             },
             {
-              "id": "packages-utilization",
-              "title": "Package AIC utilization",
-              "data": {
-                "sources": [
-                  "workflows",
-                  "usage"
-                ]
-              },
-              "mark": "element",
-              "element": "package-utilization"
-            },
-            {
-              "id": "packages-run-trend",
-              "title": "All runs over time",
-              "data": {
-                "sources": [
-                  "workflows",
-                  "runs",
-                  "outcomes"
-                ]
-              },
-              "mark": "element",
-              "element": "package-run-trend"
-            },
-            {
-              "id": "packages-summary",
-              "title": "All output by package",
+              "id": "packages-activity-shell",
+              "title": "Package activity",
               "data": {
                 "sources": [
                   "workflows",
                   "usage",
-                  "findings",
+                  "runs",
                   "outcomes",
-                  "runs"
+                  "findings"
                 ]
               },
               "mark": "element",
-              "element": "package-summary-table"
+              "element": "package-activity-shell"
             }
           ]
         }
