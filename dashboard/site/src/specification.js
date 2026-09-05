@@ -4,6 +4,7 @@
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
 export {
+  EXPERIMENTS_VIEW_BODY_VALUES,
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
@@ -42,6 +43,7 @@ export const VIEW_ELEMENT_VALUES = [
   'anomaly-readiness',
   'signal-list',
   'package-activity',
+  'package-activity-shell',
   'package-utilization',
   'package-run-trend',
   'package-summary-table',

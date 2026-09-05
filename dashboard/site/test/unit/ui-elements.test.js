@@ -415,6 +415,61 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.package-tabs')?.textContent).toContain('Reports');
   });
 
+  it('renders the packages page shell through one declarative element composition', () => {
+    const sources = {
+      workflows: {
+        source: 'workflows',
+        rows: [
+          { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 100, 'package-inventory-warnings': 2 },
+          { package: 'daily-ops', 'package-name': 'Daily Ops', 'package-icon': 'workflow', workflow: '.github/workflows/daily-worker.md', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 150, 'package-inventory-warnings': 2 }
+        ],
+        metadata
+      },
+      runs: {
+        source: 'runs',
+        rows: [
+          { workflow: '.github/workflows/daily.md', run: '1', 'started-at': '2026-08-28T10:00:00Z', 'run-conclusion': 'success', 'rollout-mode': 'review' }
+        ],
+        metadata
+      },
+      outcomes: {
+        source: 'outcomes',
+        rows: [
+          { package: 'daily-ops', run: '1', 'run-conclusion': 'success', 'rollout-mode': 'review', 'published-at': '2026-08-28T10:00:00Z', 'observed-at': '2026-08-28T10:00:00Z' }
+        ],
+        metadata
+      },
+      usage: {
+        source: 'usage',
+        rows: [
+          { workflow: '.github/workflows/daily.md', run: '1', invocation: 'a', aic: 10, 'rollout-mode': 'review' }
+        ],
+        metadata: { ...metadata, completeness: /** @type {'partial'} */ ('partial') }
+      },
+      findings: {
+        source: 'findings',
+        rows: [
+          { workflow: '.github/workflows/daily-worker.md', run: '1', finding: 'warning-1', 'finding-kind': 'authored-warning', 'observed-at': '2026-08-28T10:05:00Z' }
+        ],
+        metadata
+      }
+    };
+
+    const rendered = renderUiElement('package-activity-shell', {
+      pageId: 'packages',
+      title: 'Package activity',
+      sourceNames: ['workflows', 'usage', 'runs', 'outcomes', 'findings'],
+      sources,
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.package-utilization-card')).not.toBeNull();
+    expect(rendered?.querySelector('.package-chart-point')).not.toBeNull();
+    expect(rendered?.querySelector('.package-summary-table')).not.toBeNull();
+    expect(rendered?.querySelector('.package-mode-tabs')).not.toBeNull();
+  });
+
   it('renders workflow-route with declarative body selection', () => {
     const rendered = renderUiElement('workflow-route', {
       pageId: 'custom-workflow-page',

@@ -7,10 +7,8 @@ import { formatNumber, formatPercent } from '../view-formatters.js';
 import { pluralSuffix, titleCase } from './count-formatters.js';
 import { classifyUtilizationRatio, isFailureConclusion } from './run-classification.js';
 import { completenessCaveat, coverageWindowHours, formatMediumUtcDate, formatMediumUtcDateTime, renderEmptyMessage, renderEmptyTableRow, renderIdentityLink, renderLegendSwatch, renderPanelHeader, renderTableHeadRow } from './ui-primitives.js';
-import { renderInteractiveTabs, updateInteractiveTabSelection } from './tab-nav.js';
 import { rowsFor } from './source-rows.js';
-
-const MODES = ['all', 'review', 'live'];
+import { renderPackagesModeShell } from './packages-mode-shell.js';
 const DAY_IN_MILLISECONDS = 86_400_000;
 
 /**
@@ -22,55 +20,14 @@ const DAY_IN_MILLISECONDS = 86_400_000;
  * @returns {HTMLElement}
  */
 export function renderPackagesView(sources, pageId = 'packages') {
-  const requestedMode = new URLSearchParams(globalThis.window?.location.search ?? '').get('mode');
-  let selectedMode = requestedMode && MODES.includes(requestedMode) ? requestedMode : 'all';
-  const panelId = `${pageId}-mode-panel`;
-  const content = h('div', { className: 'packages-mode-content', id: panelId, role: 'tabpanel' });
-  const tabs = renderInteractiveTabs({
-    className: 'package-mode-tabs',
-    ariaLabel: 'Filter package activity by mode',
-    panelId,
-    onSelect: selectMode,
-    tabs: MODES.map((mode) => ({
-      label: titleCase(mode),
-      value: mode,
-      selected: mode === selectedMode,
-      dataset: { packageMode: mode }
-    }))
+  return renderPackagesModeShell({
+    pageId,
+    sections: [
+      { id: 'utilization', render: (mode) => renderPackageUtilization(sources, mode) },
+      { id: 'run-trend', render: (mode) => renderRunTrend(sources, mode) },
+      { id: 'summary', render: (mode) => renderPackageSummary(sources, mode) }
+    ]
   });
-
-  /**
-   * @param {string} mode
-   * @param {boolean} [focus]
-   */
-  function selectMode(mode, focus = false) {
-    if (mode !== selectedMode) {
-      selectedMode = mode;
-      renderMode();
-    }
-    if (focus) {
-      /** @type {HTMLButtonElement | null} */
-      const activeTab = tabs.querySelector(`[role="tab"][data-tab-value="${mode}"]`);
-      activeTab?.focus();
-    }
-  }
-
-  function renderMode() {
-    updateInteractiveTabSelection(tabs, selectedMode);
-    content.setAttribute('aria-labelledby', `${pageId}-${selectedMode}-tab`);
-    content.replaceChildren(
-      renderPackageUtilization(sources, selectedMode),
-      renderRunTrend(sources, selectedMode),
-      renderPackageSummary(sources, selectedMode)
-    );
-    content.dispatchEvent(new CustomEvent('package-mode-change', {
-      bubbles: true,
-      detail: { pageId, mode: selectedMode }
-    }));
-  }
-
-  renderMode();
-  return h('div', { className: 'packages-view' }, tabs, content);
 }
 
 /**

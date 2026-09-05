@@ -19,6 +19,7 @@ import { renderConfigurationActions } from './configuration-actions.js';
 import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
+import { renderPackagesModeShell } from './packages-mode-shell.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -50,6 +51,7 @@ const ELEMENT_RENDERERS = new Map([
   ['package-utilization', ({ sources }) => renderPackageUtilization(sources)],
   ['package-run-trend', ({ sources }) => renderRunTrend(sources)],
   ['package-summary-table', ({ sources }) => renderPackageSummary(sources)],
+  ['package-activity-shell', renderPackageActivityShellElement],
   ['package-insights', (context) => renderPackageRouteVariant(context, 'insights')],
   ['package-detail', (context) => renderPackageRouteVariant(context, 'workflows')],
   ['package-dispatches', (context) => renderPackageRouteVariant(context, 'dispatches')],
@@ -63,7 +65,7 @@ const ELEMENT_RENDERERS = new Map([
   ['experiments-evaluation', renderExperimentsEvaluation]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell']);
 
 /**
  * @param {string} name
@@ -87,6 +89,30 @@ function renderOutcomeDetailSectionElement(context) {
   const outcomeId = stringValue(context.scope?.['safe-output']);
   const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
   return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
+}
+
+/**
+ * @param {ElementRenderContext} context
+ * @returns {HTMLElement}
+ */
+function renderPackageActivityShellElement(context) {
+  return renderPackagesModeShell({
+    pageId: context.pageId,
+    sections: [
+      {
+        id: 'utilization',
+        render: (mode) => renderPackageUtilization(context.sources, mode)
+      },
+      {
+        id: 'run-trend',
+        render: (mode) => renderRunTrend(context.sources, mode)
+      },
+      {
+        id: 'summary',
+        render: (mode) => renderPackageSummary(context.sources, mode)
+      }
+    ]
+  });
 }
 
 /**
