@@ -171,7 +171,7 @@ test("dashboard source bridge declares work-oriented sources unavailable without
   }
 });
 
-  test("dashboard source bridge exposes gh aw logs payload data points", () => {
+test("dashboard source bridge exposes gh aw logs payload data points", () => {
     const logPayload = {
       run_id: 42,
       aic: 2.5,
@@ -240,7 +240,7 @@ test("dashboard source bridge declares work-oriented sources unavailable without
       },
       operationalValues: { records: [], complete: true },
       report: { generatedAt: "2026-09-05T11:00:00Z", records: [] },
-    });
+});
 
     assert.equal(sources.runs.rows[0]["logs-payload"], logPayload);
     assert.deepEqual({

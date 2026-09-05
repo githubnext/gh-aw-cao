@@ -790,6 +790,7 @@ function evalTelemetryRows(usage) {
     for (const result of run.evals || []) {
       const evalId = firstText(result?.id);
       if (!evalId) continue;
+      const answer = firstText(result.answer).toUpperCase() || "UNKNOWN";
       const names = repositoryParts(run.repository);
       const workflow = run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "";
       const observedAt = firstText(result.timestamp, run.createdAt, usage.generatedAt);
@@ -807,10 +808,10 @@ function evalTelemetryRows(usage) {
         workflow,
         run: String(run.runId),
         eval: evalId,
-        "eval-result": firstText(result.answer).toUpperCase() || "UNKNOWN",
-        status: firstText(result.answer).toUpperCase() === "YES"
+        "eval-result": answer,
+        status: answer === "YES"
           ? "pass"
-          : firstText(result.answer).toUpperCase() === "NO" ? "fail" : "unavailable",
+          : answer === "NO" ? "fail" : "unavailable",
         included: "true",
         "exclusion-reason": "",
         role: "metric",
