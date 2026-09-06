@@ -173,7 +173,9 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
   const start = Math.min(1, Math.max(0, startFraction));
   const end = Math.min(1, Math.max(start, endFraction));
   const sweep = end - start;
-  const gap = separated ? Math.min(PIE_CHART_SEGMENT_GAP, sweep * 0.2) : 0;
+  const gap = separated && sweep < 1 - Number.EPSILON
+    ? Math.min(PIE_CHART_SEGMENT_GAP, sweep * 0.2)
+    : 0;
   const visibleStart = start + gap;
   const visibleEnd = end - gap;
   /** @param {number} fraction */
@@ -187,7 +189,7 @@ function pieChartSegmentPath(startFraction, endFraction, separated = false) {
   const [startX, startY] = pointAt(visibleStart);
 
   if (sweep <= Number.EPSILON) return `M ${startX} ${startY}`;
-  if (!separated && sweep >= 1 - Number.EPSILON) {
+  if (sweep >= 1 - Number.EPSILON) {
     const [middleX, middleY] = pointAt(start + 0.5);
     return `M ${startX} ${startY} A ${PIE_CHART_RADIUS} ${PIE_CHART_RADIUS} 0 1 1 ${middleX} ${middleY} A ${PIE_CHART_RADIUS} ${PIE_CHART_RADIUS} 0 1 1 ${startX} ${startY}`;
   }
