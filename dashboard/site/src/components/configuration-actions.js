@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
 import { renderIntentAction } from './data-view.js';
+import { renderDlRow } from './ui-primitives.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 
 const CHANGE_ACTION = {
@@ -12,7 +13,7 @@ const CHANGE_ACTION = {
 
 /** @param {string} label @param {unknown} value */
 function renderDetail(label, value) {
-  return h('div', null, h('dt', null, label), h('dd', null, String(value ?? '')));
+  return renderDlRow(label, String(value ?? ''));
 }
 
 /** @param {Record<string, unknown>} row */
