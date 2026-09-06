@@ -1943,6 +1943,8 @@ test("SelfCare runs every 20 minutes", () => {
 
   assert.match(source, /schedule: every 20 minutes/);
   assert.match(source, /engine: copilot\nmodel: copilot\/gpt-5\.4/);
+  assert.match(source, /self-care-glossary.*no run of that workflow is in progress or started during the preceding 24 hours/);
+  assert.match(source, /at most the ten most recent glossary workflow runs/);
   assert.match(compiled, /cron: "[0-5]?\d\/20 \* \* \* \*"  # Friendly format: every 20 minutes \(scattered\)/);
   assert.match(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
 });
