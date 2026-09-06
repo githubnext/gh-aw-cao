@@ -114,11 +114,14 @@ jobs:
       pull-requests: write
     steps:
       - name: Download Lighthouse results
+        id: download
+        continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: dashboard-lighthouse-performance
           path: lighthouse-results
       - name: Comment on degraded performance
+        if: steps.download.outcome == 'success'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -132,17 +135,23 @@ jobs:
 
             const headOwner = context.payload.pull_request.head.repo.owner.login
             const headBranch = context.payload.pull_request.head.ref
-            const { data: pulls } = await github.rest.pulls.list({
-              ...context.repo,
-              state: 'open',
-              head: `${headOwner}:${headBranch}`,
-            })
-            const pull = pulls.find(({ head }) =>
-              head.ref === headBranch && head.repo?.owner.login === headOwner
-            )
-            if (!pull) {
-              core.warning(`No open pull request found for ${headOwner}:${headBranch}.`)
-              return
+            let pull = context.payload.pull_request
+            try {
+              const { data: pulls } = await github.rest.pulls.list({
+                ...context.repo,
+                state: 'open',
+                head: `${headOwner}:${headBranch}`,
+              })
+              const branchPull = pulls.find(({ head }) =>
+                head.ref === headBranch && head.repo?.owner.login === headOwner
+              )
+              if (branchPull) {
+                pull = branchPull
+              } else {
+                core.warning(`No open pull request found for ${headOwner}:${headBranch}; using event pull request.`)
+              }
+            } catch (error) {
+              core.warning(`Could not find the pull request by branch; using event pull request: ${error.message}`)
             }
 
             const labels = {
