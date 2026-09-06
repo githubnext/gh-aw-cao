@@ -84,6 +84,10 @@ process.stdout.write(JSON.stringify({
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
     const argumentsList = JSON.parse(await readFile(argumentsPath, "utf8"));
+    assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--output"), argumentsList.indexOf("--output") + 2), [
+      "--output",
+      cachePath,
+    ]);
     assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--artifacts"), argumentsList.indexOf("--artifacts") + 2), [
       "--artifacts",
       "usage,agent,detection,evals,experiment,firewall,graders,mcp",
