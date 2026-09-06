@@ -119,10 +119,13 @@ function aggregateObservations(rows, sourceType) {
 }
 
 /**
+ * Converts a single observation to its numeric value for aggregation, treating
+ * eval-sourced observations as a binary 1/0/NaN result and other sources as a
+ * finite numeric result.
  * @param {any} observation
  * @returns {number}
  */
-function numericObservation(observation) {
+export function numericObservation(observation) {
   if (observation.sourceType === 'eval') return observation.result === 'YES' ? 1 : observation.result === 'NO' ? 0 : NaN;
   return finite(observation.result) ?? NaN;
 }
