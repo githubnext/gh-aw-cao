@@ -112,6 +112,7 @@ jobs:
   lighthouse-comment:
     name: Report Lighthouse degradation
     if: >-
+      always() &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: lighthouse-performance
@@ -177,15 +178,15 @@ jobs:
               issue_number: pull.number,
               per_page: 100,
             })
-            const existing = comments.find((comment) =>
+            const existing = comments.filter((comment) =>
               comment.user?.type === 'Bot' && comment.body?.includes(marker)
             )
             if (degraded.length === 0) {
               core.info('All Lighthouse scenarios meet their performance budgets.')
-              if (existing) {
+              for (const comment of existing) {
                 await github.rest.issues.deleteComment({
                   ...context.repo,
-                  comment_id: existing.id,
+                  comment_id: comment.id,
                 })
               }
               return
@@ -233,10 +234,16 @@ jobs:
               `🔎 [View the workflow run and performance artifacts](${runUrl}).`,
             ].join('\n')
 
-            if (existing) {
+            if (existing.length > 0) {
+              for (const comment of existing.slice(1)) {
+                await github.rest.issues.deleteComment({
+                  ...context.repo,
+                  comment_id: comment.id,
+                })
+              }
               await github.rest.issues.updateComment({
                 ...context.repo,
-                comment_id: existing.id,
+                comment_id: existing[0].id,
                 body,
               })
             } else {
