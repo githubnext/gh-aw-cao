@@ -1324,6 +1324,12 @@ dashboard:
       '        - id: supporting-table\n          disclosure: supplemental\n'
     );
     expect(validateDashboardDocument(accepted).ok).toBe(true);
+
+    const locked = source.replace(
+      '        - id: supporting-table\n',
+      '        - id: supporting-table\n          locked: true\n'
+    );
+    expect(validateDashboardDocument(locked).ok).toBe(true);
   });
 
   it('DLS-VIEW-038 rejects nested view boxes while ignoring SVG chart internals', () => {
@@ -1363,6 +1369,19 @@ dashboard:
         path: '$.dashboard.pages[0].views[0].views'
       }));
       expect(chartResult.errors).not.toContainEqual(expect.objectContaining({
+        code: 'DLS-E014',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+    }
+
+    const locked = source.replace(
+      '        - id: primary-table\n',
+      '        - id: primary-table\n          locked: true\n'
+    );
+    const lockedResult = validateDashboardDocument(locked);
+    expect(lockedResult.ok).toBe(false);
+    if (!lockedResult.ok) {
+      expect(lockedResult.errors).not.toContainEqual(expect.objectContaining({
         code: 'DLS-E014',
         path: '$.dashboard.pages[0].views[0].views'
       }));

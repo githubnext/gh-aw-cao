@@ -1954,7 +1954,7 @@ function validateProgressiveDisclosure(views, path, errors) {
 function validateGraphicalLayout(views, viewsPath, errors) {
   const validViews = views.filter(isPlainObject);
   const defaultOpenTables = validViews.filter((view) => (
-    view.mark === 'table' && view.disclosure !== 'supplemental'
+    view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental'
   ));
   for (const table of defaultOpenTables.slice(1)) {
     const index = views.indexOf(table);
@@ -1966,7 +1966,7 @@ function validateGraphicalLayout(views, viewsPath, errors) {
   }
 
   for (const [index, view] of views.entries()) {
-    if (!isPlainObject(view) || view.mark === 'chart' || !Array.isArray(view.views)) continue;
+    if (!isPlainObject(view) || view.locked === true || view.mark === 'chart' || !Array.isArray(view.views)) continue;
     errors.push(createError(
       ERROR_CODES.invalidGraphicalNesting,
       'Views are top-level boxes and must not contain nested views.',
