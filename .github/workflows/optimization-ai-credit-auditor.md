@@ -155,10 +155,11 @@ steps:
       let usable = false;
       try {
         const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
+        const generatedAt = Date.parse(snapshot.generatedAt);
         if (snapshot.schemaVersion !== 1
-          || !Number.isFinite(Date.parse(snapshot.generatedAt))
-          || now - Date.parse(snapshot.generatedAt) > 2 * 60 * 60 * 1000
-          || Date.parse(snapshot.generatedAt) > now + 5 * 60 * 1000
+          || !Number.isFinite(generatedAt)
+          || now - generatedAt > 2 * 60 * 60 * 1000
+          || generatedAt > now + 5 * 60 * 1000
           || snapshot.runHealth?.available !== true
           || snapshot.runHealth?.complete !== true
           || snapshot.runHealth?.windowHours < 24
