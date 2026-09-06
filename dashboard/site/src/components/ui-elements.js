@@ -22,6 +22,7 @@ import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { AGENTIC_OVERSIGHT_EMPTY_AWARE_ELEMENTS, AGENTIC_OVERSIGHT_RENDERERS } from './agentic-oversight.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -65,10 +66,30 @@ const ELEMENT_RENDERERS = new Map([
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['configuration-policy', renderConfigurationView],
   ['configuration-actions', renderConfigurationActions],
-  ['experiments-evaluation', renderExperimentsEvaluation]
+  ['experiments-evaluation', renderExperimentsEvaluation],
+  ...AGENTIC_OVERSIGHT_RENDERERS
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell']);
+const EMPTY_AWARE_ELEMENTS = new Set([
+  'summary-grid',
+  'readiness-verdict',
+  'context-summary',
+  'signal-list',
+  'package-insights',
+  'package-detail',
+  'package-dispatches',
+  'package-reports',
+  'package-route',
+  'workflow-route',
+  'workflow-route-page',
+  'outcome-detail',
+  'outcome-detail-section',
+  'configuration-policy',
+  'configuration-actions',
+  'experiments-evaluation',
+  'package-activity-shell',
+  ...AGENTIC_OVERSIGHT_EMPTY_AWARE_ELEMENTS
+]);
 
 /**
  * @param {string} name
@@ -643,4 +664,3 @@ function stringValue(value) {
 function capitalize(value) {
   return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
-

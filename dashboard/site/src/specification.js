@@ -59,7 +59,21 @@ export const VIEW_ELEMENT_VALUES = [
   'outcome-detail-section',
   'configuration-policy',
   'configuration-actions',
-  'experiments-evaluation'
+  'experiments-evaluation',
+  'attention-stack',
+  'work-list',
+  'outcome-list',
+  'truth-rail',
+  'state-summary',
+  'state-ribbon',
+  'agent-assignment-list',
+  'coordination-braid',
+  'evidence-list',
+  'evidence-split',
+  'provenance-spine',
+  'maturity-horizon',
+  'capacity-horizon',
+  'operational-pulse'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_LAYOUT_VALUES = ['full', 'half', 'third'];
