@@ -9,6 +9,19 @@ import { firstText } from "./text-utils.mjs";
 
 const FIREWALL_HORIZON_DAYS = 30;
 
+async function preserveOrWriteEmptyLogs(logsPath, reason) {
+  await mkdir(path.dirname(logsPath), { recursive: true });
+  try {
+    await stat(logsPath);
+    log.info`Preserved existing gh-aw logs JSON at ${logsPath} (${reason})`;
+    return;
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  await writeFile(logsPath, '{"runs":[]}\n');
+  log.info`Cached empty gh-aw logs JSON at ${logsPath} (${reason})`;
+}
+
 function runGhAw(maxRunsPerWorkflow, outputDirectory) {
   return new Promise((resolve, reject) => {
     const child = spawn("gh", [
@@ -581,16 +594,10 @@ async function main() {
       } catch (error) {
         collectionAvailable = false;
         log.warning`AI Credit usage unavailable: ${error.message}`;
-        if (logsPath) {
-          await mkdir(path.dirname(logsPath), { recursive: true });
-          await writeFile(logsPath, '{"runs":[]}\n');
-          log.info`Cached fallback empty gh-aw logs JSON at ${logsPath} after download failure`;
-        }
+        if (logsPath) await preserveOrWriteEmptyLogs(logsPath, "download failure");
       }
     } else if (logsPath) {
-      await mkdir(path.dirname(logsPath), { recursive: true });
-      await writeFile(logsPath, '{"runs":[]}\n');
-      log.info`Cached empty gh-aw logs JSON at ${logsPath}; no workflow runs were selected`;
+      await preserveOrWriteEmptyLogs(logsPath, "no workflow runs were selected");
     }
     const reportedRunsByRepository = Object.groupBy([...runs.values()], (run) => run.repository);
     const repositories = [...runIdsByRepository].map(([repository, runIds]) => {

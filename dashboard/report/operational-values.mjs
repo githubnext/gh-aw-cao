@@ -119,6 +119,7 @@ async function main() {
       .map((run) => [logsRunId(run), run])
       .filter(([runId]) => Number.isFinite(runId)));
     const cachedRunKeys = new Set(cachedRecords
+      .filter((record) => record.status !== "unavailable")
       .map((record) => operationalValueRunIdentity(record))
       .filter(Boolean));
     const currentRecords = [];
