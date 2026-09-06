@@ -184,6 +184,21 @@ describe('renderWorkflowDetail', () => {
     );
   });
 
+  it('falls back to the page identity body when config.body is missing', () => {
+    const rendered = renderWorkflowDetail({
+      ...context('workflow-runs')
+    });
+
+    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: {
+        parameter: 'workflow',
+        value: 'githubnext/gh-aw-cao:.github/workflows/ambient-context.md'
+      }
+    }));
+
+    expect(rendered.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Runs');
+  });
+
   it('uses declarative route view ids to choose the runs composition', () => {
     const rendered = renderWorkflowDetail({
       ...context('custom-workflow-page'),
