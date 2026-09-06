@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
+import { agentMarketplaceCompositionForBody, defaultAgentMarketplaceComposition } from '../../src/components/agent-marketplace-primitives.js';
 
 const metadata = {
   'source-id': 'signal-fixture',
@@ -14,6 +15,14 @@ const metadata = {
 
 describe('UI elements', () => {
   it('renders marketplace agent tiles with details, health badges, and sorting', () => {
+    expect(agentMarketplaceCompositionForBody('toolbar')).toEqual({ key: 'toolbar', className: 'agent-marketplace-toolbar' });
+    expect(agentMarketplaceCompositionForBody('tiles')).toEqual({ key: 'tiles', className: 'agent-marketplace-grid' });
+    expect(agentMarketplaceCompositionForBody('unknown')).toEqual({ key: 'tiles', className: 'agent-marketplace-grid' });
+    expect(defaultAgentMarketplaceComposition()).toEqual([
+      { key: 'toolbar', className: 'agent-marketplace-toolbar' },
+      { key: 'tiles', className: 'agent-marketplace-grid' }
+    ]);
+
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',
       title: 'Agents',
@@ -50,9 +59,12 @@ describe('UI elements', () => {
         }
       },
       contextDetails: [],
-      headingTag: 'h3'
+      headingTag: 'h3',
+      elementConfig: { sections: ['toolbar', 'tiles'] }
     });
 
+    expect(rendered?.querySelector('[data-agent-marketplace-section="toolbar"]')).not.toBeNull();
+    expect(rendered?.querySelector('[data-agent-marketplace-section="tiles"]')).not.toBeNull();
     expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2);
     expect(rendered?.querySelector('.agent-marketplace-tile')?.textContent).toContain('Long running');
     expect(rendered?.textContent).toContain('Runs release automation.');

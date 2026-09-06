@@ -80,6 +80,8 @@ import {
   WORKFLOW_ROLE_VALUES
 } from './specification.js';
 import {
+  AGENT_MARKETPLACE_BODY_VALUES,
+  AGENT_MARKETPLACE_SECTION_KEYS,
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   EXPERIMENTS_VIEW_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
@@ -1598,7 +1600,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation' || view.element === 'agent-marketplace-view') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
@@ -1606,6 +1608,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
            ? PACKAGE_ROUTE_BODY_VALUES
            : view.element === 'experiments-evaluation'
              ? EXPERIMENTS_VIEW_BODY_VALUES
+             : view.element === 'agent-marketplace-view'
+               ? AGENT_MARKETPLACE_BODY_VALUES
              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
@@ -1617,25 +1621,30 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, and experiments-evaluation elements.',
+         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, experiments-evaluation, and agent-marketplace-view elements.',
          `${path}.config.body`
        ));
       }
-      if (view.element === 'experiments-evaluation' && view.config.sections !== undefined) {
+      if ((view.element === 'experiments-evaluation' || view.element === 'agent-marketplace-view') && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
          errors.push(createError(
            ERROR_CODES.missingOrInvalidRequiredField,
-           'experiments-evaluation config.sections must be a non-empty list.',
+           `${view.element} config.sections must be a non-empty list.`,
            `${path}.config.sections`
          ));
        } else {
          for (let index = 0; index < view.config.sections.length; index += 1) {
            const section = view.config.sections[index];
            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           if (typeof section === 'string' && !EXPERIMENTS_VIEW_BODY_VALUES.includes(section)) {
+           const allowedSections = view.element === 'agent-marketplace-view'
+             ? AGENT_MARKETPLACE_SECTION_KEYS
+             : EXPERIMENTS_VIEW_BODY_VALUES;
+           if (typeof section === 'string' && !allowedSections.includes(section)) {
              errors.push(createError(
                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-               'experiments-evaluation config.sections must use canonical experiment view section values.',
+               view.element === 'agent-marketplace-view'
+                 ? 'agent-marketplace-view config.sections must use canonical agent marketplace section values.'
+                 : 'experiments-evaluation config.sections must use canonical experiment view section values.',
                `${path}.config.sections[${index}]`
              ));
            }
@@ -1644,7 +1653,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the experiments-evaluation element.',
+         'config.sections is supported only for the experiments-evaluation and agent-marketplace-view elements.',
          `${path}.config.sections`
        ));
       }

@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { formatClockDuration, formatNumber } from '../view-formatters.js';
 import { renderDlRow, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { agentMarketplaceComposition } from './agent-marketplace-composition.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -42,6 +43,10 @@ export function renderAgentMarketplaceView(context) {
     )
   );
 
+  const count = h('span', { className: 'agent-marketplace-count' }, `${agents.length} agents`);
+  const sections = agentMarketplaceComposition(context.elementConfig);
+  const body = agents.length > 0 ? grid : h('p', { role: 'status' }, 'No agent telemetry is available in the selected scope.');
+
   return h(
     'section',
     { className: 'agent-marketplace-view', 'aria-labelledby': headingId },
@@ -52,9 +57,22 @@ export function renderAgentMarketplaceView(context) {
       description: context.description,
       headingTag: context.headingTag
     }),
-    h('div', { className: 'agent-marketplace-toolbar' }, sort, h('span', { className: 'agent-marketplace-count' }, `${agents.length} agents`)),
-    agents.length > 0 ? grid : h('p', { role: 'status' }, 'No agent telemetry is available in the selected scope.')
+    ...sections.map((section) => renderMarketplaceSection(section, sort, count, body))
   );
+}
+
+/**
+ * @param {{ key: 'toolbar'|'tiles', className: string }} section
+ * @param {HTMLElement} sort
+ * @param {HTMLElement} count
+ * @param {HTMLElement} body
+ * @returns {HTMLElement}
+ */
+function renderMarketplaceSection(section, sort, count, body) {
+  if (section.key === 'toolbar') {
+    return h('div', { className: section.className, 'data-agent-marketplace-section': section.key }, sort, count);
+  }
+  return h('div', { className: section.className, 'data-agent-marketplace-section': section.key }, body);
 }
 
 /** @param {ReturnType<typeof normalizeAgent>} agent */
