@@ -69,7 +69,7 @@ describe('UI elements', () => {
   it('renders Work as a Projects-style Board, Tasks, and Roadmap view', () => {
     const rendered = renderUiElement('work-project-view', {
       pageId: 'work',
-      title: 'Board / Tasks / Roadmap',
+      title: 'Work layouts',
       description: 'GitHub Projects-style work planning view.',
       sourceNames: ['work-items'],
       sources: {
@@ -106,6 +106,9 @@ describe('UI elements', () => {
           metadata
         }
       },
+      elementConfig: {
+        sections: ['board', 'tasks', 'roadmap']
+      },
       contextDetails: [],
       headingTag: 'h3'
     });
@@ -121,6 +124,38 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-roadmap-scroll')).not.toBeNull();
     expect(rendered?.querySelector('.work-roadmap-avatar')).not.toBeNull();
     expect(rendered?.querySelector('.work-roadmap')?.textContent).toContain('Still running');
+  });
+
+  it('renders a single declarative work slice when config.body selects one', () => {
+    const rendered = renderUiElement('work-project-view', {
+      pageId: 'insights',
+      title: 'Tasks',
+      sourceNames: ['work-items'],
+      sources: {
+        'work-items': {
+          source: 'work-items',
+          rows: [{
+            'work-item-id': 'github/gh-aw:.github/workflows/dependabot.md',
+            'workflow-name': 'Dependabot release train',
+            scope: 'github/gh-aw',
+            owner: 'dependency-automation',
+            'lifecycle-state': 'active',
+            'started-at': '2026-08-30T09:00:00Z'
+          }],
+          metadata
+        }
+      },
+      elementConfig: {
+        body: 'tasks'
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.work-project-tabs')).toBeNull();
+    expect(rendered?.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered?.querySelector('.work-board')).toBeNull();
+    expect(rendered?.querySelector('.work-roadmap')).toBeNull();
   });
 
   it('renders anomaly readiness as a reusable note widget', () => {
