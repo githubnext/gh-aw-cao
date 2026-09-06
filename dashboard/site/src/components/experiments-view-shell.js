@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
 import { experimentsViewCompositionForBody } from './experiments-view-primitives.js';
-import { normalizeEffect, difference, mean, finite, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
+import { normalizeEffect, difference, mean, finite, numericObservation, safeExperimentLink, metricSummaries } from './experiment-view-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -312,56 +312,6 @@ function syncDeepLink(filters, experimentId, pageId) {
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#page-${encodeURIComponent(pageId)}${query ? `?${query}` : ''}`);
 }
 
-/** @param {Row[]} observations @param {string} control @param {string} candidate @returns {Row[]} */
-function metricSummaries(observations, control, candidate) {
-  /** @type {Map<string, Row[]>} */
-  const groups = new Map();
-  for (const observation of observations) {
-    const key = `${observation.sourceType}:${observation.identifier}`;
-    const group = groups.get(key) ?? [];
-    group.push(observation);
-    groups.set(key, group);
-  }
-  return [...groups.values()].map((group) => {
-    const first = group[0];
-    const controlRows = group.filter((row) => row.variant === control && row.included);
-    const candidateRows = group.filter((row) => row.variant === candidate && row.included);
-    const controlValue = aggregateObservations(controlRows, first.sourceType);
-    const candidateValue = aggregateObservations(candidateRows, first.sourceType);
-    const rawEffect = difference(candidateValue, controlValue);
-    const normalizedEffect = normalizeEffect(rawEffect, first.direction);
-    const thresholdRegression = first.role === 'GUARDRAIL' && first.threshold !== null
-      ? (first.direction === 'lower_is_better' ? candidateValue > first.threshold : candidateValue < first.threshold)
-      : false;
-    return {
-      identifier: first.identifier,
-      sourceType: first.sourceType,
-      role: first.role,
-      direction: first.direction,
-      unit: first.unit,
-      question: first.question,
-      threshold: first.threshold,
-      controlValue,
-      candidateValue,
-      rawEffect,
-      normalizedEffect,
-      controlN: controlRows.length,
-      candidateN: candidateRows.length,
-      excluded: group.length - controlRows.length - candidateRows.length,
-      regression: thresholdRegression || (Number.isFinite(normalizedEffect) && normalizedEffect < 0)
-    };
-  }).sort((left, right) => roleOrder(left.role) - roleOrder(right.role) || left.identifier.localeCompare(right.identifier));
-}
-
-/** @param {Row[]} rows @param {string} sourceType @returns {number} */
-function aggregateObservations(rows, sourceType) {
-  if (sourceType === 'eval') {
-    const known = rows.filter((row) => row.result === 'YES' || row.result === 'NO');
-    return known.length ? known.filter((row) => row.result === 'YES').length / known.length : NaN;
-  }
-  return mean(rows.map(numericObservation).filter(Number.isFinite));
-}
-
 /** @param {Row} row @returns {boolean} */
 function includedObservation(row) {
   if (row.included === false || text(row.included).toLowerCase() === 'no') return false;
@@ -394,11 +344,6 @@ function upper(value) {
 /** @param {any[]} rows @param {string} field @returns {string[]} */
 function distinct(rows, field) {
   return [...new Set(rows.map((row) => text(row[field])).filter(Boolean))].sort();
-}
-
-/** @param {string} role @returns {number} */
-function roleOrder(role) {
-  return role === 'PRIMARY' ? 0 : role === 'GUARDRAIL' ? 1 : 2;
 }
 
 /** @param {string} readiness @returns {string} */
