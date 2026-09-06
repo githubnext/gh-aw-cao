@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink, renderLinkedValue } from './link-content.js';
 import { rowsFor } from './source-rows.js';
-import { formatUtcDateTime, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { formatUtcDateTime, renderDlRow, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
 
 const BOARD_COLUMNS = [
   { title: 'Active', states: ['active'], tone: 'active' },
@@ -82,10 +82,10 @@ function renderWorkCard(item) {
     ),
     h('p', null, item.repository),
     h('dl', null,
-      renderFact('Owner', item.owner),
-      renderFact('Started', item.startedLabel),
-      renderFact('Stopped', item.stoppedLabel),
-      renderFact('Duration', item.durationLabel)
+      renderDlRow('Owner', item.owner),
+      renderDlRow('Started', item.startedLabel),
+      renderDlRow('Stopped', item.stoppedLabel),
+      renderDlRow('Duration', item.durationLabel)
     )
   ];
   return h('article', { className: 'work-card', 'data-work-state': item.state }, ...body);
@@ -149,14 +149,6 @@ function renderRoadmap(items) {
       })
     )
   );
-}
-
-/**
- * @param {string} label
- * @param {string} value
- */
-function renderFact(label, value) {
-  return h('div', null, h('dt', null, label), h('dd', null, value));
 }
 
 /** @param {Record<string, unknown>} row */
