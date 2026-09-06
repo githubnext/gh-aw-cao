@@ -266,6 +266,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
   if (chartType === 'pie') {
     const { entries, total } = /** @type {{ entries: Array<[string, number]>, total: number }} */ (pieData);
     const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
+    const separated = entries.filter(([, value]) => Number.isFinite(value) && value > 0).length > 1;
     let cumulativeValue = 0;
     return renderChartWidgetShell(
       'pie',
@@ -294,7 +295,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           h('title', null, segmentLabel),
           h('path', {
             className: `pie-chart-segment ${chartSeriesClassName(label, index)}`,
-            d: pieChartSegmentPath(startFraction, endFraction, entries.length > 1),
+            d: pieChartSegmentPath(startFraction, endFraction, separated),
             fill: 'none',
             'stroke-width': PIE_CHART_STROKE_WIDTH,
             'stroke-linecap': 'round',

@@ -1130,13 +1130,15 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
   const segmentGeometry = await chart.locator('.pie-chart-segment').evaluateAll((segments) => ({
     lengths: segments.map((segment) => /** @type {SVGGeometryElement} */ (segment).getTotalLength()),
     dashArrays: segments.map((segment) => getComputedStyle(segment).strokeDasharray),
+    lineCaps: segments.map((segment) => getComputedStyle(segment).strokeLinecap),
     transforms: segments.map((segment) => getComputedStyle(segment).transform),
     vectorEffects: segments.map((segment) => getComputedStyle(segment).vectorEffect)
   }));
-  expect(segmentGeometry.lengths[0]).toBeCloseTo(62.5, 1);
-  expect(segmentGeometry.lengths[1]).toBeCloseTo(37.5, 1);
-  expect(segmentGeometry.lengths.reduce((sum, length) => sum + length, 0)).toBeCloseTo(100, 1);
+  expect(segmentGeometry.lengths[0]).toBeCloseTo(56.5, 1);
+  expect(segmentGeometry.lengths[1]).toBeCloseTo(31.5, 1);
+  expect(segmentGeometry.lengths.reduce((sum, length) => sum + length, 0)).toBeCloseTo(88, 1);
   expect(segmentGeometry.dashArrays).toEqual(['none', 'none']);
+  expect(segmentGeometry.lineCaps).toEqual(['round', 'round']);
   expect(segmentGeometry.transforms).toEqual(['none', 'none']);
   expect(segmentGeometry.vectorEffects).toEqual(['none', 'none']);
 

@@ -341,8 +341,8 @@ describe('chart element helpers', () => {
     expect(pie.querySelector('.pie-chart-segment')?.getAttribute('stroke-width')).toBe('6');
     expect(pie.querySelector('.pie-chart-segment')?.getAttribute('stroke-linecap')).toBe('round');
     expect([...pie.querySelectorAll('.pie-chart-segment')].map((segment) => segment.getAttribute('d'))).toEqual([
-      'M 23.9822 5.3665 A 15.9155 15.9155 0 1 1 8.3308 30.6338',
-      'M 5.3665 23.9822 A 15.9155 15.9155 0 0 1 18.0178 5.3665'
+      'M 23.9823 5.3664 A 15.9155 15.9155 0 1 1 5.3664 23.9823',
+      'M 5.3664 18.0177 A 15.9155 15.9155 0 0 1 18.0177 5.3664'
     ]);
     expect(pie.querySelector('.pie-chart-segment')?.hasAttribute('stroke-dasharray')).toBe(false);
     expect(pie.querySelectorAll('.pie-chart-mark .point-tooltip')).toHaveLength(2);
@@ -378,7 +378,7 @@ describe('chart element helpers', () => {
     expect(unitPie.querySelector('.pie-chart-mark')?.getAttribute('aria-label')).toBe('2026-08-29: 3 AIC');
     expect(unitPie.querySelector('.pie-chart-total-value')?.textContent).toBe('4');
     const fullPieSegments = fullPie.querySelectorAll('.pie-chart-segment');
-    expect(fullPieSegments[0]?.getAttribute('d')?.match(/ A /g)).toHaveLength(1);
+    expect(fullPieSegments[0]?.getAttribute('d')?.match(/ A /g)).toHaveLength(2);
     expect(fullPieSegments[1]?.getAttribute('d')).toBe('M 21 5.0845');
   });
 
