@@ -2,8 +2,15 @@ import { h } from '../dom.js';
 import { renderExperimentDetailView } from './experiment-detail-view.js';
 import { renderExperimentSummaryView } from './experiment-summary-view.js';
 import { renderExperimentTableView } from './experiment-table-view.js';
-import { experimentsViewComposition } from './experiments-view-composition.js';
-import { renderExperimentsViewShell } from './experiments-view-shell.js';
+import {
+  buildExperimentDecisionModel,
+  filterExperimentRows,
+  initialExperimentFilters,
+  renderExperimentDecisionEmptyState,
+  renderExperimentDecisionSurface,
+  renderExperimentFilters,
+  syncExperimentDecisionDeepLink
+} from './experiment-decision-surface.js';
 
 /** @typedef {Record<string, any>} Row */
 /** @typedef {{ experiments: Row[], assignments: Row[], graders: Row[], evals: Row[], runById: Map<string, Row>, graderById: Map<string, Row>, evalById: Map<string, Row> }} ExperimentModel */
@@ -16,7 +23,13 @@ import { renderExperimentsViewShell } from './experiments-view-shell.js';
  * @returns {HTMLElement}
  */
 export function renderExperimentsEvaluation(context) {
-  return renderExperimentsViewShell(context, experimentsViewComposition(context.elementConfig), {
+  return renderExperimentDecisionSurface(context, {
+    buildModel: buildExperimentDecisionModel,
+    renderFilterBar: renderExperimentFilters,
+    filterExperiments: filterExperimentRows,
+    initialFilters: initialExperimentFilters,
+    syncDeepLink: syncExperimentDecisionDeepLink,
+    renderEmptyState: renderExperimentDecisionEmptyState,
     renderOverview: renderExperimentSummaryView,
     renderTable: renderExperimentTableView,
     renderDetail: renderExperimentDetailView,
