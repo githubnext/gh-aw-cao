@@ -209,6 +209,20 @@ export function formatUtcDateTime(value) {
 }
 
 /**
+ * Renders a digest string's first 12 characters wrapped in `<code>`, or
+ * `null` when the digest is empty. Shared by the table cell display's
+ * `digest` type and the workflow operational-value evaluator stat, which
+ * both truncate and code-format a digest but differ in their own fallback
+ * content for the empty case.
+ * @param {unknown} value
+ * @returns {HTMLElement | null}
+ */
+export function renderDigest(value) {
+  const text = value == null ? '' : String(value);
+  return text ? h('code', null, text.slice(0, 12)) : null;
+}
+
+/**
  * Renders the shared "no data" placeholder used by table-summary cells when
  * a column has no values eligible for summarization.
  * @param {string} message

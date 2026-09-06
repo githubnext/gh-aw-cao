@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 
 describe('ui primitives', () => {
   it('renders shared section-heading markup with configurable heading levels', () => {
@@ -125,6 +125,15 @@ describe('ui primitives', () => {
     expect(rendered.tagName).toBe('SPAN');
     expect(rendered.className).toBe('table-summary-empty');
     expect(rendered.textContent).toBe('No timestamps');
+  });
+
+  it('renders a truncated digest in a code element, or null when empty', () => {
+    const rendered = renderDigest('1234567890abcdef');
+    expect(rendered?.tagName).toBe('CODE');
+    expect(rendered?.textContent).toBe('1234567890ab');
+    expect(renderDigest('')).toBeNull();
+    expect(renderDigest(null)).toBeNull();
+    expect(renderDigest(undefined)).toBeNull();
   });
 
   it('renders the shared list-with-fallback pattern for populated and empty item sets', () => {
