@@ -1573,26 +1573,26 @@ function validateView(view, viewNode, path, viewIds, errors) {
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
       if ((view.element === 'workflow-route' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
-       const allowedBodies = view.element === 'workflow-route'
-         ? WORKFLOW_ROUTE_BODY_VALUES
-         : view.element === 'package-route'
-           ? PACKAGE_ROUTE_BODY_VALUES
-           : view.element === 'experiments-evaluation'
-             ? EXPERIMENTS_VIEW_BODY_VALUES
-             : OUTCOME_DETAIL_SECTION_BODY_VALUES;
-       if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
-         errors.push(createError(
-           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-           `${view.element} config.body must use one canonical route body value.`,
-           `${path}.config.body`
-         ));
-       }
+        const allowedBodies = view.element === 'workflow-route'
+          ? WORKFLOW_ROUTE_BODY_VALUES
+          : view.element === 'package-route'
+            ? PACKAGE_ROUTE_BODY_VALUES
+            : view.element === 'experiments-evaluation'
+              ? EXPERIMENTS_VIEW_BODY_VALUES
+              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
+        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            `${view.element} config.body must use one canonical route body value.`,
+            `${path}.config.body`
+          ));
+        }
       } else if (view.config.body !== undefined) {
-       errors.push(createError(
-         ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, package-route, outcome-detail-section, and experiments-evaluation elements.',
-         `${path}.config.body`
-       ));
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'config.body is supported only for the workflow-route, package-route, outcome-detail-section, and experiments-evaluation elements.',
+          `${path}.config.body`
+        ));
       }
       if (view.element === 'experiments-evaluation' && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
