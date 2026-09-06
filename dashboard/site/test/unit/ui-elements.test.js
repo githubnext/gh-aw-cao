@@ -13,6 +13,59 @@ const metadata = {
 };
 
 describe('UI elements', () => {
+  it('renders marketplace agent tiles with details, health badges, and sorting', () => {
+    const rendered = renderUiElement('agent-marketplace-view', {
+      pageId: 'agents',
+      title: 'Agents',
+      description: 'Marketplace-style agent catalog.',
+      sourceNames: ['agent-assignments'],
+      sources: {
+        'agent-assignments': {
+          source: 'agent-assignments',
+          rows: [
+            {
+              'agent-id': 'slow',
+              'agent-name': 'Zeta Agent',
+              'agent-icon': 'robot',
+              'agent-description': 'Runs release automation.',
+              permissions: 'contents: read',
+              'agent-state': 'active',
+              'run-count': 3,
+              'total-runtime-seconds': 3600,
+              'last-observed-at': '2026-08-30T09:00:00Z'
+            },
+            {
+              'agent-id': 'fast',
+              'agent-name': 'Alpha Agent',
+              'agent-icon': 'copilot',
+              'agent-description': 'Reviews pull requests.',
+              permissions: 'pull-requests: write',
+              'agent-state': 'completed',
+              'run-count': 1,
+              'total-runtime-seconds': 60,
+              'last-observed-at': '2026-08-30T09:00:00Z'
+            }
+          ],
+          metadata
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2);
+    expect(rendered?.querySelector('.agent-marketplace-tile')?.textContent).toContain('Long running');
+    expect(rendered?.textContent).toContain('Runs release automation.');
+    expect(rendered?.textContent).toContain('contents: read');
+    const select = rendered?.querySelector('select');
+    expect(select).not.toBeNull();
+    if (select) {
+      select.value = 'name';
+      select.dispatchEvent(new Event('change'));
+    }
+    expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Alpha Agent');
+  });
+
   it('renders Work as a Projects-style Board, Tasks, and Roadmap view', () => {
     const rendered = renderUiElement('work-project-view', {
       pageId: 'work',

@@ -1931,6 +1931,21 @@ function agentAssignmentRows(workflows, runs, workItems) {
   };
   const rows = [];
   const activeCountByWorkItem = new Map();
+  const agentStats = new Map();
+  for (const run of runs) {
+    const engine = run.engine && run.engine !== "unknown" ? run.engine : null;
+    const model = run["resolved-model"] && run["resolved-model"] !== "unknown"
+      ? run["resolved-model"]
+      : run["requested-model"] && run["requested-model"] !== "unknown" ? run["requested-model"] : null;
+    if (!engine && !model) continue;
+    const id = `${engine || "unknown-engine"}:${model || "unknown-model"}`;
+    const started = Date.parse(run["started-at"] || "");
+    const ended = Date.parse(run["ended-at"] || "");
+    const stats = agentStats.get(id) || { runs: 0, runtime: 0 };
+    stats.runs += 1;
+    if (Number.isFinite(started) && Number.isFinite(ended)) stats.runtime += Math.max(0, ended - started) / 1000;
+    agentStats.set(id, stats);
+  }
   for (const workflow of workflows) {
     const key = workItemKey(workflow.organization, workflow.repository, workflow.workflow);
     const latestRun = runsByWorkItem.get(key)?.[0];
@@ -1944,6 +1959,8 @@ function agentAssignmentRows(workflows, runs, workItems) {
     const workItem = workItemsByKey.get(key);
     const lifecycleState = workItem?.["lifecycle-state"] || "unknown";
     const assignmentState = assignmentStateFor[lifecycleState] || "unknown";
+    const agentId = `${engine || "unknown-engine"}:${model || "unknown-model"}`;
+    const stats = agentStats.get(agentId) || { runs: 0, runtime: 0 };
     if (assignmentState === "active" || assignmentState === "pending") {
       activeCountByWorkItem.set(key, (activeCountByWorkItem.get(key) || 0) + 1);
     }
@@ -1951,8 +1968,13 @@ function agentAssignmentRows(workflows, runs, workItems) {
       key,
       row: {
         "assignment-id": `${key}:${engine || "unknown-engine"}:${model || "unknown-model"}`,
-        "agent-id": `${engine || "unknown-engine"}:${model || "unknown-model"}`,
+        "agent-id": agentId,
         "agent-name": [engine, model].filter(Boolean).join(" · ") || "Unknown agent",
+        "agent-icon": engine === "copilot" ? "copilot" : "robot",
+        "agent-description": `${workflow["workflow-name"] || workflow.workflow || "Agent"} automation`,
+        permissions: workflow["gh-aw-metadata"]?.permissions
+          ? Object.entries(workflow["gh-aw-metadata"].permissions).map(([name, level]) => `${name}: ${level}`).join(", ")
+          : "Not declared",
         "agent-state": assignmentState,
         "work-item-id": workItem?.["work-item-id"] || key,
         objective: workItem?.objective || workflow["workflow-name"] || workflow.workflow,
@@ -1960,6 +1982,11 @@ function agentAssignmentRows(workflows, runs, workItems) {
         "handoff-state": lifecycleState === "completed" ? "completed" : lifecycleState === "waiting" ? "pending" : "in-progress",
         "dependency-state": workItem?.["waiting-on"] ? "waiting" : "resolved",
         "conflict-state": "none",
+        "run-count": stats.runs,
+        "total-runtime-seconds": stats.runtime,
+        "last-observed-at": latestRun?.["started-at"] || workItem?.["observed-at"],
+        "long-running": stats.runtime >= 1800,
+        stale: !latestRun?.["started-at"] || (Date.now() - Date.parse(latestRun["started-at"])) >= 86_400_000,
         "observed-at": latestRun?.["started-at"] || workItem?.["observed-at"],
         "evidence-link": workItem?.["evidence-link"],
         "repository-link": link("repository", `https://github.com/${workflow.organization}/${workflow.repository}`, `View ${workflow.organization}/${workflow.repository} on GitHub`),

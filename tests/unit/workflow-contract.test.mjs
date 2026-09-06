@@ -531,7 +531,6 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /actions\/create-github-app-token@v3\.2\.0/);
   assert.match(sharedControl, /permission-actions: read[\s\S]*?permission-contents: read/);
   assert.match(sharedControl, /CAO_API_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
-  assert.match(sharedControl, /CAO_GITHUB_API_GATE: \$\{\{ vars\.CAO_GITHUB_API_GATE \}\}/);
   assert.match(sharedControl, /name: Checkout CAO control modules/);
   assert.match(sharedControl, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/);
   assert.match(sharedControl, /ref: \$\{\{ github\.workflow_sha \}\}/);
@@ -542,12 +541,8 @@ test("control workflows deny before activation through one shared admission cont
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
   assert.doesNotMatch(sharedControl, /base64\s+(?:-d|--decode)/);
   assert.match(sharedControl, /node "\$cao_dir\/control\.mjs" admit/);
-  assert.equal([...sharedControl.matchAll(/permission-actions: write/g)].length, 2);
-  assert.equal([...sharedControl.matchAll(/control\.mjs" persist-api-gate/g)].length, 2);
-  assert.match(sharedControl, /steps\.cao_admission\.outputs\.github_api_gate_active != 'true'/);
-  assert.match(sharedControl, /steps\.cao_precompute\.outputs\.github_api_gate_active != 'true'/);
-  assert.match(sharedControl, /CAO_GATE_WRITE_TOKEN: \$\{\{ steps\.cao_admission_gate_writer_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \}\}/);
-  assert.match(sharedControl, /CAO_GATE_WRITE_TOKEN: \$\{\{ steps\.cao_precompute_gate_writer_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \}\}/);
+  assert.doesNotMatch(sharedControl, /permission-actions: write/);
+  assert.doesNotMatch(sharedControl, /CAO_GITHUB_API_GATE|persist-api-gate|gate_writer_token/);
   assert.match(sharedControl, /CAO admission blocked: GitHub API limited until \$\{\{ steps\.cao_admission\.outputs\.github_api_reset_at \}\}/);
   assert.match(sharedControl, /reason == 'github-api-capacity-insufficient'/);
   assert.match(sharedControl, /^\s+id: cao_precompute$/m);
