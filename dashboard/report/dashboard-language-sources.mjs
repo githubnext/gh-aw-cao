@@ -1854,9 +1854,13 @@ function workItemRows(workflows, runs, outcomes) {
     const lifecycleState = workItemLifecycle(latestRun);
     return {
       "work-item-id": key,
+      name: workflow["workflow-name"] || workflow.workflow,
       objective: workflow["workflow-name"] || workflow.workflow,
       organization: workflow.organization,
       repository: workflow.repository,
+      workflow: workflow.workflow,
+      "workflow-name": workflow["workflow-name"] || workflow.workflow,
+      "workflow-icon": workflow["package-icon"] || "workflow",
       scope: `${workflow.organization}/${workflow.repository}`,
       domain: workflow["package-name"] || "standalone",
       "work-type": workflow["workflow-role"] || "unknown",
@@ -1874,6 +1878,8 @@ function workItemRows(workflows, runs, outcomes) {
       "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
       "verification-state": outcomeVerificationState(latestOutcome?.["outcome-state"]),
       "outcome-state": latestOutcome?.["outcome-state"] || "pending",
+      "started-at": latestRun?.["started-at"] || workflow["observed-at"],
+      "ended-at": latestRun?.["ended-at"] || "",
       "observed-at": latestRun?.["started-at"] || workflow["observed-at"],
       "evidence-link": latestOutcome?.["external-link"] || latestRun?.["run-link"],
       "run-link": latestRun?.["run-link"],
