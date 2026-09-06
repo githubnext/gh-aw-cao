@@ -81,6 +81,8 @@ test("operational workflows use the transitive CAO package bundle", () => {
   }
   assert.match(orchestrator, /If `control_role` is `orchestrator`/);
   assert.match(worker, /If `control_role` is `worker`/);
+  assert.doesNotMatch(orchestrator, /uses: shared\/control\.md/, "shared/orchestrator.md must not import shared/control.md directly");
+  assert.doesNotMatch(worker, /uses: shared\/control\.md/, "shared/worker.md must not import shared/control.md directly");
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
