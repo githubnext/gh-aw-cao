@@ -6,7 +6,6 @@ import { selectNamedComposition } from './route-composition.js';
 import { selectConfigBody } from './route-body-composition.js';
 import { WORKFLOW_ROUTE_BODY_VALUES } from './route-body-specification.js';
 import { WORKFLOW_ROUTE_BODY_RENDERERS } from './workflow-route-bodies.js';
-import { workflowRoutePageConfig } from './workflow-route-page-config.js';
 
 /**
  * @typedef {'insights'|'reports'|'runs'} WorkflowRouteBody
@@ -93,12 +92,4 @@ export function workflowRouteComposition(body) {
       WORKFLOW_ROUTE_BODY_CONFIG.fallback
     )
   );
-}
-
-/**
- * @param {unknown} pageId
- * @returns {WorkflowRouteBodyComposition}
- */
-export function workflowRouteCompositionForPage(pageId) {
-  return workflowRouteComposition(workflowRoutePageConfig(pageId).body);
 }
