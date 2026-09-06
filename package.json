@@ -7,6 +7,7 @@
     "docs:dev": "astro dev",
     "docs:build": "astro build",
     "docs:preview": "astro preview",
+    "lint": "node scripts/check-file-sizes.mjs",
     "typecheck:cao": "npx tsc -p .github/cao/tsconfig.json",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "node --test tests/unit/*.test.mjs",
@@ -16,7 +17,7 @@
     "check:svg": "node scripts/check-svg-visual-language.mjs",
     "compile": "gh aw compile --no-emit --no-check-update --schedule-seed githubnext/gh-aw-cao",
     "compile:locks": "gh aw compile --no-check-update --schedule-seed githubnext/gh-aw-cao",
-    "check": "npm run typecheck:cao && npm test && npm run test:load && npm run check:svg && npm run compile && npm run docs:build",
+    "check": "npm run lint && npm run typecheck:cao && npm test && npm run test:load && npm run check:svg && npm run compile && npm run docs:build",
     "update-deps": "npx npm-check-updates -u && npm install",
     "test:e2e:copilot-loop": "playwright test --config=playwright.copilot-loop.config.mjs",
     "test:e2e:local-server": "playwright test --config=playwright.local-server.config.mjs"
