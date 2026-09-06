@@ -120,33 +120,46 @@ function renderTasks(items) {
 /** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
 function renderRoadmap(items) {
   const extents = timelineExtents(items);
+  const rangeSize = Math.max(720, items.length * 180 + 180);
   return h(
     'section',
     { className: 'work-roadmap', id: 'work-roadmap', 'aria-label': 'Roadmap' },
     h('div', { className: 'work-project-section-heading' }, h('h4', null, 'Roadmap')),
     h(
       'div',
-      { className: 'work-roadmap-lanes' },
-      ...items.map((item) => {
-        const startOffset = extents.duration > 0 ? ((item.startTime - extents.start) / extents.duration) * 100 : 0;
-        const itemDuration = Math.max(item.stopTime - item.startTime, 60_000);
-        const width = extents.duration > 0 ? Math.max(8, (itemDuration / extents.duration) * 100) : 100;
-        return h(
-          'article',
-          { className: 'work-roadmap-lane' },
-          h('div', { className: 'work-roadmap-label' },
-            renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-            h('strong', null, item.name)
-          ),
-          h('div', { className: 'work-roadmap-track' },
-            h('span', {
-              className: `work-roadmap-bar work-state-${item.state}`,
-              style: `--work-start: ${Math.max(0, Math.min(100, startOffset)).toFixed(2)}%; --work-width: ${Math.min(100, width).toFixed(2)}%;`
-            })
-          ),
-          h('div', { className: 'work-roadmap-time' }, `${item.startedLabel} → ${item.stoppedLabel}`)
-        );
-      })
+      { className: 'work-roadmap-scroll' },
+      h(
+        'div',
+        { className: 'work-roadmap-timeline', style: `min-width: ${rangeSize}px;` },
+        h('div', { className: 'work-roadmap-metric-axis' },
+          h('span', null, formatUtcDateTime(extents.start)),
+          h('span', null, formatUtcDateTime(extents.stop))
+        ),
+        ...items.map((item) => {
+          const startOffset = extents.duration > 0 ? ((item.startTime - extents.start) / extents.duration) * 100 : 0;
+          const itemDuration = Math.max(item.stopTime - item.startTime, 60_000);
+          const width = extents.duration > 0 ? Math.max(8, (itemDuration / extents.duration) * 100) : 100;
+          const barStyle = `--work-start: ${Math.max(0, Math.min(100, startOffset)).toFixed(2)}%; --work-width: ${Math.min(100, width).toFixed(2)}%;`;
+          return h(
+            'article',
+            { className: 'work-roadmap-lane' },
+            h('div', { className: 'work-roadmap-label' },
+              renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
+              h('strong', null, item.name)
+            ),
+            h('div', { className: 'work-roadmap-track' },
+              h('span', {
+                className: `work-roadmap-bar work-state-${item.state}`,
+                style: barStyle
+              },
+                h('span', { className: 'work-roadmap-avatar' }, renderIconSpan('work-roadmap-avatar-icon', item.icon, { ariaHidden: true })),
+                h('span', { className: 'work-roadmap-owner' }, item.owner),
+                h('span', { className: 'work-roadmap-dates' }, `${item.startedLabel} → ${item.stoppedLabel}`)
+              )
+            )
+          );
+        })
+      )
     )
   );
 }

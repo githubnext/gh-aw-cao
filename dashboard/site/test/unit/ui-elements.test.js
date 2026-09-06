@@ -118,6 +118,8 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('dependency-automation');
     expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('Aug 30, 2026, 9:00 AM');
     expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('Aug 30, 2026, 9:30 AM');
+    expect(rendered?.querySelector('.work-roadmap-scroll')).not.toBeNull();
+    expect(rendered?.querySelector('.work-roadmap-avatar')).not.toBeNull();
     expect(rendered?.querySelector('.work-roadmap')?.textContent).toContain('Still running');
   });
 
