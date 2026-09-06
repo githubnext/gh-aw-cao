@@ -7,6 +7,7 @@ import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
 import { experimentViewSectionRenderer } from './experiment-view-sections.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
+import { normalizeEffect, difference, mean, finite } from './experiment-view-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -393,28 +394,6 @@ function includedAssignment(row) {
 function normalizeEvalResult(value) {
   const normalized = upper(value);
   return normalized === 'YES' || normalized === 'NO' ? normalized : 'UNKNOWN';
-}
-
-/** @param {number} value @param {string} direction @returns {number} */
-function normalizeEffect(value, direction) {
-  if (!Number.isFinite(value)) return NaN;
-  return direction === 'lower_is_better' ? -value : value;
-}
-
-/** @param {number} left @param {number} right @returns {number} */
-function difference(left, right) {
-  return Number.isFinite(left) && Number.isFinite(right) ? left - right : NaN;
-}
-
-/** @param {number[]} values @returns {number} */
-function mean(values) {
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : NaN;
-}
-
-/** @param {unknown} value @returns {number | null} */
-function finite(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
 }
 
 /** @param {unknown} value @returns {string} */
