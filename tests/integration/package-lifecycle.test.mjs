@@ -48,7 +48,7 @@ const awDoctorExpectedFiles = [
   ".github/workflows/aw-doctor.md",
   ".github/workflows/shared/activity-cache.md",
   ".github/workflows/shared/control.md",
-  ".github/workflows/shared/dispatcher.md",
+  ".github/workflows/shared/orchestrator.md",
   ".github/workflows/shared/worker.md",
 ];
 const ukAiAdvisoryExpectedFiles = [
@@ -58,7 +58,7 @@ const ukAiAdvisoryExpectedFiles = [
   ".github/workflows/uk-ai-advisory-operational-resilience.md",
   ".github/workflows/uk-ai-advisory.md",
   ".github/workflows/shared/control.md",
-  ".github/workflows/shared/dispatcher.md",
+  ".github/workflows/shared/orchestrator.md",
   ".github/workflows/shared/worker.md",
 ];
 const craExpectedFiles = [
@@ -82,7 +82,7 @@ const craExpectedFiles = [
   ".github/workflows/eu-cra-compliance.md",
   ".github/workflows/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
   ".github/workflows/shared/control.md",
-  ".github/workflows/shared/dispatcher.md",
+  ".github/workflows/shared/orchestrator.md",
   ".github/workflows/shared/worker.md",
 ];
 const dashboardExpectedFiles = [
@@ -107,7 +107,7 @@ const selfCareExpectedFiles = [
   ".github/workflows/self-care.md",
   ".github/workflows/shared/activity-cache.md",
   ".github/workflows/shared/control.md",
-  ".github/workflows/shared/dispatcher.md",
+  ".github/workflows/shared/orchestrator.md",
   ".github/workflows/shared/worker.md",
 ];
 const softwareDevelopmentPracticesExpectedFiles = [
@@ -116,7 +116,7 @@ const softwareDevelopmentPracticesExpectedFiles = [
   ".github/graders/software-development-practices-github-well-architected-operational-value.sh",
   ".github/graders/software-development-practices-nist-ssdf-operational-value.sh",
   ".github/workflows/shared/control.md",
-  ".github/workflows/shared/dispatcher.md",
+  ".github/workflows/shared/orchestrator.md",
   ".github/workflows/shared/worker.md",
   ".github/workflows/software-development-practices-github-well-architected.md",
   ".github/workflows/software-development-practices-nist-ssdf.md",
@@ -248,7 +248,7 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
         ".github/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
         ".github/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
         ".github/workflows/control.md",
-        ".github/workflows/dispatcher.md",
+        ".github/workflows/orchestrator.md",
         ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
         ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
         ".github/workflows/eu-cra-compliance-package-maintainer.md",
@@ -292,7 +292,7 @@ test("gh aw add installs the focused UK AI Advisory package contract", { timeout
         ".github/aw/dashboards/uk-ai-advisory.json",
         ".github/workflows/uk-ai-advisory-package-maintainer.md",
         ".github/workflows/control.md",
-        ".github/workflows/dispatcher.md",
+        ".github/workflows/orchestrator.md",
         ".github/workflows/uk-ai-advisory.md",
         ".github/workflows/worker.md",
       ].toSorted(),
@@ -355,7 +355,7 @@ test("gh aw add installs the focused Software Development Practices package cont
         ".github/graders/software-development-practices-github-well-architected-operational-value.sh",
         ".github/graders/software-development-practices-nist-ssdf-operational-value.sh",
         ".github/workflows/control.md",
-        ".github/workflows/dispatcher.md",
+        ".github/workflows/orchestrator.md",
         ".github/workflows/software-development-practices-github-well-architected.md",
         ".github/workflows/software-development-practices-nist-ssdf.md",
         ".github/workflows/software-development-practices.md",
@@ -449,7 +449,7 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     const removedFiles = [
       ".github/workflows/dependabot-release-train-updater.md",
       ".github/workflows/shared/control.md",
-      ".github/workflows/shared/dispatcher.md",
+      ".github/workflows/shared/orchestrator.md",
       ".github/workflows/shared/worker.md",
     ];
     for (const relativePath of removedFiles) {

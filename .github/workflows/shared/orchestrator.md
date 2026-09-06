@@ -1,6 +1,6 @@
 ---
 post-steps:
-  - name: Emit control-plane dispatcher telemetry
+  - name: Emit control-plane orchestrator telemetry
     if: ${{ always() }}
     continue-on-error: true
     uses: actions/github-script@v9.0.0
@@ -57,7 +57,7 @@ post-steps:
           'central_agentic_ops.dispatcher.incomplete_count': incompleteCount,
         }, {
           isError: incompleteCount > 0,
-          errorMessage: incompleteCount > 0 ? 'dispatcher reported incomplete' : undefined,
+          errorMessage: incompleteCount > 0 ? 'orchestrator reported incomplete' : undefined,
         });
 ---
 

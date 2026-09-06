@@ -61,7 +61,7 @@ imports:
       orchestrator_credits: 200
       worker_credits_per_target: 600
 
-  - uses: shared/dispatcher.md
+  - uses: shared/orchestrator.md
 permissions:
   contents: read
   actions: read
@@ -140,4 +140,4 @@ Resolve enabled workers from precompute before calculating fan-out. Before dispa
 
 ## Completion
 
-Finish with the standard `## Orchestrator Report` inherited from `shared/dispatcher.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add package-specific dispatch rationale only without renaming, replacing, or omitting standard fields.
+Finish with the standard `## Orchestrator Report` inherited from `shared/orchestrator.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add package-specific dispatch rationale only without renaming, replacing, or omitting standard fields.

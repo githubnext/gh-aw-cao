@@ -319,7 +319,7 @@ A new package should:
 
 1. Define an orchestrator with a schedule and manual inputs.
 2. Add the package and its workers to the closed JSON schema and declare them in `.github/workflows/cao.json`; review remains the default mode.
-3. Import `shared/control.md` as `role: orchestrator` with a static package identity and request-only narrowing inputs, then import `shared/dispatcher.md`.
+3. Import `shared/control.md` as `role: orchestrator` with a static package identity and request-only narrowing inputs, then import `shared/orchestrator.md`.
 4. Pass the stable lowercase slug through shared control's `package` input and document the matching target-authority entry.
 5. Keep GitHub tools read-only.
 6. Declare only worker workflow dispatches as orchestrator workflow safe outputs.

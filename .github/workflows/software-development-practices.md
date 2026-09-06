@@ -64,7 +64,7 @@ imports:
       orchestrator_credits: 250
       worker_credits_per_target: 800
 
-  - uses: shared/dispatcher.md
+  - uses: shared/orchestrator.md
 permissions:
   contents: read
   actions: read
@@ -134,4 +134,4 @@ Calculate the proposed dispatch count across selected repositories and enabled w
 
 ## Completion
 
-Finish with the standard `## Orchestrator Report` inherited from `shared/dispatcher.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add framework-specific selection rationale only without renaming, replacing, or omitting standard fields.
+Finish with the standard `## Orchestrator Report` inherited from `shared/orchestrator.md`. Preserve every standard heading and field under `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`; use exact precomputed repository totals, distinguish eligible, selected, skipped, and deferred repositories, and use `0`, `none`, or `not applicable` for empty fields. Add framework-specific selection rationale only without renaming, replacing, or omitting standard fields.

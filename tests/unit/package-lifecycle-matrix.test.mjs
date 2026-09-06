@@ -12,7 +12,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     ["root", "AW Doctor", "EU CRA", "UK AI Advisory", "SelfCare", "Software Development Practices", "Dependabot"],
   );
   assert.deepEqual(
-    names([".github/workflows/shared/dispatcher.md"]),
+    names([".github/workflows/shared/orchestrator.md"]),
     ["root", "AW Doctor", "EU CRA", "UK AI Advisory", "SelfCare", "Software Development Practices", "Dependabot"],
   );
   assert.deepEqual(

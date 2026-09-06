@@ -61,7 +61,7 @@ imports:
       orchestrator_credits: 250
       worker_credits_per_target: 1650
 
-  - uses: shared/dispatcher.md
+  - uses: shared/orchestrator.md
 permissions:
   contents: read
   actions: read
@@ -111,7 +111,7 @@ Dispatch stays repository-scoped: one dispatch per selected repository and eligi
 
 ## Completion
 
-Finish with the standard `## Orchestrator Report` inherited from `shared/dispatcher.md`. Preserve every standard heading and field — `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome` — and use `0`, `none`, or `not applicable` for empty fields. Use the exact precomputed repository totals and distinguish eligible, selected, skipped, and deferred repositories.
+Finish with the standard `## Orchestrator Report` inherited from `shared/orchestrator.md`. Preserve every standard heading and field — `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome` — and use `0`, `none`, or `not applicable` for empty fields. Use the exact precomputed repository totals and distinguish eligible, selected, skipped, and deferred repositories.
 
 If no worker is dispatched and no incomplete condition applies, call `noop` exactly once with the complete orchestrator report as its message.
 

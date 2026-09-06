@@ -61,7 +61,7 @@ imports:
       orchestrator_credits: 200
       worker_credits_per_target: 2400
 
-  - uses: shared/dispatcher.md
+  - uses: shared/orchestrator.md
 permissions:
   contents: read
   actions: read
@@ -118,6 +118,6 @@ Dispatch all nine enabled workers for the selected repository. Never dispatch a 
 
 ## Completion
 
-Finish with the standard orchestrator report inherited from `shared/dispatcher.md`. Preserve `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`, including every standard field. Use exact precomputed totals for repositories scanned and distinguish eligible, selected, skipped, and deferred repositories. Use `0`, `none`, or `not applicable` for every empty field.
+Finish with the standard orchestrator report inherited from `shared/orchestrator.md`. Preserve `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome`, including every standard field. Use exact precomputed totals for repositories scanned and distinguish eligible, selected, skipped, and deferred repositories. Use `0`, `none`, or `not applicable` for every empty field.
 
 In `Outcome`, additionally state whether the sole authorized live target was selected and whether all nine SelfCare workers were dispatched.

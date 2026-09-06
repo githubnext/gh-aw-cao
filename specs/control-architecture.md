@@ -281,7 +281,7 @@ Dispatch values are intersected with the persistent result. They are requests an
 
 ### 6.1 Resolver Requirements
 
-Every operational orchestrator and worker MUST import the shared CAO control component before model invocation. Orchestrators MUST also import the shared dispatcher component, and workers MUST also import the shared worker component.
+Every operational orchestrator and worker MUST import the shared CAO control component before model invocation. Orchestrators MUST also import the shared orchestrator component, and workers MUST also import the shared worker component.
 
 **CAO-RES-001:** The resolver MUST use dependency-free Node.js and MUST NOT execute code fetched from a control or target repository.
 
