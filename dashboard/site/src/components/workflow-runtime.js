@@ -9,7 +9,7 @@ import { renderStatusBadge } from './badge.js';
 import { renderChartLegend, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
 import { isApprovalConclusion, isFailureConclusion } from './run-classification.js';
-import { coverageWindowHours, formatUtcDateTime, renderDisclosure, renderLegendList, renderPanelHeader, renderTableHeadRow, renderVitalStat } from './ui-primitives.js';
+import { coverageWindowHours, formatUtcDateTime, renderDigest, renderDisclosure, renderLegendList, renderPanelHeader, renderTableHeadRow, renderVitalStat } from './ui-primitives.js';
 import { formatCount, slugify, text } from './count-formatters.js';
 import { renderTitledBodySection } from './view-chrome.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
@@ -228,7 +228,7 @@ function renderValueReport(workflowName, repository, workflowPath, observations,
         renderVitalStat('Latest', formatPercent(latest['operational-value'])),
         renderVitalStat('Mature average', formatPercent(matureAverage)),
         renderVitalStat('Opportunities', formatNumber(comparable.length)),
-        renderVitalStat('Evaluator', text(latest['evaluator-digest']) ? h('code', null, text(latest['evaluator-digest']).slice(0, 12)) : 'Unavailable')
+        renderVitalStat('Evaluator', renderDigest(latest['evaluator-digest']) ?? 'Unavailable')
       )
     ),
     renderDisclosure(
