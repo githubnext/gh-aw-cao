@@ -2807,7 +2807,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(aicUsage, /spawn|runGhAw|"aw", "logs"|--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs/);
-  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 1);
+  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 3);
   assert.match(aicUsage, /Processing \$\{result\.runs\.length\} cached gh-aw log records/);
   assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/operational-values\.json/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -2892,7 +2892,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
   assert.match(readme, /schemaVersion: 1/);
   assert.match(readme, /Consumers must use the top-level completeness fields/);
-  assert.match(readme, /retained non-terminal runs receive a full-window refresh/);
+  assert.match(readme, /marks run health unavailable/);
 });
 
 test("Documentation Pages deploys docs with the packaged dashboard builder", () => {

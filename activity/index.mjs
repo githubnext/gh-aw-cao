@@ -284,7 +284,7 @@ async function main() {
     const generatedAt = new Date().toISOString();
     const windowStart = new Date(Date.parse(generatedAt) - windowDays * 86_400_000).toISOString();
     const available = logsState.available === true;
-    const complete = logsState.complete === true;
+    const complete = logsState.complete === true && usageArtifact.complete;
     const fallback = {
       used: logsState.fallback === true,
       snapshotGeneratedAt: logsState.fallback ? logsState.observedAt || null : null,

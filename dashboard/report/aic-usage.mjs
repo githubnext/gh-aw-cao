@@ -421,6 +421,7 @@ export async function collectAicUsage() {
   const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
   const outputPath = path.resolve(process.env.REPORT_AIC_USAGE || "_inventory/aic-usage.json");
   const logsPath = process.env.REPORT_GH_AW_LOGS ? path.resolve(process.env.REPORT_GH_AW_LOGS) : "";
+  const logsStatePath = process.env.REPORT_GH_AW_LOGS_STATE ? path.resolve(process.env.REPORT_GH_AW_LOGS_STATE) : "";
   const configuredCacheRoot = process.env.REPORT_AIC_CACHE ? path.resolve(process.env.REPORT_AIC_CACHE) : "";
   if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
 
@@ -490,6 +491,14 @@ export async function collectAicUsage() {
   log.info`AI Credit collection will process ${workflowByRunId.size} selected workflow runs; cache root=${temporaryRoot}; logs JSON=${logsPath || "disabled"}`;
   try {
     let collectionAvailable = true;
+    if (logsStatePath) {
+      try {
+        const logsState = JSON.parse(await readFile(logsStatePath, "utf8"));
+        collectionAvailable = logsState.available === true;
+      } catch {
+        collectionAvailable = false;
+      }
+    }
     try {
         if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
         const result = JSON.parse(await readFile(logsPath, "utf8"));

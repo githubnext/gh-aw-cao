@@ -32,12 +32,17 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
     ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
-    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    let outputBytes = 0;
+    child.stdout.on("data", (chunk) => {
+      outputBytes += chunk.length;
+      if (outputBytes > 50 * 1024 * 1024) child.kill();
+      else stdout.push(chunk);
+    });
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on("error", reject);
     child.on("close", (code, signal) => {
       const output = Buffer.concat(stdout).toString("utf8");
-      if (code === 0) resolve(output);
+      if (code === 0 && !signal) resolve(output);
       else reject(new Error(
         Buffer.concat(stderr).toString("utf8").trim()
           || `gh aw logs exited with ${signal || code}`,

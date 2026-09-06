@@ -168,6 +168,7 @@ jobs:
           REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
+          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
           REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
           REPORT_VALUE_CACHE: ${{ runner.temp }}/cao-activity/operational-values.json
