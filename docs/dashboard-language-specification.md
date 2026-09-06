@@ -261,7 +261,7 @@ The `source` vocabulary is closed in version 0.1.0.
 | `organizations` | organization | `organization`, `organization-name`, `observed-at`, `organization-link` |
 | `repositories` | repository | `organization`, `repository`, `repository-name`, `rollout-mode`, `observed-at`, `organization-link`, `repository-link` |
 | `workflows` | workflow | `organization`, `repository`, optional `package` and `package-name`, `workflow`, `workflow-name`, `workflow-role`, `workflow-active`, `gh-aw-version`, `gh-aw-current-version`, `gh-aw-version-label`, `gh-aw-update-state`, complete `gh-aw-metadata` and `gh-aw-manifest` JSON payloads, `rollout-mode`, `max-ai-credits`, `package-aic-allowance`, `package-worker-count`, `package-inventory-warnings`, `inventory-ready`, `observed-at`, `organization-link`, `repository-link`, `workflow-link` |
-| `runs` | run | `organization`, `repository`, `workflow`, `run`, `started-at`, `ended-at`, `run-status`, `run-conclusion`, `rollout-mode`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `organization-link`, `repository-link`, `workflow-link`, `run-link` |
+| `runs` | run | `organization`, `repository`, `workflow`, `run`, `run-title`, `event`, `started-at`, `ended-at`, `run-status`, `run-conclusion`, `rollout-mode`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `data`, `logs-payload`, `organization-link`, `repository-link`, `workflow-link`, `run-link` |
 | `run-performance` | completed workflow run | `organization`, `repository`, `workflow`, `run`, `started-at`, `run-conclusion`, `rollout-mode`, `run-duration-seconds`, `sandbox-runtime`, `engine`, `model`, `run-link` |
 | `job-performance` | workflow job | `organization`, `repository`, `workflow`, `run`, `started-at`, `run-conclusion`, `rollout-mode`, `job`, `job-status`, `job-conclusion`, `job-duration-seconds`, `runner`, `runner-name`, `runner-group`, `sandbox-runtime`, `engine`, `model`, `run-link` |
 | `experiments` | experiment | `experiment`, `experiment-name`, `observed-at` |
@@ -285,6 +285,49 @@ The `source` vocabulary is closed in version 0.1.0.
 “Scope IDs” means the applicable `organization`, `repository`, and `workflow` fields. Fields that do not apply to an observation are absent rather than fabricated. Link-bearing source fields are relation-specific optional fields whose intrinsic type is one Section 9.1 link object. `organization-link`, `repository-link`, `workflow-link`, `issue-link`, `pull-request-link`, `run-link`, `evidence-link`, and `external-link` correspond to the `organization`, `repository`, `workflow`, `issue`, `pull-request`, `run`, `evidence`, and `external` link relations, respectively; a source row MUST NOT encode multiple link relations inside one field.
 
 For `outcomes`, `repository` identifies the target repository that owns the durable safe output, while `runtime-repository` identifies the repository where the attributed workflow ran.
+
+#### 5.1.1 Dashboard Data Interchange Schema
+
+The presenter receives one JSON object whose keys are canonical source names. Each value has the following schema:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `source` | string | yes | The canonical source name, equal to the containing object's key. |
+| `rows` | array of objects | yes | Rows at the grain declared in Section 5.1. |
+| `metadata` | object | yes | The data-set metadata defined in Section 8.1. |
+
+Every `runs` row may contain `data` and `logs-payload` JSON values. `data` is the exact `data` member of the corresponding `gh aw logs --json` run object, or `null` when absent. `logs-payload` is the complete corresponding run object, without field projection; implementations may add derived sibling fields to the dashboard row but must not remove, rename, coerce, or synthesize members inside `logs-payload`. Unknown members are retained so that additions to the upstream payload do not silently lose conversation, tool-call, or other evidence.
+
+The following schema identifies every `gh aw logs --json` run member currently interpreted to produce dashboard fields. Aliases are listed in precedence order. All other members remain uninterpreted but are retained by `logs-payload`.
+
+| Dashboard value | `gh aw logs` run member path | Accepted JSON type |
+|---|---|---|
+| run identity | `database_id`, `run_id`, `id` | number or numeric string |
+| workflow name | `workflow_name`, `workflow` | string |
+| observation time | `created_at`, `started_at` | RFC 3339 string |
+| agentic engine | `engine`, `agentic_engine`, `agent_engine` | string |
+| engine version | `engine_version`, `agentic_engine_version`, `agent_engine_version`, `agent_version` | string |
+| requested model | `requested_model`, `requestedModel`, `model`, `model_name` | string |
+| resolved model | `resolved_model`, `resolvedModel`, `model_resolved`, `model` | string |
+| sandbox runtime | `agent_runtime`, `agentRuntime` | string |
+| AI Credits | `aic` | non-negative number or numeric string |
+| safe-output count | `safe_items_count` | non-negative number or numeric string |
+| no-op count | `noop_count` | non-negative number or numeric string |
+| missing-data count | `missing_data_count` | non-negative number or numeric string |
+| missing-tool count | `missing_tool_count` | non-negative number or numeric string |
+| incomplete-report count | `report_incomplete_count` | non-negative number or numeric string |
+| workflow data | `data` | any JSON value |
+| input tokens | `token_usage_summary.total_input_tokens` | non-negative number or numeric string |
+| output tokens | `token_usage_summary.total_output_tokens` | non-negative number or numeric string |
+| cache-read tokens | `token_usage_summary.total_cache_read_tokens` | non-negative number or numeric string |
+| cache-write tokens | `token_usage_summary.total_cache_write_tokens` | non-negative number or numeric string |
+| reasoning tokens | `token_usage_summary.by_model.*.reasoning_tokens` | non-negative number or numeric string |
+| experiment assignments | `experiments.assignments` | object |
+| grader observations | `graders.results` | array of objects |
+
+- **DLS-SEM-029:** A dashboard data document **MUST** contain one object for each supplied logical source, and every source object **MUST** contain `source`, `rows`, and `metadata` with the types declared in Section 5.1.1.
+- **DLS-SEM-030:** When a `runs` row is enriched from a `gh aw logs --json` run object, `logs-payload` **MUST** preserve that complete object as JSON data, including unknown members, and `data` **MUST** equal its `data` member or `null` when that member is absent.
+- **DLS-SEM-031:** Values derived from `gh aw logs --json` **MUST** use the member precedence and accepted types declared in Section 5.1.1. Invalid or unavailable values **MUST** use the source field's specified missing-data representation rather than a fabricated value.
 
 ### 5.2 Raw Token Classes
 

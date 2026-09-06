@@ -4,6 +4,7 @@ import {
   buildDashboardLanguageSources,
   detectionObservationRows,
 } from "../../dashboard/report/dashboard-language-sources.mjs";
+import { SOURCE_FIELDS } from "../../dashboard/site/src/specification.js";
 
 function detectionRun(runId, verdict, overrides = {}) {
   return {
@@ -262,6 +263,30 @@ test("dashboard source bridge exposes gh aw logs payload data points", () => {
     assert.equal(sources["grader-observations"].rows[0].value, 0.9);
     assert.equal(sources.evals.rows[0].eval, "correctness");
     assert.equal(sources["eval-observations"].rows[0]["eval-result"], "YES");
+
+    for (const sourceName of [
+      "runs",
+      "usage",
+      "experiments",
+      "experiment-assignments",
+      "graders",
+      "grader-observations",
+      "evals",
+      "eval-observations",
+    ]) {
+      const source = sources[sourceName];
+      assert.equal(source.source, sourceName);
+      assert.ok(Array.isArray(source.rows));
+      assert.equal(typeof source.metadata, "object");
+      const allowedFields = new Set(SOURCE_FIELDS[sourceName]);
+      for (const row of source.rows) {
+        assert.deepEqual(
+          Object.keys(row).filter((field) => !allowedFields.has(field)),
+          [],
+          `${sourceName} emitted fields outside its dashboard data schema`,
+        );
+      }
+    }
 });
 
 test("dashboard source bridge derives work-oriented sources from run, admission, and outcome telemetry", () => {

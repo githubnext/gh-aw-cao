@@ -537,6 +537,7 @@ async function main() {
             tokenUsage: tokenUsage(run),
             experiments: run.experiments ?? null,
             graders: run.graders ?? null,
+            logsPayload: run,
           };
           if (Number.isFinite(aic) || common.tokenUsage) runs.set(`${repository}:${runId}`, {
             ...common,
@@ -568,7 +569,6 @@ async function main() {
           }
           securityRuns.set(`${repository}:${runId}`, {
             ...common,
-            logsPayload: run,
             security,
             evals,
           });

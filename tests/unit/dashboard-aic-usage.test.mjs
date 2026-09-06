@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import test from "node:test";
+import { buildDashboardLanguageSources } from "../../dashboard/report/dashboard-language-sources.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,7 +41,14 @@ fs.writeFileSync(path.join(output, "run-42", "evals", "evals.jsonl"),
   JSON.stringify({ id: "quality", answer: "YES", runid: "42", timestamp: "2026-08-30T10:05:00Z" }) + "\\n");
 process.stdout.write(JSON.stringify({
   runs: [{
-    database_id: 42,
+    run_id: 42,
+    workflow_name: "Data from logs",
+    created_at: "2026-08-30T10:00:00Z",
+    engine: "copilot",
+    engine_version: "0.87.9",
+    requested_model: "gpt-5",
+    resolved_model: "gpt-5-mini",
+    agent_runtime: "gvisor",
     aic: 2.5,
     safe_items_count: 4,
     noop_count: 1,
@@ -61,7 +69,14 @@ process.stdout.write(JSON.stringify({
     },
     graders: {
       results: [{ id: "quality", name: "Quality", status: "pass", value: 0.9, direction: "maximize", threshold: 0.8 }]
-    }
+    },
+    conversation: {
+      turns: [
+        { role: "user", content: "Review the repository." },
+        { role: "assistant", content: "Review complete.", tool_calls: [{ name: "search", arguments: { query: "TODO" } }] }
+      ]
+    },
+    future_field: { retained: true }
   }]
 }));
 `);
@@ -99,8 +114,91 @@ process.stdout.write(JSON.stringify({
     assert.deepEqual(usage.runs[0].data, {
       findings: [{ severity: "high", total: 3 }],
     });
-    assert.equal(usage.securityRuns[0].logsPayload.run_id, undefined);
-    assert.equal(usage.securityRuns[0].logsPayload.database_id, 42);
+    const expectedLogsPayload = {
+      run_id: 42,
+      workflow_name: "Data from logs",
+      created_at: "2026-08-30T10:00:00Z",
+      engine: "copilot",
+      engine_version: "0.87.9",
+      requested_model: "gpt-5",
+      resolved_model: "gpt-5-mini",
+      agent_runtime: "gvisor",
+      aic: 2.5,
+      safe_items_count: 4,
+      noop_count: 1,
+      missing_data_count: 2,
+      missing_tool_count: 3,
+      report_incomplete_count: 1,
+      data: { findings: [{ severity: "high", total: 3 }] },
+      token_usage_summary: {
+        total_input_tokens: 100,
+        total_output_tokens: 20,
+        total_cache_read_tokens: 50,
+        total_cache_write_tokens: 10,
+        by_model: { "gpt-5": { reasoning_tokens: 7 } },
+      },
+      experiments: {
+        assignments: { prompt: "candidate" },
+        cumulative_counts: { prompt: { control: 2, candidate: 3 } },
+      },
+      graders: {
+        results: [{ id: "quality", name: "Quality", status: "pass", value: 0.9, direction: "maximize", threshold: 0.8 }],
+      },
+      conversation: {
+        turns: [
+          { role: "user", content: "Review the repository." },
+          { role: "assistant", content: "Review complete.", tool_calls: [{ name: "search", arguments: { query: "TODO" } }] },
+        ],
+      },
+      future_field: { retained: true },
+    };
+    assert.deepEqual(usage.runs[0].logsPayload, expectedLogsPayload);
+    assert.deepEqual(usage.securityRuns[0].logsPayload, expectedLogsPayload);
+    assert.deepEqual({
+      workflowName: usage.runs[0].workflowName,
+      createdAt: usage.runs[0].createdAt,
+      engine: usage.runs[0].engine,
+      engineVersion: usage.runs[0].engineVersion,
+      requestedModel: usage.runs[0].requestedModel,
+      resolvedModel: usage.runs[0].resolvedModel,
+      agentRuntime: usage.runs[0].agentRuntime,
+      aic: usage.runs[0].aic,
+    }, {
+      workflowName: "Data from logs",
+      createdAt: "2026-08-30T10:00:00Z",
+      engine: "copilot",
+      engineVersion: "0.87.9",
+      requestedModel: "gpt-5",
+      resolvedModel: "gpt-5-mini",
+      agentRuntime: "gvisor",
+      aic: 2.5,
+    });
+    const sources = buildDashboardLanguageSources({
+      deployed: {
+        generatedAt: "2026-08-30T11:00:00Z",
+        discovery: { complete: true },
+        runHealth: { available: true, complete: true, windowHours: 24 },
+        bundles: [],
+        workflows: [{
+          repository: "githubnext/gh-aw-cao",
+          path: ".github/workflows/data.lock.yml",
+          name: "Data",
+          state: "active",
+          runHealth: { runRecords: [{
+            runId: 42,
+            status: "completed",
+            conclusion: "success",
+            startedAt: "2026-08-30T10:00:00Z",
+            updatedAt: "2026-08-30T10:05:00Z",
+          }] },
+        }],
+      },
+      usage,
+      operationalValues: { records: [], complete: true },
+      report: { generatedAt: "2026-08-30T11:00:00Z", records: [] },
+    });
+    assert.deepEqual(sources.runs.rows[0]["logs-payload"], expectedLogsPayload);
+    assert.deepEqual(sources.runs.rows[0].data, expectedLogsPayload.data);
     assert.deepEqual(usage.runs[0].tokenUsage, {
       inputTokens: 100,
       outputTokens: 20,
@@ -130,4 +228,42 @@ process.stdout.write(JSON.stringify({
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("dashboard specification declares every interpreted gh aw logs run member", async () => {
+  const specification = await readFile(
+    path.resolve("docs/dashboard-language-specification.md"),
+    "utf8",
+  );
+  const schemaSection = specification.match(
+    /The following schema identifies every `gh aw logs --json` run member[\s\S]*?(?=\n- \*\*DLS-SEM-029:)/,
+  )?.[0];
+  assert.ok(schemaSection, "dashboard log schema section is present");
+
+  const documentedPaths = [...schemaSection.matchAll(/\| [^|\n]+ \| ((?:`[^`]+`(?:, )?)+) \|/g)]
+    .flatMap(([, paths]) => [...paths.matchAll(/`([^`]+)`/g)].map(([, member]) => member));
+  assert.deepEqual(documentedPaths, [
+    "database_id", "run_id", "id",
+    "workflow_name", "workflow",
+    "created_at", "started_at",
+    "engine", "agentic_engine", "agent_engine",
+    "engine_version", "agentic_engine_version", "agent_engine_version", "agent_version",
+    "requested_model", "requestedModel", "model", "model_name",
+    "resolved_model", "resolvedModel", "model_resolved", "model",
+    "agent_runtime", "agentRuntime",
+    "aic",
+    "safe_items_count",
+    "noop_count",
+    "missing_data_count",
+    "missing_tool_count",
+    "report_incomplete_count",
+    "data",
+    "token_usage_summary.total_input_tokens",
+    "token_usage_summary.total_output_tokens",
+    "token_usage_summary.total_cache_read_tokens",
+    "token_usage_summary.total_cache_write_tokens",
+    "token_usage_summary.by_model.*.reasoning_tokens",
+    "experiments.assignments",
+    "graders.results",
+  ]);
 });
