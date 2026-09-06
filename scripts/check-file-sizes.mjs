@@ -21,7 +21,7 @@ try {
 
 const oversizedFiles = trackedFiles.filter((file) => {
   const isLockfile = path.basename(file) === "package-lock.json";
-  const isAssetImage = file.split("/").includes("assets") && imageExtensions.has(path.extname(file).toLowerCase());
+  const isAssetImage = file.split(/[\\/]/).includes("assets") && imageExtensions.has(path.extname(file).toLowerCase());
   return !isLockfile && !isAssetImage;
 }).flatMap((file) => {
   const filePath = path.join(root, file);
