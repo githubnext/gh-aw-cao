@@ -1,63 +1,12 @@
-import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import {
-  definitionFromOperationalValueReport,
   mergeOperationalValueRecords,
   operationalValueRunIdentity,
-  recordsFromOperationalValueReport,
 } from "./operational-value-history.mjs";
 
-function downloadAgentArtifact(repository, runId, destination) {
-  return runCommand("gh", ["run", "download", String(runId), "--repo", repository, "--name", "agent", "--dir", destination]);
-}
-
-function runCommand(command, args, options = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const stdout = [];
-    const stderr = [];
-    child.stdout.on("data", (chunk) => stdout.push(chunk));
-    child.stderr.on("data", (chunk) => stderr.push(chunk));
-    child.on("error", reject);
-    child.on("close", (code, signal) => {
-      if (code === 0 && !signal) {
-        resolve(Buffer.concat(stdout).toString("utf8"));
-        return;
-      }
-      reject(new Error(Buffer.concat(stderr).toString("utf8").trim() || `${command} exited with ${signal || code}`));
-    });
-  });
-}
-
-async function findResultsFile(directory) {
-  const entries = await readdir(directory, { recursive: true });
-  const matches = entries.filter((entry) => entry.endsWith("grader_results.json"));
-  if (matches.length !== 1) return null;
-  return path.join(directory, matches[0]);
-}
-
-async function mapWithConcurrency(values, concurrency, mapper) {
-  const results = new Array(values.length);
-  let nextIndex = 0;
-  async function worker() {
-    while (nextIndex < values.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      results[index] = await mapper(values[index]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, worker));
-  return results;
-}
-
-function normalizeResult(selected, result, source = "run") {
+function normalizeResult(selected, result) {
   const value = Number.isFinite(result.value) && result.value >= 0 && result.value <= 1 ? result.value : null;
   return {
     schemaVersion: 1,
@@ -73,147 +22,83 @@ function normalizeResult(selected, result, source = "run") {
     deltaFromBaseline: Number.isFinite(result.deltaFromBaseline) ? result.deltaFromBaseline : null,
     evaluatorDigest: result.implementation?.digest || null,
     observation: result.observation || null,
-    observationSource: source,
+    observationSource: "logs-json",
     diagnostics: result.diagnostics || {},
     error: result.error || null,
   };
 }
 
-function observationTime(record) {
-  return Date.parse(record.observation?.evidenceAt || record.run?.createdAt || "");
+function logsRunId(run) {
+  return Number(run?.database_id ?? run?.run_id ?? run?.id);
 }
 
-function regradeDue(record, evidenceAt) {
-  const maturesAt = Date.parse(record.observation?.maturesAt || "");
-  const unavailableReplay = record.observationSource === "regrade"
-    && (record.status === "unavailable" || record.value === null);
-  return record.observation
-    && (record.observation.mature !== true || unavailableReplay)
-    && Number.isFinite(maturesAt)
-    && maturesAt <= Date.parse(evidenceAt);
+function operationalValueResult(run) {
+  const matches = (run?.graders?.results || [])
+    .filter((result) => result.id === "operational-value" && result.source === "operational-value");
+  return matches.length === 1 ? matches[0] : null;
 }
 
-async function regradeSupported() {
-  try {
-    await runGhAw(["graders", "operational-value", "--help"]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function reportSupported() {
-  try {
-    await runGhAw(["graders", "operational-value", "report", "--help"]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function runGhAw(args, options = {}) {
-  const executable = process.env.REPORT_GH_AW_BIN;
-  return executable
-    ? runCommand(executable, args, options)
-    : runCommand("gh", ["aw", ...args], options);
-}
-
-async function prepareTrustedCheckout(record, temporaryRoot) {
-  const repository = record.observation?.subject?.repository || record.repository;
-  const sha = record.observation?.subject?.sha;
-  if (!repository || !sha || !/^[0-9a-f]{40}$/i.test(sha)) {
-    throw new Error("operational-value observation has no trusted repository commit");
-  }
-  const checkout = path.join(temporaryRoot, "checkouts", `${repository.replace("/", "-")}-${sha}`);
-  await mkdir(path.dirname(checkout), { recursive: true });
-  await runCommand("gh", ["repo", "clone", repository, checkout, "--", "--filter=blob:none", "--no-checkout", "--depth=1"]);
-  try {
-    await runCommand("git", ["-C", checkout, "cat-file", "-e", `${sha}^{commit}`]);
-  } catch {
-    await runCommand("git", ["-C", checkout, "fetch", "--depth=1", "origin", sha]);
-  }
-  return checkout;
-}
-
-async function prepareRuntimeCheckout(repository, temporaryRoot) {
-  if (repository === process.env.GITHUB_REPOSITORY) return process.cwd();
-  const checkout = path.join(temporaryRoot, "runtime-checkouts", repository.replace("/", "-"));
-  await mkdir(path.dirname(checkout), { recursive: true });
-  await runCommand("gh", ["repo", "clone", repository, checkout, "--", "--filter=blob:none", "--depth=1"]);
-  return checkout;
-}
-
-async function collectWorkflowReport(workflow, generatedAt, cacheRoot, temporaryRoot, checkout) {
-  const outputDirectory = path.join(temporaryRoot, "reports", `${workflow.repository.replace("/", "-")}-${workflow.workflowId}`);
-  const output = await runGhAw([
-    "graders", "operational-value", "report", workflow.workflowId,
-    "--repo", workflow.repository,
-    "--until", generatedAt,
-    "--cache-dir", cacheRoot,
-    "--output", outputDirectory,
-    "--json",
-  ], { cwd: checkout });
-  const parsed = JSON.parse(output);
-  if (parsed.report?.schemaVersion !== 1) throw new Error("unsupported gh-aw operational-value report output");
-  return parsed.report;
-}
-
-async function regradeRecord(record, evidenceAt, checkout) {
-  const output = await runGhAw([
-    "graders", "operational-value", String(record.runId),
-    "--repo", record.repository,
-    "--evidence-at", evidenceAt,
-    "--json",
-  ], { cwd: checkout });
-  const artifact = JSON.parse(output);
-  const matches = (artifact.results || []).filter((result) => result.id === "operational-value" && result.source === "operational-value");
-  if (artifact.version !== 1 || matches.length !== 1) throw new Error("unsupported operational-value regrade result");
+function definitionFromLogsResult(selected, result) {
+  const definition = result.definition || result.implementation?.definition || {};
   return {
-    ...normalizeResult(record, matches[0], "regrade"),
-    originalEvidenceAt: artifact.regrade?.originalEvidenceAt || record.observation?.evidenceAt || null,
-    regradedAt: evidenceAt,
+    repository: selected.repository,
+    workflowId: selected.workflowId,
+    workflowPath: selected.workflowPath,
+    evaluatorDigest: result.implementation?.digest || null,
+    operationalValue: definition.operationalValue || result.operationalValue || null,
+    baseline: definition.baseline || result.baseline || null,
+    diagnosticMetrics: Array.isArray(definition.diagnostics)
+      ? definition.diagnostics.map((series) => series.metric).filter(Boolean)
+      : [],
   };
 }
 
-(async () => {
+function mergeDefinitions(...definitionSets) {
+  const definitions = new Map();
+  for (const definition of definitionSets.flat()) {
+    const key = `${definition.repository}:${definition.workflowId}:${definition.evaluatorDigest || "unknown-evaluator"}`;
+    definitions.set(key, definition);
+  }
+  return [...definitions.values()];
+}
+
+async function main() {
   log.group`Collect operational-value observations`;
   try {
-  const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
-  const outputPath = path.resolve(process.env.REPORT_OPERATIONAL_VALUES || "_inventory/operational-values.json");
-  const cachePath = process.env.REPORT_VALUE_CACHE ? path.resolve(process.env.REPORT_VALUE_CACHE) : null;
-  const requestedConcurrency = Number(process.env.REPORT_VALUE_CONCURRENCY || 3);
-  const concurrency = Number.isInteger(requestedConcurrency) && requestedConcurrency > 0
-    ? Math.min(requestedConcurrency, 8)
-    : 3;
-  if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
+    const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
+    const logsPath = process.env.REPORT_GH_AW_LOGS;
+    const outputPath = path.resolve(process.env.REPORT_OPERATIONAL_VALUES || "_inventory/operational-values.json");
+    const cachePath = process.env.REPORT_VALUE_CACHE ? path.resolve(process.env.REPORT_VALUE_CACHE) : null;
+    if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
+    if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
 
-  const generatedAt = new Date().toISOString();
-  const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
-  const operationalWorkflows = [];
-  const selectedRuns = [];
-  const seen = new Set();
-  for (const workflow of inventory.workflows || []) {
-    if (workflow.operationalValue !== true) continue;
-    const workflowId = workflow.path?.split("/").at(-1)?.replace(/\.lock\.yml$/, "");
-    if (!workflowId) continue;
-    operationalWorkflows.push({ repository: workflow.repository, workflowId, workflowPath: workflow.path });
-    const runRecords = new Map((workflow.runHealth?.runRecords || []).map((run) => [Number(run.runId), run]));
-    for (const runId of workflow.runHealth?.runIds || []) {
-      const key = `${workflow.repository}:${runId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      selectedRuns.push({
-        repository: workflow.repository,
-        runId: Number(runId),
-        workflowId,
-        workflowPath: workflow.path,
-        run: runRecords.get(Number(runId)) || null,
-      });
+    const generatedAt = new Date().toISOString();
+    const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
+    const logs = JSON.parse(await readFile(logsPath, "utf8"));
+    if (!Array.isArray(logs.runs)) throw new Error("unsupported gh-aw logs JSON");
+    log.info`Processing ${logs.runs.length} cached gh-aw log records`;
+
+    const selectedRuns = [];
+    const seen = new Set();
+    for (const workflow of inventory.workflows || []) {
+      if (workflow.operationalValue !== true) continue;
+      const workflowId = workflow.path?.split("/").at(-1)?.replace(/\.lock\.yml$/, "");
+      if (!workflowId) continue;
+      const runRecords = new Map((workflow.runHealth?.runRecords || []).map((run) => [Number(run.runId), run]));
+      for (const runId of workflow.runHealth?.runIds || []) {
+        const key = `${workflow.repository}:${runId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        selectedRuns.push({
+          repository: workflow.repository,
+          runId: Number(runId),
+          workflowId,
+          workflowPath: workflow.path,
+          run: runRecords.get(Number(runId)) || null,
+        });
+      }
     }
-  }
 
-  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "pages-operational-values-"));
-  try {
     let cachedRecords = [];
     let cachedDefinitions = [];
     if (cachePath) {
@@ -228,102 +113,61 @@ async function regradeRecord(record, evidenceAt, checkout) {
       }
     }
 
-    const canReport = await reportSupported();
-    const reportCacheRoot = path.resolve(process.env.REPORT_VALUE_REPLAY_CACHE || path.join(path.dirname(cachePath || outputPath), "replay"));
-    const checkoutPromises = new Map();
-    const reportResults = canReport
-      ? await mapWithConcurrency(operationalWorkflows, concurrency, async (workflow) => {
-        if (!checkoutPromises.has(workflow.repository)) {
-          checkoutPromises.set(workflow.repository, prepareRuntimeCheckout(workflow.repository, temporaryRoot));
-        }
-        try {
-          const report = await collectWorkflowReport(
-            workflow,
-            generatedAt,
-            reportCacheRoot,
-            temporaryRoot,
-            await checkoutPromises.get(workflow.repository),
-          );
-          return { workflow, report };
-        } catch (error) {
-          log.warning`Operational-value history unavailable for ${workflow.repository} ${workflow.workflowId}: ${error.message}`;
-          return { workflow, error: error.message };
-        }
-      })
-      : operationalWorkflows.map((workflow) => ({ workflow, error: "gh-aw report is unavailable" }));
-    const reports = reportResults.filter((result) => result.report).map((result) => result.report);
-    const reportedWorkflowKeys = new Set(reportResults
-      .filter((result) => result.report)
-      .map((result) => `${result.workflow.repository}:${result.workflow.workflowId}`));
-    const fallbackRuns = selectedRuns.filter((selected) => !reportedWorkflowKeys.has(`${selected.repository}:${selected.workflowId}`));
-    const reportRecords = reports.flatMap(recordsFromOperationalValueReport);
-    const reportDefinitions = reports.map(definitionFromOperationalValueReport);
+    const runsById = new Map(logs.runs
+      .map((run) => [logsRunId(run), run])
+      .filter(([runId]) => Number.isFinite(runId)));
     const cachedRunKeys = new Set(cachedRecords
       .map((record) => operationalValueRunIdentity(record))
       .filter(Boolean));
-    const currentRecords = await mapWithConcurrency(fallbackRuns.filter((selected) => !cachedRunKeys.has(operationalValueRunIdentity(selected))), concurrency, async (selected) => {
-      const destination = path.join(temporaryRoot, `${selected.repository.replace("/", "-")}-${selected.runId}`);
-      await mkdir(destination, { recursive: true });
-      try {
-        await downloadAgentArtifact(selected.repository, selected.runId, destination);
-        const resultsPath = await findResultsFile(destination);
-        if (!resultsPath) return { ...selected, status: "unavailable", reason: "grader results not found" };
-        const artifact = JSON.parse(await readFile(resultsPath, "utf8"));
-        if (artifact.version !== 1 || !Array.isArray(artifact.results)) {
-          return { ...selected, status: "unavailable", reason: "unsupported grader results" };
-        }
-        const matches = artifact.results.filter((result) => result.id === "operational-value" && result.source === "operational-value");
-        if (matches.length !== 1) return { ...selected, status: "unavailable", reason: "operational-value result not found" };
-        return normalizeResult(selected, matches[0]);
-      } catch (error) {
-        log.warning`Operational value unavailable for ${selected.repository} run ${selected.runId}: ${error.message}`;
-        return { ...selected, status: "unavailable", reason: error.message };
+    const currentRecords = [];
+    const currentDefinitions = [];
+    let missingRuns = 0;
+    for (const selected of selectedRuns) {
+      if (cachedRunKeys.has(operationalValueRunIdentity(selected))) continue;
+      const run = runsById.get(selected.runId);
+      const result = operationalValueResult(run);
+      if (!result) {
+        missingRuns += 1;
+        currentRecords.push({
+          ...selected,
+          schemaVersion: 1,
+          runAttempt: selected.run?.runAttempt || 1,
+          runUrl: `https://github.com/${selected.repository}/actions/runs/${selected.runId}`,
+          status: "unavailable",
+          value: null,
+          observationSource: "logs-json",
+          observation: null,
+          reason: run ? "operational-value result not found" : "run not found in gh-aw logs JSON",
+        });
+        continue;
       }
-    });
-
-    let records = mergeOperationalValueRecords(cachedRecords, currentRecords, reportRecords);
-    const replayAvailable = await regradeSupported();
-    const dueRecords = records.filter((record) => record.observationSource !== "report" && regradeDue(record, generatedAt));
-    if (replayAvailable && dueRecords.length) {
-      const checkouts = new Map();
-      const replayed = await mapWithConcurrency(dueRecords, concurrency, async (record) => {
-        const checkoutKey = `${record.observation.subject?.repository || record.repository}:${record.observation.subject?.sha || ""}`;
-        if (!checkouts.has(checkoutKey)) {
-          checkouts.set(checkoutKey, prepareTrustedCheckout(record, temporaryRoot));
-        }
-        try {
-          return await regradeRecord(record, generatedAt, await checkouts.get(checkoutKey));
-        } catch (error) {
-          log.warning`Operational-value regrade unavailable for ${record.repository} run ${record.runId}: ${error.message}`;
-          return { ...record, regradeAttemptedAt: generatedAt, regradeError: error.message };
-        }
-      });
-      records = mergeOperationalValueRecords(records, replayed);
+      currentRecords.push(normalizeResult(selected, result));
+      currentDefinitions.push(definitionFromLogsResult(selected, result));
     }
 
-    const definitions = mergeDefinitions(cachedDefinitions, reportDefinitions);
-    const windowStarts = reports.map((report) => report.window?.startAt).filter(Boolean).sort();
-    const windowEnds = reports.map((report) => report.window?.endAt).filter(Boolean).sort();
-    const complete = operationalWorkflows.length === reports.length;
-
+    const records = mergeOperationalValueRecords(cachedRecords, currentRecords);
+    const evidenceTimes = records
+      .map((record) => record.observation?.evidenceAt || record.run?.createdAt)
+      .filter(Boolean)
+      .sort();
     const output = {
       schemaVersion: 1,
       generatedAt,
       window: {
-        startAt: windowStarts[0] || inventory.runHealth?.windowStart || null,
-        endAt: windowEnds.at(-1) || generatedAt,
+        startAt: evidenceTimes[0] || inventory.runHealth?.windowStart || null,
+        endAt: evidenceTimes.at(-1) || generatedAt,
       },
-      complete,
-      collectionMode: complete ? "full-history" : reports.length > 0 ? "mixed" : "recent-artifacts",
-      selectedRuns: reports.reduce((total, report) => total + (report.coverage?.runCount || 0), fallbackRuns.length),
+      complete: missingRuns === 0,
+      collectionMode: "logs-json",
+      selectedRuns: selectedRuns.length,
       observedRuns: records.filter((record) => record.observation).length,
       matureRuns: records.filter((record) => record.observation?.mature).length,
       regradedRuns: records.filter((record) => record.observationSource === "regrade").length,
-      pendingRegrades: records.filter((record) => regradeDue(record, generatedAt)).length,
-      regradeAvailable: replayAvailable,
-      reportsCollected: reports.length,
-      reportsFailed: reportResults.length - reports.length,
-      definitions,
+      pendingRegrades: 0,
+      regradeAvailable: false,
+      reportsCollected: 0,
+      reportsFailed: 0,
+      definitions: mergeDefinitions(cachedDefinitions, currentDefinitions),
       records,
     };
     await mkdir(path.dirname(outputPath), { recursive: true });
@@ -332,23 +176,13 @@ async function regradeRecord(record, evidenceAt, checkout) {
       await mkdir(path.dirname(cachePath), { recursive: true });
       await writeFile(cachePath, `${JSON.stringify(output, null, 2)}\n`);
     }
-    log.info`Collected ${output.observedRuns} operational-value observations from ${output.selectedRuns} worker runs`;
-  } finally {
-    await rm(temporaryRoot, { recursive: true, force: true });
-  }
+    log.info`Collected ${output.observedRuns} operational-value observations from ${output.selectedRuns} cached runs`;
   } finally {
     log.endGroup();
   }
-})().catch((error) => {
+}
+
+main().catch((error) => {
   log.error`${error.stack || error.message || error}`;
   process.exitCode = 1;
 });
-
-function mergeDefinitions(...definitionSets) {
-  const definitions = new Map();
-  for (const definition of definitionSets.flat()) {
-    const key = `${definition.repository}:${definition.workflowId}:${definition.evaluatorDigest || "unknown-evaluator"}`;
-    definitions.set(key, definition);
-  }
-  return [...definitions.values()];
-}

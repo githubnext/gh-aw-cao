@@ -15,14 +15,18 @@ $RUNNER_TEMP/cao-activity/
 ├── control-settings.json
 ├── dashboard-records.json
 ├── deployed-workflows.json
+├── gh-aw-logs/
+├── gh-aw-logs.json
 └── operational-values.json
 ```
 
 Snapshots use the immutable key `cao-activity-${github.run_id}-${github.run_attempt}` and the restore prefix `cao-activity-`. Dispatching consumers wait for the exact activity run and reconstruct its immutable key from the returned run ID and attempt. Cache scope and eviction follow [GitHub Actions cache restrictions](https://docs.github.com/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache). The cache is an optimization, not durable historical authority.
 
-Each GitHub-backed collection operation records a before/after entry in `cao-gh.jsonl`. Entries contain a stable operation pair ID, a non-secret credential alias or role and class (`app`, `builtin`, or `unknown`), current `gh api rate_limit` resources, operation outcome, and aggregate activity-cache hydration metadata. Cache file names and per-file metadata are never collected. Credential values are never recorded. Reporting keeps quota observations separate from collector/cache health and uploads this ledger as the 30-day `cao-gh` artifact.
+Each GitHub-backed collection operation records a before/after entry in `cao-gh.jsonl` and logs the remaining core quota. Entries contain a stable operation pair ID, a non-secret credential alias or role and class (`app`, `builtin`, or `unknown`), current `gh api rate_limit` resources, operation outcome, and aggregate activity-cache hydration metadata. Cache file names and per-file metadata are never collected. Credential values are never recorded. Reporting keeps quota observations separate from collector/cache health and uploads this ledger as the 30-day `cao-gh` artifact.
 
 Consumers should restore the prefix before downloading workflow-run history or collecting dashboard data. If the cache is absent, stale for the consumer's evidence window, incomplete, or outside the required repository scope, they must fetch the missing evidence. The scheduled and manually dispatchable `.github/workflows/activity.yml` workflow is the only cache publisher. When dashboard report resources are not installed, a focused activity installation publishes only `deployed-workflows.json`.
+
+The activity refresh makes one bounded multi-workflow `gh aw logs --json` call. It retains the raw JSON and requested artifacts under `gh-aw-logs*`; AI Credit, security, and operational-value collectors derive their records from that shared snapshot without starting additional gh-aw history scans.
 
 Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-managed cache entries, including entries that use legacy CAO cache keys.
 
