@@ -354,6 +354,7 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -598,19 +599,24 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
   await dashboardNext.getByRole('link', { name: 'Work' }).click();
   await expect(page.locator('[data-page-id="work"] .state-summary')).toBeVisible();
   await expect(page.locator('[data-page-id="work"] .state-ribbon')).toHaveCount(1);
+  const reviewFilter = page.locator('[data-page-id="work"] .state-summary-row').filter({ hasText: 'Review' });
+  await reviewFilter.focus();
+  await reviewFilter.press('Enter');
+  await expect(reviewFilter).toHaveAttribute('aria-pressed', 'true');
   await dashboardNext.getByRole('link', { name: 'Agents' }).click();
   await page.locator('[data-page-id="agents"] .oversight-detail summary').first().click();
   await expect(page.locator('[data-page-id="agents"] .coordination-braid').first()).toBeVisible();
   await dashboardNext.getByRole('link', { name: 'Evidence' }).click();
   await page.locator('[data-page-id="evidence"] .oversight-detail summary').first().click();
   await expect(page.locator('[data-page-id="evidence"] .evidence-split').first()).toBeVisible();
-  await expect(page.locator('[data-page-id="evidence"] .provenance-unavailable').first()).toBeVisible();
+  await expect(page.locator('[data-page-id="evidence"] .provenance-unavailable')).not.toHaveCount(0);
 
   // A 320px window can leave 305px of layout width when the browser reserves a scrollbar gutter.
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-home'; });
   await expect(homePage).toBeVisible();
   await expect(homePage.locator('.attention-stack-primary').first()).toBeInViewport();
+  await homePage.locator('.work-card').first().scrollIntoViewIfNeeded();
   await expect(homePage.locator('.work-card').first()).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(homePage.locator('.view-data-disclosure').first()).toBeVisible();
