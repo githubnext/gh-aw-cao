@@ -481,7 +481,7 @@ export async function collectDashboardRecords(options) {
   }
 }
 
-async function main() {
+export async function writeDashboardRecords() {
   const repository = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
   const controlSettingsPath = process.env.REPORT_CONTROL_SETTINGS;
@@ -527,7 +527,7 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  main().catch((error) => {
+  writeDashboardRecords().catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });

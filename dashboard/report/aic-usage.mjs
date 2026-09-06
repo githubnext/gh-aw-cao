@@ -458,7 +458,7 @@ async function readRunEvals(outputDirectory, runId) {
   return observations;
 }
 
-async function main() {
+export async function collectAicUsage() {
   log.group`Collect AI Credit usage`;
   try {
   const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
@@ -664,7 +664,7 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  main().catch((error) => {
+  collectAicUsage().catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });

@@ -163,32 +163,14 @@ jobs:
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
         run: |
-          failed=0
-          node "$GITHUB_TELEMETRY" before collect-aic-usage || true
-          if node "$DASHBOARD_REPORT_ROOT/aic-usage.mjs"; then
-            aic_outcome=success
+          node "$GITHUB_TELEMETRY" before collect-activity || true
+          if node "$DASHBOARD_REPORT_ROOT/activity-collectors.mjs"; then
+            outcome=success
           else
-            aic_outcome=failure
-            failed=1
+            outcome=failure
           fi
-          CAO_OPERATION_OUTCOME="$aic_outcome" node "$GITHUB_TELEMETRY" after collect-aic-usage || true
-          node "$GITHUB_TELEMETRY" before collect-operational-values || true
-          if node "$DASHBOARD_REPORT_ROOT/operational-values.mjs"; then
-            operational_values_outcome=success
-          else
-            operational_values_outcome=failure
-            failed=1
-          fi
-          CAO_OPERATION_OUTCOME="$operational_values_outcome" node "$GITHUB_TELEMETRY" after collect-operational-values || true
-          node "$GITHUB_TELEMETRY" before collect-dashboard-records || true
-          if node "$DASHBOARD_REPORT_ROOT/records.mjs"; then
-            dashboard_records_outcome=success
-          else
-            dashboard_records_outcome=failure
-            failed=1
-          fi
-          CAO_OPERATION_OUTCOME="$dashboard_records_outcome" node "$GITHUB_TELEMETRY" after collect-dashboard-records || true
-          exit "$failed"
+          CAO_OPERATION_OUTCOME="$outcome" node "$GITHUB_TELEMETRY" after collect-activity || true
+          [[ "$outcome" == success ]]
 
       - name: List activity cache files
         if: always()

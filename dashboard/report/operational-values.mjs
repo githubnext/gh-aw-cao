@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 import {
   mergeOperationalValueRecords,
@@ -62,7 +63,7 @@ function mergeDefinitions(...definitionSets) {
   return [...definitions.values()];
 }
 
-async function main() {
+export async function collectOperationalValues() {
   log.group`Collect operational-value observations`;
   try {
     const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
@@ -187,7 +188,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  log.error`${error.stack || error.message || error}`;
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  collectOperationalValues().catch((error) => {
+    log.error`${error.stack || error.message || error}`;
+    process.exitCode = 1;
+  });
+}
