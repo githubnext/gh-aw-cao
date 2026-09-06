@@ -5,6 +5,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
+import { experimentViewSectionRenderer } from './experiment-view-sections.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
@@ -45,7 +46,6 @@ export function renderExperimentsViewShell(context, composition, renderers) {
         render();
       }),
       ...composition.map((item) => {
-        if (item.section === 'overview') return renderers.renderOverview(visible);
         if (item.section === 'table') {
           return renderers.renderTable(visible, selectedExperiment, (experimentId) => {
             selectedExperiment = experimentId;
@@ -54,7 +54,12 @@ export function renderExperimentsViewShell(context, composition, renderers) {
             render();
           });
         }
-        return visible.length === 0 ? renderers.renderNoMatches() : renderers.renderDetail(model, selectedExperiment);
+        const rendererName = experimentViewSectionRenderer(item.section, renderers);
+        if (rendererName === 'renderOverview') return renderers.renderOverview(visible);
+        if (rendererName === 'renderDetail') {
+          return visible.length === 0 ? renderers.renderNoMatches() : renderers.renderDetail(model, selectedExperiment);
+        }
+        return renderers.renderNoMatches();
       })
     );
   };
