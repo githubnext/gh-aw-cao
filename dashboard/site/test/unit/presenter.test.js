@@ -165,7 +165,8 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'data-health');
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
     expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull();
-    expect(page?.textContent).toContain('Sources needing attention');
+    expect(page?.textContent).toContain('Overall confidence');
+    expect(page?.textContent).toContain('insufficient');
     expect(page?.textContent).toContain('runs');
     expect(page?.textContent).toContain('unavailable');
     rendered.remove();
@@ -2928,7 +2929,7 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('#page-coverage'))?.hidden).toBe(false);
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Coverage diagnostics');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
-      'Reporting coverage gaps for the configured githubnext/gh-aw-cao repository.'
+      'Drill-down into the canonical Data Health coverage and collection evidence.'
     );
     expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Overview');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
@@ -2940,29 +2941,31 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(coveragePage.route).toEqual({ 'navigation-page': 'overview' });
     expect(coveragePage.views[1]).toMatchObject({
-      mark: 'element',
-      element: 'summary-grid',
-      data: { sources: ['repository-coverage'] }
+      mark: 'table',
+      controls: 'static',
+      data: { source: 'data-health-coverage' }
     });
     expect(coveragePage.views[2]).toMatchObject({
       mark: 'table',
       controls: 'static',
-      data: { source: 'coverage-diagnostics' }
+      data: { source: 'data-health-collections' }
     });
     expect(coveragePage.views[2]).not.toHaveProperty('element');
     expect(coveragePage.views[3]).toMatchObject({
       mark: 'table',
       controls: 'static',
       disclosure: 'supplemental',
-      data: { source: 'coverage-diagnostics' }
+      data: { source: 'data-health-collections' }
     });
     await vi.waitFor(() => {
       expect(rendered.querySelector('#page-coverage')?.hasAttribute('data-page-pending')).toBe(false);
     });
     const essentialRows = rendered.querySelectorAll('#page-coverage [data-disclosure="essential"] .custom-table tbody tr');
-    expect(essentialRows).toHaveLength(2);
-    expect(essentialRows[1]?.textContent).toContain('Durable output evidence is partial because GitHub rate-limited collection.');
-    expect(essentialRows[1]?.textContent).not.toContain('GitHub API rate limit exceeded');
+    expect(essentialRows.length).toBeGreaterThanOrEqual(9);
+    const essentialText = [...rendered.querySelectorAll('#page-coverage [data-disclosure="essential"]')]
+      .map((view) => view.textContent).join(' ');
+    expect(essentialText).toContain('Durable output evidence is partial because GitHub rate-limited collection.');
+    expect(essentialText).not.toContain('GitHub API rate limit exceeded');
     const technicalDetails = /** @type {HTMLDetailsElement | null} */ (
       rendered.querySelector('#page-coverage .view-disclosure[data-disclosure="supplemental"]')
     );

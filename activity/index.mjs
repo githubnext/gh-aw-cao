@@ -350,6 +350,19 @@ function nextPagePath(headers) {
   return headers.get("link")?.match(/<https:\/\/api\.github\.com([^>]+)>; rel="next"/)?.[1] || "";
 }
 
+function collectionFailure(error, fallback = "request") {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = Number(message.match(/GitHub API (\d{3})/)?.[1]);
+  const failureClass = status === 429 || (status === 403 && /rate|retry delay/i.test(message))
+    ? "rate-limit"
+    : status === 401 || status === 403
+      ? "permission"
+      : /timed?\s*out|abort/i.test(message)
+        ? "timeout"
+        : fallback;
+  return { failureClass, status: Number.isFinite(status) ? status : null, reason: message };
+}
+
 function needsFailureEvidence(run) {
   if (run.admissionReason) return false;
   if (!run.failureJob && !run.failureStep) return true;
@@ -388,6 +401,7 @@ async function collectRunHealth(registryByRepository, previousIndex) {
   let page = 0;
   let complete = true;
   let available = true;
+  const collections = [];
   const records = previousRunRecords(retainPreviousRuns ? previousIndex : null, registryByRepository, windowStart);
   const previousWorkflowIds = new Map();
   const repositoriesWithPendingRuns = new Set();
@@ -442,6 +456,12 @@ async function collectRunHealth(registryByRepository, previousIndex) {
     } catch (error) {
       available = false;
       complete = false;
+      collections.push({
+        operation: "run-query",
+        repository: repositoryName,
+        state: "failed",
+        ...collectionFailure(error),
+      });
       log.warning`${error.message}; run health will be unavailable for ${repositoryName}`;
     }
   });
@@ -485,6 +505,13 @@ async function collectRunHealth(registryByRepository, previousIndex) {
           run.admission = admission;
         } catch (error) {
           admissionEvidence.complete = false;
+          collections.push({
+            operation: "artifact-download",
+            repository: repositoryName,
+            runId,
+            state: "failed",
+            ...collectionFailure(error, /invalid/i.test(error.message) ? "parser" : "artifact-download"),
+          });
           log.warning`${error.message}; admission evidence will be unavailable for run ${runId}`;
         } finally {
           await unlink(archivePath).catch(() => {});
@@ -493,6 +520,12 @@ async function collectRunHealth(registryByRepository, previousIndex) {
     } catch (error) {
       admissionEvidence.available = false;
       admissionEvidence.complete = false;
+      collections.push({
+        operation: "artifact-list",
+        repository: repositoryName,
+        state: "failed",
+        ...collectionFailure(error, "artifact-download"),
+      });
       log.warning`${error.message}; admission evidence will be unavailable for ${repositoryName}`;
     }
   });
@@ -537,6 +570,13 @@ async function collectRunHealth(registryByRepository, previousIndex) {
       run.jobsCollected = true;
     } catch (error) {
       complete = false;
+      collections.push({
+        operation: "job-query",
+        repository: run.repository,
+        runId: String(run.runId),
+        state: "failed",
+        ...collectionFailure(error),
+      });
       log.warning`${error.message}; performance job details will be unavailable for run ${run.runId}`;
     }
   });
@@ -572,11 +612,25 @@ async function collectRunHealth(registryByRepository, previousIndex) {
           if (failureMessage) run.failureMessage = failureMessage;
         } catch (error) {
           complete = false;
+          collections.push({
+            operation: "failure-log",
+            repository: run.repository,
+            runId: String(run.runId),
+            state: "failed",
+            ...collectionFailure(error),
+          });
           log.warning`${error.message}; failure log details will be unavailable for run ${run.runId}`;
         }
       }
     } catch (error) {
       complete = false;
+      collections.push({
+        operation: "failure-evidence",
+        repository: run.repository,
+        runId: String(run.runId),
+        state: "failed",
+        ...collectionFailure(error, "parser"),
+      });
       log.warning`${error.message}; failure details will be unavailable for run ${run.runId}`;
     }
   });
@@ -588,6 +642,14 @@ async function collectRunHealth(registryByRepository, previousIndex) {
     windowStart: windowStart.toISOString(),
     pages: page,
     admissionEvidence,
+    collections,
+    fallback: {
+      used: retainPreviousRuns && !complete,
+      snapshotGeneratedAt: retainPreviousRuns ? previousIndex?.generatedAt || null : null,
+      snapshotAgeSeconds: retainPreviousRuns && previousIndex?.generatedAt
+        ? Math.max(0, Math.floor((Date.now() - Date.parse(previousIndex.generatedAt)) / 1000))
+        : null,
+    },
     totals,
   };
 }
@@ -788,6 +850,41 @@ const inventory = {
       && manifestSearchAvailable
       && workflows.every((workflow) => workflow.operationalValue !== null),
   },
+  collections: [
+    {
+      operation: "workflow-discovery",
+      state: workflowSearchAvailable ? "complete" : "failed",
+      failureClass: workflowSearchAvailable ? null : "request",
+      expected: repositoryScopeEnabled ? allowedRepositories.length : organizationRepositories.total,
+      observed: repositoryNames.length,
+    },
+    {
+      operation: "manifest-discovery",
+      state: manifestSearchAvailable ? "complete" : "failed",
+      failureClass: manifestSearchAvailable ? null : "request",
+      observed: manifestFiles.length,
+    },
+    {
+      operation: "run-query",
+      state: runHealth.available ? runHealth.complete ? "complete" : "partial" : "failed",
+      failureClass: runHealth.collections.find((item) => item.operation === "run-query")?.failureClass || null,
+      expected: workflows.length,
+      observed: runHealth.available ? workflows.length : null,
+      pages: runHealth.pages,
+      requestedWindowStart: runHealth.windowStart,
+      observedWindowStart: runHealth.refreshStart,
+      observedWindowEnd: new Date().toISOString(),
+      fallback: runHealth.fallback,
+    },
+    {
+      operation: "admission-artifacts",
+      state: runHealth.admissionEvidence.available
+        ? runHealth.admissionEvidence.complete ? "complete" : "partial"
+        : "failed",
+      failureClass: runHealth.collections.find((item) => item.operation.startsWith("artifact"))?.failureClass || null,
+    },
+    ...runHealth.collections,
+  ],
   runHealth: {
     available: runHealth.available,
     complete: runHealth.complete,
@@ -797,6 +894,7 @@ const inventory = {
     windowHours: runWindowHours,
     pages: runHealth.pages,
     admissionEvidence: runHealth.admissionEvidence,
+    fallback: runHealth.fallback,
   },
   bundles,
   standaloneWorkflows,

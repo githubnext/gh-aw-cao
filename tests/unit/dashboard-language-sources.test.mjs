@@ -1307,6 +1307,66 @@ test("dashboard source bridge keeps collected runs available when run health is 
   assert.equal(sources.runs.metadata.completeness, "partial");
 });
 
+test("dashboard source bridge exposes authoritative coverage and structured collection provenance", () => {
+  const generatedAt = "2026-09-03T06:00:00Z";
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt,
+      repositoryCount: 100,
+      organizationRepositories: { total: 100 },
+      discovery: { complete: false },
+      collections: [{
+        operation: "workflow-discovery",
+        state: "partial",
+        failureClass: "rate-limit",
+        expected: 100,
+        observed: 99,
+        pages: 10,
+      }, {
+        operation: "run-query",
+        state: "partial",
+        failureClass: "rate-limit",
+        expected: 1,
+        observed: 0,
+        pages: 2,
+        requestedWindowStart: "2026-08-04T06:00:00Z",
+        observedWindowStart: "2026-09-01T06:00:00Z",
+        observedWindowEnd: generatedAt,
+        fallback: {
+          used: true,
+          snapshotGeneratedAt: "2026-09-01T06:00:00Z",
+          snapshotAgeSeconds: 172800,
+        },
+      }],
+      runHealth: { available: true, complete: false, windowHours: 720 },
+      bundles: [],
+      workflows: [{
+        repository: "githubnext/gh-aw-cao",
+        path: ".github/workflows/self-care.lock.yml",
+        name: "SelfCare",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+    },
+    usage: { available: false, complete: false, runs: [], windowHours: 48 },
+    operationalValues: { records: [] },
+    report: { generatedAt, records: [] },
+  });
+
+  assert.equal(sources.repositories.metadata["coverage-expected"], 100);
+  assert.equal(sources.repositories.metadata["coverage-observed"], 1);
+  assert.equal(sources.runs.metadata["coverage-expected"], 1);
+  assert.equal(sources.runs.metadata["coverage-observed"], 0);
+  assert.equal(sources.runs.metadata["run-records-observed"], 0);
+  assert.equal(sources.runs.metadata["run-records-expected"], undefined);
+  assert.equal(sources.runs.metadata["collection-state"], "partial");
+  assert.equal(sources.runs.metadata["failure-class"], "rate-limit");
+  assert.equal(sources.runs.metadata["fallback-used"], true);
+  assert.equal(sources.runs.metadata.freshness, "stale");
+  assert.equal(sources.runs.metadata["requested-coverage-start"], "2026-08-04T06:00:00Z");
+  assert.equal(sources.runs.metadata["coverage-start"], "2026-09-01T06:00:00Z");
+});
+
 test("dashboard source bridge carries package memberships, allowance, and inventory readiness into workflow rows", () => {
   const workflowPath = ".github/workflows/package.lock.yml";
   const sources = buildDashboardLanguageSources({

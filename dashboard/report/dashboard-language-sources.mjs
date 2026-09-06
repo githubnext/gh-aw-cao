@@ -112,6 +112,102 @@ function source(name, rows, generatedAt, available = true, complete = true, fres
   };
 }
 
+function uniqueStableRuns(rows) {
+  return new Set((rows || []).flatMap((row) => (
+    row.organization && row.repository && row.run
+      ? [`${row.organization}/${row.repository}:${row.run}`]
+      : []
+  ))).size;
+}
+
+function applyDataHealthMetadata(sources, { deployed, usage, report, workflows, runs, generatedAt }) {
+  const collections = Array.isArray(deployed.collections) ? deployed.collections : [];
+  const collectionFor = (operation) => collections.find((item) => item.operation === operation);
+  const attachCollection = (names, operation) => {
+    const collection = collectionFor(operation);
+    for (const name of names) {
+      const metadata = sources[name]?.metadata;
+      if (!metadata) continue;
+      metadata["collection-operation"] = operation;
+      metadata["collector-completed-at"] = generatedAt;
+      metadata["collection-state"] = collection?.state
+        || (metadata.availability === "unavailable" ? "failed" : metadata.completeness === "partial" ? "partial" : "complete");
+      metadata["failure-class"] = collection?.failureClass || "";
+      metadata["collection-progress"] = Number.isFinite(collection?.pages)
+        ? `${collection.pages} pages collected`
+        : metadata["collection-state"] === "complete" ? "Complete" : "Unknown";
+      metadata["collection-reason"] = collection?.reason || "";
+      if (collection?.fallback?.used) {
+        metadata["fallback-used"] = true;
+        metadata["snapshot-age-seconds"] = collection.fallback.snapshotAgeSeconds;
+        metadata["fallback-source-as-of"] = collection.fallback.snapshotGeneratedAt;
+        metadata.freshness = "stale";
+      }
+      if (collection?.requestedWindowStart) metadata["requested-coverage-start"] = collection.requestedWindowStart;
+      if (collection?.observedWindowStart) metadata["coverage-start"] = collection.observedWindowStart;
+      if (collection?.observedWindowEnd) metadata["coverage-end"] = collection.observedWindowEnd;
+    }
+  };
+
+  const repositoryCollection = collectionFor("workflow-discovery");
+  const repositoryExpected = Number.isFinite(repositoryCollection?.expected)
+    ? repositoryCollection.expected
+    : Number.isFinite(deployed.organizationRepositories?.total) ? deployed.organizationRepositories.total : null;
+  if (repositoryExpected !== null) sources.repositories.metadata["coverage-expected"] = repositoryExpected;
+  sources.repositories.metadata["coverage-observed"] = sources.repositories.rows.length;
+
+  const workflowExpected = Number.isFinite(repositoryCollection?.workflowExpected)
+    ? repositoryCollection.workflowExpected
+    : deployed.discovery?.complete === true ? workflows.length : null;
+  if (workflowExpected !== null) sources.workflows.metadata["coverage-expected"] = workflowExpected;
+  sources.workflows.metadata["coverage-observed"] = workflows.length;
+
+  const runCollection = collectionFor("run-query");
+  if (Number.isFinite(runCollection?.expected)) sources.runs.metadata["coverage-expected"] = runCollection.expected;
+  if (Number.isFinite(runCollection?.observed)) sources.runs.metadata["coverage-observed"] = runCollection.observed;
+
+  const observedRunCount = uniqueStableRuns(runs);
+  if (Number.isFinite(deployed.runHealth?.expectedRuns)) {
+    sources.runs.metadata["run-records-expected"] = deployed.runHealth.expectedRuns;
+  }
+  sources.runs.metadata["run-records-observed"] = observedRunCount;
+  for (const name of ["usage", "detection-observations", "firewall-observations", "safe-output-performance"]) {
+    sources[name].metadata["coverage-expected"] = observedRunCount;
+    sources[name].metadata["coverage-observed"] = uniqueStableRuns(sources[name].rows);
+  }
+  sources.outcomes.metadata["coverage-expected"] = uniqueStableRuns(sources["safe-output-performance"].rows);
+  sources.outcomes.metadata["coverage-observed"] = uniqueStableRuns(sources.outcomes.rows);
+
+  attachCollection(["organizations", "repositories", "workflows"], "workflow-discovery");
+  attachCollection(["runs", "run-performance", "job-performance"], "run-query");
+  attachCollection(["admissions", "admission-checks"], "admission-artifacts");
+  attachCollection(["usage", "detection-observations", "firewall-observations", "safe-output-performance"], "usage-artifacts");
+  attachCollection(["outcomes", "findings"], "durable-outputs");
+
+  if (report.stale) {
+    for (const name of ["outcomes", "findings"]) {
+      sources[name].metadata["fallback-used"] = true;
+      sources[name].metadata["snapshot-age-seconds"] = report.snapshotAgeSeconds ?? null;
+      sources[name].metadata["fallback-source-as-of"] = report.snapshotGeneratedAt || "";
+      sources[name].metadata["collection-state"] = "partial";
+    }
+  }
+  if (report.error) {
+    for (const name of ["outcomes", "findings"]) {
+      sources[name].metadata["failure-class"] = report.errorStatus === 403 ? "rate-limit" : "request";
+      sources[name].metadata["collection-reason"] = report.error;
+    }
+  }
+
+  if (Number.isFinite(usage.windowHours) && usage.windowHours > 0) {
+    const requestedStart = new Date(Date.parse(generatedAt) - usage.windowHours * 3_600_000).toISOString();
+    for (const name of ["usage", "detection-observations", "firewall-observations", "safe-output-performance"]) {
+      sources[name].metadata["requested-coverage-start"] = requestedStart;
+      sources[name].metadata["requested-coverage-end"] = generatedAt;
+    }
+  }
+}
+
 function finite(value) {
   return Number.isFinite(value) ? Number(value) : null;
 }
@@ -2397,6 +2493,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     githubFreshness,
     githubAsOf,
   );
+  applyDataHealthMetadata(sources, { deployed, usage, report, workflows, runs, generatedAt });
   return sources;
 }
 

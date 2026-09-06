@@ -29,7 +29,7 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
  */
 
 /**
- * @typedef {{ 'source-id': string, 'source-kind': string, 'as-of': string, 'retrieved-at': string, 'coverage-start'?: string, 'coverage-end'?: string, completeness: DataState['completeness'], freshness: DataState['freshness'], availability?: DataState['availability'] }} SourceMetadata
+ * @typedef {{ 'source-id': string, 'source-kind': string, 'as-of': string, 'retrieved-at': string, 'coverage-start'?: string, 'coverage-end'?: string, completeness: DataState['completeness'], freshness: DataState['freshness'], availability?: DataState['availability'] } & Record<string, unknown>} SourceMetadata
  */
 
 /**
@@ -153,8 +153,9 @@ export function renderDashboard(input) {
   const dataHealthSources = deriveDataHealthSources(rawSources);
   const sources = {
     ...derivedSources,
-    'data-health-summary': dataHealthSources['data-health-summary'],
-    'data-health-sources': dataHealthSources['data-health-sources']
+    ...Object.fromEntries(
+      Object.entries(dataHealthSources).filter(([name]) => name.startsWith('data-health-'))
+    )
   };
   const orgName = inferOrganizationName(sources) || 'GitHub';
   const sidebarTitle = dashboardRepository?.split('/').at(-1) || orgName;
