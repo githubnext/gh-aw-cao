@@ -167,7 +167,7 @@ jobs:
           client-id: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID }}
           private-key: ${{ secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY }}
           github-api-url: ${{ github.api_url }}
-          permission-actions: write
+          permission-actions-variables: write
 
       - name: Persist CAO admission GitHub API gate
         if: ${{ steps.cao_admission.outputs.reason == 'github-api-capacity-insufficient' && steps.cao_admission.outputs.github_api_gate_active != 'true' }}
@@ -250,7 +250,7 @@ jobs:
           client-id: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID }}
           private-key: ${{ secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY }}
           github-api-url: ${{ github.api_url }}
-          permission-actions: write
+          permission-actions-variables: write
 
       - name: Persist CAO precompute GitHub API gate
         if: ${{ steps.cao_precompute.outputs.reason == 'github-api-capacity-insufficient' && steps.cao_precompute.outputs.github_api_gate_active != 'true' }}

@@ -10,7 +10,9 @@ import {
   installationInstruction,
   isManifestCode,
   setRepositoryCredentials,
+  validateAppPermissions,
   validateAppName,
+  validateInstallationPermissions,
   validateInstallationScope,
 } from "../../.github/cao/setup-github-apps.mjs";
 
@@ -33,6 +35,7 @@ test("GitHub App profiles preserve separate permission ceilings", () => {
   assert.equal(write.permissions.contents, "write");
   assert.equal(write.permissions.issues, "write");
   assert.equal(write.permissions.pull_requests, "write");
+  assert.equal(write.permissions.actions_variables, "write");
 });
 
 test("GitHub App manifests are private and disable webhooks and OAuth", () => {
@@ -52,6 +55,34 @@ test("GitHub App manifests are private and disable webhooks and OAuth", () => {
   });
   assert.deepEqual(manifest.default_events, []);
   assert.deepEqual(manifest.default_permissions, { contents: "read" });
+});
+
+test("GitHub App setup rejects stale permission grants", () => {
+  const profile = APP_PROFILES.find((candidate) => candidate.role === "write");
+  const app = {
+    slug: "cao-acme-control-write",
+    permissions: { ...profile.permissions, actions_variables: undefined },
+  };
+
+  assert.throws(
+    () => validateAppPermissions(app, profile, "acme"),
+    /missing required permissions \(actions_variables: write\).*\/organizations\/acme\/settings\/apps\/cao-acme-control-write\/permissions/,
+  );
+  assert.doesNotThrow(() => validateAppPermissions({ ...app, permissions: profile.permissions }, profile, "acme"));
+});
+
+test("GitHub App setup rejects pending installation permissions", () => {
+  const profile = APP_PROFILES.find((candidate) => candidate.role === "write");
+  const installation = {
+    id: "1234",
+    permissions: { ...profile.permissions, actions_variables: undefined },
+  };
+
+  assert.throws(
+    () => validateInstallationPermissions(installation, profile, "acme"),
+    /awaiting required permissions \(actions_variables: write\).*\/organizations\/acme\/settings\/installations\/1234/,
+  );
+  assert.doesNotThrow(() => validateInstallationPermissions({ ...installation, permissions: profile.permissions }, profile, "acme"));
 });
 
 test("repository credentials keep the private key out of command arguments", () => {

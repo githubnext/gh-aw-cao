@@ -41,6 +41,7 @@ export const APP_PROFILES = Object.freeze([
       contents: "write",
       issues: "write",
       pull_requests: "write",
+      actions_variables: "write",
     }),
   }),
 ]);
@@ -249,8 +250,36 @@ function existingGitHubApp(name, clientId) {
     clientId: payload.client_id,
     slug: payload.slug,
     name: payload.name,
+    permissions: payload.permissions ?? {},
     installUrl: `https://github.com/apps/${payload.slug}/installations/new`,
   };
+}
+
+function insufficientPermissions(grantedPermissions, requiredPermissions) {
+  return Object.entries(requiredPermissions).filter(([permission, required]) => {
+    const granted = grantedPermissions?.[permission];
+    return required === "write" ? granted !== "write" : !["read", "write"].includes(granted);
+  });
+}
+
+export function validateAppPermissions(app, profile, owner) {
+  const insufficient = insufficientPermissions(app.permissions, profile.permissions);
+  if (insufficient.length === 0) return;
+
+  const required = insufficient.map(([permission, level]) => `${permission}: ${level}`).join(", ");
+  const settingsUrl = `https://github.com/organizations/${owner}/settings/apps/${app.slug}/permissions`;
+  throw new Error(`${profile.label} App is missing required permissions (${required}); update it at ${settingsUrl}, approve the installation update, then rerun setup`);
+}
+
+export function validateInstallationPermissions(installation, profile, owner) {
+  const insufficient = insufficientPermissions(installation.permissions, profile.permissions);
+  if (insufficient.length === 0) return;
+
+  const required = insufficient.map(([permission, level]) => `${permission}: ${level}`).join(", ");
+  const settingsUrl = `https://github.com/organizations/${owner}/settings/installations/${installation.id}`;
+  const error = new Error(`${profile.label} App installation is awaiting required permissions (${required}); approve the update at ${settingsUrl}, then rerun setup`);
+  error.name = "InstallationPermissionsError";
+  throw error;
 }
 
 async function createGitHubApp({ owner, name, homepageUrl, description, permissions, openBrowser }) {
@@ -351,11 +380,11 @@ function listOrganizationInstallations(owner) {
     `/orgs/${owner}/installations?per_page=100`,
     "--paginate",
     "--jq",
-    ".installations[] | [(.id|tostring), (.client_id // \"\"), (.app_id|tostring), .app_slug, .repository_selection] | @tsv",
+    ".installations[] | [(.id|tostring), (.client_id // \"\"), (.app_id|tostring), .app_slug, .repository_selection, (.permissions|tojson)] | @tsv",
   ]);
   return output.split("\n").filter(Boolean).map((line) => {
-    const [id, clientId, appId, slug, repositorySelection] = line.split("\t");
-    return { id, clientId, appId, slug, repositorySelection };
+    const [id, clientId, appId, slug, repositorySelection, permissions] = line.split("\t");
+    return { id, clientId, appId, slug, repositorySelection, permissions: JSON.parse(permissions) };
   });
 }
 
@@ -380,13 +409,14 @@ export function installationInstruction(repo) {
   return `Choose "Only select repositories", select only ${repo}, and save.`;
 }
 
-function hasSelectedInstallation(app, repo) {
+function hasSelectedInstallation(app, repo, profile) {
   const [owner] = splitRepo(repo);
   const installation = matchingInstallation(app, owner);
   if (!installation) {
     return false;
   }
   validateInstallationScope(installation, owner);
+  validateInstallationPermissions(installation, profile, owner);
   return true;
 }
 
@@ -396,19 +426,19 @@ function openInstallation(app, openBrowser) {
   }
 }
 
-async function waitForInstallation(app, repo) {
+async function waitForInstallation(app, repo, profile) {
   console.error(`Install ${app.name || app.slug} in the browser. ${installationInstruction(repo)}`);
   const deadline = Date.now() + MANIFEST_TIMEOUT_MS;
   let lastError;
   while (Date.now() < deadline) {
     try {
-      if (hasSelectedInstallation(app, repo)) {
+      if (hasSelectedInstallation(app, repo, profile)) {
         console.error(`Selected-repository GitHub App installation detected for ${repo}.`);
         return;
       }
       lastError = undefined;
     } catch (error) {
-      if (error.name === "InstallationScopeError") {
+      if (["InstallationScopeError", "InstallationPermissionsError"].includes(error.name)) {
         throw error;
       }
       lastError = error;
@@ -478,13 +508,14 @@ async function main() {
     const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
     if (complete && !options.force) {
       const app = existingGitHubApp(appNames[profile.role], repositoryVariableValue(repo, profile.variable));
-      if (hasSelectedInstallation(app, repo)) {
+      validateAppPermissions(app, profile, owner);
+      if (hasSelectedInstallation(app, repo, profile)) {
         console.error(`${profile.label} App credentials and selected-repository installation already exist; skipping.`);
         continue;
       }
       console.error(`${profile.label} App credentials exist, but installation on ${repo} is incomplete; reopening it.`);
       openInstallation(app, options.openBrowser);
-      await waitForInstallation(app, repo);
+      await waitForInstallation(app, repo, profile);
       continue;
     }
     if (state.variables.has(profile.variable) !== state.secrets.has(profile.secret)) {
@@ -501,7 +532,7 @@ async function main() {
     setRepositoryCredentials(profile, app, repo);
     console.error(`Set repository variable ${profile.variable}.`);
     console.error(`Set repository secret ${profile.secret}.`);
-    await waitForInstallation(app, repo);
+    await waitForInstallation(app, repo, profile);
   }
 
   const finalState = repositoryState(repo);

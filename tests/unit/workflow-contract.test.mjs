@@ -542,7 +542,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
   assert.doesNotMatch(sharedControl, /base64\s+(?:-d|--decode)/);
   assert.match(sharedControl, /node "\$cao_dir\/control\.mjs" admit/);
-  assert.equal([...sharedControl.matchAll(/permission-actions: write/g)].length, 2);
+  assert.equal([...sharedControl.matchAll(/permission-actions-variables: write/g)].length, 2);
   assert.equal([...sharedControl.matchAll(/control\.mjs" persist-api-gate/g)].length, 2);
   assert.match(sharedControl, /steps\.cao_admission\.outputs\.github_api_gate_active != 'true'/);
   assert.match(sharedControl, /steps\.cao_precompute\.outputs\.github_api_gate_active != 'true'/);

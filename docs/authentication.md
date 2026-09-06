@@ -27,7 +27,7 @@ Before installation, require API evidence of an active organization entitlement 
 
 ## Policy
 
-Target-repository authentication is defined once in `.github/workflows/shared/control.md` and inherited by Orchestrator and worker workflows. The read-only App authenticates GitHub tools, admission, and control precompute. A separate write-capable App serves safe outputs and the advisory API-capacity gate. Safe-output tokens are narrowed to the selected handler's permissions; gate persistence requests only `Actions: write` and runs only after a fresh capacity denial. Copilot inference permission remains explicit in every Copilot-backed workflow. Workflow-local GitHub App blocks should not be added unless a future Agentic Workflow has a documented isolation requirement that shared control cannot satisfy.
+Target-repository authentication is defined once in `.github/workflows/shared/control.md` and inherited by Orchestrator and worker workflows. The read-only App authenticates GitHub tools, admission, and control precompute. A separate write-capable App serves safe outputs and the advisory API-capacity gate. Safe-output tokens are narrowed to the selected handler's permissions; gate persistence requests only `Variables: write` and runs only after a fresh capacity denial. Copilot inference permission remains explicit in every Copilot-backed workflow. Workflow-local GitHub App blocks should not be added unless a future Agentic Workflow has a documented isolation requirement that shared control cannot satisfy.
 
 The supported control-plane credentials are:
 
@@ -78,7 +78,9 @@ Before activation, shared control checks the primary REST API capacity of the ex
 
 When capacity is insufficient, the run stops before repository discovery. The admission summary reports remaining and required requests, the UTC reset timestamp, and the approximate minutes and hours until reset. The dashboard exposes the latest failure as a GitHub API capacity admission gate rather than an undifferentiated workflow failure.
 
-Shared control also stores a bounded advisory record in the repository Actions variable `CAO_GITHUB_API_GATE`. Later runs read the variable without an API request and stop while its reset time remains active. Invalid or expired records are ignored, so the next run performs the live capacity check. Persistence is best-effort through the write App with only `Actions: write`; failure to write the variable does not change the current denial or grant later work.
+Shared control also stores a bounded advisory record in the repository Actions variable `CAO_GITHUB_API_GATE`. Later runs read the variable without an API request and stop while its reset time remains active. Invalid or expired records are ignored, so the next run performs the live capacity check. Persistence is best-effort through the write App with only `Variables: write`; failure to write the variable does not change the current denial or grant later work.
+
+Control repositories configured before the write App included `Variables: write` must add the repository **Variables: Read and write** permission in the App settings and approve the installation update. Rerun `npm run setup:github-apps -- --repo OWNER/REPO` afterward; setup now rejects stale permission grants instead of treating the credential pair as complete.
 
 ### Fetch GitHub data efficiently
 
