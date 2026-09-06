@@ -163,14 +163,7 @@ jobs:
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
         run: |
-          node "$GITHUB_TELEMETRY" before collect-activity || true
-          if node "$DASHBOARD_REPORT_ROOT/activity-collectors.mjs"; then
-            outcome=success
-          else
-            outcome=failure
-          fi
-          CAO_OPERATION_OUTCOME="$outcome" node "$GITHUB_TELEMETRY" after collect-activity || true
-          [[ "$outcome" == success ]]
+          node "$DASHBOARD_REPORT_ROOT/activity-collectors.mjs"
 
       - name: List activity cache files
         if: always()
