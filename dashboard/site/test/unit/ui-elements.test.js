@@ -507,8 +507,8 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });
 
-  it('renders workflow-route-page with declarative body selection', () => {
-    const rendered = renderUiElement('workflow-route-page', {
+  it('renders workflow-route with declarative body selection', () => {
+    const rendered = renderUiElement('workflow-route', {
       pageId: 'custom-workflow-page',
       title: 'Workflow',
       sourceNames: ['workflows', 'runs', 'usage', 'operational-values'],

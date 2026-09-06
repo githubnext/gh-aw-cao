@@ -21,7 +21,6 @@ import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
-import { renderWorkflowRoutePage } from './workflow-route-page.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -60,7 +59,6 @@ const ELEMENT_RENDERERS = new Map([
   ['package-reports', (context) => renderPackageRouteVariant(context, 'reports')],
   ['package-route', renderPackageRouteView],
   ['workflow-route', renderWorkflowRouteView],
-  ['workflow-route-page', renderWorkflowRoutePage],
   ['outcome-detail', renderOutcomeDetail],
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['configuration-policy', renderConfigurationView],
@@ -68,7 +66,7 @@ const ELEMENT_RENDERERS = new Map([
   ['experiments-evaluation', renderExperimentsEvaluation]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell']);
 
 /**
  * @param {string} name
@@ -643,4 +641,3 @@ function stringValue(value) {
 function capitalize(value) {
   return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
-

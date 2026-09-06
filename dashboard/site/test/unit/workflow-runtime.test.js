@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderWorkflowRuntime } from '../../src/components/workflow-runtime.js';
-import { createWorkflowRoutePageView } from '../../src/components/workflow-route-page-views.js';
+import { createWorkflowRouteView, createWorkflowRoutePageView } from '../../src/components/workflow-route-page-views.js';
 import { renderWorkflowRouteView } from '../../src/components/workflow-route-view.js';
 
 const completeMetadata = {
@@ -90,7 +90,7 @@ function selectWorkflow(rendered, value = 'githubnext/gh-aw-cao:.github/workflow
 
 describe('renderWorkflowRuntime', () => {
   it('defines reusable declarative workflow route page views', () => {
-    expect(createWorkflowRoutePageView({
+    expect(createWorkflowRouteView({
       id: 'workflow-runtime-route',
       title: 'Workflow runtime',
       body: 'insights',
@@ -109,6 +109,17 @@ describe('renderWorkflowRuntime', () => {
       },
       layout: 'full'
     });
+    expect(createWorkflowRoutePageView({
+      id: 'workflow-runtime-route',
+      title: 'Workflow runtime',
+      body: 'insights',
+      sources: ['workflows', 'runs', 'usage', 'operational-values']
+    })).toEqual(createWorkflowRouteView({
+      id: 'workflow-runtime-route',
+      title: 'Workflow runtime',
+      body: 'insights',
+      sources: ['workflows', 'runs', 'usage', 'operational-values']
+    }));
   });
 
   it('renders workflow identity, health, registration, usage, and the value empty state', () => {

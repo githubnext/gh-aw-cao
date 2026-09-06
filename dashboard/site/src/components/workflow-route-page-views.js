@@ -3,19 +3,19 @@
  */
 
 /**
- * @typedef {'insights'|'reports'|'runs'} WorkflowRoutePageBody
+ * @typedef {'insights'|'reports'|'runs'} WorkflowRouteBody
  */
 
 /**
  * @param {{
  *   id: string,
  *   title: string,
- *   body: WorkflowRoutePageBody,
+ *   body: WorkflowRouteBody,
  *   sources: string[],
  *   layout?: 'full'|'wide'|'compact'
  * }} options
  */
-export function createWorkflowRoutePageView(options) {
+export function createWorkflowRouteView(options) {
   return {
     id: options.id,
     title: options.title,
@@ -30,3 +30,5 @@ export function createWorkflowRoutePageView(options) {
     ...(options.layout ? { layout: options.layout } : {})
   };
 }
+
+export const createWorkflowRoutePageView = createWorkflowRouteView;
