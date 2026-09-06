@@ -217,7 +217,7 @@ jobs:
                   )
                 }
               }
-              return `#### 👤🧪 ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
+              return `#### 👤🚦 ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
             })
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
