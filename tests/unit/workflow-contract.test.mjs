@@ -2052,6 +2052,9 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /WCAG 2\.2 Level AA/);
   assert.match(source, /playwright-cli` is a pre-installed CLI binary already on `PATH`/);
   assert.match(source, /never call `missing_tool` for it based on assumption alone/);
+  assert.match(source, /node_modules\/\.bin\/playwright install chromium/);
+  assert.match(source, /Node Playwright package launch preflight/);
+  assert.match(source, /preflight-node\.log/);
   assert.match(source, /colorScheme: "light"/);
   assert.match(source, /colorScheme: "dark"/);
   assert.match(source, /prefers-reduced-motion/);
@@ -2063,7 +2066,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /select the single most important action with the highest expected return on investment/);
   assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /<details><summary><b>All Findings and Evidence<\/b><\/summary>/);
-  assert.equal(source.split(liveGuard).length - 1, 5);
+  assert.equal(source.split(liveGuard).length - 1, 7);
   assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
 });
 
@@ -2741,6 +2744,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   const deployWorkflow = readFileSync(join(root, "dashboard", "dashboard.yml"), "utf8");
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
   const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
+  const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "control-settings.mjs", "dashboard-language-sources.mjs", "inventory.mjs", "operational-value-history.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs", "control-settings.mjs", "inventory.mjs"]);
@@ -2757,8 +2761,8 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
   assert.match(dashboardManifest, /source: local-server\.mjs\n\s+destination: \.github\/aw\/dashboard\/local-server\.mjs/);
   assert.match(canonicalPolicyResolver, /export function parsePolicy/);
-  assert.match(deployedWorkflows, /REPORT_RUN_WINDOW_HOURS/);
-  assert.match(activityWorkflow, /REPORT_RUN_WINDOW_HOURS: "720"/);
+  assert.match(deployedWorkflows, /REPORT_RUN_WINDOW_DAYS/);
+  assert.match(activityWorkflow, /REPORT_RUN_WINDOW_DAYS: "30"/);
   assert.doesNotMatch(buildWorkflow, /workflow_call:/);
   assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?default: cao[\s\S]*?mode:[\s\S]*?default: live[\s\S]*?request-id:/);
   assert.match(buildWorkflow, /run-name: CAO Dashboard Build \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
@@ -2804,18 +2808,17 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(aicUsage, /"--artifacts", "usage,agent,detection,evals,experiment,firewall,graders,mcp"/);
+  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp"/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
-  assert.match(aicUsage, /"--start-date", `-\$\{FIREWALL_HORIZON_DAYS\}d`, "--cache-before", `-\$\{FIREWALL_HORIZON_DAYS\}d`/);
-  assert.match(aicUsage, /"--count", String\(maxRunsPerWorkflow\), "--timeout", "15"/);
-  assert.match(aicUsage, /"--max-github-api-rate-limit", "-2000", "--max-storage", "1024"/);
-  assert.equal((aicUsage.match(/"aw", "logs"/g) || []).length, 1);
-  assert.match(aicUsage, /if \(targets\.length > 0\)/);
-  assert.doesNotMatch(aicUsage, /--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
+  assert.match(activityLogs, /"--start-date", `-\$\{windowDays\}d`, "--cache-before", `-\$\{windowDays\}d`/);
+  assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "15"/);
+  assert.match(activityLogs, /"--max-github-api-rate-limit", "-2000", "--max-storage", "1024"/);
+  assert.equal((activityLogs.match(/"aw", "logs"/g) || []).length, 1);
+  assert.doesNotMatch(aicUsage, /spawn|runGhAw|"aw", "logs"|--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs/);
-  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 1);
-  assert.match(aicUsage, /writeFile\(logsPath, `\$\{JSON\.stringify\(result, null, 2\)\}\\n`\)/);
+  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 3);
+  assert.match(aicUsage, /Processing \$\{result\.runs\.length\} cached gh-aw log records/);
   assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/operational-values\.json/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
   assert.match(buildWorkflow, /actions\/cache\/restore@[0-9a-f]{40}/);
@@ -2823,18 +2826,11 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
   assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?version: v0\.88\.4/);
-  assert.match(deployedWorkflows, /const \{ staleRegistration, \.\.\.capabilities \} = await workflowCapabilities/);
-  assert.match(deployedWorkflows, /const role = workflowRole\(source\.value\)/);
-  assert.match(deployedWorkflows, /shared\\\/\(\?:cao\|control\)\\\.md/);
-  assert.match(deployedWorkflows, /const staleRegistration = sourceMissing && registryOnly/);
-  assert.match(deployedWorkflows, /Activity discovery configuration: organization=\$\{organization\}, scope=/);
-  assert.match(deployedWorkflows, /Discovery searches returned \$\{matches\.length\} workflow lock files/);
-  assert.match(deployedWorkflows, /Actions registry returned \$\{registeredWorkflowCount\} workflows/);
-  assert.match(deployedWorkflows, /Inspecting \$\{discovered\.size\} unique workflow candidates/);
-  assert.match(deployedWorkflows, /Stale Actions workflow registration: \$\{item\.repository\}\/\$\{item\.path\}/);
-  assert.match(deployedWorkflows, /Ignored \$\{staleRegistrationCount\} stale Actions workflow registrations whose Markdown sources are absent from the default branch/);
-  assert.match(deployedWorkflows, /run\.conclusion === "action_required"\) current\.actionRequired \+= 1/);
-  assert.match(deployedWorkflows, /event: run\.event/);
+  assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
+  assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
+  assert.match(deployedWorkflows, /usageArtifactGaps/);
+  assert.match(deployedWorkflows, /run\.conclusion === "action_required"\) result\.actionRequired \+= 1/);
+  assert.match(deployedWorkflows, /event: firstValue\(run\.event, run\.trigger, null\)/);
   assert.doesNotMatch(deployedWorkflows, /\["failure", "timed_out", "startup_failure", "action_required"\]/);
   assert.match(operationalValues, /workflow\.operationalValue !== true/);
   assert.match(operationalValues, /REPORT_GH_AW_LOGS is required/);
@@ -2879,6 +2875,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "failure-evidence.mjs", destination: ".github/aw/activity/failure-evidence.mjs" },
     { source: "index.mjs", destination: ".github/aw/activity/index.mjs" },
+    { source: "logs.mjs", destination: ".github/aw/activity/logs.mjs" },
     { source: "github-telemetry.mjs", destination: ".github/aw/activity/github-telemetry.mjs" },
     { source: "run-health-snapshot.mjs", destination: ".github/aw/activity/run-health-snapshot.mjs" },
     { source: "version.mjs", destination: ".github/aw/activity/version.mjs" },
@@ -2899,12 +2896,13 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /DASHBOARD_COLLECTION=false/);
   assert.match(workflow, /if: env\.DASHBOARD_COLLECTION == 'true'/);
   assert.match(workflow, /Process cached gh-aw logs/);
+  assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Refresh activity index/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
   assert.match(workflow, /cao-activity-\$\{\{ github\.run_id \}\}-/);
   assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
   assert.match(readme, /schemaVersion: 1/);
   assert.match(readme, /Consumers must use the top-level completeness fields/);
-  assert.match(readme, /retained non-terminal runs receive a full-window refresh/);
+  assert.match(readme, /marks run health unavailable/);
 });
 
 test("Documentation Pages deploys docs with the packaged dashboard builder", () => {

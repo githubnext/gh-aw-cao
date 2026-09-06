@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
+import { renderExperimentDecisionSurfaceSection } from '../../src/components/experiment-decision-surface.js';
 import { renderExperimentsEvaluation } from '../../src/components/experiments-evaluation.js';
 import { defaultExperimentsViewComposition, experimentsViewCompositionForBody } from '../../src/components/experiments-view-primitives.js';
 
@@ -31,6 +32,60 @@ describe('experiments and evaluation', () => {
       { key: 'table', className: 'experiment-decision-table' },
       { key: 'detail', className: 'experiment-detail' }
     ]);
+  });
+
+  it('renders reusable decision surface sections by declarative composition key', () => {
+    const renderOverview = () => document.createElement('section');
+    renderOverview().className = 'overview';
+    const renderTable = () => document.createElement('section');
+    renderTable().className = 'table';
+    const renderDetail = () => document.createElement('section');
+    renderDetail().className = 'detail';
+    const renderNoMatches = () => document.createElement('div');
+
+    expect(renderExperimentDecisionSurfaceSection('overview', {
+      experiments: [{ id: 'one' }],
+      model: /** @type {any} */ ({ experiments: [] }),
+      selectedExperiment: 'one',
+      onSelect: () => {},
+      renderOverview,
+      renderTable,
+      renderDetail,
+      renderNoMatches
+    }).tagName).toBe('SECTION');
+
+    expect(renderExperimentDecisionSurfaceSection('table', {
+      experiments: [{ id: 'one' }],
+      model: /** @type {any} */ ({ experiments: [] }),
+      selectedExperiment: 'one',
+      onSelect: () => {},
+      renderOverview,
+      renderTable,
+      renderDetail,
+      renderNoMatches
+    }).tagName).toBe('SECTION');
+
+    expect(renderExperimentDecisionSurfaceSection('detail', {
+      experiments: [{ id: 'one' }],
+      model: /** @type {any} */ ({ experiments: [{ id: 'one' }] }),
+      selectedExperiment: 'one',
+      onSelect: () => {},
+      renderOverview,
+      renderTable,
+      renderDetail,
+      renderNoMatches
+    }).tagName).toBe('SECTION');
+
+    expect(renderExperimentDecisionSurfaceSection('detail', {
+      experiments: [],
+      model: /** @type {any} */ ({ experiments: [] }),
+      selectedExperiment: '',
+      onSelect: () => {},
+      renderOverview,
+      renderTable,
+      renderDetail,
+      renderNoMatches
+    }).tagName).toBe('DIV');
   });
 
   it('keeps decisions, observations, producers, runs, and evidence distinct', () => {

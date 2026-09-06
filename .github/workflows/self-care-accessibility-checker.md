@@ -132,6 +132,16 @@ pre-agent-steps:
       tar -xzf axe-core-4.13.0.tgz package/axe.min.js
       mv package/axe.min.js axe.min.js
       rm -rf package axe-core-4.13.0.tgz
+  - name: Install the workspace Playwright browser build
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/gh-aw/playwright-browsers
+    # The preinstalled playwright-cli (0.1.18) bundles a different playwright-core
+    # version than the workspace's @playwright/test devDependency, so each resolves
+    # a different Chromium revision. Install the workspace's own revision here, into
+    # the same shared cache, so a Node script that imports the workspace package can
+    # launch it without downloading anything at agent run time.
+    run: timeout 5m node_modules/.bin/playwright install chromium
   - name: Configure Playwright CLI launch options
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
@@ -164,6 +174,28 @@ pre-agent-steps:
       if [ $PREFLIGHT_STATUS -ne 0 ]; then
         echo "Playwright preflight failed; agent will report the infrastructure blocker."
       fi
+  - name: Node Playwright package launch preflight
+    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    env:
+      EXPR_GITHUB_WORKSPACE: ${{ github.workspace }}
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/gh-aw/playwright-browsers
+    run: |
+      set +e
+      node -e "
+      const { chromium } = require('@playwright/test');
+      (async () => {
+        const browser = await chromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        const page = await browser.newPage();
+        await page.goto('about:blank');
+        await browser.close();
+        console.log('workspace Playwright package launched Chromium successfully');
+      })().catch((err) => { console.error(err); process.exit(1); });
+      " > "$EXPR_GITHUB_WORKSPACE/.playwright/preflight-node.log" 2>&1
+      PREFLIGHT_STATUS=$?
+      set -e
+      if [ $PREFLIGHT_STATUS -ne 0 ]; then
+        echo "Node Playwright package preflight failed; agent will report the infrastructure blocker."
+      fi
 ---
 
 {{#runtime-import? .github/cao/self-care.md}}
@@ -192,6 +224,8 @@ Dependencies were installed from the lockfile and the site was built before the 
 Discover the repository's documented preview command and site base path from `package.json` and the Astro configuration, then start the prepared site on an available local port. For this repository, use `npm run docs:preview -- --host 127.0.0.1 --port <port>` so Astro serves the configured base path. Do not use a generic flat static server rooted at `dist/` as the primary preview mechanism; it serves `dist/index.html` but returns 404 for `/gh-aw-cao/` because Astro preview performs the base-path routing. Capture the server log and poll the derived site URL for up to 120 seconds before continuing. Do not assume a port, directory name, or base path.
 
 Before browsing, inspect `${{ github.workspace }}/.playwright/preflight-chrome.log`. `playwright-cli` is a pre-installed CLI binary already on `PATH` in this sandbox — the preflight log records a real launch of it before the agent started. A successful preflight log confirms `playwright-cli` is available; never call `missing_tool` for it based on assumption alone. Only report `playwright-cli` as unavailable if you actually invoke it (for example `playwright-cli -s=audit open about:blank --config "${{ github.workspace }}/.playwright/cli.config.json"`) and it fails with a command-not-found or launch error. If the browser truly cannot start, or the preview server never responds, stop the audit and report the blocker as an infrastructure problem in Step 5 with the exact failing command and error output, rather than as an accessibility finding.
+
+`${{ github.workspace }}/.playwright/preflight-node.log` records a separate preflight that imported the workspace's own `@playwright/test` package and launched Chromium from the same preinstalled browser cache (`PLAYWRIGHT_BROWSERS_PATH`) before the agent started; it confirms a Node script can reuse that browser without downloading anything at run time, in case `playwright-cli` alone is insufficient.
 
 ## Step 2: Select pages
 
