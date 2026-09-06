@@ -245,7 +245,7 @@ function includedAssignment(assignment) {
 
 /** @param {unknown} value */
 function upper(value) {
-  return text(value).toUpperCase();
+  return text(value).replaceAll('-', '_').replaceAll(' ', '_').toUpperCase();
 }
 
 /** @param {string} readiness */
@@ -399,7 +399,7 @@ export function syncExperimentDecisionDeepLink(filters, selectedExperiment, page
     params.set('experiment', selectedExperiment);
   }
   const query = params.toString();
-  win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}#page-${pageId}${query ? `?${query}` : ''}`);
+  win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}#page-${encodeURIComponent(pageId)}${query ? `?${query}` : ''}`);
 }
 
 /** @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources @returns {HTMLElement} */
