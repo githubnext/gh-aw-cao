@@ -41,7 +41,7 @@ function collectGhAwLogs(targets, maxRunsPerWorkflow, outputDirectory) {
         if (!Array.isArray(result?.runs)) throw new Error("gh aw logs JSON has no runs array");
         resolve(result);
       } catch (error) {
-        reject(new Error(`gh aw logs returned invalid JSON: ${error.message}`));
+        reject(new Error(`gh aw logs returned unexpected JSON: ${error.message}`));
       }
     });
   });
