@@ -85,11 +85,41 @@ test("activity logs preserves cached runs and records collection failure", async
         GITHUB_OUTPUT: item.githubOutput,
       },
     });
+
     assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).runs[0].database_id, 7);
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, false);
     assert.equal(state.fallback, true);
     assert.equal(state.snapshotObservedAt, "2026-09-06T20:00:00Z");
+    assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=failure\n");
+  } finally {
+    await rm(item.root, { recursive: true, force: true });
+  }
+});
+
+test("activity logs records a failure when workflow discovery is unavailable", async () => {
+  const item = await fixture();
+  await rm(path.join(item.root, ".github"), { recursive: true });
+  await mkdir(path.dirname(item.logsPath), { recursive: true });
+  await writeFile(item.logsPath, '{"runs":[{"database_id":7}]}\n');
+  await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
+  try {
+    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+      env: {
+        ...process.env,
+        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        REPORT_ROOT: item.root,
+        REPORT_GH_AW_LOGS: item.logsPath,
+        REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_AIC_CACHE: item.outputPath,
+        GITHUB_OUTPUT: item.githubOutput,
+      },
+    });
+    const state = JSON.parse(await readFile(item.statePath, "utf8"));
+    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).runs[0].database_id, 7);
+    assert.equal(state.available, false);
+    assert.equal(state.targetCount, 0);
+    assert.equal(state.fallback, true);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=failure\n");
   } finally {
     await rm(item.root, { recursive: true, force: true });

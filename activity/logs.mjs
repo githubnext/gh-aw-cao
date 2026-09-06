@@ -73,18 +73,19 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 1000");
   }
 
-  const workflowDirectory = path.join(root, ".github", "workflows");
-  const targets = (await readdir(workflowDirectory, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
-    .map((entry) => `${repository}/.github/workflows/${entry.name}`)
-    .sort();
   await mkdir(outputDirectory, { recursive: true });
   await mkdir(path.dirname(logsPath), { recursive: true });
   await mkdir(path.dirname(statePath), { recursive: true });
 
   const observedAt = new Date().toISOString();
   const previousState = await readFile(statePath, "utf8").then(JSON.parse).catch(() => ({}));
+  let targets = [];
   try {
+    const workflowDirectory = path.join(root, ".github", "workflows");
+    targets = (await readdir(workflowDirectory, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
+      .map((entry) => `${repository}/.github/workflows/${entry.name}`)
+      .sort();
     const raw = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
     const snapshot = JSON.parse(raw);
     if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");

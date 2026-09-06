@@ -109,7 +109,7 @@ function usageArtifactGaps(runs) {
   for (const run of runs) {
     const runId = firstValue(run.database_id, run.run_id, run.id, "unknown");
     for (const [field, aliases] of Object.entries(USAGE_FIELDS)) {
-      if (aliases.some((alias) => firstValue(run[alias]) !== undefined)) continue;
+      if (aliases.some((alias) => Object.hasOwn(run, alias))) continue;
       missing[field] += 1;
       if (!samples[field]) samples[field] = [];
       if (samples[field].length < 5) samples[field].push(String(runId));
@@ -154,6 +154,7 @@ async function discoverLocalInventory(root) {
     const source = await readFile(path.join(root, sourcePath), "utf8");
     const role = source.match(/uses:\s+shared\/(?:cao|control)\.md[\s\S]*?role:\s+(orchestrator|worker)/)?.[1] || "standalone";
     const inlineWorkers = source.match(/^[ \t]+workflows:[ \t]*\[([^\]]*)\]/m)?.[1];
+    const blockWorkers = source.match(/^([ \t]+)workflows:[ \t]*\r?\n((?:\1[ \t]+-[^\r\n]+\r?\n?)*)/m)?.[2];
     workflows.push({
       id,
       name: source.match(/^name:\s*["']?(.+?)["']?\s*$/m)?.[1] || id,
@@ -161,8 +162,11 @@ async function discoverLocalInventory(root) {
       sourcePath,
       lockPath: `.github/workflows/${id}.lock.yml`,
       compiled: entries.some((candidate) => candidate.name === `${id}.lock.yml`),
-      workers: role === "orchestrator" && inlineWorkers
-        ? inlineWorkers.split(",").map((value) => value.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean)
+      workers: role === "orchestrator"
+        ? (inlineWorkers
+          ? inlineWorkers.split(",")
+          : blockWorkers?.match(/^[ \t]*-[ \t]*(.+?)\s*$/gm)?.map((line) => line.replace(/^[ \t]*-[ \t]*/, "")) || []
+        ).map((value) => value.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean)
         : [],
       package: null,
     });
