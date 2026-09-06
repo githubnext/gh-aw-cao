@@ -9,11 +9,9 @@ Central Agentic Ops admits a run only when its checked-in control policy authori
 trigger -> pre-activation admission -> authorized-run precompute -> activation -> agent
                  | denied              | blocked
                  +----------------------+-> no agent execution
-                 | fresh API capacity denial
-                 +-> persist reset time -> later scheduled run rechecks after expiry
 ```
 
-Admission reads the advisory `CAO_GITHUB_API_GATE` repository variable before probing live API capacity. A valid active gate stops the run without another rate-limit request. Missing, malformed, expired, or implausibly distant gate values are ignored, and admission uses the authoritative live probe instead. A fresh admission or precompute capacity denial best-effort records its reset time; the gate expires without a cleanup operation and can only suppress work, never authorize it.
+Admission queries the GitHub rate-limit API and uses the returned core limit, remaining capacity, and reset time directly. It does not read or write a repository variable to coordinate capacity decisions across runs.
 
 ## What Admission Gates
 
@@ -97,7 +95,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 | `target_repo must use owner/repository form` | Target input | Fix the `target_repo` manual input to the exact `owner/repository` form. |
 | `safe_output_mode exceeds checked-in policy`, `safe_output_mode must be review or live` | Mode input | Narrow the requested `safe_output_mode`, or raise the checked-in package, target, or worker `mode`/`max-mode` ceiling. |
 | `max_repositories exceeds checked-in policy`, `rollout_percent exceeds checked-in policy`, or an integer-range message | Run limits | Narrow the requested `max_repos`/`rollout_percent`, or raise the checked-in `max-repositories`/`rollout-percent`. |
-| `github-api-capacity-insufficient`, `github-api-capacity-unavailable` | GitHub API capacity | Follow the remediation guidance in the run summary; the advisory gate suppresses scheduled attempts until the reported reset time. |
+| `github-api-capacity-insufficient`, `github-api-capacity-unavailable` | GitHub API capacity | Follow the remediation guidance in the run summary and wait until the reported reset time before retrying. |
 | `runner-disk-capacity-insufficient`, `runner-disk-capacity-unavailable` | Runner disk capacity | Free disk space on the runner, use a larger runner, or narrow the run; a runner that cannot report free space fails closed. |
 
 Fix the checked-in setup or policy, commit and push the new revision, then start a new run. Do not bypass admission by editing a generated `.lock.yml` file or by widening manual inputs.

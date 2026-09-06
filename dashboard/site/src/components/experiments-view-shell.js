@@ -5,8 +5,9 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
-import { experimentViewSectionRenderer } from './experiment-view-sections.js';
+import { experimentsViewCompositionForBody } from './experiments-view-primitives.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
+import { normalizeEffect, difference, mean, finite, numericObservation } from './experiment-view-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -16,7 +17,7 @@ const UNKNOWN = '—';
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
- * @param {Array<{ section: 'overview'|'table'|'detail' }>} composition
+ * @param {Array<{ key: 'overview'|'table'|'detail', className: string }>} composition
  * @param {{
  *   renderOverview: (experiments: Row[]) => HTMLElement,
  *   renderTable: (experiments: Row[], selectedId: string, onSelect: (id: string) => void) => HTMLElement,
@@ -46,7 +47,7 @@ export function renderExperimentsViewShell(context, composition, renderers) {
         render();
       }),
       ...composition.map((item) => {
-        if (item.section === 'table') {
+        if (item.key === 'table') {
           return renderers.renderTable(visible, selectedExperiment, (experimentId) => {
             selectedExperiment = experimentId;
             filters.experiment = experimentId;
@@ -54,9 +55,9 @@ export function renderExperimentsViewShell(context, composition, renderers) {
             render();
           });
         }
-        const rendererName = experimentViewSectionRenderer(item.section, renderers);
-        if (rendererName === 'renderOverview') return renderers.renderOverview(visible);
-        if (rendererName === 'renderDetail') {
+        const section = experimentsViewCompositionForBody(item.key);
+        if (section.key === 'overview') return renderers.renderOverview(visible);
+        if (section.key === 'detail') {
           return visible.length === 0 ? renderers.renderNoMatches() : renderers.renderDetail(model, selectedExperiment);
         }
         return renderers.renderNoMatches();
@@ -370,12 +371,6 @@ function aggregateObservations(rows, sourceType) {
   return mean(rows.map(numericObservation).filter(Number.isFinite));
 }
 
-/** @param {Row} observation @returns {number} */
-function numericObservation(observation) {
-  if (observation.sourceType === 'eval') return observation.result === 'YES' ? 1 : observation.result === 'NO' ? 0 : NaN;
-  return finite(observation.result) ?? NaN;
-}
-
 /** @param {Row} row @returns {boolean} */
 function includedObservation(row) {
   if (row.included === false || text(row.included).toLowerCase() === 'no') return false;
@@ -393,28 +388,6 @@ function includedAssignment(row) {
 function normalizeEvalResult(value) {
   const normalized = upper(value);
   return normalized === 'YES' || normalized === 'NO' ? normalized : 'UNKNOWN';
-}
-
-/** @param {number} value @param {string} direction @returns {number} */
-function normalizeEffect(value, direction) {
-  if (!Number.isFinite(value)) return NaN;
-  return direction === 'lower_is_better' ? -value : value;
-}
-
-/** @param {number} left @param {number} right @returns {number} */
-function difference(left, right) {
-  return Number.isFinite(left) && Number.isFinite(right) ? left - right : NaN;
-}
-
-/** @param {number[]} values @returns {number} */
-function mean(values) {
-  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : NaN;
-}
-
-/** @param {unknown} value @returns {number | null} */
-function finite(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
 }
 
 /** @param {unknown} value @returns {string} */

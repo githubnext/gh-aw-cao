@@ -10,7 +10,7 @@ import { renderPackagesView, renderPackageSummary, renderPackageUtilization, ren
 import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan } from './ui-primitives.js';
+import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan } from './ui-primitives.js';
 import { slugify } from './count-formatters.js';
 import { renderDefinitionList, renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
@@ -18,6 +18,8 @@ import { renderWorkflowRouteView } from './workflow-route-view.js';
 import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderExperimentsEvaluation } from './experiments-evaluation.js';
+import { renderWorkProjectView } from './work-project-view.js';
+import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
@@ -65,10 +67,12 @@ const ELEMENT_RENDERERS = new Map([
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['configuration-policy', renderConfigurationView],
   ['configuration-actions', renderConfigurationActions],
-  ['experiments-evaluation', renderExperimentsEvaluation]
+  ['experiments-evaluation', renderExperimentsEvaluation],
+  ['work-project-view', renderWorkProjectView],
+  ['agent-marketplace-view', renderAgentMarketplaceView]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view']);
 
 /**
  * @param {string} name
@@ -379,8 +383,8 @@ function renderReadinessVerdictElement(context) {
             ? 'The control plane should not be treated as ready for the next operation.'
             : 'Current readiness cannot be determined reliably.'),
         h('div', { className: 'readiness-snapshot-meta' },
-          h('span', null, h('strong', null, 'Snapshot'), ` ${snapshotAge(metadata)}`),
-          h('span', null, h('strong', null, 'Evidence'), ` ${evidenceState(metadata)}`)
+          renderLabeledSpan('Snapshot', ` ${snapshotAge(metadata)}`),
+          renderLabeledSpan('Evidence', ` ${evidenceState(metadata)}`)
         ),
         h('span', { className: 'readiness-verdict-legacy' }, verdict)
       ),
@@ -643,4 +647,3 @@ function stringValue(value) {
 function capitalize(value) {
   return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
-

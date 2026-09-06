@@ -338,7 +338,6 @@ function parseDocuments(source, errors) {
       uniqueKeys: false,
       merge: false
     });
-
     if (documents.some((document) => document.errors.length > 0)) {
       errors.push(createError(
         ERROR_CODES.invalidYamlSyntax,
@@ -497,6 +496,18 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       ));
     }
   });
+  if (Array.isArray(dashboard.callouts)) {
+    dashboard.callouts.forEach((callout, index) => {
+      if (!isPlainObject(callout) || typeof callout['navigation-page'] !== 'string') return;
+      if (IDENTIFIER_PATTERN.test(callout['navigation-page']) && !pageIds.has(callout['navigation-page'])) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'callout navigation-page must reference a declared dashboard page id.',
+          `$.dashboard.callouts[${index}].navigation-page`
+        ));
+      }
+    });
+  }
   validateUnitReferences(dashboard.pages, unitIds, errors);
 
   if (dashboard.navigation !== undefined) {
@@ -536,6 +547,9 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       validateStringField(callout.title, `${path}.title`, true, errors);
       validateStringField(callout.description, `${path}.description`, true, errors);
       validateOptionalStringField(callout.icon, `${path}.icon`, errors);
+      if (callout['navigation-page'] !== undefined) {
+        validateRequiredIdentifier(callout['navigation-page'], `${path}.navigation-page`, 'navigation-page', errors);
+      }
       if (typeof callout.icon === 'string' && !PAGE_ICON_VALUES.includes(callout.icon)) {
         errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'callout icon must use one canonical icon value.', `${path}.icon`));
       }

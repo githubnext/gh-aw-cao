@@ -2,12 +2,18 @@
  * Shared declarative workflow-route page primitives.
  */
 
-import { renderWorkflowRouteView } from './workflow-route-view.js';
+import { workflowRouteComposition, workflowRouteCompositionForPage } from './workflow-route-composition.js';
+import { renderWorkflowRouteShell } from './workflow-route-shell.js';
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
  * @returns {HTMLElement}
  */
 export function renderWorkflowRoutePage(context) {
-  return renderWorkflowRouteView(context);
+  return renderWorkflowRouteShell(
+    context,
+    context.elementConfig?.body
+      ? workflowRouteComposition(context.elementConfig.body)
+      : workflowRouteCompositionForPage(context.pageId)
+  );
 }

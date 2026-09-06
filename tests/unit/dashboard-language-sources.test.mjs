@@ -327,6 +327,11 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   const workItems = new Map(sources["work-items"].rows.map((row) => [row["work-item-id"], row]));
   const dependabot = workItems.get("githubnext/gh-aw-cao:.github/workflows/dependabot.md");
   const worker = workItems.get("githubnext/gh-aw-cao:.github/workflows/worker.md");
+  assert.equal(dependabot.name, "Dependabot");
+  assert.equal(dependabot["workflow-name"], "Dependabot");
+  assert.equal(dependabot["workflow-icon"], "workflow");
+  assert.equal(dependabot["started-at"], "2026-09-05T09:00:00Z");
+  assert.equal(dependabot["ended-at"], "");
   assert.equal(dependabot["lifecycle-state"], "blocked");
   assert.equal(dependabot.reason, "package-disabled");
   assert.equal(dependabot["consequence-tier"], "high");
@@ -487,6 +492,7 @@ test("dashboard source bridge expands GitHub telemetry resources", () => {
     "runway-ratio": null,
     "risk-status": "unknown",
     "risk-order": 3,
+    "is-unhealthy": false,
     "is-current": true,
     "attribution-status": "unavailable",
     "operation-consumed": null,
@@ -571,6 +577,7 @@ test("dashboard source bridge derives reset-safe rate-limit forecasts and correl
   assert.equal(rows[2]["projected-exhaustion-at"], "2026-09-04T15:00:00.000Z");
   assert.equal(rows[2]["runway-ratio"], 2);
   assert.equal(rows[2]["risk-status"], "healthy");
+  assert.equal(rows[2]["is-unhealthy"], false);
   assert.equal(rows[2]["is-current"], true);
 });
 
@@ -598,6 +605,7 @@ test("dashboard source bridge never carries burn forecasts across reset windows"
 
   const rows = sources["github-api-rate-limits"].rows;
   assert.equal(rows[2]["risk-status"], "critical");
+  assert.equal(rows[2]["is-unhealthy"], true);
   assert.equal(rows[2]["is-current"], false);
   assert.equal(rows[3]["consumed-since-previous"], null);
   assert.equal(rows[3]["burn-rate-per-minute"], null);

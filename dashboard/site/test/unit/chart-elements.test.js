@@ -69,6 +69,16 @@ describe('chart element helpers', () => {
     expect(legend.textContent).toContain('pass');
   });
 
+  it('explains scatter chart scale guides in the legend', () => {
+    const legend = renderChartLegend([
+      { name: 'core · app · max 5000', className: 'chart-series-1' }
+    ], 'scatter');
+
+    expect(legend.querySelectorAll('li')).toHaveLength(2);
+    expect(legend.querySelector('li:last-child i')?.className).toBe('chart-grid-key');
+    expect(legend.querySelector('li:last-child')?.textContent).toBe('Dashed lines show scale guides');
+  });
+
   it('DLS-SAFE-009 summarizes pie-chart entries and omits non-positive totals', () => {
     const summary = pieChartEntries([
       { x: 'open', y: 3, color: null },
@@ -336,12 +346,13 @@ describe('chart element helpers', () => {
     expect(pie.getAttribute('data-chart-widget')).toBe('pie');
     expect(pie.querySelectorAll('.pie-chart-segment')).toHaveLength(2);
     expect(pie.querySelector('.pie-chart-mark')?.getAttribute('style')).toContain('--chart-entry-index: 0');
-    expect(pie.querySelector('.pie-chart-track')?.getAttribute('stroke-width')).toBe('10');
+    expect(pie.querySelector('.pie-chart-track')?.getAttribute('stroke-width')).toBe('6');
     expect(pie.querySelector('.pie-chart-segment')?.tagName).toBe('path');
-    expect(pie.querySelector('.pie-chart-segment')?.getAttribute('stroke-width')).toBe('10');
+    expect(pie.querySelector('.pie-chart-segment')?.getAttribute('stroke-width')).toBe('6');
+    expect(pie.querySelector('.pie-chart-segment')?.getAttribute('stroke-linecap')).toBe('round');
     expect([...pie.querySelectorAll('.pie-chart-segment')].map((segment) => segment.getAttribute('d'))).toEqual([
-      'M 21 5.0845 A 15.9155 15.9155 0 1 1 5.0845 21',
-      'M 5.0845 21 A 15.9155 15.9155 0 0 1 21 5.0845'
+      'M 23.9823 5.3664 A 15.9155 15.9155 0 1 1 5.3664 23.9823',
+      'M 5.3664 18.0177 A 15.9155 15.9155 0 0 1 18.0177 5.3664'
     ]);
     expect(pie.querySelector('.pie-chart-segment')?.hasAttribute('stroke-dasharray')).toBe(false);
     expect(pie.querySelectorAll('.pie-chart-mark .point-tooltip')).toHaveLength(2);

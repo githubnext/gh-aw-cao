@@ -531,7 +531,6 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /actions\/create-github-app-token@v3\.2\.0/);
   assert.match(sharedControl, /permission-actions: read[\s\S]*?permission-contents: read/);
   assert.match(sharedControl, /CAO_API_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
-  assert.match(sharedControl, /CAO_GITHUB_API_GATE: \$\{\{ vars\.CAO_GITHUB_API_GATE \}\}/);
   assert.match(sharedControl, /name: Checkout CAO control modules/);
   assert.match(sharedControl, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/);
   assert.match(sharedControl, /ref: \$\{\{ github\.workflow_sha \}\}/);
@@ -542,12 +541,8 @@ test("control workflows deny before activation through one shared admission cont
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
   assert.doesNotMatch(sharedControl, /base64\s+(?:-d|--decode)/);
   assert.match(sharedControl, /node "\$cao_dir\/control\.mjs" admit/);
-  assert.equal([...sharedControl.matchAll(/permission-actions: write/g)].length, 2);
-  assert.equal([...sharedControl.matchAll(/control\.mjs" persist-api-gate/g)].length, 2);
-  assert.match(sharedControl, /steps\.cao_admission\.outputs\.github_api_gate_active != 'true'/);
-  assert.match(sharedControl, /steps\.cao_precompute\.outputs\.github_api_gate_active != 'true'/);
-  assert.match(sharedControl, /CAO_GATE_WRITE_TOKEN: \$\{\{ steps\.cao_admission_gate_writer_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \}\}/);
-  assert.match(sharedControl, /CAO_GATE_WRITE_TOKEN: \$\{\{ steps\.cao_precompute_gate_writer_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \}\}/);
+  assert.doesNotMatch(sharedControl, /permission-actions: write/);
+  assert.doesNotMatch(sharedControl, /CAO_GITHUB_API_GATE|persist-api-gate|gate_writer_token/);
   assert.match(sharedControl, /CAO admission blocked: GitHub API limited until \$\{\{ steps\.cao_admission\.outputs\.github_api_reset_at \}\}/);
   assert.match(sharedControl, /reason == 'github-api-capacity-insufficient'/);
   assert.match(sharedControl, /^\s+id: cao_precompute$/m);
@@ -2198,7 +2193,7 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
 });
 
-test("SelfCare dashboard performance worker rotates trace-backed persona improvements", () => {
+test("SelfCare dashboard performance worker selects one highest-ROI small win", () => {
   const source = workflow("self-care-dashboard-performance.md");
   const dashboard = JSON.parse(readFileSync(join(root, "self-care", "dashboard.json"), "utf8"));
   const views = dashboard.dashboard.pages[0].views;
@@ -2209,7 +2204,9 @@ test("SelfCare dashboard performance worker rotates trace-backed persona improve
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-dashboard-performance" in:body'/);
   assert.match(source, /cache-memory:\n\s+retention-days: 30\n\s+allowed-extensions: \["\.json"\]/);
   assert.match(source, /dashboard-performance-rotation\.json/);
-  assert.match(source, /advance `cursor` to the position after the evaluated candidate/);
+  assert.match(source, /Rank candidates by highest evidence-backed impact per unit of effort/);
+  assert.match(source, /Select exactly one highest-ranked actionable candidate/);
+  assert.match(source, /at most three production files plus focused tests/);
   assert.match(source, /DASHBOARD_PERFORMANCE_OUTPUT_DIR="\$evidence_root\/before"/);
   assert.match(source, /upload-artifact:[\s\S]*?self-care-dashboard-performance-evidence\/\*\*/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-performance\]/);
@@ -2330,14 +2327,19 @@ test("dashboard CI runs the package quality gates", () => {
   const lintUnit = jobs.get("lint-unit");
   const playwrightIntegration = jobs.get("playwright-integration");
   const lighthousePerformance = jobs.get("lighthouse-performance");
+  const lighthouseComment = jobs.get("lighthouse-comment");
 
   assert.match(source, /dashboard\/site\/\*\*/);
   assert.match(source, /working-directory: dashboard\/site/);
   assert.match(source, /cache-dependency-path: dashboard\/site\/package-lock\.json/);
-  assert.deepEqual([...jobs.keys()], ["lint-unit", "playwright-integration", "lighthouse-performance"]);
+  assert.deepEqual(
+    [...jobs.keys()],
+    ["lint-unit", "playwright-integration", "lighthouse-performance", "lighthouse-comment"]
+  );
   assert.deepEqual(lintUnit.needs, []);
   assert.deepEqual(playwrightIntegration.needs, []);
   assert.deepEqual(lighthousePerformance.needs, []);
+  assert.deepEqual(lighthouseComment.needs, ["lighthouse-performance"]);
   for (const command of ["npm run typecheck", "npm run lint", "npm test"]) {
     assert.match(lintUnit.block, new RegExp(`run: ${command.replaceAll(".", "\\.")}`));
   }
@@ -2348,11 +2350,39 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(playwrightIntegration.block, /npx playwright install --with-deps chromium/);
   assert.match(playwrightIntegration.block, /run: npm run test:e2e/);
   assert.doesNotMatch(playwrightIntegration.block, /run: npm (?:run (?:typecheck|lint)|test)$/m);
-  assert.match(lighthousePerformance.block, /run: npm run test:performance/);
+  assert.match(lighthousePerformance.block, /npm run test:performance/);
+  assert.match(lighthousePerformance.block, /status.*42/);
+  assert.doesNotMatch(lighthousePerformance.block, /pull-requests: write/);
   assert.match(lighthousePerformance.block, /uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
   assert.match(lighthousePerformance.block, /name: dashboard-lighthouse-performance/);
   assert.match(lighthousePerformance.block, /path: dashboard\/site\/test-results\/lighthouse\//);
   assert.match(lighthousePerformance.block, /if: always\(\)/);
+  assert.match(
+    lighthouseComment.block,
+    /if: >-\s+always\(\).*github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
+  );
+  assert.doesNotMatch(source, /^\s+pull_request_target:/m);
+  assert.match(lighthouseComment.block, /issues: write/);
+  assert.match(lighthouseComment.block, /pull-requests: read/);
+  assert.doesNotMatch(lighthouseComment.block, /pull-requests: write/);
+  assert.match(lighthouseComment.block, /uses: actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c/);
+  assert.match(lighthouseComment.block, /continue-on-error: true/);
+  assert.match(lighthouseComment.block, /if: steps\.download\.outcome == 'success'/);
+  assert.match(lighthouseComment.block, /Array\.isArray\(summary\.results\)/);
+  assert.match(lighthouseComment.block, /Lighthouse summary has an unexpected shape; skipping PR feedback/);
+  assert.match(lighthouseComment.block, /Array\.isArray\(result\.failures\)/);
+  assert.match(lighthouseComment.block, /Lighthouse summary contains unexpected results; skipping malformed entries/);
+  assert.match(lighthouseComment.block, /Lighthouse summary contains no usable results; skipping PR feedback/);
+  assert.match(lighthouseComment.block, /error instanceof Error \? error\.message : String\(error\)/);
+  assert.match(lighthouseComment.block, /head: `\$\{headOwner\}:\$\{headBranch\}`/);
+  assert.match(lighthouseComment.block, /using event pull request/);
+  assert.match(lighthouseComment.block, /### 📉🚦 Dashboard Lighthouse performance degraded/);
+  assert.match(lighthouseComment.block, /github\.paginate\(github\.rest\.issues\.listComments/);
+  assert.match(lighthouseComment.block, /comments\.filter\(\(comment\)/);
+  assert.match(lighthouseComment.block, /existing\.slice\(1\)/);
+  assert.match(lighthouseComment.block, /issues\.deleteComment/);
+  assert.match(lighthouseComment.block, /issues\.updateComment/);
+  assert.match(lighthouseComment.block, /issues\.createComment/);
 });
 
 test("clean-room compilation emits the expected GitHub Actions settings", { timeout: 120_000 }, () => {

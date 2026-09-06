@@ -305,7 +305,11 @@ export function githubTelemetryRows(entries = [], generatedAt = new Date().toISO
       "runway-ratio": null,
       "risk-status": "unknown",
       "risk-order": 3,
+      "is-unhealthy": false,
       "is-current": false,
+      ...(entry.repository && entry.runId
+        ? { "run-link": link("run", workflowRunUrl(entry.repository, entry.runId), `View run ${entry.runId}`) }
+        : {}),
       "attribution-status": "unavailable",
       "operation-consumed": null,
     }];
@@ -366,6 +370,7 @@ export function githubTelemetryRows(entries = [], generatedAt = new Date().toISO
       }
       row["risk-status"] = riskStatus(row, complete, freshness);
       row["risk-order"] = { critical: 0, warning: 1, healthy: 2, unknown: 3 }[row["risk-status"]];
+      row["is-unhealthy"] = ["critical", "warning"].includes(row["risk-status"]) && row["remaining-percent"] < 100;
     }
   }
 
@@ -1854,9 +1859,13 @@ function workItemRows(workflows, runs, outcomes) {
     const lifecycleState = workItemLifecycle(latestRun);
     return {
       "work-item-id": key,
+      name: workflow["workflow-name"] || workflow.workflow,
       objective: workflow["workflow-name"] || workflow.workflow,
       organization: workflow.organization,
       repository: workflow.repository,
+      workflow: workflow.workflow,
+      "workflow-name": workflow["workflow-name"] || workflow.workflow,
+      "workflow-icon": workflow["package-icon"] || "workflow",
       scope: `${workflow.organization}/${workflow.repository}`,
       domain: workflow["package-name"] || "standalone",
       "work-type": workflow["workflow-role"] || "unknown",
@@ -1874,6 +1883,8 @@ function workItemRows(workflows, runs, outcomes) {
       "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
       "verification-state": outcomeVerificationState(latestOutcome?.["outcome-state"]),
       "outcome-state": latestOutcome?.["outcome-state"] || "pending",
+      "started-at": latestRun?.["started-at"] || workflow["observed-at"],
+      "ended-at": latestRun?.["ended-at"] || "",
       "observed-at": latestRun?.["started-at"] || workflow["observed-at"],
       "evidence-link": latestOutcome?.["external-link"] || latestRun?.["run-link"],
       "run-link": latestRun?.["run-link"],
@@ -1925,6 +1936,21 @@ function agentAssignmentRows(workflows, runs, workItems) {
   };
   const rows = [];
   const activeCountByWorkItem = new Map();
+  const agentStats = new Map();
+  for (const run of runs) {
+    const engine = run.engine && run.engine !== "unknown" ? run.engine : null;
+    const model = run["resolved-model"] && run["resolved-model"] !== "unknown"
+      ? run["resolved-model"]
+      : run["requested-model"] && run["requested-model"] !== "unknown" ? run["requested-model"] : null;
+    if (!engine && !model) continue;
+    const id = `${engine || "unknown-engine"}:${model || "unknown-model"}`;
+    const started = Date.parse(run["started-at"] || "");
+    const ended = Date.parse(run["ended-at"] || "");
+    const stats = agentStats.get(id) || { runs: 0, runtime: 0 };
+    stats.runs += 1;
+    if (Number.isFinite(started) && Number.isFinite(ended)) stats.runtime += Math.max(0, ended - started) / 1000;
+    agentStats.set(id, stats);
+  }
   for (const workflow of workflows) {
     const key = workItemKey(workflow.organization, workflow.repository, workflow.workflow);
     const latestRun = runsByWorkItem.get(key)?.[0];
@@ -1938,6 +1964,8 @@ function agentAssignmentRows(workflows, runs, workItems) {
     const workItem = workItemsByKey.get(key);
     const lifecycleState = workItem?.["lifecycle-state"] || "unknown";
     const assignmentState = assignmentStateFor[lifecycleState] || "unknown";
+    const agentId = `${engine || "unknown-engine"}:${model || "unknown-model"}`;
+    const stats = agentStats.get(agentId) || { runs: 0, runtime: 0 };
     if (assignmentState === "active" || assignmentState === "pending") {
       activeCountByWorkItem.set(key, (activeCountByWorkItem.get(key) || 0) + 1);
     }
@@ -1945,8 +1973,13 @@ function agentAssignmentRows(workflows, runs, workItems) {
       key,
       row: {
         "assignment-id": `${key}:${engine || "unknown-engine"}:${model || "unknown-model"}`,
-        "agent-id": `${engine || "unknown-engine"}:${model || "unknown-model"}`,
+        "agent-id": agentId,
         "agent-name": [engine, model].filter(Boolean).join(" · ") || "Unknown agent",
+        "agent-icon": engine === "copilot" ? "copilot" : "robot",
+        "agent-description": `${workflow["workflow-name"] || workflow.workflow || "Agent"} automation`,
+        permissions: workflow["gh-aw-metadata"]?.permissions
+          ? Object.entries(workflow["gh-aw-metadata"].permissions).map(([name, level]) => `${name}: ${level}`).join(", ")
+          : "Not declared",
         "agent-state": assignmentState,
         "work-item-id": workItem?.["work-item-id"] || key,
         objective: workItem?.objective || workflow["workflow-name"] || workflow.workflow,
@@ -1954,6 +1987,11 @@ function agentAssignmentRows(workflows, runs, workItems) {
         "handoff-state": lifecycleState === "completed" ? "completed" : lifecycleState === "waiting" ? "pending" : "in-progress",
         "dependency-state": workItem?.["waiting-on"] ? "waiting" : "resolved",
         "conflict-state": "none",
+        "run-count": stats.runs,
+        "total-runtime-seconds": stats.runtime,
+        "last-observed-at": latestRun?.["started-at"] || workItem?.["observed-at"],
+        "long-running": stats.runtime >= 1800,
+        stale: !latestRun?.["started-at"] || (Date.now() - Date.parse(latestRun["started-at"])) >= 86_400_000,
         "observed-at": latestRun?.["started-at"] || workItem?.["observed-at"],
         "evidence-link": workItem?.["evidence-link"],
         "repository-link": link("repository", `https://github.com/${workflow.organization}/${workflow.repository}`, `View ${workflow.organization}/${workflow.repository} on GitHub`),

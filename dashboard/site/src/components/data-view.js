@@ -347,9 +347,12 @@ function renderChartView(context) {
             ])
       ))
     }) : null;
+    const chartLegend = color && !['heatmap', 'pie', 'swimlane'].includes(chartType)
+      ? renderChartLegend(chartSeries, chartType)
+      : null;
     return {
       chartContent: [
-        ...(color && !['heatmap', 'pie', 'swimlane'].includes(chartType) ? [renderChartLegend(chartSeries, chartType)] : []),
+        ...(chartLegend && chartType !== 'scatter' ? [chartLegend] : []),
         ...(pieSummary
           ? [h('div', { className: 'pie-chart-layout' }, chartWidget, renderPieLegend(
               pieSummary.entries,
@@ -357,7 +360,8 @@ function renderChartView(context) {
               chartCategoryLinks(renderedPoints),
               y ? fieldUnit(y, context.units ?? {}) : null
             ))]
-          : [chartWidget])
+          : [chartWidget]),
+        ...(chartLegend && chartType === 'scatter' ? [chartLegend] : [])
       ],
       table
     };

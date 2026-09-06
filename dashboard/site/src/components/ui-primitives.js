@@ -99,6 +99,19 @@ export function renderVitalStat(label, value, detail) {
 }
 
 /**
+ * Renders a `<span><strong>{label}</strong>{value}</span>` inline metadata
+ * pair. Shared by the horizon tooltip window summary and the control-plane
+ * readiness snapshot meta row, which both present a bolded label followed by
+ * a plain-text value inside a single inline span.
+ * @param {string} label
+ * @param {unknown} value
+ * @returns {HTMLElement}
+ */
+export function renderLabeledSpan(label, value) {
+  return h('span', null, h('strong', null, label), value);
+}
+
+/**
  * @param {{ id: string, label: string, description: string, icon: Node, content?: Node }} options
  * @returns {HTMLElement}
  */

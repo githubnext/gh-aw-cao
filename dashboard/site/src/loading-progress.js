@@ -21,7 +21,7 @@ function installStyles(document) {
   inset: 0 0 auto;
   height: 2px;
   overflow: hidden;
-  background: var(--accent, #58a6ff);
+  background: var(--accent);
   opacity: 1;
   pointer-events: none;
   transform: scaleX(0);
@@ -32,7 +32,7 @@ function installStyles(document) {
   position: absolute;
   inset: 0;
   content: "";
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--on-emphasis, #ffffff) 65%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--on-emphasis) 65%, transparent), transparent);
   transform: translateX(-100%);
   animation: loading-progress-shimmer 1.2s ease-in-out infinite;
 }
