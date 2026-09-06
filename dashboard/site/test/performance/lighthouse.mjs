@@ -237,6 +237,6 @@ try {
   const exitCode = await main();
   if (exitCode !== 0) process.exitCode = exitCode;
 } catch (error) {
-  console.error(error);
+  console.error(error instanceof Error ? error.stack : error);
   process.exitCode = 1;
 }
