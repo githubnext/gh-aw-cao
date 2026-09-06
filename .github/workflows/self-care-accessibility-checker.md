@@ -59,6 +59,7 @@ imports:
       role: worker
       worker: accessibility-checker
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

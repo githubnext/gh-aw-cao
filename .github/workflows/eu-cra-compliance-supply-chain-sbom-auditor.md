@@ -62,6 +62,7 @@ imports:
       role: worker
       worker: supply-chain-sbom-auditor
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

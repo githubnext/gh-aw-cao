@@ -51,6 +51,7 @@ imports:
       package: self-care
       role: worker
       worker: dashboard-review
+  - uses: shared/worker.md
 permissions:
   actions: read
   contents: read

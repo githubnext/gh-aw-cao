@@ -56,6 +56,7 @@ imports:
       role: worker
       worker: dashboard-performance
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

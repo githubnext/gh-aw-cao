@@ -72,6 +72,7 @@ imports:
       package: dependabot
       role: worker
       worker: release-train-updater
+  - uses: shared/worker.md
   - uses: shared/review-bundle.md
 
 permissions:

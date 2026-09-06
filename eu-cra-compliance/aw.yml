@@ -4,6 +4,8 @@ min-version: v0.88.4
 experimental: true
 includes:
   - .github/workflows/shared/control.md
+  - .github/workflows/shared/dispatcher.md
+  - .github/workflows/shared/worker.md
   - .github/workflows/eu-cra-compliance.md
   - .github/workflows/eu-cra-compliance-package-maintainer.md
   - .github/workflows/eu-cra-compliance-scope-classifier.md

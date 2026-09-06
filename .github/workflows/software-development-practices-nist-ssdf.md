@@ -61,6 +61,7 @@ imports:
       role: worker
       worker: nist-ssdf
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

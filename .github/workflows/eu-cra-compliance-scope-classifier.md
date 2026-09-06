@@ -62,6 +62,7 @@ imports:
       role: worker
       worker: scope-classifier
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

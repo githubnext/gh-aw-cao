@@ -58,6 +58,7 @@ imports:
       role: worker
       worker: primer-brand-checker
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

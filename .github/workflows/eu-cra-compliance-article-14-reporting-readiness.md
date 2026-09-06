@@ -62,6 +62,7 @@ imports:
       role: worker
       worker: article-14-reporting-readiness
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

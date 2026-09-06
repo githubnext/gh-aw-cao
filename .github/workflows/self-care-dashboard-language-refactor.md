@@ -56,6 +56,7 @@ imports:
       role: worker
       worker: dashboard-language-refactor
 
+  - uses: shared/worker.md
 permissions:
   actions: read
   contents: read

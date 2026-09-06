@@ -61,6 +61,7 @@ imports:
       orchestrator_credits: 250
       worker_credits_per_target: 600
 
+  - uses: shared/dispatcher.md
 permissions:
   contents: read
   actions: read

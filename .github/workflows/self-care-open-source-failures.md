@@ -49,6 +49,7 @@ imports:
       package: self-care
       role: worker
       worker: open-source-failures
+  - uses: shared/worker.md
   - uses: shared/activity-cache.md
 
 permissions:

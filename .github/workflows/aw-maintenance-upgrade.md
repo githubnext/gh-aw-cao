@@ -65,6 +65,7 @@ imports:
       role: worker
       worker: upgrade
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read
@@ -118,10 +119,10 @@ steps:
   - name: Deterministic pre-fetch of gh-aw release and target version evidence
     uses: actions/github-script@v9.0.0
     env:
-      GH_TOKEN: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       TARGET_REPOSITORY: ${{ inputs.target_repo }}
     with:
-      github-token: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       script: |
         const fs = require('fs');
         const path = require('path');

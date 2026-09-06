@@ -62,6 +62,7 @@ imports:
       role: worker
       worker: conformity-release-evidence
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

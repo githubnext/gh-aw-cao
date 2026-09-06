@@ -56,6 +56,7 @@ imports:
       role: worker
       worker: code-improvement
 
+  - uses: shared/worker.md
 permissions:
   contents: read
   actions: read

@@ -64,6 +64,7 @@ imports:
       package: optimization
       role: worker
       worker: ai-credit-auditor
+  - uses: shared/worker.md
   - uses: shared/activity-cache.md
 
 permissions:
@@ -141,7 +142,7 @@ steps:
       python3 -m pip install --quiet --target /tmp/gh-aw/token-audit/site-packages pandas matplotlib seaborn
   - name: Download agentic workflow logs
     env:
-      GH_TOKEN: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ inputs.target_repo }}
     run: |
       set -euo pipefail
@@ -188,7 +189,7 @@ steps:
       rm -f "$RAW_LOGS"
   - name: Forecast AI Credit spend
     env:
-      GH_TOKEN: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       TARGET_REPOSITORY: ${{ inputs.target_repo }}
     run: |
       set -uo pipefail

@@ -49,6 +49,7 @@ imports:
       role: worker
       worker: docs-build-time-investigator
 
+  - uses: shared/worker.md
 permissions:
   actions: read
   contents: read

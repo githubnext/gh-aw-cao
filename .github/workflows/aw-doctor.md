@@ -65,6 +65,7 @@ imports:
       orchestrator_credits: 250
       worker_credits_per_target: 1000
 
+  - uses: shared/dispatcher.md
 permissions:
   contents: read
   actions: read
@@ -88,7 +89,7 @@ steps:
   - name: Deterministic pre-fetch of AW Doctor evidence
     uses: actions/github-script@v9.0.0
     with:
-      github-token: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       script: |
         const fs = require('fs');
         const path = require('path');
@@ -413,7 +414,7 @@ Dispatch stays repository-scoped: one worker run per selected repository. Do not
 
 ## Completion
 
-Finish with the standard `## Orchestrator Report` inherited from `shared/control.md`. Keep every standard heading and field — `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome` — and use `0`, `none`, or `not applicable` for empty standard fields instead of omitting them. Use the exact `total_repositories_scanned` value from precompute and distinguish eligible, selected, skipped, and deferred repositories.
+Finish with the standard `## Orchestrator Report` inherited from `shared/dispatcher.md`. Keep every standard heading and field — `Scope`, `Repository Decisions`, `Workers`, `Dispatches`, and `Outcome` — and use `0`, `none`, or `not applicable` for empty standard fields instead of omitting them. Use the exact `total_repositories_scanned` value from precompute and distinguish eligible, selected, skipped, and deferred repositories.
 
 Add these bundle-specific details alongside the standard fields, never in place of them:
 
