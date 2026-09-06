@@ -164,9 +164,11 @@ jobs:
           REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
         run: |
           node "$GITHUB_TELEMETRY" before process-activity || true
-          node "$DASHBOARD_REPORT_ROOT/aic-usage.mjs"
-          node "$DASHBOARD_REPORT_ROOT/operational-values.mjs"
-          node "$DASHBOARD_REPORT_ROOT/records.mjs"
+          status=0
+          node "$DASHBOARD_REPORT_ROOT/aic-usage.mjs" || status=$?
+          node "$DASHBOARD_REPORT_ROOT/operational-values.mjs" || status=$?
+          node "$DASHBOARD_REPORT_ROOT/records.mjs" || status=$?
+          exit "$status"
 
       - name: Record activity collection GitHub API state
         if: always() && env.DASHBOARD_COLLECTION == 'true'
