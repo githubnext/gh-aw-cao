@@ -1356,6 +1356,10 @@ dashboard:
         code: 'DLS-E014',
         path: '$.dashboard.pages[0].views[0].views'
       }));
+      expect(rejected.errors).not.toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
     }
 
     const chart = source
@@ -1370,6 +1374,20 @@ dashboard:
       }));
       expect(chartResult.errors).not.toContainEqual(expect.objectContaining({
         code: 'DLS-E014',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+    }
+
+    const malformedNestedViews = source.replace('          views: []', '          views: {}');
+    const malformedResult = validateDashboardDocument(malformedNestedViews);
+    expect(malformedResult.ok).toBe(false);
+    if (!malformedResult.ok) {
+      expect(malformedResult.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E014',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+      expect(malformedResult.errors).not.toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
         path: '$.dashboard.pages[0].views[0].views'
       }));
     }

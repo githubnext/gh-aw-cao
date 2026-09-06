@@ -1364,7 +1364,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     ));
   }
 
-  validateObjectKeys(viewNode, view.locked === true ? [...VIEW_KEYS, 'views'] : VIEW_KEYS, path, errors);
+  validateObjectKeys(viewNode, view.mark === 'chart' ? VIEW_KEYS : [...VIEW_KEYS, 'views'], path, errors);
   validateRequiredIdentifier(view.id, `${path}.id`, 'view id', errors);
   if (typeof view.id === 'string') {
     if (viewIds.has(view.id)) {
@@ -1966,7 +1966,7 @@ function validateGraphicalLayout(views, viewsPath, errors) {
   }
 
   for (const [index, view] of views.entries()) {
-    if (!isPlainObject(view) || view.locked === true || view.mark === 'chart' || !Array.isArray(view.views)) continue;
+    if (!isPlainObject(view) || view.locked === true || view.mark === 'chart' || !Object.hasOwn(view, 'views')) continue;
     errors.push(createError(
       ERROR_CODES.invalidGraphicalNesting,
       'Views are top-level boxes and must not contain nested views.',
