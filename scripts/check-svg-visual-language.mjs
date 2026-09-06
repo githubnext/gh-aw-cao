@@ -148,7 +148,11 @@ function nestedBoxViolations(svg, rootAttributes) {
         || inner.y + inner.height < outer.y + outer.height
       );
       if (strictlyContained) {
-        violations.push(`Box <rect> #${inner.index} is nested inside box <rect> #${outer.index}; boxes must be top-level.`);
+        violations.push(
+          `Box <rect> #${inner.index} at (${inner.x}, ${inner.y}, ${inner.width}, ${inner.height}) `
+          + `is nested inside box <rect> #${outer.index} at (${outer.x}, ${outer.y}, ${outer.width}, ${outer.height}); `
+          + "boxes must be top-level.",
+        );
       }
     }
   }
