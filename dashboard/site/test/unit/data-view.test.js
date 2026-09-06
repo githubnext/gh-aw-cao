@@ -199,6 +199,39 @@ describe('data view renderer', () => {
     expect(explicitTable?.querySelector('.custom-chart-table')).not.toBeNull();
   });
 
+  it('renders the scatter legend after the graph', () => {
+    const scatter = renderDataView('chart', {
+      pageId: 'github-api',
+      title: 'Quota history',
+      view: {
+        mark: 'chart',
+        chart: 'scatter',
+        encoding: {
+          x: { field: 'observed-at', type: 'temporal' },
+          y: { field: 'remaining-percent', type: 'quantitative' },
+          color: { field: 'maximum-lane', type: 'nominal' }
+        }
+      },
+      sourceName: 'github-api-rate-limits',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints: () => [
+        { key: 'point-1', x: '2026-09-04T10:00:00Z', y: 90, color: 'core · max 5000', link: null }
+      ],
+      prepareChartPoints: (points) => points,
+      toText: String
+    });
+    const chart = scatter?.querySelector('.scatter-chart-widget');
+    const legend = scatter?.querySelector('.chart-legend-scatter');
+
+    expect(chart).not.toBeNull();
+    expect(legend).not.toBeNull();
+    expect(chart?.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('shows worker progress while clustering large scatter plots and renders a bounded result', async () => {
     class ScatterWorker extends EventTarget {
       /** @param {Record<string, unknown>} request */
