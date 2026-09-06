@@ -1833,7 +1833,7 @@ function latestByWorkItemKey(rows, keyFor, sortField) {
   return grouped;
 }
 
-function workItemRows(workflows, runs, outcomes) {
+function workItemRows(workflows, runs, outcomes, operationalValues = []) {
   const runsByWorkItem = latestByWorkItemKey(
     runs,
     (run) => workItemKey(run.organization, run.repository, run.workflow),
@@ -1847,11 +1847,40 @@ function workItemRows(workflows, runs, outcomes) {
     ),
     "observed-at",
   );
+  const valuesByWorkItem = latestByWorkItemKey(
+    operationalValues,
+    (value) => workItemKey(value.organization, value.repository, value.workflow),
+    "observed-at",
+  );
   return workflows.map((workflow) => {
     const key = workItemKey(workflow.organization, workflow.repository, workflow.workflow);
-    const latestRun = runsByWorkItem.get(key)?.[0];
+    const workItemRuns = runsByWorkItem.get(key) || [];
+    const latestRun = workItemRuns[0];
     const latestOutcome = outcomesByWorkItem.get(key)?.[0];
+    const latestValue = valuesByWorkItem.get(key)?.[0];
     const lifecycleState = workItemLifecycle(latestRun);
+    const stateHistory = [...workItemRuns].reverse().flatMap((run) => {
+      const execution = {
+        phase: run["run-status"] || run["run-conclusion"] || "unknown",
+        "observed-at": run["started-at"],
+        "ended-at": run["ended-at"],
+        reason: run["admission-reason"] || run["failure-message"] || `Run ${run.run || "unknown"}`,
+        "transition-kind": "observed",
+        "run-link": run["run-link"],
+      };
+      if (!run.resource && !run["resource-reset-at"]) return [execution];
+      return [
+        execution,
+        {
+          phase: "waiting",
+          "observed-at": run["started-at"],
+          "ended-at": run["resource-reset-at"],
+          reason: run.resource ? `Waiting on ${run.resource}` : "Waiting boundary unavailable",
+          "transition-kind": "observed",
+          "run-link": run["run-link"],
+        },
+      ];
+    });
     return {
       "work-item-id": key,
       objective: workflow["workflow-name"] || workflow.workflow,
@@ -1872,8 +1901,12 @@ function workItemRows(workflows, runs, outcomes) {
       "waiting-since": latestRun?.["resource-reset-at"] || latestRun?.["started-at"] || "",
       owner: workflow["package-name"] || workflow.organization,
       "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
+      "execution-state": latestRun?.["run-conclusion"] || latestRun?.["run-status"] || "unavailable",
       "verification-state": outcomeVerificationState(latestOutcome?.["outcome-state"]),
       "outcome-state": latestOutcome?.["outcome-state"] || "pending",
+      "artifact-state": latestOutcome ? "produced" : "pending",
+      "maturity-status": latestValue?.["maturity-status"] || (latestOutcome ? "immature" : "unavailable"),
+      "state-history": stateHistory,
       "observed-at": latestRun?.["started-at"] || workflow["observed-at"],
       "evidence-link": latestOutcome?.["external-link"] || latestRun?.["run-link"],
       "run-link": latestRun?.["run-link"],
@@ -1954,6 +1987,9 @@ function agentAssignmentRows(workflows, runs, workItems) {
         "handoff-state": lifecycleState === "completed" ? "completed" : lifecycleState === "waiting" ? "pending" : "in-progress",
         "dependency-state": workItem?.["waiting-on"] ? "waiting" : "resolved",
         "conflict-state": "none",
+        "started-at": latestRun?.["started-at"],
+        "ended-at": latestRun?.["ended-at"],
+        "coordination-source": "observed",
         "observed-at": latestRun?.["started-at"] || workItem?.["observed-at"],
         "evidence-link": workItem?.["evidence-link"],
         "repository-link": link("repository", `https://github.com/${workflow.organization}/${workflow.repository}`, `View ${workflow.organization}/${workflow.repository} on GitHub`),
@@ -1975,13 +2011,19 @@ function evidenceRecordRows(outcomes, findings, workItems) {
     const workItem = resolveWorkItem(organization, repository, outcome.workflow);
     return {
       "evidence-id": outcome["safe-output"],
-      "evidence-class": "outcome",
+      "evidence-class": outcome["evidence-strength"] === "durable" ? "observed" : "annotated",
       "evidence-kind": outcome["outcome-category"] || "unknown",
       "work-item-id": workItem?.["work-item-id"] || workItemKey(organization, repository, outcome.workflow),
       objective: workItem?.objective || outcome["workflow-name"] || "Unknown objective",
       claim: outcome["outcome-title"] || outcome["outcome-summary"] || "",
       "verification-state": outcomeVerificationState(outcome["outcome-state"]),
+      "evidence-disposition": outcome["outcome-state"] === "rejected" ? "contradicts" : "supports",
       "provenance-state": outcome["evidence-strength"] === "durable" ? "durable" : "proposal",
+      "authority-state": "available",
+      execution: outcome.run || "",
+      "artifact-state": "produced",
+      "outcome-state": outcome["outcome-state"],
+      "maturity-status": "unavailable",
       "source-revision": outcome.run || "",
       "observed-at": outcome["observed-at"],
       "evidence-link": outcome["external-link"],
@@ -1995,14 +2037,20 @@ function evidenceRecordRows(outcomes, findings, workItems) {
     const workItem = resolveWorkItem(organization, repository, finding.workflow);
     return {
       "evidence-id": finding.finding,
-      "evidence-class": "finding",
+      "evidence-class": "observed",
       "evidence-kind": finding["finding-kind"] || "unknown",
       "work-item-id": workItem?.["work-item-id"] || workItemKey(organization, repository, finding.workflow),
       objective: workItem?.objective || "Unknown objective",
       claim: finding["finding-summary"] || "",
       "verification-state": finding["finding-status"] === "resolved" ? "accepted"
         : finding["finding-status"] === "dismissed" ? "rejected" : "pending",
+      "evidence-disposition": finding["finding-status"] === "dismissed" ? "contradicts" : "supports",
       "provenance-state": "durable",
+      "authority-state": "available",
+      execution: finding.run || "",
+      "artifact-state": finding["external-link"] ? "produced" : "unavailable",
+      "outcome-state": finding["finding-status"] || "pending",
+      "maturity-status": "unavailable",
       "source-revision": finding.run || "",
       "observed-at": finding["observed-at"],
       "evidence-link": finding["external-link"],
@@ -2231,17 +2279,17 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const workflowRoleForRecord = recordWorkflowRoleResolver(workflows);
   const findings = findingRows(records, workflowRoleForRecord);
   const outcomes = outcomeRows(records, workflowRoleForRecord);
+  const values = operationalValueRows(operationalValues);
   const reportAvailable = Array.isArray(report.records) && (report.error ? report.records.length > 0 : true);
   const reportComplete = !report.error;
   const runComplete = deployed.runHealth?.complete === true;
   const workItemsAvailable = workflows.length > 0;
   const workItemsComplete = workItemsAvailable && runComplete;
-  const workItems = workItemRows(workflows, runs, outcomes);
+  const workItems = workItemRows(workflows, runs, outcomes, values);
   const attentionSignals = attentionSignalRows(workItems, generatedAt);
   const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
   const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
-  const values = operationalValueRows(operationalValues);
   const experiments = experimentTelemetryRows(usage);
   const graders = graderTelemetryRows(usage);
   const evals = evalTelemetryRows(usage);

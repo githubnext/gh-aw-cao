@@ -3785,7 +3785,7 @@
               ]
             },
             "mark": "element",
-            "element": "attention-stack",
+            "element": "signal-list",
             "layout": "full"
           },
           {
@@ -6867,7 +6867,7 @@
               ]
             },
             "mark": "element",
-            "element": "signal-list",
+            "element": "attention-stack",
             "layout": "full"
           },
           {
@@ -6875,8 +6875,9 @@
             "title": "Work in progress",
             "description": "Current delegated work at work-item grain, independent of the number of executions or agents involved.",
             "data": {
-              "source": "work-items",
-              "limit": 5
+              "sources": [
+                "work-items"
+              ]
             },
             "mark": "element",
             "element": "work-list",
@@ -6888,13 +6889,8 @@
             "title": "Outcomes",
             "description": "Recent retained outcomes remain distinct from runtime success and operational value.",
             "data": {
-              "source": "outcomes",
-              "limit": 5,
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
+              "sources": [
+                "outcomes"
               ]
             },
             "mark": "element",
@@ -6932,7 +6928,9 @@
             "title": "Work by lifecycle state",
             "description": "Current distribution of work across active, waiting, blocked, review, completed, and cancelled states.",
             "data": {
-              "source": "work-items"
+              "sources": [
+                "work-items"
+              ]
             },
             "mark": "element",
             "element": "state-summary",
@@ -6944,7 +6942,9 @@
             "title": "Work inventory",
             "description": "State, reason, next action, waiting condition, and owner for each stable work item.",
             "data": {
-              "source": "work-items"
+              "sources": [
+                "work-items"
+              ]
             },
             "mark": "element",
             "element": "work-list",
@@ -6966,7 +6966,9 @@
             "title": "Agents by state",
             "description": "Current assignment-state distribution for observed agents.",
             "data": {
-              "source": "agent-assignments"
+              "sources": [
+                "agent-assignments"
+              ]
             },
             "mark": "element",
             "element": "state-summary",
@@ -6978,7 +6980,9 @@
             "title": "Assignments and coordination",
             "description": "Observed agent assignments with handoff, dependency, and conflict state.",
             "data": {
-              "source": "agent-assignments"
+              "sources": [
+                "agent-assignments"
+              ]
             },
             "mark": "element",
             "element": "agent-assignment-list",
@@ -7000,7 +7004,9 @@
             "title": "Evidence by class",
             "description": "Observed, derived, annotated, inferred, and unsupported evidence remain distinguishable.",
             "data": {
-              "source": "evidence-records"
+              "sources": [
+                "evidence-records"
+              ]
             },
             "mark": "element",
             "element": "state-summary",
@@ -7012,7 +7018,9 @@
             "title": "Evidence ledger",
             "description": "Claims, verification state, provenance coverage, source revision, and direct evidence links.",
             "data": {
-              "source": "evidence-records"
+              "sources": [
+                "evidence-records"
+              ]
             },
             "mark": "element",
             "element": "evidence-list",
@@ -7126,12 +7134,8 @@
             "title": "Current GitHub API capacity",
             "description": "Fresh observed capacity by credential and resource. Missing telemetry is not treated as zero.",
             "data": {
-              "source": "github-api-rate-limits",
-              "order-by": [
-                {
-                  "field": "remaining-percent",
-                  "direction": "asc"
-                }
+              "sources": [
+                "github-api-rate-limits"
               ]
             },
             "mark": "element",

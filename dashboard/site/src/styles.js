@@ -1021,6 +1021,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .truth-rail-compact { margin-block: 2px; }
 .truth-rail-compact small { display: none; }
 .state-summary { display: grid; gap: 2px; padding: 4px 0; }
+.state-summary-context { margin: 0 8px 8px; color: var(--muted); font-size: .75rem; }
+.state-summary-context strong { color: var(--fg); }
 .state-summary-row { min-height: 44px; display: grid; grid-template-columns: minmax(90px, .35fr) 36px minmax(120px, 1fr); align-items: center; gap: 12px; padding: 5px 8px; border: 0; border-radius: 6px; color: var(--fg); background: transparent; text-align: left; cursor: pointer; }
 .state-summary-row:hover, .state-summary-row[aria-pressed="true"] { background: var(--neutral-muted); }
 .state-summary-row:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }

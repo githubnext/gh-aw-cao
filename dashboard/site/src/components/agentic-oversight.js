@@ -56,7 +56,11 @@ export const AGENTIC_OVERSIGHT_EMPTY_AWARE_ELEMENTS = new Set([
 
 /** @param {OversightContext} context */
 function renderAttentionStack(context) {
-  const rows = rankedRows(context, context.sourceNames[0], 'priority');
+  const rows = rankedRows(context, context.sourceNames[0], 'priority').filter((row) => {
+    const recovery = text(row['recovery-state']).toLowerCase();
+    const signal = text(row['signal-type']).toLowerCase();
+    return !row['resolved-at'] && recovery !== 'autonomous' && !['recovered', 'resolved'].includes(signal);
+  });
   const content = rows.length === 0
     ? h('p', { className: 'oversight-empty', role: 'status' }, 'Nothing currently needs human attention.')
     : h(
@@ -100,7 +104,8 @@ function renderAttentionStack(context) {
 
 /** @param {OversightContext} context */
 function renderWorkList(context) {
-  const rows = rowsFor(context, context.sourceNames[0]);
+  const sourceRows = rowsFor(context, context.sourceNames[0]);
+  const rows = context.pageId === 'home' ? sourceRows.slice(0, 5) : sourceRows;
   return section(context, h(
     'div',
     { className: 'oversight-list work-list', 'aria-label': 'Delegated work' },
@@ -160,7 +165,10 @@ function renderWorkCard(row, allRows) {
 
 /** @param {OversightContext} context */
 function renderOutcomeList(context) {
-  const rows = rowsFor(context, context.sourceNames[0]);
+  const sourceRows = [...rowsFor(context, context.sourceNames[0])].sort((left, right) =>
+    Date.parse(text(right['observed-at'])) - Date.parse(text(left['observed-at']))
+  );
+  const rows = context.pageId === 'home' ? sourceRows.slice(0, 5) : sourceRows;
   return section(context, h(
     'div',
     { className: 'oversight-list outcome-list', 'aria-label': 'Recent outcomes' },
@@ -221,9 +229,21 @@ function renderStateSummary(context) {
     return (leftIndex < 0 ? preferredOrder.length : leftIndex) - (rightIndex < 0 ? preferredOrder.length : rightIndex);
   });
   const max = Math.max(1, ...entries.map(([, count]) => count));
+  const coordinationIssues = sourceName === 'agent-assignments'
+    ? rows.filter((row) =>
+        (text(row['conflict-state']) && text(row['conflict-state']) !== 'none')
+        || ['waiting', 'blocked'].includes(text(row['dependency-state']).toLowerCase())
+      ).length
+    : 0;
+  const metadata = context.sources[sourceName]?.metadata;
   const list = h(
     'div',
     { className: 'state-summary', 'aria-label': `${context.title}: ${rows.length} total` },
+    sourceName === 'agent-assignments'
+      ? h('p', { className: 'state-summary-context' }, h('strong', null, `${rows.length} agents`), ` · ${coordinationIssues} coordination ${coordinationIssues === 1 ? 'issue' : 'issues'}`)
+      : sourceName === 'evidence-records'
+        ? h('p', { className: 'state-summary-context' }, `Availability ${text(metadata?.availability) || 'unknown'} · completeness ${text(metadata?.completeness) || 'unknown'} · freshness ${text(metadata?.freshness) || 'unknown'}`)
+        : null,
     ...entries.map(([state, count]) => {
       const button = h(
         'button',
@@ -247,7 +267,7 @@ function renderStateSummary(context) {
   return section(context, list);
 }
 
-/** @param {HTMLButtonElement} button @param {string} field @param {string} state */
+/** @param {HTMLElement} button @param {string} field @param {string} state */
 function applyStateFilter(button, field, state) {
   const page = button.closest('[data-page-id]');
   if (!(page instanceof HTMLElement)) return;
@@ -430,6 +450,7 @@ function renderCapacityHorizon(context) {
 function renderOperationalPulse(context) {
   const work = rowsFor(context, context.sourceNames[0]);
   const evidenceSource = context.sources[context.sourceNames[1]];
+  /** @param {string[]} states */
   const count = (states) => work.filter((row) => states.includes(text(row['lifecycle-state']).toLowerCase())).length;
   const verifying = work.filter((row) => text(row.phase).toLowerCase().includes('verif')).length;
   return section(context, h(
@@ -551,6 +572,11 @@ export function renderEvidenceSplit(rows) {
   const supports = rows.filter((row) => evidenceDisposition(row) === 'supports');
   const contradicts = rows.filter((row) => evidenceDisposition(row) === 'contradicts');
   if (supports.length === 0 || contradicts.length === 0) return null;
+  /**
+   * @param {string} title
+   * @param {Array<Record<string, unknown>>} items
+   * @param {'supports'|'contradicts'} tone
+   */
   const column = (title, items, tone) => h(
     'section',
     { className: `evidence-split-column evidence-split-${tone}`, 'aria-label': title },
@@ -569,6 +595,7 @@ export function renderEvidenceSplit(rows) {
 
 /** @param {Record<string, unknown>} row */
 export function renderProvenanceSpine(row) {
+  /** @type {Array<[string, unknown]>} */
   const nodes = [
     ['Authority', row.authority ?? row['authority-state']],
     ['Objective', row.objective],
@@ -704,6 +731,7 @@ function text(value) {
 
 /** @param {unknown} value */
 function finiteNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }

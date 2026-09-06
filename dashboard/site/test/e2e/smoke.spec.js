@@ -386,6 +386,17 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
             'next-action': 'Review the dependency update evidence',
             'waiting-on': 'security-reviewers',
             owner: 'dependency-automation',
+            'execution-state': 'success',
+            'verification-state': 'failed',
+            'artifact-state': 'produced',
+            'outcome-state': 'pending',
+            'maturity-status': 'immature',
+            'state-history': [
+              { phase: 'execute', 'observed-at': '2026-08-29T09:00:00Z', 'transition-kind': 'observed' },
+              { phase: 'verify', 'observed-at': '2026-08-29T09:20:00Z', 'transition-kind': 'observed' },
+              { phase: 'edit', 'observed-at': '2026-08-29T09:30:00Z', reason: 'Verification regressed the work.', 'transition-kind': 'observed' },
+              { phase: 'waiting', 'observed-at': '2026-08-29T09:40:00Z', reason: 'Human review required.', 'transition-kind': 'observed' }
+            ],
             'evidence-link': evidenceLink
           }],
           metadata
@@ -426,12 +437,28 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
           source: 'agent-assignments',
           rows: [{
             'assignment-id': 'assignment:release-train-updater:74',
+            'work-item-id': 'release-train',
             'agent-name': 'Release train updater',
+            'agent-state': 'completed',
+            objective: 'Update the Dependabot release train',
+            'handoff-state': 'completed',
+            'dependency-state': 'clear',
+            'conflict-state': 'none',
+            'started-at': '2026-08-29T08:00:00Z',
+            'ended-at': '2026-08-29T09:00:00Z',
+            'coordination-source': 'declared',
+            'evidence-link': evidenceLink
+          }, {
+            'assignment-id': 'assignment:security-reviewer:74',
+            'work-item-id': 'release-train',
+            'agent-name': 'Security reviewer',
             'agent-state': 'waiting',
             objective: 'Update the Dependabot release train',
             'handoff-state': 'waiting-for-review',
-            'dependency-state': 'clear',
-            'conflict-state': 'none',
+            'dependency-state': 'waiting',
+            'conflict-state': 'contended',
+            'started-at': '2026-08-29T09:00:00Z',
+            'coordination-source': 'observed',
             'evidence-link': evidenceLink
           }],
           metadata
@@ -440,13 +467,35 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
           source: 'evidence-records',
           rows: [{
             'evidence-id': 'evidence:dependabot:74:checks',
+            'work-item-id': 'release-train',
             objective: 'Update the Dependabot release train',
             'evidence-kind': 'verification',
             'evidence-class': 'observed',
             claim: 'Three required validations passed.',
-            'verification-state': 'pending',
+            'verification-state': 'accepted',
+            'evidence-disposition': 'supports',
             'provenance-state': 'complete',
+            'authority-state': 'available',
+            execution: 'run-74',
+            'artifact-state': 'produced',
+            'outcome-state': 'pending',
+            'maturity-status': 'immature',
             'observed-at': '2026-08-29T09:55:00Z',
+            'evidence-link': evidenceLink
+          }, {
+            'evidence-id': 'evidence:dependabot:74:e2e',
+            'work-item-id': 'release-train',
+            objective: 'Update the Dependabot release train',
+            'evidence-kind': 'auth-e2e',
+            'evidence-class': 'observed',
+            claim: 'Three required validations passed.',
+            'verification-state': 'failed',
+            'evidence-disposition': 'contradicts',
+            'provenance-state': 'partial',
+            'artifact-state': 'produced',
+            'outcome-state': 'pending',
+            'maturity-status': 'immature',
+            'observed-at': '2026-08-29T09:56:00Z',
             'evidence-link': evidenceLink
           }],
           metadata
@@ -458,6 +507,8 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
             'outcome-title': 'Dependabot review retained',
             repository: 'gh-aw',
             'outcome-state': 'accepted',
+            'run-conclusion': 'success',
+            'verification-state': 'verified',
             'observed-at': '2026-08-29T09:40:00Z',
             'external-link': evidenceLink
           }],
@@ -469,12 +520,16 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
             {
               'operational-value': 0.6,
               'operational-value-definition': 'accepted-outcome',
+              repository: 'gh-aw',
+              'maturity-status': 'matured',
               'observed-at': '2026-08-01T09:45:00Z',
               'evidence-link': evidenceLink
             },
             {
               'operational-value': 0.8,
               'operational-value-definition': 'accepted-outcome',
+              repository: 'gh-aw',
+              'maturity-status': 'interim',
               'observed-at': '2026-08-29T09:45:00Z',
               'evidence-link': evidenceLink
             }
@@ -504,8 +559,11 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
             resource: 'core',
             remaining: 4200,
             'remaining-percent': 84,
+            'minutes-to-reset': 59,
+            'projected-remaining-at-reset': 3800,
             'reset-at': '2026-08-29T11:00:00Z',
-            'risk-status': 'healthy'
+            'risk-status': 'healthy',
+            'observed-at': '2026-08-29T10:01:00Z'
           }],
           metadata
         }
@@ -526,33 +584,36 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
     'Outcomes',
     'Operational pulse'
   ]);
-  await expect(homePage.getByRole('columnheader')).toHaveText([
-    'Work', 'Scope', 'Phase', 'Why', 'Next action', 'Owner',
-    'Outcome', 'Repository', 'Disposition', 'Observed'
-  ]);
-  await expect(homePage.locator('.canonical-attention-item')).toHaveCount(1);
-  await expect(homePage.locator('.signal-priority-rank strong')).toHaveText('1');
-  await expect(homePage.locator('.canonical-attention-item')).toContainText('Upgrade agentic workflow dependencies');
-  await expect(homePage.locator('.canonical-attention-item')).not.toContainText('Update the Dependabot release train');
+  await expect(homePage.locator('.attention-stack-primary')).toHaveCount(1);
+  await expect(homePage.locator('.attention-stack-primary')).toContainText('Upgrade agentic workflow dependencies');
+  await expect(homePage.locator('.work-card')).toContainText('Security review remains pending.');
+  await expect(homePage.locator('.truth-rail').first()).toHaveAttribute('aria-label', /Executed: success; Verified: failed; Outcome: pending; Mature: immature/);
   await expect(homePage.locator('a[href="https://example.com/evidence/release-train"]')).not.toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   for (const pageName of ['Work', 'Agents', 'Evidence', 'Insights']) {
     await dashboardNext.getByRole('link', { name: pageName }).click();
     await expect(page.getByRole('heading', { name: pageName, exact: true, level: 1 })).toBeVisible();
-    if (['Work', 'Agents', 'Evidence'].includes(pageName)) {
-      await expect(page.locator(`[data-page-id="${pageName.toLowerCase()}"] .table-summary-row`)).toHaveCount(0);
-    }
   }
+  await dashboardNext.getByRole('link', { name: 'Work' }).click();
+  await expect(page.locator('[data-page-id="work"] .state-summary')).toBeVisible();
+  await expect(page.locator('[data-page-id="work"] .state-ribbon')).toHaveCount(1);
+  await dashboardNext.getByRole('link', { name: 'Agents' }).click();
+  await page.locator('[data-page-id="agents"] .oversight-detail summary').first().click();
+  await expect(page.locator('[data-page-id="agents"] .coordination-braid').first()).toBeVisible();
+  await dashboardNext.getByRole('link', { name: 'Evidence' }).click();
+  await page.locator('[data-page-id="evidence"] .oversight-detail summary').first().click();
+  await expect(page.locator('[data-page-id="evidence"] .evidence-split').first()).toBeVisible();
+  await expect(page.locator('[data-page-id="evidence"] .provenance-unavailable').first()).toBeVisible();
 
   // A 320px window can leave 305px of layout width when the browser reserves a scrollbar gutter.
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-home'; });
   await expect(homePage).toBeVisible();
-  await expect(homePage.locator('.canonical-attention-item').first()).toBeInViewport();
-  await expect(homePage.locator('.custom-view').nth(1).locator('tbody tr').first()).toBeInViewport();
+  await expect(homePage.locator('.attention-stack-primary').first()).toBeInViewport();
+  await expect(homePage.locator('.work-card').first()).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  await expect(homePage.locator('.table-scroll').first()).toBeVisible();
+  await expect(homePage.locator('.view-data-disclosure').first()).toBeVisible();
 
   for (const pageName of ['home', 'work', 'agents', 'evidence', 'insights']) {
     await page.evaluate((nextPage) => { window.location.hash = `#page-${nextPage}`; }, pageName);
@@ -565,6 +626,12 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
       expect(box?.height).toBeGreaterThan(0);
     }
   }
+  await page.evaluate(() => {
+    const style = document.createElement('style');
+    style.textContent = '* { font-size: 200% !important; }';
+    document.head.append(style);
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
 test('performance page renders a full heatmap and lays out supporting charts side by side', async ({ page }) => {

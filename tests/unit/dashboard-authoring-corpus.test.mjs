@@ -14,8 +14,9 @@ test("generate-dashboard-ir corpus is indexed and valid", () => {
   });
 });
 
-test("every production dashboard page starts with an executive summary or prescribed attention view", () => {
+test("every production dashboard page starts with an executive summary or prescribed oversight view", () => {
   const executiveSummaryCharts = new Set(["pie", "line", "dot", "histogram", "scatter", "swimlane"]);
+  const executiveSummaryElements = new Set(["summary-grid", "state-summary"]);
   const dashboardFiles = [
     join(root, "dashboard/site/dashboard.json"),
     ...readdirSync(root, { withFileTypes: true })
@@ -32,7 +33,7 @@ test("every production dashboard page starts with an executive summary or prescr
       assert.ok(summary, `${path}: page "${page.id}" must contain a view`);
       const isSummaryTable = summary.mark === "table"
         && summary.encoding?.columns?.some((column) => typeof column.aggregate === "string");
-      const isSummaryGrid = summary.mark === "element" && summary.element === "summary-grid";
+      const isSummaryGrid = summary.mark === "element" && executiveSummaryElements.has(summary.element);
       const isExperimentsEvaluation = page.id === "experiments"
         && summary.mark === "element"
         && summary.element === "experiments-evaluation";
@@ -43,7 +44,7 @@ test("every production dashboard page starts with an executive summary or prescr
         && page["class-name"] === "dashboard-next-home-page"
         && summary.id === "home-attention"
         && summary.mark === "element"
-        && summary.element === "signal-list"
+        && summary.element === "attention-stack"
         && summary.data?.sources?.includes("attention-signals");
       if (isAttentionFirstHome) {
         assert.deepEqual(
@@ -59,7 +60,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isExperimentsEvaluation
           || isConfigurationPolicy
           || isAttentionFirstHome,
-        `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`,
+        `${path}: page "${page.id}" must start with an executive summary or its prescribed oversight view`,
       );
     }
   }

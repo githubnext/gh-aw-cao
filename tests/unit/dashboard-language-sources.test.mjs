@@ -332,6 +332,10 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(dependabot["consequence-tier"], "high");
   assert.equal(worker["lifecycle-state"], "completed");
   assert.equal(worker["verification-state"], "accepted");
+  assert.equal(worker["execution-state"], "success");
+  assert.equal(worker["artifact-state"], "produced");
+  assert.equal(worker["maturity-status"], "immature");
+  assert.deepEqual(worker["state-history"].map((entry) => entry.phase), ["completed"]);
 
   assert.equal(sources["attention-signals"].metadata.availability, "available");
   assert.deepEqual(sources["attention-signals"].rows.map((row) => row["work-item-id"]), [dependabot["work-item-id"]]);
@@ -345,8 +349,9 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(sources["evidence-records"].metadata.availability, "available");
   assert.equal(sources["evidence-records"].rows.length, 2);
   assert.deepEqual(sources["evidence-records"].rows.map((row) => row["work-item-id"]), [worker["work-item-id"], worker["work-item-id"]]);
-  assert.deepEqual(new Set(sources["evidence-records"].rows.map((row) => row["evidence-class"])), new Set(["outcome", "finding"]));
+  assert.deepEqual(new Set(sources["evidence-records"].rows.map((row) => row["evidence-class"])), new Set(["observed"]));
   assert.ok(sources["evidence-records"].rows.every((row) => row["verification-state"] === "accepted" || row["verification-state"] === "pending"));
+  assert.ok(sources["evidence-records"].rows.every((row) => row["authority-state"] === "available"));
 });
 
 test("dashboard source bridge classifies safe-output performance and diagnostics", () => {
