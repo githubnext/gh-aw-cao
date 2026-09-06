@@ -1354,7 +1354,9 @@ dashboard:
             columns: [{ field: run, type: nominal }]
 `;
 
-    expect(validateDashboardDocument(source).ok).toBe(true);
+    for (const pageId of ['home', 'agent', 'agents', 'work', 'evidence', 'insights']) {
+      expect(validateDashboardDocument(source.replace('id: home', `id: ${pageId}`)).ok).toBe(true);
+    }
     expect(validateDashboardDocument(source.replace('id: home', 'id: summary')).ok).toBe(false);
   });
 
