@@ -2774,6 +2774,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(aicUsage, /"--max-github-api-rate-limit", "-2000", "--max-storage", "1024"/);
   assert.equal((aicUsage.match(/"aw", "logs"/g) || []).length, 1);
   assert.doesNotMatch(aicUsage, /targets|workflow\.repository\}\/\$\{workflow\.path/);
+  assert.match(aicUsage, /if \(workflowByRunId\.size > 0\)/);
   assert.doesNotMatch(aicUsage, /--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs/);
