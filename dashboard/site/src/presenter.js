@@ -8,7 +8,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
-import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
 import { toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -618,9 +618,9 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
         content: h(
           'span',
           { className: 'horizon-tooltip-values' },
-          h('span', null, h('strong', null, 'Start'), h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
-          h('span', null, h('strong', null, 'End'), h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
-          h('span', null, h('strong', null, 'Duration'), duration)
+          renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
+          renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
+          renderLabeledSpan('Duration', duration)
         )
       })
       : null

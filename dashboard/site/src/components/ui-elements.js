@@ -10,7 +10,7 @@ import { renderPackagesView, renderPackageSummary, renderPackageUtilization, ren
 import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan } from './ui-primitives.js';
+import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan } from './ui-primitives.js';
 import { slugify } from './count-formatters.js';
 import { renderDefinitionList, renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
@@ -379,8 +379,8 @@ function renderReadinessVerdictElement(context) {
             ? 'The control plane should not be treated as ready for the next operation.'
             : 'Current readiness cannot be determined reliably.'),
         h('div', { className: 'readiness-snapshot-meta' },
-          h('span', null, h('strong', null, 'Snapshot'), ` ${snapshotAge(metadata)}`),
-          h('span', null, h('strong', null, 'Evidence'), ` ${evidenceState(metadata)}`)
+          renderLabeledSpan('Snapshot', ` ${snapshotAge(metadata)}`),
+          renderLabeledSpan('Evidence', ` ${evidenceState(metadata)}`)
         ),
         h('span', { className: 'readiness-verdict-legacy' }, verdict)
       ),
