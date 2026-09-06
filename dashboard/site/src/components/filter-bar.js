@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { debounce } from '../debounce.js';
 import { dashboardHorizonHours, formatDashboardHorizon } from '../horizon.js';
 import { octicon } from '../octicons.js';
-import { renderLabeledControl } from './ui-primitives.js';
+import { renderCountBadge, renderLabeledControl } from './ui-primitives.js';
 
 /** @typedef {{ range: string, start: string, end: string }} TimeWindow */
 const FILTER_DEBOUNCE_MS = 500;
@@ -24,7 +24,7 @@ export function renderFilterBar(onChange, options = {}) {
     'aria-label': 'Current filters',
     spellcheck: 'false'
   }));
-  const count = h('span', { className: 'count-badge' });
+  const count = renderCountBadge(0, '0 filters');
   const applyFilters = debounce(onChange, FILTER_DEBOUNCE_MS);
   /** @type {ReturnType<typeof renderHorizonControl>} */
   let horizonControl;
