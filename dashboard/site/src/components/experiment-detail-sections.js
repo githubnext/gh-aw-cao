@@ -7,7 +7,7 @@ import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
 import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
 import { renderExperimentEffect, renderExperimentSectionHeading, numericObservation } from './experiment-view-primitives.js';
-import { isSafeHttpsUrl } from './ui-primitives.js';
+import { isSafeHttpsUrl, renderDisclosure } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -217,7 +217,7 @@ function renderEvidenceActions(row) {
     .../** @type {Array<Record<string, any>>} */ (row.observations).map((observation) => [observation.sourceType === 'eval' ? 'Eval' : 'Grader', observation.evidenceLink])
   ].filter(([, value]) => safeLink(value));
   return links.length
-    ? h('details', { className: 'evidence-menu' }, h('summary', null, 'Open evidence'), h('ul', null, ...links.map(([label, value]) => h('li', null, renderEvidenceLink(value, label)))))
+    ? renderDisclosure('evidence-menu', 'Open evidence', h('ul', null, ...links.map(([label, value]) => h('li', null, renderEvidenceLink(value, label)))))
     : h('span', { className: 'muted' }, 'Unavailable');
 }
 
