@@ -86,20 +86,38 @@ function numericAttribute(source, name, fallback = null) {
   return Number.isFinite(number) ? number : null;
 }
 
+function elementAttributeSources(source, elementName) {
+  const starts = source.matchAll(new RegExp(`<${elementName}\\b`, "gi"));
+  return [...starts].flatMap((match) => {
+    let quote = null;
+    for (let index = match.index + match[0].length; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote !== null) {
+        if (character === quote) quote = null;
+      } else if (character === '"' || character === "'") {
+        quote = character;
+      } else if (character === ">") {
+        return [source.slice(match.index + match[0].length, index)];
+      }
+    }
+    return [];
+  });
+}
+
 function nestedBoxViolations(svg, rootAttributes) {
   const viewBox = (attribute(rootAttributes, "viewBox") || "")
     .trim()
     .split(/\s+/)
     .map(Number);
   const hasValidViewBox = viewBox.length === 4 && viewBox.every(Number.isFinite);
-  const [viewX, viewY, viewWidth, viewHeight] = hasValidViewBox ? viewBox : [];
-  const rectangles = [...svg.matchAll(/<rect\b([^>]*)>/gi)]
-    .map((match, index) => ({
+  const [viewX = 0, viewY = 0, viewWidth = 0, viewHeight = 0] = hasValidViewBox ? viewBox : [];
+  const rectangles = elementAttributeSources(svg, "rect")
+    .map((attributes, index) => ({
       index: index + 1,
-      x: numericAttribute(match[1], "x", 0),
-      y: numericAttribute(match[1], "y", 0),
-      width: numericAttribute(match[1], "width"),
-      height: numericAttribute(match[1], "height"),
+      x: numericAttribute(attributes, "x", 0),
+      y: numericAttribute(attributes, "y", 0),
+      width: numericAttribute(attributes, "width"),
+      height: numericAttribute(attributes, "height"),
     }))
     .filter(({ x, y, width, height }) =>
       x !== null && y !== null && width !== null && height !== null && width > 0 && height > 0)
