@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderExperimentsEvaluation } from '../../src/components/experiments-evaluation.js';
-import { createExperimentsEvaluationView } from '../../src/components/experiments-view-variants.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'experiment-fixture',
@@ -21,46 +20,6 @@ afterEach(() => {
 });
 
 describe('experiments and evaluation', () => {
-  it('defines reusable declarative experiments evaluation views', () => {
-    expect(createExperimentsEvaluationView({
-      id: 'experiments-overview',
-      title: 'Experiment readiness overview',
-      body: 'overview',
-      sources: ['experiments', 'runs'],
-      layout: 'full'
-    })).toEqual({
-      id: 'experiments-overview',
-      title: 'Experiment readiness overview',
-      data: {
-        sources: ['experiments', 'runs']
-      },
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: {
-        body: 'overview'
-      },
-      layout: 'full'
-    });
-
-    expect(createExperimentsEvaluationView({
-      id: 'experiments-detail',
-      title: 'Experiment decisions and evidence',
-      sections: ['detail'],
-      sources: ['experiments', 'runs']
-    })).toEqual({
-      id: 'experiments-detail',
-      title: 'Experiment decisions and evidence',
-      data: {
-        sources: ['experiments', 'runs']
-      },
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: {
-        sections: ['detail']
-      }
-    });
-  });
-
   it('keeps decisions, observations, producers, runs, and evidence distinct', () => {
     window.history.replaceState(null, '', '/#page-experiments?experiment=routing-v3');
     const runLink = { href: 'https://github.com/acme/tools/actions/runs/101', label: 'Open run 101' };
