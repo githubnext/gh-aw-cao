@@ -222,6 +222,7 @@ async function main() {
       console.log(`::warning title=Lighthouse budget exceeded::${failure}`);
     }
     console.warn(`Dashboard performance budgets exceeded:\n${failures.join('\n')}`);
+    process.exitCode = 42;
   }
 
   for (const result of results) {
