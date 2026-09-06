@@ -501,77 +501,77 @@ export async function collectAicUsage() {
       }
     }
     try {
-        if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
-        const result = JSON.parse(await readFile(logsPath, "utf8"));
-        if (!Array.isArray(result.runs)) throw new Error("gh aw logs snapshot has no runs array");
-        log.info`Processing ${result.runs.length} cached gh-aw log records from ${logsPath}`;
-        for (const run of result.runs || []) {
-          const runId = Number(run.database_id ?? run.run_id ?? run.id);
-          const aic = run.aic === null || run.aic === undefined || run.aic === ""
-            ? null
-            : Number(run.aic);
-          const metadata = workflowByRunId.get(runId);
-          if (!Number.isFinite(runId) || !metadata) continue;
-          const repository = metadata.workflow.repository;
-          const mode = parseRolloutMode(metadata.run?.displayTitle);
-          const common = {
-            repository,
-            runId,
-            workflowName: run.workflow_name || run.workflow || metadata.workflow.name || null,
-            workflowPath: metadata.workflow.path || null,
-            mode,
-            conclusion: metadata.run?.conclusion || null,
-            createdAt: run.created_at || run.started_at || metadata.run?.createdAt || null,
-            engine: firstText(run.engine, run.agentic_engine, run.agent_engine),
-            engineVersion: firstText(run.engine_version, run.agentic_engine_version, run.agent_engine_version, run.agent_version),
-            requestedModel: firstText(run.requested_model, run.requestedModel, run.model, run.model_name),
-            resolvedModel: firstText(run.resolved_model, run.resolvedModel, run.model_resolved, run.model),
-            agentRuntime: firstText(run.agent_runtime, run.agentRuntime),
-            safeItemsCount: Number(run.safe_items_count) || 0,
-            noopCount: Number(run.noop_count) || 0,
-            missingDataCount: Number(run.missing_data_count) || 0,
-            missingToolCount: Number(run.missing_tool_count) || 0,
-            reportIncompleteCount: Number(run.report_incomplete_count) || 0,
-            data: run.data ?? null,
-            tokenUsage: tokenUsage(run),
-            experiments: run.experiments ?? null,
-            graders: run.graders ?? null,
-          };
-          if (Number.isFinite(aic) || common.tokenUsage) runs.set(`${repository}:${runId}`, {
-            ...common,
-            aic: Number.isFinite(aic) ? aic : null,
-          });
-          let security;
-          let evals = [];
-          try {
-            [security, evals] = await Promise.all([
-              readRunSecurityTelemetry(temporaryRoot, runId),
-              readRunEvals(temporaryRoot, runId),
-            ]);
-          } catch (error) {
-            security = emptySecurityTelemetry();
-            security.firewall.firewallEvidenceState = "unavailable";
-            security.firewall.firewallEvidenceError = "Firewall artifact parsing failed.";
-            log.warning`Firewall evidence unavailable for ${repository} run ${runId}: ${error.message}`;
-          }
-          if (
-            common.createdAt
-            && ["available", "partial", "disabled", "no-traffic"].includes(security.firewall.firewallEvidenceState)
-            && !security.firewall.firewallEvidenceHorizonStart
-          ) {
-            security.firewall.firewallEvidenceHorizonStart = common.createdAt;
-            security.firewall.firewallEvidenceHorizonEnd = common.createdAt;
-          }
-          if (security.firewall.firewallEvidenceSource !== "none") {
-            security.firewall.firewallEvidenceFreshness = collectionAvailable ? "fresh" : "stale";
-          }
-          securityRuns.set(`${repository}:${runId}`, {
-            ...common,
-            logsPayload: run,
-            security,
-            evals,
-          });
+      if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
+      const result = JSON.parse(await readFile(logsPath, "utf8"));
+      if (!Array.isArray(result.runs)) throw new Error("gh aw logs snapshot has no runs array");
+      log.info`Processing ${result.runs.length} cached gh-aw log records from ${logsPath}`;
+      for (const run of result.runs) {
+        const runId = Number(run.database_id ?? run.run_id ?? run.id);
+        const aic = run.aic === null || run.aic === undefined || run.aic === ""
+          ? null
+          : Number(run.aic);
+        const metadata = workflowByRunId.get(runId);
+        if (!Number.isFinite(runId) || !metadata) continue;
+        const repository = metadata.workflow.repository;
+        const mode = parseRolloutMode(metadata.run?.displayTitle);
+        const common = {
+          repository,
+          runId,
+          workflowName: run.workflow_name || run.workflow || metadata.workflow.name || null,
+          workflowPath: metadata.workflow.path || null,
+          mode,
+          conclusion: metadata.run?.conclusion || null,
+          createdAt: run.created_at || run.started_at || metadata.run?.createdAt || null,
+          engine: firstText(run.engine, run.agentic_engine, run.agent_engine),
+          engineVersion: firstText(run.engine_version, run.agentic_engine_version, run.agent_engine_version, run.agent_version),
+          requestedModel: firstText(run.requested_model, run.requestedModel, run.model, run.model_name),
+          resolvedModel: firstText(run.resolved_model, run.resolvedModel, run.model_resolved, run.model),
+          agentRuntime: firstText(run.agent_runtime, run.agentRuntime),
+          safeItemsCount: Number(run.safe_items_count) || 0,
+          noopCount: Number(run.noop_count) || 0,
+          missingDataCount: Number(run.missing_data_count) || 0,
+          missingToolCount: Number(run.missing_tool_count) || 0,
+          reportIncompleteCount: Number(run.report_incomplete_count) || 0,
+          data: run.data ?? null,
+          tokenUsage: tokenUsage(run),
+          experiments: run.experiments ?? null,
+          graders: run.graders ?? null,
+        };
+        if (Number.isFinite(aic) || common.tokenUsage) runs.set(`${repository}:${runId}`, {
+          ...common,
+          aic: Number.isFinite(aic) ? aic : null,
+        });
+        let security;
+        let evals = [];
+        try {
+          [security, evals] = await Promise.all([
+            readRunSecurityTelemetry(temporaryRoot, runId),
+            readRunEvals(temporaryRoot, runId),
+          ]);
+        } catch (error) {
+          security = emptySecurityTelemetry();
+          security.firewall.firewallEvidenceState = "unavailable";
+          security.firewall.firewallEvidenceError = "Firewall artifact parsing failed.";
+          log.warning`Firewall evidence unavailable for ${repository} run ${runId}: ${error.message}`;
         }
+        if (
+          common.createdAt
+          && ["available", "partial", "disabled", "no-traffic"].includes(security.firewall.firewallEvidenceState)
+          && !security.firewall.firewallEvidenceHorizonStart
+        ) {
+          security.firewall.firewallEvidenceHorizonStart = common.createdAt;
+          security.firewall.firewallEvidenceHorizonEnd = common.createdAt;
+        }
+        if (security.firewall.firewallEvidenceSource !== "none") {
+          security.firewall.firewallEvidenceFreshness = collectionAvailable ? "fresh" : "stale";
+        }
+        securityRuns.set(`${repository}:${runId}`, {
+          ...common,
+          logsPayload: run,
+          security,
+          evals,
+        });
+      }
     } catch (error) {
       collectionAvailable = false;
       log.warning`AI Credit usage unavailable: ${error.message}`;
