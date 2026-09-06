@@ -29,7 +29,7 @@ import {
   FINDING_SEVERITY_VALUES,
   FINDING_STATUS_VALUES,
   GRADER_STATUS_VALUES,
-  GRAPHICAL_LAYOUT_RULE_IGNORED_PAGE_IDS,
+  GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS,
   IDENTIFIER_PATTERN,
   LANGUAGE_VERSION,
   MAX_ESSENTIAL_VIEWS_PER_PAGE,
@@ -1338,7 +1338,12 @@ function validateCustomPage(page, pageNode, path, errors) {
   });
   validateProgressiveDisclosure(page.views, `${path}.views`, errors);
   validatePageSections(page.sections, page.views, `${path}.sections`, 'custom page', 'page view', errors);
-  validateGraphicalLayout(page.views, `${path}.views`, errors, page.id);
+  validateGraphicalLayout(
+    page.views,
+    `${path}.views`,
+    errors,
+    typeof page.id === 'string' ? page.id : undefined
+  );
 }
 
 /**
@@ -1952,10 +1957,10 @@ function validateProgressiveDisclosure(views, path, errors) {
  * @param {unknown[]} views
  * @param {string} viewsPath
  * @param {ValidationError[]} errors
- * @param {unknown} pageId
+ * @param {string | undefined} pageId
  */
 function validateGraphicalLayout(views, viewsPath, errors, pageId) {
-  if (typeof pageId === 'string' && GRAPHICAL_LAYOUT_RULE_IGNORED_PAGE_IDS.has(pageId)) return;
+  if (pageId !== undefined && GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS.has(pageId)) return;
   const validViews = views.filter(isPlainObject);
   const defaultOpenTables = validViews.filter((view) => (
     view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental'
