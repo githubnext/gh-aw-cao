@@ -12,20 +12,20 @@ export { EXPERIMENTS_VIEW_BODY_VALUES };
  */
 
 /**
- * @param {unknown} selected
+ * @param {{ body?: unknown, sections?: unknown } | undefined} config
  * @returns {ExperimentViewSection[]}
  */
-export function experimentsViewComposition(selected) {
-  if (Array.isArray(selected)) {
-    const sections = selected
+export function experimentsViewComposition(config) {
+  if (Array.isArray(config?.sections)) {
+    const sections = config.sections
       .filter(isExperimentViewSection)
       .map((section) => /** @type {ExperimentViewSection} */ ({ section }));
     return sections.length > 0 ? sections : defaultExperimentViewComposition();
   }
-  if (typeof selected !== 'string' || !EXPERIMENTS_VIEW_BODY_VALUES.includes(selected)) {
+  if (typeof config?.body !== 'string' || !EXPERIMENTS_VIEW_BODY_VALUES.includes(config.body)) {
     return defaultExperimentViewComposition();
   }
-  return [/** @type {ExperimentViewSection} */ ({ section: selected })];
+  return [/** @type {ExperimentViewSection} */ ({ section: config.body })];
 }
 
 /**

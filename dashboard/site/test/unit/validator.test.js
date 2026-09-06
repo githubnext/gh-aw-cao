@@ -786,6 +786,28 @@ dashboard:
     }
   });
 
+  it('defines experiments composition through a reusable experiments-evaluation element', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
+
+    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-overview')).toMatchObject({
+      mark: 'element',
+      element: 'experiments-evaluation',
+      config: { body: 'overview' }
+    });
+    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-table')).toMatchObject({
+      mark: 'element',
+      element: 'experiments-evaluation',
+      config: { body: 'table' }
+    });
+    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-evaluation')).toMatchObject({
+      mark: 'element',
+      element: 'experiments-evaluation',
+      config: { sections: ['detail'] }
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('accepts every package dashboard document', () => {
     for (const source of packageDashboardSources) {
       expect(validateDashboardDocument(source).ok).toBe(true);
