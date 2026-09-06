@@ -158,8 +158,15 @@ export async function recordGithubTelemetry({
   } else {
     log.warning`GitHub API core rate limit unavailable (${phase} ${operation}): ${entry.rateLimitError}`;
   }
-  const activityCache = entry.activityCache;
-  log.info`Activity cache ${phase} ${operation}: ${activityCache.hit ? "matched" : "missed"}; keyConfigured=${Boolean(activityCache.key)}; matchedKeyConfigured=${Boolean(activityCache.matchedKey)}; entries=${activityCache.entryCount}; folders=${activityCache.folderCount}; bytes=${activityCache.bytes}`;
+  const {
+    hit = false,
+    key = null,
+    matchedKey = null,
+    entryCount = 0,
+    folderCount = 0,
+    bytes = 0,
+  } = entry.activityCache || {};
+  log.info`Activity cache ${phase} ${operation}: ${hit ? "matched" : "missed"}; keyConfigured=${Boolean(key)}; matchedKeyConfigured=${Boolean(matchedKey)}; entries=${entryCount}; folders=${folderCount}; bytes=${bytes}`;
   return entry;
 }
 
