@@ -637,7 +637,9 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
     style.textContent = '* { font-size: 200% !important; }';
     document.head.append(style);
   });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await expect.poll(() => page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+  )).toBe(true);
 });
 
 test('performance page renders a full heatmap and lays out supporting charts side by side', async ({ page }) => {
