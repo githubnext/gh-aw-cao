@@ -19,6 +19,7 @@ import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { renderWorkProjectView } from './work-project-view.js';
+import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
@@ -67,10 +68,11 @@ const ELEMENT_RENDERERS = new Map([
   ['configuration-policy', renderConfigurationView],
   ['configuration-actions', renderConfigurationActions],
   ['experiments-evaluation', renderExperimentsEvaluation],
-  ['work-project-view', renderWorkProjectView]
+  ['work-project-view', renderWorkProjectView],
+  ['agent-marketplace-view', renderAgentMarketplaceView]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view']);
 
 /**
  * @param {string} name
