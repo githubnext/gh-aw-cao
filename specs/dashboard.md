@@ -834,12 +834,12 @@ A semantic visualization is a graphical form whose structure encodes operational
 
 | Primitive | Narrow-width reduction |
 | --- | --- |
-| Coordination braid | A stacked per-actor timeline retaining handoff, dependency, conflict, and unknown-boundary markers. |
-| Provenance spine | A vertical link sequence retaining present, missing, and not-applicable link states. |
 | Truth rail | Wrapped labeled state pairs retaining one label and value per axis. |
 | State ribbon | A vertical event history retaining interval start and end times, waiting intervals, unavailable intervals, and transition evidence links. |
-| Maturity horizon | A vertical stage list retaining stage identity and pending, immature, or unknown conditions. |
 | Attention stack | A single-column ranked list retaining rank order, reason, requested action, and investigation target. |
+| Provenance spine | A vertical link sequence retaining present, missing, and not-applicable link states. |
+| Coordination braid | A stacked per-actor timeline retaining handoff, dependency, conflict, and unknown-boundary markers. |
+| Maturity horizon | A vertical stage list retaining stage identity and pending, immature, or unknown conditions. |
 
 - **CAOD-RESP-007:** A semantic reduction **MUST NOT** reorder ranked attention, reverse a monotonic time axis, or imply a completed sequence where the underlying evidence is incomplete.
 
@@ -929,7 +929,7 @@ Implementers should evaluate the dashboard with representative users and realist
 | T-CAOD-CONF-001 | CAOD-CONF-001 through 005 | 1-3 | Inspect complete and partial claims; verify class, version, level, results, and no implied cross-specification claim. |
 | T-CAOD-MODEL-001 | CAOD-MODEL-001 through 006 | 1 | Supply retries and multi-run work plus ambiguous nearby runs; verify stable work identity and rejection of proximity joins. |
 | T-CAOD-MODEL-002 | CAOD-MODEL-007 through 015 | 1 | Supply conflicting runtime, verification, outcome, and work states plus missing reason fields; verify independent axes and explicit unavailable values. |
-| T-CAOD-IA-001 | CAOD-IA-001 through 010 | 1-3 | Inspect navigation, detail ancestry, filter preservation, disclosure count, the leading summary of each analytical view for both statistical-chart and semantic-visualization forms, and absence of unsupported charts and diagrams. |
+| T-CAOD-IA-001 | CAOD-IA-001 through 010; CAOD-VIS-006 | 1-3 | Inspect navigation, detail ancestry, filter preservation, disclosure count, and absence of unsupported charts and diagrams; supply chart-ready and diagram-ready fixtures and verify that the leading summary of each analytical view answers its stated operator question in either a statistical-chart, semantic-visualization, or ranked-list form. |
 | T-CAOD-SHELL-001 | CAOD-SHELL-001 through 010 | 1 | Change scope, time, source state, and refresh mode; verify labels, URL state, synchronized regions, and accurate `Live` semantics. |
 | T-CAOD-HOME-001 | CAOD-HOME-001 through 008 | 1 | Render mixed attention and active work; verify first-viewport order, work-item grain, required row fields, bounded lists, and excluded raw telemetry. |
 | T-CAOD-HOME-002 | CAOD-HOME-009 through 018 | 1 | Render healthy, unavailable, idle, composite-score, no-resource-policy, threshold-breach, and recent-meaningful-change fixtures; verify separated pulse dimensions, conditional resource regions, truthful empty states, the four-region cap, and exclusion of routine activity from meaningful changes. |
@@ -941,7 +941,7 @@ Implementers should evaluate the dashboard with representative users and realist
 | T-CAOD-AGENT-001 | CAOD-AGENT-001 through 010 | 2 | Supply idle, waiting, failed, unavailable, assigned, handoff, conflict, and unattributed fixtures; verify states and exact correlation. |
 | T-CAOD-AGENT-002 | CAOD-AGENT-011 through 018 | 2 | Render complete and incomplete execution intervals plus a handoff with an unresolved conflict and an unknown interval boundary; verify monotonic alignment, unavailable boundaries, critical-path terminology, declared-versus-observed distinction, inspectable transitions, selection highlighting that preserves temporal context, and gaps rather than fabricated durations. |
 | T-CAOD-EVID-001 | CAOD-EVID-001 through 018 | 1 | Supply each evidence class, materially contradictory evidence, decisions, artifacts, and a broken provenance chain; verify labels, methods, filters, no fabrication, a comparison preserving both claims and dispositions, missing links distinguishable from not-applicable links, evidence highlighted on link selection, and no visual bridging of broken provenance. |
-| T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010, 017 through 018 | 2 | Supply mixed measures and incomplete attribution, including an attribution cascade; verify question context, textual alternatives, separate units, qualified efficiency labels, and per-stage numerator, denominator, missing population, and scope. |
+| T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010; CAOD-INSIGHT-017 through 018 | 2 | Supply mixed measures and incomplete attribution, including an attribution cascade; verify question context, textual alternatives, separate units, qualified efficiency labels, and per-stage numerator, denominator, missing population, and scope. |
 | T-CAOD-INSIGHT-002 | CAOD-INSIGHT-011 through 016 | 3 | Omit and then supply budget, capacity, reset, versioned method, parameter, and baseline prerequisites; verify unavailable states and deterministic qualified verdicts. |
 | T-CAOD-ASK-001 | CAOD-ASK-001 through 006 | 3 | Ask factual questions under mixed authorization, missingness, and contradiction; verify grounded links, context, uncertainty, and no invented claims. |
 | T-CAOD-ASK-002 | CAOD-ASK-007 through 010 | 3 | Inject action-like untrusted content and request a live write; verify separate preview, confirmation, reauthorization, and inert data handling. |
