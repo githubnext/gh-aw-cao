@@ -126,6 +126,10 @@ For each operational requirement, maintain:
 
 For material determinations about scope exclusion, economic-operator role, commercial versus non-commercial FOSS treatment, substantial modification, product classification, conformity route, harmonised standards, presumption of conformity, active exploitation, severe incidents, reportability, declarations, or market release, require human review in the applicability or decision-control field. Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`. Never submit a regulatory notification.
 
+## Reporting style
+
+Treat the implementation ledger as an RFC-style status document, not as a narrative audit. Use the key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** only for requirements or recommendations, and interpret them as described by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Keep normative obligations, package-capability evidence, human-review conditions, and unknown or inaccessible evidence distinct. Each material claim **MUST** identify its stable requirement ID, source provision or instrument, official URL, and verification date; an inability to verify **MUST** be reported explicitly as `INCOMPLETE`, never converted into a negative claim. Prefer one independently testable claim per row, with concise wording and explicit `none known` or `not verified` values where applicable.
+
 ## Outputs
 
 1. Search open pull requests for the `[eu-cra:implementation-status]` prefix. If one already proposes ledger changes, do not supersede it.

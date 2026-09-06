@@ -163,6 +163,10 @@ Start with manifests, lockfiles, container definitions, release workflows, attes
 
 Do not expose vulnerability details or confidential SBOM data in the output. Summarize sensitive gaps safely.
 
+## Reporting contract
+
+Treat the issue as an RFC-style evidence record, not a narrative audit. Use **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** only for normative requirements or recommendations, as defined by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Keep observed evidence, missing or inaccessible evidence, regulatory interpretation, and human decisions distinct. Every material claim **MUST** include its requirement or topic, source provision or instrument, official URL, and verification date; inaccessible evidence **MUST** remain `INCOMPLETE` or `NOT_ASSESSED` and **MUST NOT** be turned into a negative conclusion. Prefer one independently testable claim per row and state `none known` or `not verified` explicitly where applicable.
+
 ## Output
 
 Create one issue with a component-surface summary, SBOM evidence matrix, release-to-component traceability findings, vulnerability-management integration, provenance findings, prioritized gaps, and human-review questions. Rate each item only as `EVIDENCE_SUFFICIENT`, `GAP_FOUND`, `HUMAN_REVIEW_REQUIRED`, `NOT_ASSESSED`, or `INCOMPLETE`.
