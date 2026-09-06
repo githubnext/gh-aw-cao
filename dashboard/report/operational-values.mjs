@@ -172,7 +172,7 @@ async function main() {
     };
     await mkdir(path.dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`);
-    if (cachePath) {
+    if (cachePath && cachePath !== outputPath) {
       await mkdir(path.dirname(cachePath), { recursive: true });
       await writeFile(cachePath, `${JSON.stringify(output, null, 2)}\n`);
     }
