@@ -6,8 +6,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
 import { experimentsViewCompositionForBody } from './experiments-view-primitives.js';
-import { isSafeHttpsUrl } from './ui-primitives.js';
-import { normalizeEffect, difference, mean, finite, numericObservation } from './experiment-view-primitives.js';
+import { normalizeEffect, difference, mean, finite, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -127,7 +126,7 @@ function normalizeObservation(row, assignmentByRun, definition, sourceType) {
     included: includedObservation(row) && includedAssignment(assignment),
     exclusionReason: text(row['exclusion-reason'] || row.reason || assignment['exclusion-reason']),
     observedAt: text(row['observed-at']),
-    evidenceLink: safeLink(row['evidence-link']) || safeLink(row['grader-link']) || safeLink(row['eval-link'])
+    evidenceLink: safeExperimentLink(row['evidence-link']) || safeExperimentLink(row['grader-link']) || safeExperimentLink(row['eval-link'])
   };
 }
 
@@ -352,14 +351,6 @@ function metricSummaries(observations, control, candidate) {
       regression: thresholdRegression || (Number.isFinite(normalizedEffect) && normalizedEffect < 0)
     };
   }).sort((left, right) => roleOrder(left.role) - roleOrder(right.role) || left.identifier.localeCompare(right.identifier));
-}
-
-/** @param {unknown} value @returns {{href: string, label: string} | null} */
-function safeLink(value) {
-  if (!value || typeof value !== 'object') return null;
-  const candidate = /** @type {{ href: string, label?: unknown }} */ (value);
-  if (typeof candidate.href !== 'string' || !isSafeHttpsUrl(candidate.href)) return null;
-  return { href: candidate.href, label: text(candidate.label) };
 }
 
 /** @param {Row[]} rows @param {string} sourceType @returns {number} */
