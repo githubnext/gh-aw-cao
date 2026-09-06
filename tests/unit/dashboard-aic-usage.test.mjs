@@ -230,6 +230,57 @@ test("AI Credit usage collection preserves previously collected run data after a
   }
 });
 
+test("AI Credit usage collection retains prior unselected runs after a download failure", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
+  const bin = path.join(root, "bin");
+  const inventoryPath = path.join(root, "deployed-workflows.json");
+  const outputPath = path.join(root, "aic-usage.json");
+  const logsPath = path.join(root, "gh-aw-logs.json");
+  await mkdir(bin);
+  await writeFile(inventoryPath, JSON.stringify({
+    workflows: [{
+      repository: "githubnext/gh-aw-cao",
+      path: ".github/workflows/data.lock.yml",
+      name: "Data",
+      runHealth: { runIds: [42] },
+    }],
+  }));
+  await writeFile(outputPath, JSON.stringify({
+    schemaVersion: 5,
+    runs: [
+      { repository: "githubnext/gh-aw-cao", runId: 7, aic: 1.5 },
+      { repository: "githubnext/gh-aw-cao", runId: 42, aic: 2.5 },
+    ],
+    securityRuns: [
+      { repository: "githubnext/gh-aw-cao", runId: 7, security: { firewall: {} } },
+      { repository: "githubnext/gh-aw-cao", runId: 42, security: { firewall: {} } },
+    ],
+  }));
+  const ghPath = path.join(bin, "gh");
+  await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('injected download failure\\n');\nprocess.exit(1);\n");
+  await chmod(ghPath, 0o755);
+
+  try {
+    await execFileAsync(process.execPath, [
+      path.resolve("dashboard/report/aic-usage.mjs"),
+    ], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
+        REPORT_AIC_USAGE: outputPath,
+        REPORT_GH_AW_LOGS: logsPath,
+      },
+    });
+    const usage = JSON.parse(await readFile(outputPath, "utf8"));
+    assert.deepEqual(usage.runs.map((run) => run.runId), [7, 42]);
+    assert.deepEqual(usage.securityRuns.map((run) => run.runId), [7, 42]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("AI Credit usage collection writes an empty logs snapshot on cold-cache download failure", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
   const bin = path.join(root, "bin");

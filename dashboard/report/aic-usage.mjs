@@ -513,8 +513,8 @@ export async function collectAicUsage() {
     if (error.code !== "ENOENT") log.warning`Ignoring previous AI Credit usage at ${outputPath}: ${error.message}`;
   }
 
-  const runs = new Map();
-  const securityRuns = new Map();
+  const runs = new Map(previousRunsByKey);
+  const securityRuns = new Map(previousSecurityRunsByKey);
   for (const [runId, metadata] of workflowByRunId) {
     const repository = metadata.workflow.repository;
     const key = `${repository}:${runId}`;
