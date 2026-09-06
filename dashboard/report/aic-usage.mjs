@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -8,56 +7,6 @@ import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const FIREWALL_HORIZON_DAYS = 30;
-
-async function preserveLogsOnFailure(logsPath, reason) {
-  try {
-    await stat(logsPath);
-    log.info`Preserved existing gh-aw logs JSON at ${logsPath} (${reason})`;
-    return;
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-  // Downstream collectors (notably operational-values) require
-  // REPORT_GH_AW_LOGS to exist. Writing the empty placeholder snapshot is
-  // best-effort: a write failure here (permissions/disk) must not crash the
-  // whole AIC/security collection when there is simply no prior snapshot.
-  try {
-    await mkdir(path.dirname(logsPath), { recursive: true });
-    await writeFile(logsPath, '{"runs":[]}\n');
-    log.info`Cached empty gh-aw logs JSON at ${logsPath}; no prior snapshot existed (${reason})`;
-  } catch (writeError) {
-    log.warning`Unable to cache empty gh-aw logs JSON at ${logsPath}: ${writeError.message}`;
-  }
-}
-
-function runGhAw(targets, maxRunsPerWorkflow, outputDirectory) {
-  return new Promise((resolve, reject) => {
-    const child = spawn("gh", [
-      "aw", "logs", "--json",
-      "--output", outputDirectory, "--summary-file", "",
-      "--artifacts", "usage,agent,detection,evals,experiment,firewall,graders,mcp",
-      "--start-date", `-${FIREWALL_HORIZON_DAYS}d`, "--cache-before", `-${FIREWALL_HORIZON_DAYS}d`,
-      "--count", String(maxRunsPerWorkflow), "--timeout", "15",
-      "--max-github-api-rate-limit", "-2000", "--max-storage", "1024",
-      ...targets,
-    ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
-    const stdout = [];
-    const stderr = [];
-    let outputBytes = 0;
-    child.stdout.on("data", (chunk) => {
-      outputBytes += chunk.length;
-      if (outputBytes > 50 * 1024 * 1024) child.kill();
-      else stdout.push(chunk);
-    });
-    child.stderr.on("data", (chunk) => stderr.push(chunk));
-    child.on("error", reject);
-    child.on("close", (code, signal) => {
-      const diagnostic = Buffer.concat(stderr).toString("utf8").trim();
-      if (code === 0 && !signal) resolve(Buffer.concat(stdout).toString("utf8"));
-      else reject(new Error(diagnostic || `gh aw logs exited with ${signal || code}`));
-    });
-  });
-}
 
 const MAX_SECURITY_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_SECURITY_FILES = 2_000;
@@ -478,8 +427,6 @@ export async function collectAicUsage() {
   const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
   const runIdsByRepository = new Map();
   const workflowByRunId = new Map();
-  const targets = [];
-  let maxRunsPerWorkflow = 0;
   for (const workflow of inventory.workflows || []) {
     const runIds = runIdsByRepository.get(workflow.repository) || new Set();
     const runRecords = new Map((workflow.runHealth?.runRecords || []).map((run) => [Number(run.runId), run]));
@@ -489,10 +436,6 @@ export async function collectAicUsage() {
       workflowByRunId.set(Number(runId), metadata);
     }
     runIdsByRepository.set(workflow.repository, runIds);
-    if (workflow.runHealth?.runIds?.length > 0) {
-      targets.push(`${workflow.repository}/${workflow.path}`);
-      maxRunsPerWorkflow = Math.max(maxRunsPerWorkflow, workflow.runHealth.runIds.length);
-    }
   }
 
   // Collection is incremental: a previously written aic-usage.json is loaded
@@ -547,24 +490,11 @@ export async function collectAicUsage() {
   log.info`AI Credit collection will process ${workflowByRunId.size} selected workflow runs; cache root=${temporaryRoot}; logs JSON=${logsPath || "disabled"}`;
   try {
     let collectionAvailable = true;
-    if (targets.length > 0) {
-      try {
-        log.info`Downloading agentic workflow logs for ${targets.length} targets in one gh-aw CLI invocation (count=${maxRunsPerWorkflow}, output=${temporaryRoot})`;
-        const rawResult = await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot);
-        const result = JSON.parse(rawResult);
-        log.info`Downloaded ${result.runs?.length || 0} gh-aw log records into ${temporaryRoot}`;
-        if (logsPath) {
-          // Persisting the shared snapshot is best-effort: a write failure here
-          // (permissions/disk) must not mask a successful log download by
-          // marking the whole AIC/security collection unavailable.
-          try {
-            await mkdir(path.dirname(logsPath), { recursive: true });
-            await writeFile(logsPath, `${JSON.stringify(result, null, 2)}\n`);
-            log.info`Cached ${result.runs?.length || 0} gh-aw log records at ${logsPath}`;
-          } catch (error) {
-            log.warning`Unable to cache gh-aw logs JSON at ${logsPath}: ${error.message}`;
-          }
-        }
+    try {
+        if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
+        const result = JSON.parse(await readFile(logsPath, "utf8"));
+        if (!Array.isArray(result.runs)) throw new Error("gh aw logs snapshot has no runs array");
+        log.info`Processing ${result.runs.length} cached gh-aw log records from ${logsPath}`;
         for (const run of result.runs || []) {
           const runId = Number(run.database_id ?? run.run_id ?? run.id);
           const aic = run.aic === null || run.aic === undefined || run.aic === ""
@@ -632,13 +562,9 @@ export async function collectAicUsage() {
             evals,
           });
         }
-      } catch (error) {
-        collectionAvailable = false;
-        log.warning`AI Credit usage unavailable: ${error.message}`;
-        if (logsPath) await preserveLogsOnFailure(logsPath, "download failure");
-      }
-    } else if (logsPath) {
-      await preserveLogsOnFailure(logsPath, "no workflow runs were selected");
+    } catch (error) {
+      collectionAvailable = false;
+      log.warning`AI Credit usage unavailable: ${error.message}`;
     }
     const reportedRunsByRepository = Object.groupBy([...runs.values()], (run) => run.repository);
     const repositories = [...runIdsByRepository].map(([repository, runIds]) => {

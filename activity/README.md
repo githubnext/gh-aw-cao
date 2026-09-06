@@ -17,6 +17,7 @@ $RUNNER_TEMP/cao-activity/
 ├── deployed-workflows.json
 ├── gh-aw-logs/
 ├── gh-aw-logs.json
+├── gh-aw-logs-state.json
 └── operational-values.json
 ```
 
@@ -26,7 +27,7 @@ Each GitHub-backed collection operation records a before/after entry in `cao-gh.
 
 Consumers should restore the prefix before downloading workflow-run history or collecting dashboard data. If the cache is absent, stale for the consumer's evidence window, incomplete, or outside the required repository scope, they must fetch the missing evidence. The scheduled and manually dispatchable `.github/workflows/activity.yml` workflow is the only cache publisher. When dashboard report resources are not installed, a focused activity installation publishes only `deployed-workflows.json`.
 
-The activity refresh runs `gh aw logs --json` once, passing the workflow targets (`repository/path`) of every deployed workflow that has recorded runs, downloading their agentic workflow logs in a single call. It retains the raw JSON and requested artifacts under `gh-aw-logs*`; AI Credit, security, and operational-value collectors derive their records from that shared snapshot without starting additional gh-aw history scans.
+Immediately after restoring the cache, the activity refresh runs `gh aw logs --json --artifacts all` once for the compiled workflows checked out in the control repository. It retains the raw JSON, collection state, and downloaded artifacts under `gh-aw-logs*`. The indexer is then a local-only transformer: it combines checked-out workflow metadata with that snapshot and performs no direct GitHub API operations. AI Credit, security, and operational-value collectors consume the same snapshot without starting additional gh-aw history scans.
 
 Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-managed cache entries, including entries that use legacy CAO cache keys.
 
@@ -38,11 +39,11 @@ Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-
 | --- | --- | --- |
 | `generatedAt` | ISO 8601 string | Time the index was refreshed. |
 | `organization` | string | Indexed organization login. |
-| `repositoryScope` | `organization` or `allowlist` | Discovery boundary used for this entry. |
-| `allowedRepositories` | string array | Effective repository allowlist; empty for organization discovery. |
+| `repositoryScope` | `allowlist` | The checked-out control repository is the workflow discovery boundary. |
+| `allowedRepositories` | string array | The control repository whose checked-out workflows were indexed. Target repositories remain policy subjects, not workflow-discovery roots. |
 | `includePrivate` | boolean | Whether private repositories were eligible for discovery. |
 | `repositoryCount` | integer | Repositories considered by the indexer. |
-| `organizationRepositories` | object | Public, private, internal, and total repository counts when available. |
+| `organizationRepositories` | object | Reserved organization counts; values are `null` because the local index does not query repository inventory. |
 | `discovery` | object | Availability and completeness flags for workflow, manifest, and capability discovery. |
 | `runHealth` | object | Run-data availability, completeness, full or incremental refresh mode, refresh start, UTC window start, window hours, and fetched page count. |
 | `bundles` | array | Discovered package manifests and their registered workflows. |
@@ -67,6 +68,6 @@ Each `workflows[]` record identifies its `repository`, source `path`, workflow `
 }
 ```
 
-The latest failed run and up to five newest unresolved failed `workflow_dispatch` runs per workflow are enriched from the GitHub Actions jobs API. Enriched records may include `failureJob` and `failureStep`. A generic CAO precompute failure is drilled into once through its job log; only a controlled `[CAO failure]` marker or an allowlisted legacy signature may populate `failureMessage`, and arbitrary log text is never retained. Capacity-related failures also include `admissionStatus`, `admissionReason`, `resource`, `resourceResetAt`, and `resourceWaitHours`. Consumers must use the top-level completeness fields instead of inferring completeness from array length.
+Run metadata and any available failure evidence come only from the `gh aw logs` usage payload. `runHealth.usageArtifact` reports required fields omitted by those artifacts, with aggregate counts and bounded sample run IDs so gaps can be addressed in gh-aw. Admission evidence is marked unavailable until gh-aw exposes it; the indexer does not fall back to Actions run, job, log, or artifact APIs. Consumers must use the top-level completeness fields instead of inferring completeness from array length.
 
-When a compatible complete cache entry exists, the indexer retains in-window records and overlaps the previous refresh by one hour. Repositories with newly discovered workflows or retained non-terminal runs receive a full-window refresh. A missing, malformed, incompatible, or incomplete entry causes a complete bounded refresh.
+If `gh aw logs` fails, the downloader preserves a compatible cached snapshot and records the fallback in `gh-aw-logs-state.json`. On a cold-cache failure it writes an empty snapshot and marks run health unavailable.
