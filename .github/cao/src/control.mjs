@@ -22,8 +22,6 @@ const POLICY_PATH = ".github/workflows/cao.json";
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const SHA_PATTERN = /^[0-9a-fA-F]{40,64}$/;
 const MINIMUM_GITHUB_API_REQUESTS = 100;
-const GITHUB_API_GATE_VARIABLE = "CAO_GITHUB_API_GATE";
-const GITHUB_API_GATE_MAX_FUTURE_SECONDS = 2 * 60 * 60;
 const ORCHESTRATOR_FREE_DISK_MEGABYTES = 2048;
 const WORKER_FREE_DISK_MEGABYTES = 6144;
 const GITHUB_RUNNER_SPECIFICATION_DOCS = "https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners";
@@ -266,43 +264,7 @@ function githubApiRequestRequirement(policy, options) {
   return Math.max(MINIMUM_GITHUB_API_REQUESTS, estimated);
 }
 
-function parseGithubApiGate(source, required) {
-  if (!source) return null;
-  try {
-    const gate = JSON.parse(source);
-    const now = Math.floor(Date.now() / 1000);
-    if (
-      gate?.version !== 1
-      || gate?.reason !== "github-api-capacity-insufficient"
-      || !Number.isSafeInteger(gate?.reset)
-      || gate.reset <= now
-      || gate.reset > now + GITHUB_API_GATE_MAX_FUTURE_SECONDS
-      || !Number.isSafeInteger(gate?.limit)
-      || gate.limit < 0
-      || !Number.isSafeInteger(gate?.remaining)
-      || gate.remaining < 0
-    ) return null;
-    return {
-      status: "limited",
-      limit: gate.limit,
-      remaining: gate.remaining,
-      required,
-      reset: gate.reset,
-      resetAt: new Date(gate.reset * 1000).toISOString(),
-      gateActive: true,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function githubApiGateCapacity(required) {
-  return parseGithubApiGate(environment(GITHUB_API_GATE_VARIABLE).trim(), required);
-}
-
 function githubApiCapacity(required) {
-  const gateCapacity = githubApiGateCapacity(required);
-  if (gateCapacity) return gateCapacity;
   const token = environment("CAO_API_TOKEN");
   try {
     const source = run("gh", ["api", "rate_limit"], {
@@ -324,60 +286,6 @@ function githubApiCapacity(required) {
   } catch {
     return { status: "unavailable", limit: 0, remaining: 0, required, reset: 0, resetAt: "unknown" };
   }
-}
-
-function persistGithubApiGate() {
-  const repository = environment("GITHUB_REPOSITORY");
-  const token = environment("CAO_GATE_WRITE_TOKEN");
-  const limit = Number(environment("CAO_GITHUB_API_LIMIT"));
-  const remaining = Number(environment("CAO_GITHUB_API_REMAINING"));
-  const resetAt = environment("CAO_GITHUB_API_RESET_AT");
-  const resetMilliseconds = Date.parse(resetAt);
-  const reset = Math.floor(resetMilliseconds / 1000);
-  const now = Math.floor(Date.now() / 1000);
-  if (!REPOSITORY_PATTERN.test(repository)) throw new ControlError("GITHUB_REPOSITORY must use owner/repository form");
-  if (!token) throw new ControlError("CAO_GATE_WRITE_TOKEN is required to persist the GitHub API gate");
-  if (!Number.isSafeInteger(limit) || limit < 0) throw new ControlError("CAO_GITHUB_API_LIMIT must be a non-negative integer");
-  if (!Number.isSafeInteger(remaining) || remaining < 0) throw new ControlError("CAO_GITHUB_API_REMAINING must be a non-negative integer");
-  if (!Number.isFinite(resetMilliseconds) || reset <= now || reset > now + GITHUB_API_GATE_MAX_FUTURE_SECONDS) {
-    throw new ControlError("CAO_GITHUB_API_RESET_AT must be within the next two hours");
-  }
-
-  const endpoint = `repos/${repository}/actions/variables/${GITHUB_API_GATE_VARIABLE}`;
-  const collectionEndpoint = `repos/${repository}/actions/variables`;
-  const runGhApi = (args) => run("gh", ["api", ...args], {
-    env: { ...process.env, GH_TOKEN: token },
-  });
-  /** @type {ReturnType<typeof parseGithubApiGate>} */
-  let current = null;
-  let exists = true;
-  try {
-    const response = JSON.parse(runGhApi([endpoint]));
-    current = parseGithubApiGate(String(response?.value ?? ""), 0);
-  } catch (error) {
-    if (!/404|not found/i.test(error.message)) throw error;
-    exists = false;
-  }
-  if (current && current.reset >= reset) {
-    log(`GitHub API gate already blocks until ${current.resetAt}.`);
-    return;
-  }
-
-  const value = JSON.stringify({
-    version: 1,
-    reason: "github-api-capacity-insufficient",
-    limit,
-    remaining,
-    reset,
-    observed_at: new Date().toISOString(),
-    source_run_id: environment("GITHUB_RUN_ID", "unknown"),
-  });
-  if (exists) {
-    runGhApi(["--silent", "--method", "PATCH", endpoint, "-f", `value=${value}`]);
-  } else {
-    runGhApi(["--silent", "--method", "POST", collectionEndpoint, "-f", `name=${GITHUB_API_GATE_VARIABLE}`, "-f", `value=${value}`]);
-  }
-  log(`Persisted GitHub API gate until ${new Date(reset * 1000).toISOString()}.`);
 }
 
 function isRateLimitError(error) {
@@ -537,7 +445,6 @@ function admit() {
       github_api_required: result.github_api_capacity.required,
       github_api_reset_at: result.github_api_capacity.resetAt,
     });
-    if (result.github_api_capacity.gateActive) outputs.github_api_gate_active = true;
   }
   if (result.runner_disk_capacity && result.runner_disk_capacity.status !== "available") {
     Object.assign(outputs, {
@@ -1183,15 +1090,12 @@ function main(arguments_) {
     if (command === "precompute" && args.length === 0) {
       return withLogGroup("Central Agentic Ops precompute", precompute);
     }
-    if (command === "persist-api-gate" && args.length === 0) {
-      return withLogGroup("Central Agentic Ops GitHub API gate", persistGithubApiGate);
-    }
     if (command === "authority") return authority(args);
     if (["validate-policy", "resolve-policy", "control-settings"].includes(command)) {
       process.stdout.write(`${JSON.stringify(policyCommand(command, args), null, 2)}\n`);
       return;
     }
-    throw new ControlError("usage: control.mjs admit | precompute | persist-api-gate | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | authority <file|-> <package>");
+    throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | authority <file|-> <package>");
   } catch (error) {
     if (error instanceof ControlError || error instanceof PolicyError || error?.code === "ENOENT") {
       process.stderr.write(`[CAO failure] ${error.message}\n`);
