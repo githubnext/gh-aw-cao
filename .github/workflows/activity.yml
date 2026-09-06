@@ -144,15 +144,6 @@ jobs:
         with:
           version: v0.88.4
 
-      - name: Restore operational-value observation cache
-        if: env.DASHBOARD_COLLECTION == 'true'
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .cache/dashboard-operational-values
-          key: ${{ runner.os }}-dashboard-operational-values-${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            ${{ runner.os }}-dashboard-operational-values-${{ github.repository }}-
-
       - name: Collect AI Credit usage
         id: collect-aic-usage
         if: env.DASHBOARD_COLLECTION == 'true'
@@ -191,7 +182,7 @@ jobs:
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
           REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
-          REPORT_VALUE_CACHE: .cache/dashboard-operational-values/observations.json
+          REPORT_VALUE_CACHE: ${{ runner.temp }}/cao-activity/operational-values.json
         run: |
           node "$GITHUB_TELEMETRY" before collect-operational-values || true
           node "$DASHBOARD_REPORT_ROOT/operational-values.mjs"
@@ -206,13 +197,6 @@ jobs:
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
         run: node "$GITHUB_TELEMETRY" after collect-operational-values
-
-      - name: Save operational-value observation cache
-        if: always() && env.DASHBOARD_COLLECTION == 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .cache/dashboard-operational-values
-          key: ${{ runner.os }}-dashboard-operational-values-${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Collect durable dashboard records
         id: collect-dashboard-records

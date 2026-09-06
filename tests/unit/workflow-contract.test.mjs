@@ -2780,10 +2780,12 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs/);
   assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 2);
   assert.match(aicUsage, /writeFile\(logsPath, `\$\{JSON\.stringify\(result, null, 2\)\}\\n`\)/);
-  assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \.cache\/dashboard-operational-values\/observations\.json/);
+  assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/operational-values\.json/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
   assert.match(buildWorkflow, /actions\/cache\/restore@[0-9a-f]{40}/);
-  assert.match(activityWorkflow, /Save operational-value observation cache/);
+  assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
+  assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
+  assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
   assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?version: v0\.88\.4/);
   assert.match(deployedWorkflows, /const \{ staleRegistration, \.\.\.capabilities \} = await workflowCapabilities/);
   assert.match(deployedWorkflows, /const role = workflowRole\(source\.value\)/);
