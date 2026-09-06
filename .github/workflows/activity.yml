@@ -86,13 +86,18 @@ jobs:
       - name: Resolve dashboard collectors
         run: |
           if [[ -f .github/aw/dashboard/report/records.mjs ]]; then
-            echo "DASHBOARD_REPORT_ROOT=.github/aw/dashboard/report" >> "$GITHUB_ENV"
+            DASHBOARD_REPORT_ROOT=.github/aw/dashboard/report
           elif [[ -f dashboard/report/records.mjs ]]; then
-            echo "DASHBOARD_REPORT_ROOT=dashboard/report" >> "$GITHUB_ENV"
+            DASHBOARD_REPORT_ROOT=dashboard/report
           else
             echo "DASHBOARD_COLLECTION=false" >> "$GITHUB_ENV"
             exit 0
           fi
+          if [[ ! -f "$DASHBOARD_REPORT_ROOT/activity-collectors.mjs" ]]; then
+            echo "Dashboard collectors are unavailable: $DASHBOARD_REPORT_ROOT/activity-collectors.mjs is missing" >&2
+            exit 1
+          fi
+          echo "DASHBOARD_REPORT_ROOT=$DASHBOARD_REPORT_ROOT" >> "$GITHUB_ENV"
           echo "DASHBOARD_COLLECTION=true" >> "$GITHUB_ENV"
 
       - name: Resolve authoritative control policy

@@ -13,12 +13,20 @@ async function preserveLogsOnFailure(logsPath, reason) {
   try {
     await stat(logsPath);
     log.info`Preserved existing gh-aw logs JSON at ${logsPath} (${reason})`;
+    return;
   } catch (error) {
-    if (error.code === "ENOENT") {
-      log.info`No gh-aw logs JSON to preserve at ${logsPath} (${reason})`;
-      return;
-    }
-    throw error;
+    if (error.code !== "ENOENT") throw error;
+  }
+  // Downstream collectors (notably operational-values) require
+  // REPORT_GH_AW_LOGS to exist. Writing the empty placeholder snapshot is
+  // best-effort: a write failure here (permissions/disk) must not crash the
+  // whole AIC/security collection when there is simply no prior snapshot.
+  try {
+    await mkdir(path.dirname(logsPath), { recursive: true });
+    await writeFile(logsPath, '{"runs":[]}\n');
+    log.info`Cached empty gh-aw logs JSON at ${logsPath}; no prior snapshot existed (${reason})`;
+  } catch (writeError) {
+    log.warning`Unable to cache empty gh-aw logs JSON at ${logsPath}: ${writeError.message}`;
   }
 }
 
@@ -609,22 +617,7 @@ export async function collectAicUsage() {
         if (logsPath) await preserveLogsOnFailure(logsPath, "download failure");
       }
     } else if (logsPath) {
-      try {
-        await stat(logsPath);
-        log.info`Preserved existing gh-aw logs JSON at ${logsPath}; no workflow runs were selected`;
-      } catch (error) {
-        if (error.code !== "ENOENT") throw error;
-        // Creating the empty placeholder snapshot is best-effort: a write
-        // failure here (permissions/disk) must not crash the whole
-        // AIC/security collection when there is simply no prior snapshot.
-        try {
-          await mkdir(path.dirname(logsPath), { recursive: true });
-          await writeFile(logsPath, '{"runs":[]}\n');
-          log.info`Cached empty gh-aw logs JSON at ${logsPath}; no workflow runs were selected and no prior snapshot existed`;
-        } catch (writeError) {
-          log.warning`Unable to cache empty gh-aw logs JSON at ${logsPath}: ${writeError.message}`;
-        }
-      }
+      await preserveLogsOnFailure(logsPath, "no workflow runs were selected");
     }
     const reportedRunsByRepository = Object.groupBy([...runs.values()], (run) => run.repository);
     const repositories = [...runIdsByRepository].map(([repository, runIds]) => {
