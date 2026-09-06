@@ -18,7 +18,11 @@ async function telemetry(phase, name, outcome) {
       }
       recordTelemetry = telemetryModule.recordGithubTelemetry;
     }
-    await recordTelemetry({ phase, operation: name, outcome: outcome || "unknown" });
+    await recordTelemetry({
+      phase,
+      operation: name,
+      ...(outcome === undefined ? {} : { outcome }),
+    });
   } catch {
     // Telemetry must not affect collection.
   }
