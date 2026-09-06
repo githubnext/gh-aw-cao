@@ -606,9 +606,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow software-development-practices-github-well-architected",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow software-development-practices-github-well-architected",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow software-development-practices-github-well-architected",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow software-development-practices-github-well-architected",
@@ -658,9 +666,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow software-development-practices-nist-ssdf",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow software-development-practices-nist-ssdf",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow software-development-practices-nist-ssdf",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow software-development-practices-nist-ssdf",

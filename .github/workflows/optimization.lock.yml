@@ -609,9 +609,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow optimization-ai-credit-auditor",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow optimization-ai-credit-auditor",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow optimization-ai-credit-auditor",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow optimization-ai-credit-auditor",
@@ -661,9 +669,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow optimization-ai-credit-optimizer",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow optimization-ai-credit-optimizer",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow optimization-ai-credit-optimizer",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow optimization-ai-credit-optimizer",
@@ -713,9 +729,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow optimization-agents-md-curator",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow optimization-agents-md-curator",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow optimization-agents-md-curator",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow optimization-agents-md-curator",
@@ -765,9 +789,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow optimization-skills-curator",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow optimization-skills-curator",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow optimization-skills-curator",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow optimization-skills-curator",

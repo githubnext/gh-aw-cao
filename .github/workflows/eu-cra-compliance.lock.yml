@@ -606,9 +606,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow eu-cra-compliance-scope-classifier",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow eu-cra-compliance-scope-classifier",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow eu-cra-compliance-scope-classifier",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow eu-cra-compliance-scope-classifier",
@@ -658,9 +666,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow eu-cra-compliance-security-requirements-auditor",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow eu-cra-compliance-security-requirements-auditor",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow eu-cra-compliance-security-requirements-auditor",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow eu-cra-compliance-security-requirements-auditor",
@@ -710,9 +726,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow eu-cra-compliance-supply-chain-sbom-auditor",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow eu-cra-compliance-supply-chain-sbom-auditor",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow eu-cra-compliance-supply-chain-sbom-auditor",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow eu-cra-compliance-supply-chain-sbom-auditor",
@@ -762,9 +786,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow eu-cra-compliance-vulnerability-handling-auditor",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow eu-cra-compliance-vulnerability-handling-auditor",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow eu-cra-compliance-vulnerability-handling-auditor",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow eu-cra-compliance-vulnerability-handling-auditor",
@@ -814,9 +846,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow eu-cra-compliance-article-14-reporting-readiness",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow eu-cra-compliance-article-14-reporting-readiness",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow eu-cra-compliance-article-14-reporting-readiness",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow eu-cra-compliance-article-14-reporting-readiness",
@@ -866,9 +906,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow eu-cra-compliance-conformity-release-evidence",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow eu-cra-compliance-conformity-release-evidence",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow eu-cra-compliance-conformity-release-evidence",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow eu-cra-compliance-conformity-release-evidence",

@@ -17,6 +17,10 @@ on:
         type: string
       safe_output_mode:
         type: string
+      max_repos:
+        type: number
+      rollout_percent:
+        type: number
       correlation_id:
         type: string
       central_repo:

@@ -1860,9 +1860,25 @@ test("workers reject disabled, malformed, or over-ceiling dispatches before exec
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  for (const input of ["worker", "correlation_id", "central_repo", "control_plane_run_url"]) {
+  for (const input of [
+    "worker",
+    "max_repos",
+    "rollout_percent",
+    "correlation_id",
+    "central_repo",
+    "control_plane_run_url",
+  ]) {
     assert.match(control, new RegExp(input));
     assert.match(precompute, new RegExp(`${input}:`));
+  }
+  for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
+    const source = workflow(name);
+    if (!/^\s+role: worker$/m.test(source)) continue;
+    const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
+    assert.ok(frontmatter, `${name} must have frontmatter`);
+    const inputs = parse(frontmatter).on.workflow_dispatch.inputs;
+    assert.equal(inputs.max_repos?.type, "number", name);
+    assert.equal(inputs.rollout_percent?.type, "number", name);
   }
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
   assert.match(control, /Evaluate Central Agentic Ops admission/);

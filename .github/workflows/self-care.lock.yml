@@ -617,6 +617,10 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-accessibility-checker",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-accessibility-checker",
+                        "type": "number"
+                      },
                       "pages": {
                         "description": "Optional comma-separated site paths to audit (defaults to a representative sample discovered from the build output)",
                         "type": "string"
@@ -624,6 +628,10 @@ jobs:
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-accessibility-checker",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-accessibility-checker",
@@ -673,9 +681,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-code-improvement",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-code-improvement",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-code-improvement",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-code-improvement",
@@ -725,9 +741,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-dashboard-performance",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-dashboard-performance",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-dashboard-performance",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-dashboard-performance",
@@ -777,9 +801,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-data-acquisition-audit",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-data-acquisition-audit",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-data-acquisition-audit",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-data-acquisition-audit",
@@ -829,9 +861,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-dashboard-language-refactor",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-dashboard-language-refactor",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-dashboard-language-refactor",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-dashboard-language-refactor",
@@ -881,9 +921,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-dashboard-review",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-dashboard-review",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-dashboard-review",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-dashboard-review",
@@ -933,9 +981,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-docs-build-time-investigator",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-docs-build-time-investigator",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-docs-build-time-investigator",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-docs-build-time-investigator",
@@ -985,9 +1041,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-open-source-failures",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-open-source-failures",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-open-source-failures",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-open-source-failures",
@@ -1037,9 +1101,17 @@ jobs:
                         "description": "Input parameter 'correlation_id' for workflow self-care-primer-brand-checker",
                         "type": "string"
                       },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow self-care-primer-brand-checker",
+                        "type": "number"
+                      },
                       "ref": {
                         "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
                         "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow self-care-primer-brand-checker",
+                        "type": "number"
                       },
                       "safe_output_mode": {
                         "description": "Input parameter 'safe_output_mode' for workflow self-care-primer-brand-checker",
