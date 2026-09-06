@@ -93,6 +93,27 @@ body { margin: 0; background: var(--canvas); color: var(--fg); font: .875rem/1.5
 .dashboard-root { min-height: 100vh; background: var(--canvas); color: var(--fg); font: .875rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"; }
 .octicon-sprite { width: 0; height: 0; position: absolute; overflow: hidden; }
 .octicon { width: 16px; height: 16px; flex: 0 0 16px; fill: currentColor; vertical-align: text-bottom; }
+.agent-marketplace-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; color: var(--muted); font-size: .8125rem; }
+.agent-marketplace-sort { display: inline-flex; align-items: center; gap: 6px; }
+.agent-marketplace-sort select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; }
+.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.agent-marketplace-tile { min-width: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); overflow: hidden; }
+.agent-marketplace-tile[open] { border-color: var(--accent); }
+.agent-marketplace-summary { display: flex; align-items: center; gap: 10px; padding: 16px; cursor: pointer; list-style: none; }
+.agent-marketplace-summary::-webkit-details-marker { display: none; }
+.agent-marketplace-icon { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border-radius: 6px; background: var(--accent-muted); color: var(--accent); }
+.agent-marketplace-title { min-width: 0; flex: 1; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.agent-marketplace-state { color: var(--muted); font-size: .75rem; }
+.agent-marketplace-card { padding: 0 16px 16px; }
+.agent-marketplace-description { min-height: 3em; margin: 0 0 12px; color: var(--muted); }
+.agent-marketplace-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.agent-badge { padding: 2px 6px; border-radius: 999px; font-size: .6875rem; font-weight: 600; }
+.agent-badge-warning { background: var(--attention-muted); color: var(--attention); }
+.agent-badge-stale { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+.agent-marketplace-facts { display: grid; gap: 8px; margin: 0; }
+.agent-marketplace-facts > div { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border-muted); padding-top: 6px; }
+.agent-marketplace-facts dt { color: var(--muted); }
+.agent-marketplace-facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 a { color: var(--accent); text-decoration: none; text-underline-offset: 2px; transition: color 120ms ease; }
 a:hover { text-decoration: underline; text-decoration-thickness: 2px; }
 a[href^="https://"]:not(:has(.octicon))::after, .octicon-external-link { content: ""; width: 12px; height: 12px; display: inline-block; flex: 0 0 12px; margin-left: 4px; background: currentColor; vertical-align: -1px; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z'/%3E%3C/svg%3E") no-repeat center / contain; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z'/%3E%3C/svg%3E") no-repeat center / contain; }
