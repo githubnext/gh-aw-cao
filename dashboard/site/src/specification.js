@@ -136,6 +136,7 @@ export const FILTER_DIMENSION_VALUES = [
   'operation',
   'phase',
   'risk-status',
+  'is-unhealthy',
   'is-current',
   'has-history',
   'attribution-status',
