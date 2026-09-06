@@ -2360,7 +2360,11 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthousePerformance.block, /name: dashboard-lighthouse-performance/);
   assert.match(lighthousePerformance.block, /path: dashboard\/site\/test-results\/lighthouse\//);
   assert.match(lighthousePerformance.block, /if: always\(\)/);
-  assert.match(lighthouseComment.block, /if: github\.event_name == 'pull_request'/);
+  assert.match(
+    lighthouseComment.block,
+    /if: >-\s+github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
+  );
+  assert.match(lighthouseComment.block, /github\.event_name != 'pull_request_target'/);
   assert.match(lighthouseComment.block, /issues: write/);
   assert.match(lighthouseComment.block, /pull-requests: read/);
   assert.doesNotMatch(lighthouseComment.block, /pull-requests: write/);
@@ -2369,9 +2373,10 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthouseComment.block, /if: steps\.download\.outcome == 'success'/);
   assert.match(lighthouseComment.block, /head: `\$\{headOwner\}:\$\{headBranch\}`/);
   assert.match(lighthouseComment.block, /using event pull request/);
-  assert.match(lighthouseComment.block, /### 📉 Dashboard Lighthouse performance degraded/);
+  assert.match(lighthouseComment.block, /### 📉🚦 Dashboard Lighthouse performance degraded/);
   assert.match(lighthouseComment.block, /github\.paginate\(github\.rest\.issues\.listComments/);
   assert.match(lighthouseComment.block, /issues\.deleteComment/);
+  assert.match(lighthouseComment.block, /issues\.updateComment/);
   assert.match(lighthouseComment.block, /issues\.createComment/);
 });
 

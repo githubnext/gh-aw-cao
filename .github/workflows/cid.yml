@@ -111,7 +111,11 @@ jobs:
 
   lighthouse-comment:
     name: Report Lighthouse degradation
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event_name != 'pull_request_target' &&
+      github.event.pull_request.base.repo.full_name == github.repository &&
+      github.event.pull_request.head.repo.full_name == github.repository
     needs: lighthouse-performance
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -215,16 +219,16 @@ jobs:
                   )
                 }
               }
-              return `#### 👤 ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
+              return `#### 👤🧪 ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
             })
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const body = [
               marker,
-              '### 📉 Dashboard Lighthouse performance degraded',
+              '### 📉🚦 Dashboard Lighthouse performance degraded',
               '',
               '⚠️ The Lighthouse check is informational and does not block this pull request.',
-              'The following scenario scores or metrics are outside their configured thresholds:',
+              '🧭 The following scenario scores or metrics are outside their configured thresholds:',
               '',
               ...sections,
               '',

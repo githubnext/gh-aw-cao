@@ -138,7 +138,9 @@ async function auditScenario(origin, scenario, directory, chromePath) {
   await run(process.execPath, [
     lighthouseCli,
     routeUrl(origin, scenario.routes[0]),
+    '--quiet',
     '--preset=desktop',
+    '--only-categories=performance',
     '--output=json',
     '--output=html',
     `--output-path=${reportPath}`,
