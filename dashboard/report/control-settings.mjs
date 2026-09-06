@@ -118,7 +118,7 @@ export async function main(actions = {}, args = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2)).catch((error) => {
+  main({}, process.argv.slice(2)).catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });
