@@ -82,13 +82,21 @@ const WORKFLOW_ROUTE_BODY_CONFIG = {
 
 /**
  * @param {unknown} body
+ * @returns {WorkflowRouteBody}
+ */
+export function workflowRouteBody(body) {
+  return selectConfigBody(WORKFLOW_ROUTE_BODY_CONFIG, body);
+}
+
+/**
+ * @param {unknown} body
  * @returns {WorkflowRouteBodyComposition}
  */
 export function workflowRouteComposition(body) {
   return /** @type {WorkflowRouteBodyComposition} */ (
     selectNamedComposition(
       WORKFLOW_ROUTE_BODY_COMPOSITIONS,
-      selectConfigBody(WORKFLOW_ROUTE_BODY_CONFIG, body),
+      workflowRouteBody(body),
       WORKFLOW_ROUTE_BODY_CONFIG.fallback
     )
   );

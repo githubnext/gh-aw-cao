@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseWorkflowRoute, workflowRouteValue } from '../../src/components/workflow-route.js';
 import { selectConfigBody } from '../../src/components/route-body-composition.js';
-import { WORKFLOW_ROUTE_BODY_VALUES } from '../../src/components/route-body-specification.js';
+import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 
 describe('workflow-route helpers', () => {
   it('formats and parses valid workflow routes', () => {
@@ -34,5 +34,9 @@ describe('workflow-route helpers', () => {
     expect(selectConfigBody(config, 'runs')).toBe('runs');
     expect(selectConfigBody(config, 'invalid')).toBe('reports');
     expect(selectConfigBody(config, null)).toBe('reports');
+  });
+
+  it('keeps workflow-route-page body values aligned with workflow-route values', () => {
+    expect(WORKFLOW_ROUTE_PAGE_BODY_VALUES).toEqual(WORKFLOW_ROUTE_BODY_VALUES);
   });
 });

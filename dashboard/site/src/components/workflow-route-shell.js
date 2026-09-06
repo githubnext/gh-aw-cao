@@ -8,7 +8,6 @@ import { renderWorkflowIdentity } from './workflow-identity.js';
 import { createRoutePageShell } from './route-page-shell.js';
 import { rowsFor } from './source-rows.js';
 import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
-import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js';
 
 /**
  * @typedef {{
@@ -18,7 +17,7 @@ import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js'
  *   description: string,
  *   navigationPage: 'packages'|'repositories',
  *   breadcrumbs: Array<{ label: string, href: string }> | undefined,
- *   currentTab: 'insights'|'reports'|'runs',
+ *   currentTab: 'workflow-runtime'|'workflow-detail'|'workflow-runs',
  *   bodyRenderer: WorkflowRouteBodyRenderer | undefined
  * }} WorkflowRouteShellConfig
  */
@@ -48,9 +47,9 @@ export function renderWorkflowRouteShell(context, config) {
     tabListClassName: 'repository-tabs workflow-tabs',
     tabListAriaLabel: (title, routeValue) => {
       const route = parseWorkflowRoute(routeValue);
-      return `${config.currentTab === 'insights' ? title : route?.workflow ?? title} views`;
+      return `${config.currentTab === 'workflow-runtime' ? title : route?.workflow ?? title} views`;
     },
-    tabs: ({ routeValue, title }) => workflowTabs(config.currentTab, routeValue, title),
+    tabs: ({ routeValue, title }) => workflowTabs(routeValue, title),
     renderMatched: (routeValue) => {
       const route = parseWorkflowRoute(routeValue);
       const workflow = route
@@ -97,23 +96,22 @@ function workflowRouteAllocation(config, route, workflow, title) {
 }
 
 /**
- * @param {'insights'|'reports'|'runs'} currentTab
  * @param {string} routeValue
  * @param {string} _displayName
  */
-function workflowTabs(currentTab, routeValue, _displayName) {
+function workflowTabs(routeValue, _displayName) {
   const route = parseWorkflowRoute(routeValue);
   if (!route) return [];
   const workflowQuery = `?workflow=${encodeURIComponent(workflowRouteValue(route.repository, route.workflow))}`;
   return [
-    workflowTab('insights', 'Insights', 'graph', workflowQuery),
-    workflowTab('reports', 'Reports', 'issue', workflowQuery),
-    workflowTab('runs', 'Runs', 'play', workflowQuery)
+    workflowTab('workflow-runtime', 'Insights', 'graph', workflowQuery),
+    workflowTab('workflow-detail', 'Reports', 'issue', workflowQuery),
+    workflowTab('workflow-runs', 'Runs', 'play', workflowQuery)
   ];
 }
 
 /**
- * @param {'insights'|'reports'|'runs'} pageId
+ * @param {'workflow-runtime'|'workflow-detail'|'workflow-runs'} pageId
  * @param {string} label
  * @param {string} icon
  * @param {string} workflowQuery
@@ -124,7 +122,7 @@ function workflowTab(pageId, label, icon, workflowQuery) {
     id: pageId,
     label,
     icon,
-    href: `#page-${workflowRoutePageConfigForBody(pageId).pageId}${workflowQuery}`
+    href: `#page-${pageId}${workflowQuery}`
   };
 }
 
