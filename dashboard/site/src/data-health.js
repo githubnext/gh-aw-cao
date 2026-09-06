@@ -19,6 +19,13 @@ export const DOMAIN_DEPENDENCIES = Object.freeze({
   configuration: { required: ['configuration-policy'], optional: ['configuration-summary', 'configuration-actions'] }
 });
 
+/** @param {string} source */
+function domainsDependingOn(source) {
+  return Object.entries(DOMAIN_DEPENDENCIES)
+    .filter(([, dependencies]) => dependencies.required.includes(source) || /** @type {readonly string[]} */ (dependencies.optional).includes(source))
+    .map(([domain]) => domain);
+}
+
 const COVERAGE_CONTRACTS = Object.freeze([
   { area: 'Repositories', source: 'repositories', denominator: 'metadata' },
   { area: 'Workflows', source: 'workflows', denominator: 'metadata' },
@@ -130,9 +137,9 @@ function sourceDiagnostic(name, source) {
 /** @param {{ availability?: string, completeness?: string, freshness?: string, compatibility?: string, collectionState?: string }} state */
 export function evidenceConfidence({ availability, completeness, freshness, compatibility = 'compatible', collectionState = 'complete' }) {
   if (availability === 'unavailable' || collectionState === 'failed') return 'insufficient';
+  if (compatibility === 'unsupported') return 'insufficient';
   if ([availability, completeness, freshness, compatibility, collectionState].some((value) => value === 'unknown' || value === undefined)) return 'unknown';
   if (completeness === 'partial' || freshness === 'stale' || compatibility === 'limited' || collectionState === 'partial') return 'degraded';
-  if (compatibility === 'unsupported') return 'insufficient';
   return availability === 'available' && completeness === 'complete' && freshness === 'fresh' ? 'trusted' : 'unknown';
 }
 
@@ -316,7 +323,7 @@ function compatibilityDiagnostics(workflows) {
       compatibility,
       'missing-fields': missingFields.join(', ') || 'None',
       'missing-field-class': missingFields.length > 0 ? 'unexpected' : compatibility === 'limited' ? 'expected' : 'none',
-      'affected-domain': compatibility === 'compatible' ? 'None' : 'runtime, cost, models, security',
+      'affected-domain': compatibility === 'compatible' ? 'None' : domainsDependingOn('workflows').join(', '),
       reason,
       'next-action': compatibility === 'compatible' ? 'No action required.' : 'Investigate producer compatibility.'
     };
@@ -420,7 +427,11 @@ function aggregateAxis(rows, axis) {
   if (values.includes('unavailable')) return 'unavailable';
   if (values.includes('unknown')) return 'unknown';
   if (values.includes('partial') || values.includes('stale')) return axis === 'freshness' ? 'stale' : 'partial';
-  if (axis === 'availability') return values.every((value) => value === 'available') ? 'available' : 'unknown';
+  if (axis === 'availability') {
+    if (values.every((value) => value === 'available')) return 'available';
+    if (values.every((value) => value === 'available' || value === 'empty')) return 'empty';
+    return 'unknown';
+  }
   return axis === 'freshness' ? 'fresh' : 'complete';
 }
 
