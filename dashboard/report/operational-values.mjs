@@ -162,6 +162,7 @@ async function main() {
       selectedRuns: selectedRuns.length,
       observedRuns: records.filter((record) => record.observation).length,
       matureRuns: records.filter((record) => record.observation?.mature).length,
+      // Retained for compatibility with existing dashboard source consumers.
       regradedRuns: records.filter((record) => record.observationSource === "regrade").length,
       pendingRegrades: 0,
       regradeAvailable: false,
