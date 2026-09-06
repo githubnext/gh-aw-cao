@@ -510,6 +510,7 @@ describe('dashboard document validation', () => {
       element: 'workflow-route-page',
       config: { body: 'reports' }
     });
+
     expect(runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-route')).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
@@ -521,6 +522,42 @@ describe('dashboard document validation', () => {
       config: { body: 'insights' }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
+  it('accepts workflow-route-page on multiple pages without page-specific JavaScript routing', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: workflow-route-pages
+  title: Workflow route pages
+  pages:
+    - id: workflow-runtime
+      kind: custom
+      title: Workflow runtime
+      route:
+        hash-query-parameter: workflow
+      views:
+        - id: workflow-runtime-route
+          data:
+            sources: [workflows]
+          mark: element
+          element: workflow-route-page
+          config:
+            body: insights
+    - id: workflow-runs
+      kind: custom
+      title: Workflow runs
+      route:
+        hash-query-parameter: workflow
+      views:
+        - id: workflow-runs-route
+          data:
+            sources: [workflows]
+          mark: element
+          element: workflow-route-page
+          config:
+            body: runs
+`);
+    expect(accepted.ok).toBe(true);
   });
 
   it('defines the packages page through a reusable package activity shell element', () => {
@@ -1542,6 +1579,7 @@ dashboard:
         '      title: Dashboard data is partial',
         '      description: Some data could not be downloaded.',
         '      icon: alert',
+        '      navigation-page: custom-summary',
         '      visible-when:',
         '        source: coverage-diagnostics',
         '        field: kind',
@@ -1550,6 +1588,15 @@ dashboard:
       ].join('\n')
     );
     expect(validateDashboardDocument(withCallout).ok).toBe(true);
+
+    const invalidNavigation = validateDashboardDocument(withCallout.replace('      navigation-page: custom-summary', '      navigation-page: missing-page'));
+    expect(invalidNavigation.ok).toBe(false);
+    if (!invalidNavigation.ok) {
+      expect(invalidNavigation.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.callouts[0].navigation-page'
+      }));
+    }
 
     const invalidField = validateDashboardDocument(withCallout.replace('        field: kind', '        field: missing'));
     expect(invalidField.ok).toBe(false);

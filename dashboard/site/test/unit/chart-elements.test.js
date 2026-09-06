@@ -69,6 +69,16 @@ describe('chart element helpers', () => {
     expect(legend.textContent).toContain('pass');
   });
 
+  it('explains scatter chart scale guides in the legend', () => {
+    const legend = renderChartLegend([
+      { name: 'core · app · max 5000', className: 'chart-series-1' }
+    ], 'scatter');
+
+    expect(legend.querySelectorAll('li')).toHaveLength(2);
+    expect(legend.querySelector('li:last-child i')?.className).toBe('chart-grid-key');
+    expect(legend.querySelector('li:last-child')?.textContent).toBe('Dashed lines show scale guides');
+  });
+
   it('DLS-SAFE-009 summarizes pie-chart entries and omits non-positive totals', () => {
     const summary = pieChartEntries([
       { x: 'open', y: 3, color: null },

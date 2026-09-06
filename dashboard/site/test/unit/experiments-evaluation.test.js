@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderExperimentsEvaluation } from '../../src/components/experiments-evaluation.js';
+import { defaultExperimentsViewComposition, experimentsViewCompositionForBody } from '../../src/components/experiments-view-primitives.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'experiment-fixture',
@@ -20,6 +21,18 @@ afterEach(() => {
 });
 
 describe('experiments and evaluation', () => {
+  it('defines reusable experiments view compositions by declarative body', () => {
+    expect(experimentsViewCompositionForBody('overview')).toEqual({ key: 'overview', className: 'experiment-overview' });
+    expect(experimentsViewCompositionForBody('table')).toEqual({ key: 'table', className: 'experiment-decision-table' });
+    expect(experimentsViewCompositionForBody('detail')).toEqual({ key: 'detail', className: 'experiment-detail' });
+    expect(experimentsViewCompositionForBody('unknown')).toEqual({ key: 'detail', className: 'experiment-detail' });
+    expect(defaultExperimentsViewComposition()).toEqual([
+      { key: 'overview', className: 'experiment-overview' },
+      { key: 'table', className: 'experiment-decision-table' },
+      { key: 'detail', className: 'experiment-detail' }
+    ]);
+  });
+
   it('keeps decisions, observations, producers, runs, and evidence distinct', () => {
     window.history.replaceState(null, '', '/#page-experiments?experiment=routing-v3');
     const runLink = { href: 'https://github.com/acme/tools/actions/runs/101', label: 'Open run 101' };
@@ -76,8 +89,8 @@ describe('experiments and evaluation', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(rendered.querySelector('.experiment-decision-table')?.textContent).toContain('PROMOTE');
+    expect(rendered.querySelector('.experiment-detail')).not.toBeNull();
+    expect(rendered.textContent).toContain('PROMOTE');
     expect(rendered.querySelector('.experiment-metric-table')?.textContent).toContain('hallucination');
     expect(rendered.querySelector('.experiment-metric-table')?.textContent).toContain('-0.040 ▼');
     expect(rendered.querySelector('.eval-outcome')?.textContent).toContain('Is the answer correct?');

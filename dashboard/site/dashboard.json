@@ -11,6 +11,7 @@
         "title": "Dashboard data is partial",
         "description": "Data Health reports a collection gap caused by a GitHub API rate limit. Open Data health for the affected source and evidence horizon.",
         "icon": "alert",
+        "navigation-page": "data-health",
         "visible-when": {
           "source": "data-health-collections",
           "field": "failure-class",
@@ -334,11 +335,14 @@
             "title": "Quota history",
             "description": "Individual remaining-capacity observations over the selected UTC time range, colored by resource, credential, and maximum quota.",
             "data": {
-              "source": "github-api-rate-limits"
+              "source": "github-api-rate-limits",
+              "filters": {
+                "is-unhealthy": "true"
+              }
             },
             "mark": "chart",
             "chart": "scatter",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "empty-message": "No quota observations are available for the selected time range.",
@@ -692,6 +696,10 @@
             "disclosure": "supplemental",
             "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
             "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
               "columns": [
                 {
                   "field": "observed-at",
@@ -7070,92 +7078,20 @@
         "title": "Agents",
         "icon": "copilot",
         "class-name": "dashboard-next-agents-page",
-        "description": "Assignments, handoffs, dependencies, conflicts, and current agent state tied to explicit work identity.",
+        "description": "Browse agent capabilities and runtime health in a Marketplace-style catalog.",
         "views": [
           {
-            "id": "agents-state-distribution",
-            "title": "Agents by state",
-            "description": "Current assignment-state distribution for observed agents.",
+            "id": "agents-marketplace",
+            "title": "Agents",
+            "description": "Agent name, icon, description, permissions, runtime, and freshness.",
             "data": {
-              "source": "agent-assignments"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "agent-state",
-                "type": "nominal",
-                "title": "Agent state"
-              },
-              "y": {
-                "field": "assignment-id",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Assignments"
-              },
-              "color": {
-                "field": "agent-state",
-                "type": "nominal",
-                "title": "Agent state"
-              }
-            }
-          },
-          {
-            "id": "agents-assignment-inventory",
-            "title": "Assignments and coordination",
-            "description": "Observed agent assignments with handoff, dependency, and conflict state.",
-            "data": {
-              "source": "agent-assignments"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": false,
-            "empty-message": "No exact agent-to-work assignments were observed.",
-            "layout": "full",
-            "encoding": {
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "agent-name",
-                  "type": "nominal",
-                  "title": "Agent"
-                },
-                {
-                  "field": "agent-state",
-                  "type": "ordinal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "objective",
-                  "type": "nominal",
-                  "title": "Work"
-                },
-                {
-                  "field": "handoff-state",
-                  "type": "ordinal",
-                  "title": "Handoff",
-                  "display": "status"
-                },
-                {
-                  "field": "dependency-state",
-                  "type": "ordinal",
-                  "title": "Dependency",
-                  "display": "status"
-                },
-                {
-                  "field": "conflict-state",
-                  "type": "ordinal",
-                  "title": "Conflict",
-                  "display": "status"
-                }
+              "sources": [
+                "agent-assignments"
               ]
-            }
+            },
+            "mark": "element",
+            "element": "agent-marketplace-view",
+            "layout": "full"
           }
         ]
       },

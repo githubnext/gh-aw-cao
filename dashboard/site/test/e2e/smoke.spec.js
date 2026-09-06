@@ -311,6 +311,83 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
   expect(await readinessPage.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+test('experiments page composes reusable declarative slices with rendered parity', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'experiments-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-05T12:00:00Z',
+        'retrieved-at': '2026-09-05T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        experiments: {
+          source: 'experiments',
+          metadata,
+          rows: [{
+            organization: 'acme',
+            repository: 'tools',
+            workflow: 'triage-agent',
+            experiment: 'routing-v3',
+            'experiment-name': 'Tool routing v3',
+            'control-variant': 'control',
+            'candidate-variant': 'candidate',
+            'primary-metric': 'quality',
+            readiness: 'READY',
+            decision: 'PROMOTE'
+          }]
+        },
+        'experiment-assignments': {
+          source: 'experiment-assignments',
+          metadata,
+          rows: [
+            { experiment: 'routing-v3', run: '100', variant: 'control' },
+            { experiment: 'routing-v3', run: '101', variant: 'candidate' }
+          ]
+        },
+        graders: {
+          source: 'graders',
+          metadata,
+          rows: [{ grader: 'quality', role: 'PRIMARY', direction: 'higher_is_better', unit: 'raw' }]
+        },
+        'grader-observations': {
+          source: 'grader-observations',
+          metadata,
+          rows: [
+            { experiment: 'routing-v3', run: '100', grader: 'quality', value: .72, status: 'complete', 'observed-at': '2026-09-04T10:00:00Z' },
+            { experiment: 'routing-v3', run: '101', grader: 'quality', value: .81, status: 'complete', 'observed-at': '2026-09-05T10:00:00Z' }
+          ]
+        },
+        evals: { source: 'evals', metadata, rows: [] },
+        'eval-observations': { source: 'eval-observations', metadata, rows: [] },
+        runs: { source: 'runs', metadata, rows: [{ run: '100' }, { run: '101' }] },
+        outcomes: { source: 'outcomes', metadata, rows: [] },
+        usage: { source: 'usage', metadata, rows: [] },
+        'operational-values': { source: 'operational-values', metadata, rows: [] }
+      };
+      window.location.hash = '#page-experiments?experiment=routing-v3';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const experimentsPage = page.locator('[data-page-id="experiments"]');
+  await expect(experimentsPage).toBeVisible();
+  await expect(experimentsPage.locator('.experiment-filters').first()).toBeVisible();
+  await expect(experimentsPage.locator('.experiment-overview')).toHaveCount(1);
+  await expect(experimentsPage.locator('.experiment-decision-table')).toHaveCount(1);
+  await expect(experimentsPage.locator('.experiment-detail')).toHaveCount(1);
+  await expect(experimentsPage.getByRole('heading', { name: 'Tool routing v3' })).toBeVisible();
+});
+
 test('desktop navigation sections collapse and expand around the current view', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1280, height: 900 });

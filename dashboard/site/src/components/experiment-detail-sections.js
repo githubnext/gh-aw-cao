@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
 import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
-import { renderExperimentEffect, renderExperimentSectionHeading } from './experiment-view-primitives.js';
+import { renderExperimentEffect, renderExperimentSectionHeading, numericObservation } from './experiment-view-primitives.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
@@ -296,9 +296,3 @@ function countBy(rows, key) {
   return counts;
 }
 
-/** @param {Record<string, any>} observation @returns {number} */
-function numericObservation(observation) {
-  if (observation.sourceType === 'eval') return observation.result === 'YES' ? 1 : observation.result === 'NO' ? 0 : NaN;
-  const value = Number(observation.result);
-  return Number.isFinite(value) ? value : NaN;
-}

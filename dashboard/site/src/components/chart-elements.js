@@ -144,9 +144,12 @@ function hasMatchingTerm(terms, candidates) {
  * @returns {HTMLElement}
  */
 export function renderChartLegend(series, chartType) {
+  const legendItems = chartType === 'scatter'
+    ? [...series, { name: 'Dashed lines show scale guides', className: 'chart-grid-key' }]
+    : series;
   return renderLegendList(
     `chart-legend chart-legend-${chartType}`,
-    series,
+    legendItems,
     (item) => item.className,
     (item) => [h('span', null, item.name)],
     { 'data-chart-legend': 'visual' }

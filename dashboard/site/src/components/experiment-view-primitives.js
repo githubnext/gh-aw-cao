@@ -119,10 +119,13 @@ function aggregateObservations(rows, sourceType) {
 }
 
 /**
+ * Converts a single observation to its numeric value for aggregation, treating
+ * eval-sourced observations as a binary 1/0/NaN result and other sources as a
+ * finite numeric result.
  * @param {any} observation
  * @returns {number}
  */
-function numericObservation(observation) {
+export function numericObservation(observation) {
   if (observation.sourceType === 'eval') return observation.result === 'YES' ? 1 : observation.result === 'NO' ? 0 : NaN;
   return finite(observation.result) ?? NaN;
 }
@@ -132,7 +135,7 @@ function numericObservation(observation) {
  * @param {string} direction
  * @returns {number}
  */
-function normalizeEffect(value, direction) {
+export function normalizeEffect(value, direction) {
   if (!Number.isFinite(value)) return NaN;
   return direction === 'lower_is_better' ? -value : value;
 }
@@ -142,7 +145,7 @@ function normalizeEffect(value, direction) {
  * @param {number} right
  * @returns {number}
  */
-function difference(left, right) {
+export function difference(left, right) {
   return Number.isFinite(left) && Number.isFinite(right) ? left - right : NaN;
 }
 
@@ -150,7 +153,7 @@ function difference(left, right) {
  * @param {number[]} values
  * @returns {number}
  */
-function mean(values) {
+export function mean(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : NaN;
 }
 
@@ -158,7 +161,7 @@ function mean(values) {
  * @param {unknown} value
  * @returns {number | null}
  */
-function finite(value) {
+export function finite(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }

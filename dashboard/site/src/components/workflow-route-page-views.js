@@ -2,6 +2,8 @@
  * Shared Dashboard Language view factories for workflow-route pages.
  */
 
+import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js';
+
 /**
  * @typedef {'insights'|'reports'|'runs'} WorkflowRoutePageBody
  */
@@ -23,10 +25,8 @@ export function createWorkflowRoutePageView(options) {
       sources: options.sources
     },
     mark: 'element',
-    element: 'workflow-route',
-    config: {
-      body: options.body
-    },
+    element: 'workflow-route-page',
+    config: { body: workflowRoutePageConfigForBody(options.body).body },
     ...(options.layout ? { layout: options.layout } : {})
   };
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderWorkflowRuntime } from '../../src/components/workflow-runtime.js';
 import { createWorkflowRoutePageView } from '../../src/components/workflow-route-page-views.js';
 import { renderWorkflowRouteView } from '../../src/components/workflow-route-view.js';
+import { workflowRouteCompositionForPage } from '../../src/components/workflow-route-composition.js';
 
 const completeMetadata = {
   'source-id': 'fixture',
@@ -103,12 +104,19 @@ describe('renderWorkflowRuntime', () => {
         sources: ['workflows', 'runs', 'usage', 'operational-values']
       },
       mark: 'element',
-      element: 'workflow-route',
+      element: 'workflow-route-page',
       config: {
         body: 'insights'
       },
       layout: 'full'
     });
+  });
+
+  it('maps workflow route page identities to declarative route bodies', () => {
+    expect(workflowRouteCompositionForPage('workflow-runtime').currentTab).toBe('insights');
+    expect(workflowRouteCompositionForPage('workflow-detail').currentTab).toBe('reports');
+    expect(workflowRouteCompositionForPage('workflow-runs').currentTab).toBe('runs');
+    expect(workflowRouteCompositionForPage('custom-workflow-page').currentTab).toBe('reports');
   });
 
   it('renders workflow identity, health, registration, usage, and the value empty state', () => {

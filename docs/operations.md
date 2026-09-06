@@ -133,7 +133,7 @@ API and budget failures are fail-closed:
 - a required control-source or workflow-resolution API failure stops precomputation before dispatch;
 - a dispatch failure is recorded as deferred and is not retried within the same run;
 - a worker that reaches an API limit, workflow AI Credit cap, or broader budget limit after startup stops additional work and reports incomplete without self-dispatch or a wait loop; if budget enforcement rejects startup, the failed Actions run is the audit record;
-- work resumes only through a later scheduled run or an authorized manual run, which is a new bounded attempt. A valid advisory API-capacity gate suppresses scheduled attempts until its reset time; after expiry, the next run checks live capacity and rediscovers current candidates.
+- work resumes only through a later scheduled run or an authorized manual run, which is a new bounded attempt. Each attempt checks live API capacity before rediscovering current candidates.
 
 This favors bounded failure over eventual delivery. Scheduled, level-triggered operations reconcile current work rather than resume a prior process. One-off manual requests are not replayed, and guaranteed eventual processing is not provided by the current workflows.
 
