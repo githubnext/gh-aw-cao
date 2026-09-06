@@ -9,7 +9,7 @@ import { firstText } from "./text-utils.mjs";
 
 const FIREWALL_HORIZON_DAYS = 30;
 
-function runGhAw(targets, maxRunsPerWorkflow, outputDirectory) {
+function collectGhAwLogs(targets, maxRunsPerWorkflow, outputDirectory) {
   return new Promise((resolve, reject) => {
     const child = spawn("gh", [
       "aw", "logs", "--json",
@@ -32,8 +32,17 @@ function runGhAw(targets, maxRunsPerWorkflow, outputDirectory) {
     child.on("error", reject);
     child.on("close", (code, signal) => {
       const diagnostic = Buffer.concat(stderr).toString("utf8").trim();
-      if (code === 0 && !signal) resolve(Buffer.concat(stdout).toString("utf8"));
-      else reject(new Error(diagnostic || `gh aw logs exited with ${signal || code}`));
+      if (code !== 0 || signal) {
+        reject(new Error(diagnostic || `gh aw logs exited with ${signal || code}`));
+        return;
+      }
+      try {
+        const result = JSON.parse(Buffer.concat(stdout).toString("utf8"));
+        if (!Array.isArray(result?.runs)) throw new Error("gh aw logs JSON has no runs array");
+        resolve(result);
+      } catch (error) {
+        reject(new Error(`gh aw logs returned invalid JSON: ${error.message}`));
+      }
     });
   });
 }
@@ -505,7 +514,7 @@ async function main() {
     let collectionAvailable = true;
     if (targets.length > 0) {
       try {
-        const result = JSON.parse(await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot));
+        const result = await collectGhAwLogs(targets, maxRunsPerWorkflow, temporaryRoot);
         for (const run of result.runs || []) {
           const runId = Number(run.database_id ?? run.run_id ?? run.id);
           const aic = run.aic === null || run.aic === undefined || run.aic === ""

@@ -16,6 +16,7 @@ test("AI Credit usage collection preserves workflow data payloads", async () => 
   const outputPath = path.join(root, "aic-usage.json");
   const cachePath = path.join(root, "cache");
   const argumentsPath = path.join(root, "gh-arguments.json");
+  const invocationsPath = path.join(root, "gh-invocations.jsonl");
   await mkdir(bin);
   await writeFile(inventoryPath, JSON.stringify({
     runHealth: { windowHours: 24 },
@@ -27,6 +28,14 @@ test("AI Credit usage collection preserves workflow data payloads", async () => 
         runIds: [42],
         runRecords: [{ runId: 42, conclusion: "success" }],
       },
+    }, {
+      repository: "githubnext/gh-aw-cao",
+      path: ".github/workflows/other.lock.yml",
+      name: "Other",
+      runHealth: {
+        runIds: [43],
+        runRecords: [{ runId: 43, conclusion: "success" }],
+      },
     }],
   }));
   const ghPath = path.join(bin, "gh");
@@ -35,6 +44,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const args = process.argv.slice(2);
 fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
+fs.appendFileSync(process.env.GH_INVOCATIONS_PATH, JSON.stringify(args) + "\\n");
 const output = args[args.indexOf("--output") + 1];
 fs.mkdirSync(path.join(output, "run-42", "evals"), { recursive: true });
 fs.writeFileSync(path.join(output, "run-42", "evals", "evals.jsonl"),
@@ -94,11 +104,16 @@ process.stdout.write(JSON.stringify({
         REPORT_AIC_USAGE: outputPath,
         REPORT_AIC_CACHE: cachePath,
         GH_ARGS_PATH: argumentsPath,
+        GH_INVOCATIONS_PATH: invocationsPath,
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
     const argumentsList = JSON.parse(await readFile(argumentsPath, "utf8"));
+    const invocations = (await readFile(invocationsPath, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+    assert.equal(invocations.length, 1);
+    assert.ok(argumentsList.includes("githubnext/gh-aw-cao/.github/workflows/data.lock.yml"));
+    assert.ok(argumentsList.includes("githubnext/gh-aw-cao/.github/workflows/other.lock.yml"));
     assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--artifacts"), argumentsList.indexOf("--artifacts") + 2), [
       "--artifacts",
       "usage,agent,detection,evals,experiment,firewall,graders,mcp",
