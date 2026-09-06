@@ -92,7 +92,6 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run performance scenarios
-        continue-on-error: true
         run: npm run test:performance
       - name: Upload performance traces
         if: always()
@@ -111,7 +110,8 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read
-      pull-requests: write
+      issues: write
+      pull-requests: read
     steps:
       - name: Download Lighthouse results
         id: download
@@ -122,11 +122,23 @@ jobs:
           path: lighthouse-results
       - name: Comment on degraded performance
         if: steps.download.outcome == 'success'
+        continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs')
-            const summary = JSON.parse(fs.readFileSync('lighthouse-results/summary.json', 'utf8'))
+            const summaryPath = 'lighthouse-results/summary.json'
+            if (!fs.existsSync(summaryPath)) {
+              core.warning(`Lighthouse summary is unavailable at ${summaryPath}; skipping PR feedback.`)
+              return
+            }
+            let summary
+            try {
+              summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
+            } catch (error) {
+              core.warning(`Could not read the Lighthouse summary; skipping PR feedback: ${error.message}`)
+              return
+            }
             const degraded = summary.results.filter((result) => result.failures.length > 0)
 
             const headOwner = context.payload.pull_request.head.repo.owner.login
@@ -183,7 +195,7 @@ jobs:
               const details = []
               if (result.score < result.passingScore) {
                 details.push(
-                  `- Performance score: **${Math.round(result.score * 100)}** ` +
+                  `- 📊 Performance score: **${Math.round(result.score * 100)}** ` +
                   `(required: **${Math.round(result.passingScore * 100)}**)`
                 )
               }
@@ -191,25 +203,25 @@ jobs:
                 const value = result.metrics[name]
                 if (value > budget) {
                   details.push(
-                    `- ${labels[name] || name}: **${formatMetric(name, value)}** ` +
+                    `- 📏 ${labels[name] || name}: **${formatMetric(name, value)}** ` +
                     `(budget: **${formatMetric(name, budget)}**)`
                   )
                 }
               }
-              return `### ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
+              return `#### 👤 ${result.persona} (\`${result.id}\`)\n\n${details.join('\n')}`
             })
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             const body = [
               marker,
-              '## Dashboard Lighthouse performance degraded',
+              '### 📉 Dashboard Lighthouse performance degraded',
               '',
-              'The Lighthouse check is informational and does not block this pull request.',
+              '⚠️ The Lighthouse check is informational and does not block this pull request.',
               'The following scenario scores or metrics are outside their configured thresholds:',
               '',
               ...sections,
               '',
-              `[View the workflow run and performance artifacts](${runUrl}).`,
+              `🔎 [View the workflow run and performance artifacts](${runUrl}).`,
             ].join('\n')
 
             if (existing) {
