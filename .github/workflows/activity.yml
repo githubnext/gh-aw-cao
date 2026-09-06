@@ -58,30 +58,20 @@ jobs:
           permission-issues: read
           permission-pull-requests: read
 
-      - name: Restore activity cache
-        id: activity-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/cao-activity
-          key: ${{ steps.activity-cache-key.outputs.value }}
-          restore-keys: |
-            cao-activity-
-
       - name: Resolve activity indexer
         run: |
           if [[ -f .github/aw/activity/index.mjs ]]; then
             echo "ACTIVITY_INDEXER=.github/aw/activity/index.mjs" >> "$GITHUB_ENV"
+            echo "ACTIVITY_LOGS=.github/aw/activity/logs.mjs" >> "$GITHUB_ENV"
             echo "GITHUB_TELEMETRY=.github/aw/activity/github-telemetry.mjs" >> "$GITHUB_ENV"
           elif [[ -f activity/index.mjs ]]; then
             echo "ACTIVITY_INDEXER=activity/index.mjs" >> "$GITHUB_ENV"
+            echo "ACTIVITY_LOGS=activity/logs.mjs" >> "$GITHUB_ENV"
             echo "GITHUB_TELEMETRY=activity/github-telemetry.mjs" >> "$GITHUB_ENV"
           else
             echo "Activity indexer is unavailable" >&2
             exit 1
           fi
-
-      - name: Restore recent GitHub API telemetry
-        run: node "$GITHUB_TELEMETRY" prepare "$RUNNER_TEMP/cao-activity/cao-gh.jsonl"
 
       - name: Resolve dashboard collectors
         run: |
@@ -99,6 +89,46 @@ jobs:
           fi
           echo "DASHBOARD_REPORT_ROOT=$DASHBOARD_REPORT_ROOT" >> "$GITHUB_ENV"
           echo "DASHBOARD_COLLECTION=true" >> "$GITHUB_ENV"
+
+      - name: Install gh-aw CLI
+        continue-on-error: true
+        uses: github/gh-aw-actions/setup-cli@23e16337f3568b3c18bb04a976793f282a016755 # v0.88.4
+        env:
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+        with:
+          version: v0.88.4
+
+      - name: Restore activity cache
+        id: activity-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/cao-activity
+          key: ${{ steps.activity-cache-key.outputs.value }}
+          restore-keys: |
+            cao-activity-
+
+      - name: Download agentic workflow logs
+        id: collect-gh-aw-logs
+        env:
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
+          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
+          REPORT_RUN_WINDOW_DAYS: "30"
+        run: node "$ACTIVITY_LOGS"
+
+      - name: Restore recent GitHub API telemetry
+        run: node "$GITHUB_TELEMETRY" prepare "$RUNNER_TEMP/cao-activity/cao-gh.jsonl"
+
+      - name: Record gh-aw logs GitHub API state
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
+          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
+          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
+          CAO_OPERATION_OUTCOME: ${{ steps.collect-gh-aw-logs.outputs.collection-outcome || steps.collect-gh-aw-logs.outcome }}
+        run: node "$GITHUB_TELEMETRY" after collect-gh-aw-logs
 
       - name: Resolve authoritative control policy
         if: env.DASHBOARD_COLLECTION == 'true'
@@ -119,35 +149,13 @@ jobs:
       - name: Refresh activity index
         id: refresh-activity
         env:
-          GITHUB_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-          REPORT_CONTROL_POLICY: .github/workflows/cao.json
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
+          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
-          REPORT_RUN_WINDOW_HOURS: "720"
-        run: |
-          node "$GITHUB_TELEMETRY" before refresh-activity || true
-          node "$ACTIVITY_INDEXER"
-
-      - name: Record activity refresh GitHub API state
-        if: always()
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-          CAO_OPERATION_OUTCOME: ${{ steps.refresh-activity.outcome }}
-        run: node "$GITHUB_TELEMETRY" after refresh-activity
-
-      - name: Install gh-aw CLI
-        if: env.DASHBOARD_COLLECTION == 'true'
-        uses: github/gh-aw-actions/setup-cli@23e16337f3568b3c18bb04a976793f282a016755 # v0.88.4
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-        with:
-          version: v0.88.4
+          REPORT_RUN_WINDOW_DAYS: "30"
+        run: node "$ACTIVITY_INDEXER"
 
       - name: Process cached gh-aw logs
         id: process-activity
@@ -161,6 +169,7 @@ jobs:
           REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
+          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
           REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
           REPORT_VALUE_CACHE: ${{ runner.temp }}/cao-activity/operational-values.json

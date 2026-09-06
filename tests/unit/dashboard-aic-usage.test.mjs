@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -8,15 +8,15 @@ import test from "node:test";
 
 const execFileAsync = promisify(execFile);
 
-test("AI Credit usage collection preserves workflow data payloads", async () => {
+test("AI Credit usage collection processes the shared logs snapshot without invoking gh", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const bin = path.join(root, "bin");
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const outputPath = path.join(root, "aic-usage.json");
   const logsPath = path.join(root, "gh-aw-logs.json");
   const cachePath = path.join(root, "cache");
-  const argumentsPath = path.join(root, "gh-arguments.json");
-  await mkdir(bin);
+  await mkdir(path.join(cachePath, "run-42", "evals"), { recursive: true });
+  await writeFile(path.join(cachePath, "run-42", "evals", "evals.jsonl"),
+    `${JSON.stringify({ id: "quality", answer: "YES", runid: "42", timestamp: "2026-08-30T10:05:00Z" })}\n`);
   await writeFile(inventoryPath, JSON.stringify({
     runHealth: { windowHours: 24 },
     workflows: [{
@@ -29,162 +29,59 @@ test("AI Credit usage collection preserves workflow data payloads", async () => 
       },
     }],
   }));
-  const ghPath = path.join(bin, "gh");
-  await writeFile(ghPath, `#!/usr/bin/env node
-const fs = require("node:fs");
-const path = require("node:path");
-const args = process.argv.slice(2);
-fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
-const output = args[args.indexOf("--output") + 1];
-fs.mkdirSync(path.join(output, "run-42", "evals"), { recursive: true });
-fs.writeFileSync(path.join(output, "run-42", "evals", "evals.jsonl"),
-  JSON.stringify({ id: "quality", answer: "YES", runid: "42", timestamp: "2026-08-30T10:05:00Z" }) + "\\n");
-process.stdout.write(JSON.stringify({
-  runs: [{
-    database_id: 42,
-    aic: 2.5,
-    safe_items_count: 4,
-    noop_count: 1,
-    missing_data_count: 2,
-    missing_tool_count: 3,
-    report_incomplete_count: 1,
-    data: { findings: [{ severity: "high", total: 3 }] },
-    token_usage_summary: {
-      total_input_tokens: 100,
-      total_output_tokens: 20,
-      total_cache_read_tokens: 50,
-      total_cache_write_tokens: 10,
-      by_model: { "gpt-5": { reasoning_tokens: 7 } }
-    },
-    experiments: {
-      assignments: { prompt: "candidate" },
-      cumulative_counts: { prompt: { control: 2, candidate: 3 } }
-    },
-    graders: {
-      results: [{ id: "quality", name: "Quality", status: "pass", value: 0.9, direction: "maximize", threshold: 0.8 }]
-    }
-  }]
-}));
-`);
-  await chmod(ghPath, 0o755);
+  await writeFile(logsPath, JSON.stringify({
+    runs: [{
+      database_id: 42,
+      aic: 2.5,
+      safe_items_count: 4,
+      noop_count: 1,
+      missing_data_count: 2,
+      missing_tool_count: 3,
+      report_incomplete_count: 1,
+      data: { findings: [{ severity: "high", total: 3 }] },
+      token_usage_summary: {
+        total_input_tokens: 100,
+        total_output_tokens: 20,
+        total_cache_read_tokens: 50,
+        total_cache_write_tokens: 10,
+        by_model: { "gpt-5": { reasoning_tokens: 7 } },
+      },
+    }],
+  }));
 
   try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
+    await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
+        PATH: root,
         REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
         REPORT_AIC_USAGE: outputPath,
         REPORT_AIC_CACHE: cachePath,
         REPORT_GH_AW_LOGS: logsPath,
-        GH_ARGS_PATH: argumentsPath,
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
-    const logs = JSON.parse(await readFile(logsPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
-    assert.equal(logs.runs[0].database_id, 42);
-    const argumentsList = JSON.parse(await readFile(argumentsPath, "utf8"));
-    assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--artifacts"), argumentsList.indexOf("--artifacts") + 2), [
-      "--artifacts",
-      "usage,agent,detection,evals,experiment,firewall,graders,mcp",
-    ]);
-    assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--start-date"), argumentsList.indexOf("--start-date") + 2), [
-      "--start-date",
-      "-30d",
-    ]);
-    assert.equal(argumentsList.at(-1), "githubnext/gh-aw-cao/.github/workflows/data.lock.yml");
-    assert.equal(
-      Date.parse(usage.firewallRequestedHorizonEnd) - Date.parse(usage.firewallRequestedHorizonStart),
-      30 * 24 * 60 * 60 * 1000,
-    );
-    assert.deepEqual(usage.runs[0].data, {
-      findings: [{ severity: "high", total: 3 }],
-    });
-    assert.equal(usage.securityRuns[0].logsPayload.run_id, undefined);
+    assert.equal(usage.runs[0].aic, 2.5);
+    assert.deepEqual(usage.runs[0].data, { findings: [{ severity: "high", total: 3 }] });
     assert.equal(usage.securityRuns[0].logsPayload.database_id, 42);
-    assert.deepEqual(usage.runs[0].tokenUsage, {
-      inputTokens: 100,
-      outputTokens: 20,
-      cacheReadTokens: 50,
-      cacheWriteTokens: 10,
-      reasoningTokens: 7,
-    });
     assert.deepEqual(usage.securityRuns[0].evals, [{
       id: "quality",
       answer: "YES",
       runId: "42",
       timestamp: "2026-08-30T10:05:00Z",
     }]);
-    assert.deepEqual({
-      safeItemsCount: usage.runs[0].safeItemsCount,
-      noopCount: usage.runs[0].noopCount,
-      missingDataCount: usage.runs[0].missingDataCount,
-      missingToolCount: usage.runs[0].missingToolCount,
-      reportIncompleteCount: usage.runs[0].reportIncompleteCount,
-    }, {
-      safeItemsCount: 4,
-      noopCount: 1,
-      missingDataCount: 2,
-      missingToolCount: 3,
-      reportIncompleteCount: 1,
-    });
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test("AI Credit usage collection preserves logs snapshot after download failure", async () => {
+test("AI Credit usage collection reports an unreadable shared snapshot as unavailable", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const bin = path.join(root, "bin");
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
-  await mkdir(bin);
-  await writeFile(inventoryPath, JSON.stringify({
-    workflows: [{
-      repository: "githubnext/gh-aw-cao",
-      path: ".github/workflows/data.lock.yml",
-      name: "Data",
-      runHealth: { runIds: [42] },
-    }],
-  }));
-  const ghPath = path.join(bin, "gh");
-  await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('download failed\\n');\nprocess.exit(1);\n");
-  await chmod(ghPath, 0o755);
-  await writeFile(logsPath, '{"runs":[{"database_id":7}]}\n');
-
-  try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
-        REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
-      },
-    });
-    assert.equal(await readFile(logsPath, "utf8"), '{"runs":[{"database_id":7}]}\n');
-    const usage = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.equal(usage.repositories[0].available, false);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("AI Credit usage collection preserves previously collected run data after a download failure", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const bin = path.join(root, "bin");
-  const inventoryPath = path.join(root, "deployed-workflows.json");
-  const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
-  await mkdir(bin);
+  const statePath = path.join(root, "gh-aw-logs-state.json");
   await writeFile(inventoryPath, JSON.stringify({
     workflows: [{
       repository: "githubnext/gh-aw-cao",
@@ -195,210 +92,25 @@ test("AI Credit usage collection preserves previously collected run data after a
   }));
   await writeFile(outputPath, JSON.stringify({
     schemaVersion: 5,
-    runs: [{ repository: "githubnext/gh-aw-cao", runId: 42, aic: 2.5 }],
-    securityRuns: [{
-      repository: "githubnext/gh-aw-cao",
-      runId: 42,
-      data: { findings: [{ severity: "high", total: 1 }] },
-      security: { firewall: { firewallEvidenceState: "available" } },
-    }],
+    firewallLastSuccessfulCollectionAt: "2026-09-05T12:00:00Z",
+    runs: [],
+    securityRuns: [],
   }));
-  const ghPath = path.join(bin, "gh");
-  await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('download failed\\n');\nprocess.exit(1);\n");
-  await chmod(ghPath, 0o755);
-
+  await writeFile(statePath, '{"available":false}\n');
   try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
+    await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {
       cwd: path.resolve("."),
       env: {
         ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
         REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
         REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
+        REPORT_GH_AW_LOGS: path.join(root, "missing.json"),
+        REPORT_GH_AW_LOGS_STATE: statePath,
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.repositories[0].available, false);
-    assert.equal(usage.runs.length, 1);
-    assert.equal(usage.runs[0].aic, 2.5);
-    assert.equal(usage.securityRuns[0].data.findings[0].total, 1);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("AI Credit usage collection retains prior unselected runs after a download failure", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const bin = path.join(root, "bin");
-  const inventoryPath = path.join(root, "deployed-workflows.json");
-  const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
-  await mkdir(bin);
-  await writeFile(inventoryPath, JSON.stringify({
-    workflows: [{
-      repository: "githubnext/gh-aw-cao",
-      path: ".github/workflows/data.lock.yml",
-      name: "Data",
-      runHealth: { runIds: [42] },
-    }],
-  }));
-  await writeFile(outputPath, JSON.stringify({
-    schemaVersion: 5,
-    runs: [
-      { repository: "githubnext/gh-aw-cao", runId: 7, aic: 1.5 },
-      { repository: "githubnext/gh-aw-cao", runId: 42, aic: 2.5 },
-    ],
-    securityRuns: [
-      { repository: "githubnext/gh-aw-cao", runId: 7, security: { firewall: {} } },
-      { repository: "githubnext/gh-aw-cao", runId: 42, security: { firewall: {} } },
-    ],
-  }));
-  const ghPath = path.join(bin, "gh");
-  await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('injected download failure\\n');\nprocess.exit(1);\n");
-  await chmod(ghPath, 0o755);
-
-  try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
-        REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
-      },
-    });
-    const usage = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.deepEqual(usage.runs.map((run) => run.runId), [7, 42]);
-    assert.deepEqual(usage.securityRuns.map((run) => run.runId), [7, 42]);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("AI Credit usage collection writes an empty logs snapshot on cold-cache download failure", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const bin = path.join(root, "bin");
-  const inventoryPath = path.join(root, "deployed-workflows.json");
-  const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
-  await mkdir(bin);
-  await writeFile(inventoryPath, JSON.stringify({
-    workflows: [{
-      repository: "githubnext/gh-aw-cao",
-      path: ".github/workflows/data.lock.yml",
-      name: "Data",
-      runHealth: { runIds: [42] },
-    }],
-  }));
-  const ghPath = path.join(bin, "gh");
-  await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('download failed\\n');\nprocess.exit(1);\n");
-  await chmod(ghPath, 0o755);
-  // No prior gh-aw-logs.json exists: this is a first-run/cold-cache failure.
-
-  try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
-        REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
-      },
-    });
-    assert.equal(await readFile(logsPath, "utf8"), '{"runs":[]}\n');
-    const usage = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.equal(usage.repositories[0].available, false);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("AI Credit usage collection preserves existing logs snapshot when no runs are selected", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const inventoryPath = path.join(root, "deployed-workflows.json");
-  const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
-  await writeFile(inventoryPath, JSON.stringify({ workflows: [] }));
-  await writeFile(logsPath, '{"runs":[{"database_id":7}]}\n');
-
-  try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
-        REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
-      },
-    });
-    assert.equal(await readFile(logsPath, "utf8"), '{"runs":[{"database_id":7}]}\n');
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("AI Credit usage collection tolerates a failed empty logs snapshot write when no runs are selected", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const inventoryPath = path.join(root, "deployed-workflows.json");
-  const outputPath = path.join(root, "aic-usage.json");
-  const logsDir = path.join(root, "readonly-logs");
-  const logsPath = path.join(logsDir, "gh-aw-logs.json");
-  await writeFile(inventoryPath, JSON.stringify({ workflows: [] }));
-  await mkdir(logsDir, { recursive: true });
-  await chmod(logsDir, 0o555);
-
-  try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
-        REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
-      },
-    });
-    const usage = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.equal(usage.securityAvailable, true);
-    await assert.rejects(readFile(logsPath, "utf8"));
-  } finally {
-    await chmod(logsDir, 0o755);
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("AI Credit usage collection writes an empty logs snapshot when no runs are selected and no prior snapshot exists", async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
-  const inventoryPath = path.join(root, "deployed-workflows.json");
-  const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
-  await writeFile(inventoryPath, JSON.stringify({ workflows: [] }));
-
-  try {
-    await execFileAsync(process.execPath, [
-      path.resolve("dashboard/report/aic-usage.mjs"),
-    ], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
-        REPORT_AIC_USAGE: outputPath,
-        REPORT_GH_AW_LOGS: logsPath,
-      },
-    });
-    assert.equal(await readFile(logsPath, "utf8"), '{"runs":[]}\n');
+    assert.equal(usage.firewallLastSuccessfulCollectionAt, "2026-09-05T12:00:00Z");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
