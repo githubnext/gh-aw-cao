@@ -1,11 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "../../activity/actions-context.mjs";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 
-(async () => {
-log.group`Extract control-plane inventory`;
-try {
+export async function main(actions = {}) {
+  setActionsGlobals(actions);
+  log.group`Extract control-plane inventory`;
+  try {
 
 const root = path.resolve(process.env.REPORT_ROOT || ".");
 const outputPath = path.resolve(process.env.REPORT_INVENTORY || "_inventory/control-plane.json");
@@ -129,11 +132,15 @@ function discoverInventory() {
 const inventory = discoverInventory();
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(inventory, null, 2)}\n`);
-log.info`Discovered ${inventory.bundles.length} packages and ${inventory.standalone.length} standalone workflows in ${outputPath}`;
-} finally {
-  log.endGroup();
+    log.info`Discovered ${inventory.bundles.length} packages and ${inventory.standalone.length} standalone workflows in ${outputPath}`;
+  } finally {
+    log.endGroup();
+  }
 }
-})().catch((error) => {
-  log.error`${error.stack || error.message || error}`;
-  process.exitCode = 1;
-});
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    log.error`${error.stack || error.message || error}`;
+    process.exitCode = 1;
+  });
+}

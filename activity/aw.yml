@@ -8,6 +8,8 @@ includes:
 resources:
   - source: admission-evidence.mjs
     destination: .github/aw/activity/admission-evidence.mjs
+  - source: actions-context.mjs
+    destination: .github/aw/activity/actions-context.mjs
   - source: actions-log.mjs
     destination: .github/aw/activity/actions-log.mjs
   - source: failure-evidence.mjs

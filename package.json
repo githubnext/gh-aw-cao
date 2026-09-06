@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "setup:github-apps": "node .github/cao/setup-github-apps.mjs",
+    "activity:local": "local-action run activity local-runner.mjs",
     "dev": "node dashboard/local-server.mjs --copilot --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
     "docs:dev": "astro dev",
     "docs:build": "astro build",
@@ -31,8 +32,16 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@actions/core": "^2.0.2",
+    "@actions/exec": "^2.0.0",
+    "@actions/github": "^7.0.0",
+    "@actions/io": "^2.0.0",
+    "@github/local-action": "^7.0.1",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
     "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "undici": ">=6.28.1"
   }
 }

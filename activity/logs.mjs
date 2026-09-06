@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
@@ -124,8 +125,13 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
   }
 }
 
+export async function main(actions = {}) {
+  setActionsGlobals(actions);
+  await collectActivityLogs();
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  collectActivityLogs().catch((error) => {
+  main().catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });

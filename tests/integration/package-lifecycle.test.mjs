@@ -29,6 +29,7 @@ const selfCarePackageSource = focusedPackageSource("self-care");
 const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software-development-practices");
 const activityExpectedFiles = [
   ".github/aw/activity/admission-evidence.mjs",
+  ".github/aw/activity/actions-context.mjs",
   ".github/aw/activity/actions-log.mjs",
   ".github/aw/activity/failure-evidence.mjs",
   ".github/aw/activity/github-telemetry.mjs",

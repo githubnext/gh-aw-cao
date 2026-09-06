@@ -2774,7 +2774,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
   assert.match(buildWorkflow, /name: Cache dashboard artifact for the dispatching workflow[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\n\s+key: cao-dashboard-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(buildWorkflow, /actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: [^\n]*cao-activity|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
-  assert.match(activityWorkflow, /control-settings\.mjs[\s\S]*?\.github\/cao\/src\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?"\$RUNNER_TEMP\/cao-activity\/control-settings\.json"/);
+  assert.match(activityWorkflow, /control-settings\.mjs[\s\S]*?\.github\/cao\/src\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?path\.join\(process\.env\.RUNNER_TEMP, "cao-activity", "control-settings\.json"\)/);
   assert.match(buildWorkflow, /cp -R \.github\/aw\/dashboard\/site\/\. "\$REPORT_OUTPUT\/"/);
   assert.match(buildWorkflow, /configure-site\.mjs[\s\S]*?"\$REPORT_OUTPUT\/index\.html"[\s\S]*?"\$RUNNER_TEMP\/cao-activity\/control-settings\.json"/);
   assert.match(buildWorkflow, /bundle-dashboards\.mjs[\s\S]*?"\$REPORT_OUTPUT\/dashboard\.json"[\s\S]*?\.github\/aw\/dashboards/);
@@ -2842,7 +2842,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
     assert.ok(existsSync(assetPath), `missing report script ${assetName}`);
     assert.match(dashboardManifest, new RegExp(`destination: \\.github/aw/dashboard/report/${assetName.replace(".", "\\.")}`));
     if (activityEntrypoints.has(assetName)) {
-      assert.match(activityWorkflow, new RegExp(`DASHBOARD_REPORT_ROOT/${assetName.replace(".", "\\.")}`));
+      assert.match(activityWorkflow, new RegExp(`DASHBOARD_REPORT_ROOT[\\s\\S]*?${assetName.replace(".", "\\.")}`));
     }
     if (buildEntrypoints.has(assetName)) {
       assert.match(buildWorkflow, new RegExp(`DASHBOARD_REPORT_ROOT/${assetName.replace(".", "\\.")}`));
@@ -2865,6 +2865,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   ]);
   assert.deepEqual(activityManifest.resources, [
     { source: "admission-evidence.mjs", destination: ".github/aw/activity/admission-evidence.mjs" },
+    { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "failure-evidence.mjs", destination: ".github/aw/activity/failure-evidence.mjs" },
     { source: "index.mjs", destination: ".github/aw/activity/index.mjs" },
@@ -2884,11 +2885,15 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /pull-requests: read/);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 5);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 8);
   assert.match(workflow, /name: cao-gh[\s\S]*?cao-gh\.jsonl/);
   assert.match(workflow, /DASHBOARD_COLLECTION=false/);
   assert.match(workflow, /if: env\.DASHBOARD_COLLECTION == 'true'/);
   assert.match(workflow, /Process cached gh-aw logs/);
+  assert.equal((workflow.match(/uses: actions\/github-script@[0-9a-f]{40}/g) || []).length, 7);
+  assert.doesNotMatch(workflow, /run:\s+node "\$(?:ACTIVITY_INDEXER|ACTIVITY_LOGS|GITHUB_TELEMETRY)"/);
+  assert.match(workflow, /await activity\.main\(\{ core, github, context, exec, io, getOctokit \}\)/);
+  assert.match(workflow, /await collectors\.main\(\{ core, github, context, exec, io, getOctokit \}\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Refresh activity index/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
   assert.match(workflow, /cao-activity-\$\{\{ github\.run_id \}\}-/);
