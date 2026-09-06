@@ -7,7 +7,7 @@ import { octicon } from '../octicons.js';
 import { rowsFor } from './source-rows.js';
 import { experimentsViewCompositionForBody } from './experiments-view-primitives.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
-import { normalizeEffect, difference, mean, finite } from './experiment-view-primitives.js';
+import { normalizeEffect, difference, mean, finite, numericObservation } from './experiment-view-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -369,12 +369,6 @@ function aggregateObservations(rows, sourceType) {
     return known.length ? known.filter((row) => row.result === 'YES').length / known.length : NaN;
   }
   return mean(rows.map(numericObservation).filter(Number.isFinite));
-}
-
-/** @param {Row} observation @returns {number} */
-function numericObservation(observation) {
-  if (observation.sourceType === 'eval') return observation.result === 'YES' ? 1 : observation.result === 'NO' ? 0 : NaN;
-  return finite(observation.result) ?? NaN;
 }
 
 /** @param {Row} row @returns {boolean} */
