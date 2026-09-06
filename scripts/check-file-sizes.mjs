@@ -3,16 +3,22 @@ import { statSync } from "node:fs";
 import path from "node:path";
 
 const maximumSize = 256 * 1024;
-const allowedLargeFiles = new Set(["package-lock.json", "dashboard/site/package-lock.json"]);
 const root = path.resolve(import.meta.dirname, "..");
-const trackedFiles = execFileSync("git", ["ls-files", "-z"], {
-  cwd: root,
-  encoding: "utf8",
-})
-  .split("\0")
-  .filter(Boolean);
+let trackedFiles;
 
-const oversizedFiles = trackedFiles.filter((file) => !allowedLargeFiles.has(file)).flatMap((file) => {
+try {
+  trackedFiles = execFileSync("git", ["ls-files", "-z"], {
+    cwd: root,
+    encoding: "utf8",
+  })
+    .split("\0")
+    .filter(Boolean);
+} catch {
+  console.error("Unable to list tracked files. Ensure Git is installed and this command runs inside the repository.");
+  process.exit(1);
+}
+
+const oversizedFiles = trackedFiles.filter((file) => path.basename(file) !== "package-lock.json").flatMap((file) => {
   const filePath = path.join(root, file);
   const size = statSync(filePath).size;
   return size > maximumSize ? [{ file, size }] : [];
