@@ -22,7 +22,7 @@ async function preserveOrWriteEmptyLogs(logsPath, reason) {
   log.info`Cached empty gh-aw logs JSON at ${logsPath} (${reason})`;
 }
 
-function runGhAw(maxRunsPerWorkflow, outputDirectory) {
+function runGhAw(targets, maxRunsPerWorkflow, outputDirectory) {
   return new Promise((resolve, reject) => {
     const child = spawn("gh", [
       "aw", "logs", "--json",
@@ -31,6 +31,7 @@ function runGhAw(maxRunsPerWorkflow, outputDirectory) {
       "--start-date", `-${FIREWALL_HORIZON_DAYS}d`, "--cache-before", `-${FIREWALL_HORIZON_DAYS}d`,
       "--count", String(maxRunsPerWorkflow), "--timeout", "15",
       "--max-github-api-rate-limit", "-2000", "--max-storage", "1024",
+      ...targets,
     ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
@@ -469,6 +470,7 @@ async function main() {
   const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
   const runIdsByRepository = new Map();
   const workflowByRunId = new Map();
+  const targets = [];
   let maxRunsPerWorkflow = 0;
   for (const workflow of inventory.workflows || []) {
     const runIds = runIdsByRepository.get(workflow.repository) || new Set();
@@ -479,7 +481,10 @@ async function main() {
       workflowByRunId.set(Number(runId), metadata);
     }
     runIdsByRepository.set(workflow.repository, runIds);
-    maxRunsPerWorkflow = Math.max(maxRunsPerWorkflow, workflow.runHealth?.runIds?.length || 0);
+    if (workflow.runHealth?.runIds?.length > 0) {
+      targets.push(`${workflow.repository}/${workflow.path}`);
+      maxRunsPerWorkflow = Math.max(maxRunsPerWorkflow, workflow.runHealth.runIds.length);
+    }
   }
 
   const runs = new Map();
@@ -513,10 +518,10 @@ async function main() {
   log.info`AI Credit collection will process ${workflowByRunId.size} selected workflow runs; cache root=${temporaryRoot}; logs JSON=${logsPath || "disabled"}`;
   try {
     let collectionAvailable = true;
-    if (workflowByRunId.size > 0) {
+    if (targets.length > 0) {
       try {
-        log.info`Downloading all agentic workflow logs in one gh-aw CLI invocation (count=${maxRunsPerWorkflow}, output=${temporaryRoot})`;
-        const rawResult = await runGhAw(maxRunsPerWorkflow, temporaryRoot);
+        log.info`Downloading agentic workflow logs for ${targets.length} targets in one gh-aw CLI invocation (count=${maxRunsPerWorkflow}, output=${temporaryRoot})`;
+        const rawResult = await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot);
         const result = JSON.parse(rawResult);
         log.info`Downloaded ${result.runs?.length || 0} gh-aw log records into ${temporaryRoot}`;
         if (logsPath) {
