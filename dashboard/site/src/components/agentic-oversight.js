@@ -131,6 +131,7 @@ function renderWorkList(context) {
 function renderWorkCard(row, allRows) {
   const link = evidenceLink(row);
   const state = text(row['lifecycle-state'] || row.phase || 'unknown');
+  const filterState = text(row['lifecycle-state']) || 'unknown';
   const details = h(
     'details',
     { className: 'oversight-detail' },
@@ -148,7 +149,7 @@ function renderWorkCard(row, allRows) {
     {
       className: 'oversight-card work-card',
       'data-filter-field': 'lifecycle-state',
-      'data-filter-value': state.toLowerCase()
+      'data-filter-value': filterState.toLowerCase()
     },
     h('header', null,
       h('div', null, h('strong', null, text(row.objective) || 'Unidentified work'), text(row.scope) ? h('small', null, text(row.scope)) : null),
@@ -329,12 +330,18 @@ function renderAgentAssignmentList(context) {
 /** @param {OversightContext} context */
 function renderEvidenceList(context) {
   const rows = rowsFor(context, context.sourceNames[0]);
+  const relatedByWorkItem = new Map();
+  for (const row of rows) {
+    const key = text(row['work-item-id']);
+    if (!relatedByWorkItem.has(key)) relatedByWorkItem.set(key, []);
+    relatedByWorkItem.get(key).push(row);
+  }
   return section(context, h(
     'div',
     { className: 'oversight-list evidence-list', 'aria-label': 'Claims and evidence' },
     ...(rows.length > 0 ? rows.map((row) => {
       const evidenceClass = text(row['evidence-class'] || 'unknown');
-      const related = rows.filter((candidate) => text(candidate['work-item-id']) === text(row['work-item-id']));
+      const related = relatedByWorkItem.get(text(row['work-item-id'])) || [];
       const split = renderEvidenceSplit(related);
       const link = evidenceLink(row);
       return h(

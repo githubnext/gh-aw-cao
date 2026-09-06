@@ -1899,7 +1899,7 @@ function workItemRows(workflows, runs, outcomes, operationalValues = []) {
       "execution-state": latestRun?.["run-conclusion"] || latestRun?.["run-status"] || "unavailable",
       "verification-state": latestOutcome?.["verification-state"] || "unavailable",
       "outcome-state": latestOutcome?.["outcome-state"] || "pending",
-      "artifact-state": latestOutcome ? "produced" : "pending",
+      "artifact-state": latestOutcome ? "produced" : "unavailable",
       "maturity-status": latestValue?.["maturity-status"] || (latestOutcome ? "immature" : "unavailable"),
       "state-history": stateHistory,
       "observed-at": latestRun?.["started-at"] || workflow["observed-at"],
@@ -1938,14 +1938,14 @@ function attentionSignalRows(workItems, agentAssignments, evidenceRecords, gener
       };
     });
   const verificationSignals = workItems
-    .filter((item) => ["failed", "rejected"].includes(item["verification-state"]))
+    .filter((item) => ["failed", "rejected"].includes(String(item["verification-state"] || "").toLowerCase()))
     .map((item) => ({
       "attention-signal-id": `${item["work-item-id"]}:verification`,
       "signal-type": "verification-review",
       "work-item-id": item["work-item-id"],
       objective: item.objective,
       scope: item.scope,
-      reason: "Execution and verification do not agree.",
+      reason: "Verification reported a failed or rejected outcome.",
       action: "Review verification evidence",
       "expected-actor": "reviewer",
       "age-seconds": ageSeconds(item),
