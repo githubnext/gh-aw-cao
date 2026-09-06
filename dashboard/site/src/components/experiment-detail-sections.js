@@ -6,8 +6,8 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
 import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
-import { renderExperimentEffect, renderExperimentSectionHeading, numericObservation } from './experiment-view-primitives.js';
-import { isSafeHttpsUrl, renderDisclosure } from './ui-primitives.js';
+import { renderExperimentEffect, renderExperimentSectionHeading, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
+import { renderDisclosure } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -26,19 +26,8 @@ function partialState(message) {
  * @returns {HTMLElement}
  */
 function renderEvidenceLink(value, label) {
-  const link = safeLink(value);
+  const link = safeExperimentLink(value);
   return link ? h('a', { href: link.href, title: link.label || label }, label, octicon('link-external')) : h('span', null, label || UNKNOWN);
-}
-
-/**
- * @param {unknown} value
- * @returns {{href: string, label: string} | null}
- */
-function safeLink(value) {
-  if (!value || typeof value !== 'object') return null;
-  const candidate = /** @type {{ href: string, label?: unknown }} */ (value);
-  if (typeof candidate.href !== 'string' || !isSafeHttpsUrl(candidate.href)) return null;
-  return { href: candidate.href, label: text(candidate.label) };
 }
 
 /**
@@ -215,7 +204,7 @@ function renderEvidenceActions(row) {
     ['Artifacts', row.assignment['artifact-link']],
     ['Trace', row.assignment['trace-link']],
     .../** @type {Array<Record<string, any>>} */ (row.observations).map((observation) => [observation.sourceType === 'eval' ? 'Eval' : 'Grader', observation.evidenceLink])
-  ].filter(([, value]) => safeLink(value));
+  ].filter(([, value]) => safeExperimentLink(value));
   return links.length
     ? renderDisclosure('evidence-menu', 'Open evidence', h('ul', null, ...links.map(([label, value]) => h('li', null, renderEvidenceLink(value, label)))))
     : h('span', { className: 'muted' }, 'Unavailable');

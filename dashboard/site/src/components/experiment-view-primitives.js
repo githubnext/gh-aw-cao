@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -172,4 +173,18 @@ export function finite(value) {
  */
 function roleOrder(role) {
   return role === 'PRIMARY' ? 0 : role === 'GUARDRAIL' ? 1 : 2;
+}
+
+/**
+ * Parses a raw evidence-link value into a safe `{ href, label }` pair,
+ * shared by the experiments decision surface and its detail sections.
+ * @param {unknown} value
+ * @returns {{href: string, label: string} | null}
+ */
+export function safeExperimentLink(value) {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = /** @type {{ href: string, label?: unknown }} */ (value);
+  if (typeof candidate.href !== 'string' || !isSafeHttpsUrl(candidate.href)) return null;
+  const label = candidate.label;
+  return { href: candidate.href, label: typeof label === 'string' ? label.trim() : label == null ? '' : String(label) };
 }
