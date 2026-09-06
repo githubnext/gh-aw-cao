@@ -5,7 +5,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
-import { formatCount, titleCase } from './count-formatters.js';
+import { formatCount, slugify, titleCase } from './count-formatters.js';
 
 /**
  * @param {string} pageId
@@ -16,7 +16,7 @@ import { formatCount, titleCase } from './count-formatters.js';
  * @returns {HTMLElement}
  */
 export function renderPageSection(pageId, title, content, headingTag = 'h3', description) {
-  const headingId = `${pageId}-${slugifyText(title)}-heading`;
+  const headingId = `${pageId}-${slugify(title, 'section')}-heading`;
   const tooltip = description
     ? renderTooltip({
         id: `${headingId}-description`,
@@ -232,10 +232,3 @@ export function renderLayoutSectionChrome(pageId, section, count) {
   );
 }
 
-/**
- * @param {string} value
- * @returns {string}
- */
-function slugifyText(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'section';
-}

@@ -51,3 +51,15 @@ export function pluralSuffix(value) {
 export function text(value) {
   return value == null ? '' : String(value);
 }
+
+/**
+ * Converts a value into a lowercase, hyphen-delimited slug suitable for use
+ * as (part of) an HTML `id` attribute, collapsing runs of non-alphanumeric
+ * characters and trimming leading/trailing hyphens.
+ * @param {string} value
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+export function slugify(value, fallback = '') {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+}

@@ -10,7 +10,7 @@ import { renderChartLegend, renderChartWidget, renderPieLegend } from './chart-e
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
 import { isApprovalConclusion, isFailureConclusion } from './run-classification.js';
 import { coverageWindowHours, formatUtcDateTime, renderLegendList, renderPanelHeader, renderTableHeadRow, renderVitalStat } from './ui-primitives.js';
-import { formatCount, text } from './count-formatters.js';
+import { formatCount, slugify, text } from './count-formatters.js';
 import { renderTitledBodySection } from './view-chrome.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { workflowRouteValue } from './workflow-route.js';
@@ -630,7 +630,3 @@ function finiteNumber(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-/** @param {string} value */
-function slugify(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
