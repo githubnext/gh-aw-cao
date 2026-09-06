@@ -499,7 +499,7 @@ async function main() {
   await mkdir(temporaryRoot, { recursive: true });
   try {
     let collectionAvailable = true;
-    if (maxRunsPerWorkflow > 0) {
+    if (workflowByRunId.size > 0) {
       try {
         log.info`Downloading all agentic workflow logs in one gh-aw CLI invocation`;
         const rawResult = await runGhAw(maxRunsPerWorkflow, temporaryRoot);
