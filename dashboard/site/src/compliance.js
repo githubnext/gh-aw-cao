@@ -53,6 +53,7 @@ dashboard:
                 - field: workflow-active
                 - field: rollout-mode
           - id: run-overview
+            disclosure: supplemental
             data:
               source: runs
             mark: table
@@ -72,6 +73,7 @@ dashboard:
                 type: quantitative
                 aggregate: sum
           - id: findings-overview
+            disclosure: supplemental
             data:
               source: findings
             mark: table
@@ -83,6 +85,7 @@ dashboard:
                 - field: pull-request-link
                 - field: run-link
           - id: value-overview
+            disclosure: supplemental
             data:
               source: operational-values
             mark: table
@@ -111,6 +114,7 @@ dashboard:
                 - field: workflow-active
                 - field: rollout-mode
           - id: workflow-runs
+            disclosure: supplemental
             data:
               source: runs
             mark: table
@@ -119,6 +123,7 @@ dashboard:
                 - field: run
                 - field: run-conclusion
           - id: workflow-outcomes
+            disclosure: supplemental
             data:
               source: outcomes
             mark: table
@@ -144,6 +149,7 @@ dashboard:
                 type: quantitative
                 aggregate: count
           - id: workflow-value
+            disclosure: supplemental
             data:
               source: operational-values
             mark: table
@@ -741,6 +747,7 @@ dashboard:
               columns:
                 - field: experiment
           - id: experiments-assignments
+            disclosure: supplemental
             data:
               source: experiment-assignments
             mark: table
@@ -749,6 +756,7 @@ dashboard:
                 - field: run
                 - field: variant
           - id: experiments-graders
+            disclosure: supplemental
             data:
               source: grader-observations
             mark: table
@@ -756,6 +764,7 @@ dashboard:
               columns:
                 - field: grader
           - id: experiments-evals
+            disclosure: supplemental
             data:
               source: eval-observations
             mark: table
@@ -763,6 +772,7 @@ dashboard:
               columns:
                 - field: eval
           - id: experiments-outcomes
+            disclosure: supplemental
             data:
               source: outcomes
             mark: table
@@ -779,6 +789,7 @@ dashboard:
                 type: quantitative
                 aggregate: sum
           - id: experiments-value
+            disclosure: supplemental
             data:
               source: operational-values
             mark: table
@@ -808,6 +819,7 @@ dashboard:
               - field: reasoning-tokens
               - field: aic
         - id: eval-observations
+          disclosure: supplemental
           data:
             source: eval-observations
             filters:
@@ -822,6 +834,7 @@ dashboard:
               - field: requested-model
               - field: resolved-model
         - id: grader-observations
+          disclosure: supplemental
           data:
             source: grader-observations
             filters:
@@ -835,6 +848,7 @@ dashboard:
               - field: value
               - field: status
         - id: operational-values
+          disclosure: supplemental
           data:
             source: operational-values
           mark: table

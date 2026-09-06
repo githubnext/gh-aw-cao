@@ -600,6 +600,14 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
   await expect(homePage.getByRole('heading', { level: 3 })).toHaveText([
     'Need attention',
     'Work in progress',
+    'Operational pulse'
+  ]);
+  const outcomesDisclosure = homePage.locator('details.view-disclosure').filter({ hasText: 'Outcomes' });
+  await expect(outcomesDisclosure).not.toHaveAttribute('open');
+  await outcomesDisclosure.locator('summary').click();
+  await expect(homePage.getByRole('heading', { level: 3 })).toHaveText([
+    'Need attention',
+    'Work in progress',
     'Outcomes',
     'Operational pulse'
   ]);

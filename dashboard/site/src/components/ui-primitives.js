@@ -242,6 +242,19 @@ export function renderEmptyTableRow(colSpan, message) {
 }
 
 /**
+ * Renders the shared `<span class="count-badge">` numeric-count pill used by
+ * the horizon filter bar (live filter count) and the work-project board
+ * (per-column item count). Both callers pair a count value with an
+ * accessible label describing what is being counted.
+ * @param {number|string} count
+ * @param {string} ariaLabel
+ * @returns {HTMLElement}
+ */
+export function renderCountBadge(count, ariaLabel) {
+  return h('span', { className: 'count-badge', 'aria-label': ariaLabel }, String(count));
+}
+
+/**
  * Renders the shared "`<ul>` of items, or a single fallback `<li>`" pattern
  * used by summary and provenance lists when there is no data to display.
  * @template T

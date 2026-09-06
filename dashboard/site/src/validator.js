@@ -29,6 +29,7 @@ import {
   FINDING_SEVERITY_VALUES,
   FINDING_STATUS_VALUES,
   GRADER_STATUS_VALUES,
+  GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS,
   IDENTIFIER_PATTERN,
   LANGUAGE_VERSION,
   MAX_ESSENTIAL_VIEWS_PER_PAGE,
@@ -937,6 +938,12 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     errors
   );
   validateProgressiveDisclosure(definition.views, `${path}.definition.views`, errors);
+  validateGraphicalLayout(
+    definition.views,
+    `${path}.definition.views`,
+    errors,
+    pageName
+  );
 
   /** @type {Map<string, Set<string>>} */
   const sourceFieldCoverage = new Map();
@@ -1345,6 +1352,12 @@ function validateCustomPage(page, pageNode, path, errors) {
   });
   validateProgressiveDisclosure(page.views, `${path}.views`, errors);
   validatePageSections(page.sections, page.views, `${path}.sections`, 'custom page', 'page view', errors);
+  validateGraphicalLayout(
+    page.views,
+    `${path}.views`,
+    errors,
+    typeof page.id === 'string' ? page.id : undefined
+  );
 }
 
 /**
@@ -1372,7 +1385,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     ));
   }
 
-  validateObjectKeys(viewNode, VIEW_KEYS, path, errors);
+  validateObjectKeys(viewNode, view.mark === 'chart' ? VIEW_KEYS : [...VIEW_KEYS, 'views'], path, errors);
   validateRequiredIdentifier(view.id, `${path}.id`, 'view id', errors);
   if (typeof view.id === 'string') {
     if (viewIds.has(view.id)) {
@@ -1950,6 +1963,37 @@ function validateProgressiveDisclosure(views, path, errors) {
       ERROR_CODES.invalidProgressiveDisclosureConfiguration,
       `A page must expose between 1 and ${MAX_ESSENTIAL_VIEWS_PER_PAGE} essential views initially; found ${essentialCount}. Mark non-essential views as "supplemental".`,
       path
+    ));
+  }
+}
+
+/**
+ * @param {unknown[]} views
+ * @param {string} viewsPath
+ * @param {ValidationError[]} errors
+ * @param {string | undefined} pageId
+ */
+function validateGraphicalLayout(views, viewsPath, errors, pageId) {
+  if (pageId !== undefined && GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS.has(pageId)) return;
+  const validViews = views.filter(isPlainObject);
+  const defaultOpenTables = validViews.filter((view) => (
+    view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental'
+  ));
+  for (const table of defaultOpenTables.slice(1)) {
+    const index = views.indexOf(table);
+    errors.push(createError(
+      ERROR_CODES.invalidProgressiveDisclosureConfiguration,
+      'Only one table may be open by default on a page. Mark additional tables as "supplemental".',
+      `${viewsPath}[${index}].disclosure`
+    ));
+  }
+
+  for (const [index, view] of views.entries()) {
+    if (!isPlainObject(view) || view.locked === true || view.mark === 'chart' || !Object.hasOwn(view, 'views')) continue;
+    errors.push(createError(
+      ERROR_CODES.invalidGraphicalNesting,
+      'Views are top-level boxes and must not contain nested views.',
+      `${viewsPath}[${index}].views`
     ));
   }
 }

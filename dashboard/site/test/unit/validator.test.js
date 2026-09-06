@@ -248,7 +248,7 @@ describe('dashboard document validation', () => {
       id: 'security-firewall-domains',
       mark: 'table',
       controls: 'interactive',
-      disclosure: 'essential',
+      disclosure: 'supplemental',
       data: { source: 'firewall-observations', time: { range: '30d' } }
     });
     expect(domains.encoding.columns).toEqual(expect.arrayContaining([
@@ -928,9 +928,15 @@ dashboard:
       expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', pages: [pageId] }]);
       expect(page).toMatchObject({ kind: 'custom' });
       expect(page.views).toHaveLength(4);
-      expect(page.views.every(
+      const tables = page.views.filter(
+        (/** @type {{ mark?: string }} */ view) => view.mark === 'table'
+      );
+      expect(tables.filter(
         (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'essential'
-      )).toBe(true);
+      )).toHaveLength(1);
+      expect(tables.filter(
+        (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental'
+      )).toHaveLength(tables.length - 1);
       const sources = page.views.map(
         (/** @type {{ data: { source: string } }} */ view) => view.data.source
       );
@@ -1318,6 +1324,144 @@ dashboard:
         code: 'DLS-E013'
       }));
     }
+  });
+
+  it('DLS-VIEW-039 allows only one table to be open by default on a page', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: table-disclosure
+  title: Table disclosure
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: primary-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+        - id: supporting-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+`;
+
+    const rejected = validateDashboardDocument(source);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E013',
+        path: '$.dashboard.pages[0].views[1].disclosure'
+      }));
+    }
+
+    const accepted = source.replace(
+      '        - id: supporting-table\n',
+      '        - id: supporting-table\n          disclosure: supplemental\n'
+    );
+    expect(validateDashboardDocument(accepted).ok).toBe(true);
+
+    const locked = source.replace(
+      '        - id: supporting-table\n',
+      '        - id: supporting-table\n          locked: true\n'
+    );
+    expect(validateDashboardDocument(locked).ok).toBe(true);
+  });
+
+  it('ignores graphical layout rules for designated dashboard pages', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: graphical-layout-ignored
+  title: Graphical layout ignored
+  pages:
+    - id: home
+      kind: custom
+      views:
+        - id: primary-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+          views: []
+        - id: supporting-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+`;
+
+    for (const pageId of ['home', 'agent', 'agents', 'work', 'evidence', 'insights']) {
+      expect(validateDashboardDocument(source.replace('id: home', `id: ${pageId}`)).ok).toBe(true);
+    }
+    expect(validateDashboardDocument(source.replace('id: home', 'id: summary')).ok).toBe(false);
+  });
+
+  it('DLS-VIEW-038 rejects nested view boxes while ignoring SVG chart internals', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: graphical-layout
+  title: Graphical layout
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: primary-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+          views: []
+`;
+
+    const rejected = validateDashboardDocument(source);
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E014',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+      expect(rejected.errors).not.toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+    }
+
+    const chart = source
+      .replace('mark: table', 'mark: chart\n          chart: pie')
+      .replace('columns: [{ field: run, type: nominal }]', 'color: { field: run-conclusion, type: nominal }\n            value: { field: run, type: quantitative, aggregate: count }');
+    const chartResult = validateDashboardDocument(chart);
+    expect(chartResult.ok).toBe(false);
+    if (!chartResult.ok) {
+      expect(chartResult.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+      expect(chartResult.errors).not.toContainEqual(expect.objectContaining({
+        code: 'DLS-E014',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+    }
+
+    const malformedNestedViews = source.replace('          views: []', '          views: {}');
+    const malformedResult = validateDashboardDocument(malformedNestedViews);
+    expect(malformedResult.ok).toBe(false);
+    if (!malformedResult.ok) {
+      expect(malformedResult.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E014',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+      expect(malformedResult.errors).not.toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
+    }
+
+    const locked = source.replace(
+      '        - id: primary-table\n',
+      '        - id: primary-table\n          locked: true\n'
+    );
+    expect(validateDashboardDocument(locked).ok).toBe(true);
   });
 
   it('DLS-DOC-002 DLS-DOC-003 DLS-DOC-004 accepts the minimal structural document shape', () => {
@@ -1880,6 +2024,7 @@ dashboard:
               href:
                 field: run-link
           - id: models-view
+            disclosure: supplemental
             data:
               source: model-usage-summary
             mark: table
@@ -1894,6 +2039,7 @@ dashboard:
                 - field: estimated-usd
                 - field: pricing
           - id: engines-view
+            disclosure: supplemental
             data:
               source: engine-usage-summary
             mark: table
@@ -2344,6 +2490,7 @@ dashboard:
               color:
                 field: run-conclusion
           - id: run-rankings
+            disclosure: supplemental
             data:
               source: runs
             mark: table
@@ -2354,6 +2501,7 @@ dashboard:
                 - field: run-status
                 - field: run-conclusion
           - id: usage-metric
+            disclosure: supplemental
             data:
               source: usage
             mark: metric
@@ -2362,6 +2510,7 @@ dashboard:
                 field: aic
                 aggregate: sum
           - id: recent-findings
+            disclosure: supplemental
             data:
               source: findings
             mark: table
@@ -2414,6 +2563,7 @@ dashboard:
                 - field: resolved-model
                 - field: started-at
           - id: run-links
+            disclosure: supplemental
             data:
               source: outcomes
             mark: table
@@ -2582,6 +2732,7 @@ dashboard:
               color:
                 field: run-conclusion
           - id: run-rankings
+            disclosure: supplemental
             data:
               source: runs
               source-metadata:
@@ -2600,6 +2751,7 @@ dashboard:
                 - field: run-status
                 - field: run-conclusion
           - id: usage-metric
+            disclosure: supplemental
             data:
               source: usage
               source-metadata:
@@ -2616,6 +2768,7 @@ dashboard:
                 field: aic
                 aggregate: sum
           - id: recent-findings
+            disclosure: supplemental
             data:
               source: findings
               source-metadata:
