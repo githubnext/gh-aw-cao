@@ -10,6 +10,7 @@ import {
   difference,
   finite,
   mean,
+  metricSummaries,
   normalizeEffect,
   numericObservation,
   safeExperimentLink
@@ -146,7 +147,7 @@ export function buildExperimentDecisionModel(sources) {
  * @param {Map<string, Row>} assignmentByRun
  * @param {Row|undefined} definition
  * @param {'grader'|'eval'} sourceType
- * @returns {ExperimentSummary}
+ * @returns {Row}
  */
 function normalizeObservation(row, assignmentByRun, definition, sourceType) {
   const assignment = assignmentByRun.get(text(row.run)) ?? {};
@@ -231,18 +232,21 @@ function normalizeEvalResult(value) {
 
 /** @param {Row} row */
 function includedObservation(row) {
+  if (row.included === false || text(row.included).toLowerCase() === 'no') return false;
+  if (row['exclusion-reason']) return false;
   const status = upper(row.status || 'complete');
-  return !['MISSING', 'EXCLUDED', 'UNAVAILABLE', 'ERROR'].includes(status);
+  return !['MISSING', 'EXCLUDED', 'UNAVAILABLE', 'ERROR', 'FAILED'].includes(status);
 }
 
 /** @param {Row} assignment */
 function includedAssignment(assignment) {
+  if (assignment.included === false || text(assignment.included).toLowerCase() === 'no') return false;
   return !text(assignment['exclusion-reason']);
 }
 
 /** @param {unknown} value */
 function upper(value) {
-  return text(value).toUpperCase();
+  return text(value).replaceAll('-', '_').replaceAll(' ', '_').toUpperCase();
 }
 
 /** @param {string} readiness */
@@ -250,32 +254,6 @@ function readinessLabel(readiness) {
   if (readiness === 'READY') return 'Strong';
   if (readiness === 'COLLECTING') return 'Collecting';
   return 'Limited';
-}
-
-/**
- * @param {Row[]} observations
- * @param {string} control
- * @param {string} candidate
- * @returns {Row[]}
- */
-function metricSummaries(observations, control, candidate) {
-  /** @type {Map<string, Row[]>} */
-  const byMetric = new Map();
-  for (const observation of observations) {
-    const key = `${observation.sourceType}:${observation.identifier}`;
-    const entries = byMetric.get(key) ?? [];
-    entries.push(observation);
-    byMetric.set(key, entries);
-  }
-  return [...byMetric.values()].map((entries) => {
-    const sample = entries[0];
-    const controlValues = entries.filter((entry) => entry.variant === control).map(numericObservation).filter(Number.isFinite);
-    const candidateValues = entries.filter((entry) => entry.variant === candidate).map(numericObservation).filter(Number.isFinite);
-    const effect = difference(mean(candidateValues), mean(controlValues));
-    const normalized = normalizeEffect(effect, sample.direction);
-    const regression = sample.role === 'GUARDRAIL' && normalized < 0;
-    return /** @type {Row} */ ({ ...sample, normalizedEffect: normalized, regression });
-  });
 }
 
 /**
@@ -301,7 +279,9 @@ function rangeStart(range) {
  * @returns {ExperimentFilters}
  */
 export function initialExperimentFilters(model) {
-  const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const win = typeof globalThis.window !== 'undefined' ? globalThis.window : null;
+  const hash = win?.location?.hash || '';
+  const params = new URLSearchParams(hash.split('?')[1] || '');
   const filters = /** @type {ExperimentFilters} */ ({
     organization: params.get('organization') || '',
     repository: params.get('repository') || '',
@@ -388,6 +368,7 @@ export function renderExperimentFilters(model, filters, onChange) {
  */
 export function filterExperimentRows(experiments, filters) {
   const since = rangeStart(filters.range);
+  const sinceTime = since ? Date.parse(since) : NaN;
   return experiments.filter((experiment) => {
     if (filters.organization && experiment.organization !== filters.organization) return false;
     if (filters.repository && experiment.repository !== filters.repository) return false;
@@ -398,7 +379,10 @@ export function filterExperimentRows(experiments, filters) {
     if (filters.variant && ![experiment.control, experiment.candidate].includes(filters.variant)) return false;
     if (filters.source && !experiment.observations.some((/** @type {Row} */ observation) => observation.sourceType === filters.source)) return false;
     if (filters.metric && !experiment.observations.some((/** @type {Row} */ observation) => observation.identifier === filters.metric)) return false;
-    if (since && experiment.lastObservation && experiment.lastObservation < since) return false;
+    if (!Number.isNaN(sinceTime) && experiment.lastObservation) {
+      const obsTime = Date.parse(experiment.lastObservation);
+      if (!Number.isNaN(obsTime) && obsTime < sinceTime) return false;
+    }
     return true;
   });
 }
@@ -409,15 +393,17 @@ export function filterExperimentRows(experiments, filters) {
  * @param {string} pageId
  */
 export function syncExperimentDecisionDeepLink(filters, selectedExperiment, pageId) {
+  const win = typeof globalThis.window !== 'undefined' ? globalThis.window : null;
+  if (!win || !win.location || !['http:', 'https:'].includes(win.location.protocol)) return;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value) params.set(key, value);
+    if (value && !(key === 'experiment' && selectedExperiment)) params.set(key, value);
   }
-  if (selectedExperiment && !params.has('experiment')) {
+  if (selectedExperiment) {
     params.set('experiment', selectedExperiment);
   }
   const query = params.toString();
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#page-${pageId}${query ? `?${query}` : ''}`);
+  win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}#page-${encodeURIComponent(pageId)}${query ? `?${query}` : ''}`);
 }
 
 /** @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources @returns {HTMLElement} */
