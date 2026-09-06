@@ -76,7 +76,7 @@ async function main() {
     const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
     const logs = JSON.parse(await readFile(logsPath, "utf8"));
     if (!Array.isArray(logs.runs)) throw new Error("unsupported gh-aw logs JSON");
-    log.info`Processing ${logs.runs.length} cached gh-aw log records`;
+    log.info`Processing ${logs.runs.length} cached gh-aw log records from ${logsPath}; cache output=${cachePath || "disabled"}`;
 
     const selectedRuns = [];
     const seen = new Set();
@@ -107,9 +107,11 @@ async function main() {
         if (cached.schemaVersion === 1 && Array.isArray(cached.records)) {
           cachedRecords = cached.records;
           cachedDefinitions = Array.isArray(cached.definitions) ? cached.definitions : [];
+          log.info`Loaded ${cachedRecords.length} cached operational-value records from ${cachePath}`;
         }
       } catch (error) {
-        if (error.code !== "ENOENT") log.warning`Ignoring operational-value cache: ${error.message}`;
+        if (error.code === "ENOENT") log.info`No operational-value cache found at ${cachePath}`;
+        else log.warning`Ignoring operational-value cache: ${error.message}`;
       }
     }
 
@@ -176,6 +178,7 @@ async function main() {
     if (cachePath && cachePath !== outputPath) {
       await mkdir(path.dirname(cachePath), { recursive: true });
       await writeFile(cachePath, `${JSON.stringify(output, null, 2)}\n`);
+      log.info`Updated operational-value cache at ${cachePath}`;
     }
     log.info`Collected ${output.observedRuns} operational-value observations from ${output.selectedRuns} cached runs`;
   } finally {

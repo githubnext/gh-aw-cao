@@ -497,13 +497,15 @@ async function main() {
   }
   const temporaryRoot = configuredCacheRoot || await mkdtemp(path.join(os.tmpdir(), "pages-aic-"));
   await mkdir(temporaryRoot, { recursive: true });
+  log.info`AI Credit collection will process ${workflowByRunId.size} selected workflow runs; cache root=${temporaryRoot}; logs JSON=${logsPath || "disabled"}`;
   try {
     let collectionAvailable = true;
     if (workflowByRunId.size > 0) {
       try {
-        log.info`Downloading all agentic workflow logs in one gh-aw CLI invocation`;
+        log.info`Downloading all agentic workflow logs in one gh-aw CLI invocation (count=${maxRunsPerWorkflow}, output=${temporaryRoot})`;
         const rawResult = await runGhAw(maxRunsPerWorkflow, temporaryRoot);
         const result = JSON.parse(rawResult);
+        log.info`Downloaded ${result.runs?.length || 0} gh-aw log records into ${temporaryRoot}`;
         if (logsPath) {
           await mkdir(path.dirname(logsPath), { recursive: true });
           await writeFile(logsPath, `${JSON.stringify(result, null, 2)}\n`);
@@ -582,11 +584,13 @@ async function main() {
         if (logsPath) {
           await mkdir(path.dirname(logsPath), { recursive: true });
           await writeFile(logsPath, '{"runs":[]}\n');
+          log.info`Cached fallback empty gh-aw logs JSON at ${logsPath} after download failure`;
         }
       }
     } else if (logsPath) {
       await mkdir(path.dirname(logsPath), { recursive: true });
       await writeFile(logsPath, '{"runs":[]}\n');
+      log.info`Cached empty gh-aw logs JSON at ${logsPath}; no workflow runs were selected`;
     }
     const reportedRunsByRepository = Object.groupBy([...runs.values()], (run) => run.repository);
     const repositories = [...runIdsByRepository].map(([repository, runIds]) => {

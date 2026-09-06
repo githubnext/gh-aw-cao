@@ -158,6 +158,7 @@ export async function recordGithubTelemetry({
   } else {
     log.warning`GitHub API core rate limit unavailable (${phase} ${operation}): ${entry.rateLimitError}`;
   }
+  log.info`Activity cache ${phase} ${operation}: ${entry.activityCache.hit ? "matched" : "missed"} key=${entry.activityCache.key || "unknown"} matched=${entry.activityCache.matchedKey || "none"} entries=${entry.activityCache.entryCount} folders=${entry.activityCache.folderCount} bytes=${entry.activityCache.bytes}`;
   return entry;
 }
 
