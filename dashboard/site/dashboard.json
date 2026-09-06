@@ -7041,67 +7041,17 @@
             }
           },
           {
-            "id": "work-inventory",
-            "title": "Work inventory",
-            "description": "State, reason, next action, waiting condition, and owner for each stable work item.",
+            "id": "work-project-board",
+            "title": "Board / Tasks / Roadmap",
+            "description": "GitHub Projects-style work planning view of workflows with avatars, owners, repositories, and runtime windows.",
             "data": {
-              "source": "work-items"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": false,
-            "empty-message": "No work-item telemetry is available in the selected scope.",
-            "layout": "full",
-            "encoding": {
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "objective",
-                  "type": "nominal",
-                  "title": "Work"
-                },
-                {
-                  "field": "scope",
-                  "type": "nominal",
-                  "title": "Scope"
-                },
-                {
-                  "field": "lifecycle-state",
-                  "type": "ordinal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "phase",
-                  "type": "ordinal",
-                  "title": "Phase",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Why"
-                },
-                {
-                  "field": "next-action",
-                  "type": "nominal",
-                  "title": "Next action"
-                },
-                {
-                  "field": "waiting-on",
-                  "type": "nominal",
-                  "title": "Waiting on"
-                },
-                {
-                  "field": "owner",
-                  "type": "nominal",
-                  "title": "Owner"
-                }
+              "sources": [
+                "work-items"
               ]
-            }
+            },
+            "mark": "element",
+            "element": "work-project-view",
+            "layout": "full"
           }
         ]
       },

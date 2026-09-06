@@ -13,6 +13,61 @@ const metadata = {
 };
 
 describe('UI elements', () => {
+  it('renders Work as a Projects-style Board, Tasks, and Roadmap view', () => {
+    const rendered = renderUiElement('work-project-view', {
+      pageId: 'work',
+      title: 'Board / Tasks / Roadmap',
+      description: 'GitHub Projects-style work planning view.',
+      sourceNames: ['work-items'],
+      sources: {
+        'work-items': {
+          source: 'work-items',
+          rows: [
+            {
+              'work-item-id': 'github/gh-aw:.github/workflows/dependabot.md',
+              name: 'Dependabot release train',
+              'workflow-name': 'Dependabot release train',
+              'workflow-icon': 'dependabot',
+              scope: 'github/gh-aw',
+              repository: 'gh-aw',
+              owner: 'dependency-automation',
+              'lifecycle-state': 'active',
+              'started-at': '2026-08-30T09:00:00Z',
+              'ended-at': '2026-08-30T09:30:00Z',
+              'evidence-link': {
+                relation: 'evidence',
+                href: 'https://example.com/evidence/dependabot',
+                label: 'Dependabot evidence'
+              }
+            },
+            {
+              'work-item-id': 'github/mona-tools:.github/workflows/review.md',
+              'workflow-name': 'Review security posture',
+              'workflow-icon': 'shield-check',
+              scope: 'github/mona-tools',
+              owner: 'security',
+              'lifecycle-state': 'review',
+              'started-at': '2026-08-30T10:00:00Z'
+            }
+          ],
+          metadata
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
+    expect(rendered?.querySelectorAll('.work-board-column')).toHaveLength(4);
+    expect(rendered?.querySelector('.work-board-active .work-card')?.textContent).toContain('Dependabot release train');
+    expect(rendered?.querySelector('.work-board-review .work-card')?.textContent).toContain('Review security posture');
+    expect(rendered?.querySelector('.work-avatar .octicon-dependabot')).not.toBeNull();
+    expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('dependency-automation');
+    expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('Aug 30, 2026, 9:00 AM');
+    expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('Aug 30, 2026, 9:30 AM');
+    expect(rendered?.querySelector('.work-roadmap')?.textContent).toContain('Still running');
+  });
+
   it('renders anomaly readiness as a reusable note widget', () => {
     const rendered = renderUiElement('anomaly-readiness', {
       pageId: 'runtime',

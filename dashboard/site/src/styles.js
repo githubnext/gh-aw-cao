@@ -970,6 +970,39 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-next-home-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
 .dashboard-next-home-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-layout { grid-column: 1; grid-row: auto; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); gap: 12px; }
 .dashboard-next-home-page .custom-view[data-view-layout="half"].chart-view-pie .pie-chart-card > :is(.view-source, .view-metadata, .view-context) { grid-column: 1; }
+.dashboard-next-work-page .custom-view-grid { display: block; }
+.work-project-view { display: grid; gap: 16px; }
+.work-project-tabs { display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-subtle); width: max-content; max-width: 100%; overflow-x: auto; }
+.work-project-tabs a { min-height: 30px; display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 6px; color: var(--fg); font-size: .8125rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.work-project-tabs a:hover, .work-project-tabs a:first-child { background: var(--neutral-muted); }
+.work-board { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 12px; align-items: start; overflow-x: auto; padding-bottom: 4px; }
+.work-board-column { min-width: 180px; display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-subtle); }
+.work-board-column > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.work-board-column h4, .work-project-section-heading h4 { margin: 0; font-size: .875rem; }
+.work-board-cards { display: grid; gap: 8px; }
+.work-card { min-width: 0; display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 1px 0 var(--border-muted); }
+.work-card > header, .work-task-row, .work-roadmap-label { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.work-card strong, .work-task-main strong, .work-roadmap-label strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.work-card p { margin: 0; overflow: hidden; color: var(--muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.work-avatar { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--accent-muted); color: var(--accent); }
+.work-avatar .octicon { width: 14px; height: 14px; flex-basis: 14px; }
+.work-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.work-card dt { color: var(--muted); font-size: .6875rem; font-weight: 600; }
+.work-card dd { margin: 0; overflow: hidden; font-size: .75rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.work-tasks, .work-roadmap { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); }
+.work-task-list, .work-roadmap-lanes { display: grid; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.work-task-row { display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(90px, auto) minmax(100px, auto) minmax(150px, auto) minmax(130px, auto); padding: 10px 12px; border-top: 1px solid var(--border); background: var(--canvas); }
+.work-task-row:first-child, .work-roadmap-lane:first-child { border-top: 0; }
+.work-task-main { min-width: 0; display: grid; gap: 2px; }
+.work-task-main span, .work-task-owner, .work-task-row time, .work-roadmap-time { overflow: hidden; color: var(--muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.work-state { display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 2px 8px; border-radius: 999px; background: var(--neutral-muted); color: var(--fg); font-size: .6875rem; font-weight: 700; text-transform: capitalize; }
+.work-state-active, .work-roadmap-bar.work-state-active { background: var(--success-muted); color: var(--success); }
+.work-state-waiting, .work-state-blocked, .work-roadmap-bar.work-state-waiting, .work-roadmap-bar.work-state-blocked { background: var(--attention-muted); color: var(--attention); }
+.work-state-review, .work-roadmap-bar.work-state-review { background: var(--accent-muted); color: var(--accent); }
+.work-state-completed, .work-state-cancelled, .work-roadmap-bar.work-state-completed, .work-roadmap-bar.work-state-cancelled { background: var(--neutral-muted); color: var(--muted); }
+.work-roadmap-lane { display: grid; grid-template-columns: minmax(160px, .35fr) minmax(180px, 1fr) minmax(220px, auto); align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.work-roadmap-track { height: 12px; position: relative; overflow: hidden; border-radius: 999px; background: var(--canvas-subtle); }
+.work-roadmap-bar { position: absolute; inset-block: 0; left: var(--work-start); width: var(--work-width); min-width: 24px; border-radius: inherit; }
 .signal-clear { min-height: 68px; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 10px; padding: 9px 14px; }
 .signal-clear .signal-icon { color: var(--success); }
 .managed-packages > header { min-height: 72px; padding: 10px 0; }
@@ -1277,6 +1310,11 @@ footer { padding: 20px 24px; border-top: 1px solid var(--border); color: var(--m
   .dashboard-next-home-page .canonical-attention-item .signal-icon { display: none; }
   .dashboard-next-home-page .canonical-attention-item .signal-copy > :is(strong, small) { overflow: visible; text-overflow: clip; white-space: normal; }
   .dashboard-next-home-page .canonical-attention-item .signal-evidence { display: grid; grid-column: 2; justify-items: start; text-align: left; }
+  .work-board { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
+  .work-task-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .work-task-owner, .work-task-row time, .work-task-row > span:last-child { display: none; }
+  .work-roadmap-lane { grid-template-columns: minmax(0, 1fr); }
+  .work-roadmap-time { white-space: normal; }
   .workflow-identity { align-items: flex-start; flex-direction: column; }
   .experiment-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .experiment-overview { grid-template-columns: 1fr; }

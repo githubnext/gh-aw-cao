@@ -327,6 +327,11 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   const workItems = new Map(sources["work-items"].rows.map((row) => [row["work-item-id"], row]));
   const dependabot = workItems.get("githubnext/gh-aw-cao:.github/workflows/dependabot.md");
   const worker = workItems.get("githubnext/gh-aw-cao:.github/workflows/worker.md");
+  assert.equal(dependabot.name, "Dependabot");
+  assert.equal(dependabot["workflow-name"], "Dependabot");
+  assert.equal(dependabot["workflow-icon"], "workflow");
+  assert.equal(dependabot["started-at"], "2026-09-05T09:00:00Z");
+  assert.equal(dependabot["ended-at"], "");
   assert.equal(dependabot["lifecycle-state"], "blocked");
   assert.equal(dependabot.reason, "package-disabled");
   assert.equal(dependabot["consequence-tier"], "high");
