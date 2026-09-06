@@ -229,7 +229,7 @@ describe('data view renderer', () => {
 
     expect(chart).not.toBeNull();
     expect(legend).not.toBeNull();
-    expect(chart?.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chart?.nextElementSibling).toBe(legend);
   });
 
   it('shows worker progress while clustering large scatter plots and renders a bounded result', async () => {
