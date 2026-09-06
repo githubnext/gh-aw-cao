@@ -1,21 +1,18 @@
-import { execFile } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { promisify } from "node:util";
 import { collectAicUsage } from "./aic-usage.mjs";
 import { collectOperationalValues } from "./operational-values.mjs";
 import { writeDashboardRecords } from "./records.mjs";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 
-const execFileAsync = promisify(execFile);
+let recordTelemetry;
 
 async function telemetry(phase, name, outcome) {
   const script = process.env.GITHUB_TELEMETRY;
   if (!script) return;
   try {
-    await execFileAsync(process.execPath, [script, phase, name], {
-      env: { ...process.env, ...(outcome ? { CAO_OPERATION_OUTCOME: outcome } : {}) },
-    });
+    recordTelemetry ||= (await import(pathToFileURL(path.resolve(script)).href)).recordGithubTelemetry;
+    await recordTelemetry({ phase, operation: name, outcome: outcome || "unknown" });
   } catch {
     // Telemetry must not affect collection.
   }
@@ -44,6 +41,6 @@ export async function collectActivity() {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   collectActivity().catch((error) => {
     log.error`${error.stack || error.message || error}`;
-    process.exitCode = 1;
+    process.exit(1);
   });
 }
