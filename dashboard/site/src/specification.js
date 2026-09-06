@@ -67,6 +67,7 @@ export const VIEW_LAYOUT_VALUES = ['full', 'half', 'third'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
 export const MAX_ESSENTIAL_VIEWS_PER_PAGE = 4;
+export const GRAPHICAL_LAYOUT_RULE_IGNORED_PAGE_IDS = new Set(['home', 'agent', 'agents', 'work', 'evidence', 'insights']);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'reference', 'href', 'actions'];
 export const TABLE_ACTION_KEYS = ['intent', 'presentation', 'icon', 'label', 'context', 'when'];
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt'];

@@ -29,6 +29,7 @@ import {
   FINDING_SEVERITY_VALUES,
   FINDING_STATUS_VALUES,
   GRADER_STATUS_VALUES,
+  GRAPHICAL_LAYOUT_RULE_IGNORED_PAGE_IDS,
   IDENTIFIER_PATTERN,
   LANGUAGE_VERSION,
   MAX_ESSENTIAL_VIEWS_PER_PAGE,
@@ -926,7 +927,8 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
   validateGraphicalLayout(
     definition.views,
     `${path}.definition.views`,
-    errors
+    errors,
+    pageName
   );
 
   /** @type {Map<string, Set<string>>} */
@@ -1336,7 +1338,7 @@ function validateCustomPage(page, pageNode, path, errors) {
   });
   validateProgressiveDisclosure(page.views, `${path}.views`, errors);
   validatePageSections(page.sections, page.views, `${path}.sections`, 'custom page', 'page view', errors);
-  validateGraphicalLayout(page.views, `${path}.views`, errors);
+  validateGraphicalLayout(page.views, `${path}.views`, errors, page.id);
 }
 
 /**
@@ -1950,8 +1952,10 @@ function validateProgressiveDisclosure(views, path, errors) {
  * @param {unknown[]} views
  * @param {string} viewsPath
  * @param {ValidationError[]} errors
+ * @param {unknown} pageId
  */
-function validateGraphicalLayout(views, viewsPath, errors) {
+function validateGraphicalLayout(views, viewsPath, errors, pageId) {
+  if (typeof pageId === 'string' && GRAPHICAL_LAYOUT_RULE_IGNORED_PAGE_IDS.has(pageId)) return;
   const validViews = views.filter(isPlainObject);
   const defaultOpenTables = validViews.filter((view) => (
     view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental'

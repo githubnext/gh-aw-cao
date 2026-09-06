@@ -1332,6 +1332,31 @@ dashboard:
     expect(validateDashboardDocument(locked).ok).toBe(true);
   });
 
+  it('ignores graphical layout rules for designated dashboard pages', () => {
+    const source = `language-version: "0.1.0"
+dashboard:
+  id: graphical-layout-ignored
+  title: Graphical layout ignored
+  pages:
+    - id: home
+      kind: custom
+      views:
+        - id: primary-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+          views: []
+        - id: supporting-table
+          data: { source: runs }
+          mark: table
+          encoding:
+            columns: [{ field: run, type: nominal }]
+`;
+
+    expect(validateDashboardDocument(source).ok).toBe(true);
+  });
+
   it('DLS-VIEW-038 rejects nested view boxes while ignoring SVG chart internals', () => {
     const source = `language-version: "0.1.0"
 dashboard:

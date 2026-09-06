@@ -6933,7 +6933,6 @@
           },
           {
             "id": "home-outcomes",
-            "disclosure": "supplemental",
             "title": "Outcomes",
             "description": "Recent retained outcomes remain distinct from runtime success and operational value.",
             "data": {
