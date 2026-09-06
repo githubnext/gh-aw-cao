@@ -144,6 +144,7 @@ steps:
         const MAX_FAILURES_TO_DETAIL = 5;
         const FAULT_MARKER = /\b(?:error|panic|exception|traceback|fatal|abort|segfault|coredump)\b|(?:process|command).*(?:failed|exit code)|(?:exit code|non-zero exit)/i;
         const workflowsDirectory = 'target/.github/workflows';
+        const activitySnapshotPath = path.join(process.env.RUNNER_TEMP || '/tmp', 'cao-activity', 'deployed-workflows.json');
         const AGENTIC_WORKFLOW_PATHS = fs.existsSync(workflowsDirectory)
           ? new Set(
               fs
@@ -273,8 +274,43 @@ steps:
           return failedRuns;
         }
 
+        function cachedFailedAgenticRuns(createdSince) {
+          try {
+            const snapshot = JSON.parse(fs.readFileSync(activitySnapshotPath, 'utf8'));
+            const generatedAt = Date.parse(snapshot.generatedAt);
+            if (snapshot.schemaVersion !== 1
+              || !Number.isFinite(generatedAt)
+              || Date.now() - generatedAt > 2 * 60 * 60 * 1000
+              || generatedAt > Date.now() + 5 * 60 * 1000
+              || snapshot.runHealth?.available !== true
+              || snapshot.runHealth?.complete !== true
+              || snapshot.runHealth?.windowHours < LOOKBACK_HOURS
+              || !Array.isArray(snapshot.workflows)) return null;
+            const failedRuns = snapshot.workflows
+              .filter((workflow) => workflow?.repository === REPO)
+              .flatMap((workflow) => (workflow.runHealth?.runRecords || []).map((run) => ({ workflow, run })))
+              .filter(({ workflow, run }) => isAgenticWorkflowPath(workflow.path)
+                && isFailureConclusion(run?.conclusion)
+                && String(run.createdAt || '') >= createdSince)
+              .map(({ workflow, run }) => ({
+                run_id: run.runId,
+                workflow_name: workflow.name,
+                workflow_path: workflow.path,
+                created_at: run.createdAt,
+                conclusion: run.conclusion,
+                url: `https://github.com/${REPO}/actions/runs/${run.runId}`,
+              }))
+              .filter((run) => Number.isInteger(run.run_id));
+            failedRuns.sort((left, right) => String(right.created_at || '').localeCompare(String(left.created_at || '')));
+            return failedRuns;
+          } catch {
+            return null;
+          }
+        }
+
         const windowStart = isoformatZ(new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000));
-        const failedRuns = listFailedAgenticRuns(windowStart);
+        const cachedFailedRuns = cachedFailedAgenticRuns(windowStart);
+        const failedRuns = cachedFailedRuns || listFailedAgenticRuns(windowStart);
 
         const failureDetails = [];
         for (const run of failedRuns.slice(0, MAX_FAILURES_TO_DETAIL)) {
@@ -374,6 +410,7 @@ steps:
           repository: REPO,
           lookback_window: `${LOOKBACK_HOURS}h`,
           window_start: windowStart,
+          activity_cache: cachedFailedRuns ? 'used' : 'fallback',
           agentic_workflow_count: AGENTIC_WORKFLOW_PATHS.size,
           failed_run_ids: failedRuns.map((run) => run.run_id).filter(Boolean),
           failures: failureDetails,

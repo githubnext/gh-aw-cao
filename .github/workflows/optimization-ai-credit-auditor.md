@@ -139,6 +139,45 @@ steps:
   - name: Install Python chart dependencies
     run: |
       python3 -m pip install --quiet --target /tmp/gh-aw/token-audit/site-packages pandas matplotlib seaborn
+  - name: Select recent activity-cache runs
+    env:
+      ACTIVITY_ROOT: ${{ runner.temp }}/cao-activity
+      TARGET_REPO: ${{ inputs.target_repo }}
+    run: |
+      node <<'EOF'
+      const fs = require("node:fs");
+      const path = require("node:path");
+
+      const output = "/tmp/gh-aw/token-audit/cached-run-ids.txt";
+      const snapshotPath = path.join(process.env.ACTIVITY_ROOT, "deployed-workflows.json");
+      const now = Date.now();
+      let runIds = [];
+      let usable = false;
+      try {
+        const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
+        if (snapshot.schemaVersion !== 1
+          || !Number.isFinite(Date.parse(snapshot.generatedAt))
+          || now - Date.parse(snapshot.generatedAt) > 2 * 60 * 60 * 1000
+          || Date.parse(snapshot.generatedAt) > now + 5 * 60 * 1000
+          || snapshot.runHealth?.available !== true
+          || snapshot.runHealth?.complete !== true
+          || snapshot.runHealth?.windowHours < 24
+          || !Array.isArray(snapshot.workflows)) throw new Error("activity snapshot is incomplete");
+        const windowStart = now - 24 * 60 * 60 * 1000;
+        runIds = snapshot.workflows
+          .filter((workflow) => workflow?.repository === process.env.TARGET_REPO)
+          .flatMap((workflow) => workflow.runHealth?.runRecords || [])
+          .filter((run) => run?.status === "completed" && Date.parse(run.createdAt) >= windowStart)
+          .map((run) => run.runId)
+          .filter(Number.isInteger);
+        usable = true;
+      } catch {
+        runIds = [];
+      }
+      fs.mkdirSync(path.dirname(output), { recursive: true });
+      fs.writeFileSync(output, runIds.join("\n") + (runIds.length ? "\n" : ""), "utf8");
+      if (usable) fs.writeFileSync("/tmp/gh-aw/token-audit/activity-cache-usable", "", "utf8");
+      EOF
   - name: Download agentic workflow logs
     env:
       GH_TOKEN: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
@@ -151,16 +190,28 @@ steps:
 
       RAW_LOGS=/tmp/gh-aw/token-audit/workflow-logs.raw.json
       LOG_EXIT=0
-      gh aw logs \
-        --repo "$TARGET_REPO" \
-        --output /tmp/gh-aw/token-audit/logs \
-        --start-date -2d \
-        --json \
-        -c 100 \
-        --timeout 10 \
-        --max-github-api-rate-limit -2000 \
-        --max-storage 1024 \
-        > "$RAW_LOGS" || LOG_EXIT=$?
+      if [[ -f /tmp/gh-aw/token-audit/activity-cache-usable ]]; then
+        gh aw logs \
+          --repo "$TARGET_REPO" \
+          --stdin \
+          --output /tmp/gh-aw/token-audit/logs \
+          --json \
+          --timeout 10 \
+          --max-github-api-rate-limit -2000 \
+          --max-storage 1024 \
+          < /tmp/gh-aw/token-audit/cached-run-ids.txt > "$RAW_LOGS" || LOG_EXIT=$?
+      else
+        gh aw logs \
+          --repo "$TARGET_REPO" \
+          --output /tmp/gh-aw/token-audit/logs \
+          --start-date -2d \
+          --json \
+          -c 100 \
+          --timeout 10 \
+          --max-github-api-rate-limit -2000 \
+          --max-storage 1024 \
+          > "$RAW_LOGS" || LOG_EXIT=$?
+      fi
 
       if jq -e . "$RAW_LOGS" >/dev/null 2>&1; then
         jq --arg windowStart "$WINDOW_START" --arg windowEnd "$WINDOW_END" '
