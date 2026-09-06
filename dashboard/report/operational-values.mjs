@@ -50,7 +50,10 @@ function definitionFromLogsResult(selected, result) {
     operationalValue: definition.operationalValue || result.operationalValue || null,
     baseline: definition.baseline || result.baseline || null,
     diagnosticMetrics: Array.isArray(definition.diagnostics)
-      ? definition.diagnostics.map((series) => series.metric).filter(Boolean)
+      ? definition.diagnostics
+          .filter((series) => series && typeof series === "object")
+          .map((series) => series.metric)
+          .filter(Boolean)
       : [],
   };
 }

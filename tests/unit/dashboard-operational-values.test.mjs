@@ -191,6 +191,73 @@ test("operational-value collection treats non-array graders.results as no result
   }
 });
 
+test("operational-value collection ignores malformed diagnostics entries instead of crashing", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
+  const inventoryPath = path.join(root, "deployed-workflows.json");
+  const logsPath = path.join(root, "gh-aw-logs.json");
+  const outputPath = path.join(root, "operational-values.json");
+  await writeFile(inventoryPath, JSON.stringify({
+    runHealth: { windowStart: "2026-09-01T00:00:00Z" },
+    workflows: [{
+      repository: "githubnext/gh-aw-cao",
+      path: ".github/workflows/example.lock.yml",
+      operationalValue: true,
+      runHealth: {
+        runIds: [42],
+        runRecords: [{ runId: 42, runAttempt: 1, createdAt: "2026-09-05T10:00:00Z" }],
+      },
+    }],
+  }));
+  await writeFile(logsPath, JSON.stringify({
+    runs: [{
+      database_id: 42,
+      graders: {
+        results: [{
+          id: "operational-value",
+          source: "operational-value",
+          status: "pass",
+          value: 0.8,
+          implementation: {
+            digest: "digest",
+            // Simulates schema drift/external input where diagnostics entries
+            // are not all well-formed objects with a `metric` property.
+            definition: {
+              operationalValue: "Ship a verified outcome.",
+              baseline: { mode: "attainment-only" },
+              diagnostics: [null, "unexpected-string", 5, { metric: { id: "quality" } }],
+            },
+          },
+          observation: {
+            evidenceAt: "2026-09-06T10:00:00Z",
+            maturesAt: "2026-09-06T10:00:00Z",
+            mature: true,
+          },
+          diagnostics: { quality: 0.8 },
+        }],
+      },
+    }],
+  }));
+
+  try {
+    await execFileAsync(process.execPath, [
+      path.resolve("dashboard/report/operational-values.mjs"),
+    ], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
+        REPORT_GH_AW_LOGS: logsPath,
+        REPORT_OPERATIONAL_VALUES: outputPath,
+      },
+    });
+    const output = JSON.parse(await readFile(outputPath, "utf8"));
+    assert.equal(output.records[0].status, "pass");
+    assert.deepEqual(output.definitions[0].diagnosticMetrics, [{ id: "quality" }]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("operational-value collection degrades to an empty snapshot when the shared logs JSON is unreadable", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
