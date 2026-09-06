@@ -278,6 +278,7 @@ steps:
           try {
             const snapshot = JSON.parse(fs.readFileSync(activitySnapshotPath, 'utf8'));
             const generatedAt = Date.parse(snapshot.generatedAt);
+            const windowStart = Date.parse(createdSince);
             const now = Date.now();
             if (snapshot.schemaVersion !== 1
               || !Number.isFinite(generatedAt)
@@ -292,7 +293,7 @@ steps:
               .flatMap((workflow) => (workflow.runHealth?.runRecords || []).map((run) => ({ workflow, run })))
               .filter(({ workflow, run }) => isAgenticWorkflowPath(workflow.path)
                 && isFailureConclusion(run?.conclusion)
-                && Date.parse(run?.createdAt) >= Date.parse(createdSince))
+                && Date.parse(run?.createdAt) >= windowStart)
               .map(({ workflow, run }) => ({
                 run_id: run.runId,
                 workflow_name: workflow.name,
