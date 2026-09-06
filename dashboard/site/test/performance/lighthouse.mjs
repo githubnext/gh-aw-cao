@@ -219,12 +219,24 @@ async function main() {
   const failures = results.flatMap((result) =>
     result.failures.map((failure) => `${result.id}: ${failure}`)
   );
-  if (failures.length > 0) throw new Error(`Dashboard performance budgets failed:\n${failures.join('\n')}`);
+  if (failures.length > 0) {
+    for (const failure of failures) {
+      console.log(`::warning title=Lighthouse budget exceeded::${failure}`);
+    }
+    console.warn(`Dashboard performance budgets exceeded:\n${failures.join('\n')}`);
+  }
 
   for (const result of results) {
     console.log(`${result.id}: Lighthouse performance ${(result.score * 100).toFixed(0)}`);
   }
   console.log(`Performance evidence: ${outputRoot}`);
+  return failures.length > 0 ? 42 : 0;
 }
 
-await main();
+try {
+  const exitCode = await main();
+  if (exitCode !== 0) process.exitCode = exitCode;
+} catch (error) {
+  console.error(error instanceof Error ? error.stack : error);
+  process.exitCode = 1;
+}
