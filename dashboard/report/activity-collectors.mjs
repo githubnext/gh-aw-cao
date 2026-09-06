@@ -11,7 +11,13 @@ async function telemetry(phase, name, outcome) {
   const script = process.env.GITHUB_TELEMETRY;
   if (!script) return;
   try {
-    recordTelemetry ||= (await import(pathToFileURL(path.resolve(script)).href)).recordGithubTelemetry;
+    if (!recordTelemetry) {
+      const telemetryModule = await import(pathToFileURL(path.resolve(script)).href);
+      if (typeof telemetryModule.recordGithubTelemetry !== "function") {
+        throw new Error("GitHub telemetry module does not export recordGithubTelemetry");
+      }
+      recordTelemetry = telemetryModule.recordGithubTelemetry;
+    }
     await recordTelemetry({ phase, operation: name, outcome: outcome || "unknown" });
   } catch {
     // Telemetry must not affect collection.
@@ -41,6 +47,6 @@ export async function collectActivity() {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   collectActivity().catch((error) => {
     log.error`${error.stack || error.message || error}`;
-    process.exit(1);
+    process.exitCode = 1;
   });
 }
