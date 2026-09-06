@@ -3,7 +3,7 @@ import { statSync } from "node:fs";
 import path from "node:path";
 
 const maximumSize = 256 * 1024;
-const allowedLargeFiles = new Set(["package-lock.json"]);
+const allowedLargeFiles = new Set(["package-lock.json", "dashboard/site/package-lock.json"]);
 const root = path.resolve(import.meta.dirname, "..");
 const trackedFiles = execFileSync("git", ["ls-files", "-z"], {
   cwd: root,
