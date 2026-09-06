@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { renderExperimentBadge } from './badge.js';
 import { renderExperimentDetailSection, renderExperimentSectionHeading } from './experiment-detail-sections.js';
+import { renderEffect } from './experiment-effect.js';
 import { renderDlRow } from './ui-primitives.js';
 import { experimentsViewComposition } from './experiments-view-composition.js';
 import { renderExperimentsViewShell } from './experiments-view-shell.js';
@@ -184,20 +185,6 @@ function renderLegend(counts) {
 /** @param {string} label @param {unknown} value @returns {HTMLElement} */
 function summaryItem(label, value) {
   return renderDlRow(label, String(value));
-}
-
-/** @param {number} value @returns {HTMLElement} */
-function renderEffect(value) {
-  if (!Number.isFinite(value)) return h('span', { className: 'effect effect-unknown' }, UNKNOWN, h('span', { className: 'sr-only' }, ' insufficient evidence'));
-  const positive = value > 0;
-  const negative = value < 0;
-  return h(
-    'span',
-    { className: `effect ${positive ? 'effect-positive' : negative ? 'effect-negative' : 'effect-neutral'}` },
-    `${positive ? '+' : ''}${value.toFixed(3)}`,
-    positive ? ' ▲' : negative ? ' ▼' : ' ·',
-    h('span', { className: 'sr-only' }, positive ? ' improvement' : negative ? ' regression' : ' no change')
-  );
 }
 
 /** @param {string} source @param {string} identifier @returns {string} */

@@ -5,6 +5,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
+import { renderEffect } from './experiment-effect.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
@@ -26,23 +27,6 @@ export function renderExperimentSectionHeading(id, title, description) {
  */
 function partialState(message) {
   return h('div', { className: 'experiment-partial', role: 'status' }, octicon('info'), h('span', null, message));
-}
-
-/**
- * @param {number} value
- * @returns {HTMLElement}
- */
-function renderEffect(value) {
-  if (!Number.isFinite(value)) return h('span', { className: 'effect effect-unknown' }, UNKNOWN, h('span', { className: 'sr-only' }, ' insufficient evidence'));
-  const positive = value > 0;
-  const negative = value < 0;
-  return h(
-    'span',
-    { className: `effect ${positive ? 'effect-positive' : negative ? 'effect-negative' : 'effect-neutral'}` },
-    `${positive ? '+' : ''}${value.toFixed(3)}`,
-    positive ? ' ▲' : negative ? ' ▼' : ' ·',
-    h('span', { className: 'sr-only' }, positive ? ' improvement' : negative ? ' regression' : ' no change')
-  );
 }
 
 /**
