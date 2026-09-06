@@ -232,8 +232,10 @@ function normalizeEvalResult(value) {
 
 /** @param {Row} row */
 function includedObservation(row) {
+  if (row.included === false || text(row.included).toLowerCase() === 'no') return false;
+  if (row['exclusion-reason']) return false;
   const status = upper(row.status || 'complete');
-  return !['MISSING', 'EXCLUDED', 'UNAVAILABLE', 'ERROR'].includes(status);
+  return !['MISSING', 'EXCLUDED', 'UNAVAILABLE', 'ERROR', 'FAILED'].includes(status);
 }
 
 /** @param {Row} assignment */
@@ -365,6 +367,7 @@ export function renderExperimentFilters(model, filters, onChange) {
  */
 export function filterExperimentRows(experiments, filters) {
   const since = rangeStart(filters.range);
+  const sinceTime = since ? Date.parse(since) : NaN;
   return experiments.filter((experiment) => {
     if (filters.organization && experiment.organization !== filters.organization) return false;
     if (filters.repository && experiment.repository !== filters.repository) return false;
@@ -375,7 +378,7 @@ export function filterExperimentRows(experiments, filters) {
     if (filters.variant && ![experiment.control, experiment.candidate].includes(filters.variant)) return false;
     if (filters.source && !experiment.observations.some((/** @type {Row} */ observation) => observation.sourceType === filters.source)) return false;
     if (filters.metric && !experiment.observations.some((/** @type {Row} */ observation) => observation.identifier === filters.metric)) return false;
-    if (since && experiment.lastObservation && (Date.parse(experiment.lastObservation) || 0) < Date.parse(since)) return false;
+    if (!Number.isNaN(sinceTime) && experiment.lastObservation && (Date.parse(experiment.lastObservation) || 0) < sinceTime) return false;
     return true;
   });
 }
