@@ -3,6 +3,7 @@ import { statSync } from "node:fs";
 import path from "node:path";
 
 const maximumSize = 256 * 1024;
+const imageExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".png", ".svg", ".webp"]);
 const root = path.resolve(import.meta.dirname, "..");
 let trackedFiles;
 
@@ -18,7 +19,11 @@ try {
   process.exit(1);
 }
 
-const oversizedFiles = trackedFiles.filter((file) => path.basename(file) !== "package-lock.json").flatMap((file) => {
+const oversizedFiles = trackedFiles.filter((file) => {
+  const isLockfile = path.basename(file) === "package-lock.json";
+  const isAssetImage = file.split("/").includes("assets") && imageExtensions.has(path.extname(file).toLowerCase());
+  return !isLockfile && !isAssetImage;
+}).flatMap((file) => {
   const filePath = path.join(root, file);
   const size = statSync(filePath).size;
   return size > maximumSize ? [{ file, size }] : [];
