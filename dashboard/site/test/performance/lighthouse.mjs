@@ -218,6 +218,9 @@ async function main() {
     result.failures.map((failure) => `${result.id}: ${failure}`)
   );
   if (failures.length > 0) {
+    for (const failure of failures) {
+      console.log(`::warning title=Lighthouse budget exceeded::${failure}`);
+    }
     console.warn(`Dashboard performance budgets exceeded:\n${failures.join('\n')}`);
   }
 
