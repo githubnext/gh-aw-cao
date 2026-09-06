@@ -2364,7 +2364,7 @@ test("dashboard CI runs the package quality gates", () => {
     lighthouseComment.block,
     /if: >-\s+github\.event_name == 'pull_request'.*github\.event\.pull_request\.head\.repo\.full_name == github\.repository/s
   );
-  assert.match(lighthouseComment.block, /github\.event_name != 'pull_request_target'/);
+  assert.doesNotMatch(source, /^\s+pull_request_target:/m);
   assert.match(lighthouseComment.block, /issues: write/);
   assert.match(lighthouseComment.block, /pull-requests: read/);
   assert.doesNotMatch(lighthouseComment.block, /pull-requests: write/);
