@@ -628,7 +628,7 @@
             "mark": "table",
             "controls": "interactive",
             "layout": "full",
-            "disclosure": "supplemental",
+              "disclosure": "supplemental",
             "empty-message": "Operation attribution is unavailable because no reliable paired checkpoints match the selected filters.",
             "encoding": {
               "columns": [
@@ -1969,7 +1969,7 @@
             },
             {
               "id": "organizations-repositories-source",
-            "disclosure": "supplemental",
+              "disclosure": "supplemental",
               "data": {
                 "source": "repositories"
               },
@@ -3547,7 +3547,7 @@
             },
             {
               "id": "standalone-workflows",
-            "disclosure": "supplemental",
+              "disclosure": "supplemental",
               "title": "Repository-owned workflows",
               "description": "Standalone workflows run in their owning repositories and are not part of a central operation package.",
               "data": {
@@ -5486,7 +5486,7 @@
             },
             {
               "id": "engine-usage-table",
-            "disclosure": "supplemental",
+              "disclosure": "supplemental",
               "title": "Agentic engines, versions, and totals",
               "data": {
                 "source": "engine-usage-summary",

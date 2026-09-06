@@ -1354,7 +1354,7 @@ dashboard:
 
     const chart = source
       .replace('mark: table', 'mark: chart\n          chart: pie')
-      .replace('columns: [{ field: run, type: nominal }]', 'color: { field: run-conclusion, type: nominal }\\n            value: { field: run, type: quantitative, aggregate: count }');
+      .replace('columns: [{ field: run, type: nominal }]', 'color: { field: run-conclusion, type: nominal }\n            value: { field: run, type: quantitative, aggregate: count }');
     const chartResult = validateDashboardDocument(chart);
     expect(chartResult.ok).toBe(false);
     if (!chartResult.ok) {
