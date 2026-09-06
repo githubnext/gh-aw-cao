@@ -492,6 +492,7 @@ test("dashboard source bridge expands GitHub telemetry resources", () => {
     "runway-ratio": null,
     "risk-status": "unknown",
     "risk-order": 3,
+    "is-unhealthy": false,
     "is-current": true,
     "attribution-status": "unavailable",
     "operation-consumed": null,
@@ -576,6 +577,7 @@ test("dashboard source bridge derives reset-safe rate-limit forecasts and correl
   assert.equal(rows[2]["projected-exhaustion-at"], "2026-09-04T15:00:00.000Z");
   assert.equal(rows[2]["runway-ratio"], 2);
   assert.equal(rows[2]["risk-status"], "healthy");
+  assert.equal(rows[2]["is-unhealthy"], false);
   assert.equal(rows[2]["is-current"], true);
 });
 
@@ -603,6 +605,7 @@ test("dashboard source bridge never carries burn forecasts across reset windows"
 
   const rows = sources["github-api-rate-limits"].rows;
   assert.equal(rows[2]["risk-status"], "critical");
+  assert.equal(rows[2]["is-unhealthy"], true);
   assert.equal(rows[2]["is-current"], false);
   assert.equal(rows[3]["consumed-since-previous"], null);
   assert.equal(rows[3]["burn-rate-per-minute"], null);

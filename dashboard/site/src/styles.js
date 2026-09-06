@@ -151,6 +151,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .site-callout-icon { display: grid; place-items: center; padding-top: 2px; color: var(--attention); }
 .site-callout-content { min-width: 0; display: grid; gap: 2px; }
 .site-callout-content > span { color: var(--muted); }
+.site-callout-link { min-width: 0; color: inherit; text-decoration: none; }
+.site-callout-link:hover strong { text-decoration: underline; }
 .site-callout-dismiss { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .site-callout-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .dashboard-horizon { max-width: none; flex: none; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .75rem; white-space: nowrap; }
@@ -885,9 +887,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-action-details dt { color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .configuration-action-details dd { margin: 0; overflow-wrap: anywhere; font-size: .8125rem; }
 .configuration-actions-empty { margin: 0; padding: 16px; border: 1px dashed var(--border); border-radius: 6px; color: var(--muted); }
-:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page) .layout-section { padding: 0; border: 0; background: transparent; }
-:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page) .layout-section-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
-:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page) .layout-section-header h3 { margin: 2px 0 0; font-size: 1.25rem; }
+:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section { padding: 0; border: 0; background: transparent; }
+:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header h3 { margin: 2px 0 0; font-size: 1.25rem; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page) .layout-section-header > strong { flex: none; color: var(--muted); font-size: .75rem; }
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .page-section > h4,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-source,

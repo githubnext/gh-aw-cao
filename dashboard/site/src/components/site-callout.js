@@ -8,7 +8,7 @@ import { renderCloseButton, renderIconSpan } from './ui-primitives.js';
 const dismissedCalloutIds = new Set();
 
 /**
- * @typedef {{ id: string, title: string, description: string, icon?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }} SiteCallout
+ * @typedef {{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }} SiteCallout
  */
 
 /**
@@ -40,6 +40,15 @@ export function renderSiteCallouts(callouts, sources) {
 export function renderSiteCallout(callout) {
   const headingId = `site-callout-${callout.id}-heading`;
   const descriptionId = `site-callout-${callout.id}-description`;
+  const content = h(
+    'span',
+    { className: 'site-callout-content' },
+    h('strong', { id: headingId }, callout.title),
+    h('span', { id: descriptionId }, callout.description)
+  );
+  const linkedContent = callout['navigation-page']
+    ? h('a', { href: `#page-${callout['navigation-page']}`, className: 'site-callout-link' }, content)
+    : content;
   const element = h(
     'aside',
     {
@@ -50,12 +59,7 @@ export function renderSiteCallout(callout) {
       'data-site-callout': callout.id
     },
     renderIconSpan('site-callout-icon', typeof callout.icon === 'string' ? callout.icon : 'info'),
-    h(
-      'span',
-      { className: 'site-callout-content' },
-      h('strong', { id: headingId }, callout.title),
-      h('span', { id: descriptionId }, callout.description)
-    ),
+    linkedContent,
     renderCloseButton({
       className: 'site-callout-dismiss',
       label: `Dismiss ${callout.title}`,

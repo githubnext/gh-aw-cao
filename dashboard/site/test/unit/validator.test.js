@@ -1398,6 +1398,7 @@ dashboard:
         '      title: Dashboard data is partial',
         '      description: Some data could not be downloaded.',
         '      icon: alert',
+        '      navigation-page: custom-page',
         '      visible-when:',
         '        source: coverage-diagnostics',
         '        field: kind',
@@ -1406,6 +1407,15 @@ dashboard:
       ].join('\n')
     );
     expect(validateDashboardDocument(withCallout).ok).toBe(true);
+
+    const invalidNavigation = validateDashboardDocument(withCallout.replace('      navigation-page: custom-page', '      navigation-page: missing-page'));
+    expect(invalidNavigation.ok).toBe(false);
+    if (!invalidNavigation.ok) {
+      expect(invalidNavigation.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.callouts[0].navigation-page'
+      }));
+    }
 
     const invalidField = validateDashboardDocument(withCallout.replace('        field: kind', '        field: missing'));
     expect(invalidField.ok).toBe(false);

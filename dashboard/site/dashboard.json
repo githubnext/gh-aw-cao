@@ -11,6 +11,7 @@
         "title": "Dashboard data is partial",
         "description": "Data Health reports a collection gap caused by a GitHub API rate limit. Open Data health for the affected source and evidence horizon.",
         "icon": "alert",
+        "navigation-page": "data-health",
         "visible-when": {
           "source": "data-health-collections",
           "field": "failure-class",
@@ -334,11 +335,14 @@
             "title": "Quota history",
             "description": "Individual remaining-capacity observations over the selected UTC time range, colored by resource, credential, and maximum quota.",
             "data": {
-              "source": "github-api-rate-limits"
+              "source": "github-api-rate-limits",
+              "filters": {
+                "is-unhealthy": "true"
+              }
             },
             "mark": "chart",
             "chart": "scatter",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "empty-message": "No quota observations are available for the selected time range.",
@@ -692,6 +696,10 @@
             "disclosure": "supplemental",
             "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
             "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
               "columns": [
                 {
                   "field": "observed-at",
