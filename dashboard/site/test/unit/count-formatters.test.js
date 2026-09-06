@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatCountNoun, pluralSuffix, text, titleCase } from '../../src/components/count-formatters.js';
+import { formatCount, formatCountNoun, pluralSuffix, slugify, text, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -41,5 +41,14 @@ describe('count formatters', () => {
     expect(text(null)).toBe('');
     expect(text(undefined)).toBe('');
     expect(text(false)).toBe('false');
+  });
+
+  it('slugifies text into a lowercase, hyphen-delimited id fragment', () => {
+    expect(slugify('Domain Attention')).toBe('domain-attention');
+    expect(slugify('AI Credits / Usage')).toBe('ai-credits-usage');
+    expect(slugify('--already--slug--')).toBe('already-slug');
+    expect(slugify('')).toBe('');
+    expect(slugify('', 'fallback')).toBe('fallback');
+    expect(slugify('!!!', 'section')).toBe('section');
   });
 });
