@@ -278,10 +278,11 @@ steps:
           try {
             const snapshot = JSON.parse(fs.readFileSync(activitySnapshotPath, 'utf8'));
             const generatedAt = Date.parse(snapshot.generatedAt);
+            const now = Date.now();
             if (snapshot.schemaVersion !== 1
               || !Number.isFinite(generatedAt)
-              || Date.now() - generatedAt > 2 * 60 * 60 * 1000
-              || generatedAt > Date.now() + 5 * 60 * 1000
+              || now - generatedAt > 2 * 60 * 60 * 1000
+              || generatedAt > now + 5 * 60 * 1000
               || snapshot.runHealth?.available !== true
               || snapshot.runHealth?.complete !== true
               || snapshot.runHealth?.windowHours < LOOKBACK_HOURS
