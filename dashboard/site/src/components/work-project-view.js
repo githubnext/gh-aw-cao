@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink, renderLinkedValue } from './link-content.js';
 import { rowsFor } from './source-rows.js';
+import { titleCase } from './count-formatters.js';
 import { formatUtcDateTime, renderCountBadge, renderDlRow, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
 
 const BOARD_COLUMNS = [
@@ -208,11 +209,6 @@ function normalizeState(state) {
   if (['active', 'waiting', 'blocked', 'review', 'completed', 'cancelled'].includes(normalized)) return normalized;
   if (['success', 'failure'].includes(normalized)) return 'completed';
   return 'active';
-}
-
-/** @param {string} value */
-function titleCase(value) {
-  return value.replace(/(^|-)([a-z])/g, (_, prefix, character) => `${prefix ? ' ' : ''}${character.toUpperCase()}`);
 }
 
 /** @param {unknown} value */

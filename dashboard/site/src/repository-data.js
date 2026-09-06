@@ -3,6 +3,7 @@
  */
 
 import { formatPercent } from './view-formatters.js';
+import { titleCase } from './components/count-formatters.js';
 import { summarizeWorkflowAic } from './workflow-data.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'timed-out']);
@@ -95,7 +96,7 @@ function buildRepositoryWorkflowRows(workflows, usage) {
       repository: qualifiedRepository(workflow),
       workflow: String(workflow.workflow ?? ''),
       'workflow-name': String(workflow['workflow-name'] ?? workflow.workflow ?? ''),
-      'workflow-role': titleCase(workflow['workflow-role'] ?? 'unknown'),
+      'workflow-role': titleCase(String(workflow['workflow-role'] ?? 'unknown')),
       'package-name': String(workflow['package-name'] ?? ''),
       'rollout-mode': String(workflow['rollout-mode'] ?? 'unknown'),
       'workflow-active': String(workflow['workflow-active'] ?? 'unknown'),
@@ -309,16 +310,6 @@ function coverageHours(metadata) {
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
   const hours = (end - start) / 3_600_000;
   return Number.isInteger(hours) ? hours : null;
-}
-
-/** @param {unknown} value */
-function titleCase(value) {
-  const text = String(value);
-  return text
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
-    .join(' ');
 }
 
 /** @returns {import('./presenter.js').SourceMetadata} */
