@@ -182,4 +182,43 @@ describe('experiments and evaluation', () => {
     expect(detail.querySelector('.experiment-decision-table')).toBeNull();
     expect(detail.querySelector('.experiment-detail')).not.toBeNull();
   });
+
+  it('renders selected sections declaratively from config.sections', () => {
+    const sources = {
+      experiments: source('experiments', [{
+        organization: 'acme',
+        repository: 'tools',
+        workflow: 'triage-agent',
+        experiment: 'routing-v3',
+        'experiment-name': 'Tool routing v3',
+        readiness: 'READY',
+        decision: 'PROMOTE'
+      }]),
+      'experiment-assignments': source('experiment-assignments', [
+        { experiment: 'routing-v3', run: '100', variant: 'control' },
+        { experiment: 'routing-v3', run: '101', variant: 'candidate' }
+      ]),
+      graders: source('graders', [{ grader: 'quality', role: 'PRIMARY', direction: 'higher_is_better', unit: 'raw' }]),
+      'grader-observations': source('grader-observations', [
+        { experiment: 'routing-v3', run: '100', grader: 'quality', value: .72, status: 'complete', 'observed-at': '2026-09-04T10:00:00Z' },
+        { experiment: 'routing-v3', run: '101', grader: 'quality', value: .81, status: 'complete', 'observed-at': '2026-09-05T10:00:00Z' }
+      ]),
+      evals: source('evals', []),
+      'eval-observations': source('eval-observations', []),
+      runs: source('runs', [{ run: '100' }, { run: '101' }])
+    };
+
+    const detailOnly = renderExperimentsEvaluation({
+      pageId: 'experiments',
+      title: 'Experiment decisions and evidence',
+      sourceNames: Object.keys(sources),
+      sources,
+      contextDetails: [],
+      elementConfig: { sections: ['detail'] },
+      headingTag: 'h3'
+    });
+    expect(detailOnly.querySelector('.experiment-overview')).toBeNull();
+    expect(detailOnly.querySelector('.experiment-decision-table')).toBeNull();
+    expect(detailOnly.querySelector('.experiment-detail')).not.toBeNull();
+  });
 });

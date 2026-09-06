@@ -17,7 +17,8 @@ const UNKNOWN = '—';
  * @returns {HTMLElement}
  */
 export function renderExperimentsEvaluation(context) {
-  return renderExperimentsViewShell(context, experimentsViewComposition(context.elementConfig?.body), {
+  const composition = context.elementConfig?.sections ?? context.elementConfig?.body;
+  return renderExperimentsViewShell(context, experimentsViewComposition(composition), {
     renderOverview: renderDecisionOverview,
     renderTable: renderDecisionTable,
     renderDetail: renderExperimentDetails,
