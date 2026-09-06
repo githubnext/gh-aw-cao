@@ -2198,7 +2198,7 @@ test("SelfCare dashboard reviewer checks deployments through stakeholder persona
   assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
 });
 
-test("SelfCare dashboard performance worker rotates trace-backed persona improvements", () => {
+test("SelfCare dashboard performance worker selects one highest-ROI small win", () => {
   const source = workflow("self-care-dashboard-performance.md");
   const dashboard = JSON.parse(readFileSync(join(root, "self-care", "dashboard.json"), "utf8"));
   const views = dashboard.dashboard.pages[0].views;
@@ -2209,7 +2209,9 @@ test("SelfCare dashboard performance worker rotates trace-backed persona improve
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-dashboard-performance" in:body'/);
   assert.match(source, /cache-memory:\n\s+retention-days: 30\n\s+allowed-extensions: \["\.json"\]/);
   assert.match(source, /dashboard-performance-rotation\.json/);
-  assert.match(source, /advance `cursor` to the position after the evaluated candidate/);
+  assert.match(source, /Rank candidates by highest evidence-backed impact per unit of effort/);
+  assert.match(source, /Select exactly one highest-ranked actionable candidate/);
+  assert.match(source, /at most three production files plus focused tests/);
   assert.match(source, /DASHBOARD_PERFORMANCE_OUTPUT_DIR="\$evidence_root\/before"/);
   assert.match(source, /upload-artifact:[\s\S]*?self-care-dashboard-performance-evidence\/\*\*/);
   assert.match(source, /labels: \[self-care, self-care:dashboard-performance\]/);

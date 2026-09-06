@@ -1,7 +1,7 @@
 ---
 name: "SelfCare / Dashboard Performance"
-description: Improves one evidenced dashboard performance bottleneck from CFO, CTO, and CSO Lighthouse journeys
-intent: Maximize dashboard Lighthouse performance one trace-backed, non-repeating issue at a time without weakening quality gates.
+description: Improves the highest-ROI small dashboard performance bottleneck evidenced by CFO, CTO, and CSO Lighthouse journeys
+intent: Maximize dashboard Lighthouse performance one trace-backed, non-repeating small win at a time without weakening quality gates.
 on:
   bots: ["github-actions[bot]", "cao-githubnext-gh-aw-cao-write[bot]"]
   workflow_dispatch:
@@ -161,13 +161,15 @@ Improve exactly one dashboard performance bottleneck evidenced by the determinis
 3. Build a bounded candidate list from Lighthouse audits below score `1`, estimated savings, Core Web Vitals, long tasks, main-thread work, render-blocking resources, unused bytes, and repeated costs visible in the traces. Require a concrete source-level cause inside the allowed file boundary. Ignore network noise, runner startup, Lighthouse simulation artifacts, and issues that require changing data acquisition, Dashboard Language documents, dependencies, CI, or the performance harness.
 4. Read at most the 20 most recent pull requests created by this workflow. Do not repeat an open change or a previously rejected proposal unless new trace evidence proves a materially different cause.
 
-## Cache-backed rotation
+## ROI selection and attempt history
 
-Use `/tmp/gh-aw/cache-memory/dashboard-performance-rotation.json` for round-robin state. On a cache miss, initialize `{ "version": 1, "cursor": 0, "recent": [] }`.
+Use `/tmp/gh-aw/cache-memory/dashboard-performance-rotation.json` for bounded attempt history. On a cache miss, initialize `{ "version": 2, "recent": [] }`. Normalize older state to version 2 while retaining valid `recent` entries.
 
-Give each candidate a stable fingerprint formed from persona, Lighthouse audit or metric ID, and the responsible source path. Sort candidates by persona in `cfo`, `cto`, `cso` order, then by estimated impact descending and fingerprint ascending. Starting at `cursor modulo candidate count`, select the first actionable fingerprint that is not already represented by an open pull request and has not been attempted at the current source revision. Select only one candidate.
+Give each candidate a stable fingerprint formed from persona, Lighthouse audit or metric ID, and the responsible source path. Estimate ROI only from available evidence: use Lighthouse estimated savings or metric deficit as impact, and production files, component touchpoints, validation scope, and regression risk as effort. Never invent a numeric saving. Rank candidates by highest evidence-backed impact per unit of effort, then by lower regression risk, fewer production files, and fingerprint ascending. Candidates without comparable numeric evidence rank below candidates with it.
 
-After every complete evaluation, including a no-op, advance `cursor` to the position after the evaluated candidate and overwrite the state file. Retain at most 30 recent entries containing `fingerprint`, `source_sha`, `evaluated_at`, `worker_run_id`, and `outcome`. Use a filesystem-safe `YYYY-MM-DD-HH-MM-SS` timestamp. The live reports remain authoritative; cache memory stores only rotation state and attempt history.
+Select exactly one highest-ranked actionable candidate that is not represented by an open pull request and has not been attempted at the current source revision. The change must be an independently reviewable small win touching at most three production files plus focused tests. If the highest-ranked candidate cannot fit that boundary, evaluate the next-ranked candidate rather than widening the change.
+
+After every complete evaluation, including a no-op, overwrite the state file and retain at most 30 recent entries containing `fingerprint`, `source_sha`, `evaluated_at`, `worker_run_id`, and `outcome`. Use a filesystem-safe `YYYY-MM-DD-HH-MM-SS` timestamp. The live reports remain authoritative; cache memory stores only attempt history.
 
 ## Change boundary
 
@@ -183,7 +185,7 @@ Collect after-change evidence into `${{ github.workspace }}/self-care-dashboard-
 
 `DASHBOARD_PERFORMANCE_OUTPUT_DIR=${{ github.workspace }}/self-care-dashboard-performance-evidence/after npm --prefix dashboard/site run test:performance`
 
-Require the selected metric or audit to improve, the performance budget suite to pass, and no persona score to regress by more than 0.02. Then run, from `dashboard/site`, `npm run typecheck`, `npm run lint`, `npm test`, and `npm run test:e2e`. Review the final diff and scan changed files for secrets.
+Require the selected metric or audit to improve, the performance budget suite to pass, and no persona's Lighthouse performance score to regress by more than 0.02 absolute score points. Then run, from `dashboard/site`, `npm run typecheck`, `npm run lint`, `npm test`, and `npm run test:e2e`. Review the final diff and scan changed files for secrets.
 
 Call `upload_artifact` once with name `self-care-dashboard-performance-${{ github.run_id }}` and path `${{ github.workspace }}/self-care-dashboard-performance-evidence` before the final result whenever evidence files exist.
 
