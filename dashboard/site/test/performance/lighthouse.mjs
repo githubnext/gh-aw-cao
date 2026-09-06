@@ -222,13 +222,14 @@ async function main() {
       console.log(`::warning title=Lighthouse budget exceeded::${failure}`);
     }
     console.warn(`Dashboard performance budgets exceeded:\n${failures.join('\n')}`);
-    process.exit(42);
   }
 
   for (const result of results) {
     console.log(`${result.id}: Lighthouse performance ${(result.score * 100).toFixed(0)}`);
   }
   console.log(`Performance evidence: ${outputRoot}`);
+  return failures.length > 0 ? 42 : 0;
 }
 
-await main();
+const exitCode = await main();
+if (exitCode !== 0) process.exitCode = exitCode;

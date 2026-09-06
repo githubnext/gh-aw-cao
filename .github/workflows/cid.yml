@@ -93,9 +93,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run performance scenarios
         run: |
-          set +e
-          npm run test:performance
-          status=$?
+          status=0
+          npm run test:performance || status=$?
           if [ "$status" -eq 42 ]; then
             echo "Lighthouse budget thresholds exceeded; continuing without blocking CI."
             exit 0
