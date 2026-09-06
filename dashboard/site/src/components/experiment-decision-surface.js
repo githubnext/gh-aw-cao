@@ -147,7 +147,7 @@ export function buildExperimentDecisionModel(sources) {
  * @param {Map<string, Row>} assignmentByRun
  * @param {Row|undefined} definition
  * @param {'grader'|'eval'} sourceType
- * @returns {ExperimentSummary}
+ * @returns {Row}
  */
 function normalizeObservation(row, assignmentByRun, definition, sourceType) {
   const assignment = assignmentByRun.get(text(row.run)) ?? {};
@@ -378,7 +378,10 @@ export function filterExperimentRows(experiments, filters) {
     if (filters.variant && ![experiment.control, experiment.candidate].includes(filters.variant)) return false;
     if (filters.source && !experiment.observations.some((/** @type {Row} */ observation) => observation.sourceType === filters.source)) return false;
     if (filters.metric && !experiment.observations.some((/** @type {Row} */ observation) => observation.identifier === filters.metric)) return false;
-    if (!Number.isNaN(sinceTime) && experiment.lastObservation && (Date.parse(experiment.lastObservation) || 0) < sinceTime) return false;
+    if (!Number.isNaN(sinceTime) && experiment.lastObservation) {
+      const obsTime = Date.parse(experiment.lastObservation);
+      if (!Number.isNaN(obsTime) && obsTime < sinceTime) return false;
+    }
     return true;
   });
 }
