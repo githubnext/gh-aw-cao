@@ -2525,8 +2525,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       const outputPlaceholder = generated.indexOf("- name: Write agent output placeholder if missing");
       const orchestratorTelemetry = generated.indexOf("name: Emit control-plane orchestrator telemetry");
       const agentArtifact = generated.indexOf("- name: Upload agent artifacts");
-      assert.ok(outputPlaceholder < orchestratorTelemetry, `${name} emits orchestrator telemetry before output normalization`);
-      assert.ok(orchestratorTelemetry < agentArtifact, `${name} uploads the agent artifact before orchestrator telemetry`);
+      assert.ok(outputPlaceholder < orchestratorTelemetry, `${name} output placeholder must precede orchestrator telemetry`);
+      assert.ok(orchestratorTelemetry < agentArtifact, `${name} orchestrator telemetry must precede agent artifact upload`);
       assert.match(generated, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
     }
 
