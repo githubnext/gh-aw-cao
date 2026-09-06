@@ -177,3 +177,29 @@ test("AI Credit usage collection preserves logs snapshot after download failure"
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("AI Credit usage collection preserves existing logs snapshot when no runs are selected", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
+  const inventoryPath = path.join(root, "deployed-workflows.json");
+  const outputPath = path.join(root, "aic-usage.json");
+  const logsPath = path.join(root, "gh-aw-logs.json");
+  await writeFile(inventoryPath, JSON.stringify({ workflows: [] }));
+  await writeFile(logsPath, '{"runs":[{"database_id":7}]}\n');
+
+  try {
+    await execFileAsync(process.execPath, [
+      path.resolve("dashboard/report/aic-usage.mjs"),
+    ], {
+      cwd: path.resolve("."),
+      env: {
+        ...process.env,
+        REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
+        REPORT_AIC_USAGE: outputPath,
+        REPORT_GH_AW_LOGS: logsPath,
+      },
+    });
+    assert.equal(await readFile(logsPath, "utf8"), '{"runs":[{"database_id":7}]}\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -3,7 +3,7 @@ function finiteValue(value) {
 }
 
 function runAttempt(record) {
-  const attempt = Number(record.runAttempt ?? record.run?.attempt ?? 1);
+  const attempt = Number(record.runAttempt ?? record.run?.runAttempt ?? record.run?.attempt ?? 1);
   return Number.isInteger(attempt) && attempt > 0 ? attempt : 1;
 }
 

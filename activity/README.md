@@ -26,7 +26,7 @@ Each GitHub-backed collection operation records a before/after entry in `cao-gh.
 
 Consumers should restore the prefix before downloading workflow-run history or collecting dashboard data. If the cache is absent, stale for the consumer's evidence window, incomplete, or outside the required repository scope, they must fetch the missing evidence. The scheduled and manually dispatchable `.github/workflows/activity.yml` workflow is the only cache publisher. When dashboard report resources are not installed, a focused activity installation publishes only `deployed-workflows.json`.
 
-The activity refresh runs `gh aw logs --json` once without workflow arguments, downloading all agentic workflow logs in the repository. It retains the raw JSON and requested artifacts under `gh-aw-logs*`; AI Credit, security, and operational-value collectors derive their records from that shared snapshot without starting additional gh-aw history scans.
+The activity refresh runs `gh aw logs --json` once, passing the workflow targets (`repository/path`) of every deployed workflow that has recorded runs, downloading their agentic workflow logs in a single call. It retains the raw JSON and requested artifacts under `gh-aw-logs*`; AI Credit, security, and operational-value collectors derive their records from that shared snapshot without starting additional gh-aw history scans.
 
 Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-managed cache entries, including entries that use legacy CAO cache keys.
 

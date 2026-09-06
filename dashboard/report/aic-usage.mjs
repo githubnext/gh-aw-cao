@@ -602,9 +602,15 @@ export async function collectAicUsage() {
         if (logsPath) await preserveLogsOnFailure(logsPath, "download failure");
       }
     } else if (logsPath) {
-      await mkdir(path.dirname(logsPath), { recursive: true });
-      await writeFile(logsPath, '{"runs":[]}\n');
-      log.info`Cached empty gh-aw logs JSON at ${logsPath}; no workflow runs were selected`;
+      try {
+        await stat(logsPath);
+        log.info`Preserved existing gh-aw logs JSON at ${logsPath}; no workflow runs were selected`;
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+        await mkdir(path.dirname(logsPath), { recursive: true });
+        await writeFile(logsPath, '{"runs":[]}\n');
+        log.info`Cached empty gh-aw logs JSON at ${logsPath}; no workflow runs were selected and no prior snapshot existed`;
+      }
     }
     const reportedRunsByRepository = Object.groupBy([...runs.values()], (run) => run.repository);
     const repositories = [...runIdsByRepository].map(([repository, runIds]) => {
