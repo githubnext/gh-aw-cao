@@ -6905,7 +6905,11 @@
             "data": {
               "sources": [
                 "work-items",
-                "evidence-records"
+                "evidence-records",
+                "outcomes",
+                "operational-values",
+                "github-api-rate-limits",
+                "usage"
               ]
             },
             "mark": "element",

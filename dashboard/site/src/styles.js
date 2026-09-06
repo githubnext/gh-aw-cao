@@ -1089,7 +1089,10 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .capacity-risk { display: flex; align-items: center; gap: 6px; color: var(--danger); }
 .operational-pulse { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); }
 .operational-pulse > div { display: flex; flex-wrap: wrap; gap: 8px 20px; }
-.operational-pulse > p { margin: 0; color: var(--muted); }
+.operational-pulse-dimensions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 16px; margin: 0; }
+.operational-pulse-dimensions > div { min-width: 0; }
+.operational-pulse-dimensions dt { color: var(--muted); font-size: .6875rem; }
+.operational-pulse-dimensions dd { margin: 2px 0 0; overflow-wrap: anywhere; font-size: .75rem; font-weight: 600; }
 .signal-clear { min-height: 68px; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 10px; padding: 9px 14px; }
 .signal-clear .signal-icon { color: var(--success); }
 .managed-packages > header { min-height: 72px; padding: 10px 0; }
@@ -1414,6 +1417,7 @@ footer { padding: 20px 24px; border-top: 1px solid var(--border); color: var(--m
   .capacity-row { grid-template-columns: minmax(0, 1fr); }
   .capacity-meta { grid-column: 1; grid-row: auto; justify-items: start; }
   .capacity-row :is(progress, .capacity-risk, .capacity-forecast, .capacity-unavailable) { grid-column: 1; }
+  .operational-pulse-dimensions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workflow-identity { align-items: flex-start; flex-direction: column; }
   .experiment-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .experiment-overview { grid-template-columns: 1fr; }
@@ -1442,7 +1446,7 @@ footer { padding: 20px 24px; border-top: 1px solid var(--border); color: var(--m
   .summary-grid { grid-template-columns: 1fr; }
   .state-summary-row { grid-template-columns: minmax(84px, .45fr) 30px minmax(72px, 1fr); gap: 7px; padding-inline: 4px; }
   .truth-rail strong { font-size: .625rem; }
-  .truth-rail small { display: none; }
+  .truth-rail small { display: block; overflow: visible; font-size: .5625rem; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
   .oversight-definition-list { grid-template-columns: minmax(0, 1fr); }
   .outcome-strip-meta { display: grid; gap: 4px; }
   .readiness-verdict-details { grid-template-columns: 1fr; }

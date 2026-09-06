@@ -1754,9 +1754,10 @@ function outcomeRows(records, workflowRoleFor = () => "unknown") {
     "outcome-body-html": record.bodyHtml || "",
     "outcome-category": record.kind || "unknown",
     "outcome-status": record.state || "unknown",
-    "outcome-state": record.state === "closed"
-      ? "lifecycle-close"
-      : record.kind === "noop" ? "ignored" : "pending",
+    "outcome-state": firstText(record.outcomeState, record.outcomeDisposition)
+      || (record.state === "closed" ? "lifecycle-close" : record.kind === "noop" ? "ignored" : "pending"),
+    "verification-state": firstText(record.verificationState, record.verification?.state) || "unavailable",
+    "artifact-state": record.id ? "produced" : "unavailable",
     "evidence-strength": record.kind === "review-bundle" ? "proposal" : "durable",
     "outcome-warning": record.warning ? "Warning" : "None",
     "run-conclusion": runConclusion(record.conclusion),
@@ -1810,12 +1811,6 @@ function workItemConsequenceTier(workflowRole) {
   if (workflowRole === "orchestrator") return "high";
   if (workflowRole === "worker") return "medium";
   return "low";
-}
-
-function outcomeVerificationState(outcomeState) {
-  if (outcomeState === "accepted" || outcomeState === "lifecycle-close") return "accepted";
-  if (outcomeState === "rejected") return "rejected";
-  return "pending";
 }
 
 function latestByWorkItemKey(rows, keyFor, sortField) {
@@ -1902,7 +1897,7 @@ function workItemRows(workflows, runs, outcomes, operationalValues = []) {
       owner: workflow["package-name"] || workflow.organization,
       "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
       "execution-state": latestRun?.["run-conclusion"] || latestRun?.["run-status"] || "unavailable",
-      "verification-state": outcomeVerificationState(latestOutcome?.["outcome-state"]),
+      "verification-state": latestOutcome?.["verification-state"] || "unavailable",
       "outcome-state": latestOutcome?.["outcome-state"] || "pending",
       "artifact-state": latestOutcome ? "produced" : "pending",
       "maturity-status": latestValue?.["maturity-status"] || (latestOutcome ? "immature" : "unavailable"),
@@ -1914,13 +1909,16 @@ function workItemRows(workflows, runs, outcomes, operationalValues = []) {
   });
 }
 
-function attentionSignalRows(workItems, generatedAt) {
+function attentionSignalRows(workItems, agentAssignments, evidenceRecords, generatedAt) {
   const now = Date.parse(generatedAt) || Date.now();
-  return workItems
+  const workItemsById = new Map(workItems.map((item) => [item["work-item-id"], item]));
+  const ageSeconds = (row) => {
+    const since = Date.parse(row["waiting-since"] || row["observed-at"]);
+    return Number.isFinite(since) ? Math.max(0, Math.round((now - since) / 1000)) : 0;
+  };
+  const workSignals = workItems
     .filter((item) => item["lifecycle-state"] === "blocked" || item["lifecycle-state"] === "waiting")
     .map((item) => {
-      const since = Date.parse(item["waiting-since"]);
-      const ageSeconds = Number.isFinite(since) ? Math.max(0, Math.round((now - since) / 1000)) : 0;
       return {
         "attention-signal-id": `${item["work-item-id"]}:${item["lifecycle-state"]}`,
         "signal-type": item["lifecycle-state"],
@@ -1930,7 +1928,7 @@ function attentionSignalRows(workItems, generatedAt) {
         reason: item.reason,
         action: item["next-action"],
         "expected-actor": item["next-actor"],
-        "age-seconds": ageSeconds,
+        "age-seconds": ageSeconds(item),
         "consequence-tier": item["consequence-tier"],
         priority: item["lifecycle-state"] === "blocked" ? (item["consequence-tier"] === "high" ? 0 : 1) : 2,
         "observed-at": item["observed-at"],
@@ -1938,7 +1936,69 @@ function attentionSignalRows(workItems, generatedAt) {
         "repository-link": link("repository", `https://github.com/${item.organization}/${item.repository}`, `View ${item.organization}/${item.repository} on GitHub`),
         "run-link": item["run-link"],
       };
-    })
+    });
+  const verificationSignals = workItems
+    .filter((item) => ["failed", "rejected"].includes(item["verification-state"]))
+    .map((item) => ({
+      "attention-signal-id": `${item["work-item-id"]}:verification`,
+      "signal-type": "verification-review",
+      "work-item-id": item["work-item-id"],
+      objective: item.objective,
+      scope: item.scope,
+      reason: "Execution and verification do not agree.",
+      action: "Review verification evidence",
+      "expected-actor": "reviewer",
+      "age-seconds": ageSeconds(item),
+      "consequence-tier": item["consequence-tier"],
+      priority: 0,
+      "observed-at": item["observed-at"],
+      "evidence-link": item["evidence-link"],
+      "run-link": item["run-link"],
+    }));
+  const verificationWorkItems = new Set(verificationSignals.map((signal) => signal["work-item-id"]));
+  const coordinationSignals = agentAssignments
+    .filter((assignment) => assignment["conflict-state"] && assignment["conflict-state"] !== "none")
+    .map((assignment) => {
+      const item = workItemsById.get(assignment["work-item-id"]) || {};
+      return {
+        "attention-signal-id": `${assignment["assignment-id"]}:coordination`,
+        "signal-type": "coordination-conflict",
+        "work-item-id": assignment["work-item-id"],
+        objective: assignment.objective,
+        scope: item.scope || "",
+        reason: `Coordination conflict: ${assignment["conflict-state"]}.`,
+        action: "Inspect agent coordination",
+        "expected-actor": item["next-actor"] || "maintainer",
+        "age-seconds": ageSeconds(assignment),
+        "consequence-tier": item["consequence-tier"] || "medium",
+        priority: 1,
+        "observed-at": assignment["observed-at"],
+        "evidence-link": assignment["evidence-link"],
+        "run-link": assignment["run-link"],
+      };
+    });
+  const contradictionSignals = evidenceRecords
+    .filter((record) => record["evidence-disposition"] === "contradicts" && !verificationWorkItems.has(record["work-item-id"]))
+    .map((record) => {
+      const item = workItemsById.get(record["work-item-id"]) || {};
+      return {
+        "attention-signal-id": `${record["evidence-id"]}:contradiction`,
+        "signal-type": "evidence-contradiction",
+        "work-item-id": record["work-item-id"],
+        objective: record.objective,
+        scope: item.scope || "",
+        reason: record.claim || "Retained evidence contradicts the current claim.",
+        action: "Review contradictory evidence",
+        "expected-actor": "reviewer",
+        "age-seconds": ageSeconds(record),
+        "consequence-tier": item["consequence-tier"] || "medium",
+        priority: 0,
+        "observed-at": record["observed-at"],
+        "evidence-link": record["evidence-link"],
+        "run-link": record["run-link"],
+      };
+    });
+  return [...workSignals, ...verificationSignals, ...coordinationSignals, ...contradictionSignals]
     .sort((a, b) => a.priority - b.priority || b["age-seconds"] - a["age-seconds"]);
 }
 
@@ -2016,10 +2076,12 @@ function evidenceRecordRows(outcomes, findings, workItems) {
       "work-item-id": workItem?.["work-item-id"] || workItemKey(organization, repository, outcome.workflow),
       objective: workItem?.objective || outcome["workflow-name"] || "Unknown objective",
       claim: outcome["outcome-title"] || outcome["outcome-summary"] || "",
-      "verification-state": outcomeVerificationState(outcome["outcome-state"]),
-      "evidence-disposition": outcome["outcome-state"] === "rejected" ? "contradicts" : "supports",
+      "verification-state": outcome["verification-state"] || "unavailable",
+      "evidence-disposition": outcome["outcome-state"] === "rejected" || ["failed", "rejected"].includes(outcome["verification-state"])
+        ? "contradicts"
+        : "supports",
       "provenance-state": outcome["evidence-strength"] === "durable" ? "durable" : "proposal",
-      "authority-state": "available",
+      "authority-state": "unavailable",
       execution: outcome.run || "",
       "artifact-state": "produced",
       "outcome-state": outcome["outcome-state"],
@@ -2042,11 +2104,10 @@ function evidenceRecordRows(outcomes, findings, workItems) {
       "work-item-id": workItem?.["work-item-id"] || workItemKey(organization, repository, finding.workflow),
       objective: workItem?.objective || "Unknown objective",
       claim: finding["finding-summary"] || "",
-      "verification-state": finding["finding-status"] === "resolved" ? "accepted"
-        : finding["finding-status"] === "dismissed" ? "rejected" : "pending",
+      "verification-state": finding["verification-state"] || "unavailable",
       "evidence-disposition": finding["finding-status"] === "dismissed" ? "contradicts" : "supports",
       "provenance-state": "durable",
-      "authority-state": "available",
+      "authority-state": "unavailable",
       execution: finding.run || "",
       "artifact-state": finding["external-link"] ? "produced" : "unavailable",
       "outcome-state": finding["finding-status"] || "pending",
@@ -2286,10 +2347,10 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const workItemsAvailable = workflows.length > 0;
   const workItemsComplete = workItemsAvailable && runComplete;
   const workItems = workItemRows(workflows, runs, outcomes, values);
-  const attentionSignals = attentionSignalRows(workItems, generatedAt);
   const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
   const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
+  const attentionSignals = attentionSignalRows(workItems, agentAssignments, evidenceRecords, generatedAt);
   const experiments = experimentTelemetryRows(usage);
   const graders = graderTelemetryRows(usage);
   const evals = evalTelemetryRows(usage);

@@ -104,8 +104,10 @@ function renderAttentionStack(context) {
 
 /** @param {OversightContext} context */
 function renderWorkList(context) {
-  const sourceRows = rowsFor(context, context.sourceNames[0]);
-  const rows = context.pageId === 'home' ? sourceRows.slice(0, 5) : sourceRows;
+  const sourceRows = [...rowsFor(context, context.sourceNames[0])].sort(compareWorkPriority);
+  const rows = context.pageId === 'home'
+    ? sourceRows.filter((row) => !['completed', 'cancelled'].includes(text(row['lifecycle-state']).toLowerCase())).slice(0, 5)
+    : sourceRows;
   return section(context, h(
     'div',
     { className: 'oversight-list work-list', 'aria-label': 'Delegated work' },
@@ -190,7 +192,7 @@ function renderOutcomeList(context) {
         ),
         renderTruthRail({
           'execution-state': text(row['run-conclusion']) || 'unknown',
-          'verification-state': text(row['verification-state']) || state,
+          'verification-state': text(row['verification-state']) || 'unavailable',
           'outcome-state': state,
           'maturity-status': text(row['maturity-status']) || 'unavailable'
         }, true),
@@ -389,7 +391,7 @@ function renderMaturityHorizon(context) {
         h('strong', null, text(outcome['outcome-title'] || outcome['safe-output']) || 'Untitled outcome'),
         renderTruthRail({
           'execution-state': text(outcome['run-conclusion']) || 'unknown',
-          'verification-state': text(outcome['verification-state']) || (state === 'pending' ? 'pending' : 'verified'),
+          'verification-state': text(outcome['verification-state']) || 'unavailable',
           'outcome-state': state,
           'maturity-status': maturity
         }),
@@ -450,9 +452,17 @@ function renderCapacityHorizon(context) {
 function renderOperationalPulse(context) {
   const work = rowsFor(context, context.sourceNames[0]);
   const evidenceSource = context.sources[context.sourceNames[1]];
+  const outcomes = rowsFor(context, context.sourceNames[2]);
+  const values = rowsFor(context, context.sourceNames[3]);
+  const capacity = latestRows(rowsFor(context, context.sourceNames[4]), ['credential', 'resource'], 'observed-at');
+  const usage = rowsFor(context, context.sourceNames[5]);
   /** @param {string[]} states */
   const count = (states) => work.filter((row) => states.includes(text(row['lifecycle-state']).toLowerCase())).length;
-  const verifying = work.filter((row) => text(row.phase).toLowerCase().includes('verif')).length;
+  const verificationNeedsReview = work.filter((row) => NEGATIVE_STATES.has(text(row['verification-state']).toLowerCase())).length;
+  const pendingOutcomes = outcomes.filter((row) => text(row['outcome-state']).toLowerCase() === 'pending').length;
+  const matureValues = values.filter((row) => text(row['maturity-status']).toLowerCase() === 'matured').length;
+  const capacityRisks = capacity.filter((row) => ['critical', 'warning'].includes(text(row['risk-status']).toLowerCase())).length;
+  const measuredAic = usage.reduce((sum, row) => sum + (finiteNumber(row.aic) ?? 0), 0);
   return section(context, h(
     'div',
     { className: 'operational-pulse', role: 'status', 'aria-label': 'Operational pulse' },
@@ -460,11 +470,14 @@ function renderOperationalPulse(context) {
       h('span', null, h('strong', null, String(count(['active', 'review']))), ' active'),
       h('span', null, h('strong', null, String(count(['waiting']))), ' waiting'),
       h('span', null, h('strong', null, String(count(['blocked']))), ' blocked'),
-      h('span', null, `verification: ${verifying} ${verifying === 1 ? 'item' : 'items'}`)
+      h('span', null, `verification: ${verificationNeedsReview} need review`)
     ),
-    h('p', null,
-      h('strong', null, 'Evidence'),
-      ` ${text(evidenceSource?.metadata?.freshness) || 'unknown'} · ${text(evidenceSource?.metadata?.completeness) || 'unknown'}`
+    h('dl', { className: 'operational-pulse-dimensions' },
+      h('div', null, h('dt', null, 'Outcomes'), h('dd', null, `${pendingOutcomes} pending`)),
+      h('div', null, h('dt', null, 'Value'), h('dd', null, values.length > 0 ? `${matureValues}/${values.length} mature` : 'unavailable')),
+      h('div', null, h('dt', null, 'Evidence'), h('dd', null, `${text(evidenceSource?.metadata?.freshness) || 'unknown'} · ${text(evidenceSource?.metadata?.completeness) || 'unknown'}`)),
+      h('div', null, h('dt', null, 'Capacity'), h('dd', null, capacity.length > 0 ? `${capacityRisks} at risk` : 'unavailable')),
+      h('div', null, h('dt', null, 'Measured cost'), h('dd', null, usage.length > 0 ? `${measuredAic} AIC` : 'unavailable'))
     )
   ));
 }
@@ -610,7 +623,10 @@ export function renderProvenanceSpine(row) {
     'ol',
     { className: 'provenance-spine', 'aria-label': 'Provenance from authority to operational value' },
     ...nodes.map(([label, value], index) => {
-      const state = value == null || value === '' ? 'unavailable' : 'available';
+      const normalized = text(value).toLowerCase();
+      const state = value == null || value === '' || ['unavailable', 'unknown'].includes(normalized)
+        ? 'unavailable'
+        : normalized === 'not-applicable' ? 'not-applicable' : 'available';
       const link = label === 'Evidence' ? evidenceLink(row) : null;
       const valueText = text(value) || `${label.toLowerCase()} association unavailable`;
       return h('li', { className: `provenance-node provenance-${state}` },
@@ -622,6 +638,20 @@ export function renderProvenanceSpine(row) {
       );
     })
   );
+}
+
+/** @param {Record<string, unknown>} left @param {Record<string, unknown>} right */
+function compareWorkPriority(left, right) {
+  const order = ['blocked', 'waiting', 'review', 'active', 'unknown', 'completed', 'cancelled'];
+  const leftState = text(left['lifecycle-state']).toLowerCase();
+  const rightState = text(right['lifecycle-state']).toLowerCase();
+  const stateDifference = (order.indexOf(leftState) < 0 ? order.length : order.indexOf(leftState))
+    - (order.indexOf(rightState) < 0 ? order.length : order.indexOf(rightState));
+  if (stateDifference !== 0) return stateDifference;
+  const timeDifference = Date.parse(text(right['observed-at'])) - Date.parse(text(left['observed-at']));
+  return Number.isFinite(timeDifference) && timeDifference !== 0
+    ? timeDifference
+    : text(left['work-item-id']).localeCompare(text(right['work-item-id']));
 }
 
 /** @param {Array<Record<string, unknown>>} rows @param {Array<[string, string]>} columns */
