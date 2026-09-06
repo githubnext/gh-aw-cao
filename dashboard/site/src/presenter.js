@@ -8,6 +8,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
+import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
 import { toNumber, stringOrFallback } from './view-formatters.js';
@@ -2311,18 +2312,6 @@ export function enableDashboardKeyboardNavigation(root) {
     event.preventDefault();
     nextSection.focus();
   });
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function titleCase(value) {
-  return value
-    .split('-')
-    .filter(Boolean)
-    .map((part) => part[0] ? `${part[0].toUpperCase()}${part.slice(1)}` : part)
-    .join(' ');
 }
 
 /**

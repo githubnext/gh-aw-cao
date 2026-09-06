@@ -3,12 +3,18 @@
  */
 
 /**
- * Converts a kebab-case identifier into title-cased display text.
+ * Converts a kebab-case or snake_case identifier into title-cased display
+ * text, capitalizing the first letter of each hyphen/underscore-delimited
+ * word and joining them with spaces.
  * @param {string} value
  * @returns {string}
  */
 export function titleCase(value) {
-  return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(' ');
 }
 
 /**
