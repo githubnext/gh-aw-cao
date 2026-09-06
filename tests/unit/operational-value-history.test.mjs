@@ -89,6 +89,42 @@ test("drops stale unavailable placeholders once an observed record exists for th
   assert.equal(records[0].value, 0.8);
 });
 
+test("keeps a real unavailable record (with an evaluatorDigest) instead of treating it as a stale placeholder", () => {
+  const placeholder = {
+    schemaVersion: 1,
+    repository: "github/gh-aw",
+    workflowId: "daily-file-diet",
+    workflowPath: ".github/workflows/daily-file-diet.md",
+    runId: 42,
+    runAttempt: 2,
+    status: "unavailable",
+    value: null,
+    observationSource: "logs-json",
+    observation: null,
+    reason: "operational-value result not found",
+  };
+  const erroredEvaluatorRun = {
+    schemaVersion: 1,
+    repository: "github/gh-aw",
+    workflowId: "daily-file-diet",
+    workflowPath: ".github/workflows/daily-file-diet.md",
+    runId: 42,
+    runAttempt: 2,
+    status: "unavailable",
+    value: null,
+    evaluatorDigest: "digest",
+    observationSource: "logs-json",
+    observation: null,
+    error: "evaluator replay failed",
+  };
+
+  const records = mergeOperationalValueRecords([placeholder], [erroredEvaluatorRun]);
+
+  assert.equal(records.length, 1);
+  assert.equal(records[0].status, "unavailable");
+  assert.equal(records[0].evaluatorDigest, "digest");
+});
+
 test("run identities cover cached results even without nested observation payloads", () => {
   const cached = {
     schemaVersion: 1,

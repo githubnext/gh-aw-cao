@@ -89,13 +89,17 @@ export function mergeOperationalValueRecords(...recordSets) {
   }
   // Placeholders persisted before an observation was collected key by
   // "unknown-evaluator" (no evaluatorDigest yet), so they can coexist in the
-  // map alongside a later observed record for the same run. Drop those
-  // stale placeholders once any observed record exists for the same run.
+  // map alongside a later observed record for the same run. Identify those
+  // stale placeholders by the absence of an evaluatorDigest rather than by
+  // `status`, since a real (non-placeholder) record can still legitimately
+  // report `status: "unavailable"` (e.g. an errored evaluator run) while
+  // carrying an evaluatorDigest and/or observation payload.
+  const isPlaceholder = (record) => !record.evaluatorDigest;
   const observedRunKeys = new Set([...records.values()]
-    .filter((record) => record.status !== "unavailable")
+    .filter((record) => !isPlaceholder(record))
     .map((record) => operationalValueRunIdentity(record)));
   for (const [key, record] of records) {
-    if (record.status === "unavailable" && observedRunKeys.has(operationalValueRunIdentity(record))) {
+    if (isPlaceholder(record) && observedRunKeys.has(operationalValueRunIdentity(record))) {
       records.delete(key);
     }
   }
