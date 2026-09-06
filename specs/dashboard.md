@@ -128,6 +128,8 @@ Activity is supporting evidence. Activity alone is not progress, success, outcom
 
 > The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.ietf.org/rfc/rfc2119.txt).
 
+Requirement identifiers are stable across revisions and are assigned in order of addition, so the identifiers within a subsection are not necessarily contiguous. An identifier is never reused or renumbered once published.
+
 ### 2.2 Conformance Classes
 
 This specification defines four conformance classes:
@@ -605,8 +607,8 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-EVID-003:** Unsupported claims **MUST NOT** be presented as observations, metrics, status, or recommendations.
 - **CAOD-EVID-004:** Confidence **MUST** identify what it measures and **MUST NOT** be presented as calibrated probability unless calibration evidence is available.
 - **CAOD-EVID-005:** A presenter **MUST** preserve contradictory evidence, missing evidence, and minority agent conclusions.
-- **CAOD-EVID-017:** When evidence materially disagrees about the same claim, a presenter **SHOULD** provide a side-by-side or split comparison that preserves each claim, its evidence class, its source identity and observation time, and its current disposition, including `unresolved`.
-- **CAOD-EVID-018:** A comparison of disagreeing evidence **MUST NOT** present one side as authoritative unless a recorded disposition or an applicable disclosed rule establishes it, and it **MUST** identify that disposition or rule when it does.
+- **CAOD-EVID-013:** When evidence materially disagrees about the same claim, a presenter **SHOULD** provide a side-by-side or split comparison that preserves each claim, its evidence class, its source identity and observation time, and its current disposition, including `unresolved`.
+- **CAOD-EVID-014:** A comparison of disagreeing evidence **MUST NOT** present one side as authoritative unless a recorded disposition or an applicable disclosed rule establishes it, and it **MUST** identify that disposition or rule when it does.
 
 ### 12.2 Evidence Page
 
@@ -628,10 +630,10 @@ Authority -> Objective -> Work item -> Execution -> Evidence -> Artifact -> Outc
 
 - **CAOD-EVID-011:** A presenter **MUST** expose each available link in the provenance chain without fabricating missing links.
 - **CAOD-EVID-012:** Policy revision, workflow revision, target authority, input revision, model, engine, tools, evidence cutoff, and approver **SHOULD** be available at provenance depth when applicable.
-- **CAOD-EVID-013:** A graphical provenance view **MUST** keep a missing link visually and textually distinguishable from an absent or not-applicable link.
-- **CAOD-EVID-014:** Each provenance node and edge **SHOULD** disclose its source identity and observation time.
-- **CAOD-EVID-015:** Selecting a provenance link **SHOULD** highlight the evidence that establishes the association, and an association without such evidence **MUST** be shown as unestablished.
-- **CAOD-EVID-016:** A broken provenance chain **MUST NOT** be visually bridged, straightened, or otherwise completed; the discontinuity **MUST** remain apparent in the graphical form and in its textual equivalent.
+- **CAOD-EVID-015:** A graphical provenance view **MUST** keep a missing link visually and textually distinguishable from an absent or not-applicable link.
+- **CAOD-EVID-016:** Each provenance node and edge **SHOULD** disclose its source identity and observation time.
+- **CAOD-EVID-017:** Selecting a provenance link **SHOULD** highlight the evidence that establishes the association, and an association without such evidence **MUST** be shown as unestablished.
+- **CAOD-EVID-018:** A broken provenance chain **MUST NOT** be visually bridged, straightened, or otherwise completed; the discontinuity **MUST** remain apparent in the graphical form and in its textual equivalent.
 
 ---
 
@@ -850,8 +852,8 @@ A semantic visualization is a graphical form whose structure encodes operational
 - **CAOD-A11Y-005:** Hover-only content **MUST** also be available on focus or as persistent text.
 - **CAOD-A11Y-006:** Focus order **MUST** follow reading order and remain stable when supplemental content is expanded.
 - **CAOD-A11Y-007:** Motion **MUST** respect reduced-motion preferences and **MUST NOT** be required to understand state changes.
-- **CAOD-A11Y-009:** Under a reduced-motion preference, a semantic visualization **MUST** present its complete state without transitional or ambient animation, and no state, reason, transition, or evidence route **MUST NOT** become unreachable.
 - **CAOD-A11Y-008:** Status changes that do not move focus **MUST** be announced through an appropriate live region without repeatedly announcing routine telemetry.
+- **CAOD-A11Y-009:** Under a reduced-motion preference, a semantic visualization **MUST** present its complete state without transitional or ambient animation, and every state, reason, transition, and evidence route **MUST** remain reachable.
 
 ---
 
