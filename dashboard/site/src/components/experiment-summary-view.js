@@ -1,7 +1,6 @@
 import { h } from '../dom.js';
+import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
 import { renderDlRow } from './ui-primitives.js';
-
-const UNKNOWN = '—';
 
 /**
  * @param {Array<Record<string, any>>} experiments
@@ -13,7 +12,7 @@ export function renderExperimentSummaryView(experiments) {
   const regressions = experiments.filter((experiment) => experiment.regressingGuardrails.length > 0).length;
   const usable = experiments.reduce((total, experiment) => total + experiment.usable, 0);
   const excluded = experiments.reduce((total, experiment) => total + experiment.excluded, 0);
-  const coverage = usable + excluded > 0 ? usable / (usable + excluded) : null;
+  const coverage = computeObservationCoverage(usable, excluded);
   const pending = experiments.filter((experiment) => ['READY', 'INCONCLUSIVE', 'EXTEND'].includes(experiment.decision)).length;
   const stateCounts = countBy(experiments, (experiment) => experiment.readiness);
   return h(
@@ -36,7 +35,7 @@ export function renderExperimentSummaryView(experiments) {
       summaryItem('Active experiments', active),
       summaryItem('Ready for decision', ready),
       summaryItem('Guardrail regressions', regressions),
-      summaryItem('Usable observations', coverage === null ? UNKNOWN : `${(coverage * 100).toFixed(1)}%`),
+      summaryItem('Usable observations', formatCoveragePercent(coverage)),
       summaryItem('Decisions pending', pending)
     )
   );
