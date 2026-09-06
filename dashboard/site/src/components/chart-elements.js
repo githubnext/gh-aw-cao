@@ -29,6 +29,8 @@ const MAX_HEATMAP_CELLS = 100;
 const MAX_HEATMAP_AXIS_CATEGORIES = 12;
 const PIE_CHART_CENTER = 21;
 const PIE_CHART_RADIUS = 15.9155;
+const PIE_CHART_STROKE_WIDTH = 6;
+const PIE_CHART_SEGMENT_GAP = 0.03;
 const SWIMLANE_START_X = 25;
 const SWIMLANE_END_X = 117;
 const SWIMLANE_SECTION_WIDTH = 0.8;
@@ -166,11 +168,14 @@ export function pieChartEntries(points) {
   return { entries, total };
 }
 
-/** @param {number} startFraction @param {number} endFraction */
-function pieChartSegmentPath(startFraction, endFraction) {
+/** @param {number} startFraction @param {number} endFraction @param {boolean} separated */
+function pieChartSegmentPath(startFraction, endFraction, separated = false) {
   const start = Math.min(1, Math.max(0, startFraction));
   const end = Math.min(1, Math.max(start, endFraction));
   const sweep = end - start;
+  const gap = separated ? Math.min(PIE_CHART_SEGMENT_GAP, sweep * 0.2) : 0;
+  const visibleStart = start + gap;
+  const visibleEnd = end - gap;
   /** @param {number} fraction */
   const pointAt = (fraction) => {
     const angle = (fraction * Math.PI * 2) - (Math.PI / 2);
@@ -179,16 +184,16 @@ function pieChartSegmentPath(startFraction, endFraction) {
       Number((PIE_CHART_CENTER + (Math.sin(angle) * PIE_CHART_RADIUS)).toFixed(4))
     ];
   };
-  const [startX, startY] = pointAt(start);
+  const [startX, startY] = pointAt(visibleStart);
 
   if (sweep <= Number.EPSILON) return `M ${startX} ${startY}`;
-  if (sweep >= 1 - Number.EPSILON) {
+  if (!separated && sweep >= 1 - Number.EPSILON) {
     const [middleX, middleY] = pointAt(start + 0.5);
     return `M ${startX} ${startY} A ${PIE_CHART_RADIUS} ${PIE_CHART_RADIUS} 0 1 1 ${middleX} ${middleY} A ${PIE_CHART_RADIUS} ${PIE_CHART_RADIUS} 0 1 1 ${startX} ${startY}`;
   }
 
-  const [endX, endY] = pointAt(end);
-  return `M ${startX} ${startY} A ${PIE_CHART_RADIUS} ${PIE_CHART_RADIUS} 0 ${sweep > 0.5 ? 1 : 0} 1 ${endX} ${endY}`;
+  const [endX, endY] = pointAt(visibleEnd);
+  return `M ${startX} ${startY} A ${PIE_CHART_RADIUS} ${PIE_CHART_RADIUS} 0 ${(visibleEnd - visibleStart) > 0.5 ? 1 : 0} 1 ${endX} ${endY}`;
 }
 
 /**
@@ -268,7 +273,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
       h(
         'svg',
         { viewBox: '0 0 42 42', role: 'img', 'aria-label': `Pie chart: ${entries.map(([label, value]) => `${label} ${formatNumber(value, unit)}`).join(', ') || 'no data'}` },
-        h('circle', { className: 'pie-chart-track', cx: PIE_CHART_CENTER, cy: PIE_CHART_CENTER, r: PIE_CHART_RADIUS, fill: 'none', 'stroke-width': 10 }),
+        h('circle', { className: 'pie-chart-track', cx: PIE_CHART_CENTER, cy: PIE_CHART_CENTER, r: PIE_CHART_RADIUS, fill: 'none', 'stroke-width': PIE_CHART_STROKE_WIDTH }),
         ...entries.map(([label, value], index) => {
           const segmentValue = Number.isFinite(value) && value > 0 ? value : 0;
           const startFraction = safeTotal > 0 ? cumulativeValue / safeTotal : 0;
@@ -289,9 +294,10 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           h('title', null, segmentLabel),
           h('path', {
             className: `pie-chart-segment ${chartSeriesClassName(label, index)}`,
-            d: pieChartSegmentPath(startFraction, endFraction),
+            d: pieChartSegmentPath(startFraction, endFraction, entries.length > 1),
             fill: 'none',
-            'stroke-width': 10,
+            'stroke-width': PIE_CHART_STROKE_WIDTH,
+            'stroke-linecap': 'round',
             'data-chart-category': label
           }),
           h(
