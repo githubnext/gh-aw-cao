@@ -450,6 +450,7 @@ async function main() {
   try {
   const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
   const outputPath = path.resolve(process.env.REPORT_AIC_USAGE || "_inventory/aic-usage.json");
+  const logsPath = process.env.REPORT_GH_AW_LOGS ? path.resolve(process.env.REPORT_GH_AW_LOGS) : "";
   const configuredCacheRoot = process.env.REPORT_AIC_CACHE ? path.resolve(process.env.REPORT_AIC_CACHE) : "";
   if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
 
@@ -505,7 +506,14 @@ async function main() {
     let collectionAvailable = true;
     if (targets.length > 0) {
       try {
-        const result = JSON.parse(await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot));
+        log.info`Downloading one shared gh-aw logs snapshot for ${targets.length} workflows`;
+        const rawResult = await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot);
+        const result = JSON.parse(rawResult);
+        if (logsPath) {
+          await mkdir(path.dirname(logsPath), { recursive: true });
+          await writeFile(logsPath, `${JSON.stringify(result, null, 2)}\n`);
+          log.info`Cached ${result.runs?.length || 0} gh-aw log records at ${logsPath}`;
+        }
         for (const run of result.runs || []) {
           const runId = Number(run.database_id ?? run.run_id ?? run.id);
           const aic = run.aic === null || run.aic === undefined || run.aic === ""
@@ -576,7 +584,14 @@ async function main() {
       } catch (error) {
         collectionAvailable = false;
         log.warning`AI Credit usage unavailable: ${error.message}`;
+        if (logsPath) {
+          await mkdir(path.dirname(logsPath), { recursive: true });
+          await writeFile(logsPath, '{"runs":[]}\n');
+        }
       }
+    } else if (logsPath) {
+      await mkdir(path.dirname(logsPath), { recursive: true });
+      await writeFile(logsPath, '{"runs":[]}\n');
     }
     const reportedRunsByRepository = Object.groupBy([...runs.values()], (run) => run.repository);
     const repositories = [...runIdsByRepository].map(([repository, runIds]) => {

@@ -162,6 +162,8 @@ jobs:
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
           REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
+          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
         run: |
           node "$GITHUB_TELEMETRY" before collect-aic-usage || true
@@ -187,10 +189,9 @@ jobs:
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
           REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
           REPORT_VALUE_CACHE: .cache/dashboard-operational-values/observations.json
-          REPORT_VALUE_CONCURRENCY: "3"
-          REPORT_VALUE_REPLAY_CACHE: .cache/dashboard-operational-values/replay
         run: |
           node "$GITHUB_TELEMETRY" before collect-operational-values || true
           node "$DASHBOARD_REPORT_ROOT/operational-values.mjs"

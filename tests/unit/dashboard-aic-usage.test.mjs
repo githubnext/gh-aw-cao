@@ -13,6 +13,7 @@ test("AI Credit usage collection preserves workflow data payloads", async () => 
   const bin = path.join(root, "bin");
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const outputPath = path.join(root, "aic-usage.json");
+  const logsPath = path.join(root, "gh-aw-logs.json");
   const cachePath = path.join(root, "cache");
   const argumentsPath = path.join(root, "gh-arguments.json");
   await mkdir(bin);
@@ -78,11 +79,14 @@ process.stdout.write(JSON.stringify({
         REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
         REPORT_AIC_USAGE: outputPath,
         REPORT_AIC_CACHE: cachePath,
+        REPORT_GH_AW_LOGS: logsPath,
         GH_ARGS_PATH: argumentsPath,
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
+    const logs = JSON.parse(await readFile(logsPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
+    assert.equal(logs.runs[0].database_id, 42);
     const argumentsList = JSON.parse(await readFile(argumentsPath, "utf8"));
     assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--artifacts"), argumentsList.indexOf("--artifacts") + 2), [
       "--artifacts",

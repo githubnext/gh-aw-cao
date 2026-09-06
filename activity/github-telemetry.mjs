@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_CACHE_ROOT = path.join(process.env.RUNNER_TEMP || "/tmp", "cao-activity");
 const DEFAULT_LEDGER_PATH = path.join(process.env.RUNNER_TEMP || "/tmp", "cao-gh", "cao-gh.jsonl");
@@ -152,6 +153,11 @@ export async function recordGithubTelemetry({
   entry.activityCache.hit = Boolean(entry.activityCache.matchedKey);
   await mkdir(path.dirname(ledgerPath), { recursive: true });
   await appendFile(ledgerPath, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
+  if (rateLimit.core) {
+    log.info`GitHub API core remaining (${phase} ${operation}): ${rateLimit.core.remaining}/${rateLimit.core.limit}`;
+  } else {
+    log.warning`GitHub API core rate limit unavailable (${phase} ${operation}): ${rateLimitError}`;
+  }
   return entry;
 }
 
