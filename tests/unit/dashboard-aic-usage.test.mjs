@@ -96,6 +96,8 @@ process.stdout.write(JSON.stringify({
       "--start-date",
       "-30d",
     ]);
+    assert.equal(argumentsList.at(-1), "1024");
+    assert.ok(!argumentsList.some((argument) => argument.includes(".github/workflows/data.lock.yml")));
     assert.equal(
       Date.parse(usage.firewallRequestedHorizonEnd) - Date.parse(usage.firewallRequestedHorizonStart),
       30 * 24 * 60 * 60 * 1000,

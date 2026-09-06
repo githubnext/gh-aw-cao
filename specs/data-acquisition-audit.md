@@ -35,7 +35,7 @@ The inventory distinguishes:
 | Caller | Selection | Persistence | Observation |
 | --- | --- | --- | --- |
 | `.github/cao/src/control.mjs` (`applyMonthlyBudget`) | One month-to-date query for the orchestrator and each configured worker, up to 1,000 runs per workflow | None | Admission repeats the same package-wide usage scan on every orchestrator precompute when a monthly budget is enabled. Run IDs are deduplicated only after all workflow queries complete. |
-| `dashboard/report/aic-usage.mjs` | One multi-target call for the workflows and run counts already selected by `activity/index.mjs`; 30-day security-evidence window | Raw JSON and downloaded artifacts in the shared `cao-activity` cache | AI Credit, security, and operational-value collection process the same bounded logs snapshot. |
+| `dashboard/report/aic-usage.mjs` | One repository-wide call without workflow arguments; 30-day security-evidence window | Raw JSON and downloaded artifacts in the shared `cao-activity` cache | All agentic workflow logs are downloaded at once. AI Credit, security, and operational-value collection process the same bounded logs snapshot. |
 | `.github/workflows/optimization-ai-credit-auditor.md` | Target repository, two days, at most 100 runs; locally filtered to the preceding 24 hours | `/tmp` for the current run | Overlaps the dashboard usage window and the evaluator's later evidence window. A separate API call first reads the current run's creation time. |
 | `.github/workflows/optimization-ai-credit-optimizer.md` | Target repository, seven days, at most 50 runs | `/tmp` for the current run | Overlaps the auditor and dashboard collections. Monitoring workflows are filtered only after download. |
 | `.github/graders/optimization-ai-credit-auditor-operational-value.sh` | Evaluator-defined before/after window, up to 10,000 runs | Evaluator temporary directory | Re-fetches evidence rather than consuming the worker's predownload, which is necessary for maturation but duplicates historical portions of earlier scans. |
@@ -159,7 +159,7 @@ The direct activity client retries 403 and 429 responses only when the advertise
 
 1. Back off dashboard dispatch polling and add request-count telemetry.
 2. Increment `records.mjs` issue/comment collection.
-3. ~~Persist and reuse bounded gh-aw logs through the activity cache.~~ **(Implemented)** The activity workflow persists one multi-target logs JSON/artifact snapshot and derives AIC, security, and operational-value records from it.
+3. ~~Persist and reuse bounded gh-aw logs through the activity cache.~~ **(Implemented)** The activity workflow persists one repository-wide logs JSON/artifact snapshot and derives AIC, security, and operational-value records from it.
 4. Cache month-to-date budget totals against observed run IDs.
 5. Narrow grader N+1 evidence lookups.
 6. Optimize control bootstrap only after preserving exact-SHA and fail-closed behavior in tests. **(Done: bootstrap now uses a sparse git checkout instead of Contents API reads.)**
