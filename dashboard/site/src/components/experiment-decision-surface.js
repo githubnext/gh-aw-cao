@@ -276,7 +276,9 @@ function rangeStart(range) {
  * @returns {ExperimentFilters}
  */
 export function initialExperimentFilters(model) {
-  const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const win = typeof globalThis.window !== 'undefined' ? globalThis.window : null;
+  const hash = win?.location?.hash || '';
+  const params = new URLSearchParams(hash.split('?')[1] || '');
   const filters = /** @type {ExperimentFilters} */ ({
     organization: params.get('organization') || '',
     repository: params.get('repository') || '',
@@ -373,7 +375,7 @@ export function filterExperimentRows(experiments, filters) {
     if (filters.variant && ![experiment.control, experiment.candidate].includes(filters.variant)) return false;
     if (filters.source && !experiment.observations.some((/** @type {Row} */ observation) => observation.sourceType === filters.source)) return false;
     if (filters.metric && !experiment.observations.some((/** @type {Row} */ observation) => observation.identifier === filters.metric)) return false;
-    if (since && experiment.lastObservation && experiment.lastObservation < since) return false;
+    if (since && experiment.lastObservation && (Date.parse(experiment.lastObservation) || 0) < Date.parse(since)) return false;
     return true;
   });
 }
@@ -384,6 +386,8 @@ export function filterExperimentRows(experiments, filters) {
  * @param {string} pageId
  */
 export function syncExperimentDecisionDeepLink(filters, selectedExperiment, pageId) {
+  const win = typeof globalThis.window !== 'undefined' ? globalThis.window : null;
+  if (!win || !win.location || !['http:', 'https:'].includes(win.location.protocol)) return;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
     if (value) params.set(key, value);
@@ -392,7 +396,7 @@ export function syncExperimentDecisionDeepLink(filters, selectedExperiment, page
     params.set('experiment', selectedExperiment);
   }
   const query = params.toString();
-  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#page-${pageId}${query ? `?${query}` : ''}`);
+  win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}#page-${pageId}${query ? `?${query}` : ''}`);
 }
 
 /** @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources @returns {HTMLElement} */
