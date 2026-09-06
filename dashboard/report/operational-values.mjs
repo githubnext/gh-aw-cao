@@ -70,7 +70,10 @@ export async function collectOperationalValues() {
     const inventoryPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
     const logsPath = process.env.REPORT_GH_AW_LOGS;
     const outputPath = path.resolve(process.env.REPORT_OPERATIONAL_VALUES || "_inventory/operational-values.json");
-    const cachePath = process.env.REPORT_VALUE_CACHE ? path.resolve(process.env.REPORT_VALUE_CACHE) : null;
+    // Collection is incremental by default: fall back to the output path
+    // itself as the cache so a missing REPORT_VALUE_CACHE cannot cause a
+    // previously written snapshot to be silently discarded.
+    const cachePath = process.env.REPORT_VALUE_CACHE ? path.resolve(process.env.REPORT_VALUE_CACHE) : outputPath;
     if (!inventoryPath) throw new Error("REPORT_DEPLOYED_WORKFLOWS is required");
     if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
 

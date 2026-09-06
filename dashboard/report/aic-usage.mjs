@@ -495,11 +495,32 @@ export async function collectAicUsage() {
     }
   }
 
+  // Collection is incremental: a previously written aic-usage.json is loaded
+  // and used to seed this run's data so that a download failure (or a run
+  // simply missing from this window's gh-aw logs) falls back to the last
+  // observed record for that run instead of overwriting it with an empty
+  // placeholder.
+  let previousRunsByKey = new Map();
+  let previousSecurityRunsByKey = new Map();
+  try {
+    const previousUsage = JSON.parse(await readFile(outputPath, "utf8"));
+    previousRunsByKey = new Map((previousUsage.runs || []).map((run) => [`${run.repository}:${run.runId}`, run]));
+    previousSecurityRunsByKey = new Map(
+      (previousUsage.securityRuns || []).map((run) => [`${run.repository}:${run.runId}`, run]),
+    );
+    log.info`Loaded ${previousRunsByKey.size} previously collected AIC runs from ${outputPath}`;
+  } catch (error) {
+    if (error.code !== "ENOENT") log.warning`Ignoring previous AI Credit usage at ${outputPath}: ${error.message}`;
+  }
+
   const runs = new Map();
   const securityRuns = new Map();
   for (const [runId, metadata] of workflowByRunId) {
     const repository = metadata.workflow.repository;
-    securityRuns.set(`${repository}:${runId}`, {
+    const key = `${repository}:${runId}`;
+    const previousRun = previousRunsByKey.get(key);
+    if (previousRun) runs.set(key, previousRun);
+    securityRuns.set(key, previousSecurityRunsByKey.get(key) || {
       repository,
       runId,
       workflowName: metadata.workflow.name || null,
