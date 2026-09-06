@@ -146,14 +146,25 @@ jobs:
             try {
               summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
             } catch (error) {
-              core.warning(`Could not read the Lighthouse summary; skipping PR feedback: ${error.message}`)
+              const message = error instanceof Error ? error.message : String(error)
+              core.warning(`Could not read the Lighthouse summary; skipping PR feedback: ${message}`)
               return
             }
             if (!summary || !Array.isArray(summary.results)) {
               core.warning('Lighthouse summary has an unexpected shape; skipping PR feedback')
               return
             }
-            const degraded = summary.results.filter((result) => result.failures.length > 0)
+            const validResults = summary.results.filter((result) =>
+              result && Array.isArray(result.failures)
+            )
+            if (validResults.length !== summary.results.length) {
+              core.warning('Lighthouse summary contains unexpected results; skipping malformed entries')
+            }
+            if (validResults.length === 0) {
+              core.warning('Lighthouse summary contains no usable results; skipping PR feedback')
+              return
+            }
+            const degraded = validResults.filter((result) => result.failures.length > 0)
 
             const headOwner = context.payload.pull_request.head.repo.owner.login
             const headBranch = context.payload.pull_request.head.ref
@@ -173,7 +184,8 @@ jobs:
                 core.warning(`No open pull request found for ${headOwner}:${headBranch}; using event pull request.`)
               }
             } catch (error) {
-              core.warning(`Could not find the pull request by branch; using event pull request: ${error.message}`)
+              const message = error instanceof Error ? error.message : String(error)
+              core.warning(`Could not find the pull request by branch; using event pull request: ${message}`)
             }
 
             const marker = '<!-- dashboard-lighthouse-degradation -->'

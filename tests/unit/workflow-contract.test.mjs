@@ -2373,6 +2373,9 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthouseComment.block, /if: steps\.download\.outcome == 'success'/);
   assert.match(lighthouseComment.block, /Array\.isArray\(summary\.results\)/);
   assert.match(lighthouseComment.block, /Lighthouse summary has an unexpected shape; skipping PR feedback/);
+  assert.match(lighthouseComment.block, /Array\.isArray\(result\.failures\)/);
+  assert.match(lighthouseComment.block, /Lighthouse summary contains no usable results; skipping PR feedback/);
+  assert.match(lighthouseComment.block, /error instanceof Error \? error\.message : String\(error\)/);
   assert.match(lighthouseComment.block, /head: `\$\{headOwner\}:\$\{headBranch\}`/);
   assert.match(lighthouseComment.block, /using event pull request/);
   assert.match(lighthouseComment.block, /### 📉🚦 Dashboard Lighthouse performance degraded/);
