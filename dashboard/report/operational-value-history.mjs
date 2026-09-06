@@ -3,7 +3,7 @@ function finiteValue(value) {
 }
 
 function runAttempt(record) {
-  const attempt = Number(record.runAttempt ?? record.run?.attempt ?? 1);
+  const attempt = Number(record.runAttempt ?? record.run?.runAttempt ?? record.run?.attempt ?? 1);
   return Number.isInteger(attempt) && attempt > 0 ? attempt : 1;
 }
 
@@ -86,6 +86,22 @@ export function mergeOperationalValueRecords(...recordSets) {
     if (existing?.observationSource === "report" && record.observationSource !== "report") continue;
     if (existing?.observation && !record.observation) continue;
     records.set(key, { ...record, observationId: key });
+  }
+  // Placeholders persisted before an observation was collected key by
+  // "unknown-evaluator" (no evaluatorDigest yet), so they can coexist in the
+  // map alongside a later observed record for the same run. Identify those
+  // stale placeholders by the absence of an evaluatorDigest rather than by
+  // `status`, since a real (non-placeholder) record can still legitimately
+  // report `status: "unavailable"` (e.g. an errored evaluator run) while
+  // carrying an evaluatorDigest and/or observation payload.
+  const isPlaceholder = (record) => !record.evaluatorDigest;
+  const observedRunKeys = new Set([...records.values()]
+    .filter((record) => !isPlaceholder(record))
+    .map((record) => operationalValueRunIdentity(record)));
+  for (const [key, record] of records) {
+    if (isPlaceholder(record) && observedRunKeys.has(operationalValueRunIdentity(record))) {
+      records.delete(key);
+    }
   }
   return [...records.values()].sort((left, right) => {
     const leftTime = Date.parse(left.observation?.evidenceAt || left.run?.createdAt || "");

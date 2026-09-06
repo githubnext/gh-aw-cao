@@ -55,6 +55,9 @@ test("every production dashboard page starts with an executive summary or prescr
           `${path}: page "home" must preserve its prescribed attention-first region order`,
         );
       }
+      const summaryDescription = summary.mark === "chart"
+        ? `mark=chart chart=${summary.chart ?? "<none>"}`
+        : `mark=${summary.mark ?? "<none>"}${summary.element ? ` element=${summary.element}` : ""}`;
       assert.ok(
         (summary.mark === "chart" && executiveSummaryCharts.has(summary.chart))
           || isSummaryTable
@@ -63,7 +66,8 @@ test("every production dashboard page starts with an executive summary or prescr
           || isConfigurationPolicy
           || isAgentsMarketplace
           || isAttentionFirstHome,
-        `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`,
+        `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`
+          + ` (first view "${summary.id ?? "<unnamed>"}" has ${summaryDescription})`,
       );
     }
   }
