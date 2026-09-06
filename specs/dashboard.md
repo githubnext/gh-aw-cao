@@ -44,7 +44,7 @@ The GitHub Next project maintains this document. Version numbers follow Semantic
 14. [Ask CAO](#14-ask-cao)
 15. [Domain Adaptation and Personalization](#15-domain-adaptation-and-personalization)
 16. [Data Quality, Freshness, and Uncertainty](#16-data-quality-freshness-and-uncertainty)
-17. [Interaction, Responsive Design, and Accessibility](#17-interaction-responsive-design-and-accessibility)
+17. [Presentation, Interaction, Responsive Design, and Accessibility](#17-presentation-interaction-responsive-design-and-accessibility)
 18. [Security, Privacy, and Governance](#18-security-privacy-and-governance)
 19. [Product Telemetry and Success Measures](#19-product-telemetry-and-success-measures)
 20. [Compliance Testing](#20-compliance-testing)
@@ -127,6 +127,8 @@ Activity is supporting evidence. Activity alone is not progress, success, outcom
 ### 2.1 Requirements Notation
 
 > The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.ietf.org/rfc/rfc2119.txt).
+
+Requirement identifiers are stable across revisions and are assigned in order of addition, so the identifiers within a subsection are not necessarily contiguous. An identifier is never reused or renumbered once published.
 
 ### 2.2 Conformance Classes
 
@@ -329,8 +331,8 @@ Settings, Help, dashboard freshness, and identity controls are global utilities,
 
 - **CAOD-IA-007:** Each page **MUST** expose no more than four essential information regions on initial presentation.
 - **CAOD-IA-008:** Supplemental regions **MUST** remain discoverable behind user-operated disclosure and **MUST NOT** be omitted from keyboard or assistive-technology access when expanded.
-- **CAOD-IA-009:** An analytical Insights page **MUST** begin with one pie, line, histogram, or swimlane chart that summarizes its primary decision signal when chart readiness conditions are met. Home and entity-detail pages **MAY** begin with a ranked list or state summary when that form better supports the primary task.
-- **CAOD-IA-010:** A page **MUST NOT** add a chart when the available evidence cannot support a meaningful comparison, trend, distribution, or categorical history.
+- **CAOD-IA-009:** An analytical Insights view **MUST** begin with one visual or ranked summary that directly answers its stated primary operator question. A conventional statistical chart such as a pie, line, histogram, or swimlane chart **SHOULD** be used for trends, distributions, and comparisons. A semantic visualization as defined in Section 17.1 **MAY** be used for lifecycle, provenance, coordination, attribution, or maturity questions. Home and entity-detail pages **MAY** begin with a ranked list or state summary when that form better supports the primary task.
+- **CAOD-IA-010:** A page **MUST NOT** add a chart or semantic visualization when the available evidence cannot support a meaningful comparison, trend, distribution, categorical history, or structural relationship.
 
 ---
 
@@ -395,10 +397,15 @@ Ask CAO and new-work controls are commands subordinate to these regions and do n
 
 The operational pulse may include directly observed counts such as active work, waiting for humans, stalled work, verification failures, accepted outcomes, measured AI Credits, or quota status.
 
+Home may also present recent meaningful changes: a bounded set of state-changing events, distinct from an activity feed, that answers what changed since the operator last looked.
+
 - **CAOD-HOME-009:** The operational pulse **MUST** preserve runtime, verification, outcome, operational-value, evidence-quality, budget, and capacity dimensions separately.
 - **CAOD-HOME-010:** Home **MUST NOT** present an opaque composite autonomy, health, risk, value, or efficiency score as the primary explanation of system state.
 - **CAOD-HOME-011:** When a composite indicator is present, its definition, components, window, and unavailable inputs **MUST** be inspectable, and the component reasons **MUST** be more prominent than the score.
 - **CAOD-HOME-012:** Home **MUST NOT** reserve persistent cost or capacity regions when neither an applicable policy nor usable telemetry exists. When present and within policy, cost and capacity **SHOULD** remain compact; an applicable threshold breach **MUST** become an attention item.
+- **CAOD-HOME-016:** Home **MAY** present recent meaningful changes as a subregion of Work in progress or Operational pulse, or as a collapsible supplemental surface. It **MUST NOT** become a fifth essential region and **MUST NOT** displace the four required regions of Section 7.2.
+- **CAOD-HOME-017:** When present, recent meaningful changes **MUST** be limited to state-changing events such as attention recovered or resolved, a newly accepted or rejected outcome, a verification result change, a handoff, an ownership change, a lifecycle or phase transition, or evidence degradation. Routine execution activity, ordinary agent messages, and unchanged status **MUST NOT** appear.
+- **CAOD-HOME-018:** Each recent meaningful change **MUST** identify the affected work or scope, what changed, the observation time, the evidence class, and a route to the supporting evidence.
 
 ### 7.4 Healthy and Empty States
 
@@ -460,6 +467,8 @@ Ties are ordered by declared consequence tier, due time, affected scope, age, an
 - **CAOD-ATTN-012:** When exactly one safe action is available and the user is authorized, the row **SHOULD** expose that action directly.
 - **CAOD-ATTN-013:** An action **MUST** show target, mode, expected effect, authority basis, and whether confirmation is required before execution.
 - **CAOD-ATTN-014:** Dismissal **MUST NOT** resolve the underlying signal. A dismissal **MUST** record actor, time, scope, and rationale and remain distinct from resolution.
+- **CAOD-ATTN-015:** The highest-ranked attention signal **SHOULD** initially expose its current reason, requested or recommended action, expected actor, and investigation target without requiring disclosure. Lower-ranked signals **MAY** use compact rows, provided the same fields remain reachable through one interaction.
+- **CAOD-ATTN-016:** Presenting attention with additional initial detail for the highest-ranked signal **MUST NOT** change the deterministic ordering rule of Section 8.2 or suppress lower-ranked signals from the ranked list.
 
 ---
 
@@ -500,6 +509,11 @@ Artifacts, decisions, executions, prompts, tool calls, models, logs, retries, en
 - **CAOD-WORK-014:** Work detail **MUST** expose dependencies and identify whether each dependency is pending, satisfied, failed, unavailable, or unknown.
 - **CAOD-WORK-015:** Work detail **MUST** expose all attributed attempts and executions without treating an unattributed execution as part of the work item.
 - **CAOD-WORK-016:** A work item with contradictory evidence **MUST** preserve the contradiction and provide a comparison route; it **MUST NOT** silently select one conclusion.
+- **CAOD-WORK-017:** A state timeline **MUST** preserve phase and lifecycle regressions in their observed order and **MUST NOT** present history as a forward-only completion sequence.
+- **CAOD-WORK-018:** The evidence or event responsible for a transition **MUST** be directly inspectable from the transition in the timeline, without first navigating to an undifferentiated execution log.
+- **CAOD-WORK-019:** Waiting, blocked, and in-phase periods **MUST** remain visible as intervals with a start time and either an end time or an explicit ongoing state; they **MUST NOT** be reduced to instantaneous events.
+- **CAOD-WORK-020:** An interval during which observation was unavailable **MUST** appear visibly discontinuous from observed intervals and **MUST NOT** be interpolated, bridged, or rendered as a continuation of the preceding state.
+- **CAOD-WORK-021:** A state timeline **MUST** distinguish directly observed transitions from derived or inferred transitions in a way that does not depend on color alone.
 
 ---
 
@@ -537,6 +551,9 @@ Examples of domain labels include:
 - **CAOD-OUT-012:** Home **SHOULD** show no more than four domain-meaningful outcome categories.
 - **CAOD-OUT-013:** When activity-to-outcome conversion is shown, numerator, denominator, eligible population, attribution coverage, and time interval **MUST** be available.
 - **CAOD-OUT-014:** A trend comparison **MUST** identify the comparison interval and **MUST NOT** imply significance or causality without a qualified method.
+- **CAOD-OUT-015:** A temporal outcome view **SHOULD** distinguish artifact produced, outcome observed, maturity reached, and value measured as separate stages with their own observation times.
+- **CAOD-OUT-016:** Pending, immature, and unknown stages **MUST** remain visually and textually distinct from each other and from zero, rejected, and failed states.
+- **CAOD-OUT-017:** A stage that has not been reached **MUST NOT** be rendered as reached, skipped, or complete; the view **MUST** identify the outcome definition and maturity policy under which the stages are evaluated.
 
 ---
 
@@ -565,6 +582,11 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-AGENT-011:** An execution map **MUST** use one monotonic time axis and identify role, subject, duration, and state in text.
 - **CAOD-AGENT-012:** Missing interval boundaries **MUST** appear unavailable and **MUST NOT** be rendered as zero-duration success.
 - **CAOD-AGENT-013:** The term `critical path` **MUST** be used only when complete causal relationships establish the path; otherwise the view **MUST** use `execution shape`.
+- **CAOD-AGENT-014:** An execution map **SHOULD** use a coordination-braid form that presents observed assignments, handoffs, dependencies, conflicts, and aggregation events across actors on one monotonic time axis.
+- **CAOD-AGENT-015:** Observed relationships **MUST** be visually and textually distinguishable from declared package topology within the same view.
+- **CAOD-AGENT-016:** A handoff, dependency, or conflict **MUST** be directly inspectable at its transition point, exposing source actor, destination actor, work item, time, and status or disposition when available.
+- **CAOD-AGENT-017:** Selecting an actor or work item **SHOULD** highlight its related assignments, handoffs, dependencies, and conflicts while preserving the temporal context and the presence of unselected actors and intervals.
+- **CAOD-AGENT-018:** A missing interval boundary **MUST** render as a gap or open end and **MUST NOT** be closed at the view boundary, the current time, or a neighboring event to fabricate a duration.
 
 ---
 
@@ -585,6 +607,8 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-EVID-003:** Unsupported claims **MUST NOT** be presented as observations, metrics, status, or recommendations.
 - **CAOD-EVID-004:** Confidence **MUST** identify what it measures and **MUST NOT** be presented as calibrated probability unless calibration evidence is available.
 - **CAOD-EVID-005:** A presenter **MUST** preserve contradictory evidence, missing evidence, and minority agent conclusions.
+- **CAOD-EVID-013:** When evidence materially disagrees about the same claim, a presenter **SHOULD** provide a side-by-side or split comparison that preserves each claim, its evidence class, its source identity and observation time, and its current disposition, including `unresolved`.
+- **CAOD-EVID-014:** A comparison of disagreeing evidence **MUST NOT** present one side as authoritative unless a recorded disposition or an applicable disclosed rule establishes it, and it **MUST** identify that disposition or rule when it does.
 
 ### 12.2 Evidence Page
 
@@ -606,6 +630,10 @@ Authority -> Objective -> Work item -> Execution -> Evidence -> Artifact -> Outc
 
 - **CAOD-EVID-011:** A presenter **MUST** expose each available link in the provenance chain without fabricating missing links.
 - **CAOD-EVID-012:** Policy revision, workflow revision, target authority, input revision, model, engine, tools, evidence cutoff, and approver **SHOULD** be available at provenance depth when applicable.
+- **CAOD-EVID-015:** A graphical provenance view **MUST** keep a missing link visually and textually distinguishable from an absent or not-applicable link.
+- **CAOD-EVID-016:** Each provenance node and edge **SHOULD** disclose its source identity and observation time.
+- **CAOD-EVID-017:** Selecting a provenance link **SHOULD** highlight the evidence that establishes the association, and an association without such evidence **MUST** be shown as unestablished.
+- **CAOD-EVID-018:** A broken provenance chain **MUST NOT** be visually bridged, straightened, or otherwise completed; the discontinuity **MUST** remain apparent in the graphical form and in its textual equivalent.
 
 ---
 
@@ -636,6 +664,8 @@ The dashboard keeps these questions separate:
 - **CAOD-INSIGHT-008:** Resource usage **MUST** be attributed through explicit work, execution, or outcome associations.
 - **CAOD-INSIGHT-009:** A cost-per-outcome metric **MUST** identify eligible usage, mature accepted outcomes, attribution coverage, and the treatment of rejected, pending, and missing outcomes.
 - **CAOD-INSIGHT-010:** Retry, repeated execution, no-action output, or failed work **MUST NOT** be labeled waste without an explicit outcome and opportunity-cost model.
+- **CAOD-INSIGHT-017:** When an attribution cascade or funnel is presented — for example eligible work, attributable executions, measured outcomes, mature outcomes, and measured value — each stage **MUST** expose its numerator, its eligible denominator, its missing or unattributed population, and its effective scope and time interval.
+- **CAOD-INSIGHT-018:** A cascade **MUST NOT** silently drop a population between stages; work excluded by eligibility, missing attribution, or immature evidence **MUST** remain countable and inspectable at the stage where it left the cascade.
 
 ### 13.3 Budget, Forecast, and Anomaly Readiness
 
@@ -741,6 +771,8 @@ For a derived region, required inputs are those declared by the measure definiti
 - **CAOD-DATA-006:** A stale result **MUST** retain and expose its original `as-of` time.
 - **CAOD-DATA-007:** Unknown **MUST** remain distinct from false, zero, empty, healthy, failed, and not applicable.
 - **CAOD-DATA-008:** A positive health, budget, capacity, outcome, or value claim **MUST NOT** be made when a required input is unavailable or unknown.
+- **CAOD-DATA-012:** A graphical data-state summary, such as a source-by-axis quilt or matrix, **MAY** be used to survey many sources at once, but it **MUST NOT** collapse availability, completeness, and freshness into one combined `data health` color, state, or score.
+- **CAOD-DATA-013:** A graphical data-state summary **MUST** identify the source and axis represented by each element and **MUST** provide a textual equivalent for the same values.
 
 ### 16.2 Thresholds
 
@@ -750,9 +782,37 @@ For a derived region, required inputs are those declared by the measure definiti
 
 ---
 
-## 17. Interaction, Responsive Design, and Accessibility
+## 17. Presentation, Interaction, Responsive Design, and Accessibility
 
-### 17.1 Interaction
+### 17.1 Semantic Visualization Primitives
+
+A semantic visualization is a graphical form whose structure encodes operational meaning — lifecycle, provenance, coordination, attribution, or maturity — rather than a statistical distribution, trend, or magnitude comparison. The following primitives are named intents, not layouts, geometries, or style rules. A conforming presenter **MAY** implement them in any visual form that preserves the required distinctions and interactions.
+
+| Primitive | Intent | Dimensions that MUST remain distinct | Interactions that MUST be exposed |
+| --- | --- | --- | --- |
+| Truth rail | Show the independent truth axes of one subject side by side instead of one merged verdict. | Work lifecycle, current phase, runtime status and conclusion, verification, outcome, and maturity, each including `unknown`, `pending`, and `unavailable` values. | Disclose the source, observation time, and evidence for each axis. |
+| State ribbon | Show one work item's observed state history as a continuous interval history. | Phase, lifecycle state, waiting intervals, unavailable intervals, and observed versus inferred transitions. | Inspect the evidence or event responsible for each transition and read exact transition timestamps. |
+| Attention stack | Present ranked unresolved attention so the most consequential signal is understood first. | Rank position, signal type, age, expected actor, and resolution status. | Expand any signal to its full attention record and navigate to its investigation target. |
+| Provenance spine | Show the chain from authority to value for one subject. | Present links, missing links, and not-applicable links. | Select a link to reveal the evidence establishing that association, its source, and its observation time. |
+| Coordination braid | Show observed multi-actor execution and its handoffs, dependencies, conflicts, and aggregation events over one monotonic time axis. | Declared topology versus observed relationships, actor identity, interval boundaries, and unknown boundaries. | Inspect a handoff, dependency, or conflict at its transition point and highlight the relationships of a selected actor or work item. |
+| Maturity horizon | Show outcome progression over time from artifact to measured value. | Artifact produced, outcome observed, maturity reached, and value measured, and the pending, immature, and unknown conditions of each. | Disclose the outcome definition, maturity policy, evidence, and observation times for any stage. |
+
+- **CAOD-VIS-001:** A semantic visualization **MUST** preserve every distinction required for its primitive in Section 17.1 and **MUST NOT** merge two required distinctions into one indistinguishable encoding.
+- **CAOD-VIS-002:** A semantic visualization **MUST** satisfy the textual or tabular equivalence, non-color-encoding, keyboard-operability, and accessible-name requirements of Section 17.5 that apply to graphical status objects.
+- **CAOD-VIS-003:** Whenever a compact combined state is shown, a presenter **MUST** allow an operator to disclose the contributing independent state axes of Section 4.4 in place or through one interaction, without navigating away from the current subject. Disclosed axes **MUST** remain individually labeled, including axes whose value is `unknown`, `pending`, or `unavailable`.
+- **CAOD-VIS-004:** A semantic visualization **MUST NOT** fabricate structure to appear complete. Missing intervals, missing links, missing boundaries, and unattributed populations **MUST** be rendered as visible discontinuities, gaps, open ends, or explicit unavailable states.
+- **CAOD-VIS-005:** A semantic visualization **SHOULD** disclose the source, evidence class, and observation time of each element it presents, and **MUST** do so for any element used as the basis of an attention signal, verification claim, outcome claim, or operational-value claim.
+- **CAOD-VIS-006:** A presenter **MAY** use a conventional statistical chart, a semantic visualization, or a ranked list for any view, provided the chosen form answers the stated operator question and satisfies CAOD-IA-010.
+
+### 17.2 Visual Calmness and Motion
+
+- **CAOD-VIS-007:** Normal, healthy, routine, and resolved states **SHOULD** use lower visual emphasis than unresolved attention, so that the most emphasized content on a page is the content requiring human judgment.
+- **CAOD-VIS-008:** Decorative urgency treatment, continuous animation, and saturated status treatment **SHOULD NOT** be used for routine healthy activity, ordinary progress, or mere liveness.
+- **CAOD-VIS-009:** Motion **SHOULD** be used only to communicate continuity, transition, selection, or resolution, and its meaning **MUST** also be available without motion.
+- **CAOD-VIS-010:** A graphical hover disclosure **MUST** be available on keyboard focus and to assistive technology.
+- **CAOD-VIS-011:** Selection or highlighting **MUST NOT** remove, hide, or make unreadable the unselected context; unselected elements **MAY** be de-emphasized but **MUST** remain present, labeled, and reachable.
+
+### 17.3 Interaction
 
 - **CAOD-INT-001:** The complete row **SHOULD** be the investigation target when a row has exactly one destination.
 - **CAOD-INT-002:** A state control **MUST** disclose state history; a reason control **MUST** disclose supporting evidence; a cost control **MUST** disclose attribution.
@@ -760,16 +820,30 @@ For a derived region, required inputs are those declared by the measure definiti
 - **CAOD-INT-004:** A refresh control **MUST** identify what it refreshes, preserve current context when possible, and announce success or failure.
 - **CAOD-INT-005:** Destructive, live, or externally visible actions **MUST** use a confirmation step distinct from navigation and filtering.
 - **CAOD-INT-006:** An optimistic visual update **MUST** be identified as pending until authoritative confirmation is observed.
+- **CAOD-INT-007:** Inspecting an element of a semantic visualization **MUST** be possible without leaving the current subject context, and **MUST** reach the same evidence available through the corresponding textual route.
+- **CAOD-INT-008:** Scrubbing, zooming, or filtering a temporal view **MUST** disclose the resulting interval and **MUST NOT** change the underlying observations or their recorded times.
 
-### 17.2 Responsive Behavior
+### 17.4 Responsive Behavior
 
 - **CAOD-RESP-001:** The dashboard **MUST NOT** introduce horizontal page overflow at a 320 CSS pixel viewport.
 - **CAOD-RESP-002:** A labeled timeline, matrix, or data table **MAY** scroll within its own region when all essential controls and labels remain reachable.
 - **CAOD-RESP-003:** At narrow widths, Home **MUST** preserve the order Attention, Work, Outcomes, and Operational pulse.
 - **CAOD-RESP-004:** Responsive reduction **MUST NOT** remove state, reason, next action, data quality, or access to evidence.
 - **CAOD-RESP-005:** Text **MUST** wrap or truncate without overlapping adjacent content, and truncated text **MUST** remain available to assistive technology and on keyboard focus.
+- **CAOD-RESP-006:** When a semantic visualization cannot be presented at the available width, the presenter **MUST** apply a semantic reduction that preserves the distinctions required by Section 17.1 rather than removing the visualization. Recommended reductions are:
 
-### 17.3 Accessibility
+| Primitive | Narrow-width reduction |
+| --- | --- |
+| Truth rail | Wrapped labeled state pairs retaining one label and value per axis. |
+| State ribbon | A vertical event history retaining interval start and end times, waiting intervals, unavailable intervals, and transition evidence links. |
+| Attention stack | A single-column ranked list retaining rank order, reason, requested action, and investigation target. |
+| Provenance spine | A vertical link sequence retaining present, missing, and not-applicable link states. |
+| Coordination braid | A stacked per-actor timeline retaining handoff, dependency, conflict, and unknown-boundary markers. |
+| Maturity horizon | A vertical stage list retaining stage identity and pending, immature, or unknown conditions. |
+
+- **CAOD-RESP-007:** A semantic reduction **MUST NOT** reorder ranked attention, reverse a monotonic time axis, or imply a completed sequence where the underlying evidence is incomplete.
+
+### 17.5 Accessibility
 
 - **CAOD-A11Y-001:** A conforming presenter **MUST** meet WCAG 2.2 Level AA for applicable dashboard content and interactions.
 - **CAOD-A11Y-002:** Color **MUST NOT** be the only means of conveying state, severity, selection, outcome, freshness, completeness, or evidence class.
@@ -779,6 +853,7 @@ For a derived region, required inputs are those declared by the measure definiti
 - **CAOD-A11Y-006:** Focus order **MUST** follow reading order and remain stable when supplemental content is expanded.
 - **CAOD-A11Y-007:** Motion **MUST** respect reduced-motion preferences and **MUST NOT** be required to understand state changes.
 - **CAOD-A11Y-008:** Status changes that do not move focus **MUST** be announced through an appropriate live region without repeatedly announcing routine telemetry.
+- **CAOD-A11Y-009:** Under a reduced-motion preference, a semantic visualization **MUST** present its complete state without transitional or ambient animation, and every state, reason, transition, and evidence route **MUST** remain reachable.
 
 ---
 
@@ -845,6 +920,7 @@ Implementers should evaluate the dashboard with representative users and realist
 - **CAOD-TEST-003:** Tests involving missing data **MUST** distinguish absent, zero, empty, unavailable, partial, stale, unknown, and not applicable.
 - **CAOD-TEST-004:** Presenter tests **MUST** include keyboard operation, an assistive-technology semantic inspection, a 320 CSS pixel viewport, and a desktop viewport.
 - **CAOD-TEST-005:** Security tests **MUST** use synthetic secrets and untrusted content and **MUST NOT** place real credentials in fixtures or reports.
+- **CAOD-TEST-006:** A presenter test suite **MUST** include fixtures for runtime success with failed verification and a pending outcome, a phase regression, a broken provenance chain, materially contradictory evidence, a handoff with an unresolved conflict, an unknown interval boundary, an immature outcome, an autonomous recovery, and partial or stale source data, and **MUST** render each fixture under a reduced-motion preference and at a 320 CSS pixel viewport.
 
 ### 20.2 Required Test Procedures
 
@@ -853,27 +929,30 @@ Implementers should evaluate the dashboard with representative users and realist
 | T-CAOD-CONF-001 | CAOD-CONF-001 through 005 | 1-3 | Inspect complete and partial claims; verify class, version, level, results, and no implied cross-specification claim. |
 | T-CAOD-MODEL-001 | CAOD-MODEL-001 through 006 | 1 | Supply retries and multi-run work plus ambiguous nearby runs; verify stable work identity and rejection of proximity joins. |
 | T-CAOD-MODEL-002 | CAOD-MODEL-007 through 015 | 1 | Supply conflicting runtime, verification, outcome, and work states plus missing reason fields; verify independent axes and explicit unavailable values. |
-| T-CAOD-IA-001 | CAOD-IA-001 through 010 | 1-3 | Inspect navigation, detail ancestry, filter preservation, disclosure count, analytical summary chart readiness, and absence of unsupported charts. |
+| T-CAOD-IA-001 | CAOD-IA-001 through 010; CAOD-VIS-006 | 1-3 | Inspect navigation, detail ancestry, filter preservation, disclosure count, and absence of unsupported charts and diagrams; supply chart-ready and diagram-ready fixtures and verify that the leading summary of each analytical view answers its stated operator question in either a statistical-chart, semantic-visualization, or ranked-list form. |
 | T-CAOD-SHELL-001 | CAOD-SHELL-001 through 010 | 1 | Change scope, time, source state, and refresh mode; verify labels, URL state, synchronized regions, and accurate `Live` semantics. |
 | T-CAOD-HOME-001 | CAOD-HOME-001 through 008 | 1 | Render mixed attention and active work; verify first-viewport order, work-item grain, required row fields, bounded lists, and excluded raw telemetry. |
-| T-CAOD-HOME-002 | CAOD-HOME-009 through 015 | 1 | Render healthy, unavailable, idle, composite-score, no-resource-policy, and threshold-breach fixtures; verify separated pulse dimensions, conditional resource regions, and truthful empty states. |
+| T-CAOD-HOME-002 | CAOD-HOME-009 through 018 | 1 | Render healthy, unavailable, idle, composite-score, no-resource-policy, threshold-breach, and recent-meaningful-change fixtures; verify separated pulse dimensions, conditional resource regions, truthful empty states, the four-region cap, and exclusion of routine activity from meaningful changes. |
 | T-CAOD-ATTN-001 | CAOD-ATTN-001 through 006 | 1 | Supply human requests, verification contradictions, exactly correlated autonomous recovery, ambiguous recovery, human-assisted recovery, unresolved failures, routine events, and conflicts; verify eligibility and suppression. |
-| T-CAOD-ATTN-002 | CAOD-ATTN-007 through 014 | 1 | Shuffle tied attention fixtures; verify deterministic rank, consequence treatment, direct destinations, action previews, and dismissal history. |
+| T-CAOD-ATTN-002 | CAOD-ATTN-007 through 016 | 1 | Shuffle tied attention fixtures; verify deterministic rank, consequence treatment, direct destinations, action previews, dismissal history, and that the highest-ranked signal exposes reason, requested action, expected actor, and investigation target without changing rank order. |
 | T-CAOD-WORK-001 | CAOD-WORK-001 through 010 | 1 | Render work with multiple attempts, phase regressions, and versioned and unversioned denominators; verify deduplication, required fields, filters, phase evidence, and rejection of fabricated percentages. |
-| T-CAOD-WORK-002 | CAOD-WORK-011 through 016 | 1 | Inspect detail for timeline provenance, dependencies, attributed executions, and contradictory evidence preservation. |
-| T-CAOD-OUT-001 | CAOD-OUT-001 through 014 | 2 | Supply mixed runtime, verification, artifact, outcome, maturity, value-definition, and trend fixtures; verify semantic separation and valid aggregation. |
+| T-CAOD-WORK-002 | CAOD-WORK-011 through 021 | 1 | Inspect detail for timeline provenance, dependencies, attributed executions, and contradictory evidence preservation; supply a phase regression, a waiting interval, and an unavailable observation interval, and verify preserved regression order, inspectable transition evidence, interval rendering, and visible discontinuity. |
+| T-CAOD-OUT-001 | CAOD-OUT-001 through 017 | 2 | Supply mixed runtime, verification, artifact, outcome, maturity, value-definition, and trend fixtures, including an immature outcome; verify semantic separation, valid aggregation, distinct artifact, outcome, maturity, and value stages, and that pending, immature, and unknown do not collapse into zero or failure. |
 | T-CAOD-AGENT-001 | CAOD-AGENT-001 through 010 | 2 | Supply idle, waiting, failed, unavailable, assigned, handoff, conflict, and unattributed fixtures; verify states and exact correlation. |
-| T-CAOD-AGENT-002 | CAOD-AGENT-011 through 013 | 2 | Render complete and incomplete execution intervals; verify monotonic alignment, unavailable boundaries, and critical-path terminology. |
-| T-CAOD-EVID-001 | CAOD-EVID-001 through 012 | 1 | Supply each evidence class, conflicting evidence, decisions, artifacts, and broken provenance links; verify labels, methods, filters, and no fabrication. |
-| T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010 | 2 | Supply mixed measures and incomplete attribution; verify question context, textual chart alternatives, separate units, and qualified efficiency labels. |
+| T-CAOD-AGENT-002 | CAOD-AGENT-011 through 018 | 2 | Render complete and incomplete execution intervals plus a handoff with an unresolved conflict and an unknown interval boundary; verify monotonic alignment, unavailable boundaries, critical-path terminology, declared-versus-observed distinction, inspectable transitions, selection highlighting that preserves temporal context, and gaps rather than fabricated durations. |
+| T-CAOD-EVID-001 | CAOD-EVID-001 through 018 | 1 | Supply each evidence class, materially contradictory evidence, decisions, artifacts, and a broken provenance chain; verify labels, methods, filters, no fabrication, a comparison preserving both claims and dispositions, missing links distinguishable from not-applicable links, evidence highlighted on link selection, and no visual bridging of broken provenance. |
+| T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010; CAOD-INSIGHT-017 through 018 | 2 | Supply mixed measures and incomplete attribution, including an attribution cascade; verify question context, textual alternatives, separate units, qualified efficiency labels, and per-stage numerator, denominator, missing population, and scope. |
 | T-CAOD-INSIGHT-002 | CAOD-INSIGHT-011 through 016 | 3 | Omit and then supply budget, capacity, reset, versioned method, parameter, and baseline prerequisites; verify unavailable states and deterministic qualified verdicts. |
 | T-CAOD-ASK-001 | CAOD-ASK-001 through 006 | 3 | Ask factual questions under mixed authorization, missingness, and contradiction; verify grounded links, context, uncertainty, and no invented claims. |
 | T-CAOD-ASK-002 | CAOD-ASK-007 through 010 | 3 | Inject action-like untrusted content and request a live write; verify separate preview, confirmation, reauthorization, and inert data handling. |
 | T-CAOD-ADAPT-001 | CAOD-ADAPT-001 through 009 | 2-3 | Change domain schema and role emphasis; verify canonical semantics, rare-risk visibility, reset behavior, and unchanged authority and direct severity. |
-| T-CAOD-DATA-001 | CAOD-DATA-001 through 011 | 1 | Exercise every combination of required input data-state axes and threshold revisions; verify deterministic independent aggregation, provenance, visible missing coverage, and no false health. |
-| T-CAOD-INT-001 | CAOD-INT-001 through 006 | 1 | Exercise state, reason, cost, refresh, pending, destructive, and live interactions; verify direct evidence routes and confirmation. |
-| T-CAOD-RESP-001 | CAOD-RESP-001 through 005 | 1 | Render at 320 CSS pixels and desktop with long labels; verify order, no page overflow, contained scrolling, and no information loss. |
-| T-CAOD-A11Y-001 | CAOD-A11Y-001 through 008 | 1 | Run WCAG 2.2 AA checks, keyboard tasks, reduced motion, non-color inspection, chart alternatives, focus order, and live-region behavior. |
+| T-CAOD-DATA-001 | CAOD-DATA-001 through 013 | 1 | Exercise every combination of required input data-state axes, including partial and stale sources, and threshold revisions; verify deterministic independent aggregation, provenance, visible missing coverage, no false health, and that graphical data-state summaries never collapse availability, completeness, and freshness. |
+| T-CAOD-INT-001 | CAOD-INT-001 through 008 | 1 | Exercise state, reason, cost, refresh, pending, destructive, and live interactions plus in-place inspection and temporal scrubbing; verify direct evidence routes, confirmation, preserved subject context, and unchanged underlying observations. |
+| T-CAOD-RESP-001 | CAOD-RESP-001 through 007 | 1 | Render every semantic visualization at 320 CSS pixels and desktop with long labels; verify order, no page overflow, contained scrolling, no information loss, applied semantic reductions, and preserved ranking and time direction. |
+| T-CAOD-A11Y-001 | CAOD-A11Y-001 through 009 | 1 | Run WCAG 2.2 AA checks, keyboard tasks, a reduced-motion render of each semantic visualization, non-color inspection, chart and diagram alternatives, focus order, and live-region behavior. |
+| T-CAOD-VIS-001 | CAOD-VIS-001 through 006; CAOD-MODEL-007 through 010 | 1-2 | Render a fixture with runtime `success`, verification `fail`, and outcome `pending`; verify the truth rail keeps each axis distinct, discloses source and observation time, and never presents one merged verdict. |
+| T-CAOD-VIS-002 | CAOD-VIS-003 through 005; CAOD-WORK-017 through 021 | 1 | Render a phase regression, a waiting interval, an autonomous recovery, and an unavailable observation interval; verify preserved regression, interval rendering, inspectable transition evidence, visible discontinuity, and one-interaction axis disclosure from any compact combined state. |
+| T-CAOD-VIS-003 | CAOD-VIS-007 through 011 | 1 | Render healthy, routine, and unresolved-attention fixtures; verify lower emphasis for healthy states, absence of ambient animation for mere liveness, keyboard-focus availability of hover disclosures, and preserved unselected context under selection. |
 | T-CAOD-SEC-001 | CAOD-SEC-001 through 013 | 1-3 | Test denied and stale resolver results, attempted execution-path bypass, unsafe URLs, HTML, prompt injection, cross-repository access, export, sharing, and redaction; verify fail-closed behavior and no mutation. |
 | T-CAOD-TEL-001 | CAOD-TEL-001 through 007 | 1-2 | Validate work, wait, retry, verification, coordination, usage, and capacity records with complete and explicitly unavailable fields. |
 | T-CAOD-METRIC-001 | CAOD-METRIC-001 through 005 | 1-3 | Inspect a usability and operational evaluation report for task definitions, required measures, sample composition, uncertainty, and limitations. |
@@ -894,6 +973,7 @@ Implementers should evaluate the dashboard with representative users and realist
 | Ask CAO | T-CAOD-ASK-001 through 002 | 3 | Interaction provider |
 | Adaptation and personalization | T-CAOD-ADAPT-001 | 2-3 | Presenter, interaction provider |
 | Interaction and responsive design | T-CAOD-INT-001, T-CAOD-RESP-001 | 1 | Presenter, interaction provider |
+| Semantic visualization and calmness | T-CAOD-VIS-001 through 003 | 1-2 | Presenter, interaction provider |
 | Accessibility | T-CAOD-A11Y-001 | 1 | Presenter, interaction provider |
 | Security and privacy | T-CAOD-SEC-001 | 1-3 | All applicable classes |
 | Product telemetry | T-CAOD-TEL-001 | 1-2 | Data provider |
@@ -1024,6 +1104,7 @@ _This appendix is informative._
 | G1: structured reason, waiting-on, dependency, and next action are telemetry gaps | CAOD-TEL-001 through 003 |
 | Persona evidence is family-level, not occupation evidence | CAOD-ADAPT-004; CAOD-ADAPT-006 through 009 |
 | Rare work may be high consequence | CAOD-ATTN-009; CAOD-ADAPT-005 |
+| R1 and R5 require presentation forms that keep independent truth axes and phase history visible | CAOD-IA-009; CAOD-VIS-001 through 006; CAOD-WORK-017 through 021 |
 | Persona taxonomy remains pending human validation | CAOD-EVID-002 through 004; CAOD-DATA-007 through 008 |
 
 ### Appendix E: Error and Diagnostic Codes
@@ -1041,6 +1122,7 @@ _This appendix is informative._
 | `CAOD-E009` | Essential content is inaccessible at a supported viewport or input mode. |
 | `CAOD-E010` | Ask CAO answer lacks evidence, scope, time, or uncertainty disclosure. |
 | `CAOD-E011` | Resolved autonomous recovery remains incorrectly active in attention. |
+| `CAOD-E012` | A visualization merged required independent distinctions or fabricated a missing interval, link, or boundary. |
 
 ### Appendix F: Implementation Relationship
 
@@ -1060,3 +1142,7 @@ This specification defines what the CAO dashboard must communicate and how users
 - **Added:** Autonomous-recovery suppression and structured state-reason-next-action telemetry requirements.
 - **Added:** Domain adaptation, role emphasis, accessibility, security, privacy, and governance requirements.
 - **Added:** Three compliance levels, test procedures, evidence traceability, and diagnostic codes.
+- **Added:** Semantic visualization primitives — truth rail, state ribbon, attention stack, provenance spine, coordination braid, and maturity horizon — with required distinctions and interactions.
+- **Added:** Presentation requirements for state history, provenance graphics, evidence comparison, coordination maps, outcome maturity stages, attribution cascades, and graphical data-state summaries.
+- **Added:** Visual-calmness, motion, selection-context, and semantic responsive-reduction requirements, plus compliance tests for semantic visualizations.
+- **Changed:** CAOD-IA-009 now requires a leading visual or ranked summary that answers the view's primary operator question, permitting semantic diagrams instead of assuming a conventional statistical chart.
