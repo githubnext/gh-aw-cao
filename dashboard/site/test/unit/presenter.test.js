@@ -2948,6 +2948,7 @@ describe('presenter built-in and custom pages', () => {
     expect(coveragePage.views[2]).toMatchObject({
       mark: 'table',
       controls: 'static',
+      disclosure: 'supplemental',
       data: { source: 'data-health-collections' }
     });
     expect(coveragePage.views[2]).not.toHaveProperty('element');
@@ -2964,13 +2965,18 @@ describe('presenter built-in and custom pages', () => {
     expect(essentialRows.length).toBeGreaterThanOrEqual(9);
     const essentialText = [...rendered.querySelectorAll('#page-coverage [data-disclosure="essential"]')]
       .map((view) => view.textContent).join(' ');
-    expect(essentialText).toContain('Durable output evidence is partial because GitHub rate-limited collection.');
     expect(essentialText).not.toContain('GitHub API rate limit exceeded');
-    const technicalDetails = /** @type {HTMLDetailsElement | null} */ (
-      rendered.querySelector('#page-coverage .view-disclosure[data-disclosure="supplemental"]')
+    const supplementalDetails = rendered.querySelectorAll(
+      '#page-coverage .view-disclosure[data-disclosure="supplemental"]'
     );
-    expect(technicalDetails?.open).toBe(false);
-    expect(technicalDetails?.textContent).toContain('GitHub API rate limit exceeded');
+    expect(supplementalDetails).toHaveLength(2);
+    expect(/** @type {HTMLDetailsElement} */ (supplementalDetails[0]).open).toBe(false);
+    expect(supplementalDetails[0].textContent).toContain(
+      'Durable output evidence is partial because GitHub rate-limited collection.'
+    );
+    expect(supplementalDetails[0].textContent).not.toContain('GitHub API rate limit exceeded');
+    expect(/** @type {HTMLDetailsElement} */ (supplementalDetails[1]).open).toBe(false);
+    expect(supplementalDetails[1].textContent).toContain('GitHub API rate limit exceeded');
 
     window?.history.replaceState(null, '', '/');
   });
