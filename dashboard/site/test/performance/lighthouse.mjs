@@ -231,5 +231,10 @@ async function main() {
   return failures.length > 0 ? 42 : 0;
 }
 
-const exitCode = await main();
-if (exitCode !== 0) process.exitCode = exitCode;
+try {
+  const exitCode = await main();
+  if (exitCode !== 0) process.exitCode = exitCode;
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+}
