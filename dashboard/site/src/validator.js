@@ -1571,9 +1571,9 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
-       const allowedBodies = view.element === 'workflow-route'
+       const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
          : view.element === 'package-route'
            ? PACKAGE_ROUTE_BODY_VALUES
@@ -1590,7 +1590,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, package-route, outcome-detail-section, and experiments-evaluation elements.',
+         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, and experiments-evaluation elements.',
          `${path}.config.body`
        ));
       }

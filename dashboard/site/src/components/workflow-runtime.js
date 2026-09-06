@@ -12,7 +12,7 @@ import { isApprovalConclusion, isFailureConclusion } from './run-classification.
 import { coverageWindowHours, formatUtcDateTime, renderLegendList, renderPanelHeader, renderTableHeadRow, renderVitalStat } from './ui-primitives.js';
 import { formatCount, text } from './count-formatters.js';
 import { renderTitledBodySection } from './view-chrome.js';
-import { renderWorkflowRouteView } from './workflow-route-view.js';
+import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { workflowRouteValue } from './workflow-route.js';
 import { rowsFor } from './source-rows.js';
 
@@ -21,7 +21,7 @@ import { rowsFor } from './source-rows.js';
  * @returns {HTMLElement}
  */
 export function renderWorkflowRuntime(context) {
-  return renderWorkflowRouteView({
+  return renderWorkflowRoutePage({
     ...context,
     elementConfig: context.elementConfig ?? { body: 'insights' }
   });

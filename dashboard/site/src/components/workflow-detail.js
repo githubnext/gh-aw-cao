@@ -2,12 +2,12 @@
  * Declarative workflow route element compatibility wrapper.
  */
 
-import { renderWorkflowRouteView } from './workflow-route-view.js';
+import { renderWorkflowRoutePage } from './workflow-route-page.js';
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
  * @returns {HTMLElement}
  */
 export function renderWorkflowDetail(context) {
-  return renderWorkflowRouteView(context);
+  return renderWorkflowRoutePage(context);
 }

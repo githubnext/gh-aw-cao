@@ -2286,7 +2286,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   title: 'Workflow runs',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'workflow-route',
+                  element: 'workflow-route-page',
                   config: { body: 'runs' }
                 },
                 {
@@ -2321,7 +2321,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   title: 'Workflow reports',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'workflow-route',
+                  element: 'workflow-route-page',
                   config: { body: 'reports' }
                 },
                 {
@@ -2498,7 +2498,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   title: 'Workflow runs',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'workflow-route',
+                  element: 'workflow-route-page',
                   config: { body: 'runs' }
                 },
                 {
@@ -2533,7 +2533,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
                   title: 'Workflow reports',
                   data: { sources: ['workflows'] },
                   mark: 'element',
-                  element: 'workflow-route',
+                  element: 'workflow-route-page',
                   config: { body: 'reports' }
                 },
                 {
@@ -2681,7 +2681,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
               title: 'Workflow runtime',
               data: { sources: ['workflows', 'runs', 'usage', 'operational-values'] },
               mark: 'element',
-              element: 'workflow-route',
+              element: 'workflow-route-page',
               config: { body: 'insights' }
             }]
           }]
