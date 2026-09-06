@@ -2368,6 +2368,7 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthouseComment.block, /head: `\$\{headOwner\}:\$\{headBranch\}`/);
   assert.match(lighthouseComment.block, /using event pull request/);
   assert.match(lighthouseComment.block, /Dashboard Lighthouse performance degraded/);
+  assert.match(lighthouseComment.block, /github\.paginate\(github\.rest\.issues\.listComments/);
   assert.match(lighthouseComment.block, /issues\.createComment/);
 });
 
