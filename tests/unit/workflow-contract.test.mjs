@@ -1877,8 +1877,8 @@ test("workers reject disabled, malformed, or over-ceiling dispatches before exec
     const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
     assert.ok(frontmatter, `${name} must have frontmatter`);
     const inputs = parse(frontmatter).on.workflow_dispatch.inputs;
-    assert.equal(inputs.max_repos?.type, "number", name);
-    assert.equal(inputs.rollout_percent?.type, "number", name);
+    assert.equal(inputs.max_repos.type, "number", name);
+    assert.equal(inputs.rollout_percent.type, "number", name);
   }
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
   assert.match(control, /Evaluate Central Agentic Ops admission/);
