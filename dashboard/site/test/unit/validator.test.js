@@ -1347,7 +1347,7 @@ dashboard:
     expect(rejected.ok).toBe(false);
     if (!rejected.ok) {
       expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E013',
+        code: 'DLS-E014',
         path: '$.dashboard.pages[0].views[0].views'
       }));
     }
@@ -1359,7 +1359,7 @@ dashboard:
     expect(chartResult.ok).toBe(false);
     if (!chartResult.ok) {
       expect(chartResult.errors).not.toContainEqual(expect.objectContaining({
-        code: 'DLS-E013',
+        code: 'DLS-E014',
         path: '$.dashboard.pages[0].views[0].views'
       }));
     }

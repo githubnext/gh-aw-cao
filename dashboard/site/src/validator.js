@@ -1968,7 +1968,7 @@ function validateGraphicalLayout(views, viewsPath, errors) {
   for (const [index, view] of views.entries()) {
     if (!isPlainObject(view) || view.mark === 'chart' || !Array.isArray(view.views)) continue;
     errors.push(createError(
-      ERROR_CODES.invalidProgressiveDisclosureConfiguration,
+      ERROR_CODES.invalidGraphicalNesting,
       'Views are top-level boxes and must not contain nested views.',
       `${viewsPath}[${index}].views`
     ));

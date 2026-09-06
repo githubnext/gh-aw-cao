@@ -628,7 +628,7 @@
             "mark": "table",
             "controls": "interactive",
             "layout": "full",
-              "disclosure": "supplemental",
+            "disclosure": "supplemental",
             "empty-message": "Operation attribution is unavailable because no reliable paired checkpoints match the selected filters.",
             "encoding": {
               "columns": [
