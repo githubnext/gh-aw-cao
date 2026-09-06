@@ -190,7 +190,10 @@ async function main() {
 
     const [localInventory, logs, logsState] = await Promise.all([
       inventoryPath
-        ? readFile(inventoryPath, "utf8").then(JSON.parse)
+        ? readFile(inventoryPath, "utf8").then(JSON.parse).catch((error) => {
+          if (error.code === "ENOENT") return discoverLocalInventory(root);
+          throw error;
+        })
         : discoverLocalInventory(root),
       readFile(logsPath, "utf8").then(JSON.parse),
       readFile(logsStatePath, "utf8").then(JSON.parse),
@@ -287,8 +290,10 @@ async function main() {
     const complete = logsState.complete === true && usageArtifact.complete;
     const fallback = {
       used: logsState.fallback === true,
-      snapshotGeneratedAt: logsState.fallback ? logsState.observedAt || null : null,
-      snapshotAgeSeconds: null,
+      snapshotGeneratedAt: logsState.fallback ? logsState.snapshotObservedAt || null : null,
+      snapshotAgeSeconds: logsState.fallback && logsState.snapshotObservedAt
+        ? Math.max(0, Math.floor((Date.parse(generatedAt) - Date.parse(logsState.snapshotObservedAt)) / 1000))
+        : null,
     };
     const result = {
       schemaVersion: 1,

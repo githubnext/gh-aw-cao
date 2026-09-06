@@ -91,6 +91,7 @@ jobs:
           echo "DASHBOARD_COLLECTION=true" >> "$GITHUB_ENV"
 
       - name: Install gh-aw CLI
+        continue-on-error: true
         uses: github/gh-aw-actions/setup-cli@23e16337f3568b3c18bb04a976793f282a016755 # v0.88.4
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
@@ -126,7 +127,7 @@ jobs:
           CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-          CAO_OPERATION_OUTCOME: ${{ steps.collect-gh-aw-logs.outcome }}
+          CAO_OPERATION_OUTCOME: ${{ steps.collect-gh-aw-logs.outputs.collection-outcome || steps.collect-gh-aw-logs.outcome }}
         run: node "$GITHUB_TELEMETRY" after collect-gh-aw-logs
 
       - name: Resolve authoritative control policy

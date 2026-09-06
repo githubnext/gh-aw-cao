@@ -444,10 +444,11 @@ export async function collectAicUsage() {
   // simply missing from this window's gh-aw logs) falls back to the last
   // observed record for that run instead of overwriting it with an empty
   // placeholder.
+  let previousUsage = null;
   let previousRunsByKey = new Map();
   let previousSecurityRunsByKey = new Map();
   try {
-    const previousUsage = JSON.parse(await readFile(outputPath, "utf8"));
+    previousUsage = JSON.parse(await readFile(outputPath, "utf8"));
     previousRunsByKey = new Map((previousUsage.runs || []).map((run) => [`${run.repository}:${run.runId}`, run]));
     previousSecurityRunsByKey = new Map(
       (previousUsage.securityRuns || []).map((run) => [`${run.repository}:${run.runId}`, run]),
@@ -561,8 +562,8 @@ export async function collectAicUsage() {
             security.firewall.firewallEvidenceHorizonStart = common.createdAt;
             security.firewall.firewallEvidenceHorizonEnd = common.createdAt;
           }
-          if (security.firewall.firewallEvidenceSource !== "none" && security.firewall.firewallEvidenceFreshness === "unknown") {
-            security.firewall.firewallEvidenceFreshness = "fresh";
+          if (security.firewall.firewallEvidenceSource !== "none") {
+            security.firewall.firewallEvidenceFreshness = collectionAvailable ? "fresh" : "stale";
           }
           securityRuns.set(`${repository}:${runId}`, {
             ...common,
@@ -609,7 +610,9 @@ export async function collectAicUsage() {
       firewallEvidenceHorizonEnd: firewallEvidenceTimes.length > 0
         ? new Date(Math.max(...firewallEvidenceTimes)).toISOString()
         : null,
-      firewallLastSuccessfulCollectionAt: collectionAvailable ? generatedAt : null,
+      firewallLastSuccessfulCollectionAt: collectionAvailable
+        ? generatedAt
+        : previousUsage?.firewallLastSuccessfulCollectionAt || null,
       available: repositories.every((entry) => entry.available),
       complete: repositories.every((entry) => entry.complete),
       securityAvailable: collectionAvailable,

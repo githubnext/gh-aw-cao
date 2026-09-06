@@ -104,7 +104,7 @@ test("activity index reports fields missing from gh aw usage artifacts", async (
         ...process.env,
         GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
         REPORT_ROOT: root,
-        REPORT_INVENTORY: "",
+        REPORT_INVENTORY: path.join(root, "missing-inventory.json"),
         REPORT_GH_AW_LOGS: logsPath,
         REPORT_GH_AW_LOGS_STATE: statePath,
         REPORT_DEPLOYED_WORKFLOWS: outputPath,

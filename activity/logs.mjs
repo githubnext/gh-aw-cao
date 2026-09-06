@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "./actions-log.mjs";
@@ -19,12 +19,18 @@ async function existingSnapshot(file) {
   }
 }
 
+async function writeOutcome(outcome) {
+  if (process.env.GITHUB_OUTPUT) {
+    await appendFile(process.env.GITHUB_OUTPUT, `collection-outcome=${outcome}\n`);
+  }
+}
+
 function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn) {
   return new Promise((resolve, reject) => {
     const child = execute("gh", [
       "aw", "logs", "--json",
       "--output", outputDirectory, "--summary-file", "",
-      "--artifacts", "all",
+      "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
       "--count", String(runLimit), "--timeout", "15",
       "--max-github-api-rate-limit", "-2000", "--max-storage", "1024",
@@ -77,6 +83,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
   await mkdir(path.dirname(statePath), { recursive: true });
 
   const observedAt = new Date().toISOString();
+  const previousState = await readFile(statePath, "utf8").then(JSON.parse).catch(() => ({}));
   try {
     const raw = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
     const snapshot = JSON.parse(raw);
@@ -93,6 +100,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       runLimit,
       fallback: false,
     }, null, 2)}\n`);
+    await writeOutcome("success");
     log.info`Downloaded ${snapshot.runs.length} runs for ${targets.length} control-repository workflows with one gh aw logs invocation`;
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);
@@ -107,8 +115,10 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       windowDays,
       runLimit,
       fallback: Array.isArray(snapshot.runs) && snapshot.runs.length > 0,
+      snapshotObservedAt: previousState.snapshotObservedAt || previousState.observedAt || null,
       error: error instanceof Error ? error.message : String(error),
     }, null, 2)}\n`);
+    await writeOutcome("failure");
     log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
   }
 }

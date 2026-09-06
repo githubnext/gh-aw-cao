@@ -22,10 +22,11 @@ async function fixture() {
     statePath: path.join(root, "cache", "gh-aw-logs-state.json"),
     outputPath: path.join(root, "cache", "gh-aw-logs"),
     argumentsPath: path.join(root, "arguments.json"),
+    githubOutput: path.join(root, "github-output"),
   };
 }
 
-test("activity logs uses one bounded gh aw logs invocation with all artifacts", async () => {
+test("activity logs uses one bounded gh aw logs invocation without heavy agent artifacts", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
@@ -45,14 +46,19 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
         REPORT_GH_AW_LOGS_STATE: item.statePath,
         REPORT_AIC_CACHE: item.outputPath,
         GH_ARGS_PATH: item.argumentsPath,
+        GITHUB_OUTPUT: item.githubOutput,
       },
     });
     const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--json"]);
-    assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), ["--artifacts", "all"]);
+    assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
+      "--artifacts",
+      "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
+    ]);
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).available, true);
+    assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
@@ -65,6 +71,7 @@ test("activity logs preserves cached runs and records collection failure", async
   await chmod(ghPath, 0o755);
   await mkdir(path.dirname(item.logsPath), { recursive: true });
   await writeFile(item.logsPath, '{"runs":[{"database_id":7}]}\n');
+  await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
@@ -75,12 +82,15 @@ test("activity logs preserves cached runs and records collection failure", async
         REPORT_GH_AW_LOGS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
         REPORT_AIC_CACHE: item.outputPath,
+        GITHUB_OUTPUT: item.githubOutput,
       },
     });
     assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).runs[0].database_id, 7);
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, false);
     assert.equal(state.fallback, true);
+    assert.equal(state.snapshotObservedAt, "2026-09-06T20:00:00Z");
+    assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=failure\n");
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }

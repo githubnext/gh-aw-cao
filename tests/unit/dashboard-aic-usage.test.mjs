@@ -81,6 +81,7 @@ test("AI Credit usage collection reports an unreadable shared snapshot as unavai
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const outputPath = path.join(root, "aic-usage.json");
+  const statePath = path.join(root, "gh-aw-logs-state.json");
   await writeFile(inventoryPath, JSON.stringify({
     workflows: [{
       repository: "githubnext/gh-aw-cao",
@@ -89,6 +90,13 @@ test("AI Credit usage collection reports an unreadable shared snapshot as unavai
       runHealth: { runIds: [42] },
     }],
   }));
+  await writeFile(outputPath, JSON.stringify({
+    schemaVersion: 5,
+    firewallLastSuccessfulCollectionAt: "2026-09-05T12:00:00Z",
+    runs: [],
+    securityRuns: [],
+  }));
+  await writeFile(statePath, '{"available":false}\n');
   try {
     await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {
       cwd: path.resolve("."),
@@ -97,10 +105,12 @@ test("AI Credit usage collection reports an unreadable shared snapshot as unavai
         REPORT_DEPLOYED_WORKFLOWS: inventoryPath,
         REPORT_AIC_USAGE: outputPath,
         REPORT_GH_AW_LOGS: path.join(root, "missing.json"),
+        REPORT_GH_AW_LOGS_STATE: statePath,
       },
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.repositories[0].available, false);
+    assert.equal(usage.firewallLastSuccessfulCollectionAt, "2026-09-05T12:00:00Z");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
