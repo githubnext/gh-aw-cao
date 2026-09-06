@@ -149,6 +149,10 @@ jobs:
               core.warning(`Could not read the Lighthouse summary; skipping PR feedback: ${error.message}`)
               return
             }
+            if (!summary || !Array.isArray(summary.results)) {
+              core.warning('Lighthouse summary has an unexpected shape; skipping PR feedback.')
+              return
+            }
             const degraded = summary.results.filter((result) => result.failures.length > 0)
 
             const headOwner = context.payload.pull_request.head.repo.owner.login

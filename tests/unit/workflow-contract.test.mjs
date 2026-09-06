@@ -2371,6 +2371,8 @@ test("dashboard CI runs the package quality gates", () => {
   assert.match(lighthouseComment.block, /uses: actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c/);
   assert.match(lighthouseComment.block, /continue-on-error: true/);
   assert.match(lighthouseComment.block, /if: steps\.download\.outcome == 'success'/);
+  assert.match(lighthouseComment.block, /Array\.isArray\(summary\.results\)/);
+  assert.match(lighthouseComment.block, /unexpected shape; skipping PR feedback/);
   assert.match(lighthouseComment.block, /head: `\$\{headOwner\}:\$\{headBranch\}`/);
   assert.match(lighthouseComment.block, /using event pull request/);
   assert.match(lighthouseComment.block, /### 📉🚦 Dashboard Lighthouse performance degraded/);
