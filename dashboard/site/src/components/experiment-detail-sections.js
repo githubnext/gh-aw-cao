@@ -5,20 +5,10 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
+import { renderExperimentEffect, renderExperimentSectionHeading } from './experiment-view-primitives.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
-
-/**
- * Renders the shared heading used by experiment decision and detail sections.
- * @param {string} id
- * @param {string} title
- * @param {string} description
- * @returns {HTMLElement}
- */
-export function renderExperimentSectionHeading(id, title, description) {
-  return h('header', { className: 'experiment-section-heading' }, h('div', null, h('h2', { id }, title), h('p', null, description)));
-}
 
 /**
  * @param {string} message
@@ -28,22 +18,6 @@ function partialState(message) {
   return h('div', { className: 'experiment-partial', role: 'status' }, octicon('info'), h('span', null, message));
 }
 
-/**
- * @param {number} value
- * @returns {HTMLElement}
- */
-function renderEffect(value) {
-  if (!Number.isFinite(value)) return h('span', { className: 'effect effect-unknown' }, UNKNOWN, h('span', { className: 'sr-only' }, ' insufficient evidence'));
-  const positive = value > 0;
-  const negative = value < 0;
-  return h(
-    'span',
-    { className: `effect ${positive ? 'effect-positive' : negative ? 'effect-negative' : 'effect-neutral'}` },
-    `${positive ? '+' : ''}${value.toFixed(3)}`,
-    positive ? ' ▲' : negative ? ' ▼' : ' ·',
-    h('span', { className: 'sr-only' }, positive ? ' improvement' : negative ? ' regression' : ' no change')
-  );
-}
 
 /**
  * @param {unknown} value
@@ -114,7 +88,7 @@ function renderMetricComparisonSection(metrics, experiment) {
             h('td', null, metric.direction.replaceAll('_', ' ')),
             h('td', null, formatMetric(metric.controlValue, metric.unit)),
             h('td', null, formatMetric(metric.candidateValue, metric.unit)),
-            h('td', null, renderEffect(metric.normalizedEffect)),
+            h('td', null, renderExperimentEffect(metric.normalizedEffect)),
             h('td', null, `${metric.controlN + metric.candidateN} / ${metric.excluded}`),
             h('td', null, metric.threshold === null ? UNKNOWN : formatMetric(metric.threshold, metric.unit))
           )))
@@ -165,7 +139,7 @@ function renderEvalOutcomesSection(metrics, experiment) {
         return h(
           'article',
           { className: 'eval-outcome' },
-          h('header', null, h('div', null, h('strong', null, metric.question || metric.identifier), h('span', null, `${metric.identifier} · ${metric.candidateN + metric.controlN} usable · ${metric.excluded} excluded`)), renderEffect(metric.normalizedEffect)),
+          h('header', null, h('div', null, h('strong', null, metric.question || metric.identifier), h('span', null, `${metric.identifier} · ${metric.candidateN + metric.controlN} usable · ${metric.excluded} excluded`)), renderExperimentEffect(metric.normalizedEffect)),
           renderEvalBar(experiment.control, matching.filter((row) => row.variant === experiment.control)),
           renderEvalBar(experiment.candidate, matching.filter((row) => row.variant === experiment.candidate))
         );
@@ -192,7 +166,7 @@ function renderGraderDiagnosticsSection(metrics) {
           null,
           h('span', { className: 'grader-rank-icon', 'aria-hidden': 'true' }, metric.regression ? octicon('arrow-down') : octicon('arrow-up')),
           h('strong', null, metric.identifier),
-          h('span', null, renderEffect(metric.normalizedEffect)),
+          h('span', null, renderExperimentEffect(metric.normalizedEffect)),
           h('span', null, `N ${metric.controlN + metric.candidateN}`),
           renderExperimentBadge(metric.role, metric.regression ? 'danger' : 'neutral')
         ))
