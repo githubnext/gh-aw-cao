@@ -60,6 +60,35 @@ test("keeps retries and evaluator generations while preferring report observatio
   assert.ok(records.some((record) => record.observationId.endsWith(":2:old-digest")));
 });
 
+test("drops stale unavailable placeholders once an observed record exists for the same run", () => {
+  const placeholder = {
+    schemaVersion: 1,
+    repository: "github/gh-aw",
+    workflowId: "daily-file-diet",
+    workflowPath: ".github/workflows/daily-file-diet.md",
+    runId: 42,
+    runAttempt: 2,
+    status: "unavailable",
+    value: null,
+    observationSource: "logs-json",
+    observation: null,
+    reason: "operational-value result not found",
+  };
+  const observed = {
+    ...placeholder,
+    status: "pass",
+    value: 0.8,
+    evaluatorDigest: "digest",
+    reason: undefined,
+  };
+
+  const records = mergeOperationalValueRecords([placeholder], [observed]);
+
+  assert.equal(records.length, 1);
+  assert.equal(records[0].status, "pass");
+  assert.equal(records[0].value, 0.8);
+});
+
 test("run identities cover cached results even without nested observation payloads", () => {
   const cached = {
     schemaVersion: 1,

@@ -87,6 +87,18 @@ export function mergeOperationalValueRecords(...recordSets) {
     if (existing?.observation && !record.observation) continue;
     records.set(key, { ...record, observationId: key });
   }
+  // Placeholders persisted before an observation was collected key by
+  // "unknown-evaluator" (no evaluatorDigest yet), so they can coexist in the
+  // map alongside a later observed record for the same run. Drop those
+  // stale placeholders once any observed record exists for the same run.
+  const observedRunKeys = new Set([...records.values()]
+    .filter((record) => record.status !== "unavailable")
+    .map((record) => operationalValueRunIdentity(record)));
+  for (const [key, record] of records) {
+    if (record.status === "unavailable" && observedRunKeys.has(operationalValueRunIdentity(record))) {
+      records.delete(key);
+    }
+  }
   return [...records.values()].sort((left, right) => {
     const leftTime = Date.parse(left.observation?.evidenceAt || left.run?.createdAt || "");
     const rightTime = Date.parse(right.observation?.evidenceAt || right.run?.createdAt || "");

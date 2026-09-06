@@ -525,9 +525,16 @@ export async function collectAicUsage() {
         const result = JSON.parse(rawResult);
         log.info`Downloaded ${result.runs?.length || 0} gh-aw log records into ${temporaryRoot}`;
         if (logsPath) {
-          await mkdir(path.dirname(logsPath), { recursive: true });
-          await writeFile(logsPath, `${JSON.stringify(result, null, 2)}\n`);
-          log.info`Cached ${result.runs?.length || 0} gh-aw log records at ${logsPath}`;
+          // Persisting the shared snapshot is best-effort: a write failure here
+          // (permissions/disk) must not mask a successful log download by
+          // marking the whole AIC/security collection unavailable.
+          try {
+            await mkdir(path.dirname(logsPath), { recursive: true });
+            await writeFile(logsPath, `${JSON.stringify(result, null, 2)}\n`);
+            log.info`Cached ${result.runs?.length || 0} gh-aw log records at ${logsPath}`;
+          } catch (error) {
+            log.warning`Unable to cache gh-aw logs JSON at ${logsPath}: ${error.message}`;
+          }
         }
         for (const run of result.runs || []) {
           const runId = Number(run.database_id ?? run.run_id ?? run.id);
