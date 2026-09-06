@@ -6943,6 +6943,7 @@
             "id": "home-outcomes",
             "title": "Outcomes",
             "description": "Recent retained outcomes remain distinct from runtime success and operational value.",
+            "disclosure": "supplemental",
             "data": {
               "source": "outcomes",
               "limit": 5,
