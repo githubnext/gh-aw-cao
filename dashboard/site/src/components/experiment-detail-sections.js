@@ -5,6 +5,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
+import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
 import { renderExperimentEffect, renderExperimentSectionHeading } from './experiment-view-primitives.js';
 import { isSafeHttpsUrl } from './ui-primitives.js';
 
@@ -186,7 +187,7 @@ function renderObservationQualitySection(experiment) {
     (observation) => observation.exclusionReason || `${observation.sourceType} missing`
   );
   const assignedRuns = new Set(assignments.map((row) => text(row.run)).filter(Boolean)).size;
-  const coverage = experiment.usable + experiment.excluded > 0 ? experiment.usable / (experiment.usable + experiment.excluded) : null;
+  const coverage = computeObservationCoverage(experiment.usable, experiment.excluded);
   return h(
     'section',
     { className: 'experiment-section observation-quality', 'aria-labelledby': 'observation-quality-title' },
@@ -196,7 +197,7 @@ function renderObservationQualitySection(experiment) {
       'div',
       { className: 'exclusion-flow' },
       h('div', null, h('span', null, 'Assigned runs'), h('strong', null, String(assignedRuns))),
-      h('div', null, h('span', null, 'Usable observations'), h('strong', null, String(experiment.usable)), h('small', null, coverage === null ? UNKNOWN : `${(coverage * 100).toFixed(1)}%`)),
+      h('div', null, h('span', null, 'Usable observations'), h('strong', null, String(experiment.usable)), h('small', null, formatCoveragePercent(coverage))),
       h('div', null, h('span', null, 'Excluded'), h('strong', null, String(experiment.excluded))),
       h('ul', null, ...[...reasons].map(([reason, count]) => h('li', null, h('span', null, reason), h('strong', null, String(count)))))
     )

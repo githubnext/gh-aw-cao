@@ -53,6 +53,29 @@ export function text(value) {
 }
 
 /**
+ * Computes the fraction of usable observations out of usable + excluded,
+ * returning `null` when there are no observations to divide.
+ * @param {number} usable
+ * @param {number} excluded
+ * @returns {number | null}
+ */
+export function computeObservationCoverage(usable, excluded) {
+  return usable + excluded > 0 ? usable / (usable + excluded) : null;
+}
+
+/**
+ * Formats an observation coverage ratio (as returned by
+ * `computeObservationCoverage`) as a one-decimal percentage string, or a
+ * placeholder when the ratio is `null`.
+ * @param {number | null} coverage
+ * @param {string} [unknown]
+ * @returns {string}
+ */
+export function formatCoveragePercent(coverage, unknown = '—') {
+  return coverage === null ? unknown : `${(coverage * 100).toFixed(1)}%`;
+}
+
+/**
  * Converts a value into a lowercase, hyphen-delimited slug suitable for use
  * as (part of) an HTML `id` attribute, collapsing runs of non-alphanumeric
  * characters and trimming leading/trailing hyphens.
