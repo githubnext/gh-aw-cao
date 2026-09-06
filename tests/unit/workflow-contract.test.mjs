@@ -2777,7 +2777,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(aicUsage, /--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs/);
-  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 2);
+  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 1);
   assert.match(aicUsage, /writeFile\(logsPath, `\$\{JSON\.stringify\(result, null, 2\)\}\\n`\)/);
   assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/operational-values\.json/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -2857,13 +2857,12 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /pull-requests: read/);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 9);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 6);
   assert.match(workflow, /name: cao-gh[\s\S]*?cao-gh\.jsonl/);
   assert.match(workflow, /DASHBOARD_COLLECTION=false/);
   assert.match(workflow, /if: env\.DASHBOARD_COLLECTION == 'true'/);
-  assert.match(workflow, /Collect AI Credit usage/);
-  assert.match(workflow, /Collect operational-value observations/);
-  assert.match(workflow, /Collect durable dashboard records/);
+  assert.match(workflow, /Process cached gh-aw logs/);
+  assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
   assert.match(workflow, /cao-activity-\$\{\{ github\.run_id \}\}-/);
   assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
   assert.match(readme, /schemaVersion: 1/);

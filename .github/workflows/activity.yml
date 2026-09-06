@@ -144,11 +144,12 @@ jobs:
         with:
           version: v0.88.4
 
-      - name: Collect AI Credit usage
-        id: collect-aic-usage
+      - name: Process cached gh-aw logs
+        id: process-activity
         if: env.DASHBOARD_COLLECTION == 'true'
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GITHUB_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
@@ -156,74 +157,39 @@ jobs:
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
-        run: |
-          node "$GITHUB_TELEMETRY" before collect-aic-usage || true
-          node "$DASHBOARD_REPORT_ROOT/aic-usage.mjs"
-
-      - name: Record AI Credit collection GitHub API state
-        if: always() && env.DASHBOARD_COLLECTION == 'true'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_OPERATION_OUTCOME: ${{ steps.collect-aic-usage.outcome }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-        run: node "$GITHUB_TELEMETRY" after collect-aic-usage
-
-      - name: Collect operational-value observations
-        id: collect-operational-values
-        if: env.DASHBOARD_COLLECTION == 'true'
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-          REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
-          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
           REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
           REPORT_VALUE_CACHE: ${{ runner.temp }}/cao-activity/operational-values.json
-        run: |
-          node "$GITHUB_TELEMETRY" before collect-operational-values || true
-          node "$DASHBOARD_REPORT_ROOT/operational-values.mjs"
-
-      - name: Record operational-value collection GitHub API state
-        if: always() && env.DASHBOARD_COLLECTION == 'true'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_OPERATION_OUTCOME: ${{ steps.collect-operational-values.outcome }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-        run: node "$GITHUB_TELEMETRY" after collect-operational-values
-
-      - name: Collect durable dashboard records
-        id: collect-dashboard-records
-        if: env.DASHBOARD_COLLECTION == 'true'
-        env:
-          GITHUB_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
-          REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
           REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
         run: |
-          node "$GITHUB_TELEMETRY" before collect-dashboard-records || true
+          node "$GITHUB_TELEMETRY" before process-activity || true
+          node "$DASHBOARD_REPORT_ROOT/aic-usage.mjs"
+          node "$DASHBOARD_REPORT_ROOT/operational-values.mjs"
           node "$DASHBOARD_REPORT_ROOT/records.mjs"
 
-      - name: Record dashboard record collection GitHub API state
+      - name: Record activity collection GitHub API state
         if: always() && env.DASHBOARD_COLLECTION == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_OPERATION_OUTCOME: ${{ steps.collect-dashboard-records.outcome }}
+          CAO_OPERATION_OUTCOME: ${{ steps.process-activity.outcome }}
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-        run: node "$GITHUB_TELEMETRY" after collect-dashboard-records
+        run: node "$GITHUB_TELEMETRY" after process-activity
+
+      - name: List activity cache files
+        if: always()
+        continue-on-error: true
+        run: |
+          cache_root="$RUNNER_TEMP/cao-activity"
+          if [[ -d "$cache_root" ]]; then
+            echo "Activity cache files (max depth 3):"
+            find "$cache_root" -maxdepth 3 -type f -printf '%P\n' | sort | sed -n '1,200p'
+          else
+            echo "Activity cache directory is absent: $cache_root"
+          fi
 
       - name: Add GitHub API telemetry to activity snapshot
         if: always()
