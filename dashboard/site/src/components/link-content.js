@@ -50,17 +50,41 @@ export function findLink(row, field) {
 }
 
 /**
+ * Determines whether a resolved safe link points outside the dashboard (as
+ * opposed to an internal `#`-prefixed navigation anchor). Every safe-link
+ * anchor renderer in this module bases its `target`/`rel` wiring on this
+ * check.
  * @param {SafeLink} link
- * @returns {HTMLElement}
+ * @returns {boolean}
  */
-export function renderExternalLink(link) {
-  const external = !link.href.startsWith('#');
-  return h('a', {
+function isExternalLink(link) {
+  return !link.href.startsWith('#');
+}
+
+/**
+ * Builds the shared anchor attribute set used by every safe-link renderer in
+ * this module: an internal (`#`-prefixed) href renders a plain anchor, while
+ * an external href adds `target="_blank"` and `rel="noopener noreferrer"`.
+ * @param {SafeLink} link
+ * @param {boolean} external
+ * @returns {{ href: string, target: string | undefined, rel: string | undefined, 'aria-label': string }}
+ */
+function safeLinkAnchorAttrs(link, external) {
+  return {
     href: link.href,
     target: external ? '_blank' : undefined,
     rel: external ? 'noopener noreferrer' : undefined,
     'aria-label': link.label
-  }, link.label, ...(external ? [octicon('external-link')] : []));
+  };
+}
+
+/**
+ * @param {SafeLink} link
+ * @returns {HTMLElement}
+ */
+export function renderExternalLink(link) {
+  const external = isExternalLink(link);
+  return h('a', safeLinkAnchorAttrs(link, external), link.label, ...(external ? [octicon('external-link')] : []));
 }
 
 /**
@@ -140,13 +164,7 @@ export function renderOutcomeLink(row, label) {
  */
 export function renderSafeLink(content, link) {
   if (!link) return content;
-  const external = !link.href.startsWith('#');
-  return h('a', {
-    href: link.href,
-    target: external ? '_blank' : undefined,
-    rel: external ? 'noopener noreferrer' : undefined,
-    'aria-label': link.label
-  }, content);
+  return h('a', safeLinkAnchorAttrs(link, isExternalLink(link)), content);
 }
 
 /**
