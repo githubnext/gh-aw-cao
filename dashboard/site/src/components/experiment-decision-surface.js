@@ -240,6 +240,7 @@ function includedObservation(row) {
 
 /** @param {Row} assignment */
 function includedAssignment(assignment) {
+  if (assignment.included === false || text(assignment.included).toLowerCase() === 'no') return false;
   return !text(assignment['exclusion-reason']);
 }
 
@@ -396,9 +397,9 @@ export function syncExperimentDecisionDeepLink(filters, selectedExperiment, page
   if (!win || !win.location || !['http:', 'https:'].includes(win.location.protocol)) return;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value) params.set(key, value);
+    if (value && !(key === 'experiment' && selectedExperiment)) params.set(key, value);
   }
-  if (selectedExperiment && !params.has('experiment')) {
+  if (selectedExperiment) {
     params.set('experiment', selectedExperiment);
   }
   const query = params.toString();
