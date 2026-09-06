@@ -711,15 +711,11 @@ test("workers inherit human-first progressive report disclosure", () => {
   assert.doesNotMatch(sharedControl, /### Executive Summary/);
   assert.match(sharedControl, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details>/);
   assert.ok(workers.length > 0, "expected at least one worker workflow");
-  for (const [name] of workers) {
+  for (const [name, source] of workers) {
+    assert.match(source, /^\s+- uses: shared\/worker\.md$/m, name);
     const generated = workflow(name.replace(/\.md$/, ".lock.yml"));
-    assert.match(generated, /Begin directly with a short, plain-language executive summary/, name);
-    assert.match(generated, /do not add a heading for this opening summary/, name);
-    assert.match(generated, /Immediately follow it with one visible `\*\*Action:\*\*` sentence/, name);
-    assert.match(generated, /tell the maintainer to assign the issue to Copilot/, name);
-    assert.match(generated, /<details><summary><b>Agent prompt<\/b><\/summary>/, name);
+    assert.match(generated, /{{#runtime-import \.github\/workflows\/shared\/worker\.md}}/, name);
     assert.doesNotMatch(generated, /### Executive Summary/, name);
-    assert.match(generated, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details>/, name);
   }
 });
 

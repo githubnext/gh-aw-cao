@@ -89,7 +89,7 @@ steps:
   - name: Deterministic pre-fetch of AW Doctor evidence
     uses: actions/github-script@v9.0.0
     with:
-      github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      github-token: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       script: |
         const fs = require('fs');
         const path = require('path');
