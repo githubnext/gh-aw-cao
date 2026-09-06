@@ -1355,6 +1355,7 @@ dashboard:
 `;
 
     expect(validateDashboardDocument(source).ok).toBe(true);
+    expect(validateDashboardDocument(source.replace('id: home', 'id: summary')).ok).toBe(false);
   });
 
   it('DLS-VIEW-038 rejects nested view boxes while ignoring SVG chart internals', () => {
