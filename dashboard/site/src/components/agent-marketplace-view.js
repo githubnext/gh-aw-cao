@@ -113,7 +113,6 @@ function normalizeAgent(row) {
 }
 
 /** @param {string} sort */
-/** @param {string} sort */
 function agentComparator(sort) {
   /** @param {ReturnType<typeof normalizeAgent>} left @param {ReturnType<typeof normalizeAgent>} right */
   return (left, right) => sort === 'name'
