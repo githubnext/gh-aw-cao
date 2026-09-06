@@ -16,7 +16,7 @@ const metadata = {
 
 /** @param {Record<string, unknown>} [overrides] @returns {Record<string, unknown>} */
 function rateLimitRow(overrides = {}) {
-  return {
+  const row = {
     'observation-id': 'run-1:after:reader:core:2026-09-04T12:00:00Z',
     'operation-execution-id': 'run-1',
     'observed-at': '2026-09-04T12:00:00Z',
@@ -46,7 +46,16 @@ function rateLimitRow(overrides = {}) {
     'is-current': true,
     'attribution-status': 'available',
     'operation-consumed': 25,
+    'run-link': {
+      relation: 'run',
+      href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1',
+      label: 'View run 1'
+    },
     ...overrides
+  };
+  return {
+    ...row,
+    'is-unhealthy': ['critical', 'warning'].includes(String(row['risk-status'])) && Number(row['remaining-percent']) < 100
   };
 }
 
@@ -188,7 +197,8 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(apiPage.views[0]).toMatchObject({
       id: 'github-api-remaining-trend',
       chart: 'scatter',
-      table: true
+      table: false,
+      data: { filters: { 'is-unhealthy': 'true' } }
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-remaining-capacity')).toMatchObject({
       id: 'github-api-remaining-capacity',
@@ -201,7 +211,7 @@ describe('GitHub API rate-limit dashboard', () => {
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-remaining-trend')).toMatchObject({
       chart: 'scatter',
-      table: true,
+      table: false,
       encoding: {
         y: expect.objectContaining({ field: 'remaining-percent', unit: 'percent' }),
         color: expect.objectContaining({ field: 'maximum-lane' })
@@ -209,7 +219,7 @@ describe('GitHub API rate-limit dashboard', () => {
     });
     expect(page?.querySelector('[aria-labelledby="github-api-remaining-capacity-heading"]')
       ?.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
-    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(3);
+    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(1);
     expect(page?.querySelector('.line-chart-series')).toBeNull();
     expect(page?.textContent).toContain('At-risk buckets');
     expect(page?.textContent).toContain('1');
@@ -230,6 +240,9 @@ describe('GitHub API rate-limit dashboard', () => {
       expect.stringContaining('Collector and cache health'),
       expect.stringContaining('Collection call stacks')
     ]));
+    const observations = supplemental.find((view) => view.querySelector('summary')?.textContent?.includes('Raw quota observations'));
+    expect(observations?.querySelector('tbody td:first-child a')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1');
     expect(page?.textContent).toContain('Collection completeness, retrieval failures, and activity-cache state');
     const stackTable = page?.querySelector('table[role="treegrid"]');
     expect(stackTable?.getAttribute('role')).toBe('treegrid');
@@ -285,14 +298,15 @@ describe('GitHub API rate-limit dashboard', () => {
       source: 'github-api-rate-limits',
       metadata,
       rows: [
-        rateLimitRow({ 'observed-at': observedAt, 'history-series': 'core · reader', 'has-history': false }),
+        rateLimitRow({ 'observed-at': observedAt, 'history-series': 'core · reader', 'has-history': false, 'risk-status': 'warning' }),
         rateLimitRow({
           'observation-id': 'run-1:after:reader:search:2026-09-04T12:00:00Z',
           'observed-at': observedAt,
           resource: 'search',
           bucket: 'search · reader',
           'history-series': 'search · reader',
-          'has-history': false
+          'has-history': false,
+          'risk-status': 'critical'
         })
       ]
     });

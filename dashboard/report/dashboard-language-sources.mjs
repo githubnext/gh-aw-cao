@@ -305,7 +305,11 @@ export function githubTelemetryRows(entries = [], generatedAt = new Date().toISO
       "runway-ratio": null,
       "risk-status": "unknown",
       "risk-order": 3,
+      "is-unhealthy": false,
       "is-current": false,
+      ...(entry.repository && entry.runId
+        ? { "run-link": link("run", workflowRunUrl(entry.repository, entry.runId), `View run ${entry.runId}`) }
+        : {}),
       "attribution-status": "unavailable",
       "operation-consumed": null,
     }];
@@ -366,6 +370,7 @@ export function githubTelemetryRows(entries = [], generatedAt = new Date().toISO
       }
       row["risk-status"] = riskStatus(row, complete, freshness);
       row["risk-order"] = { critical: 0, warning: 1, healthy: 2, unknown: 3 }[row["risk-status"]];
+      row["is-unhealthy"] = ["critical", "warning"].includes(row["risk-status"]) && row["remaining-percent"] < 100;
     }
   }
 

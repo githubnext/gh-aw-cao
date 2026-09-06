@@ -18,7 +18,7 @@ export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
-export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'visible-when'];
+export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
 export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals'];
 export const TOOLTIP_KEYS = ['label', 'description', 'icon'];
 export const DEFAULTS_KEYS = ['scope', 'time', 'filters'];
@@ -137,6 +137,7 @@ export const FILTER_DIMENSION_VALUES = [
   'operation',
   'phase',
   'risk-status',
+  'is-unhealthy',
   'is-current',
   'has-history',
   'attribution-status',
@@ -407,7 +408,7 @@ export const SOURCE_FIELDS = {
   'safe-output-performance': ['organization', 'repository', 'workflow', 'run', 'run-conclusion', 'rollout-mode', 'safe-output-kind', 'safe-output-label', 'safe-output-status', 'safe-output-count', 'observed-at', 'run-link'],
   findings: ['organization', 'repository', 'workflow', 'run', 'safe-output', 'finding', 'finding-kind', 'finding-severity', 'finding-status', 'finding-summary', 'observed-at', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'issue-link', 'pull-request-link', 'run-link', 'external-link', 'organization-link', 'repository-link', 'workflow-link'],
   'operational-values': ['organization', 'repository', 'repository-name', 'workflow', 'run', 'run-attempt', 'observation-id', 'experiment', 'operational-case', 'evaluator-digest', 'rollout-mode', 'operational-value', 'operational-value-definition', 'requested-evidence-at', 'evidence-cutoff', 'maturity-at', 'maturity-status', 'baseline-value', 'delta-from-baseline', 'accepted-evidence-provenance', 'diagnostics', 'diagnostic-definitions', 'observed-at', 'evidence-link', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
-  'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-current', 'attribution-status', 'operation-consumed'],
+  'github-api-rate-limits': ['observation-id', 'operation-execution-id', 'observed-at', 'phase', 'operation', 'outcome', 'credential', 'credential-type', 'resource', 'bucket', 'maximum-lane', 'history-series', 'has-history', 'limit', 'used', 'remaining', 'remaining-percent', 'reset-at', 'minutes-to-reset', 'consumed-since-previous', 'burn-rate-per-minute', 'projected-remaining-at-reset', 'projected-exhaustion-at', 'runway-ratio', 'risk-status', 'risk-order', 'is-unhealthy', 'is-current', 'attribution-status', 'operation-consumed', 'run-link'],
   'github-api-collector-health': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'cache-hydrated', 'cache-bytes', 'cache-entries', 'cache-folders', 'rate-limit-error'],
   'github-api-call-stacks': ['observed-at', 'operation-execution-id', 'phase', 'operation', 'outcome', 'credential', 'stack-frame-id', 'stack-parent-id', 'stack-depth', 'stack-frame'],
   'configuration-summary': ['status', 'count'],
