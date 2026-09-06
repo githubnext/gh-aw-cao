@@ -505,7 +505,16 @@ async function main() {
     let collectionAvailable = true;
     if (targets.length > 0) {
       try {
-        const result = JSON.parse(await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot));
+        const rawLogsText = await runGhAw(targets, maxRunsPerWorkflow, temporaryRoot);
+        const result = JSON.parse(rawLogsText);
+        const logsOutputPath = process.env.REPORT_WORKFLOW_LOGS
+          || path.join(path.dirname(outputPath), "workflow-logs.json");
+        try {
+          await mkdir(path.dirname(logsOutputPath), { recursive: true });
+          await writeFile(logsOutputPath, `${rawLogsText.trim()}\n`);
+        } catch (logsError) {
+          log.warning`Could not persist raw workflow logs to ${logsOutputPath}: ${logsError.message}`;
+        }
         for (const run of result.runs || []) {
           const runId = Number(run.database_id ?? run.run_id ?? run.id);
           const aic = run.aic === null || run.aic === undefined || run.aic === ""

@@ -280,16 +280,21 @@ steps:
             const generatedAt = Date.parse(snapshot.generatedAt);
             const windowStart = Date.parse(createdSince);
             const now = Date.now();
+            const windowHours = Number(snapshot.runHealth?.windowHours);
             if (snapshot.schemaVersion !== 1
               || !Number.isFinite(generatedAt)
               || now - generatedAt > 2 * 60 * 60 * 1000
               || generatedAt > now + 5 * 60 * 1000
               || snapshot.runHealth?.available !== true
               || snapshot.runHealth?.complete !== true
-              || snapshot.runHealth?.windowHours < LOOKBACK_HOURS
+              || !Number.isFinite(windowHours)
+              || windowHours < LOOKBACK_HOURS
               || !Array.isArray(snapshot.workflows)) return null;
-            const failedRuns = snapshot.workflows
-              .filter((workflow) => workflow?.repository === REPO)
+
+            const matchingWorkflows = snapshot.workflows.filter((workflow) => workflow?.repository === REPO);
+            if (matchingWorkflows.length === 0) return null;
+
+            const failedRuns = matchingWorkflows
               .flatMap((workflow) => (workflow.runHealth?.runRecords || []).map((run) => ({ workflow, run })))
               .filter(({ workflow, run }) => isAgenticWorkflowPath(workflow.path)
                 && isFailureConclusion(run?.conclusion)

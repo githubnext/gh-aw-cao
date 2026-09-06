@@ -84,7 +84,7 @@ test("AI Credit workers collect all workflow logs with bounded resources", () =>
   for (const name of ["optimization-ai-credit-auditor.md", "optimization-ai-credit-optimizer.md"]) {
     const source = workflow(name);
     const commands = source.match(/gh aw logs \\\n/g) || [];
-    assert.equal(commands.length, 2, name);
+    assert.equal(commands.length, 1, name);
     assert.match(source, /--repo "\$TARGET_REPO"/);
     assert.match(source, /--output \/tmp\/gh-aw\/token-audit\/logs/);
     assert.match(source, /--timeout \d+/);
@@ -2118,9 +2118,9 @@ test("activity-cache consumers use complete cached run evidence before API disco
 
   for (const source of [auditor, optimizer]) {
     assert.match(source, /deployed-workflows\.json/);
+    assert.match(source, /workflow-logs\.json/);
     assert.match(source, /snapshot\.runHealth\?\.available !== true/);
     assert.match(source, /snapshot\.runHealth\?\.complete !== true/);
-    assert.match(source, /--stdin/);
     assert.match(source, /activity-cache-usable/);
   }
   assert.match(investigator, /cachedFailedAgenticRuns/);

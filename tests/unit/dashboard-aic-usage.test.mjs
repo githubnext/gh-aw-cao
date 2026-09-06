@@ -83,6 +83,9 @@ process.stdout.write(JSON.stringify({
     });
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
+    const workflowLogsPath = path.join(root, "workflow-logs.json");
+    const workflowLogs = JSON.parse(await readFile(workflowLogsPath, "utf8"));
+    assert.equal(workflowLogs.runs[0].database_id, 42);
     const argumentsList = JSON.parse(await readFile(argumentsPath, "utf8"));
     assert.deepEqual(argumentsList.slice(argumentsList.indexOf("--artifacts"), argumentsList.indexOf("--artifacts") + 2), [
       "--artifacts",

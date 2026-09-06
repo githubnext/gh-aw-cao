@@ -139,7 +139,7 @@ steps:
   - name: Install Python chart dependencies
     run: |
       python3 -m pip install --quiet --target /tmp/gh-aw/token-audit/site-packages pandas matplotlib seaborn
-  - name: Select recent activity-cache runs
+  - name: Load cached activity workflow logs
     env:
       ACTIVITY_ROOT: ${{ runner.temp }}/cao-activity
       TARGET_REPO: ${{ inputs.target_repo }}
@@ -148,41 +148,53 @@ steps:
       const fs = require("node:fs");
       const path = require("node:path");
 
-      const output = "/tmp/gh-aw/token-audit/cached-run-ids.txt";
-      const snapshotPath = path.join(process.env.ACTIVITY_ROOT, "deployed-workflows.json");
+      const rawLogsDest = "/tmp/gh-aw/token-audit/workflow-logs.raw.json";
+      const usableFlag = "/tmp/gh-aw/token-audit/activity-cache-usable";
+      const activityRoot = process.env.ACTIVITY_ROOT || path.join(process.env.RUNNER_TEMP || "/tmp", "cao-activity");
+      const snapshotPath = path.join(activityRoot, "deployed-workflows.json");
+      const cachedLogsPath = path.join(activityRoot, "workflow-logs.json");
+      const targetRepo = process.env.TARGET_REPO;
       const now = Date.now();
-      let runIds = [];
-      let usable = false;
+
       try {
         const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
         const generatedAt = Date.parse(snapshot.generatedAt);
+        const windowHours = Number(snapshot.runHealth?.windowHours);
         if (snapshot.schemaVersion !== 1
           || !Number.isFinite(generatedAt)
           || now - generatedAt > 2 * 60 * 60 * 1000
           || generatedAt > now + 5 * 60 * 1000
           || snapshot.runHealth?.available !== true
           || snapshot.runHealth?.complete !== true
-          || snapshot.runHealth?.windowHours < 24
+          || !Number.isFinite(windowHours)
+          || windowHours < 24
           || !Array.isArray(snapshot.workflows)) throw new Error("activity snapshot is incomplete");
-        const windowStart = now - 24 * 60 * 60 * 1000;
-        runIds = snapshot.workflows
-          .filter((workflow) => workflow?.repository === process.env.TARGET_REPO)
-          .flatMap((workflow) => workflow.runHealth?.runRecords || [])
-          .filter((run) => run?.status === "completed" && Date.parse(run.createdAt) >= windowStart)
-          .map((run) => run.runId)
-          .filter(Number.isInteger);
-        usable = true;
+
+        const matchingWorkflows = snapshot.workflows.filter((workflow) => workflow?.repository === targetRepo);
+        if (matchingWorkflows.length === 0) throw new Error("no workflows found for target repo in snapshot");
+
+        const logsContent = fs.readFileSync(cachedLogsPath, "utf8");
+        const parsedLogs = JSON.parse(logsContent);
+        if (!parsedLogs || !Array.isArray(parsedLogs.runs)) throw new Error("cached logs file is invalid");
+
+        const targetRuns = parsedLogs.runs.filter((run) => {
+          const repo = run?.repository || run?.repo;
+          return !repo || repo === targetRepo;
+        });
+        const filteredPayload = { ...parsedLogs, runs: targetRuns };
+
+        fs.mkdirSync(path.dirname(rawLogsDest), { recursive: true });
+        fs.writeFileSync(rawLogsDest, JSON.stringify(filteredPayload), "utf8");
+        fs.writeFileSync(usableFlag, "", "utf8");
       } catch {
-        runIds = [];
+        // activity cache unusable or incomplete for target repo
       }
-      fs.mkdirSync(path.dirname(output), { recursive: true });
-      fs.writeFileSync(output, runIds.join("\n") + (runIds.length ? "\n" : ""), "utf8");
-      if (usable) fs.writeFileSync("/tmp/gh-aw/token-audit/activity-cache-usable", "", "utf8");
       EOF
   - name: Download agentic workflow logs
     env:
       GH_TOKEN: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ inputs.target_repo }}
+      TARGET_REPO: ${{ inputs.target_repo }}
     run: |
       set -euo pipefail
       mkdir -p /tmp/gh-aw/token-audit
@@ -192,15 +204,7 @@ steps:
       RAW_LOGS=/tmp/gh-aw/token-audit/workflow-logs.raw.json
       LOG_EXIT=0
       if [[ -f /tmp/gh-aw/token-audit/activity-cache-usable ]]; then
-        gh aw logs \
-          --repo "$TARGET_REPO" \
-          --stdin \
-          --output /tmp/gh-aw/token-audit/logs \
-          --json \
-          --timeout 10 \
-          --max-github-api-rate-limit -2000 \
-          --max-storage 1024 \
-          < /tmp/gh-aw/token-audit/cached-run-ids.txt > "$RAW_LOGS" || LOG_EXIT=$?
+        echo "Using cached workflow logs from activity snapshot"
       else
         gh aw logs \
           --repo "$TARGET_REPO" \
