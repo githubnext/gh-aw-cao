@@ -181,14 +181,22 @@ jobs:
             const existing = comments.filter((comment) =>
               comment.user?.type === 'Bot' && comment.body?.includes(marker)
             )
-            if (degraded.length === 0) {
-              core.info('All Lighthouse scenarios meet their performance budgets.')
-              for (const comment of existing) {
-                await github.rest.issues.deleteComment({
+            const deleteComments = async (commentsToDelete) => {
+              const results = await Promise.allSettled(commentsToDelete.map((comment) =>
+                github.rest.issues.deleteComment({
                   ...context.repo,
                   comment_id: comment.id,
                 })
-              }
+              ))
+              results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                  core.warning(`Could not delete existing Lighthouse comment ${commentsToDelete[index].id}: ${result.reason}`)
+                }
+              })
+            }
+            if (degraded.length === 0) {
+              core.info('All Lighthouse scenarios meet their performance budgets.')
+              await deleteComments(existing)
               return
             }
 
@@ -235,12 +243,7 @@ jobs:
             ].join('\n')
 
             if (existing.length > 0) {
-              for (const comment of existing.slice(1)) {
-                await github.rest.issues.deleteComment({
-                  ...context.repo,
-                  comment_id: comment.id,
-                })
-              }
+              await deleteComments(existing.slice(1))
               await github.rest.issues.updateComment({
                 ...context.repo,
                 comment_id: existing[0].id,
