@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink, renderLinkedValue } from './link-content.js';
 import { rowsFor } from './source-rows.js';
-import { formatUtcDateTime, renderDlRow, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { formatUtcDateTime, renderCountBadge, renderDlRow, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
 
 const BOARD_COLUMNS = [
   { title: 'Active', states: ['active'], tone: 'active' },
@@ -59,7 +59,7 @@ function renderBoard(items) {
           'header',
           null,
           h('h4', null, column.title),
-          h('span', { className: 'count-badge', 'aria-label': `${columnItems.length} work items` }, String(columnItems.length))
+          renderCountBadge(columnItems.length, `${columnItems.length} work items`)
         ),
         h(
           'div',
