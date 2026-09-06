@@ -93,7 +93,7 @@ function fact(label, value) {
 
 /** @param {Record<string, unknown>} row */
 function normalizeAgent(row) {
-  const runtime = Number(row['total-runtime-seconds'] ?? row['total-run-time-seconds']);
+  const runtime = Number(row['total-runtime-seconds']);
   const totalRuntimeSeconds = Number.isFinite(runtime) ? Math.max(0, runtime) : 0;
   const observed = String(row['last-observed-at'] ?? row['observed-at'] ?? '');
   const ageHours = observed ? (Date.now() - Date.parse(observed)) / 3_600_000 : Number.POSITIVE_INFINITY;
