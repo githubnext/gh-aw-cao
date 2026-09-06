@@ -186,7 +186,7 @@ jobs:
           cache_root="$RUNNER_TEMP/cao-activity"
           if [[ -d "$cache_root" ]]; then
             echo "Activity cache files (max depth 3):"
-            find "$cache_root" -maxdepth 3 -type f -printf '%P\n' | sort | sed -n '1,200p'
+            (cd "$cache_root" && find . -maxdepth 3 -type f -print | sed 's#^\./##' | sort | sed -n '1,200p')
           else
             echo "Activity cache directory is absent: $cache_root"
           fi
