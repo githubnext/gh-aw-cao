@@ -823,6 +823,77 @@ dashboard:
     }
   });
 
+  it('accepts work-project-view config and rejects unsupported values', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: work-view-config
+  title: Work view config
+  pages:
+    - id: work-page
+      kind: custom
+      title: Work page
+      views:
+        - id: work-layouts
+          data:
+            sources: [work-items]
+          mark: element
+          element: work-project-view
+          config:
+            sections: [board, tasks]
+`);
+    expect(accepted.ok).toBe(true);
+
+    const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: work-view-config
+  title: Work view config
+  pages:
+    - id: work-page
+      kind: custom
+      title: Work page
+      views:
+        - id: work-layouts
+          data:
+            sources: [work-items]
+          mark: element
+          element: work-project-view
+          config:
+            body: backlog
+`);
+    expect(invalidBody.ok).toBe(false);
+    if (!invalidBody.ok) {
+      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.body'
+      }));
+    }
+
+    const invalidSection = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: work-view-config
+  title: Work view config
+  pages:
+    - id: work-page
+      kind: custom
+      title: Work page
+      views:
+        - id: work-layouts
+          data:
+            sources: [work-items]
+          mark: element
+          element: work-project-view
+          config:
+            sections: [backlog]
+`);
+    expect(invalidSection.ok).toBe(false);
+    if (!invalidSection.ok) {
+      expect(invalidSection.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.sections[0]'
+      }));
+    }
+  });
+
   it('defines experiments composition through a reusable experiments-evaluation element', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
