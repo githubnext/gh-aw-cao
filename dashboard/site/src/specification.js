@@ -59,7 +59,8 @@ export const VIEW_ELEMENT_VALUES = [
   'outcome-detail-section',
   'configuration-policy',
   'configuration-actions',
-  'experiments-evaluation'
+  'experiments-evaluation',
+  'work-project-view'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_LAYOUT_VALUES = ['full', 'half', 'third'];
@@ -444,7 +445,7 @@ export const SOURCE_FIELDS = {
   'workflow-topology-summary': ['label', 'value'],
   'packaged-workflows': ['package', 'package-name', 'repository', 'workflow', 'workflow-name', 'workflow-role', 'rollout-mode', 'workflow-active', 'runs', 'aic', 'package-link', 'repository-link', 'workflow-link'],
   'standalone-workflows': ['repository', 'workflow', 'workflow-name', 'rollout-mode', 'workflow-active', 'runs', 'aic', 'repository-link', 'workflow-link'],
-  'work-items': ['work-item-id', 'objective', 'organization', 'repository', 'scope', 'domain', 'work-type', 'lifecycle-state', 'phase', 'reason', 'reason-evidence-class', 'next-action', 'next-actor', 'waiting-on', 'waiting-since', 'owner', 'consequence-tier', 'verification-state', 'outcome-state', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
+  'work-items': ['work-item-id', 'name', 'objective', 'organization', 'repository', 'workflow', 'workflow-name', 'workflow-icon', 'scope', 'domain', 'work-type', 'lifecycle-state', 'phase', 'reason', 'reason-evidence-class', 'next-action', 'next-actor', 'waiting-on', 'waiting-since', 'owner', 'consequence-tier', 'verification-state', 'outcome-state', 'started-at', 'ended-at', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'attention-signals': ['attention-signal-id', 'signal-type', 'work-item-id', 'objective', 'scope', 'reason', 'action', 'expected-actor', 'age-seconds', 'consequence-tier', 'priority', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'agent-assignments': ['assignment-id', 'agent-id', 'agent-name', 'agent-state', 'work-item-id', 'objective', 'assignment-state', 'handoff-state', 'dependency-state', 'conflict-state', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'evidence-records': ['evidence-id', 'evidence-class', 'evidence-kind', 'work-item-id', 'objective', 'claim', 'verification-state', 'provenance-state', 'source-revision', 'observed-at', 'evidence-link', 'repository-link', 'run-link']
