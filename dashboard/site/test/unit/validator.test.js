@@ -1358,6 +1358,10 @@ dashboard:
     const chartResult = validateDashboardDocument(chart);
     expect(chartResult.ok).toBe(false);
     if (!chartResult.ok) {
+      expect(chartResult.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E004',
+        path: '$.dashboard.pages[0].views[0].views'
+      }));
       expect(chartResult.errors).not.toContainEqual(expect.objectContaining({
         code: 'DLS-E014',
         path: '$.dashboard.pages[0].views[0].views'
