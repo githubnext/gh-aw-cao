@@ -30,21 +30,27 @@ async function telemetry(phase, name, outcome) {
 
 export async function collectActivity() {
   let failed = false;
-  for (const [name, collector] of [
+  const collectors = [
     ["aic-usage", collectAicUsage],
     ["operational-values", collectOperationalValues],
     ["dashboard-records", writeDashboardRecords],
-  ]) {
+  ];
+  log.info`Running ${collectors.length} activity collectors: ${collectors.map(([name]) => name).join(", ")}`;
+  for (const [name, collector] of collectors) {
+    log.info`Starting ${name} collector`;
     await telemetry("before", `collect-${name}`);
+    const started = Date.now();
     try {
       await collector();
       await telemetry("after", `collect-${name}`, "success");
+      log.info`Finished ${name} collector in ${Date.now() - started}ms`;
     } catch (error) {
       failed = true;
       await telemetry("after", `collect-${name}`, "failure");
-      log.error`${name} collection failed: ${error.stack || error.message || error}`;
+      log.error`${name} collection failed after ${Date.now() - started}ms: ${error.stack || error.message || error}`;
     }
   }
+  log.info`Activity collection complete; ${failed ? "one or more collectors failed" : "all collectors succeeded"}`;
   if (failed) throw new Error("One or more activity collectors failed");
 }
 
