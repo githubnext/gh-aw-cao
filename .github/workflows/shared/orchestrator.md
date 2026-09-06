@@ -44,17 +44,17 @@ post-steps:
               ? 'noop'
               : 'empty';
 
-        await otlp.logSpan('central-agentic-ops.dispatcher', {
-          'central_agentic_ops.dispatcher.package': String(precompute.package || precompute.bundle || 'unknown'),
-          'central_agentic_ops.dispatcher.status': status,
-          'central_agentic_ops.dispatcher.enabled': precompute.enabled === true,
-          'central_agentic_ops.dispatcher.safe_output_mode': effectiveMode,
-          'central_agentic_ops.dispatcher.candidate_count': Array.isArray(precompute.candidate_repositories) ? precompute.candidate_repositories.length : 0,
-          'central_agentic_ops.dispatcher.target_limit': count(precompute.effective_max_repos),
-          'central_agentic_ops.dispatcher.dispatch_requested_count': dispatches.length,
-          'central_agentic_ops.dispatcher.target_count': targetCount,
-          'central_agentic_ops.dispatcher.workflow_count': workflowCount,
-          'central_agentic_ops.dispatcher.incomplete_count': incompleteCount,
+        await otlp.logSpan('central-agentic-ops.orchestrator', {
+          'central_agentic_ops.orchestrator.package': String(precompute.package || precompute.bundle || 'unknown'),
+          'central_agentic_ops.orchestrator.status': status,
+          'central_agentic_ops.orchestrator.enabled': precompute.enabled === true,
+          'central_agentic_ops.orchestrator.safe_output_mode': effectiveMode,
+          'central_agentic_ops.orchestrator.candidate_count': Array.isArray(precompute.candidate_repositories) ? precompute.candidate_repositories.length : 0,
+          'central_agentic_ops.orchestrator.target_limit': count(precompute.effective_max_repos),
+          'central_agentic_ops.orchestrator.dispatch_requested_count': dispatches.length,
+          'central_agentic_ops.orchestrator.target_count': targetCount,
+          'central_agentic_ops.orchestrator.workflow_count': workflowCount,
+          'central_agentic_ops.orchestrator.incomplete_count': incompleteCount,
         }, {
           isError: incompleteCount > 0,
           errorMessage: incompleteCount > 0 ? 'orchestrator reported incomplete' : undefined,

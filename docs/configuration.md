@@ -160,7 +160,7 @@ Steering can refine evidence, priorities, and selection within resolved policy. 
 
 ## Optional Observability
 
-The dispatcher span is built into `shared/orchestrator.md`; exporter configuration determines where gh-aw sends it. Set the `GH_AW_DEFAULT_OTLP_ENDPOINT` Actions variable and `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret at repository, organization, or enterprise scope. Export is disabled when the endpoint or matching headers are absent.
+The orchestrator span is built into `shared/orchestrator.md`; exporter configuration determines where gh-aw sends it. Set the `GH_AW_DEFAULT_OTLP_ENDPOINT` Actions variable and `GH_AW_DEFAULT_OTLP_HEADERS` Actions secret at repository, organization, or enterprise scope. Export is disabled when the endpoint or matching headers are absent.
 
 ```bash
 CONTROL_REPO="acme/central-agentic-ops"
@@ -172,7 +172,7 @@ gh secret set GH_AW_DEFAULT_OTLP_HEADERS --repo "$CONTROL_REPO"
 
 At the secret prompt, enter the complete exporter header string, such as `Authorization=Bearer <token>` or `Authorization=Basic <credentials>,X-Scope-OrgID=<tenant>`.
 
-The optional `shared/sentry.md`, `shared/grafana.md`, and `shared/datadog.md` imports configure exporters only; they do not create the dispatcher span. Their headers are:
+The optional `shared/sentry.md`, `shared/grafana.md`, and `shared/datadog.md` imports configure exporters only; they do not create the orchestrator span. Their headers are:
 
 | Provider | Header |
 | --- | --- |

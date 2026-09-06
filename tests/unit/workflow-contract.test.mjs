@@ -1259,15 +1259,15 @@ test("orchestrators emit dedicated bounded telemetry", () => {
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane orchestrator telemetry/);
   assert.match(control, /if: \$\{\{ always\(\) \}\}/);
-  assert.match(control, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
-  assert.match(control, /central_agentic_ops\.dispatcher\.dispatch_requested_count/);
-  assert.match(control, /central_agentic_ops\.dispatcher\.target_count/);
-  assert.match(control, /central_agentic_ops\.dispatcher\.workflow_count/);
-  assert.match(control, /central_agentic_ops\.dispatcher\.incomplete_count/);
+  assert.match(control, /otlp\.logSpan\('central-agentic-ops\.orchestrator'/);
+  assert.match(control, /central_agentic_ops\.orchestrator\.dispatch_requested_count/);
+  assert.match(control, /central_agentic_ops\.orchestrator\.target_count/);
+  assert.match(control, /central_agentic_ops\.orchestrator\.workflow_count/);
+  assert.match(control, /central_agentic_ops\.orchestrator\.incomplete_count/);
   assert.match(control, /isError: incompleteCount > 0/);
-  assert.doesNotMatch(control, /central_agentic_ops\.dispatcher\.(target_repo|workflow_name|control_plane_run_url)/);
+  assert.doesNotMatch(control, /central_agentic_ops\.orchestrator\.(target_repo|workflow_name|control_plane_run_url)/);
   assert.match(configuration, /`GH_AW_DEFAULT_OTLP_ENDPOINT` Actions variable/);
-  assert.match(configuration, /configure exporters only; they do not create the dispatcher span/);
+  assert.match(configuration, /configure exporters only; they do not create the orchestrator span/);
   assert.match(configuration, /gh variable set GH_AW_DEFAULT_OTLP_ENDPOINT/);
   assert.match(configuration, /gh secret set GH_AW_DEFAULT_OTLP_HEADERS/);
   assert.match(configuration, /Authorization=Bearer <token>/);
@@ -1275,9 +1275,9 @@ test("orchestrators emit dedicated bounded telemetry", () => {
   assert.match(configuration, /`Authorization: <GH_AW_OTEL_GRAFANA_AUTHORIZATION>`/);
   assert.match(configuration, /`DD-API-KEY: <GH_AW_OTEL_DATADOG_API_KEY or DD_API_KEY>`/);
   assert.match(configuration, /Installed Central Agentic Ops packages do not include these optional provider files by default/);
-  assert.match(operations, /`central-agentic-ops\.dispatcher\.run` span/);
+  assert.match(operations, /`central-agentic-ops\.orchestrator\.run` span/);
   assert.match(operations, /`requested` status records dispatch intent before safe-output handlers call the GitHub API/);
-  assert.match(packageSkill, /inherits the dedicated `central-agentic-ops\.dispatcher\.run` OTEL span from `shared\/orchestrator\.md`/);
+  assert.match(packageSkill, /inherits the dedicated `central-agentic-ops\.orchestrator\.run` OTEL span from `shared\/orchestrator\.md`/);
   assert.match(packageSkill, /configure OTLP exporters only/);
 });
 
@@ -2527,7 +2527,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       const agentArtifact = generated.indexOf("- name: Upload agent artifacts");
       assert.ok(outputPlaceholder < orchestratorTelemetry, `${name} output placeholder must precede orchestrator telemetry`);
       assert.ok(orchestratorTelemetry < agentArtifact, `${name} orchestrator telemetry must precede agent artifact upload`);
-      assert.match(generated, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
+      assert.match(generated, /otlp\.logSpan\('central-agentic-ops\.orchestrator'/);
     }
 
     const workerGates = new Map([
