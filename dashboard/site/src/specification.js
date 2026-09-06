@@ -53,6 +53,7 @@ export const VIEW_ELEMENT_VALUES = [
   'package-reports',
   'package-route',
   'workflow-route',
+  'workflow-route-page',
   'outcome-detail',
   'outcome-detail-section',
   'configuration-policy',

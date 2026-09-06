@@ -2439,7 +2439,7 @@
               ]
             },
             "mark": "element",
-            "element": "workflow-route",
+            "element": "workflow-route-page",
             "config": {
               "body": "reports"
             },
@@ -2540,7 +2540,7 @@
               ]
             },
             "mark": "element",
-            "element": "workflow-route",
+            "element": "workflow-route-page",
             "config": {
               "body": "runs"
             },
@@ -2735,7 +2735,7 @@
               ]
             },
             "mark": "element",
-            "element": "workflow-route",
+            "element": "workflow-route-page",
             "config": {
               "body": "insights"
             },
