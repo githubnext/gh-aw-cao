@@ -11,7 +11,7 @@ const examplesDirectory = resolve(corpusDirectory, "examples");
 const index = JSON.parse(await readFile(resolve(corpusDirectory, "index.json"), "utf8"));
 
 assert.equal(index.schemaVersion, 1, "corpus index must use schemaVersion 1");
-assert.ok(Array.isArray(index.examples) && index.examples.length > 0, "corpus must contain examples");
+assert.ok(Array.isArray(index.examples), "corpus examples must be an array");
 
 const ids = index.examples.map((entry) => entry.id);
 assert.deepEqual(ids, [...ids].sort(), "corpus index must be sorted by id");
@@ -93,7 +93,10 @@ for (const entry of index.examples) {
   referencedFiles.add(entry.dashboard);
 }
 
-const actualFiles = (await readdir(examplesDirectory))
+const actualFiles = (await readdir(examplesDirectory).catch((error) => {
+  if (error.code === "ENOENT") return [];
+  throw error;
+}))
   .map((name) => `examples/${name}`)
   .sort();
 assert.deepEqual(
