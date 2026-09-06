@@ -6207,9 +6207,9 @@
           },
           {
             "id": "data-health-sources",
+            "disclosure": "supplemental",
             "title": "Cached source shape",
             "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-sources"
             },
