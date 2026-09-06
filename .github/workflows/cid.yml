@@ -150,7 +150,7 @@ jobs:
               return
             }
             if (!summary || !Array.isArray(summary.results)) {
-              core.warning('Lighthouse summary has an unexpected shape; skipping PR feedback.')
+              core.warning('Lighthouse summary has an unexpected shape; skipping PR feedback')
               return
             }
             const degraded = summary.results.filter((result) => result.failures.length > 0)
