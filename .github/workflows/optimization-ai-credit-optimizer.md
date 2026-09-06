@@ -131,7 +131,7 @@ steps:
           || Date.parse(snapshot.generatedAt) > now + 5 * 60 * 1000
           || snapshot.runHealth?.available !== true
           || snapshot.runHealth?.complete !== true
-          || snapshot.runHealth?.windowHours < 168
+          || snapshot.runHealth?.windowHours <= 168
           || !Array.isArray(snapshot.workflows)) throw new Error("activity snapshot is incomplete");
         const windowStart = now - 7 * 24 * 60 * 60 * 1000;
         runIds = snapshot.workflows

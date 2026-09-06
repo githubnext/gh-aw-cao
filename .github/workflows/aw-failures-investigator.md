@@ -291,7 +291,7 @@ steps:
               .flatMap((workflow) => (workflow.runHealth?.runRecords || []).map((run) => ({ workflow, run })))
               .filter(({ workflow, run }) => isAgenticWorkflowPath(workflow.path)
                 && isFailureConclusion(run?.conclusion)
-                && String(run.createdAt || '') >= createdSince)
+                && Date.parse(run?.createdAt) >= Date.parse(createdSince))
               .map(({ workflow, run }) => ({
                 run_id: run.runId,
                 workflow_name: workflow.name,
