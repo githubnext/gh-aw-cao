@@ -2045,6 +2045,9 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /WCAG 2\.2 Level AA/);
   assert.match(source, /playwright-cli` is a pre-installed CLI binary already on `PATH`/);
   assert.match(source, /never call `missing_tool` for it based on assumption alone/);
+  assert.match(source, /node_modules\/\.bin\/playwright install chromium/);
+  assert.match(source, /Node Playwright package launch preflight/);
+  assert.match(source, /preflight-node\.log/);
   assert.match(source, /colorScheme: "light"/);
   assert.match(source, /colorScheme: "dark"/);
   assert.match(source, /prefers-reduced-motion/);
@@ -2056,7 +2059,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /select the single most important action with the highest expected return on investment/);
   assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /<details><summary><b>All Findings and Evidence<\/b><\/summary>/);
-  assert.equal(source.split(liveGuard).length - 1, 5);
+  assert.equal(source.split(liveGuard).length - 1, 7);
   assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
 });
 
