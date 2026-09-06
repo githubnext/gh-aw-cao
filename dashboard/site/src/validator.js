@@ -1595,31 +1595,31 @@ function validateView(view, viewNode, path, viewIds, errors) {
         ));
       }
       if (view.element === 'experiments-evaluation' && view.config.sections !== undefined) {
-       if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
-         errors.push(createError(
-           ERROR_CODES.missingOrInvalidRequiredField,
-           'experiments-evaluation config.sections must be a non-empty list.',
-           `${path}.config.sections`
-         ));
-       } else {
-         for (let index = 0; index < view.config.sections.length; index += 1) {
-           const section = view.config.sections[index];
-           validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           if (typeof section === 'string' && !EXPERIMENTS_VIEW_BODY_VALUES.includes(section)) {
-             errors.push(createError(
-               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-               'experiments-evaluation config.sections must use canonical experiment view section values.',
-               `${path}.config.sections[${index}]`
-             ));
-           }
-         }
-       }
+        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'experiments-evaluation config.sections must be a non-empty list.',
+            `${path}.config.sections`
+          ));
+        } else {
+          for (let index = 0; index < view.config.sections.length; index += 1) {
+            const section = view.config.sections[index];
+            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
+            if (typeof section === 'string' && !EXPERIMENTS_VIEW_BODY_VALUES.includes(section)) {
+              errors.push(createError(
+                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+                'experiments-evaluation config.sections must use canonical experiment view section values.',
+                `${path}.config.sections[${index}]`
+              ));
+            }
+          }
+        }
       } else if (view.config.sections !== undefined) {
-       errors.push(createError(
-         ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the experiments-evaluation element.',
-         `${path}.config.sections`
-       ));
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'config.sections is supported only for the experiments-evaluation element.',
+          `${path}.config.sections`
+        ));
       }
     }
   }
