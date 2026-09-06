@@ -100,12 +100,14 @@ export async function collectOperationalValues() {
         const key = `${workflow.repository}:${runId}`;
         if (seen.has(key)) continue;
         seen.add(key);
+        const run = runRecords.get(Number(runId)) || null;
         selectedRuns.push({
           repository: workflow.repository,
           runId: Number(runId),
           workflowId,
           workflowPath: workflow.path,
-          run: runRecords.get(Number(runId)) || null,
+          runAttempt: run?.runAttempt || 1,
+          run,
         });
       }
     }
@@ -129,8 +131,12 @@ export async function collectOperationalValues() {
     const runsById = new Map(logs.runs
       .map((run) => [logsRunId(run), run])
       .filter(([runId]) => Number.isFinite(runId)));
+    // Only skip re-processing a run when the cache already holds a non-placeholder
+    // record for it (i.e. one with an evaluatorDigest). A prior "unavailable"
+    // placeholder (no evaluatorDigest yet) must not block a later logs snapshot
+    // from filling in the real observation for that same run.
     const cachedRunKeys = new Set(cachedRecords
-      .filter((record) => record.status !== "unavailable")
+      .filter((record) => record.evaluatorDigest)
       .map((record) => operationalValueRunIdentity(record))
       .filter(Boolean));
     const currentRecords = [];
