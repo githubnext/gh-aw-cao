@@ -259,6 +259,7 @@ main.dashboard-prototype { width: 100%; flex: 1; padding: 0 24px 40px; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 12px; padding: 0; list-style: none; color: var(--muted); font-size: .75rem; }
 .chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; }
+.chart-legend-scatter i.chart-grid-key { border-color: var(--border); border-top-style: dashed; }
 .chart-legend-bar i, .chart-legend-pie i { height: 10px; border-top-width: 0; border-radius: 999px; background: currentColor; }
 .chart-legend-pie strong { color: var(--fg); font-variant-numeric: tabular-nums; }
 .chart-legend-pie small { color: var(--muted); }
