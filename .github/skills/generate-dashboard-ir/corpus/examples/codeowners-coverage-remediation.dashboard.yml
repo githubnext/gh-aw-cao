@@ -34,7 +34,7 @@ dashboard:
               field: run-link
         - id: actionable-findings
           title: Sensitive-path ownership gaps
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: findings
             filters:
@@ -60,7 +60,7 @@ dashboard:
               field: pull-request-link
         - id: accepted-evidence
           title: Accepted ownership-restoration evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: outcomes
             filters:
@@ -85,7 +85,7 @@ dashboard:
               field: pull-request-link
         - id: value-evidence
           title: Ownership remediation attainment evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: operational-values
             filters:

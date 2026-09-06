@@ -713,6 +713,8 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-035:** `locked`, when present, **MUST** be Boolean. When `true`, an agent evolving the dashboard **SHOULD NOT** modify the view except to correct bugs. A presenter **MUST** treat `locked` as inert authoring metadata and **MUST NOT** let it alter presentation, accessibility, data processing, or other view semantics.
 - **DLS-VIEW-036:** A `table` view **MAY** declare `tree` with distinct canonical `id-field` and `parent-field` values declared by its selected source. A tree table **MUST** use `controls: static`. Its presenter **MUST** order every available parent before its children, expose hierarchy depth in an accessible tree grid, and indent the first encoded column by depth. A row with an empty or unavailable parent **MUST** be treated as a root; a cycle **MUST NOT** prevent any row from rendering.
 - **DLS-VIEW-037:** A presenter **MAY** cluster a dense scatter chart before rendering, provided clustering preserves every color series when the rendered-point budget permits and caps rendered points at a documented implementation limit. Clustering **MUST** run outside the main browser thread when workers are available. While clustering is pending, the chart **MUST** expose visible progress with `status` semantics; each rendered cluster **MUST** expose its observation count in its accessible name.
+- **DLS-VIEW-038:** Views are top-level graphical boxes and **MUST NOT** contain nested views. SVG content rendered by a `chart` view is excluded from this graphical nesting rule.
+- **DLS-VIEW-039:** A page **MUST NOT** expose more than one `table` view initially. Every additional table **MUST** use `disclosure: supplemental`.
 
 ---
 

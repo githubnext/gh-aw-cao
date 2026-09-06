@@ -1367,7 +1367,7 @@
             "controls": "interactive",
             "empty-message": "No observed firewall traffic is available for this selection.",
             "layout": "full",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "encoding": {
               "columns": [
                 {
@@ -1969,6 +1969,7 @@
             },
             {
               "id": "organizations-repositories-source",
+            "disclosure": "supplemental",
               "data": {
                 "source": "repositories"
               },
@@ -3546,6 +3547,7 @@
             },
             {
               "id": "standalone-workflows",
+            "disclosure": "supplemental",
               "title": "Repository-owned workflows",
               "description": "Standalone workflows run in their owning repositories and are not part of a central operation package.",
               "data": {
@@ -5484,6 +5486,7 @@
             },
             {
               "id": "engine-usage-table",
+            "disclosure": "supplemental",
               "title": "Agentic engines, versions, and totals",
               "data": {
                 "source": "engine-usage-summary",
@@ -5785,6 +5788,7 @@
           },
           {
             "id": "operational-value-by-workflow",
+            "disclosure": "supplemental",
             "title": "Comparable observations",
             "data": {
               "source": "value-workflows"
@@ -5835,6 +5839,7 @@
           },
           {
             "id": "operational-value-ledger",
+            "disclosure": "supplemental",
             "title": "Collected observations",
             "data": {
               "source": "grader-observations"
@@ -5896,6 +5901,7 @@
           },
           {
             "id": "experiment-evidence-boundary",
+            "disclosure": "supplemental",
             "title": "Experiment comparisons unavailable",
             "description": "This answers whether observed outcomes support a reliable experiment comparison; partial AI Credit telemetry is allocation evidence, not complete spend or ROI. The report does not retain authoritative experiment definitions, variant assignments, or assignment-to-run links. It therefore does not infer control or treatment groups from workflow names, timestamps, models, or outcomes.",
             "mark": "callout",
@@ -6146,6 +6152,7 @@
           },
           {
             "id": "data-health-domains",
+            "disclosure": "supplemental",
             "title": "Dashboard domain confidence",
             "data": { "source": "data-health-domains" },
             "mark": "table",
@@ -6163,6 +6170,7 @@
           },
           {
             "id": "data-health-coverage",
+            "disclosure": "supplemental",
             "title": "Scope and evidence coverage",
             "data": { "source": "data-health-coverage" },
             "mark": "table",
@@ -6393,6 +6401,7 @@
           },
           {
             "id": "coverage-diagnostics",
+            "disclosure": "supplemental",
             "title": "Coverage diagnostics",
             "description": "Collection gaps consume the same evidence used by Data Health confidence.",
             "data": {
@@ -6924,6 +6933,7 @@
           },
           {
             "id": "home-outcomes",
+            "disclosure": "supplemental",
             "title": "Outcomes",
             "description": "Recent retained outcomes remain distinct from runtime success and operational value.",
             "data": {

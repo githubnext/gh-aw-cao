@@ -34,7 +34,7 @@ dashboard:
               field: run-link
         - id: actionable-incidents
           title: Actionable capacity incidents
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: findings
             filters:
@@ -60,7 +60,7 @@ dashboard:
               field: issue-link
         - id: accepted-evidence
           title: Accepted remediation, recovery, or dismissal evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: outcomes
             filters:
@@ -85,7 +85,7 @@ dashboard:
               field: issue-link
         - id: value-evidence
           title: Runner-capacity recovery attainment evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: operational-values
             filters:

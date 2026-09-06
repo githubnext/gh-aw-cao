@@ -34,7 +34,7 @@ dashboard:
               field: run-link
         - id: actionable-findings
           title: Novel attributable code-scanning regressions
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: findings
             filters:
@@ -59,7 +59,7 @@ dashboard:
               field: issue-link
         - id: accepted-evidence
           title: Accepted remediation or dismissal evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: outcomes
             filters:
@@ -84,7 +84,7 @@ dashboard:
               field: external-link
         - id: value-evidence
           title: Regression remediation attainment evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: operational-values
             filters:

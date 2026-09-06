@@ -92,7 +92,7 @@
             "id": "dependabot-attainment",
             "title": "Validated resolution evidence",
             "description": "Each opportunity is an assigned dependency pull request; validated merge evidence matures after 14 days.",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "data": {
               "source": "operational-values",
               "filters": {

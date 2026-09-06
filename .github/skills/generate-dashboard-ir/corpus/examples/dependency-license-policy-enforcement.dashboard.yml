@@ -34,7 +34,7 @@ dashboard:
               field: run-link
         - id: actionable-findings
           title: Actionable license findings
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: findings
             filters:
@@ -57,7 +57,7 @@ dashboard:
               field: issue-link
         - id: accepted-evidence
           title: Accepted license remediation or exception evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: outcomes
             filters:
@@ -82,7 +82,7 @@ dashboard:
               field: issue-link
         - id: value-evidence
           title: License-policy remediation attainment evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: operational-values
             filters:

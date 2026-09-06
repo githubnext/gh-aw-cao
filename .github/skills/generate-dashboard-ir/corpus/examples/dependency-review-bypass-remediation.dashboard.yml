@@ -34,7 +34,7 @@ dashboard:
               field: run-link
         - id: actionable-findings
           title: Merged dependency changes lacking accepted review
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: findings
             filters:
@@ -57,7 +57,7 @@ dashboard:
               field: pull-request-link
         - id: accepted-evidence
           title: Accepted follow-up review or dismissal evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: outcomes
             filters:
@@ -82,7 +82,7 @@ dashboard:
               field: pull-request-link
         - id: value-evidence
           title: Dependency-review remediation attainment evidence
-          disclosure: essential
+          disclosure: supplemental
           data:
             source: operational-values
             filters:
