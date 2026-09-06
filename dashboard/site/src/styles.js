@@ -890,7 +890,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section { padding: 0; border: 0; background: transparent; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header h3 { margin: 2px 0 0; font-size: 1.25rem; }
-:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page) .layout-section-header > strong { flex: none; color: var(--muted); font-size: .75rem; }
+:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header > strong { flex: none; color: var(--muted); font-size: .75rem; }
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .page-section > h4,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-source,
 :is(.runtime-page, .security-page, .firewall-page, .value-page) .layout-section .view-metadata { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
