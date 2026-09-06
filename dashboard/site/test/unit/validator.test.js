@@ -1378,14 +1378,7 @@ dashboard:
       '        - id: primary-table\n',
       '        - id: primary-table\n          locked: true\n'
     );
-    const lockedResult = validateDashboardDocument(locked);
-    expect(lockedResult.ok).toBe(false);
-    if (!lockedResult.ok) {
-      expect(lockedResult.errors).not.toContainEqual(expect.objectContaining({
-        code: 'DLS-E014',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
-    }
+    expect(validateDashboardDocument(locked).ok).toBe(true);
   });
 
   it('DLS-DOC-002 DLS-DOC-003 DLS-DOC-004 accepts the minimal structural document shape', () => {

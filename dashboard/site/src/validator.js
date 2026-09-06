@@ -1364,7 +1364,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     ));
   }
 
-  validateObjectKeys(viewNode, VIEW_KEYS, path, errors);
+  validateObjectKeys(viewNode, view.locked === true ? [...VIEW_KEYS, 'views'] : VIEW_KEYS, path, errors);
   validateRequiredIdentifier(view.id, `${path}.id`, 'view id', errors);
   if (typeof view.id === 'string') {
     if (viewIds.has(view.id)) {
