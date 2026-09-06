@@ -7060,8 +7060,8 @@
           },
           {
             "id": "work-project-board",
-            "title": "Board / Tasks / Roadmap",
-            "description": "GitHub Projects-style work planning view of workflows with avatars, owners, repositories, and runtime windows.",
+            "title": "Work layouts",
+            "description": "GitHub Projects-style work planning slices declaratively composed from workflows with avatars, owners, repositories, and runtime windows.",
             "data": {
               "sources": [
                 "work-items"
@@ -7069,6 +7069,13 @@
             },
             "mark": "element",
             "element": "work-project-view",
+            "config": {
+              "sections": [
+                "board",
+                "tasks",
+                "roadmap"
+              ]
+            },
             "layout": "full"
           }
         ]

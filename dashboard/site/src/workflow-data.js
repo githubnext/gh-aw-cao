@@ -2,6 +2,8 @@
  * Derived workflow topology sources for generic JSON-selected views.
  */
 
+import { titleCase } from './components/count-formatters.js';
+
 /** @typedef {Record<string, unknown>} Row */
 const AIC_TO_USD = 0.01;
 
@@ -501,15 +503,6 @@ function qualifiedRepository(row) {
   if (repository.includes('/')) return repository;
   const organization = text(row.organization);
   return organization ? `${organization}/${repository}` : repository;
-}
-
-/** @param {string} value */
-function titleCase(value) {
-  return value
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
-    .join(' ');
 }
 
 /** @param {unknown} value */

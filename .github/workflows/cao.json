@@ -139,6 +139,9 @@
           "docs-build-time-investigator": {
             "workflow": "self-care-docs-build-time-investigator"
           },
+          "glossary": {
+            "workflow": "self-care-glossary"
+          },
           "open-source-failures": {
             "workflow": "self-care-open-source-failures"
           },

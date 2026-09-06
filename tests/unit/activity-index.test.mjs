@@ -43,7 +43,7 @@ graders:
       database_id: 42,
       workflow_path: ".github/workflows/sample.lock.yml",
       run_number: 3,
-      run_attempt: 1,
+      runAttempt: 2,
       event: "workflow_dispatch",
       conclusion: "success",
       status: "completed",
@@ -80,6 +80,7 @@ graders:
     assert.equal(result.workflows[0].ghAwVersion, "v0.88.4");
     assert.equal(result.workflows[0].runHealth.successful, 1);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runId, 42);
+    assert.equal(result.workflows[0].runHealth.runRecords[0].runAttempt, 2);
     assert.equal(result.runHealth.usageArtifact.complete, true);
   } finally {
     await rm(root, { recursive: true, force: true });

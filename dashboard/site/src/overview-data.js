@@ -3,7 +3,7 @@
  */
 
 import { formatNumber, formatPercent } from './view-formatters.js';
-import { pluralSuffix } from './components/count-formatters.js';
+import { pluralSuffix, titleCase } from './components/count-formatters.js';
 import { classifyUtilizationRatio, isApprovalConclusion, isFailureConclusion } from './components/run-classification.js';
 import { buildAttentionItems } from './components/attention-rules.js';
 
@@ -1643,12 +1643,3 @@ function sourceWindowLabel(source) {
  * @param {number} value
  * @returns {string}
  */
-/**
- * @param {string} value
- * @returns {string}
- */
-function titleCase(value) {
-  return value
-    .replaceAll('-', ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
