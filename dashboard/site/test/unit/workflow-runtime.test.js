@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderWorkflowRuntime } from '../../src/components/workflow-runtime.js';
 import { createWorkflowRoutePageView } from '../../src/components/workflow-route-page-views.js';
+import { renderWorkflowRoutePage } from '../../src/components/workflow-route-page.js';
 import { renderWorkflowRouteView } from '../../src/components/workflow-route-view.js';
 
 const completeMetadata = {
@@ -295,15 +296,18 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });
 
-  it('uses the declarative route view id for workflow insights composition', () => {
-    const rendered = renderWorkflowRouteView({
+  it('keeps workflow-route-page navigation aligned with the configured page route', () => {
+    const rendered = renderWorkflowRoutePage({
       ...context(),
-      pageId: 'workflow-detail',
+      pageId: 'custom-workflow-page',
       elementConfig: { body: 'insights' }
     });
     selectWorkflow(rendered);
 
     expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights');
+    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.getAttribute('href')).toBe(
+      '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md'
+    );
     expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });
 });
