@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { formatClockDuration, formatNumber } from '../view-formatters.js';
-import { renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { renderDlRow, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -77,18 +77,13 @@ function renderAgentTile(agent) {
       h('p', { className: 'agent-marketplace-description' }, agent.description),
       h('div', { className: 'agent-marketplace-badges' }, ...badges),
       h('dl', { className: 'agent-marketplace-facts' },
-        fact('Total time run', formatClockDuration(agent.totalRuntimeSeconds)),
-        fact('Runs', formatNumber(agent.runCount)),
-        fact('Last observed', agent.lastObserved || 'Unknown'),
-        fact('Permissions', agent.permissions)
+        renderDlRow('Total time run', formatClockDuration(agent.totalRuntimeSeconds)),
+        renderDlRow('Runs', formatNumber(agent.runCount)),
+        renderDlRow('Last observed', agent.lastObserved || 'Unknown'),
+        renderDlRow('Permissions', agent.permissions)
       )
     )
   );
-}
-
-/** @param {string} label @param {string} value */
-function fact(label, value) {
-  return h('div', null, h('dt', null, label), h('dd', null, value));
 }
 
 /** @param {Record<string, unknown>} row */
