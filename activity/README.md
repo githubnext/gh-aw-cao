@@ -45,7 +45,7 @@ Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-
 | `repositoryCount` | integer | Repositories considered by the indexer. |
 | `organizationRepositories` | object | Reserved organization counts; values are `null` because the local index does not query repository inventory. |
 | `discovery` | object | Availability and completeness flags for workflow, manifest, and capability discovery. |
-| `runHealth` | object | Run-data availability, completeness, full or incremental refresh mode, refresh start, UTC window start, window hours, and fetched page count. |
+| `runHealth` | object | Run-data availability, completeness, the full-snapshot mode, refresh start, UTC window start, window hours, usage-artifact gaps, and fallback state. |
 | `bundles` | array | Discovered package manifests and their registered workflows. |
 | `standaloneWorkflows` | array | Workflows not attributed to a discovered package. |
 | `workflows` | array | Normalized deployed workflow records. |
