@@ -68,3 +68,30 @@ test("rejects missing theme counterparts and incorrect state colors", () => {
     assert.match(result.stderr, /must use #3fb950 in dark mode/);
   });
 });
+
+test("accepts top-level boxes and ignores the canvas background", () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-label="Flow" data-visual-kind="diagram" data-visual-id="flow">
+    <rect x="8" y="8" width="1184" height="544" fill="#ffffff"/>
+    <g data-node="first"><rect x="40" y="120" width="300" height="180"/></g>
+    <g data-node="second"><rect x="420" y="120" width="300" height="180"/></g>
+  </svg>`;
+
+  withFixtures({ "flow.svg": svg }, (paths) => {
+    const result = runChecker(paths);
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+test("rejects boxes nested inside other boxes", () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-label="Flow" data-visual-kind="diagram" data-visual-id="flow">
+    <g data-node="outer"><rect x="40" y="100" width="600" height="360"/></g>
+    <g data-node="inner"><rect x="80" y="160" width="240" height="120"/></g>
+  </svg>`;
+
+  withFixtures({ "flow.svg": svg }, (paths) => {
+    const result = runChecker(paths);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /is nested inside box/);
+    assert.match(result.stderr, /boxes must be top-level/);
+  });
+});

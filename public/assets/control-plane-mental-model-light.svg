@@ -21,7 +21,6 @@
   <path d="M250 260H302" fill="none" stroke="#0969da" stroke-width="3" marker-end="url(#arrow)"/>
 
   <g data-node="private-control-repository">
-    <rect x="320" y="120" width="560" height="320" rx="16" fill="#ffffff" stroke="#08872b" stroke-width="2" stroke-dasharray="8 6"/>
     <text x="352" y="158" font-family="Mona Sans, system-ui, sans-serif" font-size="18" font-weight="700" fill="#08872b">PRIVATE CONTROL REPOSITORY</text>
     <text x="352" y="185" font-family="Mona Sans, system-ui, sans-serif" font-size="16" fill="#232925">Policy, credentials, and workflow definitions stay central</text>
   </g>
@@ -49,7 +48,6 @@
   <path d="M880 296H922" fill="none" stroke="#0969da" stroke-width="3" marker-end="url(#arrow)"/>
 
   <g data-node="rollout-modes">
-    <rect x="940" y="160" width="220" height="264" rx="12" fill="#ffffff" stroke="#b6bfb8" stroke-width="2"/>
     <text x="1050" y="200" text-anchor="middle" font-family="Mona Sans, system-ui, sans-serif" font-size="18" font-weight="700" fill="#101411">Declared outputs</text>
     <rect x="972" y="254" width="156" height="44" rx="8" fill="#e4ebe6" stroke="#909692"/>
     <text x="1050" y="282" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#101411">review</text>

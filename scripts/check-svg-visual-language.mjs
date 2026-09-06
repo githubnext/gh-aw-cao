@@ -79,6 +79,64 @@ function referencedText(svg, id) {
   return match ? stripTags(match[2]) : "";
 }
 
+function numericAttribute(source, name, fallback = null) {
+  const value = attribute(source, name);
+  if (value === null) return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function nestedBoxViolations(svg, rootAttributes) {
+  const viewBox = (attribute(rootAttributes, "viewBox") || "")
+    .trim()
+    .split(/\s+/)
+    .map(Number);
+  const hasValidViewBox = viewBox.length === 4 && viewBox.every(Number.isFinite);
+  const [viewX, viewY, viewWidth, viewHeight] = hasValidViewBox ? viewBox : [];
+  const rectangles = [...svg.matchAll(/<rect\b([^>]*)>/gi)]
+    .map((match, index) => ({
+      index: index + 1,
+      x: numericAttribute(match[1], "x", 0),
+      y: numericAttribute(match[1], "y", 0),
+      width: numericAttribute(match[1], "width"),
+      height: numericAttribute(match[1], "height"),
+    }))
+    .filter(({ x, y, width, height }) =>
+      x !== null && y !== null && width !== null && height !== null && width > 0 && height > 0)
+    .filter(({ x, y, width, height }) => {
+      if (!hasValidViewBox || viewWidth <= 0 || viewHeight <= 0) return true;
+      const marginX = viewWidth * 0.02;
+      const marginY = viewHeight * 0.02;
+      return !(
+        x <= viewX + marginX
+        && y <= viewY + marginY
+        && x + width >= viewX + viewWidth - marginX
+        && y + height >= viewY + viewHeight - marginY
+      );
+    });
+
+  const violations = [];
+  for (const outer of rectangles) {
+    for (const inner of rectangles) {
+      if (outer === inner) continue;
+      const contained = inner.x >= outer.x
+        && inner.y >= outer.y
+        && inner.x + inner.width <= outer.x + outer.width
+        && inner.y + inner.height <= outer.y + outer.height;
+      const strictlyContained = contained && (
+        inner.x > outer.x
+        || inner.y > outer.y
+        || inner.x + inner.width < outer.x + outer.width
+        || inner.y + inner.height < outer.y + outer.height
+      );
+      if (strictlyContained) {
+        violations.push(`Box <rect> #${inner.index} is nested inside box <rect> #${outer.index}; boxes must be top-level.`);
+      }
+    }
+  }
+  return violations;
+}
+
 function checkSvg(svgPath) {
   const relativePath = path.relative(root, svgPath);
   const svg = fs.readFileSync(svgPath, "utf8");
@@ -92,6 +150,8 @@ function checkSvg(svgPath) {
   const isThemeVariant = /-(light|dark)\.svg$/i.test(relativePath);
   const requiresContract = Boolean(visualKind || visualId || isThemeVariant);
   if (!requiresContract) return violations;
+
+  violations.push(...nestedBoxViolations(svg, rootAttributes));
 
   if ((attribute(rootAttributes, "role") || "").toLowerCase() !== "img") {
     violations.push('Missing role="img" on the root <svg>.');
