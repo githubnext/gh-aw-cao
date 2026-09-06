@@ -22,6 +22,24 @@ describe('dashboard view transitions', () => {
     expect(update).toHaveBeenCalledOnce();
   });
 
+  it('swallows rejected ready/finished promises when a transition is skipped', async () => {
+    const update = vi.fn();
+    const startViewTransition = vi.fn((callback) => {
+      callback();
+      return {
+        ready: Promise.reject(new Error('Transition was skipped because there is a pending transition.')),
+        finished: Promise.reject(new Error('Transition was skipped because there is a pending transition.'))
+      };
+    });
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: startViewTransition
+    });
+
+    expect(() => updateWithViewTransition(document, update)).not.toThrow();
+    await new Promise((resolveTick) => setTimeout(resolveTick, 0));
+  });
+
   it('updates directly when the View Transition API is unavailable', () => {
     const update = vi.fn();
 

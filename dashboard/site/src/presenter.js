@@ -82,13 +82,20 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-col
  * @param {() => void} update
  */
 export function updateWithViewTransition(document, update) {
-  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => unknown }} */ (document);
+  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<void>, finished?: Promise<void> } }} */ (document);
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
   if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
     update();
     return;
   }
-  transitionDocument.startViewTransition(update);
+  const transition = transitionDocument.startViewTransition(update);
+  // Rapid successive navigations (e.g. quick hash changes) abort the previous
+  // transition, rejecting its `ready`/`finished` promises with "Transition was
+  // skipped" AbortErrors. That is expected here since `update()` already ran
+  // synchronously, so swallow the rejections instead of letting them surface
+  // as unhandled promise rejections.
+  transition?.ready?.catch(() => {});
+  transition?.finished?.catch(() => {});
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
