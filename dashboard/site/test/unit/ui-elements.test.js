@@ -507,6 +507,43 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.workflow-runtime-metrics')).not.toBeNull();
   });
 
+  it('renders workflow-route-page with declarative body selection', () => {
+    const rendered = renderUiElement('workflow-route-page', {
+      pageId: 'custom-workflow-page',
+      title: 'Workflow',
+      sourceNames: ['workflows', 'runs', 'usage', 'operational-values'],
+      routeParameter: 'workflow',
+      elementConfig: { body: 'insights' },
+      headingTag: 'h3',
+      contextDetails: [],
+      sources: {
+        workflows: {
+          source: 'workflows',
+          metadata,
+          rows: [{
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: '.github/workflows/sample.md',
+            'workflow-name': 'Sample workflow',
+            'workflow-role': 'standalone',
+            'workflow-active': 'true',
+            'rollout-mode': 'review'
+          }]
+        },
+        runs: { source: 'runs', metadata, rows: [] },
+        usage: { source: 'usage', metadata, rows: [] },
+        'operational-values': { source: 'operational-values', metadata, rows: [] }
+      }
+    });
+
+    rendered?.dispatchEvent(new CustomEvent('dashboard-route-change', {
+      detail: { parameter: 'workflow', value: 'githubnext/gh-aw-cao:.github/workflows/sample.md' }
+    }));
+
+    expect(rendered?.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Insights');
+    expect(rendered?.querySelector('.workflow-runtime-metrics')).not.toBeNull();
+  });
+
   it('renders workflow-route with declarative reports composition without page-specific logic', () => {
     const rendered = renderUiElement('workflow-route', {
       pageId: 'custom-workflow-reports-page',
