@@ -34,7 +34,8 @@ function logsRunId(run) {
 }
 
 function operationalValueResult(run) {
-  const matches = (run?.graders?.results || [])
+  const results = run?.graders?.results;
+  const matches = (Array.isArray(results) ? results : [])
     .filter((result) => result.id === "operational-value" && result.source === "operational-value");
   return matches.length === 1 ? matches[0] : null;
 }
@@ -75,8 +76,17 @@ export async function collectOperationalValues() {
 
     const generatedAt = new Date().toISOString();
     const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
-    const logs = JSON.parse(await readFile(logsPath, "utf8"));
-    if (!Array.isArray(logs.runs)) throw new Error("unsupported gh-aw logs JSON");
+    // A missing/unreadable/malformed logs snapshot must not fail the whole
+    // collector: an existing REPORT_VALUE_CACHE can still drive output
+    // completeness for prior observations, so degrade to an empty snapshot.
+    let logs = { runs: [] };
+    try {
+      const parsed = JSON.parse(await readFile(logsPath, "utf8"));
+      if (!Array.isArray(parsed.runs)) throw new Error("unsupported gh-aw logs JSON");
+      logs = parsed;
+    } catch (error) {
+      log.warning`Treating gh-aw logs JSON at ${logsPath} as empty: ${error.message}`;
+    }
     log.info`Processing ${logs.runs.length} cached gh-aw log records from ${logsPath}; cache output=${cachePath || "disabled"}`;
 
     const selectedRuns = [];
