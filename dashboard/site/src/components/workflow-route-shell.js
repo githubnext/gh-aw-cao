@@ -8,6 +8,7 @@ import { renderWorkflowIdentity } from './workflow-identity.js';
 import { createRoutePageShell } from './route-page-shell.js';
 import { rowsFor } from './source-rows.js';
 import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
+import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js';
 
 /**
  * @typedef {{
@@ -105,10 +106,26 @@ function workflowTabs(currentTab, routeValue, _displayName) {
   if (!route) return [];
   const workflowQuery = `?workflow=${encodeURIComponent(workflowRouteValue(route.repository, route.workflow))}`;
   return [
-    { id: 'insights', label: 'Insights', icon: 'graph', href: `#page-workflow-runtime${workflowQuery}` },
-    { id: 'reports', label: 'Reports', icon: 'issue', href: `#page-workflow-detail${workflowQuery}` },
-    { id: 'runs', label: 'Runs', icon: 'play', href: `#page-workflow-runs${workflowQuery}` }
+    workflowTab('insights', 'Insights', 'graph', workflowQuery),
+    workflowTab('reports', 'Reports', 'issue', workflowQuery),
+    workflowTab('runs', 'Runs', 'play', workflowQuery)
   ];
+}
+
+/**
+ * @param {'insights'|'reports'|'runs'} pageId
+ * @param {string} label
+ * @param {string} icon
+ * @param {string} workflowQuery
+ * @returns {{ id: string, label: string, icon: string, href: string }}
+ */
+function workflowTab(pageId, label, icon, workflowQuery) {
+  return {
+    id: pageId,
+    label,
+    icon,
+    href: `#page-${workflowRoutePageConfigForBody(pageId).pageId}${workflowQuery}`
+  };
 }
 
 /**
