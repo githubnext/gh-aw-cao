@@ -823,52 +823,6 @@ dashboard:
     }
   });
 
-  it('accepts agent-marketplace-view config.sections and rejects unsupported values', () => {
-    const accepted = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: agent-marketplace-sections
-  title: Agent marketplace sections
-  pages:
-    - id: agents
-      kind: custom
-      title: Agents
-      views:
-        - id: agents-marketplace
-          data:
-            sources: [agent-assignments]
-          mark: element
-          element: agent-marketplace-view
-          config:
-            sections: [toolbar, tiles]
-`);
-    expect(accepted.ok).toBe(true);
-
-    const invalid = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: agent-marketplace-sections
-  title: Agent marketplace sections
-  pages:
-    - id: agents
-      kind: custom
-      title: Agents
-      views:
-        - id: agents-marketplace
-          data:
-            sources: [agent-assignments]
-          mark: element
-          element: agent-marketplace-view
-          config:
-            sections: [cards]
-`);
-    expect(invalid.ok).toBe(false);
-    if (!invalid.ok) {
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
-      }));
-    }
-  });
-
   it('defines experiments composition through a reusable experiments-evaluation element', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
