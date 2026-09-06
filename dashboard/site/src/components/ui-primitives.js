@@ -255,6 +255,19 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders the shared `<details><summary>label</summary>...body</details>`
+ * disclosure pattern used by evidence menus, raw-policy panels, and
+ * value-report evidence sections to hide secondary content behind a toggle.
+ * @param {string} className
+ * @param {string} summaryLabel
+ * @param {...Node} body
+ * @returns {HTMLElement}
+ */
+export function renderDisclosure(className, summaryLabel, ...body) {
+  return h('details', { className }, h('summary', null, summaryLabel), ...body);
+}
+
+/**
  * Renders the shared "`<ul>` of items, or a single fallback `<li>`" pattern
  * used by summary and provenance lists when there is no data to display.
  * @template T
