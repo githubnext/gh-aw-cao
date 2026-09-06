@@ -2,6 +2,8 @@
 
 This ledger records how the **operation workflow fleet** represents Regulation (EU) 2024/2847 requirements. `IMPLEMENTED` means a workflow capability exists; it is not a finding that any product, organization, or package is legally compliant.
 
+This is an RFC-style status document. The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119). Normative obligations, package capability, human-review conditions, and unavailable evidence are separate dimensions; `INCOMPLETE` means that verification is unfinished, not that the requirement is absent or satisfied.
+
 Allowed package-capability statuses: `IMPLEMENTED`, `PARTIAL`, `MISSING`, `NOT_APPLICABLE`, `HUMAN_REVIEW_REQUIRED`, `INCOMPLETE`. Record `HUMAN_REVIEW_REQUIRED` here only when whether the fleet needs a capability cannot be determined; when an implemented capability correctly gates a legal decision on human review, use `IMPLEMENTED` or `PARTIAL` and state the review condition under applicability.
 
 ## Completeness index
