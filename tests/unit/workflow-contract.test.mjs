@@ -2797,6 +2797,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
+  assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/aic-logs/);
   assert.match(aicUsage, /"--artifacts", "usage,agent,detection,evals,experiment,firewall,graders,mcp"/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
   assert.match(aicUsage, /"--start-date", `-\$\{FIREWALL_HORIZON_DAYS\}d`, "--cache-before", `-\$\{FIREWALL_HORIZON_DAYS\}d`/);

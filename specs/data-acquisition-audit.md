@@ -35,7 +35,7 @@ The inventory distinguishes:
 | Caller | Selection | Persistence | Observation |
 | --- | --- | --- | --- |
 | `.github/cao/src/control.mjs` (`applyMonthlyBudget`) | One month-to-date query for the orchestrator and each configured worker, up to 1,000 runs per workflow | None | Admission repeats the same package-wide usage scan on every orchestrator precompute when a monthly budget is enabled. Run IDs are deduplicated only after all workflow queries complete. |
-| `dashboard/report/aic-usage.mjs` | One multi-target call for the workflows and run counts already selected by `activity/index.mjs`; two-day window | Temporary output unless `REPORT_AIC_CACHE` is set | The activity workflow does not set `REPORT_AIC_CACHE`, so the 15-minute collector normally redownloads the two-day gh-aw log set. `--cache-before -2d` does not create a cross-run cache by itself. |
+| `dashboard/report/aic-usage.mjs` | One multi-target call for the workflows and run counts already selected by `activity/index.mjs`; thirty-day window | `$RUNNER_TEMP/cao-activity/aic-logs`, retained with the shared activity cache | The persistent output directory lets `gh aw logs` reuse its per-repository, per-workflow run-query watermarks and downloaded artifacts. `--cache-before -30d` bounds retained log data to the requested evidence horizon. |
 | `.github/workflows/optimization-ai-credit-auditor.md` | Target repository, two days, at most 100 runs; locally filtered to the preceding 24 hours | `/tmp` for the current run | Overlaps the dashboard usage window and the evaluator's later evidence window. A separate API call first reads the current run's creation time. |
 | `.github/workflows/optimization-ai-credit-optimizer.md` | Target repository, seven days, at most 50 runs | `/tmp` for the current run | Overlaps the auditor and dashboard collections. Monitoring workflows are filtered only after download. |
 | `.github/graders/optimization-ai-credit-auditor-operational-value.sh` | Evaluator-defined before/after window, up to 10,000 runs | Evaluator temporary directory | Re-fetches evidence rather than consuming the worker's predownload, which is necessary for maturation but duplicates historical portions of earlier scans. |
@@ -99,7 +99,7 @@ Administrative setup (`.github/cao/setup-github-apps.mjs`), release workflows, C
 | --- | --- | --- | --- |
 | `cao-activity-*` Actions cache | `.github/workflows/activity.yml` | Next activity run and dashboard builder | Complete collection snapshot; latest matching key across runs |
 | `deployed-workflows.json` incremental run index | `activity/index.mjs` | Activity collectors | Reuses complete run records with a one-hour overlap; other discovery data is refreshed |
-| gh-aw AIC output directory | `dashboard/report/aic-usage.mjs` | The same process | Normally temporary in the activity workflow |
+| gh-aw AIC output directory | `dashboard/report/aic-usage.mjs` | Later activity runs through `gh aw logs` | Persisted inside the shared activity cache; run-query state is isolated by repository and workflow and artifacts are retained for the thirty-day evidence horizon |
 | Operational-value observations and replay | `dashboard/report/operational-values.mjs` | Later activity runs and gh-aw grader reports | Persistent Actions cache |
 | `records.mjs` run map | `dashboard/report/records.mjs` | The same process | In-memory only |
 | gh-aw release list | `aw-maintenance-upgrade.md` | Later upgrade runs | 24-hour file cache restored by Actions cache |
@@ -108,7 +108,7 @@ Administrative setup (`.github/cao/setup-github-apps.mjs`), release workflows, C
 | Dashboard source document | Dashboard browser | Later page loads | IndexedDB keyed by the `sources.json` URL; stale data is displayed while live static data loads |
 | Dashboard data artifact | Dashboard build | Local server | Predownloaded once per local-server start; no local persistence contract |
 
-The activity snapshot is the intended shared collection boundary. The main gap is that gh-aw AIC logs are stored under a temporary directory while the snapshot persists only the derived `aic-usage.json`; graders and workers cannot reuse the retained raw log material.
+The activity snapshot is the intended shared collection boundary. Its gh-aw AIC log directory now persists query watermarks and raw artifacts alongside the derived `aic-usage.json`, allowing each refresh to stop at the newest previously collected run for each repository and workflow. Graders and workers still do not consume this retained raw material directly.
 
 ## 5. Duplicate work
 
