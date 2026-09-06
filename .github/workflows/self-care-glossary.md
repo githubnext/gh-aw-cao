@@ -56,6 +56,8 @@ imports:
       role: worker
       worker: glossary
 
+  - uses: shared/worker.md
+
 permissions:
   actions: read
   contents: read
