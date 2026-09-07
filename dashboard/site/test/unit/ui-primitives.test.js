@@ -1,9 +1,22 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderOptionsSelect, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
+  it('renders an options select with a placeholder option and sorted deduplicated values', () => {
+    const select = renderOptionsSelect(
+      'Filter agents by owner',
+      { value: '', label: 'All owners' },
+      ['team-b', 'team-a', 'team-b']
+    );
+
+    expect(select.getAttribute('aria-label')).toBe('Filter agents by owner');
+    const options = [...select.querySelectorAll('option')];
+    expect(options.map((option) => option.value)).toEqual(['', 'team-a', 'team-b']);
+    expect(options.map((option) => option.textContent)).toEqual(['All owners', 'team-a', 'team-b']);
+  });
+
   it('renders shared section-heading markup with configurable heading levels', () => {
     const rendered = renderSectionHeading({
       kicker: 'Current decision window',

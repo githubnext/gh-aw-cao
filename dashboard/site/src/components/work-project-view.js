@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderIconSpan } from './ui-primitives.js';
+import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderIconSpan, renderOptionsSelect } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -187,10 +187,7 @@ function renderWorkFilterBar(items, onChange) {
 
 /** @param {string} label @param {string[]} values */
 function renderFacetSelect(label, values) {
-  return /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': `Filter by ${label.toLowerCase()}` },
-    h('option', { value: '' }, label),
-    ...[...new Set(values)].sort((left, right) => left.localeCompare(right)).map((value) => h('option', { value }, value))
-  ));
+  return renderOptionsSelect(`Filter by ${label.toLowerCase()}`, { value: '', label }, values);
 }
 
 /**

@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderIconSpan } from './ui-primitives.js';
+import { renderIconSpan, renderOptionsSelect } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -26,9 +26,10 @@ export function renderAgentMarketplaceView(context) {
   const search = /** @type {HTMLInputElement} */ (h('input', {
     type: 'search', placeholder: 'Search agents', 'aria-label': 'Search agents', spellcheck: 'false'
   }));
-  const owner = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter agents by owner' },
-    h('option', { value: '' }, 'All owners'),
-    ...[...new Set(agents.map((agent) => agent.owner))].sort().map((name) => h('option', { value: name }, name))
+  const owner = /** @type {HTMLSelectElement} */ (renderOptionsSelect(
+    'Filter agents by owner',
+    { value: '', label: 'All owners' },
+    agents.map((agent) => agent.owner)
   ));
   const status = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter agents by status' },
     h('option', { value: 'all' }, 'All statuses'),

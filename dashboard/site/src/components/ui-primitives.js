@@ -290,6 +290,28 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders a `<select>` populated with a placeholder "all" option followed by
+ * sorted, de-duplicated `<option>` elements built from a raw list of string
+ * values. Shared by the agent marketplace owner filter and the work-project
+ * board facet filters, which both turn a flat value list into a single-select
+ * filter control.
+ * @param {string} ariaLabel
+ * @param {{ value: string, label: string }} placeholder
+ * @param {string[]} values
+ * @returns {HTMLSelectElement}
+ */
+export function renderOptionsSelect(ariaLabel, placeholder, values) {
+  return /** @type {HTMLSelectElement} */ (h(
+    'select',
+    { 'aria-label': ariaLabel },
+    h('option', { value: placeholder.value }, placeholder.label),
+    ...[...new Set(values)]
+      .sort((left, right) => left.localeCompare(right))
+      .map((value) => h('option', { value }, value))
+  ));
+}
+
+/**
  * Renders the shared `<details><summary>label</summary>...body</details>`
  * disclosure pattern used by evidence menus, raw-policy panels, and
  * value-report evidence sections to hide secondary content behind a toggle.
