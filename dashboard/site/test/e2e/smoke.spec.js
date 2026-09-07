@@ -432,7 +432,8 @@ test('desktop navigation sections collapse and expand around the current view', 
 test('clean navigation preserves the Overview decision hierarchy across desktop and mobile', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1280, height: 900   });
+
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -726,6 +727,82 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       expect(box?.height).toBeGreaterThan(0);
     }
   }
+});
+
+test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'mobile-work-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-07T12:00:00Z',
+        'retrieved-at': '2026-09-07T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'work-items': {
+          source: 'work-items',
+          metadata,
+          rows: [
+            { 'work-item-id': 'todo', name: 'Prepare rollout', owner: 'operations', package: 'release', scope: 'github/cao', 'lifecycle-state': 'waiting', 'started-at': '2026-08-30T09:00:00Z' },
+            { 'work-item-id': 'active', name: 'Run validation', owner: 'automation', package: 'checks', scope: 'github/cao', 'lifecycle-state': 'active', 'started-at': '2026-09-02T09:00:00Z' },
+            { 'work-item-id': 'review', name: 'Review evidence', owner: 'security', package: 'review', scope: 'github/cao', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision', 'started-at': '2026-09-03T09:00:00Z' },
+            { 'work-item-id': 'done', name: 'Publish result', owner: 'operations', package: 'release', scope: 'github/cao', 'lifecycle-state': 'completed', 'started-at': '2026-09-04T09:00:00Z', 'ended-at': '2026-09-04T10:00:00Z' }
+          ]
+        }
+      };
+      window.location.hash = '#page-work';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const boardPage = page.locator('[data-page-id="work"]');
+  await expect(boardPage).toBeVisible();
+  await expect(boardPage.locator('.work-board-group-tabs')).toBeVisible();
+  await expect(boardPage.locator('.work-board-column[data-mobile-active="true"]')).toHaveCount(1);
+  await expect(boardPage.locator('.work-board-column[data-mobile-active="false"]').first()).toBeHidden();
+  await boardPage.getByRole('tab', { name: /Todo/ }).click();
+  await expect(boardPage.locator('.work-board-column[data-mobile-active="true"]')).toContainText('Prepare rollout');
+  await expect(boardPage.locator('.work-board-column[data-mobile-active="true"] .work-board-cards')).toHaveCSS('overflow-y', 'visible');
+
+  await boardPage.getByRole('button', { name: 'Filters', exact: true }).click();
+  await expect(boardPage.locator('.work-filter-facets')).toBeVisible();
+  await boardPage.getByRole('button', { name: 'Close work filters' }).click();
+  await boardPage.getByRole('button', { name: 'Open Prepare rollout details' }).click();
+  const detail = boardPage.getByRole('dialog', { name: 'Prepare rollout details' });
+  await expect(detail).toBeVisible();
+  const detailBox = await detail.boundingBox();
+  expect(detailBox?.width).toBeCloseTo(390, 0);
+  expect(detailBox?.height).toBeCloseTo(844, 0);
+  await boardPage.getByRole('button', { name: 'Close Prepare rollout details' }).click();
+
+  await boardPage.getByRole('link', { name: 'Table' }).click();
+  const tablePage = page.locator('[data-page-id="work-tasks"]');
+  await expect(tablePage.locator('.work-task-table-header')).toBeHidden();
+  await expect(tablePage.locator('.work-task-row').first()).toBeVisible();
+  expect(await tablePage.locator('.work-task-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await tablePage.getByRole('button', { name: 'Fields & sort' }).click();
+  await expect(tablePage.locator('.work-task-settings-sheet')).toBeVisible();
+  await tablePage.getByRole('button', { name: 'Close Table settings' }).click();
+
+  await tablePage.getByRole('link', { name: 'Roadmap' }).click();
+  const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
+  await expect(roadmapPage.locator('.work-roadmap-period-heading').first()).toBeVisible();
+  await expect(roadmapPage.locator('.work-roadmap-calendar')).toBeHidden();
+  expect(await roadmapPage.locator('.work-roadmap-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await roadmapPage.getByRole('button', { name: 'Show visual timeline' }).click();
+  await expect(roadmapPage.locator('.work-roadmap-calendar')).toBeVisible();
+  await expect(roadmapPage.getByRole('button', { name: 'Next month' })).toBeVisible();
+  expect(await roadmapPage.locator('.work-roadmap-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
 test('performance page renders a full heatmap and lays out supporting charts side by side', async ({ page }) => {
