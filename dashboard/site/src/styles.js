@@ -1365,7 +1365,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-card p { margin: 0; overflow: hidden; color: var(--muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
 .work-avatar { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: var(--accent-muted); color: var(--accent); }
 .work-avatar .octicon { width: 14px; height: 14px; flex-basis: 14px; }
-.work-owner-avatar { width: 24px; height: 24px; display: grid; flex: 0 0 24px; place-items: center; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, var(--canvas)); color: var(--accent); font-size: .5625rem; font-weight: 800; }
+.work-owner-avatar { width: 24px; height: 24px; display: grid; flex: 0 0 24px; place-items: center; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, var(--canvas)); color: var(--accent); font-size: .5625rem; font-weight: 700; }
 .work-card-labels { min-height: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
 .work-card-label { max-width: 100%; display: inline-flex; align-items: center; min-height: 20px; padding: 1px 7px; overflow: hidden; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: .625rem; font-weight: 700; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
 .work-card-label-package { border-color: color-mix(in srgb, var(--attention) 45%, var(--border)); background: color-mix(in srgb, var(--attention) 10%, var(--canvas)); color: color-mix(in srgb, var(--attention) 75%, var(--fg)); }
