@@ -86,6 +86,8 @@ resources:
     destination: .github/aw/dashboard/site/src/specification.js
   - source: site/src/source-cache.js
     destination: .github/aw/dashboard/site/src/source-cache.js
+  - source: site/src/source-loader.js
+    destination: .github/aw/dashboard/site/src/source-loader.js
   - source: site/src/styles.js
     destination: .github/aw/dashboard/site/src/styles.js
   - source: site/src/table-summary-data.js
