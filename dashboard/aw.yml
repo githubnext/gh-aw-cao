@@ -118,6 +118,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/package-aic-utilization-thresholds.json
   - source: site/src/components/package-detail.js
     destination: .github/aw/dashboard/site/src/components/package-detail.js
+  - source: site/src/components/package-readme.js
+    destination: .github/aw/dashboard/site/src/components/package-readme.js
   - source: site/src/components/packages-view.js
     destination: .github/aw/dashboard/site/src/components/packages-view.js
   - source: site/src/components/route-empty-state.js

@@ -24,10 +24,11 @@ describe('Copilot dashboard prompt', () => {
     const socket = new MockSocket();
     const prompt = renderCopilotPrompt(/** @type {WebSocket} */ (/** @type {unknown} */ (socket)));
     document.body.prepend(prompt);
-    const input = prompt.querySelector('input');
-    if (!(input instanceof HTMLInputElement)) throw new Error('Expected prompt input');
+    const input = prompt.querySelector('textarea');
+    if (!(input instanceof HTMLTextAreaElement)) throw new Error('Expected prompt textarea');
     input.value = 'Add a trend';
-    expect(prompt.querySelector('label')?.hidden).toBe(false);
+    expect(input.rows).toBe(2);
+    expect(prompt.querySelector('label')).toBeNull();
 
     prompt.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     expect(input.value).toBe('');
@@ -54,9 +55,9 @@ describe('Copilot dashboard prompt', () => {
     socket.emit({ type: 'reloaded' });
     socket.emit({ type: 'done' });
 
-    expect(prompt.querySelector('label')?.textContent).toBe('Modify this view');
-    expect(prompt.querySelector('label')?.hidden).toBe(true);
-    expect(prompt.querySelector('#dashboard-copilot-title')?.textContent).toBe('Copilot');
+    expect(prompt.querySelector('label')).toBeNull();
+    expect(prompt.querySelector('#dashboard-copilot-title')?.textContent).toBe('Modify this view');
+    expect(prompt.querySelector('#dashboard-copilot-title')?.classList.contains('sr-only')).toBe(true);
     expect(prompt.querySelector('dialog')).toBeNull();
     expect(prompt.querySelector('.dashboard-copilot-message-user')?.textContent).toContain('Add a trend');
     expect(prompt.querySelector('.dashboard-copilot-message-assistant strong')).toBeNull();
@@ -96,7 +97,7 @@ describe('Copilot dashboard prompt', () => {
 
     input.value = 'Add a second card';
     prompt.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    expect(prompt.querySelector('label')?.hidden).toBe(true);
+    expect(prompt.querySelector('label')).toBeNull();
     socket.emit({ type: 'assistant-message', content: 'I found the active view.' });
     socket.emit({ type: 'assistant-message', content: 'Added a second card.' });
     socket.emit({
@@ -126,8 +127,8 @@ describe('Copilot dashboard prompt', () => {
     const socket = new MockSocket();
     const prompt = renderCopilotPrompt(/** @type {WebSocket} */ (/** @type {unknown} */ (socket)));
     document.body.prepend(prompt);
-    const input = prompt.querySelector('input');
-    if (!(input instanceof HTMLInputElement)) throw new Error('Expected prompt input');
+    const input = prompt.querySelector('textarea');
+    if (!(input instanceof HTMLTextAreaElement)) throw new Error('Expected prompt textarea');
     input.value = 'Add a trend';
 
     prompt.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));

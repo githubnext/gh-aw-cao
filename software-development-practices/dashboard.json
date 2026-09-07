@@ -188,6 +188,7 @@
     "navigation": [
       {
         "label": "Package operations",
+        "experimental": true,
         "pages": [
           "software-development-practices-dashboard"
         ]

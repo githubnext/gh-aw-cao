@@ -743,7 +743,21 @@ function validateNavigation(navigation, navigationNode, pageIds, errors) {
     }
 
     validateObjectKeys(sectionNode, NAVIGATION_SECTION_KEYS, sectionPath, errors);
-    validateStringField(section.label, `${sectionPath}.label`, true, errors);
+    validateOptionalStringField(section.label, `${sectionPath}.label`, errors);
+    if (section.label === '') {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'navigation section label must be a non-empty string when present.',
+        `${sectionPath}.label`
+      ));
+    }
+    if (section.experimental !== undefined && typeof section.experimental !== 'boolean') {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'navigation section experimental must be a boolean.',
+        `${sectionPath}.experimental`
+      ));
+    }
 
     if (!Array.isArray(section.pages) || section.pages.length === 0) {
       errors.push(createError(
@@ -863,11 +877,10 @@ function validateBuiltInPage(page, path, errors) {
     return;
   }
 
-  const expectedTitle = defaultBuiltInPageTitle(page.page);
-  if (page.title !== undefined && page.title !== expectedTitle) {
+  if (page.title === '') {
     errors.push(createError(
-      ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-      `built-in page title must match the canonical title default "${expectedTitle}".`,
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'built-in page title must be a non-empty string when present.',
       `${path}.title`
     ));
   }
@@ -3349,18 +3362,6 @@ function validateOptionalStringField(value, path, errors) {
       path
     ));
   }
-}
-
-/**
- * @param {string} pageName
- * @returns {string}
- */
-function defaultBuiltInPageTitle(pageName) {
-  if (pageName === 'experiments') return 'Experiments & Evaluation';
-  return pageName
-    .split('-')
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ');
 }
 
 /**

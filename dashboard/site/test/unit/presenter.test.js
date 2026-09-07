@@ -365,7 +365,8 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.summary-grid')?.textContent).toBe('Packages1Package workflows2Standalone workflows1');
     expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred');
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
-    expect(rendered.querySelector('.dashboard-horizon [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
+    expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
     expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('dependabot.yml');
     expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('release-train-updater.yml');
     expect(page?.querySelector('#workflows-repository-owned-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('ci.yml');
@@ -528,6 +529,9 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshButton?.tagName).toBe('BUTTON');
     expect(refreshButton?.getAttribute('title')).toBeTruthy();
     expect(refreshButton?.getAttribute('aria-label')).toBeTruthy();
+    expect(refreshButton?.closest('.report-footer')).not.toBeNull();
+    expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull();
+    expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
   });
 
@@ -550,6 +554,7 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations/actions/workflows/dashboard.yml');
     expect(refreshLink?.getAttribute('aria-label')).toBe('Open the dashboard workflow on GitHub Actions');
     expect(refreshLink?.getAttribute('title')).toBe('Open the dashboard workflow on GitHub Actions');
+    expect(refreshLink?.closest('.report-footer')).not.toBeNull();
     const repositoryLink = rendered.querySelector('.repository-link');
     expect(repositoryLink).not.toBeNull();
     expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
@@ -653,11 +658,13 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('renders section-labeled operational navigation groups in the sidebar', () => {
+  it('shows clean navigation by default and toggles experimental groups through the URL', () => {
+    window.history.replaceState(null, '', '/');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {}
     });
+    document.body.append(rendered);
 
     const labels = [...rendered.querySelectorAll('.nav-section-label')].map((node) => node.textContent?.trim());
     const sections = [...rendered.querySelectorAll('.nav-section')];
@@ -665,27 +672,32 @@ describe('presenter built-in and custom pages', () => {
       /** @param {{ label?: string }} section */
       (section) => section.label === 'Control plane'
     );
-    expect(labels).toEqual(['Attention', 'Dashboard Next', 'Investigate', 'Insights', 'Control plane', 'Explore', 'Package operations']);
-    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([true, false, true, true, false, false, false]);
-    expect(rendered.querySelector('[data-nav-page-id="overview"]')?.closest('.nav-section')?.textContent).toContain('Attention');
+    expect(labels).toEqual(['Attention', 'Investigate', 'Insights', 'Control plane', 'Explore', 'Package operations']);
+    expect([...rendered.querySelectorAll('.nav-section:not([hidden]) .nav-section-label')]).toHaveLength(0);
+    expect([...rendered.querySelectorAll('.mobile-nav-section-label:not([hidden])')]).toHaveLength(0);
+    expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
+      'Home', 'Work', 'Agents', 'Insights', 'Settings'
+    ]);
+    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([true, true, true, false, false, false]);
+    expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
+    expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Attention');
     expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')?.textContent).toContain('Investigate');
     expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')?.textContent).toContain('Control plane');
     expect(rendered.querySelector('[data-nav-page-id="readiness"]')?.closest('.nav-section')?.textContent).toContain('Control plane');
     expect(controlPlaneNavigation?.pages).toEqual(expect.arrayContaining(['github-api']));
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
-      'Overview',
+      'Operations',
       'Home',
       'Work',
       'Agents',
-      'Evidence',
       'Insights',
+      'Settings',
       'Runtime',
       'Performance',
       'Security',
       'Experiments',
       'Value',
       'Cost',
-      'Configuration',
       'Admission',
       'Preview',
       'Readiness',
@@ -709,17 +721,89 @@ describe('presenter built-in and custom pages', () => {
     ]);
     expect(rendered.querySelector('[data-nav-page-id="runs"]')).toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="findings"]')).toBeNull();
-    expect(rendered.querySelector('[data-page-id="overview"]')?.classList.contains('overview-page')).toBe(true);
+    expect(rendered.querySelector('[data-page-id="overview"]')?.classList.contains('dashboard-overview-page')).toBe(true);
     expect(rendered.querySelector('[data-page-id="organizations"]')?.classList.contains('organizations-page')).toBe(false);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Overview');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Home');
+
+    window.history.replaceState(null, '', '/#page-overview?show=experimental');
+    window.dispatchEvent(new Event('hashchange'));
+
+    expect(window.location.hash).toBe('#page-overview?show=experimental');
+    expect(sections.every((section) => !section.hasAttribute('hidden'))).toBe(true);
+    expect([...rendered.querySelectorAll('[data-mobile-nav-page-id]')].every((item) => !item.hasAttribute('hidden'))).toBe(true);
+    expect(rendered.querySelector('[data-nav-page-id="cost"]')?.getAttribute('href')).toBe('#page-cost?show=experimental');
 
     /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'))?.click();
 
-    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(false);
+    expect(window.location.hash).toBe('#page-cost?show=experimental');
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency');
+    rendered.remove();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('preserves threat evidence when Notifications derives agent smells', async () => {
+    window.history.replaceState(null, '', '/#page-agents');
+    const metadata = /** @type {const} */ ({
+      'source-id': 'notification-agent-smell-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-07T09:00:00Z',
+      'retrieved-at': '2026-09-07T09:01:00Z',
+      completeness: 'complete',
+      freshness: 'fresh',
+      availability: 'available'
+    });
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'attention-signals': { source: 'attention-signals', rows: [], metadata },
+        workflows: {
+          source: 'workflows',
+          rows: [{
+            organization: 'githubnext', repository: 'gh-aw', 'workflow-role': 'standalone',
+            workflow: '.github/workflows/review.md', 'workflow-name': 'Review agent',
+            'workflow-active': 'false', 'observed-at': '2020-01-01T00:00:00Z'
+          }],
+          metadata
+        },
+        'agent-assignments': { source: 'agent-assignments', rows: [], metadata },
+        'security-observations': {
+          source: 'security-observations',
+          rows: [{
+            organization: 'githubnext', repository: 'gh-aw', workflow: '.github/workflows/review.lock.yml',
+            'security-feature': 'threat-detection', 'security-analysis': 'summary',
+            'security-signal': 'Malicious patch', 'security-status': 'detected',
+            'observed-at': '2020-01-01T00:00:00Z'
+          }],
+          metadata
+        }
+      }
+    });
+    document.body.append(rendered);
+
+    const page = await activatePage(rendered, 'overview');
+    expect(page?.querySelector('.notification-item')?.textContent).toContain('Agent health smell: Review agent');
+    expect(page?.querySelector('.notification-item')?.textContent).toContain('Malicious patch detected');
+    expect(page?.querySelector('.notification-kind .agent-smell-mark')).not.toBeNull();
+    expect(page?.querySelector('.notification-content')?.getAttribute('href')).toBe('#page-agents');
+    rendered.remove();
+  });
+
+  it('restores experimental navigation from a shared URL', () => {
+    window.history.replaceState(null, '', '/#page-overview?show=experimental');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+
+    expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
+    expect([...rendered.querySelectorAll('[data-experimental-navigation]')].every((item) => !item.hasAttribute('hidden'))).toBe(true);
+    expect(rendered.querySelector('[data-mobile-nav-page-id="overview"]')?.getAttribute('href')).toBe('#page-overview?show=experimental');
+
+    rendered.remove();
     window.history.replaceState(null, '', '/');
   });
 
@@ -786,7 +870,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
   it('renders conditional site-wide callouts and remembers dismissal only in memory', () => {
-    localStorage.clear();
+    window.localStorage.clear();
     sessionStorage.clear();
     const document = {
       languageVersion: '0.1.0',
@@ -847,7 +931,7 @@ describe('presenter built-in and custom pages', () => {
     expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss Operator message');
     dismiss?.click();
     expect(rendered.querySelector('[data-site-callout="operator-message"]')).toBeNull();
-    expect(localStorage).toHaveLength(0);
+    expect(window.localStorage).toHaveLength(0);
     expect(sessionStorage).toHaveLength(0);
 
     const rerendered = renderDashboard({ document, sources });
@@ -859,7 +943,7 @@ describe('presenter built-in and custom pages', () => {
   });
 
   it('collapses the sidebar to icons and restores the persisted display mode', () => {
-    localStorage.clear();
+    window.localStorage.clear();
     try {
       const rendered = renderDashboard({
         document: authoritativeDashboardDocument,
@@ -871,15 +955,16 @@ describe('presenter built-in and custom pages', () => {
 
       expect(toggle?.getAttribute('aria-label')).toBe('Collapse navigation');
       expect(toggle?.getAttribute('aria-expanded')).toBe('true');
-      expect(overviewLink?.getAttribute('title')).toBe('Overview');
+      expect(toggle?.querySelector('.octicon-sidebar-expand')).not.toBeNull();
+      expect(overviewLink?.getAttribute('title')).toBe('Home');
 
       toggle?.click();
 
       expect(shell?.classList.contains('sidebar-collapsed')).toBe(true);
       expect(toggle?.getAttribute('aria-label')).toBe('Expand navigation');
       expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-      expect(toggle?.querySelector('.octicon-sidebar-expand')).not.toBeNull();
-      expect(localStorage.getItem('central-agentic-ops.dashboard.sidebar-collapsed')).toBe('true');
+      expect(toggle?.querySelector('.octicon-sidebar-collapse')).not.toBeNull();
+      expect(window.localStorage.getItem('central-agentic-ops.dashboard.sidebar-collapsed')).toBe('true');
 
       const restored = renderDashboard({
         document: authoritativeDashboardDocument,
@@ -888,7 +973,7 @@ describe('presenter built-in and custom pages', () => {
       expect(restored.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')).toBe(true);
       expect(restored.querySelector('.sidebar-toggle')?.getAttribute('aria-label')).toBe('Expand navigation');
     } finally {
-      localStorage.clear();
+      window.localStorage.clear();
     }
   });
 
@@ -903,19 +988,18 @@ describe('presenter built-in and custom pages', () => {
     expect(menu?.querySelector('summary')?.getAttribute('aria-label')).toBe('Select view');
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
-      'Overview',
+      'Operations',
       'Home',
       'Work',
       'Agents',
-      'Evidence',
       'Insights',
+      'Settings',
       'Runtime',
       'Performance',
       'Security',
       'Experiments',
       'Value',
       'Cost',
-      'Configuration',
       'Admission',
       'Preview',
       'Readiness',
@@ -1083,12 +1167,12 @@ describe('presenter built-in and custom pages', () => {
     expect(table?.textContent).toContain('timeless');
     expect(table?.textContent).not.toContain('expired');
     expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
-    expect(rendered.querySelector('.horizon-toggle')?.textContent).toBe('Data horizon 2 days');
-    expect(rendered.querySelector('.dashboard-horizon .tooltip-content')?.textContent).toBe(
-      'Data is included from the start up to the exclusive end.StartAug 30, 2026, 12:30 PM UTCEndSep 1, 2026, 12:00 PM UTCDuration2 days'
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('2 days');
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')?.textContent).toBe(
+      'Data is included from the start up to the exclusive end.StartAug 30, 2026, 12:30 PM UTCEndSep 1, 2026, 12:00 PM UTCDuration2 daysCompletenesscompleteFreshnessfresh'
     );
-    expect(rendered.querySelector('.dashboard-horizon .tooltip-content time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
-    expect(rendered.querySelectorAll('.dashboard-horizon .tooltip-content time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
+    expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
   });
 
   it('renders the Security assurance view without a findings summary table', async () => {
@@ -1973,7 +2057,7 @@ describe('presenter built-in and custom pages', () => {
 
     for (const page of pages) {
       expect(page.kind).toBe('built-in');
-      expect(page.id).toBe(page.page);
+      expect(page.id).toBe(page.page === 'overview' ? 'operations' : page.page);
       expect(typeof page.icon).toBe('string');
       expect(page.definition?.['data-state']).toEqual({
         availability: true,
@@ -2821,11 +2905,13 @@ describe('presenter built-in and custom pages', () => {
     expect(first.hasAttribute('data-page-pending')).toBe(false);
     expect(second.hasAttribute('data-page-pending')).toBe(true);
     firstDetails.open = true;
-    rendered.ownerDocument.documentElement.scrollTop = 320;
+    const pageScroller = /** @type {HTMLElement} */ (rendered.querySelector('main.dashboard-prototype'));
+    pageScroller.scrollTop = 320;
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-root]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-root]')?.hasAttribute('href')).toBe(false);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.getAttribute('href')).toBe('#page-first');
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('#page-title')?.textContent).toBe('First');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('First');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('First page description');
@@ -2875,7 +2961,7 @@ describe('presenter built-in and custom pages', () => {
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(false);
     expect(renderedSecond.hasAttribute('aria-busy')).toBe(false);
 
-    rendered.ownerDocument.documentElement.scrollTop = 80;
+    pageScroller.scrollTop = 80;
     firstLink.click();
 
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(true);
@@ -2886,7 +2972,7 @@ describe('presenter built-in and custom pages', () => {
     });
     const rehydratedFirst = /** @type {HTMLElement} */ (rendered.querySelector('#page-first'));
     expect(/** @type {HTMLDetailsElement | null} */ (rehydratedFirst.querySelector('details'))?.open).toBe(true);
-    expect(rendered.ownerDocument.documentElement.scrollTop).toBe(320);
+    expect(pageScroller.scrollTop).toBe(320);
     rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
   });
 
@@ -2933,15 +3019,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
       'Drill-down into the canonical Data Health coverage and collection evidence.'
     );
-    expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Overview');
+    expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Operations');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Coverage diagnostics');
-    expect(rendered.querySelector('[data-nav-page-id="overview"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered.querySelector('[data-nav-page-id="operations"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered.querySelectorAll('.org-sidebar [data-nav-page-id="coverage"]')).toHaveLength(0);
     const coveragePage = authoritativeDashboardDocument.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'coverage'
     );
-    expect(coveragePage.route).toEqual({ 'navigation-page': 'overview' });
+    expect(coveragePage.route).toEqual({ 'navigation-page': 'operations' });
     expect(coveragePage.views[1]).toMatchObject({
       mark: 'table',
       controls: 'static',

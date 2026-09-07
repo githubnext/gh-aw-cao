@@ -9,7 +9,7 @@ import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
+import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
 import { toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -54,7 +54,7 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
  */
 
 /**
- * @typedef {{ label?: string, pages?: string[] }} PresentableNavigationSection
+ * @typedef {{ label?: string, pages?: string[], experimental?: boolean }} PresentableNavigationSection
  */
 
 /**
@@ -77,6 +77,7 @@ const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data';
 const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
+const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
 
 /**
  * @param {Document} document
@@ -184,7 +185,9 @@ export function renderDashboard(input) {
     appShell
   );
   enableSidebarToggle(root);
+  enableThemeToggle(root);
   enableMobileNavigationMenu(root);
+  enableResponsiveReportActions(root);
   enableDashboardPageNavigation(
     root,
     document.dashboard.title,
@@ -193,7 +196,8 @@ export function renderDashboard(input) {
       return page
         ? renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults)
         : null;
-    }
+    },
+    sidebar.dataset.defaultPageId
 
   );
   return root;
@@ -223,18 +227,19 @@ function inferOrganizationName(sources) {
  * @returns {HTMLElement}
  */
 function renderSidebar(pages, title, navigation) {
-  const firstPageId = pages[0]?.id;
   const pagesById = new Map(pages.map((page) => [page.id, page]));
   const navigationSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
       .map((section) => ({
         label: section?.label,
+        experimental: section?.experimental === true,
         pages: (Array.isArray(section?.pages) ? section.pages : [])
           .map((pageId) => pagesById.get(pageId))
           .filter((page) => page !== undefined)
       }))
       .filter((section) => section.pages.length > 0)
-    : [{ label: undefined, pages }];
+    : [{ label: undefined, experimental: false, pages }];
+  const firstPageId = navigationSections.find((section) => !section.experimental)?.pages[0]?.id ?? pages[0]?.id;
   const mainSectionIndex = Math.max(
     0,
     navigationSections.findIndex((section) => section.label?.toLowerCase() === 'main')
@@ -242,7 +247,7 @@ function renderSidebar(pages, title, navigation) {
   let navigationPageIndex = 0;
   return h(
     'aside',
-    { className: 'org-sidebar', 'aria-label': 'Central Agentic Ops navigation' },
+    { className: 'org-sidebar', 'aria-label': 'Central Agentic Ops navigation', dataset: { defaultPageId: firstPageId ?? '' } },
     h(
       'div',
       { className: 'sidebar-header' },
@@ -252,6 +257,7 @@ function renderSidebar(pages, title, navigation) {
         agenticWorkflowMark(),
         h('span', null, title)
       ),
+      h('div', { className: 'mobile-report-actions', 'aria-label': 'Dashboard controls' }),
       h(
         'button',
         {
@@ -261,7 +267,7 @@ function renderSidebar(pages, title, navigation) {
           'aria-expanded': 'true',
           title: 'Collapse navigation'
         },
-        octicon('sidebar-collapse')
+        octicon('sidebar-expand')
       )
     ),
     h(
@@ -282,6 +288,8 @@ function renderSidebar(pages, title, navigation) {
               'details',
               {
                 className: 'nav-section',
+                hidden: section.experimental,
+                dataset: section.experimental ? { experimentalNavigation: '' } : undefined,
                 open: sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
               },
               h(
@@ -307,9 +315,20 @@ function renderSidebar(pages, title, navigation) {
           { className: 'mobile-nav-menu-list' },
           navigationSections.flatMap((section) => [
             ...(typeof section.label === 'string' && section.label.length > 0
-              ? [h('span', { className: 'mobile-nav-section-label' }, section.label)]
+              ? [h('span', {
+                  className: 'mobile-nav-section-label',
+                  hidden: section.experimental,
+                  dataset: section.experimental ? { experimentalNavigation: '' } : undefined
+                }, section.label)]
               : []),
-            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
+            ...section.pages.map((page) => {
+              const item = renderMobileNavItem(page, page.id === firstPageId);
+              if (section.experimental) {
+                item.hidden = true;
+                item.dataset.experimentalNavigation = '';
+              }
+              return item;
+            })
           ])
         )
       )
@@ -391,12 +410,12 @@ function enableSidebarToggle(root) {
     toggle.setAttribute('aria-label', label);
     toggle.setAttribute('aria-expanded', String(!collapsed));
     toggle.setAttribute('title', label);
-    toggle.replaceChildren(octicon(collapsed ? 'sidebar-expand' : 'sidebar-collapse'));
+    toggle.replaceChildren(octicon(collapsed ? 'sidebar-collapse' : 'sidebar-expand'));
   };
 
   let collapsed = false;
   try {
-    collapsed = globalThis.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+    collapsed = globalThis.window?.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
   } catch {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
@@ -406,9 +425,50 @@ function enableSidebarToggle(root) {
     collapsed = !collapsed;
     setCollapsed(collapsed);
     try {
-      globalThis.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+      globalThis.window?.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
     } catch {
       // The display mode still works for the current page when storage is unavailable.
+    }
+  });
+}
+
+/**
+ * Restores and persists the dashboard color theme.
+ * @param {HTMLElement} root
+ */
+function enableThemeToggle(root) {
+  const toggle = root.querySelector('[data-theme-toggle]');
+  if (!(toggle instanceof HTMLButtonElement)) return;
+  const view = root.ownerDocument.defaultView;
+
+  /** @param {'light'|'dark'} theme */
+  const setTheme = (theme) => {
+    root.dataset.theme = theme;
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    const label = `Switch to ${nextTheme} mode`;
+    toggle.setAttribute('aria-label', label);
+    toggle.setAttribute('title', label);
+    toggle.setAttribute('aria-pressed', String(theme === 'dark'));
+    toggle.replaceChildren(octicon(theme === 'dark' ? 'sun' : 'moon'));
+  };
+
+  /** @type {'light'|'dark'} */
+  let theme = view?.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  try {
+    const savedTheme = view?.localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme;
+  } catch {
+    // Storage can be unavailable in embedded or privacy-restricted contexts.
+  }
+  setTheme(theme);
+
+  toggle.addEventListener('click', () => {
+    const nextTheme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    try {
+      view?.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch {
+      // The theme still applies for the current render when storage is unavailable.
     }
   });
 }
@@ -433,6 +493,27 @@ function enableMobileNavigationMenu(root) {
     const summary = menu.querySelector('summary');
     if (summary instanceof HTMLElement) summary.focus();
   });
+}
+
+/**
+ * Keeps global dashboard controls in the mobile navbar while preserving the
+ * single control instances and their filter-bar event relationships.
+ * @param {HTMLElement} root
+ */
+function enableResponsiveReportActions(root) {
+  const actions = root.querySelector('.report-actions');
+  const mobileSlot = root.querySelector('.mobile-report-actions');
+  const desktopSlot = actions?.parentElement;
+  const view = root.ownerDocument.defaultView;
+  const media = view?.matchMedia?.('(max-width: 700px)');
+  if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return;
+
+  const placeActions = () => {
+    const destination = media.matches ? mobileSlot : desktopSlot;
+    if (actions.parentElement !== destination) destination.append(actions);
+  };
+  placeActions();
+  media.addEventListener?.('change', placeActions);
 }
 
 /**
@@ -468,42 +549,48 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
     'div',
     { className: 'app-main' },
     h(
-      'nav',
-      { className: 'top-nav breadcrumb', 'aria-label': 'Breadcrumb' },
+      'header',
+      { className: 'top-nav' },
       h(
         'div',
         { className: 'shell' },
-        h('a', { hidden: true, 'data-breadcrumb-root': '' }),
-        h('a', { href: overviewPageHref, 'data-breadcrumb-dashboard': '' }, 'Overview'),
-        h('span', { 'data-breadcrumb-page': '' }, initialPageTitle),
+        h(
+          'div',
+          { className: 'overview-header', 'aria-labelledby': 'page-title' },
+          h(
+            'nav',
+            { className: 'breadcrumb-context', 'aria-label': 'Breadcrumb' },
+            h('a', { hidden: true, 'data-breadcrumb-root': '' }),
+            h('a', { href: overviewPageHref, hidden: true, 'data-breadcrumb-dashboard': '' }, 'Overview')
+          ),
+          h(
+            'div',
+            { className: 'title-area' },
+            h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, initialPageTitle),
+            h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
+            h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
+          ),
+          h(
+            'p',
+            { className: 'lede', 'data-page-description': '', hidden: !initialPageDescription },
+            initialPageDescription ?? ''
+          )
+        ),
         h(
           'div',
           { className: 'report-actions' },
           renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState),
-          dashboardRepository
-            ? h(
-              'a',
-              {
-                className: 'refresh-button',
-                href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
-                title: REFRESH_WORKFLOW_DESCRIPTION,
-                'aria-label': REFRESH_WORKFLOW_DESCRIPTION
-              },
-              octicon('sync'),
-              h('span', null, 'Refresh')
-            )
-            : h(
-              'button',
-              {
-                type: 'button',
-                className: 'refresh-button',
-                title: REFRESH_CONTROL_DESCRIPTION,
-                'aria-label': REFRESH_CONTROL_DESCRIPTION,
-                onclick: () => window.location.reload()
-              },
-              octicon('sync'),
-              h('span', null, 'Refresh')
-            ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'theme-toggle',
+              dataset: { themeToggle: '' },
+              'aria-label': 'Switch color theme',
+              title: 'Switch color theme'
+            },
+            octicon('sun')
+          ),
           dashboardRepository
             ? h(
               'a',
@@ -524,26 +611,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
       'main',
       { id: 'main-content', className: 'dashboard-prototype', tabIndex: -1 },
       h(
-        'header',
-        { className: 'overview-header', 'aria-labelledby': 'page-title' },
-        h(
-          'div',
-          null,
-          h(
-            'div',
-            { className: 'title-area' },
-            h('h1', { id: 'page-title', tabIndex: -1 }, initialPageTitle),
-            h('a', { className: 'title-link', 'data-page-title-link': '', hidden: true }),
-            h('span', { className: 'mode-indicator', 'data-page-mode': '', hidden: true })
-          ),
-          h(
-            'p',
-            { className: 'lede', 'data-page-description': '', hidden: !initialPageDescription },
-            initialPageDescription ?? ''
-          )
-        )
-      ),
-      h(
         'div',
         { className: 'report-body' },
         h(
@@ -556,7 +623,37 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
     h(
       'footer',
       { className: 'report-footer' },
-      'Generated deterministically from dashboard data.'
+      h(
+        'div',
+        { className: 'report-footer-status' },
+        h('span', null, 'Last updated'),
+        h('time', { dateTime: evaluatedAt }, `${formatReportDate(evaluatedAt)} UTC`),
+        h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
+      ),
+      dashboardRepository
+        ? h(
+          'a',
+          {
+            className: 'refresh-button',
+            href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
+            title: REFRESH_WORKFLOW_DESCRIPTION,
+            'aria-label': REFRESH_WORKFLOW_DESCRIPTION
+          },
+          octicon('sync'),
+          h('span', null, 'Refresh')
+        )
+        : h(
+          'button',
+          {
+            type: 'button',
+            className: 'refresh-button',
+            title: REFRESH_CONTROL_DESCRIPTION,
+            'aria-label': REFRESH_CONTROL_DESCRIPTION,
+            onclick: () => window.location.reload()
+          },
+          octicon('sync'),
+          h('span', null, 'Refresh')
+        )
     )
   );
 }
@@ -591,7 +688,13 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   const end = dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string'
     ? dashboardDefaults.time.end
     : evaluatedAt);
-  const tooltipId = 'dashboard-horizon-details';
+  const completeness = effectiveState?.completeness ?? 'unknown';
+  const freshness = effectiveState?.freshness ?? 'unknown';
+  const qualityState = completeness === 'complete' && freshness === 'fresh'
+    ? 'success'
+    : completeness === 'unknown' || freshness === 'unknown'
+      ? 'muted'
+      : 'attention';
 
   return h(
     'div',
@@ -601,31 +704,45 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
       { className: 'horizon-summary' },
       h(
         'button',
-        { type: 'button', className: 'horizon-toggle', 'aria-expanded': 'false' },
-        `${label} ${duration}`
+        {
+          type: 'button',
+          className: 'horizon-toggle',
+          'aria-expanded': 'false',
+          'aria-label': `${label} ${duration}. Show time and mode filters`,
+          'aria-describedby': 'dashboard-horizon-tooltip'
+        },
+        octicon('clock')
       ),
       h(
-        'div',
-        { className: 'horizon-data-status', role: 'group', 'aria-label': 'Data status' },
-        h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(effectiveState?.completeness ?? 'unknown')),
-        h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(effectiveState?.freshness ?? 'unknown'))
+        'span',
+        { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
+        h('strong', null, duration),
+        h('span', null, `${label} · Completeness ${completeness} · Freshness ${freshness}`),
+        h('span', { className: `horizon-tooltip-quality status-${qualityState}`, 'aria-hidden': 'true' })
       )
     ),
-    horizon
-      ? renderTooltip({
-        id: tooltipId,
-        label: horizon.tooltip.label,
-        description: horizon.tooltip.description,
-        icon: octicon(horizon.tooltip.icon || 'question'),
-        content: h(
+    h(
+      'div',
+      { className: 'horizon-details', role: 'group', 'aria-label': 'Horizon details' },
+      h(
+        'span',
+        { className: 'horizon-details-description' },
+        horizon?.tooltip.description ?? 'Evidence coverage and data quality for this dashboard.'
+      ),
+      h(
+        'span',
+        { className: 'horizon-details-values' },
+        renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
+        renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
+        renderLabeledSpan('Duration', duration),
+        h(
           'span',
-          { className: 'horizon-tooltip-values' },
-          renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
-          renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
-          renderLabeledSpan('Duration', duration)
+          { className: 'horizon-data-status', role: 'group', 'aria-label': 'Data status' },
+          h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(completeness)),
+          h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(freshness))
         )
-      })
-      : null
+      )
+    )
   );
 }
 
@@ -748,8 +865,11 @@ function renderPage(page, sources, units, dashboardDefaults) {
  * @returns {HTMLElement}
  */
 function renderCustomPage(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
+  const effectiveDashboardDefaults = inventoryPage(page.id)
+    ? { ...dashboardDefaults, time: undefined }
+    : dashboardDefaults;
   const views = Array.isArray(page.views)
-    ? page.views.map((view) => applyDashboardDefaults(view, dashboardDefaults))
+    ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
@@ -822,7 +942,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
   /** @type {HTMLElement} */
   let root;
   let filterRevision = 0;
-  const filterBar = withFilterBar
+  const filterBar = withFilterBar && !inventoryPage(page.id)
     ? renderFilterBar((filters, timeWindow) => {
       const revision = ++filterRevision;
       const result = filterDashboardSources(
@@ -1020,8 +1140,9 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
  * @param {HTMLElement} root
  * @param {string} dashboardTitle
  * @param {(pageId: string) => HTMLElement | null} [renderPageById]
+ * @param {string} [defaultPageId]
  */
-export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById) {
+export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '') {
   const pages = [...root.querySelectorAll('.dashboard-page')]
     .filter((page) => page instanceof HTMLElement);
   /** @type {Map<string, { details: boolean[], scrollTop: number }>} */
@@ -1039,6 +1160,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageDescription = root.querySelector('.overview-header [data-page-description]');
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
+  const pageScroller = root.querySelector('main.dashboard-prototype');
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
     href: link instanceof HTMLAnchorElement ? link.getAttribute('href') ?? '' : '',
@@ -1107,6 +1229,26 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
   };
   /**
+   * @param {URLSearchParams} parameters
+   */
+  const syncExperimentalPresentation = (parameters) => {
+    const showExperimental = parameters.get('show') === 'experimental';
+    for (const element of root.querySelectorAll('[data-experimental-navigation]')) {
+      if (element instanceof HTMLElement) element.hidden = !showExperimental;
+    }
+    for (const link of root.querySelectorAll('a[href^="#page-"]')) {
+      if (!(link instanceof HTMLAnchorElement)) continue;
+      const href = link.getAttribute('href') ?? '';
+      const queryIndex = href.indexOf('?');
+      const route = queryIndex === -1 ? href : href.slice(0, queryIndex);
+      const linkParameters = new URLSearchParams(queryIndex === -1 ? '' : href.slice(queryIndex + 1));
+      if (showExperimental) linkParameters.set('show', 'experimental');
+      else linkParameters.delete('show');
+      const query = linkParameters.toString();
+      link.setAttribute('href', `${route}${query ? `?${query}` : ''}`);
+    }
+  };
+  /**
    * Defers expensive rendering until the lightweight title and skeleton update
    * has had an opportunity to paint.
    * @param {() => void} populate
@@ -1130,6 +1272,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
     const revision = ++activationRevision;
+    syncExperimentalPresentation(parameters);
     const dashboardHorizon = root.querySelector('.dashboard-horizon');
     let activeFilterBar = root.querySelector('.report-actions > .filter-bar');
     /**
@@ -1139,6 +1282,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       const filterBar = page?.querySelector('.filter-bar');
       if (dashboardHorizon && filterBar && reportActions) {
         filterBar.prepend(dashboardHorizon);
+        const horizonDetails = dashboardHorizon.querySelector('.horizon-details');
+        const tuningControls = filterBar.querySelector('.filter-tuning-controls');
+        if (horizonDetails && tuningControls) tuningControls.append(horizonDetails);
         reportActions.prepend(filterBar);
         activeFilterBar = filterBar;
       } else if (dashboardHorizon && reportActions && !reportActions.contains(dashboardHorizon)) {
@@ -1155,7 +1301,9 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         section.scrollIntoView?.();
       } else if (pageState.has(pageId)) {
         const scrollTop = pageState.get(pageId)?.scrollTop ?? 0;
-        const scrollingElement = root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement;
+        const scrollingElement = pageScroller instanceof HTMLElement
+          ? pageScroller
+          : root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement;
         scrollingElement.scrollTop = scrollTop;
       }
     };
@@ -1163,12 +1311,16 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (activePageId && activePageId !== pageId) {
       const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId);
       if (activePage) {
+        const horizonDetails = activeFilterBar?.querySelector('.horizon-details');
+        if (dashboardHorizon && horizonDetails) dashboardHorizon.append(horizonDetails);
         if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon)) dashboardHorizon.remove();
         activeFilterBar?.remove();
         activeFilterBar = null;
         pageState.set(activePageId, {
           details: [...activePage.querySelectorAll('details')].map((details) => details.open),
-          scrollTop: root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop
+          scrollTop: pageScroller instanceof HTMLElement
+            ? pageScroller.scrollTop
+            : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop
         });
         activePage.replaceChildren();
         activePage.removeAttribute('aria-busy');
@@ -1197,6 +1349,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
           restoreScroll(renderedPage);
         }
+        syncExperimentalPresentation(parameters);
       };
       if (deferPopulation) {
         populationDeferred = true;
@@ -1257,11 +1410,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
     if (!populationDeferred) restoreScroll(page);
+    syncExperimentalPresentation(parameters);
 
   };
 
   const initialRoute = routeFromHash();
-  activate(initialRoute?.pageId ?? pages[0].dataset.pageId ?? '', initialRoute?.parameters);
+  const initialPageId = availableIds.has(defaultPageId) ? defaultPageId : pages[0].dataset.pageId ?? '';
+  activate(initialRoute?.pageId ?? initialPageId, initialRoute?.parameters);
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
@@ -1349,8 +1504,11 @@ function getNavigationPageId(link) {
  * @returns {Promise<HTMLElement>}
  */
 async function renderCustomPageAsync(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
+  const effectiveDashboardDefaults = inventoryPage(page.id)
+    ? { ...dashboardDefaults, time: undefined }
+    : dashboardDefaults;
   const views = Array.isArray(page.views)
-    ? page.views.map((view) => applyDashboardDefaults(view, dashboardDefaults))
+    ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults))
     : [];
   const sections = Array.isArray(page.sections) ? page.sections : [];
   const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
@@ -1432,6 +1590,11 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
   );
+}
+
+/** @param {string} pageId */
+function inventoryPage(pageId) {
+  return pageId === 'agents' || pageId === 'work' || pageId === 'work-tasks' || pageId === 'work-roadmap';
 }
 
 /**
@@ -1748,8 +1911,12 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
 
   const selectedSources = Object.fromEntries(sourceNames.flatMap((sourceName) => {
     const source = sources[sourceName];
+    const preserveAgentEvidence = pageId === 'overview'
+      && elementName === 'signal-list'
+      && (sourceName === 'workflows' || sourceName === 'agent-assignments' || sourceName === 'security-observations');
+    const preservePackageInventory = elementName === 'package-route' && sourceName === 'workflows';
     return source && Array.isArray(source.rows)
-      ? [[sourceName, { ...source, rows: filterRowsForView(source.rows, viewData) }]]
+      ? [[sourceName, { ...source, rows: preserveAgentEvidence || preservePackageInventory ? source.rows : filterRowsForView(source.rows, viewData) }]]
       : [];
   }));
 

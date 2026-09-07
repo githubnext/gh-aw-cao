@@ -9,7 +9,7 @@ import {
 afterEach(() => {
   document.body.replaceChildren();
   window.history.replaceState(null, '', '/');
-  localStorage.clear();
+  window.localStorage.clear();
 });
 
 describe('time-window filter bar', () => {
@@ -51,7 +51,7 @@ describe('time-window filter bar', () => {
     const selected = onChange.mock.calls.at(-1)?.[1];
     expect(selected.range).toBe('custom');
     expect(Date.parse(selected.end) - Date.parse(selected.start)).toBe(2 * 3_600_000);
-    expect(JSON.parse(localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({
       range: 'custom',
       modes: ['review', 'live', 'unknown']
     });
@@ -136,11 +136,11 @@ describe('time-window filter bar', () => {
       ['repository', ['gh-aw-cao']],
       ['mode', []]
     ]));
-    expect(JSON.parse(localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').modes).toEqual([]);
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').modes).toEqual([]);
   });
 
   it('falls back to default modes when persisted modes array contains only invalid entries', async () => {
-    localStorage.setItem(
+    window.localStorage.setItem(
       HORIZON_FILTER_STORAGE_KEY,
       JSON.stringify({ range: '24h', modes: ['corrupted_mode', 'invalid'] })
     );

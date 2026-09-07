@@ -996,7 +996,7 @@ dashboard:
       const document = documents.find((candidate) => candidate.dashboard.pages[0].id === pageId);
       if (!document) throw new Error(`Missing package dashboard page ${pageId}`);
       const page = document.dashboard.pages[0];
-      expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', pages: [pageId] }]);
+      expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', experimental: true, pages: [pageId] }]);
       expect(page).toMatchObject({ kind: 'custom' });
       expect(page.views).toHaveLength(4);
       const tables = page.views.filter(
@@ -1326,12 +1326,28 @@ dashboard:
       }));
     }
 
+    const withInvalidExperimental = JSON.parse(authoritativeDashboardSource);
+    withInvalidExperimental.dashboard.navigation[0].experimental = 'true';
+    const invalidExperimentalResult = validateDashboardDocument(JSON.stringify(withInvalidExperimental));
+    expect(invalidExperimentalResult.ok).toBe(false);
+    if (!invalidExperimentalResult.ok) {
+      expect(invalidExperimentalResult.errors).toContainEqual(expect.objectContaining({
+        message: 'navigation section experimental must be a boolean.',
+        path: '$.dashboard.navigation[0].experimental'
+      }));
+    }
+
     const withoutLabel = JSON.parse(authoritativeDashboardSource);
     delete withoutLabel.dashboard.navigation[0].label;
     const withoutLabelResult = validateDashboardDocument(JSON.stringify(withoutLabel));
-    expect(withoutLabelResult.ok).toBe(false);
-    if (!withoutLabelResult.ok) {
-      expect(withoutLabelResult.errors).toContainEqual(expect.objectContaining({
+    expect(withoutLabelResult.ok).toBe(true);
+
+    const withEmptyLabel = JSON.parse(authoritativeDashboardSource);
+    withEmptyLabel.dashboard.navigation[0].label = '';
+    const withEmptyLabelResult = validateDashboardDocument(JSON.stringify(withEmptyLabel));
+    expect(withEmptyLabelResult.ok).toBe(false);
+    if (!withEmptyLabelResult.ok) {
+      expect(withEmptyLabelResult.errors).toContainEqual(expect.objectContaining({
         path: '$.dashboard.navigation[0].label'
       }));
     }
@@ -1462,7 +1478,7 @@ dashboard:
             columns: [{ field: run, type: nominal }]
 `;
 
-    for (const pageId of ['home', 'agent', 'agents', 'work', 'evidence', 'insights']) {
+    for (const pageId of ['overview', 'agent', 'agents', 'work', 'evidence', 'insights']) {
       expect(validateDashboardDocument(source.replace('id: home', `id: ${pageId}`)).ok).toBe(true);
     }
     expect(validateDashboardDocument(source.replace('id: home', 'id: summary')).ok).toBe(false);
@@ -2128,26 +2144,13 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
-  it('DLS-PAGE-001 rejects an explicit built-in page title when it differs from the canonical title default', () => {
-    const result = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: mismatched-built-in-title
-  title: Mismatched Built-in Title
-  pages:
-    - id: runs
-      kind: built-in
-      page: runs
-      title: Run Details
-`);
+  it('DLS-PAGE-001 accepts a non-empty built-in page title that differs from the canonical default', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const operations = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operations');
+    operations.title = 'Fleet Operations';
+    const result = validateDashboardDocument(JSON.stringify(document));
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].title' })
-        ])
-      );
-    }
+    expect(result.ok).toBe(true);
   });
 
   it('DLS-PAGE-002 rejects an overview built-in page without declarative built-in source definitions with DLS-E003', () => {
@@ -4467,7 +4470,7 @@ dashboard:
 
   it('accepts unbucketed categorical swimlanes and rejects quantitative or aggregated lanes', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const overview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'overview');
+    const overview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operations');
     const overviewSwimlane = overview.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'overview-run-health');
     const workflowRuntime = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime');
     const swimlane = workflowRuntime.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runtime-health');

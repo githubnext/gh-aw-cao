@@ -75,13 +75,13 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
     for (const sharedRule of [
       '.sidebar-brand { display: flex; align-items: center; gap: 6px;',
-      '.app-main > nav { border-bottom: 1px solid var(--border); }',
-      '.app-main > nav .shell > :not([hidden]) ~ :not([hidden], .report-actions)::before { content: "/";',
-      '.breadcrumb .shell > :is([data-breadcrumb-root], [data-breadcrumb-dashboard]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-      '.overview-header { min-height: 88px;',
-      '.overview-header .lede { margin: 3px 0 0; font-size: .875rem; }',
+      '.app-main > .top-nav { position: relative; z-index: 20; border-bottom: 1px solid var(--border); }',
+      '.breadcrumb-context > :not([hidden]) ~ :not([hidden])::before { content: "/";',
+      '.breadcrumb-context > :is([data-breadcrumb-root], [data-breadcrumb-dashboard]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+      '.overview-header { min-width: 0; flex: 1; }',
+      '.overview-header .lede { min-height: 1.25rem; margin: 3px 0 0; overflow: hidden; font-size: .875rem; line-height: 1.25rem; text-overflow: ellipsis; white-space: nowrap; }',
       '.workflow-runtime-summary { max-width: 920px; margin-bottom: 24px; }',
-      'footer { padding: 20px 24px; border-top: 1px solid var(--border);'
+      'footer { min-height: 44px; display: flex; flex: none; align-items: center; justify-content: space-between;'
     ]) {
       expect(styles).toContain(sharedRule);
     }

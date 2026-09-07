@@ -332,9 +332,9 @@ async function main() {
         {
           operation: "run-query",
           state: available ? complete ? "complete" : "partial" : "failed",
-          failureClass: available ? null : "gh-aw-logs",
+          failureClass: complete ? null : "gh-aw-logs",
           expected: workflows.length,
-          observed: available ? logsState.targetCount : null,
+          observed: available ? logsState.actionsTargetsObserved ?? logsState.targetCount : null,
           requestedWindowStart: windowStart,
           observedWindowStart: windowStart,
           observedWindowEnd: generatedAt,
@@ -370,7 +370,7 @@ async function main() {
     };
     await mkdir(path.dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`);
-    log.info`Indexed ${workflows.length} checked-out workflows and ${logs.runs.length} gh aw log records without direct GitHub API requests`;
+    log.info`Indexed ${workflows.length} checked-out workflows and ${logs.runs.length} cached run records`;
   } finally {
     log.endGroup();
   }

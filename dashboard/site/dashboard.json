@@ -72,10 +72,10 @@
     },
     "pages": [
       {
-        "id": "overview",
+        "id": "operations",
         "kind": "built-in",
         "page": "overview",
-        "title": "Overview",
+        "title": "Operations",
         "icon": "server",
         "class-name": "overview-page",
         "description": "Current operational attention across runtime, controls, value, episodes, cost, and evidence.",
@@ -2983,31 +2983,6 @@
         },
         "views": [
           {
-            "id": "package-workflow-registration",
-            "title": "Workflow registration",
-            "description": "Active and inactive workflow definitions summarize whether this package can operate.",
-            "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "workflow-active",
-                "type": "nominal",
-                "title": "Registration"
-              },
-              "y": {
-                "field": "workflow",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Workflows"
-              }
-            }
-          },
-          {
             "id": "package-workflow-navigation",
             "title": "Package workflows",
             "data": {
@@ -4360,44 +4335,83 @@
             "id": "detection-state-distribution",
             "title": "Detection health",
             "description": "Usable security verdicts remain distinct from degraded inspections, detector failures, skipped runs, and unavailable evidence.",
-            "data": { "source": "detection-observations" },
+            "data": {
+              "source": "detection-observations"
+            },
             "mark": "chart",
             "chart": "pie",
             "table": true,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
-              "x": { "field": "detection-state-label", "type": "ordinal", "title": "Detection state" },
-              "y": { "field": "run", "type": "quantitative", "aggregate": "count", "title": "Runs" },
-              "color": { "field": "detection-state", "type": "nominal", "title": "State" }
+              "x": {
+                "field": "detection-state-label",
+                "type": "ordinal",
+                "title": "Detection state"
+              },
+              "y": {
+                "field": "run",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Runs"
+              },
+              "color": {
+                "field": "detection-state",
+                "type": "nominal",
+                "title": "State"
+              }
             }
           },
           {
             "id": "detection-verdict-coverage",
             "title": "Usable verdict coverage",
             "description": "Percentage of observed detection runs with a structurally valid verdict. Partial or unavailable evidence is shown by the data-quality state.",
-            "data": { "source": "detection-observations" },
+            "data": {
+              "source": "detection-observations"
+            },
             "mark": "metric",
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
-              "value": { "field": "usable-verdict-percent", "type": "quantitative", "aggregate": "mean", "title": "Usable verdict coverage", "unit": "percent" }
+              "value": {
+                "field": "usable-verdict-percent",
+                "type": "quantitative",
+                "aggregate": "mean",
+                "title": "Usable verdict coverage",
+                "unit": "percent"
+              }
             }
           },
           {
             "id": "detection-state-trend",
             "title": "Detection state trend",
             "description": "Daily verdict state shows changes in threats, degraded inspections, and unusable results.",
-            "data": { "source": "detection-observations" },
+            "data": {
+              "source": "detection-observations"
+            },
             "mark": "chart",
             "chart": "line",
             "table": true,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
-              "x": { "field": "observed-at", "type": "temporal", "time-unit": "day", "title": "Observed" },
-              "y": { "field": "run", "type": "quantitative", "aggregate": "count", "title": "Runs" },
-              "color": { "field": "detection-state", "type": "nominal", "title": "State" }
+              "x": {
+                "field": "observed-at",
+                "type": "temporal",
+                "time-unit": "day",
+                "title": "Observed"
+              },
+              "y": {
+                "field": "run",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Runs"
+              },
+              "color": {
+                "field": "detection-state",
+                "type": "nominal",
+                "title": "State"
+              }
             }
           },
           {
@@ -4407,8 +4421,12 @@
             "data": {
               "source": "security-observations",
               "filters": {
-                "security-feature": ["threat-detection"],
-                "security-analysis": ["detail"]
+                "security-feature": [
+                  "threat-detection"
+                ],
+                "security-analysis": [
+                  "detail"
+                ]
               }
             },
             "mark": "chart",
@@ -4417,9 +4435,22 @@
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
-              "x": { "field": "security-signal", "type": "nominal", "title": "Signal" },
-              "y": { "field": "security-count", "type": "quantitative", "aggregate": "sum", "title": "Observations" },
-              "color": { "field": "security-status", "type": "nominal", "title": "Result" }
+              "x": {
+                "field": "security-signal",
+                "type": "nominal",
+                "title": "Signal"
+              },
+              "y": {
+                "field": "security-count",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "title": "Observations"
+              },
+              "color": {
+                "field": "security-status",
+                "type": "nominal",
+                "title": "Result"
+              }
             }
           },
           {
@@ -4428,10 +4459,24 @@
             "description": "Threats, detector failures, degraded inspections, skipped detection, and unavailable evidence are ordered by operational urgency.",
             "data": {
               "source": "detection-observations",
-              "filters": { "detection-state": ["threat", "tooling-failure", "degraded", "unknown", "skipped"] },
+              "filters": {
+                "detection-state": [
+                  "threat",
+                  "tooling-failure",
+                  "degraded",
+                  "unknown",
+                  "skipped"
+                ]
+              },
               "order-by": [
-                { "field": "attention-priority", "direction": "asc" },
-                { "field": "observed-at", "direction": "desc" }
+                {
+                  "field": "attention-priority",
+                  "direction": "asc"
+                },
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
               ]
             },
             "mark": "table",
@@ -4441,14 +4486,47 @@
             "disclosure": "essential",
             "encoding": {
               "columns": [
-                { "field": "attention-priority", "type": "quantitative", "title": "Priority" },
-                { "field": "detection-state", "type": "nominal", "title": "State", "display": "status" },
-                { "field": "repository", "type": "nominal", "title": "Repository" },
-                { "field": "workflow", "type": "nominal", "title": "Workflow" },
-                { "field": "detection-signal", "type": "nominal", "title": "Signal / reason" },
-                { "field": "inspection-warning", "type": "nominal", "title": "Inspection warning" },
-                { "field": "observed-at", "type": "temporal", "title": "Observed" },
-                { "field": "run", "type": "nominal", "title": "Run" }
+                {
+                  "field": "attention-priority",
+                  "type": "quantitative",
+                  "title": "Priority"
+                },
+                {
+                  "field": "detection-state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "detection-signal",
+                  "type": "nominal",
+                  "title": "Signal / reason"
+                },
+                {
+                  "field": "inspection-warning",
+                  "type": "nominal",
+                  "title": "Inspection warning"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                }
               ],
               "actions": [
                 {
@@ -4467,7 +4545,10 @@
                   ]
                 }
               ],
-              "href": { "field": "run-link", "type": "nominal" }
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              }
             }
           },
           {
@@ -4662,28 +4743,41 @@
             "title": "Detection health",
             "description": "Verdict coverage and state are the primary trust signals.",
             "layout": "full",
-            "views": ["detection-state-distribution", "detection-verdict-coverage", "detection-state-trend"]
+            "views": [
+              "detection-state-distribution",
+              "detection-verdict-coverage",
+              "detection-state-trend"
+            ]
           },
           {
             "id": "security-findings",
             "title": "Security findings",
             "description": "Threat categories and detector-authored inspection warnings.",
             "layout": "full",
-            "views": ["detection-security-findings"]
+            "views": [
+              "detection-security-findings"
+            ]
           },
           {
             "id": "requires-attention",
             "title": "Requires attention",
             "description": "Highest-priority evidence to investigate next.",
             "layout": "full",
-            "views": ["detection-attention"]
+            "views": [
+              "detection-attention"
+            ]
           },
           {
             "id": "reliability-performance",
             "title": "Reliability and performance",
             "description": "Supporting job mechanics and execution diagnostics.",
             "layout": "full",
-            "views": ["detection-job-conclusions", "detection-job-duration-trend", "detection-job-runner-performance", "detection-job-ledger"]
+            "views": [
+              "detection-job-conclusions",
+              "detection-job-duration-trend",
+              "detection-job-runner-performance",
+              "detection-job-ledger"
+            ]
           }
         ]
       },
@@ -6145,16 +6239,61 @@
             "description": "Availability, completeness, and freshness remain independent even when overall confidence changes.",
             "encoding": {
               "columns": [
-                { "field": "confidence", "type": "nominal", "title": "Confidence", "display": "status" },
-                { "field": "reason", "type": "nominal", "title": "Primary reason" },
-                { "field": "affected-domains", "type": "nominal", "title": "Affected areas" },
-                { "field": "availability", "type": "nominal", "title": "Availability", "display": "status" },
-                { "field": "completeness", "type": "nominal", "title": "Completeness", "display": "status" },
-                { "field": "freshness", "type": "nominal", "title": "Freshness", "display": "status" },
-                { "field": "scope-coverage", "type": "nominal", "title": "Scope coverage" },
-                { "field": "collector-state", "type": "nominal", "title": "Collector state", "display": "status" },
-                { "field": "compatibility-gaps", "type": "quantitative", "title": "Compatibility gaps" },
-                { "field": "next-action", "type": "nominal", "title": "Next action" }
+                {
+                  "field": "confidence",
+                  "type": "nominal",
+                  "title": "Confidence",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Primary reason"
+                },
+                {
+                  "field": "affected-domains",
+                  "type": "nominal",
+                  "title": "Affected areas"
+                },
+                {
+                  "field": "availability",
+                  "type": "nominal",
+                  "title": "Availability",
+                  "display": "status"
+                },
+                {
+                  "field": "completeness",
+                  "type": "nominal",
+                  "title": "Completeness",
+                  "display": "status"
+                },
+                {
+                  "field": "freshness",
+                  "type": "nominal",
+                  "title": "Freshness",
+                  "display": "status"
+                },
+                {
+                  "field": "scope-coverage",
+                  "type": "nominal",
+                  "title": "Scope coverage"
+                },
+                {
+                  "field": "collector-state",
+                  "type": "nominal",
+                  "title": "Collector state",
+                  "display": "status"
+                },
+                {
+                  "field": "compatibility-gaps",
+                  "type": "quantitative",
+                  "title": "Compatibility gaps"
+                },
+                {
+                  "field": "next-action",
+                  "type": "nominal",
+                  "title": "Next action"
+                }
               ]
             }
           },
@@ -6162,16 +6301,35 @@
             "id": "data-health-domains",
             "disclosure": "supplemental",
             "title": "Dashboard domain confidence",
-            "data": { "source": "data-health-domains" },
+            "data": {
+              "source": "data-health-domains"
+            },
             "mark": "table",
             "controls": "static",
             "empty-message": "No dashboard domain contracts are available.",
             "encoding": {
               "columns": [
-                { "field": "domain", "type": "nominal", "title": "Dashboard area" },
-                { "field": "confidence", "type": "nominal", "title": "Confidence", "display": "status" },
-                { "field": "reason", "type": "nominal", "title": "Reason" },
-                { "field": "next-action", "type": "nominal", "title": "Next action" }
+                {
+                  "field": "domain",
+                  "type": "nominal",
+                  "title": "Dashboard area"
+                },
+                {
+                  "field": "confidence",
+                  "type": "nominal",
+                  "title": "Confidence",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                },
+                {
+                  "field": "next-action",
+                  "type": "nominal",
+                  "title": "Next action"
+                }
               ]
             },
             "layout": "full"
@@ -6180,19 +6338,50 @@
             "id": "data-health-coverage",
             "disclosure": "supplemental",
             "title": "Scope and evidence coverage",
-            "data": { "source": "data-health-coverage" },
+            "data": {
+              "source": "data-health-coverage"
+            },
             "mark": "table",
             "controls": "static",
             "empty-message": "No coverage contracts are available.",
             "encoding": {
               "columns": [
-                { "field": "area", "type": "nominal", "title": "Evidence area" },
-                { "field": "expected", "type": "nominal", "title": "Expected" },
-                { "field": "observed", "type": "nominal", "title": "Observed" },
-                { "field": "missing", "type": "nominal", "title": "Missing" },
-                { "field": "coverage-percent", "type": "nominal", "title": "Coverage" },
-                { "field": "state", "type": "nominal", "title": "State", "display": "status" },
-                { "field": "reason", "type": "nominal", "title": "Reason" }
+                {
+                  "field": "area",
+                  "type": "nominal",
+                  "title": "Evidence area"
+                },
+                {
+                  "field": "expected",
+                  "type": "nominal",
+                  "title": "Expected"
+                },
+                {
+                  "field": "observed",
+                  "type": "nominal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "missing",
+                  "type": "nominal",
+                  "title": "Missing"
+                },
+                {
+                  "field": "coverage-percent",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
               ]
             },
             "layout": "full"
@@ -6201,19 +6390,50 @@
             "id": "data-health-collections",
             "title": "Collector state",
             "disclosure": "supplemental",
-            "data": { "source": "data-health-collections" },
+            "data": {
+              "source": "data-health-collections"
+            },
             "mark": "table",
             "controls": "static",
             "empty-message": "No collection metadata is available.",
             "encoding": {
               "columns": [
-                { "field": "operation", "type": "nominal", "title": "Operation" },
-                { "field": "state", "type": "nominal", "title": "State", "display": "status" },
-                { "field": "failure-class", "type": "nominal", "title": "Failure class" },
-                { "field": "progress", "type": "nominal", "title": "Progress" },
-                { "field": "evidence-horizon", "type": "nominal", "title": "Evidence horizon" },
-                { "field": "fallback", "type": "nominal", "title": "Fallback" },
-                { "field": "reason", "type": "nominal", "title": "Reason" }
+                {
+                  "field": "operation",
+                  "type": "nominal",
+                  "title": "Operation"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "failure-class",
+                  "type": "nominal",
+                  "title": "Failure class"
+                },
+                {
+                  "field": "progress",
+                  "type": "nominal",
+                  "title": "Progress"
+                },
+                {
+                  "field": "evidence-horizon",
+                  "type": "nominal",
+                  "title": "Evidence horizon"
+                },
+                {
+                  "field": "fallback",
+                  "type": "nominal",
+                  "title": "Fallback"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
               ]
             },
             "layout": "full"
@@ -6222,18 +6442,45 @@
             "id": "data-health-compatibility",
             "title": "Producer contracts",
             "disclosure": "supplemental",
-            "data": { "source": "data-health-compatibility" },
+            "data": {
+              "source": "data-health-compatibility"
+            },
             "mark": "table",
             "controls": "static",
             "empty-message": "No producer versions were observed.",
             "encoding": {
               "columns": [
-                { "field": "workflow", "type": "nominal", "title": "Workflow" },
-                { "field": "producer-version", "type": "nominal", "title": "Producer version" },
-                { "field": "compatibility", "type": "nominal", "title": "Compatibility", "display": "status" },
-                { "field": "missing-field-class", "type": "nominal", "title": "Missing fields" },
-                { "field": "reason", "type": "nominal", "title": "Reason" },
-                { "field": "next-action", "type": "nominal", "title": "Next action" }
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "producer-version",
+                  "type": "nominal",
+                  "title": "Producer version"
+                },
+                {
+                  "field": "compatibility",
+                  "type": "nominal",
+                  "title": "Compatibility",
+                  "display": "status"
+                },
+                {
+                  "field": "missing-field-class",
+                  "type": "nominal",
+                  "title": "Missing fields"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                },
+                {
+                  "field": "next-action",
+                  "type": "nominal",
+                  "title": "Next action"
+                }
               ]
             },
             "layout": "full"
@@ -6242,19 +6489,50 @@
             "id": "data-health-reconciliation",
             "title": "Cross-source reconciliation",
             "disclosure": "supplemental",
-            "data": { "source": "data-health-reconciliation" },
+            "data": {
+              "source": "data-health-reconciliation"
+            },
             "mark": "table",
             "controls": "static",
             "empty-message": "No reconciliation contracts are available.",
             "encoding": {
               "columns": [
-                { "field": "relationship", "type": "nominal", "title": "Relationship" },
-                { "field": "expected", "type": "nominal", "title": "Expected" },
-                { "field": "observed", "type": "nominal", "title": "Observed" },
-                { "field": "missing", "type": "nominal", "title": "Missing" },
-                { "field": "coverage", "type": "nominal", "title": "Coverage" },
-                { "field": "state", "type": "nominal", "title": "State", "display": "status" },
-                { "field": "reason", "type": "nominal", "title": "Reason" }
+                {
+                  "field": "relationship",
+                  "type": "nominal",
+                  "title": "Relationship"
+                },
+                {
+                  "field": "expected",
+                  "type": "nominal",
+                  "title": "Expected"
+                },
+                {
+                  "field": "observed",
+                  "type": "nominal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "missing",
+                  "type": "nominal",
+                  "title": "Missing"
+                },
+                {
+                  "field": "coverage",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
               ]
             },
             "layout": "full"
@@ -6329,18 +6607,44 @@
             "id": "data-health-provenance",
             "title": "Collection provenance",
             "disclosure": "supplemental",
-            "data": { "source": "data-health-collections" },
+            "data": {
+              "source": "data-health-collections"
+            },
             "mark": "table",
             "controls": "static",
             "empty-message": "No provenance metadata is available.",
             "encoding": {
               "columns": [
-                { "field": "source", "type": "nominal", "title": "Source" },
-                { "field": "collector-completed-at", "type": "temporal", "title": "Collector completed" },
-                { "field": "retrieved-at", "type": "temporal", "title": "Retrieved" },
-                { "field": "source-as-of", "type": "temporal", "title": "Source as of" },
-                { "field": "snapshot-age", "type": "nominal", "title": "Snapshot age" },
-                { "field": "provenance", "type": "nominal", "title": "Provenance" }
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "collector-completed-at",
+                  "type": "temporal",
+                  "title": "Collector completed"
+                },
+                {
+                  "field": "retrieved-at",
+                  "type": "temporal",
+                  "title": "Retrieved"
+                },
+                {
+                  "field": "source-as-of",
+                  "type": "temporal",
+                  "title": "Source as of"
+                },
+                {
+                  "field": "snapshot-age",
+                  "type": "nominal",
+                  "title": "Snapshot age"
+                },
+                {
+                  "field": "provenance",
+                  "type": "nominal",
+                  "title": "Provenance"
+                }
               ]
             },
             "layout": "full"
@@ -6354,7 +6658,7 @@
         "class-name": "coverage-page",
         "description": "Drill-down into the canonical Data Health coverage and collection evidence.",
         "route": {
-          "navigation-page": "overview"
+          "navigation-page": "operations"
         },
         "views": [
           {
@@ -6396,13 +6700,42 @@
             "controls": "static",
             "encoding": {
               "columns": [
-                { "field": "area", "type": "nominal", "title": "Evidence area" },
-                { "field": "expected", "type": "nominal", "title": "Expected" },
-                { "field": "observed", "type": "nominal", "title": "Observed" },
-                { "field": "missing", "type": "nominal", "title": "Missing" },
-                { "field": "coverage-percent", "type": "nominal", "title": "Coverage" },
-                { "field": "state", "type": "nominal", "title": "State", "display": "status" },
-                { "field": "reason", "type": "nominal", "title": "Reason" }
+                {
+                  "field": "area",
+                  "type": "nominal",
+                  "title": "Evidence area"
+                },
+                {
+                  "field": "expected",
+                  "type": "nominal",
+                  "title": "Expected"
+                },
+                {
+                  "field": "observed",
+                  "type": "nominal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "missing",
+                  "type": "nominal",
+                  "title": "Missing"
+                },
+                {
+                  "field": "coverage-percent",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
               ]
             },
             "layout": "full"
@@ -6734,15 +7067,17 @@
       {
         "id": "configuration",
         "kind": "custom",
-        "title": "Configuration",
+        "title": "Settings",
+        "navigation-label": "Settings",
         "icon": "gear",
         "class-name": "configuration-page",
-        "description": "Validated, explained, and actionable view of the checked-in .github/workflows/cao.json policy.",
+        "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
         "views": [
           {
             "id": "configuration-policy",
-            "title": "Control policy",
-            "description": "Every declared entry is shown with its operational meaning. Defaults are identified where they affect rollout behavior.",
+            "locked": true,
+            "title": "Policy",
+            "description": "Change policy values, then copy the updated JSON for review and commit.",
             "data": {
               "sources": [
                 "configuration-policy"
@@ -6751,20 +7086,6 @@
             "mark": "element",
             "element": "configuration-policy",
             "layout": "full"
-          },
-          {
-            "id": "configuration-actions",
-            "title": "Suggested changes",
-            "description": "Copy a bounded prompt to make a policy change without widening unrelated scope or limits.",
-            "data": {
-              "sources": [
-                "configuration-actions"
-              ]
-            },
-            "mark": "element",
-            "element": "configuration-actions",
-            "layout": "full",
-            "intent": "Help an operator apply a bounded Central Agentic Ops policy change without widening unrelated scope or limits."
           }
         ]
       },
@@ -6866,157 +7187,33 @@
         ]
       },
       {
-        "id": "home",
+        "id": "overview",
         "kind": "custom",
         "title": "Home",
         "navigation-label": "Home",
         "icon": "home",
-        "class-name": "dashboard-next-home-page",
-        "description": "What needs attention, what meaningful work is active, what outcomes were produced, and whether the operating evidence is sufficient.",
+        "class-name": "dashboard-overview-page",
+        "description": "A concise briefing of progress, work in motion, and decisions waiting for you.",
         "views": [
           {
-            "id": "home-attention",
-            "title": "Need attention",
-            "description": "Unresolved conditions that require an authorized person to act or investigate, ordered by deterministic priority.",
+            "id": "overview-attention",
+            "locked": true,
             "data": {
               "sources": [
-                "attention-signals"
+                "attention-signals",
+                "workflows",
+                "agent-assignments",
+                "security-observations",
+                "runs",
+                "work-items",
+                "outcomes",
+                "operational-values",
+                "evidence-records"
               ]
             },
             "mark": "element",
             "element": "signal-list",
             "layout": "full"
-          },
-          {
-            "id": "home-work",
-            "title": "Work in progress",
-            "description": "Current delegated work at work-item grain, independent of the number of executions or agents involved.",
-            "data": {
-              "source": "work-items",
-              "limit": 5
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No active work items were observed in the selected scope.",
-            "layout": "full",
-            "encoding": {
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "objective",
-                  "type": "nominal",
-                  "title": "Work"
-                },
-                {
-                  "field": "scope",
-                  "type": "nominal",
-                  "title": "Scope"
-                },
-                {
-                  "field": "phase",
-                  "type": "ordinal",
-                  "title": "Phase",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Why"
-                },
-                {
-                  "field": "next-action",
-                  "type": "nominal",
-                  "title": "Next action"
-                },
-                {
-                  "field": "owner",
-                  "type": "nominal",
-                  "title": "Owner"
-                }
-              ]
-            }
-          },
-          {
-            "id": "home-outcomes",
-            "title": "Outcomes",
-            "description": "Recent retained outcomes remain distinct from runtime success and operational value.",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "outcomes",
-              "limit": 5,
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No outcomes were retained in the selected scope.",
-            "layout": "half",
-            "encoding": {
-              "href": {
-                "field": "external-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "outcome-title",
-                  "type": "nominal",
-                  "title": "Outcome"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "outcome-state",
-                  "type": "ordinal",
-                  "title": "Disposition",
-                  "display": "status"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                }
-              ]
-            }
-          },
-          {
-            "id": "home-operational-pulse",
-            "title": "Operational pulse",
-            "description": "Current work distribution without collapsing runtime, verification, outcome, evidence quality, budget, or capacity into one score.",
-            "data": {
-              "source": "work-items"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "lifecycle-state",
-                "type": "nominal",
-                "title": "Lifecycle state"
-              },
-              "y": {
-                "field": "work-item-id",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Work items"
-              },
-              "color": {
-                "field": "lifecycle-state",
-                "type": "nominal",
-                "title": "Lifecycle state"
-              }
-            }
           }
         ]
       },
@@ -7026,42 +7223,13 @@
         "title": "Work",
         "icon": "project-roadmap",
         "class-name": "dashboard-next-work-page",
-        "description": "Complete operational inventory organized by stable delegated work rather than workflow executions.",
+        "description": "Plan and track delegated work by lifecycle state.",
         "views": [
           {
-            "id": "work-lifecycle-distribution",
-            "title": "Work by lifecycle state",
-            "description": "Current distribution of work across active, waiting, blocked, review, completed, and cancelled states.",
-            "data": {
-              "source": "work-items"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "lifecycle-state",
-                "type": "nominal",
-                "title": "Lifecycle state"
-              },
-              "y": {
-                "field": "work-item-id",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Work items"
-              },
-              "color": {
-                "field": "lifecycle-state",
-                "type": "nominal",
-                "title": "Lifecycle state"
-              }
-            }
-          },
-          {
             "id": "work-project-board",
-            "title": "Work layouts",
-            "description": "GitHub Projects-style work planning slices declaratively composed from workflows with avatars, owners, repositories, and runtime windows.",
+            "locked": true,
+            "title": "Board",
+            "description": "Delegated work grouped by its current lifecycle state.",
             "data": {
               "sources": [
                 "work-items"
@@ -7070,11 +7238,67 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "sections": [
-                "board",
-                "tasks",
-                "roadmap"
+              "body": "board"
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "work-tasks",
+        "kind": "custom",
+        "title": "Work",
+        "icon": "table",
+        "class-name": "dashboard-next-work-page",
+        "description": "Scan delegated work as a compact, sortable task inventory.",
+        "route": {
+          "navigation-page": "work"
+        },
+        "views": [
+          {
+            "id": "work-project-tasks",
+            "locked": true,
+            "title": "Tasks",
+            "description": "Owners, repositories, lifecycle state, and runtime windows for every delegated work item.",
+            "data": {
+              "sources": [
+                "work-items"
               ]
+            },
+            "mark": "element",
+            "element": "work-project-view",
+            "config": {
+              "body": "tasks"
+            },
+            "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "work-roadmap",
+        "kind": "custom",
+        "title": "Work",
+        "icon": "project-roadmap",
+        "class-name": "dashboard-next-work-page",
+        "description": "See delegated work across a shared operational timeline.",
+        "route": {
+          "navigation-page": "work"
+        },
+        "views": [
+          {
+            "id": "work-project-roadmap",
+            "locked": true,
+            "title": "Roadmap",
+            "description": "Start dates, durations, owners, and completion points aligned on one calendar.",
+            "data": {
+              "sources": [
+                "work-items"
+              ]
+            },
+            "mark": "element",
+            "element": "work-project-view",
+            "config": {
+              "body": "roadmap"
             },
             "layout": "full"
           }
@@ -7090,115 +7314,19 @@
         "views": [
           {
             "id": "agents-marketplace",
+            "locked": true,
             "title": "Agents",
             "description": "Agent name, icon, description, permissions, runtime, and freshness.",
             "data": {
               "sources": [
-                "agent-assignments"
+                "agent-assignments",
+                "workflows",
+                "security-observations"
               ]
             },
             "mark": "element",
             "element": "agent-marketplace-view",
             "layout": "full"
-          }
-        ]
-      },
-      {
-        "id": "evidence",
-        "kind": "custom",
-        "title": "Evidence",
-        "icon": "file-diff",
-        "class-name": "dashboard-next-evidence-page",
-        "description": "Verification, provenance, and decision evidence with explicit evidence class and source revision.",
-        "views": [
-          {
-            "id": "evidence-class-distribution",
-            "title": "Evidence by class",
-            "description": "Observed, derived, annotated, inferred, and unsupported evidence remain distinguishable.",
-            "data": {
-              "source": "evidence-records"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "evidence-class",
-                "type": "nominal",
-                "title": "Evidence class"
-              },
-              "y": {
-                "field": "evidence-id",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Evidence records"
-              },
-              "color": {
-                "field": "evidence-class",
-                "type": "nominal",
-                "title": "Evidence class"
-              }
-            }
-          },
-          {
-            "id": "evidence-ledger",
-            "title": "Evidence ledger",
-            "description": "Claims, verification state, provenance coverage, source revision, and direct evidence links.",
-            "data": {
-              "source": "evidence-records"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": false,
-            "empty-message": "No work-oriented evidence records were observed.",
-            "layout": "full",
-            "encoding": {
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "objective",
-                  "type": "nominal",
-                  "title": "Work"
-                },
-                {
-                  "field": "evidence-kind",
-                  "type": "nominal",
-                  "title": "Kind"
-                },
-                {
-                  "field": "evidence-class",
-                  "type": "ordinal",
-                  "title": "Class",
-                  "display": "status"
-                },
-                {
-                  "field": "claim",
-                  "type": "nominal",
-                  "title": "Claim"
-                },
-                {
-                  "field": "verification-state",
-                  "type": "ordinal",
-                  "title": "Verification",
-                  "display": "status"
-                },
-                {
-                  "field": "provenance-state",
-                  "type": "ordinal",
-                  "title": "Provenance",
-                  "display": "status"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                }
-              ]
-            }
           }
         ]
       },
@@ -7211,165 +7339,27 @@
         "description": "Longer-horizon outcomes, operational value, measured resource use, and capacity without unsupported causal claims.",
         "views": [
           {
-            "id": "insights-operational-value-trend",
-            "title": "Operational value trend",
-            "description": "Mature and interim operational-value observations grouped by their disclosed definition.",
+            "id": "insights-overview",
+            "locked": true,
+            "title": "Operational impact",
+            "description": "Value attainment, durable outcomes, measured AI Credit allocation, execution health, threat detection, and experiment decisions.",
             "data": {
-              "source": "operational-values",
+              "sources": [
+                "operational-values",
+                "outcomes",
+                "usage",
+                "runs",
+                "detection-observations",
+                "experiments"
+              ],
               "time": {
                 "range": "30d"
               }
             },
-            "mark": "chart",
-            "chart": "line",
-            "table": true,
+            "mark": "element",
+            "element": "insights-overview",
             "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "operational-value",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean attainment"
-              },
-              "color": {
-                "field": "operational-value-definition",
-                "type": "nominal",
-                "title": "Definition"
-              },
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "insights-outcome-distribution",
-            "title": "Outcome disposition",
-            "description": "Accepted, rejected, ignored, pending, and lifecycle outcomes in the selected interval.",
-            "data": {
-              "source": "outcomes"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "outcome-state",
-                "type": "nominal",
-                "title": "Disposition"
-              },
-              "y": {
-                "field": "safe-output",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Outcomes"
-              },
-              "color": {
-                "field": "outcome-state",
-                "type": "nominal",
-                "title": "Disposition"
-              }
-            }
-          },
-          {
-            "id": "insights-aic-trend",
-            "title": "Measured AI Credit use",
-            "description": "Attributed AI Credit observations remain separate from currency estimates and accepted outcomes.",
-            "data": {
-              "source": "usage",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "table": true,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "AI Credits",
-                "unit": "aic"
-              },
-              "color": {
-                "field": "repository",
-                "type": "nominal",
-                "title": "Repository"
-              },
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "insights-capacity",
-            "title": "Current GitHub API capacity",
-            "description": "Fresh observed capacity by credential and resource. Missing telemetry is not treated as zero.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "order-by": [
-                {
-                  "field": "remaining-percent",
-                  "direction": "asc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No current GitHub API capacity observations are available.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "credential",
-                  "type": "nominal",
-                  "title": "Credential"
-                },
-                {
-                  "field": "resource",
-                  "type": "nominal",
-                  "title": "Resource"
-                },
-                {
-                  "field": "remaining",
-                  "type": "quantitative",
-                  "title": "Remaining"
-                },
-                {
-                  "field": "remaining-percent",
-                  "type": "quantitative",
-                  "title": "Remaining %",
-                  "unit": "percent"
-                },
-                {
-                  "field": "reset-at",
-                  "type": "temporal",
-                  "title": "Reset"
-                },
-                {
-                  "field": "risk-status",
-                  "type": "ordinal",
-                  "title": "Status",
-                  "display": "status"
-                }
-              ]
-            }
+            "disclosure": "essential"
           }
         ]
       }
@@ -7377,22 +7367,23 @@
     "navigation": [
       {
         "label": "Attention",
+        "experimental": true,
         "pages": [
-          "overview"
+          "operations"
         ]
       },
       {
-        "label": "Dashboard Next",
         "pages": [
-          "home",
+          "overview",
           "work",
           "agents",
-          "evidence",
-          "insights"
+          "insights",
+          "configuration"
         ]
       },
       {
         "label": "Investigate",
+        "experimental": true,
         "pages": [
           "runtime",
           "performance",
@@ -7401,6 +7392,7 @@
       },
       {
         "label": "Insights",
+        "experimental": true,
         "pages": [
           "experiments",
           "operational-value",
@@ -7409,8 +7401,8 @@
       },
       {
         "label": "Control plane",
+        "experimental": true,
         "pages": [
-          "configuration",
           "admission",
           "preview",
           "readiness",
@@ -7421,6 +7413,7 @@
       },
       {
         "label": "Explore",
+        "experimental": true,
         "pages": [
           "safe-outputs",
           "detection",

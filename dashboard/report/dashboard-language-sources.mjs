@@ -605,6 +605,9 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
           packageInventoryWarnings: inventoryWarnings,
           packageAllowance: packageAllowance > 0 ? packageAllowance : null,
           packageWorkerCount: workers.length,
+          packageDescription: bundle.description,
+          packageReadmePath: bundle.readmePath,
+          packageReadme: bundle.readme,
           ...(Number.isFinite(rolloutPercent) ? { packageRolloutPercent: rolloutPercent } : {}),
           ...(packageTargets.length > 0 ? { packageTargets } : {}),
           ...(packageMembership ? { packageMembership } : {}),
@@ -645,6 +648,9 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
      ...(Number.isFinite(details?.maxAiCredits) ? { "max-ai-credits": details.maxAiCredits } : {}),
      ...(Number.isFinite(details?.packageAllowance) ? { "package-aic-allowance": details.packageAllowance } : {}),
      ...(Number.isFinite(details?.packageWorkerCount) ? { "package-worker-count": details.packageWorkerCount } : {}),
+    ...(details?.packageDescription ? { "package-description": details.packageDescription } : {}),
+    ...(details?.packageReadmePath ? { "package-readme-path": details.packageReadmePath } : {}),
+    ...(details?.packageReadme ? { "package-readme": details.packageReadme } : {}),
      ...(Number.isFinite(details?.packageInventoryWarnings) ? { "package-inventory-warnings": details.packageInventoryWarnings } : {}),
     ...(Number.isFinite(details?.packageRolloutPercent) ? { "package-rollout-percent": details.packageRolloutPercent } : {}),
     ...(packageTargets.length > 0 ? { "package-targets": packageTargets } : {}),
@@ -1783,12 +1789,13 @@ function workItemKey(organization, repository, workflow) {
   return `${organization}/${repository}:${workflow}`.toLowerCase();
 }
 
-function workItemLifecycle(latestRun) {
+function workItemLifecycle(latestRun, latestOutcome) {
+  if (latestRun?.["admission-status"] === "denied" || latestRun?.["admission-status"] === "blocked") return "blocked";
+  if (["failure", "timed-out", "startup-failure", "action-required"].includes(latestRun?.["run-conclusion"])) return "blocked";
+  if (latestRun?.["run-status"] === "queued") return "waiting";
+  if (latestRun?.["run-status"] === "in-progress") return "active";
+  if (latestOutcome?.["outcome-state"] === "pending") return "review";
   if (!latestRun) return "unknown";
-  if (latestRun["admission-status"] === "denied" || latestRun["admission-status"] === "blocked") return "blocked";
-  if (["failure", "timed-out", "startup-failure", "action-required"].includes(latestRun["run-conclusion"])) return "blocked";
-  if (latestRun["run-status"] === "queued") return "waiting";
-  if (latestRun["run-status"] === "in-progress") return "active";
   if (["success", "cancelled", "skipped", "neutral", "stale"].includes(latestRun["run-conclusion"])) return "completed";
   return "unknown";
 }
@@ -1798,6 +1805,7 @@ function workItemNextAction(lifecycleState) {
     blocked: "Resolve the admission or run failure blocking this work",
     waiting: "Await the next scheduled run",
     active: "Monitor the in-progress run",
+    review: "Review the produced outcome",
     completed: "Review the produced outcome",
   }[lifecycleState] || "Investigate missing run telemetry";
 }
@@ -1807,8 +1815,14 @@ function workItemNextActor(lifecycleState) {
     blocked: "maintainer",
     waiting: "scheduler",
     active: "agent",
+    review: "reviewer",
     completed: "reviewer",
   }[lifecycleState] || "unknown";
+}
+
+function workItemSafeOutputKind(outcome) {
+  const kind = outcome?.["outcome-category"];
+  return typeof kind === "string" && kind ? kind : "workflow-output";
 }
 
 function workItemConsequenceTier(workflowRole) {
@@ -1838,7 +1852,7 @@ function latestByWorkItemKey(rows, keyFor, sortField) {
   return grouped;
 }
 
-function workItemRows(workflows, runs, outcomes) {
+function workItemRows(workflows, runs, outcomes, latestOnly = false) {
   const runsByWorkItem = latestByWorkItemKey(
     runs,
     (run) => workItemKey(run.organization, run.repository, run.workflow),
@@ -1852,50 +1866,66 @@ function workItemRows(workflows, runs, outcomes) {
     ),
     "observed-at",
   );
-  return workflows.map((workflow) => {
+  return workflows.flatMap((workflow) => {
     const key = workItemKey(workflow.organization, workflow.repository, workflow.workflow);
-    const latestRun = runsByWorkItem.get(key)?.[0];
-    const latestOutcome = outcomesByWorkItem.get(key)?.[0];
-    const lifecycleState = workItemLifecycle(latestRun);
-    return {
-      "work-item-id": key,
-      name: workflow["workflow-name"] || workflow.workflow,
+    const workflowRuns = runsByWorkItem.get(key) || [];
+    const selectedRuns = latestOnly ? workflowRuns.slice(0, 1) : workflowRuns;
+    const runCandidates = selectedRuns.length > 0 ? selectedRuns : [undefined];
+    const workflowOutcomes = outcomesByWorkItem.get(key) || [];
+    return runCandidates.map((run, index) => {
+      const matchedOutcome = run
+        ? workflowOutcomes.find((outcome) => outcome.run && outcome.run === run.run)
+          || (index === 0 ? workflowOutcomes[0] : undefined)
+        : workflowOutcomes[0];
+      const lifecycleState = workItemLifecycle(run, matchedOutcome);
+      return {
+      "work-item-id": latestOnly || !run ? key : `${key}:run:${run.run}`,
+      name: run
+        ? `${workflow["workflow-name"] || workflow.workflow} · ${run["run-title"]}`
+        : workflow["workflow-name"] || workflow.workflow,
       objective: workflow["workflow-name"] || workflow.workflow,
       organization: workflow.organization,
       repository: workflow.repository,
       workflow: workflow.workflow,
+      run: run?.run || "",
       "workflow-name": workflow["workflow-name"] || workflow.workflow,
       "workflow-icon": workflow["package-icon"] || "workflow",
+      package: workflow["package-name"] || "standalone",
       scope: `${workflow.organization}/${workflow.repository}`,
       domain: workflow["package-name"] || "standalone",
       "work-type": workflow["workflow-role"] || "unknown",
       "lifecycle-state": lifecycleState,
-      phase: latestRun?.["run-status"] || "unknown",
-      reason: latestRun?.["admission-reason"] || latestRun?.["failure-message"] || "No blocking condition observed",
-      "reason-evidence-class": latestRun ? "observed" : "inferred",
+      phase: run?.["run-status"] || "unknown",
+      reason: run?.["admission-reason"] || run?.["failure-message"]
+        || (lifecycleState === "review" ? "Produced outcome awaits review or user consent" : "No blocking condition observed"),
+      "reason-evidence-class": run ? "observed" : "inferred",
       "next-action": workItemNextAction(lifecycleState),
       "next-actor": workItemNextActor(lifecycleState),
-      "waiting-on": lifecycleState === "waiting" || lifecycleState === "blocked"
-        ? (latestRun?.resource || "scheduled run")
+      "safe-output-kind": workItemSafeOutputKind(matchedOutcome),
+      "waiting-on": lifecycleState === "review"
+        ? "reviewer decision"
+        : lifecycleState === "waiting" || lifecycleState === "blocked"
+          ? (run?.resource || "scheduled run")
         : "",
-      "waiting-since": latestRun?.["resource-reset-at"] || latestRun?.["started-at"] || "",
+      "waiting-since": run?.["resource-reset-at"] || run?.["started-at"] || matchedOutcome?.["observed-at"] || "",
       owner: workflow["package-name"] || workflow.organization,
       "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
-      "verification-state": outcomeVerificationState(latestOutcome?.["outcome-state"]),
-      "outcome-state": latestOutcome?.["outcome-state"] || "pending",
-      "started-at": latestRun?.["started-at"] || workflow["observed-at"],
-      "ended-at": latestRun?.["ended-at"] || "",
-      "observed-at": latestRun?.["started-at"] || workflow["observed-at"],
-      "evidence-link": latestOutcome?.["external-link"] || latestRun?.["run-link"],
-      "run-link": latestRun?.["run-link"],
+      "verification-state": outcomeVerificationState(matchedOutcome?.["outcome-state"]),
+      "outcome-state": matchedOutcome?.["outcome-state"] || "pending",
+      "started-at": run?.["started-at"] || "",
+      "ended-at": run?.["ended-at"] || "",
+      "observed-at": run?.["started-at"] || workflow["observed-at"],
+      "evidence-link": matchedOutcome?.["external-link"] || run?.["run-link"],
+      "run-link": run?.["run-link"],
     };
+    });
   });
 }
 
 function attentionSignalRows(workItems, generatedAt) {
   const now = Date.parse(generatedAt) || Date.now();
   return workItems
-    .filter((item) => item["lifecycle-state"] === "blocked" || item["lifecycle-state"] === "waiting")
+    .filter((item) => ["blocked", "waiting", "review"].includes(item["lifecycle-state"]))
     .map((item) => {
       const since = Date.parse(item["waiting-since"]);
       const ageSeconds = Number.isFinite(since) ? Math.max(0, Math.round((now - since) / 1000)) : 0;
@@ -1910,7 +1940,8 @@ function attentionSignalRows(workItems, generatedAt) {
         "expected-actor": item["next-actor"],
         "age-seconds": ageSeconds,
         "consequence-tier": item["consequence-tier"],
-        priority: item["lifecycle-state"] === "blocked" ? (item["consequence-tier"] === "high" ? 0 : 1) : 2,
+        priority: item["lifecycle-state"] === "blocked" ? (item["consequence-tier"] === "high" ? 0 : 1)
+          : item["lifecycle-state"] === "review" ? 1 : 2,
         "observed-at": item["observed-at"],
         "evidence-link": item["evidence-link"],
         "repository-link": link("repository", `https://github.com/${item.organization}/${item.repository}`, `View ${item.organization}/${item.repository} on GitHub`),
@@ -1930,6 +1961,7 @@ function agentAssignmentRows(workflows, runs, workItems) {
   const assignmentStateFor = {
     active: "active",
     waiting: "pending",
+    review: "pending",
     blocked: "blocked",
     completed: "completed",
     unknown: "unknown",
@@ -1984,7 +2016,9 @@ function agentAssignmentRows(workflows, runs, workItems) {
         "work-item-id": workItem?.["work-item-id"] || key,
         objective: workItem?.objective || workflow["workflow-name"] || workflow.workflow,
         "assignment-state": assignmentState,
-        "handoff-state": lifecycleState === "completed" ? "completed" : lifecycleState === "waiting" ? "pending" : "in-progress",
+        "handoff-state": lifecycleState === "completed"
+          ? "completed"
+          : lifecycleState === "waiting" || lifecycleState === "review" ? "pending" : "in-progress",
         "dependency-state": workItem?.["waiting-on"] ? "waiting" : "resolved",
         "conflict-state": "none",
         "run-count": stats.runs,
@@ -2259,7 +2293,36 @@ function configurationData(controlSettings) {
 
 export function buildDashboardLanguageSources({ deployed, usage, operationalValues, report, inventory = {}, controlSettings = {}, githubTelemetry = [] }) {
   const generatedAt = report.generatedAt || deployed.generatedAt || new Date().toISOString();
-  const workflows = workflowRows(deployed, generatedAt, inventory, controlSettings);
+  const workflowsByIdentity = new Map([
+    ...(deployed.workflows || []),
+    ...(report.remoteWorkflows || []),
+  ].map((workflow) => [`${String(workflow.repository).toLowerCase()}:${String(workflow.path).toLowerCase()}`, workflow]));
+  const workflowInventoryComplete = deployed.discovery?.complete === true
+    && report.workflowDiscovery?.complete !== false;
+  const localWorkflowCollection = (deployed.collections || []).find((collection) => collection.operation === "workflow-discovery");
+  const remoteWorkflowDiscovery = report.workflowDiscovery;
+  const workflowCollection = remoteWorkflowDiscovery
+    ? {
+      ...localWorkflowCollection,
+      operation: "workflow-discovery",
+      state: workflowInventoryComplete ? "complete" : "partial",
+      failureClass: workflowInventoryComplete ? null : "request",
+      expected: Number(localWorkflowCollection?.expected || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesExpected,
+      observed: Number(localWorkflowCollection?.observed || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesObserved,
+      workflowExpected: workflowInventoryComplete ? workflowsByIdentity.size : undefined,
+      reason: remoteWorkflowDiscovery.failures?.map((failure) => `${failure.repository}: ${failure.reason}`).join("; ") || "",
+    }
+    : localWorkflowCollection;
+  const workflowDeployed = {
+    ...deployed,
+    workflows: [...workflowsByIdentity.values()],
+    discovery: { ...deployed.discovery, complete: workflowInventoryComplete },
+    collections: [
+      ...(deployed.collections || []).filter((collection) => collection.operation !== "workflow-discovery"),
+      ...(workflowCollection ? [workflowCollection] : []),
+    ],
+  };
+  const workflows = workflowRows(workflowDeployed, generatedAt, inventory, controlSettings);
   const runs = runRows(deployed, usage);
   const admission = admissionRows(deployed);
   const performance = performanceRows(deployed, usage);
@@ -2275,10 +2338,11 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const workItemsAvailable = workflows.length > 0;
   const workItemsComplete = workItemsAvailable && runComplete;
   const workItems = workItemRows(workflows, runs, outcomes);
-  const attentionSignals = attentionSignalRows(workItems, generatedAt);
-  const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
+  const latestWorkItems = workItemRows(workflows, runs, outcomes, true);
+  const attentionSignals = attentionSignalRows(latestWorkItems, generatedAt);
+  const agentAssignments = agentAssignmentRows(workflows, runs, latestWorkItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
-  const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
+  const evidenceRecords = evidenceRecordRows(outcomes, findings, latestWorkItems);
   const values = operationalValueRows(operationalValues);
   const experiments = experimentTelemetryRows(usage);
   const graders = graderTelemetryRows(usage);
@@ -2303,7 +2367,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     "organization-name": organization,
     "observed-at": generatedAt,
   }));
-  const discoveryAvailable = deployed.discovery?.complete !== false;
+  const discoveryAvailable = workflowDeployed.discovery?.complete !== false || workflows.length > 0;
   const workflowsAvailable = discoveryAvailable || workflows.length > 0;
   const runAvailable = deployed.runHealth?.available === true || runs.length > 0;
   const usageAvailable = usage.available === true;
@@ -2312,9 +2376,9 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const configuration = configurationData(controlSettings);
 
   const sources = Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]));
-  sources.organizations = source("organizations", organizations, generatedAt, discoveryAvailable, deployed.discovery?.complete === true);
-  sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, deployed.discovery?.complete === true);
-  sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, deployed.discovery?.complete === true);
+  sources.organizations = source("organizations", organizations, generatedAt, discoveryAvailable, workflowInventoryComplete);
+  sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
+  sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
   const admissionExpected = (deployed.workflows || [])
     .filter((workflow) => workflow.role === "orchestrator" || workflow.role === "worker")
@@ -2531,7 +2595,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     githubFreshness,
     githubAsOf,
   );
-  applyDataHealthMetadata(sources, { deployed, usage, report, workflows, runs, generatedAt });
+  applyDataHealthMetadata(sources, { deployed: workflowDeployed, usage, report, workflows, runs, generatedAt });
   return sources;
 }
 

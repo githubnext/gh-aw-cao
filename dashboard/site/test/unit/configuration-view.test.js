@@ -34,45 +34,40 @@ function context(row) {
 }
 
 describe('Configuration dashboard view', () => {
-  it('keeps Configuration in the Control plane group without a chart', () => {
+  it('exposes Control in the clean navigation without a chart', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
-    const group = dashboard.navigation.find((/** @type {{ label: string }} */ candidate) => candidate.label === 'Control plane');
+    const cleanNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => !candidate.label);
 
-    expect(group.pages).toContain('configuration');
+    expect(page.title).toBe('Settings');
+    expect(page.icon).toBe('gear');
+    expect(cleanNavigation.pages.at(-1)).toBe('configuration');
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
-    expect(page.views).toHaveLength(2);
+    expect(page.views).toHaveLength(1);
+    expect(page.views[0].id).toBe('configuration-policy');
   });
 
-  it('renders validation guidance, explains entries, and safely renders raw JSON', () => {
-    const raw = '{"version":1,"control-plane":{"defaults":{"mode":"review"}}}';
+  it('renders cao.json entries as editable settings', () => {
     const rendered = renderConfigurationView(context({
-      document: JSON.parse(raw),
-      raw,
-      diagnostics: [{
-        severity: 'guidance',
-        title: 'Package is review-only',
-        path: 'control-plane.packages.example.mode',
-        detail: 'Promote only after reviewing target authority.'
-      }]
+      document: { version: 1, 'control-plane': { defaults: { mode: 'review' } } },
+      raw: '',
+      diagnostics: []
     }));
     if (!rendered) throw new Error('configuration view did not render');
 
-    expect(rendered.textContent).toContain('Package is review-only');
+    expect(rendered.querySelector('.configuration-editor')).not.toBeNull();
+  expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('input[type="number"]'))?.value).toBe('1');
+    expect(rendered.querySelector('select')?.value).toBe('review');
     expect(rendered.textContent).toContain('Sets the inherited execution mode.');
-    expect(rendered.querySelector('.configuration-raw code')?.textContent).toBe(raw);
-    expect(rendered.querySelectorAll('.configuration-entry')).not.toHaveLength(0);
-    expect(/** @type {HTMLDetailsElement | null} */ (rendered.querySelector('details.configuration-entries'))?.open).toBe(false);
-    expect(/** @type {HTMLDetailsElement | null} */ (rendered.querySelector('details.configuration-entry'))?.open).toBe(true);
+    expect(rendered.textContent).not.toContain('Suggested changes');
+    expect(rendered.textContent).not.toContain('Raw JSON');
   });
 
-  it('uses array values as entry titles while retaining index-based explanations', () => {
+  it('edits lists without losing the nested policy path', () => {
     const rendered = renderConfigurationView(context({
       document: {
         'control-plane': {
-          scope: {
-            'allowed-owners': ['githubnext', 'octodemo', { mode: 'review' }]
-          }
+          scope: { 'allowed-owners': ['githubnext', 'octodemo'] }
         }
       },
       raw: '',
@@ -80,41 +75,47 @@ describe('Configuration dashboard view', () => {
     }));
     if (!rendered) throw new Error('configuration view did not render');
 
-    const titles = [...rendered.querySelectorAll('.configuration-entry-heading > code')]
-      .map((element) => element.textContent);
-    expect(titles).toEqual([
-      '.github/workflows/cao.json',
-      'control-plane',
-      'scope',
-      'allowed-owners',
-      'githubnext',
-      'octodemo',
-      '2',
-      'mode'
-    ]);
-    expect(rendered.textContent).toContain('An owner included in the discovery boundary.');
+    const owners = rendered.querySelector('textarea');
+    if (!(owners instanceof HTMLTextAreaElement)) throw new Error('owner list did not render');
+    expect(owners.value).toBe('githubnext\noctodemo');
+    expect(owners.id).toContain('control-plane-scope-allowed-owners');
+    owners.value = 'githubnext\ngithub';
+    owners.dispatchEvent(new Event('input'));
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
   });
 
-  it('copies the raw policy and reports invalid structured content', async () => {
+  it('copies edited JSON and can discard local changes', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     const rendered = renderConfigurationView(context({
-      document: null,
-      raw: '{bad json',
-      diagnostics: [{
-        severity: 'error',
-        title: 'Policy validation failed',
-        path: '.github/workflows/cao.json',
-        detail: 'Unexpected token'
-      }]
+      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
+      raw: '',
+      diagnostics: []
     }));
     if (!rendered) throw new Error('configuration view did not render');
 
-    expect(rendered.textContent).toContain('The policy cannot be explained until it contains valid JSON.');
+    const input = rendered.querySelector('#configuration-control-plane-defaults-max-repositories');
+    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
     const copyButton = rendered.querySelector('.configuration-copy-button');
     if (!(copyButton instanceof HTMLButtonElement)) throw new Error('copy button did not render');
     copyButton.click();
     await vi.waitFor(() => expect(rendered.querySelector('.configuration-copy-status')?.textContent).toBe('Copied.'));
-    expect(writeText).toHaveBeenCalledWith('{bad json');
+    expect(JSON.parse(writeText.mock.calls[0][0])['control-plane'].defaults['max-repositories']).toBe(12);
+
+    const resetButton = rendered.querySelector('.configuration-reset-button');
+    if (!(resetButton instanceof HTMLButtonElement)) throw new Error('reset button did not render');
+    resetButton.click();
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('No changes');
+    expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('#configuration-control-plane-defaults-max-repositories'))?.value).toBe('7');
+  });
+
+  it('does not offer editing controls for invalid structured content', () => {
+    const rendered = renderConfigurationView(context({ document: null, raw: '{bad json', diagnostics: [] }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    expect(rendered.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
+    expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
   });
 });

@@ -286,6 +286,14 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
           admissionReason: "package-disabled",
           engine: "copilot",
           resolvedModel: "gpt-5",
+        }, {
+          runId: 99,
+          status: "completed",
+          conclusion: "success",
+          startedAt: "2026-09-05T08:00:00Z",
+          updatedAt: "2026-09-05T08:05:00Z",
+          engine: "copilot",
+          resolvedModel: "gpt-5",
         }] },
       }, {
         repository: "githubnext/gh-aw-cao",
@@ -301,6 +309,13 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
           engine: "copilot",
           resolvedModel: "gpt-5",
         }] },
+      }, {
+        repository: "githubnext/gh-aw-cao",
+        path: ".github/workflows/reviewer.lock.yml",
+        name: "Reviewer",
+        role: "worker",
+        state: "active",
+        runHealth: { runRecords: [] },
       }],
     },
     usage: { available: true, complete: true, runs: [] },
@@ -318,6 +333,17 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
         state: "closed",
         kind: "issue",
         title: "Do the thing",
+      }, {
+        id: "reviewer-outcome",
+        repository: "githubnext/gh-aw-cao",
+        runtimeRepository: "githubnext/gh-aw-cao",
+        workflowPath: ".github/workflows/reviewer.lock.yml",
+        conclusion: "success",
+        mode: "review",
+        state: "open",
+        kind: "pull-request",
+        title: "Review the proposal",
+        updatedAt: "2026-09-05T10:00:00Z",
       }],
     },
   });
@@ -325,9 +351,15 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(sources["work-items"].metadata.availability, "available");
   assert.equal(sources["work-items"].metadata.completeness, "complete");
   const workItems = new Map(sources["work-items"].rows.map((row) => [row["work-item-id"], row]));
-  const dependabot = workItems.get("githubnext/gh-aw-cao:.github/workflows/dependabot.md");
-  const worker = workItems.get("githubnext/gh-aw-cao:.github/workflows/worker.md");
-  assert.equal(dependabot.name, "Dependabot");
+  const dependabotKey = "githubnext/gh-aw-cao:.github/workflows/dependabot.md";
+  const workerKey = "githubnext/gh-aw-cao:.github/workflows/worker.md";
+  const reviewerKey = "githubnext/gh-aw-cao:.github/workflows/reviewer.md";
+  const dependabot = workItems.get(`${dependabotKey}:run:100`);
+  const previousDependabot = workItems.get(`${dependabotKey}:run:99`);
+  const worker = workItems.get(`${workerKey}:run:200`);
+  const reviewer = workItems.get(reviewerKey);
+  assert.equal(workItems.size, 4);
+  assert.equal(dependabot.name, "Dependabot · Run 100");
   assert.equal(dependabot["workflow-name"], "Dependabot");
   assert.equal(dependabot["workflow-icon"], "workflow");
   assert.equal(dependabot["started-at"], "2026-09-05T09:00:00Z");
@@ -335,21 +367,29 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(dependabot["lifecycle-state"], "blocked");
   assert.equal(dependabot.reason, "package-disabled");
   assert.equal(dependabot["consequence-tier"], "high");
+  assert.equal(previousDependabot["lifecycle-state"], "completed");
   assert.equal(worker["lifecycle-state"], "completed");
   assert.equal(worker["verification-state"], "accepted");
+  assert.equal(worker["safe-output-kind"], "issue");
+  assert.equal(worker["next-actor"], "reviewer");
+  assert.equal(reviewer["lifecycle-state"], "review");
+  assert.equal(reviewer["safe-output-kind"], "pull-request");
+  assert.equal(reviewer.reason, "Produced outcome awaits review or user consent");
+  assert.equal(reviewer["waiting-on"], "reviewer decision");
 
   assert.equal(sources["attention-signals"].metadata.availability, "available");
-  assert.deepEqual(sources["attention-signals"].rows.map((row) => row["work-item-id"]), [dependabot["work-item-id"]]);
+  assert.deepEqual(sources["attention-signals"].rows.map((row) => row["work-item-id"]), [dependabotKey, reviewerKey]);
   assert.equal(sources["attention-signals"].rows[0]["signal-type"], "blocked");
+  assert.equal(sources["attention-signals"].rows[1]["signal-type"], "review");
 
   assert.equal(sources["agent-assignments"].metadata.availability, "available");
   const assignments = new Map(sources["agent-assignments"].rows.map((row) => [row["work-item-id"], row]));
-  assert.equal(assignments.get(dependabot["work-item-id"])["agent-state"], "blocked");
-  assert.equal(assignments.get(worker["work-item-id"])["agent-state"], "completed");
+  assert.equal(assignments.get(dependabotKey)["agent-state"], "blocked");
+  assert.equal(assignments.get(workerKey)["agent-state"], "completed");
 
   assert.equal(sources["evidence-records"].metadata.availability, "available");
-  assert.equal(sources["evidence-records"].rows.length, 2);
-  assert.deepEqual(sources["evidence-records"].rows.map((row) => row["work-item-id"]), [worker["work-item-id"], worker["work-item-id"]]);
+  assert.equal(sources["evidence-records"].rows.length, 4);
+  assert.deepEqual(sources["evidence-records"].rows.map((row) => row["work-item-id"]), [workerKey, reviewerKey, workerKey, reviewerKey]);
   assert.deepEqual(new Set(sources["evidence-records"].rows.map((row) => row["evidence-class"])), new Set(["outcome", "finding"]));
   assert.ok(sources["evidence-records"].rows.every((row) => row["verification-state"] === "accepted" || row["verification-state"] === "pending"));
 });
@@ -1479,6 +1519,97 @@ test("dashboard source bridge carries package memberships, allowance, and invent
     },
   );
   assert.equal(sources.outcomes.rows[0]["run-conclusion"], "failure");
+});
+
+test("dashboard source bridge merges remotely discovered allowed-repository workflows", () => {
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt: "2026-09-07T12:00:00Z",
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      workflows: [{
+        repository: "acme/control",
+        path: ".github/workflows/local.lock.yml",
+        name: "Local agent",
+        role: "standalone",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+    },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: { records: [] },
+    report: {
+      generatedAt: "2026-09-07T12:00:00Z",
+      records: [],
+      workflowDiscovery: { complete: true },
+      remoteWorkflows: [{
+        repository: "acme/service",
+        path: ".github/workflows/remote.lock.yml",
+        name: "Remote agent",
+        role: "standalone",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+    },
+  });
+
+  assert.deepEqual(sources.workflows.rows.map((row) => ({
+    owner: `${row.organization}/${row.repository}`,
+    workflow: row.workflow,
+    name: row["workflow-name"],
+  })), [{
+    owner: "acme/control",
+    workflow: ".github/workflows/local.md",
+    name: "Local agent",
+  }, {
+    owner: "acme/service",
+    workflow: ".github/workflows/remote.md",
+    name: "Remote agent",
+  }]);
+  assert.equal(sources.workflows.metadata.completeness, "complete");
+});
+
+test("dashboard source bridge marks remote workflow discovery partial when an allowed repository is inaccessible", () => {
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt: "2026-09-07T12:00:00Z",
+      repositoryCount: 1,
+      discovery: { complete: true },
+      collections: [{ operation: "workflow-discovery", state: "complete", expected: 1, observed: 1 }],
+      runHealth: { available: true, complete: true },
+      workflows: [{
+        repository: "acme/control",
+        path: ".github/workflows/local.lock.yml",
+        name: "Local agent",
+        role: "standalone",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+    },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: { records: [] },
+    report: {
+      generatedAt: "2026-09-07T12:00:00Z",
+      records: [],
+      remoteWorkflows: [],
+      workflowDiscovery: {
+        complete: false,
+        repositoriesExpected: 1,
+        repositoriesObserved: 0,
+        workflowsObserved: 0,
+        failures: [{ repository: "acme/private", reason: "GitHub API 404" }],
+      },
+    },
+  });
+
+  assert.equal(sources.workflows.metadata.availability, "available");
+  assert.equal(sources.workflows.metadata.completeness, "partial");
+  assert.equal(sources.workflows.metadata["collection-state"], "partial");
+  assert.equal(sources.workflows.metadata["coverage-expected"], undefined);
+  assert.equal(sources.workflows.metadata["coverage-observed"], 1);
+  assert.equal(sources.repositories.metadata["coverage-expected"], 2);
+  assert.equal(sources.repositories.metadata["coverage-observed"], 1);
+  assert.match(sources.workflows.metadata["collection-reason"], /acme\/private/);
 });
 
 test("dashboard source bridge maps a legacy manifest-derived package identity to the canonical inventory bundle id", () => {

@@ -57,6 +57,76 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
   });
 }
 
+function runGhApi(target, repository, windowStart, runLimit, execute = spawn) {
+  const workflow = target.slice(`${repository}/`.length);
+  const workflowFile = workflow.split("/").at(-1);
+  return new Promise((resolve, reject) => {
+    const child = execute("gh", [
+      "api", "--method", "GET", `repos/${repository}/actions/workflows/${workflowFile}/runs`,
+      "-f", `per_page=${Math.min(runLimit, 100)}`,
+      "-f", `created=>=${windowStart}`,
+    ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    const stdout = [];
+    const stderr = [];
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code, signal) => {
+      if (code !== 0 || signal) {
+        reject(new Error(
+          Buffer.concat(stderr).toString("utf8").trim()
+            || `gh api exited with ${signal || code}`,
+        ));
+        return;
+      }
+      try {
+        const response = JSON.parse(Buffer.concat(stdout).toString("utf8"));
+        resolve((response.workflow_runs || []).map((run) => ({
+          ...run,
+          database_id: run.id,
+          workflow_path: workflow,
+          started_at: run.run_started_at || run.created_at,
+          repository,
+        })));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+function mergeRunMetadata(cachedRuns, actionRuns) {
+  const byRunId = new Map(actionRuns.map((run) => [String(run.database_id), run]));
+  for (const cached of cachedRuns) {
+    const runId = String(cached.database_id ?? cached.run_id ?? cached.id ?? "");
+    const actionRun = byRunId.get(runId);
+    if (!actionRun) {
+      byRunId.set(runId, cached);
+      continue;
+    }
+    byRunId.set(runId, Object.fromEntries(
+      [...new Set([...Object.keys(actionRun), ...Object.keys(cached)])]
+        .map((key) => [key, cached[key] === undefined || cached[key] === null || cached[key] === ""
+          ? actionRun[key]
+          : cached[key]]),
+    ));
+  }
+  return [...byRunId.values()];
+}
+
+async function enrichFromActions(targets, repository, windowDays, runLimit, cachedRuns, execute) {
+  const windowStart = new Date(Date.now() - windowDays * 86_400_000).toISOString().slice(0, 10);
+  const results = await Promise.allSettled(
+    targets.map((target) => runGhApi(target, repository, windowStart, runLimit, execute)),
+  );
+  const actionRuns = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  return {
+    runs: mergeRunMetadata(cachedRuns, actionRuns),
+    observedTargets: results.filter((result) => result.status === "fulfilled").length,
+    failedTargets: results.filter((result) => result.status === "rejected").length,
+  };
+}
+
 export async function collectActivityLogs({ execute = spawn } = {}) {
   const repository = process.env.GITHUB_REPOSITORY || "";
   const root = path.resolve(process.env.REPORT_ROOT || ".");
@@ -105,22 +175,36 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     log.info`Downloaded ${snapshot.runs.length} runs for ${targets.length} control-repository workflows with one gh aw logs invocation`;
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);
-    await writeFile(logsPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    const cachedRuns = Array.isArray(snapshot.runs) ? snapshot.runs : [];
+    const enrichment = await enrichFromActions(
+      targets,
+      repository,
+      windowDays,
+      runLimit,
+      cachedRuns,
+      execute,
+    );
+    const enriched = enrichment.observedTargets > 0;
+    const mergedSnapshot = { ...snapshot, runs: enrichment.runs };
+    await writeFile(logsPath, `${JSON.stringify(mergedSnapshot, null, 2)}\n`);
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,
-      available: false,
+      available: enriched,
       complete: false,
       targetCount: targets.length,
-      runCount: Array.isArray(snapshot.runs) ? snapshot.runs.length : 0,
+      runCount: enrichment.runs.length,
       windowDays,
       runLimit,
-      fallback: Array.isArray(snapshot.runs) && snapshot.runs.length > 0,
+      fallback: cachedRuns.length > 0,
       snapshotObservedAt: previousState.snapshotObservedAt || previousState.observedAt || null,
+      actionsEnrichment: enriched,
+      actionsTargetsObserved: enrichment.observedTargets,
+      actionsTargetsFailed: enrichment.failedTargets,
       error: error instanceof Error ? error.message : String(error),
     }, null, 2)}\n`);
-    await writeOutcome("failure");
-    log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
+    await writeOutcome(enriched ? "partial" : "failure");
+    log.warning`gh aw logs collection failed; ${enriched ? `enriched the cache with Actions metadata from ${enrichment.observedTargets} workflows` : cachedRuns.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
   }
 }
 

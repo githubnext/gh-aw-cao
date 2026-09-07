@@ -17,10 +17,15 @@ const workflows = [
   {
     package: 'ambient-context',
     'package-name': 'Ambient Context',
+    organization: 'githubnext',
+    repository: 'gh-aw-cao',
     workflow: '.github/workflows/ambient-context.md',
     'workflow-name': 'Ambient Context',
     'workflow-role': 'orchestrator',
     'rollout-mode': 'review',
+    'package-description': 'Keeps repository guidance current.',
+    'package-readme-path': 'ambient-context/README.md',
+    'package-readme': '# Ambient Context\n\nKeeps shared guidance current.\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
     'workflow-link': {
       relation: 'workflow',
       href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
@@ -175,6 +180,19 @@ describe('renderPackageNavigation', () => {
     expect(rendered.dataset.package).toBe('ambient-context');
     expect(rendered.querySelector('.package-tabs')?.textContent).toBe('InsightsWorkflowsDispatchesReports');
     expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
+    expect(rendered.querySelector('.package-readme h1')?.textContent).toBe('Ambient Context');
+    expect(rendered.querySelector('.package-readme h2')?.textContent).toBe('Capabilities');
+    expect(rendered.querySelectorAll('.package-readme li')).toHaveLength(2);
+    expect(rendered.querySelector('.package-readme-about')?.textContent).toContain('Keeps repository guidance current.');
+    expect(rendered.querySelector('.package-marketplace-detail')?.getAttribute('data-package')).toBe('ambient-context');
+    expect(rendered.querySelector('.package-marketplace-title')?.textContent).toBe('Ambient ContextPackage');
+    expect(rendered.querySelector('.package-rollout')?.textContent).toBe('review');
+    expect(rendered.querySelector('.package-marketplace-actions a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
+    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.package-readme-resources'));
+    expect(resources.open).toBe(false);
+    expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details');
+    resources.open = true;
+    expect(resources.textContent).toContain('Source repository');
     expect(rendered.textContent).not.toContain('Other');
   });
 

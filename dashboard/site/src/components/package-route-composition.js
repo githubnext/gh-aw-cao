@@ -7,6 +7,7 @@ import { titleCase } from './count-formatters.js';
 import { selectNamedComposition } from './route-composition.js';
 import { selectConfigBody } from './route-body-composition.js';
 import { PACKAGE_ROUTE_BODY_VALUES, PACKAGE_ROUTE_VARIANT_VALUES } from './route-body-specification.js';
+import { renderPackageReadme } from './package-readme.js';
 import { renderWorkflowValueReport } from './workflow-runtime.js';
 
 /**
@@ -54,7 +55,7 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
     selectMessage: 'Select a package to view its workflows.',
     description: 'Orchestrator and worker workflows in the {packageName} package.',
     currentTab: 'workflows',
-    bodyRenderer: undefined
+    bodyRenderer: ({ packageId, packageName, workflows }) => renderPackageReadme({ packageId, packageName, workflows })
   },
   dispatches: {
     rootClassName: 'package-dispatches',

@@ -197,7 +197,7 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
       }
     }
     try {
-      globalThis.localStorage?.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify(settings));
+      globalThis.window?.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify(settings));
     } catch {
       // The filters still work for the current page when storage is unavailable.
     }
@@ -263,7 +263,7 @@ function persistFilterText(filters) {
     const settings = readHorizonSettings();
     if (filters) settings.filters = filters;
     else delete settings.filters;
-    globalThis.localStorage?.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify(settings));
+    globalThis.window?.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify(settings));
   } catch {
     // The filters still work for the current page when storage is unavailable.
   }
@@ -272,7 +272,7 @@ function persistFilterText(filters) {
 /** @returns {{ range?: unknown, modes?: unknown, start?: unknown, end?: unknown, filters?: unknown }} */
 function readHorizonSettings() {
   try {
-    const value = JSON.parse(globalThis.localStorage?.getItem(HORIZON_FILTER_STORAGE_KEY) ?? 'null');
+    const value = JSON.parse(globalThis.window?.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? 'null');
     return value && typeof value === 'object' ? value : {};
   } catch {
     return {};

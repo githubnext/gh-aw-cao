@@ -191,6 +191,7 @@
     "navigation": [
       {
         "label": "Package operations",
+        "experimental": true,
         "pages": [
           "optimization-dashboard"
         ]
