@@ -405,7 +405,7 @@ function smellReasons(agentWorkflowKeys, securityObservations, smellObservations
       const summary = text(row['smell-summary']);
       return summary ? `${name}: ${summary}` : name;
     });
-  return [...new Set([...structured, ...threatReasons(agentWorkflowKeys, securityObservations)])];
+  return [...new Set([...structured, ...(smellObservations.length > 0 ? [] : threatReasons(agentWorkflowKeys, securityObservations))])];
 }
 
 /** @param {string} key */
