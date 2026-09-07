@@ -73,7 +73,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 33);
+  assert.equal(operationWorkflows.length, 34);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -436,7 +436,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 9, workers: 9 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 10, workers: 10 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
     "aw-failures-investigator.md": { credits: 500, timeout: 30 },
@@ -461,6 +461,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-dashboard-language-refactor.md": { credits: 400, timeout: 30 },
     "self-care-dashboard-review.md": { credits: 400, timeout: 30 },
     "self-care-docs-build-time-investigator.md": { credits: 400, timeout: 30 },
+    "self-care-glossary.md": { credits: 400, timeout: 30 },
     "self-care-open-source-failures.md": { credits: 500, timeout: 30 },
     "self-care-primer-brand-checker.md": { credits: 400, timeout: 25 },
   };
@@ -521,7 +522,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 33, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 34, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -1022,6 +1023,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-dashboard-language-refactor",
     "self-care-dashboard-review",
     "self-care-docs-build-time-investigator",
+    "self-care-glossary",
     "self-care-open-source-failures",
     "self-care-primer-brand-checker",
     "self-care",
@@ -1368,6 +1370,7 @@ test("live workers require target-owned package authority before agent execution
     ["self-care-dashboard-language-refactor.md", "self-care"],
     ["self-care-dashboard-review.md", "self-care"],
     ["self-care-docs-build-time-investigator.md", "self-care"],
+    ["self-care-glossary.md", "self-care"],
     ["self-care-open-source-failures.md", "self-care"],
     ["self-care-primer-brand-checker.md", "self-care"],
   ]) {
@@ -1434,6 +1437,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["self-care-dashboard-language-refactor.md", "self-care"],
     ["self-care-dashboard-review.md", "self-care"],
     ["self-care-docs-build-time-investigator.md", "self-care"],
+    ["self-care-glossary.md", "self-care"],
     ["self-care-open-source-failures.md", "self-care"],
     ["self-care-primer-brand-checker.md", "self-care"],
   ]) {
@@ -1566,6 +1570,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-dashboard-language-refactor.md", "self-care", "dashboard-language-refactor"],
     ["self-care-dashboard-review.md", "self-care", "dashboard-review"],
     ["self-care-docs-build-time-investigator.md", "self-care", "docs-build-time-investigator"],
+    ["self-care-glossary.md", "self-care", "glossary"],
     ["self-care-open-source-failures.md", "self-care", "open-source-failures"],
     ["self-care-primer-brand-checker.md", "self-care", "primer-brand-checker"],
   ];
@@ -1938,6 +1943,8 @@ test("SelfCare runs every 20 minutes", () => {
 
   assert.match(source, /schedule: every 20 minutes/);
   assert.match(source, /engine: copilot\nmodel: copilot\/gpt-5\.4/);
+  assert.match(source, /self-care-glossary.*no run of that workflow is in progress or started during the preceding 24 hours/);
+  assert.match(source, /at most the ten most recent glossary workflow runs/);
   assert.match(compiled, /cron: "[0-5]?\d\/20 \* \* \* \*"  # Friendly format: every 20 minutes \(scattered\)/);
   assert.match(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
 });
@@ -2247,6 +2254,29 @@ test("SelfCare docs build-time investigator rotates evidenced recommendations", 
   assert.doesNotMatch(source, /^\s+(create-pull-request|add-comment|create-discussion|push-to-pull-request-branch):/m);
 });
 
+test("SelfCare glossary worker maintains Astro documentation from daily change evidence", () => {
+  const source = workflow("self-care-glossary.md");
+
+  assert.match(source, /^name: "SelfCare \/ Glossary"$/m);
+  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: glossary/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /most recent completed successful run of `self-care-glossary`/);
+  assert.match(source, /preceding 24 hours/);
+  assert.match(source, /at most 50 pull requests merged into the default branch/);
+  assert.match(source, /at most 100 default-branch commits/);
+  assert.match(source, /normative repository definition plus one implementation use/);
+  assert.match(source, /Preserve the existing Astro-compatible YAML frontmatter exactly/);
+  assert.match(source, /allowed-files:\n\s+- "docs\/glossary\.md"/);
+  assert.match(source, /labels: \[self-care, self-care:glossary\]/);
+  assert.match(source, /title-prefix: "\[self-care:glossary\] "/);
+  assert.match(source, /draft: true/);
+  assert.match(source, /npm run docs:build/);
+  assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(source, /Call `noop` exactly once/);
+  assert.doesNotMatch(source, /^evals:/m);
+  assert.doesNotMatch(source, /^\s+(contents|actions|pull-requests): write$/m);
+});
+
 test("SelfCare code improvement preserves its focused dashboard component mission", () => {
   const source = workflow("self-care-code-improvement.md");
   const liveGuard = "if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}";
@@ -2441,6 +2471,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "self-care-dashboard-language-refactor.lock.yml",
       "self-care-dashboard-review.lock.yml",
       "self-care-docs-build-time-investigator.lock.yml",
+      "self-care-glossary.lock.yml",
       "self-care-open-source-failures.lock.yml",
       "self-care-primer-brand-checker.lock.yml",
       "self-care.lock.yml",
@@ -2549,6 +2580,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["self-care-dashboard-language-refactor.lock.yml", ["self-care", "dashboard-language-refactor"]],
       ["self-care-dashboard-review.lock.yml", ["self-care", "dashboard-review"]],
       ["self-care-docs-build-time-investigator.lock.yml", ["self-care", "docs-build-time-investigator"]],
+      ["self-care-glossary.lock.yml", ["self-care", "glossary"]],
       ["self-care-open-source-failures.lock.yml", ["self-care", "open-source-failures"]],
       ["self-care-primer-brand-checker.lock.yml", ["self-care", "primer-brand-checker"]],
       ["software-development-practices-github-well-architected.lock.yml", ["software-development-practices", "github-well-architected"]],
@@ -2996,6 +3028,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
           "self-care-dashboard-language-refactor",
           "self-care-dashboard-review",
           "self-care-docs-build-time-investigator",
+          "self-care-glossary",
           "self-care-open-source-failures",
           "self-care-primer-brand-checker",
         ],

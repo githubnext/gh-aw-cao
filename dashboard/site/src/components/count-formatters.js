@@ -3,12 +3,18 @@
  */
 
 /**
- * Converts a kebab-case identifier into title-cased display text.
+ * Converts a kebab-case or snake_case identifier into title-cased display
+ * text, capitalizing the first letter of each hyphen/underscore-delimited
+ * word and joining them with spaces.
  * @param {string} value
  * @returns {string}
  */
 export function titleCase(value) {
-  return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(' ');
 }
 
 /**
@@ -73,6 +79,17 @@ export function computeObservationCoverage(usable, excluded) {
  */
 export function formatCoveragePercent(coverage, unknown = '—') {
   return coverage === null ? unknown : `${(coverage * 100).toFixed(1)}%`;
+}
+
+/**
+ * Clamps a percentage value to the closed `[0, 100]` range, guarding chart
+ * and progress-bar rendering against out-of-range inputs (e.g. rounding
+ * artifacts or partially available telemetry).
+ * @param {number} value
+ * @returns {number}
+ */
+export function clampPercent(value) {
+  return Math.max(0, Math.min(100, value));
 }
 
 /**

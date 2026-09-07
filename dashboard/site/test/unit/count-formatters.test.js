@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { computeObservationCoverage, formatCount, formatCountNoun, formatCoveragePercent, pluralSuffix, slugify, text, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, formatCount, formatCountNoun, formatCoveragePercent, pluralSuffix, slugify, text, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -50,6 +50,14 @@ describe('count formatters', () => {
     expect(slugify('')).toBe('');
     expect(slugify('', 'fallback')).toBe('fallback');
     expect(slugify('!!!', 'section')).toBe('section');
+  });
+
+  it('clamps percentages into the closed [0, 100] range', () => {
+    expect(clampPercent(50)).toBe(50);
+    expect(clampPercent(-10)).toBe(0);
+    expect(clampPercent(150)).toBe(100);
+    expect(clampPercent(0)).toBe(0);
+    expect(clampPercent(100)).toBe(100);
   });
 
   it('computes observation coverage as usable / (usable + excluded), or null when empty', () => {

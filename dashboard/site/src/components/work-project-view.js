@@ -1,8 +1,14 @@
 import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
-import { findLink, renderLinkedValue } from './link-content.js';
+import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
-import { formatUtcDateTime, renderCountBadge, renderDlRow, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { titleCase } from './count-formatters.js';
+import { formatUtcDateTime, renderCountBadge, renderEmptyMessage, renderSectionHeading } from './ui-primitives.js';
+import { renderWorkItemCard } from './work-item-card.js';
+import { renderWorkItemRow } from './work-item-row.js';
+import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
+import { workViewComposition } from './work-view-composition.js';
+import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
   { title: 'Active', states: ['active'], tone: 'active' },
@@ -11,6 +17,9 @@ const BOARD_COLUMNS = [
   { title: 'Done', states: ['completed', 'cancelled'], tone: 'completed' }
 ];
 
+/** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
+/** @typedef {(items: Array<ReturnType<typeof normalizeWorkItem>>, section: WorkSection) => HTMLElement} WorkSectionRenderer */
+
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
  * @returns {HTMLElement}
@@ -18,6 +27,9 @@ const BOARD_COLUMNS = [
 export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const headingId = `${context.pageId}-projects-heading`;
+  const sections = workViewComposition(context.elementConfig);
+  /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
+  const renderers = { renderBoard, renderTasks, renderRoadmap };
   return h(
     'section',
     { className: 'work-project-view', 'aria-labelledby': headingId },
@@ -28,28 +40,40 @@ export function renderWorkProjectView(context) {
       description: context.description,
       headingTag: context.headingTag
     }),
-    h(
-      'nav',
-      { className: 'work-project-tabs', 'aria-label': 'Work layouts' },
-      h('a', { href: '#work-board' }, 'Board'),
-      h('a', { href: '#work-tasks' }, 'Tasks'),
-      h('a', { href: '#work-roadmap' }, 'Roadmap')
-    ),
+    sections.length > 1
+      ? h(
+        'nav',
+        { className: 'work-project-tabs', 'aria-label': 'Work layouts' },
+        ...sections.map((section) => h('a', { href: `#${workSectionId(context.pageId, section.key)}` }, section.title))
+      )
+      : null,
     items.length === 0
       ? renderEmptyMessage('No work-item telemetry is available in the selected scope.', { role: 'status' })
-      : [
-          renderBoard(items),
-          renderTasks(items),
-          renderRoadmap(items)
-        ]
+      : sections
+        .map((section) => {
+          const rendererName = workViewSectionRenderer(section.key, renderers);
+          const renderer = rendererName ? renderers[rendererName] : null;
+          return typeof renderer === 'function'
+            ? renderer(items, {
+              id: workSectionId(context.pageId, section.key),
+              className: section.className,
+              landmarkLabel: section.landmarkLabel,
+              title: section.title
+            })
+            : null;
+        })
+        .filter(Boolean)
   );
 }
 
-/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
-function renderBoard(items) {
+/**
+ * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
+ * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ */
+function renderBoard(items, section) {
   return h(
     'section',
-    { className: 'work-board', id: 'work-board', 'aria-label': 'Board' },
+    { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
     ...BOARD_COLUMNS.map((column) => {
       const columnItems = items.filter((item) => column.states.includes(item.state));
       return h(
@@ -64,67 +88,41 @@ function renderBoard(items) {
         h(
           'div',
           { className: 'work-board-cards' },
-          ...columnItems.map(renderWorkCard)
+          ...columnItems.map(renderWorkItemCard)
         )
       );
     })
   );
 }
 
-/** @param {ReturnType<typeof normalizeWorkItem>} item */
-function renderWorkCard(item) {
-  const body = [
-    h(
-      'header',
-      null,
-      renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-      h('strong', null, renderLinkedValue(item.name, item.evidenceLink))
-    ),
-    h('p', null, item.repository),
-    h('dl', null,
-      renderDlRow('Owner', item.owner),
-      renderDlRow('Started', item.startedLabel),
-      renderDlRow('Stopped', item.stoppedLabel),
-      renderDlRow('Duration', item.durationLabel)
-    )
-  ];
-  return h('article', { className: 'work-card', 'data-work-state': item.state }, ...body);
-}
-
-/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
-function renderTasks(items) {
+/**
+ * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
+ * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ */
+function renderTasks(items, section) {
   return h(
     'section',
-    { className: 'work-tasks', id: 'work-tasks', 'aria-label': 'Tasks' },
-    h('div', { className: 'work-project-section-heading' }, h('h4', null, 'Tasks')),
+    { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
+    h('div', { className: 'work-project-section-heading' }, h('h4', null, section.title)),
     h(
       'div',
       { className: 'work-task-list', role: 'list' },
-      ...items.map((item) => h(
-        'article',
-        { className: 'work-task-row', role: 'listitem' },
-        renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-        h('div', { className: 'work-task-main' },
-          h('strong', null, renderLinkedValue(item.name, item.evidenceLink)),
-          h('span', null, item.repository)
-        ),
-        h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel),
-        h('span', { className: 'work-task-owner' }, item.owner),
-        h('time', { dateTime: item.started }, item.startedLabel),
-        h('span', null, item.stoppedLabel)
-      ))
+      ...items.map(renderWorkItemRow)
     )
   );
 }
 
-/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
-function renderRoadmap(items) {
+/**
+ * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
+ * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ */
+function renderRoadmap(items, section) {
   const extents = timelineExtents(items);
   const rangeSize = Math.max(720, items.length * 180 + 180);
   return h(
     'section',
-    { className: 'work-roadmap', id: 'work-roadmap', 'aria-label': 'Roadmap' },
-    h('div', { className: 'work-project-section-heading' }, h('h4', null, 'Roadmap')),
+    { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
+    h('div', { className: 'work-project-section-heading' }, h('h4', null, section.title)),
     h(
       'div',
       { className: 'work-roadmap-scroll' },
@@ -135,33 +133,15 @@ function renderRoadmap(items) {
           h('span', null, formatUtcDateTime(extents.start)),
           h('span', null, formatUtcDateTime(extents.stop))
         ),
-        ...items.map((item) => {
-          const startOffset = extents.duration > 0 ? ((item.startTime - extents.start) / extents.duration) * 100 : 0;
-          const itemDuration = Math.max(item.stopTime - item.startTime, 60_000);
-          const width = extents.duration > 0 ? Math.max(8, (itemDuration / extents.duration) * 100) : 100;
-          const barStyle = `--work-start: ${Math.max(0, Math.min(100, startOffset)).toFixed(2)}%; --work-width: ${Math.min(100, width).toFixed(2)}%;`;
-          return h(
-            'article',
-            { className: 'work-roadmap-lane' },
-            h('div', { className: 'work-roadmap-label' },
-              renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-              h('strong', null, item.name)
-            ),
-            h('div', { className: 'work-roadmap-track' },
-              h('span', {
-                className: `work-roadmap-bar work-state-${item.state}`,
-                style: barStyle
-              },
-                h('span', { className: 'work-roadmap-avatar' }, renderIconSpan('work-roadmap-avatar-icon', item.icon, { ariaHidden: true })),
-                h('span', { className: 'work-roadmap-owner' }, item.owner),
-                h('span', { className: 'work-roadmap-dates' }, `${item.startedLabel} → ${item.stoppedLabel}`)
-              )
-            )
-          );
-        })
+        ...items.map((item) => renderWorkItemTimelineLane(item, extents))
       )
     )
   );
+}
+
+/** @param {string} pageId @param {'board'|'tasks'|'roadmap'} key */
+function workSectionId(pageId, key) {
+  return `${pageId}-${key}`;
 }
 
 /** @param {Record<string, unknown>} row */
@@ -208,11 +188,6 @@ function normalizeState(state) {
   if (['active', 'waiting', 'blocked', 'review', 'completed', 'cancelled'].includes(normalized)) return normalized;
   if (['success', 'failure'].includes(normalized)) return 'completed';
   return 'active';
-}
-
-/** @param {string} value */
-function titleCase(value) {
-  return value.replace(/(^|-)([a-z])/g, (_, prefix, character) => `${prefix ? ' ' : ''}${character.toUpperCase()}`);
 }
 
 /** @param {unknown} value */

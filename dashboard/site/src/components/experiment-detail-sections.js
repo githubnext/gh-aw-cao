@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
 import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
-import { renderExperimentEffect, renderExperimentSectionHeading, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
+import { renderExperimentEffect, renderExperimentSection, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
 import { renderDisclosure } from './ui-primitives.js';
 
 const UNKNOWN = '—';
@@ -56,35 +56,34 @@ function text(value) {
  * @returns {HTMLElement}
  */
 function renderMetricComparisonSection(metrics, experiment) {
-  return h(
-    'section',
-    { className: 'experiment-section', 'aria-labelledby': 'metric-comparison-title' },
-    renderExperimentSectionHeading('metric-comparison-title', 'Variant × metric comparison', `${experiment.control} compared with ${experiment.candidate}; arrows account for metric direction.`),
-    metrics.length === 0
-      ? partialState('Assignments exist, but no grader or eval observations are available.')
-      : h(
-        'div',
-        { className: 'table-region experiment-metric-region' },
-        h(
-          'table',
-          { className: 'experiment-metric-table' },
-          h('thead', null, h('tr', null, ...['Role', 'Metric', 'Source', 'Direction', experiment.control, experiment.candidate, 'Δ normalized', 'Usable / excluded', 'Threshold'].map((label) => h('th', { scope: 'col' }, label)))),
-          h('tbody', null, ...metrics.map((metric) => h(
-            'tr',
-            null,
-            h('td', null, renderExperimentBadge(metric.role, metric.role === 'GUARDRAIL' ? 'attention' : 'neutral')),
-            h('th', { scope: 'row' }, metric.identifier),
-            h('td', null, metric.sourceType),
-            h('td', null, metric.direction.replaceAll('_', ' ')),
-            h('td', null, formatMetric(metric.controlValue, metric.unit)),
-            h('td', null, formatMetric(metric.candidateValue, metric.unit)),
-            h('td', null, renderExperimentEffect(metric.normalizedEffect)),
-            h('td', null, `${metric.controlN + metric.candidateN} / ${metric.excluded}`),
-            h('td', null, metric.threshold === null ? UNKNOWN : formatMetric(metric.threshold, metric.unit))
-          )))
-        )
+  return renderExperimentSection({
+    id: 'metric-comparison-title',
+    title: 'Variant × metric comparison',
+    description: `${experiment.control} compared with ${experiment.candidate}; arrows account for metric direction.`,
+    emptyState: metrics.length === 0 ? partialState('Assignments exist, but no grader or eval observations are available.') : null,
+    renderContent: () => h(
+      'div',
+      { className: 'table-region experiment-metric-region' },
+      h(
+        'table',
+        { className: 'experiment-metric-table' },
+        h('thead', null, h('tr', null, ...['Role', 'Metric', 'Source', 'Direction', experiment.control, experiment.candidate, 'Δ normalized', 'Usable / excluded', 'Threshold'].map((label) => h('th', { scope: 'col' }, label)))),
+        h('tbody', null, ...metrics.map((metric) => h(
+          'tr',
+          null,
+          h('td', null, renderExperimentBadge(metric.role, metric.role === 'GUARDRAIL' ? 'attention' : 'neutral')),
+          h('th', { scope: 'row' }, metric.identifier),
+          h('td', null, metric.sourceType),
+          h('td', null, metric.direction.replaceAll('_', ' ')),
+          h('td', null, formatMetric(metric.controlValue, metric.unit)),
+          h('td', null, formatMetric(metric.candidateValue, metric.unit)),
+          h('td', null, renderExperimentEffect(metric.normalizedEffect)),
+          h('td', null, `${metric.controlN + metric.candidateN} / ${metric.excluded}`),
+          h('td', null, metric.threshold === null ? UNKNOWN : formatMetric(metric.threshold, metric.unit))
+        )))
       )
-  );
+    )
+  });
 }
 
 /**
@@ -118,23 +117,22 @@ function renderEvalBar(label, rows) {
  * @returns {HTMLElement}
  */
 function renderEvalOutcomesSection(metrics, experiment) {
-  return h(
-    'section',
-    { className: 'experiment-section', 'aria-labelledby': 'eval-outcomes-title' },
-    renderExperimentSectionHeading('eval-outcomes-title', 'Eval outcomes', 'Unknown and missing answers remain separate from NO.'),
-    metrics.length === 0
-      ? partialState('No eval observations are available for this experiment.')
-      : h('div', { className: 'eval-outcome-list' }, ...metrics.map((metric) => {
-        const matching = /** @type {Array<Record<string, any>>} */ (experiment.observations).filter((row) => row.sourceType === 'eval' && row.identifier === metric.identifier);
-        return h(
-          'article',
-          { className: 'eval-outcome' },
-          h('header', null, h('div', null, h('strong', null, metric.question || metric.identifier), h('span', null, `${metric.identifier} · ${metric.candidateN + metric.controlN} usable · ${metric.excluded} excluded`)), renderExperimentEffect(metric.normalizedEffect)),
-          renderEvalBar(experiment.control, matching.filter((row) => row.variant === experiment.control)),
-          renderEvalBar(experiment.candidate, matching.filter((row) => row.variant === experiment.candidate))
-        );
-      }))
-  );
+  return renderExperimentSection({
+    id: 'eval-outcomes-title',
+    title: 'Eval outcomes',
+    description: 'Unknown and missing answers remain separate from NO.',
+    emptyState: metrics.length === 0 ? partialState('No eval observations are available for this experiment.') : null,
+    renderContent: () => h('div', { className: 'eval-outcome-list' }, ...metrics.map((metric) => {
+      const matching = /** @type {Array<Record<string, any>>} */ (experiment.observations).filter((row) => row.sourceType === 'eval' && row.identifier === metric.identifier);
+      return h(
+        'article',
+        { className: 'eval-outcome' },
+        h('header', null, h('div', null, h('strong', null, metric.question || metric.identifier), h('span', null, `${metric.identifier} · ${metric.candidateN + metric.controlN} usable · ${metric.excluded} excluded`)), renderExperimentEffect(metric.normalizedEffect)),
+        renderEvalBar(experiment.control, matching.filter((row) => row.variant === experiment.control)),
+        renderEvalBar(experiment.candidate, matching.filter((row) => row.variant === experiment.candidate))
+      );
+    }))
+  });
 }
 
 /**
@@ -142,26 +140,25 @@ function renderEvalOutcomesSection(metrics, experiment) {
  * @returns {HTMLElement}
  */
 function renderGraderDiagnosticsSection(metrics) {
-  return h(
-    'section',
-    { className: 'experiment-section', 'aria-labelledby': 'grader-diagnostics-title' },
-    renderExperimentSectionHeading('grader-diagnostics-title', 'Grader regressions', 'Largest direction-aware regressions are ranked first.'),
-    metrics.length === 0
-      ? partialState('No grader regressions are present in the available observations.')
-      : h(
-        'ol',
-        { className: 'grader-ranking' },
-        ...metrics.map((metric) => h(
-          'li',
-          null,
-          h('span', { className: 'grader-rank-icon', 'aria-hidden': 'true' }, metric.regression ? octicon('arrow-down') : octicon('arrow-up')),
-          h('strong', null, metric.identifier),
-          h('span', null, renderExperimentEffect(metric.normalizedEffect)),
-          h('span', null, `N ${metric.controlN + metric.candidateN}`),
-          renderExperimentBadge(metric.role, metric.regression ? 'danger' : 'neutral')
-        ))
-      )
-  );
+  return renderExperimentSection({
+    id: 'grader-diagnostics-title',
+    title: 'Grader regressions',
+    description: 'Largest direction-aware regressions are ranked first.',
+    emptyState: metrics.length === 0 ? partialState('No grader regressions are present in the available observations.') : null,
+    renderContent: () => h(
+      'ol',
+      { className: 'grader-ranking' },
+      ...metrics.map((metric) => h(
+        'li',
+        null,
+        h('span', { className: 'grader-rank-icon', 'aria-hidden': 'true' }, metric.regression ? octicon('arrow-down') : octicon('arrow-up')),
+        h('strong', null, metric.identifier),
+        h('span', null, renderExperimentEffect(metric.normalizedEffect)),
+        h('span', null, `N ${metric.controlN + metric.candidateN}`),
+        renderExperimentBadge(metric.role, metric.regression ? 'danger' : 'neutral')
+      ))
+    )
+  });
 }
 
 /**
@@ -177,20 +174,25 @@ function renderObservationQualitySection(experiment) {
   );
   const assignedRuns = new Set(assignments.map((row) => text(row.run)).filter(Boolean)).size;
   const coverage = computeObservationCoverage(experiment.usable, experiment.excluded);
-  return h(
-    'section',
-    { className: 'experiment-section observation-quality', 'aria-labelledby': 'observation-quality-title' },
-    renderExperimentSectionHeading('observation-quality-title', 'Observation quality and exclusions', 'Coverage is calculated from observations, not successful workflow executions.'),
-    coverage !== null && coverage < .9 ? h('div', { className: 'experiment-warning', role: 'note' }, octicon('alert'), h('span', null, 'Large effects require caution because usable observation coverage is below 90%.')) : null,
-    h(
+  return renderExperimentSection({
+    id: 'observation-quality-title',
+    title: 'Observation quality and exclusions',
+    description: 'Coverage is calculated from observations, not successful workflow executions.',
+    className: 'observation-quality',
+    renderContent: () => h(
       'div',
-      { className: 'exclusion-flow' },
-      h('div', null, h('span', null, 'Assigned runs'), h('strong', null, String(assignedRuns))),
-      h('div', null, h('span', null, 'Usable observations'), h('strong', null, String(experiment.usable)), h('small', null, formatCoveragePercent(coverage))),
-      h('div', null, h('span', null, 'Excluded'), h('strong', null, String(experiment.excluded))),
-      h('ul', null, ...[...reasons].map(([reason, count]) => h('li', null, h('span', null, reason), h('strong', null, String(count)))))
+      null,
+      coverage !== null && coverage < .9 ? h('div', { className: 'experiment-warning', role: 'note' }, octicon('alert'), h('span', null, 'Large effects require caution because usable observation coverage is below 90%.')) : null,
+      h(
+        'div',
+        { className: 'exclusion-flow' },
+        h('div', null, h('span', null, 'Assigned runs'), h('strong', null, String(assignedRuns))),
+        h('div', null, h('span', null, 'Usable observations'), h('strong', null, String(experiment.usable)), h('small', null, formatCoveragePercent(coverage))),
+        h('div', null, h('span', null, 'Excluded'), h('strong', null, String(experiment.excluded))),
+        h('ul', null, ...[...reasons].map(([reason, count]) => h('li', null, h('span', null, reason), h('strong', null, String(count)))))
+      )
     )
-  );
+  });
 }
 
 /**
@@ -231,34 +233,33 @@ function renderRunEvidenceSection(model, experiment) {
     ].filter(Boolean))].join(', ');
     return { assignment, run, observations, primary, guardrails, evals, included, reason };
   });
-  return h(
-    'section',
-    { className: 'experiment-section', 'aria-labelledby': 'run-evidence-title' },
-    renderExperimentSectionHeading('run-evidence-title', 'Run evidence', 'Inspect assignments, observations, exclusions, and retained supporting evidence.'),
-    rows.length === 0
-      ? partialState('Experiment configured, but no assignments are available.')
-      : h(
-        'div',
-        { className: 'table-region run-evidence-region' },
-        h(
-          'table',
-          { className: 'run-evidence-table' },
-          h('thead', null, h('tr', null, ...['Run', 'Variant', 'Primary', 'Guardrails', 'Evals', 'Included', 'Reason', 'Evidence'].map((label) => h('th', { scope: 'col' }, label)))),
-          h('tbody', null, ...rows.map((row) => h(
-            'tr',
-            null,
-            h('th', { scope: 'row' }, renderEvidenceLink(row.run['run-link'], text(row.assignment.run))),
-            h('td', null, text(row.assignment.variant) || UNKNOWN),
-            h('td', null, row.primary ? formatMetric(numericObservation(row.primary), row.primary.unit) : UNKNOWN),
-            h('td', null, row.guardrails.length ? renderExperimentBadge(row.guardrails.some((observation) => !observation.included) ? 'Review' : `${row.guardrails.length}/${row.guardrails.length}`, row.guardrails.some((observation) => !observation.included) ? 'danger' : 'success') : UNKNOWN),
-            h('td', null, row.evals.length ? `${row.evals.filter((observation) => observation.included).length}/${row.evals.length}` : UNKNOWN),
-            h('td', null, row.included ? 'Yes' : 'No'),
-            h('td', null, row.reason || UNKNOWN),
-            h('td', null, renderEvidenceActions(row))
-          )))
-        )
+  return renderExperimentSection({
+    id: 'run-evidence-title',
+    title: 'Run evidence',
+    description: 'Inspect assignments, observations, exclusions, and retained supporting evidence.',
+    emptyState: rows.length === 0 ? partialState('Experiment configured, but no assignments are available.') : null,
+    renderContent: () => h(
+      'div',
+      { className: 'table-region run-evidence-region' },
+      h(
+        'table',
+        { className: 'run-evidence-table' },
+        h('thead', null, h('tr', null, ...['Run', 'Variant', 'Primary', 'Guardrails', 'Evals', 'Included', 'Reason', 'Evidence'].map((label) => h('th', { scope: 'col' }, label)))),
+        h('tbody', null, ...rows.map((row) => h(
+          'tr',
+          null,
+          h('th', { scope: 'row' }, renderEvidenceLink(row.run['run-link'], text(row.assignment.run))),
+          h('td', null, text(row.assignment.variant) || UNKNOWN),
+          h('td', null, row.primary ? formatMetric(numericObservation(row.primary), row.primary.unit) : UNKNOWN),
+          h('td', null, row.guardrails.length ? renderExperimentBadge(row.guardrails.some((observation) => !observation.included) ? 'Review' : `${row.guardrails.length}/${row.guardrails.length}`, row.guardrails.some((observation) => !observation.included) ? 'danger' : 'success') : UNKNOWN),
+          h('td', null, row.evals.length ? `${row.evals.filter((observation) => observation.included).length}/${row.evals.length}` : UNKNOWN),
+          h('td', null, row.included ? 'Yes' : 'No'),
+          h('td', null, row.reason || UNKNOWN),
+          h('td', null, renderEvidenceActions(row))
+        )))
       )
-  );
+    )
+  });
 }
 
 /**

@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { isPlainObject, renderSectionHeading, createCopyControl } from './ui-primitives.js';
+import { isPlainObject, renderSectionHeading, createCopyControl, renderDisclosure } from './ui-primitives.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -125,8 +125,9 @@ function renderRawPolicy(raw) {
     buttonClassName: 'configuration-copy-button',
     statusClassName: 'configuration-copy-status'
   });
-  return h('details', { className: 'configuration-raw' },
-    h('summary', null, 'Raw JSON'),
+  return renderDisclosure(
+    'configuration-raw',
+    'Raw JSON',
     h('div', { className: 'configuration-raw-actions' }, copyButton, copyStatus),
     h('pre', null, h('code', null, raw || 'Raw policy is unavailable.')));
 }
@@ -148,9 +149,7 @@ export function renderConfigurationView(context) {
     }),
     renderDiagnostics(diagnostics),
     isPlainObject(policyDocument)
-      ? h('details', { className: 'configuration-entries' },
-          h('summary', null, 'Explained entries'),
-          renderEntry('.github/workflows/cao.json', policyDocument, '$'))
+      ? renderDisclosure('configuration-entries', 'Explained entries', renderEntry('.github/workflows/cao.json', policyDocument, '$'))
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be explained until it contains valid JSON.'),
     renderRawPolicy(String(row.raw ?? ''))
   );
