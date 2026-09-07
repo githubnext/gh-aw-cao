@@ -18,6 +18,10 @@ on:
       safe_output_repo:
         required: true
         type: string
+      max_repos:
+        type: number
+      rollout_percent:
+        type: number
       safe_output_mode:
         type: string
       correlation_id:
@@ -111,7 +115,7 @@ timeout-minutes: 30
 steps:
   - name: Download recent agentic workflow logs
     env:
-      GH_TOKEN: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ inputs.target_repo }}
     run: |
       set -euo pipefail

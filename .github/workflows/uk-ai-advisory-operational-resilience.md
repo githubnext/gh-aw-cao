@@ -15,6 +15,10 @@ on:
       safe_output_repo:
         required: true
         type: string
+      max_repos:
+        type: number
+      rollout_percent:
+        type: number
       safe_output_mode:
         type: string
       correlation_id:
@@ -118,7 +122,7 @@ steps:
     env:
       TARGET_REPOSITORY: ${{ inputs.target_repo }}
     with:
-      github-token: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       script: |
         const fs = require('fs');
         const path = require('path');

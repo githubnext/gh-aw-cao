@@ -36,6 +36,12 @@ on:
         options:
           - review
           - live
+      correlation_id:
+        type: string
+      central_repo:
+        type: string
+      control_plane_run_url:
+        type: string
   permissions:
     contents: read
     actions: read
@@ -88,7 +94,7 @@ steps:
   - name: Deterministic pre-fetch of AW Doctor evidence
     uses: actions/github-script@v9.0.0
     with:
-      github-token: ${{ steps.github-mcp-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       script: |
         const fs = require('fs');
         const path = require('path');

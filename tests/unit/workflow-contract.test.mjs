@@ -1263,7 +1263,8 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
-  assert.match(control, /github\.aw\.import-inputs\.role == 'orchestrator'/);
+  assert.match(control, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(control, /if \(precompute\.control_role !== 'orchestrator'\) \{\n\s+return;\n\s+\}/);
   assert.match(control, /otlp\.logSpan\('central-agentic-ops\.dispatcher'/);
   assert.match(control, /central_agentic_ops\.dispatcher\.dispatch_requested_count/);
   assert.match(control, /central_agentic_ops\.dispatcher\.target_count/);
@@ -1509,10 +1510,10 @@ test("shared control keeps manual and scheduled routing event-scoped", () => {
     assert.match(orchestrator, /SAFE_OUTPUT_REPO:.*== 'review'/);
     assert.doesNotMatch(orchestrator, /vars\.CENTRAL_AGENTIC_OPS_/);
   }
-  assert.match(control, /CAO_REQUESTED_MODE: \$\{\{ github\.event\.inputs\.safe_output_mode \|\| '' \}\}/);
-  assert.match(control, /CAO_SAFE_OUTPUT_REPOSITORY: \$\{\{ \(github\.event\.inputs\.safe_output_mode/);
+  assert.match(control, /CAO_REQUESTED_MODE: \$\{\{ inputs\.safe_output_mode \|\| '' \}\}/);
+  assert.match(control, /CAO_SAFE_OUTPUT_REPOSITORY: \$\{\{ \(inputs\.safe_output_mode/);
   assert.doesNotMatch(control, /review_repo/);
-  assert.match(control, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ github\.event\.inputs\.rollout_percent \|\| '' \}\}/);
+  assert.match(control, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
   assert.match(control, /select no more than `effective_max_repos` repositories/);
 
   assert.match(precompute, /rollout_percent must be an integer from 1 through 100/);
@@ -1526,7 +1527,7 @@ test("blank manual runs preserve an empty target for allowlisted discovery", () 
 
   assert.match(
     control,
-    /CAO_TARGET_REPOSITORY: \$\{\{ github\.event\.inputs\.target_repo \|\| '' \}\}/,
+    /CAO_TARGET_REPOSITORY: \$\{\{ inputs\.target_repo \|\| '' \}\}/,
   );
   assert.doesNotMatch(control, /target_repo:.*github\.repository/);
 });
@@ -2533,6 +2534,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.doesNotMatch(agent, /contents\/\.github\/cao\/(?:control|policy)/);
       assert.doesNotMatch(agent, /node .*cao\/control\.mjs.*precompute|target-authority\.json|candidate-pages\.jsonl/);
       assert.doesNotMatch(generated, /vars\.CENTRAL_AGENTIC_OPS_|central-agentic-ops\.yml/);
+      assert.doesNotMatch(generated, /github\.aw\.import-inputs/);
+      assert.doesNotMatch(
+        generated,
+        /github\.event\.inputs\.(?:max_repos|rollout_percent|correlation_id|central_repo|control_plane_run_url)/
+      );
       assert.doesNotMatch(generated, /PREVIEW_ONLY|preview_only/);
       assert.doesNotMatch(generated, /== 'preview'/);
       assert.doesNotMatch(generated, /safe_output_mode == 'private'/);
@@ -2553,7 +2559,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, /CAO_ROLE: orchestrator/);
       assert.match(generated, /CAO_WORKER: __none__/);
       assert.match(generated, /GH_AW_SAFE_OUTPUT_MODE:.*inputs\.safe_output_mode.*\|\| 'review'/);
-      assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ github\.event\.inputs\.rollout_percent \|\| '' \}\}/);
+      assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
       assert.match(generated, /rollout_percent:\n\s+default: 100\n\s+type: number/);
       assert.match(generated, /timeout-minutes: 15/);
       assert.match(generated, /cancel-in-progress: true/);
@@ -2601,7 +2607,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(generated, new RegExp(`CAO_WORKER: ${workerName}`));
       assert.match(generated, /GH_AW_SAFE_OUTPUT_MODE: \$\{\{ inputs\.safe_output_mode \|\| 'review' \}\}/);
       assert.match(generated, /SAFE_OUTPUT_REPO:.*safe_output_mode.*'review'.*safe_output_repo.*github\.repository.*inputs\.target_repo/);
-      assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ github\.event\.inputs\.rollout_percent \|\| '' \}\}/);
+      assert.match(generated, /CAO_REQUESTED_ROLLOUT_PERCENT: \$\{\{ inputs\.rollout_percent \|\| '' \}\}/);
       assert.match(generated, /GH_AW_SAFE_OUTPUTS_CONFIG:/);
     }
 
