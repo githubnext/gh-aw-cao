@@ -432,8 +432,7 @@ test('desktop navigation sections collapse and expand around the current view', 
 test('clean navigation preserves the Overview decision hierarchy across desktop and mobile', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
-  await page.setViewportSize({ width: 1280, height: 900   });
-
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
@@ -639,7 +638,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await workFilters.getByRole('button', { name: 'Clear work filters' }).click();
   await expect(workPage.locator('.work-card')).toHaveCount(2);
 
-  await workPage.getByRole('link', { name: 'Tasks' }).click();
+  await workPage.getByRole('link', { name: 'Table' }).click();
   await expect(page).toHaveURL(/#page-work-tasks$/);
   const tasksPage = page.locator('[data-page-id="work-tasks"]');
   await expect(tasksPage.locator('.work-tasks')).toBeVisible();
