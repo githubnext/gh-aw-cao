@@ -7,6 +7,13 @@ import test from "node:test";
 import { parse } from "yaml";
 import { buildDashboardSite } from "../../dashboard/site/scripts/build.mjs";
 
+function localDependencies(source) {
+  const dependencies = [];
+  const pattern = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)["'](\.{1,2}\/[^"']+)["']|new URL\(\s*["'](\.{1,2}\/[^"']+)["']\s*,\s*import\.meta\.url\s*\)/g;
+  for (const match of source.matchAll(pattern)) dependencies.push(match[1] ?? match[2]);
+  return dependencies;
+}
+
 test("docs dashboard installs renderer assets and configured package pages", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
@@ -42,5 +49,25 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     );
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("dashboard package includes every transitive site module and asset", async () => {
+  const dashboardRoot = new URL("../../dashboard/", import.meta.url);
+  const manifest = parse(await readFile(new URL("aw.yml", dashboardRoot), "utf8"));
+  const packaged = new Set(manifest.resources.map(({ source }) => source));
+  const pending = [...packaged].filter((source) => source.startsWith("site/") && source.endsWith(".js"));
+  const visited = new Set();
+
+  while (pending.length > 0) {
+    const source = pending.pop();
+    if (visited.has(source)) continue;
+    visited.add(source);
+    const contents = await readFile(new URL(source, dashboardRoot), "utf8");
+    for (const dependency of localDependencies(contents)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(source), dependency));
+      assert.ok(packaged.has(resolved), `${source} depends on unpackaged dashboard resource ${resolved}`);
+      if (resolved.endsWith(".js")) pending.push(resolved);
+    }
   }
 });

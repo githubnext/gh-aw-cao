@@ -9,6 +9,7 @@ import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RUN_LIMIT = 100;
+const ACTIONS_API_CONCURRENCY = 4;
 
 async function existingSnapshot(file) {
   try {
@@ -117,9 +118,22 @@ function mergeRunMetadata(cachedRuns, actionRuns) {
 
 async function enrichFromActions(targets, repository, windowDays, runLimit, cachedRuns, execute) {
   const windowStart = new Date(Date.now() - windowDays * 86_400_000).toISOString().slice(0, 10);
-  const results = await Promise.allSettled(
-    targets.map((target) => runGhApi(target, repository, windowStart, runLimit, execute)),
-  );
+  const results = new Array(targets.length);
+  let nextTarget = 0;
+  const worker = async () => {
+    while (nextTarget < targets.length) {
+      const index = nextTarget++;
+      try {
+        results[index] = { status: "fulfilled", value: await runGhApi(targets[index], repository, windowStart, runLimit, execute) };
+      } catch (reason) {
+        results[index] = { status: "rejected", reason };
+      }
+    }
+  };
+  await Promise.all(Array.from(
+    { length: Math.min(ACTIONS_API_CONCURRENCY, targets.length) },
+    () => worker(),
+  ));
   const actionRuns = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
   return {
     runs: mergeRunMetadata(cachedRuns, actionRuns),

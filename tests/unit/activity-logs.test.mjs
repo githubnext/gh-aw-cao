@@ -153,6 +153,56 @@ process.stdout.write(JSON.stringify({workflow_runs:[{
   }
 });
 
+test("activity logs bounds concurrent Actions API enrichment", async () => {
+  const item = await fixture();
+  const ghPath = path.join(item.bin, "gh");
+  const concurrencyPath = path.join(item.root, "concurrency");
+  await mkdir(concurrencyPath);
+  await Promise.all(Array.from({ length: 8 }, (_, index) => writeFile(
+    path.join(item.root, ".github", "workflows", `sample-${index}.lock.yml`),
+    `name: Sample ${index}\n`,
+  )));
+  await writeFile(ghPath, `#!/usr/bin/env node
+const fs = require("node:fs");
+const path = require("node:path");
+const args = process.argv.slice(2);
+if (args[0] === "aw") process.exit(1);
+const activeDirectory = path.join(process.env.CONCURRENCY_PATH, "active");
+fs.mkdirSync(activeDirectory, { recursive: true });
+const marker = path.join(activeDirectory, String(process.pid));
+fs.writeFileSync(marker, "");
+fs.appendFileSync(path.join(process.env.CONCURRENCY_PATH, "counts"), String(fs.readdirSync(activeDirectory).length) + "\\n");
+setTimeout(() => {
+  fs.unlinkSync(marker);
+  process.stdout.write(JSON.stringify({ workflow_runs: [] }));
+}, 100);
+`);
+  await chmod(ghPath, 0o755);
+  try {
+    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+      env: {
+        ...process.env,
+        PATH: `${item.bin}:${process.env.PATH}`,
+        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        REPORT_ROOT: item.root,
+        REPORT_GH_AW_LOGS: item.logsPath,
+        REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_AIC_CACHE: item.outputPath,
+        GITHUB_OUTPUT: item.githubOutput,
+        CONCURRENCY_PATH: concurrencyPath,
+      },
+    });
+
+    const counts = (await readFile(path.join(concurrencyPath, "counts"), "utf8"))
+      .trim().split("\n").map(Number);
+    assert.ok(Math.max(...counts) > 1);
+    assert.ok(Math.max(...counts) <= 4);
+    assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).actionsTargetsObserved, 9);
+  } finally {
+    await rm(item.root, { recursive: true, force: true });
+  }
+});
+
 test("activity logs records a failure when workflow discovery is unavailable", async () => {
   const item = await fixture();
   await rm(path.join(item.root, ".github"), { recursive: true });

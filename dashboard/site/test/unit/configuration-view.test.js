@@ -56,7 +56,7 @@ describe('Configuration dashboard view', () => {
     if (!rendered) throw new Error('configuration view did not render');
 
     expect(rendered.querySelector('.configuration-editor')).not.toBeNull();
-  expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('input[type="number"]'))?.value).toBe('1');
+    expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('input[type="number"]'))?.value).toBe('1');
     expect(rendered.querySelector('select')?.value).toBe('review');
     expect(rendered.textContent).toContain('Sets the inherited execution mode.');
     expect(rendered.textContent).not.toContain('Suggested changes');
