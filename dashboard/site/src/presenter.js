@@ -898,6 +898,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
     rendered.classList.add('custom-view');
+    rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
     if (disclosure === 'essential') {
