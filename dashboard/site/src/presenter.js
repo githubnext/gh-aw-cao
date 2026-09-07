@@ -228,7 +228,7 @@ function inferOrganizationName(sources) {
  */
 function renderSidebar(pages, title, navigation) {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
-  const navigationSections = Array.isArray(navigation) && navigation.length > 0
+  const configuredSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
       .map((section) => ({
         label: section?.label,
@@ -239,6 +239,15 @@ function renderSidebar(pages, title, navigation) {
       }))
       .filter((section) => section.pages.length > 0)
     : [{ label: undefined, experimental: false, pages }];
+  const experimentalPages = configuredSections
+    .filter((section) => section.experimental)
+    .flatMap((section) => section.pages);
+  const navigationSections = [
+    ...configuredSections.filter((section) => !section.experimental),
+    ...(experimentalPages.length > 0
+      ? [{ label: 'Experimental', experimental: true, pages: experimentalPages }]
+      : [])
+  ];
   const firstPageId = navigationSections.find((section) => !section.experimental)?.pages[0]?.id ?? pages[0]?.id;
   const mainSectionIndex = Math.max(
     0,
@@ -288,8 +297,6 @@ function renderSidebar(pages, title, navigation) {
               'details',
               {
                 className: 'nav-section',
-                hidden: section.experimental,
-                dataset: section.experimental ? { experimentalNavigation: '' } : undefined,
                 open: sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? '')
               },
               h(
@@ -316,19 +323,10 @@ function renderSidebar(pages, title, navigation) {
           navigationSections.flatMap((section) => [
             ...(typeof section.label === 'string' && section.label.length > 0
               ? [h('span', {
-                  className: 'mobile-nav-section-label',
-                  hidden: section.experimental,
-                  dataset: section.experimental ? { experimentalNavigation: '' } : undefined
+                  className: 'mobile-nav-section-label'
                 }, section.label)]
               : []),
-            ...section.pages.map((page) => {
-              const item = renderMobileNavItem(page, page.id === firstPageId);
-              if (section.experimental) {
-                item.hidden = true;
-                item.dataset.experimentalNavigation = '';
-              }
-              return item;
-            })
+            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
           ])
         )
       )
@@ -1229,26 +1227,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     }
   };
   /**
-   * @param {URLSearchParams} parameters
-   */
-  const syncExperimentalPresentation = (parameters) => {
-    const showExperimental = parameters.get('show') === 'experimental';
-    for (const element of root.querySelectorAll('[data-experimental-navigation]')) {
-      if (element instanceof HTMLElement) element.hidden = !showExperimental;
-    }
-    for (const link of root.querySelectorAll('a[href^="#page-"]')) {
-      if (!(link instanceof HTMLAnchorElement)) continue;
-      const href = link.getAttribute('href') ?? '';
-      const queryIndex = href.indexOf('?');
-      const route = queryIndex === -1 ? href : href.slice(0, queryIndex);
-      const linkParameters = new URLSearchParams(queryIndex === -1 ? '' : href.slice(queryIndex + 1));
-      if (showExperimental) linkParameters.set('show', 'experimental');
-      else linkParameters.delete('show');
-      const query = linkParameters.toString();
-      link.setAttribute('href', `${route}${query ? `?${query}` : ''}`);
-    }
-  };
-  /**
    * Defers expensive rendering until the lightweight title and skeleton update
    * has had an opportunity to paint.
    * @param {() => void} populate
@@ -1272,7 +1250,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
     const revision = ++activationRevision;
-    syncExperimentalPresentation(parameters);
     const dashboardHorizon = root.querySelector('.dashboard-horizon');
     let activeFilterBar = root.querySelector('.report-actions > .filter-bar');
     /**
@@ -1349,7 +1326,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
           restoreScroll(renderedPage);
         }
-        syncExperimentalPresentation(parameters);
       };
       if (deferPopulation) {
         populationDeferred = true;
@@ -1410,8 +1386,6 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
     if (!populationDeferred) restoreScroll(page);
-    syncExperimentalPresentation(parameters);
-
   };
 
   const initialRoute = routeFromHash();

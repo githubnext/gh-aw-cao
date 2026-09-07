@@ -564,7 +564,7 @@ The optional page `icon` is the canonical name of an Octicon supported by the pr
 
 The optional page `navigation-label` provides a concise sidebar label when the page title is more descriptive. A dashboard `navigation` section may reference a focused subset of declared pages; omitted pages remain available as deep-link destinations.
 
-A navigation section may set `experimental: true`. Presenters hide experimental navigation by default and expose a user-operated **Show experimental** control when at least one such section exists. The control uses the additive hash parameter `show=experimental`, preserves that parameter during dashboard navigation, and updates it without adding browser-history entries. This metadata changes navigation presentation only: pages in hidden sections remain available as direct deep-link destinations, and the parameter does not grant authorization or access to data.
+A navigation section may set `experimental: true`. Presenters combine pages from all experimental sections into one visible **Experimental** navigation section that is collapsed by default. Activating a direct deep link to an experimental page expands that section. This metadata changes navigation presentation only and does not grant authorization or access to data.
 
 The optional page `class-name` is a canonical identifier that a renderer adds to the page container. It lets a document opt into page-specific presentation without requiring the renderer to infer styling from a page ID or built-in page name.
 

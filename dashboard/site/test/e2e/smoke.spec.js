@@ -166,12 +166,12 @@ test('GitHub API rate-limit dashboard remains operable at desktop and narrow wid
           }]
         }
       };
-      window.location.hash = '#page-overview?show=experimental';
+      window.location.hash = '#page-overview';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
 
-  await page.locator('.nav-section').filter({ hasText: 'Control plane' }).locator('summary').click();
+  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
   await page.locator('[data-nav-page-id="github-api"]').click();
   const apiPage = page.locator('[data-page-id="github-api"]');
   const capacity = apiPage.locator('[aria-labelledby="github-api-remaining-capacity-heading"]');
@@ -243,7 +243,7 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
         },
         'coverage-diagnostics': { source: 'coverage-diagnostics', rows: [], metadata }
       };
-      window.location.hash = '#page-readiness?show=experimental';
+      window.location.hash = '#page-readiness';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
@@ -258,7 +258,7 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
   const readinessNavigation = page.locator('[data-nav-page-id="readiness"]');
   await expect(readinessNavigation).toHaveAttribute('aria-current', 'page');
   await expect(readinessNavigation.locator('svg')).toHaveCount(1);
-  await expect(page.locator('.nav-section-label').filter({ hasText: 'Control plane' })).toBeVisible();
+  await expect(page.locator('.nav-section-label').filter({ hasText: 'Experimental' })).toBeVisible();
   const activityChart = readinessPage.locator('.custom-view').first().locator('[data-chart-widget="line"]');
   await expect(activityChart).toBeVisible();
   const [activityChartBox, activityAxisBox] = await Promise.all([
@@ -609,7 +609,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   `);
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
-  const attention = page.locator('.nav-section').filter({ hasText: 'Attention' });
+  const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
   await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Agents', 'Insights', 'Settings']);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(cleanNavigation.last().locator('.octicon-gear')).toBeVisible();
@@ -619,16 +619,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
   await expect(page.getByText('Dashboard Next', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Show experimental')).toHaveCount(0);
-  await expect(attention).toBeHidden();
-
-  await page.evaluate(() => { window.location.hash = '#page-overview?show=experimental'; });
-  await expect(attention).toBeVisible();
+  await expect(experimental).toBeVisible();
+  await expect(experimental).not.toHaveAttribute('open', '');
+  await expect(experimental.getByRole('link', { name: 'Operations' })).toBeHidden();
+  await experimental.locator('summary').click();
+  await expect(experimental.getByRole('link', { name: 'Operations' })).toBeVisible();
   await cleanNavigation.filter({ hasText: 'Work' }).click();
-  await expect(page).toHaveURL(/#page-work\?show=experimental$/);
-
-  await page.evaluate(() => { window.location.hash = '#page-work'; });
-  await expect(attention).toBeHidden();
   await expect(page).toHaveURL(/#page-work$/);
+
   const workPage = page.locator('[data-page-id="work"]');
   await expect(workPage.locator('.work-board')).toBeVisible();
   await expect(workPage.locator('.work-tasks, .work-roadmap')).toHaveCount(0);
@@ -709,7 +707,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeHidden();
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
+  await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.canonical-attention-item').first()).toBeInViewport();
   await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
