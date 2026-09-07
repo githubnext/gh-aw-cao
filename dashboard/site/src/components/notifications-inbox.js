@@ -7,6 +7,18 @@ import { smellMark } from './agent-marketplace-view.js';
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
 const DAY_MILLISECONDS = 86_400_000;
+const ESTIMATED_NOTIFICATION_HEIGHT = 62;
+const MINIMUM_NOTIFICATION_BATCH = 12;
+const MAXIMUM_NOTIFICATION_BATCH = 40;
+const NOTIFICATION_OVERSCAN = 8;
+
+function notificationBatchSize() {
+  const viewportHeight = Number(globalThis.window?.innerHeight) || 768;
+  return Math.max(
+    MINIMUM_NOTIFICATION_BATCH,
+    Math.min(MAXIMUM_NOTIFICATION_BATCH, Math.ceil(viewportHeight / ESTIMATED_NOTIFICATION_HEIGHT) + NOTIFICATION_OVERSCAN)
+  );
+}
 
 function readState() {
   try {
@@ -97,6 +109,9 @@ function matchesQuery(row, query, state) {
 export function renderNotificationsInbox(rows, sources = {}) {
   const state = readState();
   const selected = new Set();
+  let renderedLimit = notificationBatchSize();
+  /** @type {IntersectionObserver | null} */
+  let boundaryObserver = null;
   /** @type {Record<string, unknown>[]} */
   let currentVisible = [];
   const list = h('div', { className: 'notifications-list' });
@@ -120,7 +135,8 @@ export function renderNotificationsInbox(rows, sources = {}) {
     'aria-label': 'Mark selected as done', disabled: true
   }, octicon('check')));
 
-  const render = () => {
+  /** @param {boolean} [resetWindow] */
+  const render = (resetWindow = true) => {
     let visible = rows.filter((row) => matchesQuery(row, search.value, state));
     visible = [...visible].sort((left, right) => {
       if (sort.value === 'priority') return Number(left.priority || 99) - Number(right.priority || 99);
@@ -128,26 +144,50 @@ export function renderNotificationsInbox(rows, sources = {}) {
       return sort.value === 'oldest' ? -delta : delta;
     });
     currentVisible = visible;
+    if (resetWindow) renderedLimit = notificationBatchSize();
     count.textContent = `${visible.length} notification${visible.length === 1 ? '' : 's'}`;
     selected.clear();
     selectAll.checked = false;
     bulkDone.disabled = true;
     if (visible.length === 0) {
+      boundaryObserver?.disconnect();
       list.replaceChildren(h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up')));
       return;
     }
+    const renderedRows = visible.slice(0, renderedLimit);
+    const remaining = visible.length - renderedRows.length;
+    const loadMore = () => {
+      renderedLimit = Math.min(visible.length, renderedLimit + notificationBatchSize());
+      render(false);
+    };
+    const boundary = remaining > 0 ? h('div', {
+      className: 'notifications-load-boundary',
+      dataset: { notificationsLoadBoundary: '' }
+    },
+    h('span', null, `Showing ${renderedRows.length} of ${visible.length}`),
+    h('button', { type: 'button', onClick: loadMore }, `Load ${Math.min(notificationBatchSize(), remaining)} more`)) : null;
+    /** @param {Node[]} content */
+    const replaceList = (content) => {
+      boundaryObserver?.disconnect();
+      list.replaceChildren(...content, ...(boundary ? [boundary] : []));
+      if (!boundary || typeof globalThis.IntersectionObserver !== 'function') return;
+      boundaryObserver = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore();
+      }, { rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px` });
+      boundaryObserver.observe(boundary);
+    };
     if (group.value === 'cause') {
-      list.replaceChildren(...renderCauseGroups(visible, state, selected, bulkDone, render));
+      replaceList(renderCauseGroups(renderedRows, state, selected, bulkDone, render));
       return;
     }
     const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (new Map());
-    for (const row of visible) {
+    for (const row of renderedRows) {
       const label = group.value === 'date' ? dateGroup(row) : group.value === 'repository' ? repository(row) : '';
       const entries = groups.get(label) || [];
       entries.push(row);
       groups.set(label, entries);
     }
-    list.replaceChildren(...[...groups].flatMap(([label, entries]) => {
+    replaceList([...groups].flatMap(([label, entries]) => {
       const entriesList = h('ul', { className: 'notifications-group' },
         ...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)));
       return label ? [h('h3', { className: 'notifications-group-heading' }, label), entriesList] : [entriesList];
@@ -156,9 +196,9 @@ export function renderNotificationsInbox(rows, sources = {}) {
 
   const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
   const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
-  search.addEventListener('input', render);
-  sort.addEventListener('change', render);
-  group.addEventListener('change', render);
+  search.addEventListener('input', () => render());
+  sort.addEventListener('change', () => render());
+  group.addEventListener('change', () => render());
   selectAll.addEventListener('change', () => {
     selected.clear();
     if (selectAll.checked) {

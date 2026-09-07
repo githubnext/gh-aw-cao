@@ -1276,11 +1276,21 @@ export async function startDashboardServer({
   const bundledDashboardPath = join(temporaryDirectory, "dashboard.json");
   const dashboardDataDirectory = join(temporaryDirectory, "data");
   let sourcesContent;
+  let sourceManifestContent;
+  const splitSourceContent = new Map();
   try {
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
     sourcesContent = redactJsonSecrets(
       await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
     );
+    const parsedSources = JSON.parse(sourcesContent);
+    for (const [name, logicalSource] of Object.entries(parsedSources)) {
+      const browserSource = name === "runs"
+        ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
+        : logicalSource;
+      splitSourceContent.set(name, JSON.stringify(browserSource));
+    }
+    sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
   } catch (error) {
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
@@ -1791,6 +1801,28 @@ export async function startDashboardServer({
           "Content-Type": contentTypes.get(".json"),
         });
         response.end(request.method === "HEAD" ? undefined : sourcesContent);
+        return;
+      }
+      if (pathname === "/sources/manifest.json") {
+        response.writeHead(200, {
+          "Cache-Control": "no-store",
+          "Content-Type": contentTypes.get(".json"),
+        });
+        response.end(request.method === "HEAD" ? undefined : sourceManifestContent);
+        return;
+      }
+      const splitSourceMatch = pathname.match(/^\/sources\/([a-z0-9-]+)\.json$/);
+      if (splitSourceMatch) {
+        const content = splitSourceContent.get(splitSourceMatch[1]);
+        if (content === undefined) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        response.writeHead(200, {
+          "Cache-Control": "no-store",
+          "Content-Type": contentTypes.get(".json"),
+        });
+        response.end(request.method === "HEAD" ? undefined : content);
         return;
       }
       const candidate = resolve(resolvedSiteRoot, `.${pathname}`);
