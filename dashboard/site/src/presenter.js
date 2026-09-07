@@ -906,8 +906,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
-      rendered.classList.add('custom-view');
-      rendered.setAttribute('data-view-layout', layout);
+      if (disclosure === 'essential') {
+        rendered.classList.add('custom-view');
+        rendered.setAttribute('data-view-layout', layout);
+      }
       rendered.setAttribute('data-disclosure', disclosure);
       return rendered;
     };

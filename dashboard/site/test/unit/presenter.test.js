@@ -1563,7 +1563,10 @@ describe('presenter built-in and custom pages', () => {
     expect(supplemental.getAttribute('data-disclosure')).toBe('supplemental');
     expect(supplemental.open).toBe(false);
     expect(supplemental.querySelector('summary')?.textContent).toContain('Completed runs');
-    expect(supplemental.querySelector(':scope > .page-section')?.textContent).toContain('1');
+    const supplementalContent = supplemental.querySelector(':scope > .page-section');
+    expect(supplementalContent?.textContent).toContain('1');
+    expect(supplementalContent?.classList.contains('custom-view')).toBe(false);
+    expect(supplementalContent?.hasAttribute('data-view-layout')).toBe(false);
   });
 
   it('DLS-PAGE-002 DLS-PAGE-014 renders the report-style six-domain operational overview deterministically', () => {
