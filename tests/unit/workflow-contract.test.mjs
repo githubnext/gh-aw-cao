@@ -673,6 +673,15 @@ test("issue-creating workers use package and worker title prefixes and labels", 
   }
 });
 
+test("self-care pages health worker creates a fix PR instead of a report issue", () => {
+  const source = workflow("self-care-pages-health.md");
+
+  assert.match(source, /create-pull-request:/);
+  assert.doesNotMatch(source, /create-issue:/);
+  assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(source, /Fix only the selected quick wins/);
+});
+
 test("workers with title prefixes provide unprefixed safe-output titles", () => {
   for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
     const source = workflow(name);
@@ -2263,15 +2272,17 @@ test("SelfCare Pages health worker audits every deployed view on three profiles"
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: pages-health/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\//);
-  assert.match(source, /close-older-issues: true/);
-  assert.match(source, /close-older-key: self-care-pages-health/);
+  assert.doesNotMatch(source, /close-older-issues: true/);
+  assert.doesNotMatch(source, /close-older-key: self-care-pages-health/);
+  assert.match(source, /create-pull-request:/);
   assert.match(source, /labels: \[self-care, self-care:pages-health\]/);
   assert.match(source, /self-care-pages-health-evidence\/\*\*/);
   assert.match(source, /each of the `desktop`, `mobile`, and `low-bandwidth` profiles/);
   assert.match(source, /scrolls every deployed dashboard view/i);
   assert.match(source, /executive summary/i);
   assert.match(source, /containing exactly three numbered, evidence-backed, small JavaScript improvements/);
-  assert.match(source, /call `create_issue` exactly once/);
+  assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(source, /Fix only the selected quick wins/);
   assert.ok(views.some(({ id }) => id === "self-care-pages-health-runs"));
   assert.ok(views.some(({ id }) => id === "self-care-pages-health-outcomes"));
   assert.ok(views
