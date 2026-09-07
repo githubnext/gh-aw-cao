@@ -301,13 +301,21 @@ export async function readRunSecurityTelemetry(outputDirectory, runId) {
   const telemetry = emptySecurityTelemetry();
   const runRoot = path.join(outputDirectory, `run-${runId}`);
   const files = await securityFiles(runRoot);
+  const auditFile = files.find((file) => path.basename(file) === "audit.json");
+  if (auditFile) {
+    const content = await readBounded(auditFile);
+    if (content !== null) try {
+      telemetry.agenticAssessments = agenticAssessments(JSON.parse(content));
+    } catch {
+      // Missing or malformed optional telemetry is represented as unavailable.
+    }
+  }
   const summaryFile = files.find((file) => path.basename(file) === "run_summary.json");
   let summary = null;
   if (summaryFile) {
     const content = await readBounded(summaryFile);
     if (content !== null) try {
       summary = JSON.parse(content);
-      telemetry.agenticAssessments = agenticAssessments(summary);
       telemetry.mcp.cliVersion = firstText(summary.cli_version);
       const toolUsage = summary.mcp_tool_usage;
       if (toolUsage && typeof toolUsage === "object") {

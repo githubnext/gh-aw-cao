@@ -14,15 +14,9 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
     await writeFile(path.join(runDirectory, "run_summary.json"), JSON.stringify({
       cli_version: "0.88.0",
       agentic_assessments: [{
-        kind: "partially_reducible",
-        severity: "low",
-        summary: "Half of the turns were deterministic data gathering.",
-        evidence: "agentic_fraction=0.50 turns=8",
-        recommendation: "Move data fetching into deterministic pre-steps.",
-      }, {
-        kind: "unsupported_future_assessment",
-        severity: "critical",
-        summary: "Must not be retained.",
+        kind: "overkill_for_agentic",
+        severity: "high",
+        summary: "Legacy summary assessment must not be retained.",
       }],
       firewall_analysis: {
         total_requests: 4,
@@ -63,6 +57,19 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
         },
       },
       mcp_failures: [{ server_name: "playwright", status: "connection failed", error: "secret detail" }],
+    }));
+    await writeFile(path.join(runDirectory, "audit.json"), JSON.stringify({
+      agentic_assessments: [{
+        kind: "partially_reducible",
+        severity: "low",
+        summary: "Half of the turns were deterministic data gathering.",
+        evidence: "agentic_fraction=0.50 turns=8",
+        recommendation: "Move data fetching into deterministic pre-steps.",
+      }, {
+        kind: "unsupported_future_assessment",
+        severity: "critical",
+        summary: "Must not be retained.",
+      }],
     }));
     await writeFile(path.join(runDirectory, "agent", "agent-stdio.log"), [
       "[sdk-driver] permission denied by workflow tool permissions: read(/private/path)",
