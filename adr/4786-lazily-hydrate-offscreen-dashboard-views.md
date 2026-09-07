@@ -22,7 +22,7 @@ Not inferable from current pull request evidence: prior performance measurements
 
 ## Decision
 
-Defer rendering ("hydration") of offscreen custom dashboard views using a dedicated `lazy-view.js` component built on `IntersectionObserver`, while eagerly rendering the first view, route-driven views, and callout-marked views. Each deferred view is represented by a placeholder that reserves its expected height and shows an accessible loading skeleton, and is hydrated when it nears the viewport (320px rootMargin), when its containing `<details>` disclosure is opened, or when it receives keyboard focus. Hydration is coordinated with in-flight View Transitions (waiting for `transition.finished` before swapping in real content) and with page lifecycle events (observers are disconnected on page navigation via `disconnectLazyViews` and on dashboard replacement via the new `disposeDashboard`). When `IntersectionObserver` is unavailable on the document's `window`, all lazy views fall back to immediate rendering.
+Defer rendering ("hydration") of offscreen custom dashboard views using a dedicated `lazy-view.js` component built on `IntersectionObserver`, while eagerly rendering the first view, route-driven views, and callout-marked views. Each deferred view is represented by a placeholder that reserves its expected height and shows an accessible loading skeleton, and is hydrated when it nears the viewport (320px rootMargin), when its containing `<details>` disclosure is opened, or when it receives keyboard focus. Views observed together hydrate one at a time through a per-document queue that yields between hydrations, so several placeholders entering the viewport at once cannot render in one long, memory-heavy task. Hydration is coordinated with in-flight View Transitions (waiting for `transition.finished` before swapping in real content) and with page lifecycle events (observers are disconnected on page navigation via `disconnectLazyViews` and on dashboard replacement via the new `disposeDashboard`). When `IntersectionObserver` is unavailable on the document's `window`, all lazy views fall back to immediate rendering.
 
 ## Alternatives Considered
 
@@ -37,7 +37,8 @@ Defer rendering ("hydration") of offscreen custom dashboard views using a dedica
 - Hydration on `focusin` and restoring focus to the hydrated element (when the placeholder held focus) preserves keyboard navigation behavior across the swap.
 - Hydration falls back to immediate rendering when `IntersectionObserver` is unavailable, avoiding views that never render in unsupported environments.
 - Observers are explicitly disconnected during page navigation (`disconnectLazyViews(activePage)`) and dashboard replacement (`disposeDashboard`), reducing the risk of observer/handler leaks across page and dashboard transitions.
-- New unit tests (`lazy-view.test.js`) and updated e2e smoke coverage exercise viewport, fallback, transition, and keyboard hydration paths.
+- Serialized hydration keeps concurrent rendering work bounded on constrained devices, where several offscreen views entering the viewport together previously rendered in a single long task.
+- New unit tests (`lazy-view.test.js`) and updated e2e smoke coverage exercise viewport, fallback, transition, keyboard, and serialized hydration paths.
 
 **Negative:**
 - The hydration logic in `lazy-view.js` (view transition tracking, disclosure/focus listeners, observer lifecycle) adds new asynchronous coordination code that must be kept correct across page navigation, dashboard replacement, and View Transition timing.

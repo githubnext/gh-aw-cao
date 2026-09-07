@@ -170,4 +170,54 @@ describe('lazy dashboard views', () => {
     expect(section.tabIndex).toBe(0);
     expect(section.getAttribute('tabindex')).toBe('0');
   });
+
+  it('hydrates views entering the viewport together one at a time', async () => {
+    /** @type {IntersectionObserverCallback} */
+    let callback = () => {};
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        /** @param {IntersectionObserverCallback} nextCallback */
+        constructor(nextCallback) {
+          callback = nextCallback;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    });
+    let active = 0;
+    let concurrent = 0;
+    /** @type {Array<() => void>} */
+    const releases = [];
+    const render = vi.fn(() => {
+      active += 1;
+      concurrent = Math.max(concurrent, active);
+      return new Promise((resolve) => {
+        releases.push(() => {
+          active -= 1;
+          resolve(document.createElement('article'));
+        });
+      });
+    });
+    const first = renderLazyView({ label: 'First', render });
+    const second = renderLazyView({ label: 'Second', render });
+    document.body.append(first, second);
+    enableLazyViews(document.body);
+
+    callback(
+      /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([
+        { target: first, isIntersecting: true, intersectionRatio: 1 },
+        { target: second, isIntersecting: true, intersectionRatio: 1 }
+      ])),
+      /** @type {IntersectionObserver} */ ({})
+    );
+
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    releases[0]();
+    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(2));
+    releases[1]();
+    await vi.waitFor(() => expect(document.body.querySelectorAll('article')).toHaveLength(2));
+    expect(concurrent).toBe(1);
+  });
 });

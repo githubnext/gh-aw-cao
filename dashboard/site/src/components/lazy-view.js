@@ -4,6 +4,7 @@ const renderers = new WeakMap();
 const hydrationPromises = new WeakMap();
 const observers = new WeakMap();
 const activeTransitions = new WeakMap();
+const hydrationQueues = new WeakMap();
 
 /**
  * @param {Document} document
@@ -90,7 +91,7 @@ export function enableLazyViews(root) {
   const Observer = root.ownerDocument.defaultView?.IntersectionObserver;
   if (typeof Observer !== 'function') {
     console.debug('[lazy-view] IntersectionObserver unavailable, hydrating immediately');
-    for (const element of lazyViews) void hydrateLazyView(element);
+    for (const element of lazyViews) void hydrateLazyView(element, { immediate: true });
     return;
   }
 
@@ -134,56 +135,94 @@ export function disconnectLazyViews(root) {
 
 /**
  * @param {HTMLElement} element
+ * @param {{ immediate?: boolean }} [options]
  * @returns {Promise<void>}
  */
-function hydrateLazyView(element) {
+function hydrateLazyView(element, { immediate = false } = {}) {
   const existing = hydrationPromises.get(element);
   if (existing) return existing;
 
   const render = renderers.get(element);
   if (!render || !element.parentNode) return Promise.resolve();
   const viewId = element.getAttribute('data-view-id');
-  console.debug('[lazy-view] hydrating view', viewId);
-  const handleHydrationError = (/** @type {unknown} */ error) => reportHydrationError(element, error);
+  const ownerDocument = element.ownerDocument;
 
-  const transition = activeTransitions.get(element.ownerDocument);
-  if (!transition) {
-    try {
-      const rendered = render();
-      if (rendered instanceof HTMLElement) {
-        replaceLazyView(element, rendered);
-        console.debug('[lazy-view] hydrated view', viewId);
-        const hydration = Promise.resolve();
-        hydrationPromises.set(element, hydration);
-        return hydration;
-      }
-      const hydration = Promise.resolve(rendered)
-        .then((resolved) => {
-          replaceLazyView(element, resolved);
-          console.debug('[lazy-view] hydrated view', viewId);
-        })
-        .catch(handleHydrationError);
-      hydrationPromises.set(element, hydration);
-      return hydration;
-    } catch (error) {
-      reportHydrationError(element, error);
-      const hydration = Promise.resolve();
-      hydrationPromises.set(element, hydration);
-      return hydration;
-    }
+  if (immediate && !activeTransitions.has(ownerDocument)) {
+    const hydration = renderHydratedView(element, render, viewId);
+    hydrationPromises.set(element, hydration);
+    return hydration;
   }
 
-  console.debug('[lazy-view] deferring hydration until transition finishes', viewId);
-  const hydration = transition
-    .then(async () => {
-      if (!element.parentNode) return;
-      replaceLazyView(element, await render());
-      console.debug('[lazy-view] hydrated view', viewId);
-    })
-    .catch(handleHydrationError);
+  const hydration = queueHydration(ownerDocument, async () => {
+    const transition = activeTransitions.get(ownerDocument);
+    if (transition) {
+      console.debug('[lazy-view] deferring hydration until transition finishes', viewId);
+      await transition;
+    }
+    if (!element.parentNode) return;
+    await renderHydratedView(element, render, viewId);
+  });
 
   hydrationPromises.set(element, hydration);
   return hydration;
+}
+
+/**
+ * @param {HTMLElement} element
+ * @param {() => HTMLElement | Promise<HTMLElement>} render
+ * @param {string | null} viewId
+ * @returns {Promise<void>}
+ */
+function renderHydratedView(element, render, viewId) {
+  console.debug('[lazy-view] hydrating view', viewId);
+  try {
+    const rendered = render();
+    if (rendered instanceof HTMLElement) {
+      replaceLazyView(element, rendered);
+      console.debug('[lazy-view] hydrated view', viewId);
+      return Promise.resolve();
+    }
+    return Promise.resolve(rendered)
+      .then((resolved) => {
+        replaceLazyView(element, resolved);
+        console.debug('[lazy-view] hydrated view', viewId);
+      })
+      .catch((error) => reportHydrationError(element, error));
+  } catch (error) {
+    reportHydrationError(element, error);
+    return Promise.resolve();
+  }
+}
+
+/**
+ * Hydrates one view at a time so several offscreen views entering the viewport
+ * together render across separate tasks instead of one long, memory-heavy task.
+ * @param {Document} ownerDocument
+ * @param {() => Promise<void>} task
+ * @returns {Promise<void>}
+ */
+function queueHydration(ownerDocument, task) {
+  const pending = hydrationQueues.get(ownerDocument) ?? Promise.resolve();
+  const queued = pending.then(task, task);
+  hydrationQueues.set(ownerDocument, queued.then(
+    () => yieldBetweenHydrations(ownerDocument),
+    () => yieldBetweenHydrations(ownerDocument)
+  ));
+  return queued.catch((/** @type {unknown} */ error) => {
+    console.error(error);
+  });
+}
+
+/**
+ * @param {Document} ownerDocument
+ * @returns {Promise<void>}
+ */
+function yieldBetweenHydrations(ownerDocument) {
+  const view = ownerDocument.defaultView;
+  return new Promise((resolve) => {
+    if (typeof view?.setTimeout === 'function') view.setTimeout(resolve, 0);
+    else resolve();
+  });
 }
 
 /**
