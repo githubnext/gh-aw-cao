@@ -19,19 +19,21 @@ export function trackViewTransition(document, transition) {
 }
 
 /**
- * @param {{ label: string, minHeight?: number, render: () => HTMLElement | Promise<HTMLElement> }} options
+ * @param {{ label: string, headingLevel?: 'h3'|'h4', minHeight?: number, render: () => HTMLElement | Promise<HTMLElement> }} options
  * @returns {HTMLElement}
  */
-export function renderLazyView({ label, minHeight = 280, render }) {
+export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, render }) {
   const element = h(
     'div',
     {
       className: 'dashboard-lazy-view',
       role: 'status',
+      tabIndex: 0,
       'aria-busy': 'true',
       'aria-label': `Loading ${label}`,
       style: `--dashboard-lazy-view-min-height: ${Math.max(1, minHeight)}px`
     },
+    h(headingLevel, { className: 'sr-only' }, label),
     h('span', { className: 'sr-only' }, `Loading ${label}`),
     h(
       'div',
@@ -79,6 +81,10 @@ export function enableLazyViews(root) {
         void hydrateLazyView(element);
       }
     }, { once: true });
+    element.addEventListener('focusin', () => {
+      observer.unobserve(element);
+      void hydrateLazyView(element);
+    }, { once: true });
   }
 }
 
@@ -104,7 +110,12 @@ function hydrateLazyView(element) {
     if (!render) return;
     const rendered = await render();
     if (!element.parentNode) return;
+    const restoreFocus = element.ownerDocument.activeElement === element;
     element.replaceWith(rendered);
+    if (restoreFocus) {
+      rendered.tabIndex = -1;
+      rendered.focus();
+    }
   };
   const transition = activeTransitions.get(element.ownerDocument);
   if (!transition) {
@@ -112,13 +123,24 @@ function hydrateLazyView(element) {
     if (!render || !element.parentNode) return Promise.resolve();
     const rendered = render();
     if (rendered instanceof HTMLElement) {
+      const restoreFocus = element.ownerDocument.activeElement === element;
       element.replaceWith(rendered);
+      if (restoreFocus) {
+        rendered.tabIndex = -1;
+        rendered.focus();
+      }
       const hydration = Promise.resolve();
       hydrationPromises.set(element, hydration);
       return hydration;
     }
     const hydration = Promise.resolve(rendered).then((resolved) => {
-      if (element.parentNode) element.replaceWith(resolved);
+      if (!element.parentNode) return;
+      const restoreFocus = element.ownerDocument.activeElement === element;
+      element.replaceWith(resolved);
+      if (restoreFocus) {
+        resolved.tabIndex = -1;
+        resolved.focus();
+      }
     });
     hydrationPromises.set(element, hydration);
     return hydration;

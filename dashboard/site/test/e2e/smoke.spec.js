@@ -783,6 +783,8 @@ test('performance page renders a full heatmap and lays out supporting charts sid
   await expect(pageRegion).toBeVisible();
   await expect(pageRegion.locator('.custom-view').first().locator('[data-chart-widget="histogram"]')).toBeVisible();
   await expect(pageRegion.locator('[data-chart-widget="heatmap"]')).toBeVisible();
+  await hydrateView(page, 'Job time by sandbox runtime and agent engine');
+  await hydrateView(page, 'Job time by model');
   await expect(pageRegion.locator('[data-chart-widget="bar"]')).toHaveCount(2);
   const runtimeCharts = pageRegion.locator('[data-section-id="job-duration"] .custom-view-grid > [data-view-layout="half"]');
   await expect(runtimeCharts).toHaveCount(2);

@@ -204,6 +204,13 @@ export function renderDashboard(input) {
   return root;
 }
 
+/** @param {HTMLElement} root */
+export function disposeDashboard(root) {
+  for (const page of root.querySelectorAll('.dashboard-page')) {
+    if (page instanceof HTMLElement) disconnectLazyViews(page);
+  }
+}
+
 /**
  * @param {Record<string, LogicalSourceInput>} sources
  * @returns {string | null}
@@ -908,6 +915,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       ? render()
       : renderLazyView({
         label: getViewTitle(view, index),
+        headingLevel: headingTag,
         minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
         render
       });

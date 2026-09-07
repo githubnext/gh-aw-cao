@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { enableLazyViews, renderLazyView, trackViewTransition } from '../../src/components/lazy-view.js';
+import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from '../../src/components/lazy-view.js';
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -93,5 +93,32 @@ describe('lazy dashboard views', () => {
 
     finishTransition();
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+  });
+
+  it('exposes a heading and hydrates when keyboard focus reaches the placeholder', async () => {
+    const disconnect = vi.fn();
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        constructor() {}
+        observe() {}
+        unobserve() {}
+        disconnect = disconnect;
+      }
+    });
+    const article = document.createElement('article');
+    const render = vi.fn(() => article);
+    const lazyView = renderLazyView({ label: 'Evidence', headingLevel: 'h4', render });
+    lazyView.dataset.lazyView = '';
+    document.body.append(lazyView);
+    enableLazyViews(document.body);
+
+    expect(lazyView.querySelector('h4')?.textContent).toBe('Evidence');
+    lazyView.focus();
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    expect(document.activeElement).toBe(article);
+
+    disconnectLazyViews(document.body);
+    expect(disconnect).toHaveBeenCalledOnce();
   });
 });
