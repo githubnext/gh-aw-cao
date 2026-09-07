@@ -71,6 +71,7 @@ export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, re
     )
   );
   renderers.set(element, render);
+  console.debug('[lazy-view] placeholder rendered', label);
   return element;
 }
 
@@ -84,9 +85,11 @@ export function enableLazyViews(root) {
   const lazyViews = [...root.querySelectorAll('[data-lazy-view]')]
     .filter((element) => element instanceof HTMLElement);
   if (lazyViews.length === 0) return;
+  console.debug('[lazy-view] observing views', lazyViews.length);
 
   const Observer = root.ownerDocument.defaultView?.IntersectionObserver;
   if (typeof Observer !== 'function') {
+    console.debug('[lazy-view] IntersectionObserver unavailable, hydrating immediately');
     for (const element of lazyViews) void hydrateLazyView(element);
     return;
   }
@@ -95,7 +98,10 @@ export function enableLazyViews(root) {
     for (const entry of entries) {
       if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
       observer.unobserve(entry.target);
-      if (entry.target instanceof HTMLElement) void hydrateLazyView(entry.target);
+      if (entry.target instanceof HTMLElement) {
+        console.debug('[lazy-view] hydrating on intersection', entry.target.getAttribute('data-view-id'));
+        void hydrateLazyView(entry.target);
+      }
     }
   }, { rootMargin: '320px 0px' });
   observers.set(root, observer);
@@ -105,11 +111,13 @@ export function enableLazyViews(root) {
     disclosure?.addEventListener('toggle', () => {
       if (disclosure.open) {
         observer.unobserve(element);
+        console.debug('[lazy-view] hydrating on disclosure', element.getAttribute('data-view-id'));
         void hydrateLazyView(element);
       }
     }, { once: true });
     element.addEventListener('focusin', () => {
       observer.unobserve(element);
+      console.debug('[lazy-view] hydrating on focus', element.getAttribute('data-view-id'));
       void hydrateLazyView(element);
     }, { once: true });
   }
@@ -119,6 +127,7 @@ export function enableLazyViews(root) {
  * @param {HTMLElement} root
  */
 export function disconnectLazyViews(root) {
+  if (observers.has(root)) console.debug('[lazy-view] disconnecting observer');
   observers.get(root)?.disconnect();
   observers.delete(root);
 }
@@ -133,6 +142,8 @@ function hydrateLazyView(element) {
 
   const render = renderers.get(element);
   if (!render || !element.parentNode) return Promise.resolve();
+  const viewId = element.getAttribute('data-view-id');
+  console.debug('[lazy-view] hydrating view', viewId);
   const handleHydrationError = (/** @type {unknown} */ error) => reportHydrationError(element, error);
 
   const transition = activeTransitions.get(element.ownerDocument);
@@ -141,12 +152,16 @@ function hydrateLazyView(element) {
       const rendered = render();
       if (rendered instanceof HTMLElement) {
         replaceLazyView(element, rendered);
+        console.debug('[lazy-view] hydrated view', viewId);
         const hydration = Promise.resolve();
         hydrationPromises.set(element, hydration);
         return hydration;
       }
       const hydration = Promise.resolve(rendered)
-        .then((resolved) => replaceLazyView(element, resolved))
+        .then((resolved) => {
+          replaceLazyView(element, resolved);
+          console.debug('[lazy-view] hydrated view', viewId);
+        })
         .catch(handleHydrationError);
       hydrationPromises.set(element, hydration);
       return hydration;
@@ -158,10 +173,12 @@ function hydrateLazyView(element) {
     }
   }
 
+  console.debug('[lazy-view] deferring hydration until transition finishes', viewId);
   const hydration = transition
     .then(async () => {
       if (!element.parentNode) return;
       replaceLazyView(element, await render());
+      console.debug('[lazy-view] hydrated view', viewId);
     })
     .catch(handleHydrationError);
 
