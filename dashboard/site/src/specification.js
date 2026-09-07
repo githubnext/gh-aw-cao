@@ -4,6 +4,7 @@
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
 export {
+  AGENT_MARKETPLACE_BODY_VALUES,
   EXPERIMENTS_VIEW_BODY_VALUES,
   EXPERIMENTS_VIEW_SECTION_KEYS,
   OUTCOME_DETAIL_SECTION_BODY_VALUES,

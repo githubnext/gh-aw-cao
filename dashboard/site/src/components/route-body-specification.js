@@ -10,3 +10,4 @@ export const EXPERIMENTS_VIEW_BODY_VALUES = ['overview', 'table', 'detail'];
 export const EXPERIMENTS_VIEW_SECTION_KEYS = ['overview', 'table', 'detail'];
 export const PACKAGE_ROUTE_VARIANT_VALUES = ['insights', 'workflows', 'dispatches', 'reports'];
 export const WORK_VIEW_BODY_VALUES = ['board', 'tasks', 'roadmap'];
+export const AGENT_MARKETPLACE_BODY_VALUES = ['toolbar', 'grid'];

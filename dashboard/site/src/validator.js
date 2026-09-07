@@ -80,6 +80,7 @@ import {
   WORKFLOW_ROLE_VALUES
 } from './specification.js';
 import {
+  AGENT_MARKETPLACE_BODY_VALUES,
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   EXPERIMENTS_VIEW_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
@@ -1599,7 +1600,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation' || view.element === 'work-project-view') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation' || view.element === 'work-project-view' || view.element === 'agent-marketplace-view') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
@@ -1609,6 +1610,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
              ? EXPERIMENTS_VIEW_BODY_VALUES
              : view.element === 'work-project-view'
                ? WORK_VIEW_BODY_VALUES
+               : view.element === 'agent-marketplace-view'
+                 ? AGENT_MARKETPLACE_BODY_VALUES
              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
          errors.push(createError(
@@ -1620,7 +1623,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, experiments-evaluation, and work-project-view elements.',
+         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, experiments-evaluation, work-project-view, and agent-marketplace-view elements.',
          `${path}.config.body`
        ));
       }

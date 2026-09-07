@@ -7089,6 +7089,22 @@
         "description": "Browse agent capabilities and runtime health in a Marketplace-style catalog.",
         "views": [
           {
+            "id": "agents-toolbar",
+            "title": "Agent controls",
+            "description": "Sort and count the agent catalog independently from the rendered marketplace grid.",
+            "data": {
+              "sources": [
+                "agent-assignments"
+              ]
+            },
+            "mark": "element",
+            "element": "agent-marketplace-view",
+            "config": {
+              "body": "toolbar"
+            },
+            "layout": "full"
+          },
+          {
             "id": "agents-marketplace",
             "title": "Agents",
             "description": "Agent name, icon, description, permissions, runtime, and freshness.",
@@ -7099,6 +7115,9 @@
             },
             "mark": "element",
             "element": "agent-marketplace-view",
+            "config": {
+              "body": "grid"
+            },
             "layout": "full"
           }
         ]

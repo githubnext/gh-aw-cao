@@ -66,6 +66,40 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Alpha Agent');
   });
 
+  it('renders a declarative agent marketplace toolbar slice without duplicating the grid', () => {
+    const rendered = renderUiElement('agent-marketplace-view', {
+      pageId: 'agents',
+      title: 'Agent controls',
+      description: 'Toolbar-only marketplace controls.',
+      sourceNames: ['agent-assignments'],
+      sources: {
+        'agent-assignments': {
+          source: 'agent-assignments',
+          rows: [
+            {
+              'agent-id': 'fast',
+              'agent-name': 'Alpha Agent',
+              'run-count': 1,
+              'total-runtime-seconds': 60,
+              'last-observed-at': '2026-08-30T09:00:00Z'
+            }
+          ],
+          metadata
+        }
+      },
+      elementConfig: {
+        body: 'toolbar'
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.agent-marketplace-toolbar')).not.toBeNull();
+    expect(rendered?.querySelector('.agent-marketplace-count')?.textContent).toBe('1 agents');
+    expect(rendered?.querySelector('.agent-marketplace-grid')).toBeNull();
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(0);
+  });
+
   it('renders Work as a Projects-style Board, Tasks, and Roadmap view', () => {
     const rendered = renderUiElement('work-project-view', {
       pageId: 'work',

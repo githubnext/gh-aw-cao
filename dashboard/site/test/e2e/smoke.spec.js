@@ -311,6 +311,66 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
   expect(await readinessPage.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
+test('agents page composes declarative marketplace toolbar and grid slices', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'agents-fixture',
+        'source-kind': 'fixture',
+        'retrieved-at': '2026-09-05T12:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'agent-assignments': {
+          source: 'agent-assignments',
+          metadata,
+          rows: [
+            {
+              'agent-id': 'release',
+              'agent-name': 'Release Agent',
+              'agent-icon': 'rocket',
+              'agent-description': 'Publishes releases.',
+              permissions: 'contents: write',
+              'agent-state': 'active',
+              'run-count': 4,
+              'total-runtime-seconds': 4000,
+              'last-observed-at': '2026-09-05T09:00:00Z'
+            },
+            {
+              'agent-id': 'review',
+              'agent-name': 'Review Agent',
+              'agent-icon': 'copilot',
+              'agent-description': 'Reviews pull requests.',
+              permissions: 'pull-requests: write',
+              'agent-state': 'completed',
+              'run-count': 2,
+              'total-runtime-seconds': 120,
+              'last-observed-at': '2026-09-05T10:00:00Z'
+            }
+          ]
+        }
+      };
+      window.location.hash = '#page-agents';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const agentsPage = page.locator('[data-page-id="agents"]');
+  await expect(agentsPage).toBeVisible();
+  await expect(agentsPage.locator('.agent-marketplace-toolbar')).toHaveCount(2);
+  await expect(agentsPage.locator('.agent-marketplace-toolbar').first()).toContainText('2 agents');
+  await expect(agentsPage.locator('.agent-marketplace-grid')).toHaveCount(1);
+  await expect(agentsPage.locator('.agent-marketplace-tile')).toHaveCount(2);
+  await expect(agentsPage.locator('.agent-marketplace-tile').first()).toContainText('Release Agent');
+});
+
 test('experiments page composes reusable declarative slices with rendered parity', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
