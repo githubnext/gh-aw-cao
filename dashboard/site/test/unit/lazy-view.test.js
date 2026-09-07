@@ -22,12 +22,14 @@ describe('lazy dashboard views', () => {
   });
 
   it('reserves space and hydrates only after entering the viewport', async () => {
+    /** @type {IntersectionObserverCallback} */
     let callback = () => {};
     const observe = vi.fn();
     const unobserve = vi.fn();
     Object.defineProperty(window, 'IntersectionObserver', {
       configurable: true,
       value: class {
+        /** @param {IntersectionObserverCallback} nextCallback */
         constructor(nextCallback) {
           callback = nextCallback;
         }
@@ -46,17 +48,22 @@ describe('lazy dashboard views', () => {
     expect(lazyView.style.getPropertyValue('--dashboard-lazy-view-min-height')).toBe('320px');
     expect(lazyView.querySelector('.dashboard-lazy-view-skeleton')).not.toBeNull();
     expect(render).not.toHaveBeenCalled();
-    callback([{ target: lazyView, isIntersecting: true, intersectionRatio: 1 }]);
+    callback(
+      /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ target: lazyView, isIntersecting: true, intersectionRatio: 1 }])),
+      /** @type {IntersectionObserver} */ ({})
+    );
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
     expect(unobserve).toHaveBeenCalledWith(lazyView);
     expect(document.body.querySelector('article')).not.toBeNull();
   });
 
   it('waits for an active view transition before hydrating', async () => {
+    /** @type {IntersectionObserverCallback} */
     let callback = () => {};
     Object.defineProperty(window, 'IntersectionObserver', {
       configurable: true,
       value: class {
+        /** @param {IntersectionObserverCallback} nextCallback */
         constructor(nextCallback) {
           callback = nextCallback;
         }
@@ -65,9 +72,10 @@ describe('lazy dashboard views', () => {
         disconnect() {}
       }
     });
-    let finishTransition;
+    let finishTransition = () => {};
+    /** @type {Promise<void>} */
     const finished = new Promise((resolve) => {
-      finishTransition = resolve;
+      finishTransition = () => resolve();
     });
     trackViewTransition(document, { finished });
     const render = vi.fn(() => document.createElement('article'));
@@ -76,7 +84,10 @@ describe('lazy dashboard views', () => {
     document.body.append(lazyView);
     enableLazyViews(document.body);
 
-    callback([{ target: lazyView, isIntersecting: true, intersectionRatio: 1 }]);
+    callback(
+      /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ target: lazyView, isIntersecting: true, intersectionRatio: 1 }])),
+      /** @type {IntersectionObserver} */ ({})
+    );
     await Promise.resolve();
     expect(render).not.toHaveBeenCalled();
 

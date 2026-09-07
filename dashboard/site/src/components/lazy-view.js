@@ -85,20 +85,37 @@ export function disconnectLazyViews(root) {
  * @param {HTMLElement} element
  * @returns {Promise<void>}
  */
-async function hydrateLazyView(element) {
+function hydrateLazyView(element) {
   const existing = hydrationPromises.get(element);
   if (existing) return existing;
 
-  const hydration = (async () => {
-    const transition = activeTransitions.get(element.ownerDocument);
-    if (transition) await transition;
+  const replace = async () => {
     if (!element.parentNode) return;
     const render = renderers.get(element);
     if (!render) return;
     const rendered = await render();
     if (!element.parentNode) return;
     element.replaceWith(rendered);
-  })();
+  };
+  const transition = activeTransitions.get(element.ownerDocument);
+  if (!transition) {
+    const render = renderers.get(element);
+    if (!render || !element.parentNode) return Promise.resolve();
+    const rendered = render();
+    if (rendered instanceof HTMLElement) {
+      element.replaceWith(rendered);
+      const hydration = Promise.resolve();
+      hydrationPromises.set(element, hydration);
+      return hydration;
+    }
+    const hydration = Promise.resolve(rendered).then((resolved) => {
+      if (element.parentNode) element.replaceWith(resolved);
+    });
+    hydrationPromises.set(element, hydration);
+    return hydration;
+  }
+
+  const hydration = transition.then(replace);
   hydrationPromises.set(element, hydration);
-  await hydration;
+  return hydration;
 }
