@@ -4,6 +4,22 @@ The activity package maintains the shared, bounded snapshot used by the Central 
 
 The root Central Agentic Ops package installs the activity and maintenance action workflows and the indexer. A focused installation is also available from `githubnext/gh-aw-cao/activity@<catalog-release>`.
 
+## Local debugging
+
+Activity entrypoints export `main(actions, args)` and receive the same `core`, `github`, `context`, `exec`, `io`, and `getOctokit` singleton used by `actions/github-script`. To debug an entrypoint locally, copy `activity/.env.example`, adjust its non-secret inputs and paths, then run:
+
+```console
+npm run activity:local -- activity/.env
+```
+
+The local-action wrapper uses `@github/local-action` to provide Actions Toolkit shims. The local runner can also be invoked directly with the installed toolkit packages:
+
+```console
+npm run activity:local:node -- activity/index.mjs
+```
+
+The `CAO Activity` workflow runs `run-activity.mjs` as a single `actions/github-script` step. It sequentially imports and invokes the log downloader, GitHub API telemetry recorder, control policy resolver, control-plane inventory extractor, activity indexer, and dashboard collectors, sharing the same Actions singleton across every call.
+
 ## Cache contract
 
 The action restores and saves this directory:

@@ -2,6 +2,8 @@
 
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 import { normalizeVersion } from "./version.mjs";
 
@@ -174,7 +176,8 @@ async function discoverLocalInventory(root) {
   return { schemaVersion: 1, manifests: [], workflows, bundles: [] };
 }
 
-async function main() {
+export async function main(actions = {}) {
+  setActionsGlobals(actions);
   log.group`Build activity index from local workflow inventory`;
   try {
     const repository = process.env.GITHUB_REPOSITORY || "";
@@ -376,7 +379,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  log.error`${error.stack || error.message || error}`;
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    log.error`${error.stack || error.message || error}`;
+    process.exitCode = 1;
+  });
+}

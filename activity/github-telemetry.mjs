@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_CACHE_ROOT = path.join(process.env.RUNNER_TEMP || "/tmp", "cao-activity");
@@ -170,19 +171,20 @@ export async function recordGithubTelemetry({
   return entry;
 }
 
-async function main() {
-  const [phase, operation] = process.argv.slice(2);
+export async function main(actions = {}, args = process.argv.slice(2)) {
+  setActionsGlobals(actions);
+  const [phase, operation, outcome] = args;
   if (phase === "prepare") {
     await prepareGithubTelemetryHistory({ sourcePath: operation });
     return;
   }
   if (!["before", "after"].includes(phase) || !operation) {
-    throw new Error("usage: github-telemetry.mjs prepare [prior-ledger] | <before|after> <operation>");
+    throw new Error("usage: github-telemetry.mjs prepare [prior-ledger] | <before|after> <operation> [outcome]");
   }
   await recordGithubTelemetry({
     phase,
     operation,
-    outcome: process.env.CAO_OPERATION_OUTCOME || "unknown",
+    outcome: outcome || process.env.CAO_OPERATION_OUTCOME || "unknown",
   });
 }
 

@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { collectAicUsage } from "./aic-usage.mjs";
 import { collectOperationalValues } from "./operational-values.mjs";
 import { writeDashboardRecords } from "./records.mjs";
+import { setActionsGlobals } from "../../activity/actions-context.mjs";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 
 let recordTelemetry;
@@ -54,8 +55,13 @@ export async function collectActivity() {
   if (failed) throw new Error("One or more activity collectors failed");
 }
 
+export async function main(actions = {}) {
+  setActionsGlobals(actions);
+  await collectActivity();
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  collectActivity().catch((error) => {
+  main().catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });

@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
@@ -103,6 +104,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     }, null, 2)}\n`);
     await writeOutcome("success");
     log.info`Downloaded ${snapshot.runs.length} runs for ${targets.length} control-repository workflows with one gh aw logs invocation`;
+    return "success";
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);
     await writeFile(logsPath, `${JSON.stringify(snapshot, null, 2)}\n`);
@@ -120,12 +122,18 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       error: error instanceof Error ? error.message : String(error),
     }, null, 2)}\n`);
     await writeOutcome("failure");
-    log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
+    log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error instanceof Error ? error.message : String(error)}`;
+    return "failure";
   }
 }
 
+export async function main(actions = {}) {
+  setActionsGlobals(actions);
+  return collectActivityLogs();
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  collectActivityLogs().catch((error) => {
+  main().catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });
