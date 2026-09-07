@@ -50,7 +50,7 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
       },
     });
     const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
-    assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--json"]);
+    assert.deepEqual(args.slice(0, 4), ["aw", "logs", "--json", "--audit"]);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
       "usage,detection,evals,experiment,firewall,github-api,graders,mcp",

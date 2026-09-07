@@ -30,7 +30,7 @@ async function writeOutcome(outcome) {
 function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn) {
   return new Promise((resolve, reject) => {
     const child = execute("gh", [
-      "aw", "logs", "--json",
+      "aw", "logs", "--json", "--audit",
       "--output", outputDirectory, "--summary-file", "",
       "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
