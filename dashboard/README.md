@@ -63,6 +63,14 @@ The preview composes `.github/aw/dashboard/site/dashboard.json` with every insta
 
 Catalog contributors can run `npm run dashboard:local`; the same server discovers top-level package `dashboard.json` files automatically. Pass a control repository explicitly with `npm run dashboard:local -- --repo OWNER/REPOSITORY`.
 
+To reproduce the deployed dashboard's mobile DOM budget locally with live Pages data, run:
+
+```bash
+npm run dashboard:local:mobile
+```
+
+This starts the local preview through Playwright with the Pixel 7 profile and a 256 MiB V8 heap limit, then records DOM analysis, accessibility, trace, and screenshot evidence under `test-results/chromium-low-memory/`. The check fails when the rendered page exceeds 6,000 elements.
+
 ### Copilot-assisted editing
 
 Install the Copilot SDK and start the preview with the optional editing mode:
