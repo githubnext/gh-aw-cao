@@ -120,7 +120,7 @@ steps:
         aw-doctor-gh-aw-releases-
 
   - name: Deterministic pre-fetch of gh-aw release and target version evidence
-    uses: actions/github-script@v9.0.0
+    uses: actions/github-script@v9
     env:
       GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       TARGET_REPOSITORY: ${{ inputs.target_repo }}

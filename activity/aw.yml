@@ -1,6 +1,6 @@
 name: CAO Activity
 description: Maintain a shared, bounded snapshot of GitHub Agentic Workflow activity.
-min-version: v0.88.4
+min-version: v0.88.6
 experimental: true
 includes:
   - .github/workflows/activity.yml
