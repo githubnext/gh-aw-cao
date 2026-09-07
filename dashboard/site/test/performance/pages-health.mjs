@@ -51,7 +51,7 @@ async function configureProfile(context, page, profile) {
   }
 }
 
-async function visitPage(browser, siteUrl, pageId, profile) {
+async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
   const context = await browser.newContext({
     viewport: profile.viewport,
     deviceScaleFactor: profile.deviceScaleFactor
@@ -89,6 +89,9 @@ async function visitPage(browser, siteUrl, pageId, profile) {
       await section.scrollIntoViewIfNeeded();
       visitedViews.push(await section.getAttribute('id') || `section-${index + 1}`);
       await page.waitForTimeout(50);
+    }
+    if (visitedViews.length < expectedViews.length) {
+      throw new Error(`rendered ${visitedViews.length} sections for ${expectedViews.length} declared views`);
     }
     await page.evaluate(async () => {
       const root = document.scrollingElement;
@@ -161,6 +164,12 @@ async function main() {
 
   const dashboard = await loadDashboard(siteUrl);
   const pageIds = dashboardPageIds(dashboard);
+  const declaredViews = Object.fromEntries(dashboard.dashboard.pages.map((page) => [
+    page.id,
+    Array.isArray(page.views)
+      ? page.views.map((view, index) => view?.id || `view-${index + 1}`)
+      : []
+  ]));
   const chromePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath();
   await access(chromePath);
   const browser = await chromium.launch({
@@ -176,7 +185,13 @@ async function main() {
       for (const pageId of pageIds) {
         const directory = join(outputRoot, profile.id, pageId);
         await mkdir(directory, { recursive: true });
-        const navigation = await visitPage(browser, siteUrl, pageId, profile);
+        const navigation = await visitPage(
+          browser,
+          siteUrl,
+          pageId,
+          declaredViews[pageId],
+          profile
+        );
         const lighthouse = await auditPage(siteUrl, pageId, profile, directory, chromePath);
         profileResult.pages.push({ pageId, navigation, lighthouse });
       }
@@ -190,6 +205,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     siteUrl,
     declaredPages: pageIds,
+    declaredViews,
     methodology: 'Every declared page and rendered view scrolled with Playwright; cold Lighthouse performance audit per page and profile',
     profiles: results
   };
