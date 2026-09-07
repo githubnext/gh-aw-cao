@@ -60,8 +60,8 @@ jobs:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
-      - name: Upload failure evidence
-        if: failure()
+      - name: Upload mobile analysis evidence
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: mobile-dashboard-${{ matrix.browser }}
