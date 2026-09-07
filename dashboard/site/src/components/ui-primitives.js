@@ -244,6 +244,27 @@ export function renderEmptyMessage(message, extraAttrs) {
 }
 
 /**
+ * Renders a `<ul>` of caller-supplied `<li>` elements when `items` is
+ * non-empty, or a component-specific empty-state paragraph otherwise. Shared
+ * by the configuration-actions list and the package-status repository list,
+ * which both render a fully-formed `<li>` per item (unlike
+ * {@link renderListWithFallback}, whose fallback message is itself wrapped
+ * in a single `<li>`).
+ * @template T
+ * @param {string} listClassName
+ * @param {T[]} items
+ * @param {(item: T, index: number) => HTMLElement} renderItem returns a complete `<li>` element
+ * @param {string} emptyClassName
+ * @param {string} emptyMessage
+ * @returns {HTMLElement}
+ */
+export function renderListOrEmptyMessage(listClassName, items, renderItem, emptyClassName, emptyMessage) {
+  return items.length > 0
+    ? h('ul', { className: listClassName }, ...items.map(renderItem))
+    : h('p', { className: emptyClassName }, emptyMessage);
+}
+
+/**
  * Renders the shared "single `<td>` spanning the full table width" empty-body
  * row used by table regions and package summary tables when there is no data
  * to display.

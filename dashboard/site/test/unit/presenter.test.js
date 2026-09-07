@@ -785,10 +785,11 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    expect(page?.querySelector('.notification-item')?.textContent).toContain('Agent health smell: Review agent');
-    expect(page?.querySelector('.notification-item')?.textContent).toContain('Malicious patch detected');
-    expect(page?.querySelector('.notification-kind .agent-smell-mark')).not.toBeNull();
-    expect(page?.querySelector('.notification-content')?.getAttribute('href')).toBe('#page-agents');
+    const smell = [...page?.querySelectorAll('.notification-item') ?? []]
+      .find((item) => item.textContent?.includes('Agent health smell: Review agent'));
+    expect(smell?.textContent).toContain('Malicious patch detected');
+    expect(smell?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
+    expect(smell?.querySelector('.notification-content')?.getAttribute('href')).toBe('#page-agents');
     rendered.remove();
   });
 

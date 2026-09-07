@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { renderIntentAction } from './data-view.js';
-import { renderDlRow } from './ui-primitives.js';
+import { renderDlRow, renderListOrEmptyMessage } from './ui-primitives.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 
 const CHANGE_ACTION = {
@@ -46,9 +46,13 @@ export function renderConfigurationActions(context) {
     context.title,
     [
       ...renderViewSectionChrome(source?.metadata, context.contextDetails),
-      rows.length > 0
-        ? h('ul', { className: 'configuration-action-list' }, ...rows.map(renderChange))
-        : h('p', { className: 'configuration-actions-empty' }, 'No configuration changes are currently suggested.')
+      renderListOrEmptyMessage(
+        'configuration-action-list',
+        rows,
+        renderChange,
+        'configuration-actions-empty',
+        'No configuration changes are currently suggested.'
+      )
     ],
     context.headingTag,
     context.description

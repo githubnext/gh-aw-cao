@@ -52,7 +52,7 @@ The package contains only deterministic action workflows and resources, so `gh a
 From the root of an installed control repository, start the dashboard with Node.js:
 
 ```bash
-node .github/aw/dashboard/local-server.mjs
+npm run dashboard:local
 ```
 
 The server requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard-data` artifact, which the dashboard action creates from the same `sources.json` rendered by the Pages site. Run the dashboard action first; the server fails rather than opening a dashboard without data when the artifact cannot be downloaded. Use `--repo OWNER/REPOSITORY` to download from another control repository.
@@ -61,7 +61,7 @@ Open only the unguessable URL printed by the server. The server uses only Node.j
 
 The preview composes `.github/aw/dashboard/site/dashboard.json` with every installed `.github/aw/dashboards/*.json` package dashboard. It watches those files and sends the new composed `dashboard.json` over a capability-protected WebSocket after a valid update. The browser re-renders that document without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 
-Catalog contributors can run `node dashboard/local-server.mjs`; the same server discovers top-level package `dashboard.json` files automatically.
+Catalog contributors can run `npm run dashboard:local`; the same server discovers top-level package `dashboard.json` files automatically. Pass a control repository explicitly with `npm run dashboard:local -- --repo OWNER/REPOSITORY`.
 
 ### Copilot-assisted editing
 
@@ -69,10 +69,10 @@ Install the Copilot SDK and start the preview with the optional editing mode:
 
 ```bash
 npm install @github/copilot-sdk
-node .github/aw/dashboard/local-server.mjs --copilot
+npm run dashboard:local:copilot
 ```
 
-Catalog contributors can use `node dashboard/local-server.mjs --copilot`. The CLI relaunches itself with Node's filesystem permission model, limiting reads and writes to the current workspace. It serves only Markdown, JSON, recognized web assets, and images, and redacts common secret patterns from textual files before returning them to the browser. The SDK launches Copilot CLI in headless server mode using the signed-in Copilot user and explicitly loads repository skills from `.github/skills` and `.agents/skills`. The preview adds a Copilot chat launcher above the dashboard; the dialog retains user and assistant messages across requests. Submitting a request starts a session for the active view, instructs Copilot to use the `generate-dashboard-ir` skill, validates the edited JSON until it passes, and saves it with normalized two-space indentation. Serialized, retrying source rebuilds then update the open view without reloading the page. Copilot mode only binds to a loopback host and restricts sessions to purpose-built tools that read editable dashboard sources, validate candidate JSON, and save the selected source. The server prints one access-log line for every HTTP response without exposing the capability URL prefix.
+Catalog contributors can use `npm run dashboard:local:copilot`. The CLI relaunches itself with Node's filesystem permission model, limiting reads and writes to the current workspace. It serves only Markdown, JSON, recognized web assets, and images, and redacts common secret patterns from textual files before returning them to the browser. The SDK launches Copilot CLI in headless server mode using the signed-in Copilot user and explicitly loads repository skills from `.github/skills` and `.agents/skills`. The preview adds a Copilot chat launcher above the dashboard; the dialog retains user and assistant messages across requests. Submitting a request starts a session for the active view, instructs Copilot to use the `generate-dashboard-ir` skill, validates the edited JSON until it passes, and saves it with normalized two-space indentation. Serialized, retrying source rebuilds then update the open view without reloading the page. Copilot mode only binds to a loopback host and restricts sessions to purpose-built tools that read editable dashboard sources, validate candidate JSON, and save the selected source. The server prints one access-log line for every HTTP response without exposing the capability URL prefix.
 
 Start the Copilot-enabled development loop with:
 

@@ -10,7 +10,7 @@ import { renderPackagesView, renderPackageSummary, renderPackageUtilization, ren
 import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan } from './ui-primitives.js';
+import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
 import { slugify, clampPercent } from './count-formatters.js';
 import { renderDefinitionList } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
@@ -76,63 +76,77 @@ const ELEMENT_RENDERERS = new Map([
 ]);
 
 const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
+
+/**
+ * Builds a lazy element renderer that dynamically imports a module on first
+ * use and delegates rendering to it, avoiding an eagerly bundled dependency
+ * for elements that are not always present on a page.
+ * @template {Record<string, unknown>} Module
+ * @param {() => Promise<Module>} importModule
+ * @param {(module: Module, context: ElementRenderContext) => HTMLElement | null} render
+ * @returns {(context: ElementRenderContext) => Promise<HTMLElement | null>}
+ */
+function lazyElementRenderer(importModule, render) {
+  return async (context) => render(await importModule(), context);
+}
+
 /** @type {Map<string, (context: ElementRenderContext) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
-  ['package-activity-lazy', async ({ sources, pageId }) => {
-    const { renderPackagesView } = await import('./packages-view.js');
-    return renderPackagesView(sources, pageId);
-  }],
-  ['package-utilization-lazy', async ({ sources }) => {
-    const { renderPackageUtilization } = await import('./packages-view.js');
-    return renderPackageUtilization(sources);
-  }],
-  ['package-run-trend-lazy', async ({ sources }) => {
-    const { renderRunTrend } = await import('./packages-view.js');
-    return renderRunTrend(sources);
-  }],
-  ['package-summary-table-lazy', async ({ sources }) => {
-    const { renderPackageSummary } = await import('./packages-view.js');
-    return renderPackageSummary(sources);
-  }],
-  ['package-activity-shell-lazy', async (context) => {
-    const { renderPackageUtilization, renderRunTrend, renderPackageSummary } = await import('./packages-view.js');
-    return renderPackagesModeShell({
+  ['package-activity-lazy', lazyElementRenderer(
+    () => import('./packages-view.js'),
+    ({ renderPackagesView }, { sources, pageId }) => renderPackagesView(sources, pageId)
+  )],
+  ['package-utilization-lazy', lazyElementRenderer(
+    () => import('./packages-view.js'),
+    ({ renderPackageUtilization }, { sources }) => renderPackageUtilization(sources)
+  )],
+  ['package-run-trend-lazy', lazyElementRenderer(
+    () => import('./packages-view.js'),
+    ({ renderRunTrend }, { sources }) => renderRunTrend(sources)
+  )],
+  ['package-summary-table-lazy', lazyElementRenderer(
+    () => import('./packages-view.js'),
+    ({ renderPackageSummary }, { sources }) => renderPackageSummary(sources)
+  )],
+  ['package-activity-shell-lazy', lazyElementRenderer(
+    () => import('./packages-view.js'),
+    ({ renderPackageUtilization, renderRunTrend, renderPackageSummary }, context) => renderPackagesModeShell({
       pageId: context.pageId,
       sections: [
         { id: 'utilization', render: (mode) => renderPackageUtilization(context.sources, mode) },
         { id: 'run-trend', render: (mode) => renderRunTrend(context.sources, mode) },
         { id: 'summary', render: (mode) => renderPackageSummary(context.sources, mode) }
       ]
-    });
-  }],
-  ['package-insights-lazy', async (context) => {
-    const { renderPackageRouteVariant } = await import('./package-route-view.js');
-    return renderPackageRouteVariant(context, 'insights');
-  }],
-  ['package-detail-lazy', async (context) => {
-    const { renderPackageRouteVariant } = await import('./package-route-view.js');
-    return renderPackageRouteVariant(context, 'workflows');
-  }],
-  ['package-dispatches-lazy', async (context) => {
-    const { renderPackageRouteVariant } = await import('./package-route-view.js');
-    return renderPackageRouteVariant(context, 'dispatches');
-  }],
-  ['package-reports-lazy', async (context) => {
-    const { renderPackageRouteVariant } = await import('./package-route-view.js');
-    return renderPackageRouteVariant(context, 'reports');
-  }],
-  ['package-route-lazy', async (context) => {
-    const { renderPackageRouteView } = await import('./package-route-view.js');
-    return renderPackageRouteView(context);
-  }],
-  ['workflow-route-lazy', async (context) => {
-    const { renderWorkflowRouteView } = await import('./workflow-route-view.js');
-    return renderWorkflowRouteView(context);
-  }],
-  ['workflow-route-page-lazy', async (context) => {
-    const { renderWorkflowRoutePage } = await import('./workflow-route-page.js');
-    return renderWorkflowRoutePage(context);
-  }]
+    })
+  )],
+  ['package-insights-lazy', lazyElementRenderer(
+    () => import('./package-route-view.js'),
+    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'insights')
+  )],
+  ['package-detail-lazy', lazyElementRenderer(
+    () => import('./package-route-view.js'),
+    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'workflows')
+  )],
+  ['package-dispatches-lazy', lazyElementRenderer(
+    () => import('./package-route-view.js'),
+    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'dispatches')
+  )],
+  ['package-reports-lazy', lazyElementRenderer(
+    () => import('./package-route-view.js'),
+    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'reports')
+  )],
+  ['package-route-lazy', lazyElementRenderer(
+    () => import('./package-route-view.js'),
+    ({ renderPackageRouteView }, context) => renderPackageRouteView(context)
+  )],
+  ['workflow-route-lazy', lazyElementRenderer(
+    () => import('./workflow-route-view.js'),
+    ({ renderWorkflowRouteView }, context) => renderWorkflowRouteView(context)
+  )],
+  ['workflow-route-page-lazy', lazyElementRenderer(
+    () => import('./workflow-route-page.js'),
+    ({ renderWorkflowRoutePage }, context) => renderWorkflowRoutePage(context)
+  )]
 ]);
 
 /**
@@ -325,21 +339,21 @@ function renderPackageStatusGridElement(context) {
               h('span', null, 'Target repositories'),
               h('span', null, 'Mode')
             ),
-            repoEntries.length > 0
-              ? h(
-                  'ul',
-                  { className: 'package-status-repositories' },
-                  ...repoEntries.map((entry) => {
-                    const repoMode = stringValue(entry.mode || 'review');
-                    return h(
-                      'li',
-                      null,
-                      h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
-                      h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
-                    );
-                  })
-                )
-              : h('p', { className: 'package-status-repositories-empty' }, 'No repositories reported')
+            renderListOrEmptyMessage(
+              'package-status-repositories',
+              repoEntries,
+              (entry) => {
+                const repoMode = stringValue(entry.mode || 'review');
+                return h(
+                  'li',
+                  null,
+                  h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
+                  h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
+                );
+              },
+              'package-status-repositories-empty',
+              'No repositories reported'
+            )
           ),
           h(
             'a',

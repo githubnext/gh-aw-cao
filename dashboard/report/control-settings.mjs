@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "../../activity/actions-context.mjs";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
 
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
@@ -92,7 +93,10 @@ export function resolveDashboardControlSettings({
   }
 }
 
-async function main([controlProgram, policyPath, outputPath]) {
+export async function main(actions = {}, args) {
+  setActionsGlobals(actions);
+  args = args ?? process.argv.slice(2);
+  const [controlProgram, policyPath, outputPath] = args;
   if (!controlProgram || !policyPath || !outputPath) {
     throw new Error("usage: control-settings.mjs <control.mjs> <policy.json> <output.json>");
   }
@@ -114,8 +118,8 @@ async function main([controlProgram, policyPath, outputPath]) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2)).catch((error) => {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main({}, process.argv.slice(2)).catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });

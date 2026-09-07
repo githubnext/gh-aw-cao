@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
@@ -33,7 +34,7 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
       "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
       "--count", String(runLimit), "--timeout", "15",
-      "--max-github-api-rate-limit", "-2000", "--max-storage", "1024",
+      "--max-github-api-rate-limit", "-2000", "--max-storage", "1200",
       ...targets,
     ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
@@ -173,6 +174,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     }, null, 2)}\n`);
     await writeOutcome("success");
     log.info`Downloaded ${snapshot.runs.length} runs for ${targets.length} control-repository workflows with one gh aw logs invocation`;
+    return "success";
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);
     const cachedRuns = Array.isArray(snapshot.runs) ? snapshot.runs : [];
@@ -203,13 +205,20 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       actionsTargetsFailed: enrichment.failedTargets,
       error: error instanceof Error ? error.message : String(error),
     }, null, 2)}\n`);
-    await writeOutcome(enriched ? "partial" : "failure");
-    log.warning`gh aw logs collection failed; ${enriched ? `enriched the cache with Actions metadata from ${enrichment.observedTargets} workflows` : cachedRuns.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
+  const outcome = enriched ? "partial" : "failure";
+  await writeOutcome(outcome);
+  log.warning`gh aw logs collection failed; ${enriched ? `enriched the cache with Actions metadata from ${enrichment.observedTargets} workflows` : cachedRuns.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error instanceof Error ? error.message : String(error)}`;
+  return outcome;
   }
 }
 
+export async function main(actions = {}) {
+  setActionsGlobals(actions);
+  return collectActivityLogs();
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  collectActivityLogs().catch((error) => {
+  main().catch((error) => {
     log.error`${error.stack || error.message || error}`;
     process.exitCode = 1;
   });
