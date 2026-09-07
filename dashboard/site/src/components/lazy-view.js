@@ -12,8 +12,8 @@ const activeTransitions = new WeakMap();
 export function trackViewTransition(document, transition) {
   if (!transition || typeof transition !== 'object' || !('finished' in transition)) return;
   const transitionRecord = /** @type {{ finished?: unknown, ready?: unknown, updateCallbackDone?: unknown }} */ (transition);
-  ignorePromiseRejection(transitionRecord.ready);
-  ignorePromiseRejection(transitionRecord.updateCallbackDone);
+  observeTransitionPromise(transitionRecord.ready);
+  observeTransitionPromise(transitionRecord.updateCallbackDone);
   const finished = Promise.resolve(transitionRecord.finished).catch(() => {});
   activeTransitions.set(document, finished);
   void finished.then(() => {
@@ -24,9 +24,24 @@ export function trackViewTransition(document, transition) {
 /**
  * @param {unknown} value
  */
-function ignorePromiseRejection(value) {
+function observeTransitionPromise(value) {
   if (!value || (typeof value !== 'object' && typeof value !== 'function')) return;
-  void Promise.resolve(value).catch(() => {});
+  void Promise.resolve(value).catch((error) => {
+    if (isSkippedTransitionError(error)) return;
+    queueMicrotask(() => {
+      throw error;
+    });
+  });
+}
+
+/**
+ * @param {unknown} error
+ */
+function isSkippedTransitionError(error) {
+  if (!error || typeof error !== 'object') return false;
+  const transitionError = /** @type {{ name?: unknown, message?: unknown }} */ (error);
+  return transitionError.name === 'AbortError'
+    || typeof transitionError.message === 'string' && /skip/i.test(transitionError.message);
 }
 
 /**
@@ -38,7 +53,7 @@ export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, re
     'div',
     {
       className: 'dashboard-lazy-view',
-      role: 'status',
+      role: 'region',
       tabIndex: 0,
       'aria-busy': 'true',
       'aria-label': `Loading ${label}`,
