@@ -82,16 +82,20 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     const activePage = page.locator(`[data-page-id="${pageId}"]`);
     await activePage.waitFor({ state: 'visible', timeout: 30_000 });
-    const sections = activePage.locator('.page-section');
-    const sectionCount = await sections.count();
-    for (let index = 0; index < sectionCount; index += 1) {
-      const section = sections.nth(index);
-      await section.scrollIntoViewIfNeeded();
-      visitedViews.push(await section.getAttribute('id') || `section-${index + 1}`);
+    await activePage.locator('details.view-disclosure').evaluateAll((disclosures) => {
+      for (const disclosure of disclosures) disclosure.open = true;
+    });
+    const views = activePage.locator('[data-view-id]');
+    const viewCount = await views.count();
+    for (let index = 0; index < viewCount; index += 1) {
+      const view = views.nth(index);
+      await view.scrollIntoViewIfNeeded();
+      visitedViews.push(await view.getAttribute('data-view-id'));
       await page.waitForTimeout(50);
     }
-    if (visitedViews.length < expectedViews.length) {
-      throw new Error(`rendered ${visitedViews.length} sections for ${expectedViews.length} declared views`);
+    const missingViews = expectedViews.filter((viewId) => !visitedViews.includes(viewId));
+    if (missingViews.length > 0) {
+      throw new Error(`did not render declared views: ${missingViews.join(', ')}`);
     }
     await page.evaluate(async () => {
       const root = document.scrollingElement;

@@ -161,7 +161,7 @@ Audit the deployed GitHub Pages dashboard at `https://githubnext.github.io/gh-aw
 2. Verify that every page in `summary.json.declaredPages` and every view in `summary.json.declaredViews` has navigation evidence, and that every page has one Lighthouse result in each of the `desktop`, `mobile`, and `low-bandwidth` profiles.
 3. Treat console errors, uncaught page errors, failed requests, HTTP responses at or above 400, incomplete navigation, and incomplete Lighthouse runs as explicit findings. Never classify an incomplete check as passing.
 4. Report the Lighthouse performance score, First Contentful Paint, Largest Contentful Paint, Cumulative Layout Shift, Speed Index, and Total Blocking Time for every page and profile. Compare profiles without inventing thresholds or causal claims.
-5. Inspect only the JavaScript source needed to connect the three most important measured performance opportunities to concrete, bounded improvements. Recommendations must follow from collected evidence and must not propose removing useful content, weakening tests, or suppressing audits.
+5. Inspect only the JavaScript source needed to connect the three most important opportunities to concrete, bounded improvements. Prefer measured production evidence. If the collector is incomplete or fewer than three measured opportunities exist, use current repository evidence for the remaining quick wins, explicitly mark them as not performance-validated, and never invent metrics or claim measured impact. Recommendations must not propose removing useful content, weakening tests, or suppressing audits.
 
 ## Output
 
