@@ -7,6 +7,25 @@ import { summarizeAccessibilityTree, summarizeDomTree } from "./dashboard-tree-a
 const maximumDomNodes = 6_000;
 let preview;
 
+function formatDomAnalysis(dom) {
+  const formatDistribution = ({ mean, median, p95, maximum }) => `mean ${mean}, median ${median}, p95 ${p95}, max ${maximum}`;
+  const formatFrequencies = (values) => values.slice(0, 5).map(({ name, count }) => `${name} (${count})`).join(", ") || "none";
+  const formatStructures = dom.topStructures
+    .slice(0, 5)
+    .map(({ tag, id, descendantElements }) => `${tag}${id ? `#${id}` : ""} (${descendantElements} descendants)`)
+    .join(", ") || "none";
+
+  return [
+    "Mobile dashboard DOM analysis:",
+    `  Elements: ${dom.totalElements}`,
+    `  Depth: ${formatDistribution(dom.depth)}`,
+    `  Child elements: ${formatDistribution(dom.childElements)}`,
+    `  Tags: ${formatFrequencies(dom.byTag)}`,
+    `  Classes: ${formatFrequencies(dom.byClass)}`,
+    `  Largest structures: ${formatStructures}`,
+  ].join("\n");
+}
+
 test.beforeAll(async () => {
   const dataUrl = process.env.DASHBOARD_DATA_URL;
   if (!dataUrl) throw new Error("DASHBOARD_DATA_URL is required.");
@@ -90,6 +109,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     dom: summarizeDomTree(domTree.nodes, domTree.structures),
     accessibility: summarizeAccessibilityTree(accessibilitySnapshot),
   };
+  console.log(formatDomAnalysis(analysis.dom));
   await mkdir(testInfo.outputDir, { recursive: true });
   const analysisPath = testInfo.outputPath("mobile-dashboard-analysis.json");
   const accessibilityPath = testInfo.outputPath("mobile-dashboard-accessibility-tree.yml");
