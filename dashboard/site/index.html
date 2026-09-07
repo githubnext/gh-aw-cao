@@ -16,6 +16,7 @@
       import { disposeDashboard, renderDashboard, updateWithViewTransition } from "./src/presenter.js";
       import { startLoadingProgress } from "./src/loading-progress.js";
       import { readCachedSources, writeCachedSources } from "./src/source-cache.js";
+      import { loadDashboardSources } from "./src/source-loader.js";
       import { octicon } from "./src/octicons.js";
 
       const metadata = (id, overrides = {}) => ({
@@ -836,12 +837,7 @@
       } else {
         let dashboard = renderSources({}, "loading");
         const cacheKey = new URL("./sources.json", window.location.href).href;
-        const liveSourcesPromise = fetch("./sources.json").then(async (response) => {
-          if (!response.ok) {
-            throw new Error(`Unable to load sources.json: ${response.status}`);
-          }
-          return response.json();
-        });
+        const liveSourcesPromise = loadDashboardSources(fetch, cacheKey);
         liveSourcesPromise.catch(() => {});
 
         let cachedSources = null;

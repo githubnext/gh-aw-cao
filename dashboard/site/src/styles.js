@@ -1226,6 +1226,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .notifications-selection-bar label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .notifications-result-count { margin-left: auto; color: var(--muted); }
 .notifications-list { min-width: 0; }
+.notifications-load-boundary { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--border); border-top: 0; background: var(--canvas-subtle); color: var(--muted); font-size: .75rem; }
+.notifications-load-boundary button { min-height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
+.notifications-load-boundary button:hover { background: var(--neutral-muted); }
 .notifications-group-heading { margin: 0; padding: 8px 12px; border: 1px solid var(--border); border-top: 0; background: var(--canvas-inset); color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .notifications-group { margin: 0; padding: 0; border: 1px solid var(--border); border-top: 0; list-style: none; }
 .notifications-group:last-child { border-radius: 0 0 6px 6px; }
