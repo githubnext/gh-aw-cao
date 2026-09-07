@@ -3,84 +3,17 @@ import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
+import {
+  dashboardPageIds,
+  lighthouseArguments,
+  profiles,
+  routeUrl
+} from './pages-health-config.js';
 
 const siteRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const lighthouseCli = join(siteRoot, 'node_modules', 'lighthouse', 'cli', 'index.js');
 const defaultSiteUrl = 'https://githubnext.github.io/gh-aw-cao/cao/';
 const defaultOutputRoot = resolve(siteRoot, 'test-results', 'pages-health');
-
-export const profiles = [
-  {
-    id: 'desktop',
-    viewport: { width: 1440, height: 900 },
-    deviceScaleFactor: 1,
-    lighthouse: ['--preset=desktop']
-  },
-  {
-    id: 'mobile',
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 3,
-    lighthouse: [
-      '--screenEmulation.mobile=true',
-      '--screenEmulation.width=390',
-      '--screenEmulation.height=844',
-      '--screenEmulation.deviceScaleFactor=3'
-    ]
-  },
-  {
-    id: 'low-bandwidth',
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 3,
-    network: {
-      latency: 400,
-      downloadThroughput: 400 * 1024 / 8,
-      uploadThroughput: 100 * 1024 / 8
-    },
-    cpuSlowdownMultiplier: 4,
-    lighthouse: [
-      '--screenEmulation.mobile=true',
-      '--screenEmulation.width=390',
-      '--screenEmulation.height=844',
-      '--screenEmulation.deviceScaleFactor=3',
-      '--throttling-method=simulate',
-      '--throttling.rttMs=400',
-      '--throttling.throughputKbps=400',
-      '--throttling.cpuSlowdownMultiplier=4'
-    ]
-  }
-];
-
-export function dashboardPageIds(dashboard) {
-  const pages = dashboard?.dashboard?.pages;
-  if (!Array.isArray(pages)) throw new Error('dashboard.json does not declare dashboard.pages');
-  const ids = pages
-    .map((page) => page?.id)
-    .filter((id) => typeof id === 'string' && id.length > 0);
-  if (ids.length !== pages.length || new Set(ids).size !== ids.length) {
-    throw new Error('dashboard.json contains missing or duplicate page ids');
-  }
-  return ids;
-}
-
-export function routeUrl(siteUrl, pageId) {
-  const url = new URL(siteUrl);
-  url.hash = `page-${encodeURIComponent(pageId)}`;
-  return url.href;
-}
-
-export function lighthouseArguments(url, outputPath, profile) {
-  return [
-    lighthouseCli,
-    url,
-    '--quiet',
-    '--only-categories=performance',
-    '--output=json',
-    `--output-path=${outputPath}`,
-    '--disable-full-page-screenshot',
-    '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage',
-    ...profile.lighthouse
-  ];
-}
 
 function run(command, args, options = {}) {
   return new Promise((resolvePromise, reject) => {
@@ -191,7 +124,7 @@ async function auditPage(siteUrl, pageId, profile, directory, chromePath) {
   const outputPath = join(directory, 'lighthouse.report.json');
   const url = routeUrl(siteUrl, pageId);
   try {
-    await run(process.execPath, lighthouseArguments(url, outputPath, profile), {
+    await run(process.execPath, lighthouseArguments(lighthouseCli, url, outputPath, profile), {
       env: { ...process.env, CHROME_PATH: chromePath }
     });
     const lhr = JSON.parse(await readFile(outputPath, 'utf8'));

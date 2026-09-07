@@ -4,7 +4,7 @@ import {
   lighthouseArguments,
   profiles,
   routeUrl
-} from '../performance/pages-health.mjs';
+} from '../performance/pages-health-config.js';
 
 describe('Pages health collector', () => {
   it('enumerates every unique declared page', () => {
@@ -22,18 +22,22 @@ describe('Pages health collector', () => {
   });
 
   it('defines desktop, mobile, and constrained-network Lighthouse profiles', () => {
+    const desktop = profiles.find(({ id }) => id === 'desktop');
+    const lowBandwidth = profiles.find(({ id }) => id === 'low-bandwidth');
+    if (!desktop || !lowBandwidth) throw new Error('Expected Pages health profiles');
     expect(profiles.map(({ id }) => id)).toEqual(['desktop', 'mobile', 'low-bandwidth']);
-    expect(profiles.find(({ id }) => id === 'low-bandwidth').lighthouse)
-      .toContain('--throttling.throughputKbps=400');
-    expect(profiles.find(({ id }) => id === 'desktop').lighthouse)
-      .toContain('--preset=desktop');
+    expect(lowBandwidth.lighthouse).toContain('--throttling.throughputKbps=400');
+    expect(desktop.lighthouse).toContain('--preset=desktop');
   });
 
   it('limits Lighthouse to performance and writes JSON evidence', () => {
+    const desktop = profiles.find(({ id }) => id === 'desktop');
+    if (!desktop) throw new Error('Expected desktop profile');
     const args = lighthouseArguments(
+      '/path/to/lighthouse',
       'https://example.test/#page-overview',
       '/tmp/evidence/report.json',
-      profiles[0]
+      desktop
     );
     expect(args).toContain('--only-categories=performance');
     expect(args).toContain('--output=json');
