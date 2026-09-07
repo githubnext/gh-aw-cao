@@ -217,7 +217,11 @@ export function smellObservationNotifications(rows, options) {
   return rows.map((row) => {
     const observedAt = Date.parse(text(row['observed-at']));
     const severity = text(row['smell-severity']);
-    const evidenceLink = findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'repository-link');
+    const evidenceLink = findLink(row, 'evidence-link')
+      ?? findLink(row, 'run-link')
+      ?? findLink(row, 'workflow-link')
+      ?? findLink(row, 'repository-link');
+    const evidenceHref = evidenceLink?.externalHref ?? evidenceLink?.href;
     return {
       'attention-signal-id': `${options.signalType}:${text(row['smell-observation-id']) || text(row['smell-id'])}`,
       'signal-type': options.signalType,
@@ -230,15 +234,14 @@ export function smellObservationNotifications(rows, options) {
       'consequence-tier': severity === 'high' ? 'high' : severity === 'low' ? 'low' : 'medium',
       priority: severity === 'high' ? 1 : severity === 'low' ? 3 : 2,
       icon: options.icon,
-      ...(evidenceLink ? { 'evidence-link': {
+      ...(evidenceLink && evidenceHref ? { 'evidence-link': {
         relation: 'evidence',
-        href: evidenceLink.href,
+        href: evidenceHref,
         label: evidenceLink.label,
         'dashboard-href': options.navigationHref,
         'dashboard-label': 'Review finding'
       } } : {})
     };
-  });
 }
 
 function scentLines() {
