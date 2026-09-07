@@ -146,9 +146,11 @@ export function renderNotificationsInbox(rows, sources = {}) {
     currentVisible = visible;
     if (resetWindow) renderedLimit = notificationBatchSize();
     count.textContent = `${visible.length} notification${visible.length === 1 ? '' : 's'}`;
-    selected.clear();
-    selectAll.checked = false;
-    bulkDone.disabled = true;
+    if (resetWindow) {
+      selected.clear();
+      selectAll.checked = false;
+      bulkDone.disabled = true;
+    }
     if (visible.length === 0) {
       boundaryObserver?.disconnect();
       list.replaceChildren(h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up')));
@@ -171,7 +173,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
       boundaryObserver?.disconnect();
       list.replaceChildren(...content, ...(boundary ? [boundary] : []));
       if (!boundary || typeof globalThis.IntersectionObserver !== 'function') return;
-      boundaryObserver = new IntersectionObserver((entries) => {
+      boundaryObserver = new globalThis.IntersectionObserver((entries) => {
         if (entries.some((entry) => entry.isIntersecting)) loadMore();
       }, { rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px` });
       boundaryObserver.observe(boundary);

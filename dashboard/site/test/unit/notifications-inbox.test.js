@@ -76,4 +76,24 @@ describe('notifications inbox large data', () => {
     expect(rendered.querySelector('.notifications-result-count')?.textContent).toBe('1 notification');
     expect(rendered.querySelector('[data-notifications-load-boundary]')).toBeNull();
   });
+
+  it('preserves the current selection when loading another batch', () => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 640 });
+    const rendered = renderNotificationsInbox(notifications(5_000));
+    document.body.append(rendered);
+
+    const firstCheckbox = rendered.querySelector('.notification-item input[type="checkbox"]');
+    if (firstCheckbox instanceof HTMLInputElement) {
+      firstCheckbox.checked = true;
+      firstCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const bulkDone = rendered.querySelector('[aria-label="Mark selected as done"]');
+    expect(bulkDone?.hasAttribute('disabled')).toBe(false);
+
+    const loadMoreButton = rendered.querySelector('[data-notifications-load-boundary] button');
+    if (loadMoreButton instanceof HTMLButtonElement) loadMoreButton.click();
+
+    const refreshedBulkDone = rendered.querySelector('[aria-label="Mark selected as done"]');
+    expect(refreshedBulkDone?.hasAttribute('disabled')).toBe(false);
+  });
 });

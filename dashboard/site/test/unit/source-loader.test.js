@@ -36,6 +36,17 @@ describe('dashboard source loader', () => {
     });
   });
 
+  it('does not mask a non-404 manifest failure by falling back to the monolith', async () => {
+    const fetchSource = vi.fn(async (input) => String(input).endsWith('/sources/manifest.json')
+      ? new Response('', { status: 503 })
+      : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
+
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).rejects.toThrow(
+      'Unable to load dashboard source manifest: 503'
+    );
+    expect(fetchSource).toHaveBeenCalledTimes(1);
+  });
+
   it('does not fall back to the monolith when a declared source fails', async () => {
     const fetchSource = vi.fn(async (input) => String(input).endsWith('/sources/manifest.json')
       ? new Response(JSON.stringify({ version: 1, sources: ['runs'] }))

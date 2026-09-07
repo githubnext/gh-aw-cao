@@ -9,12 +9,15 @@ export async function loadDashboardSources(fetchSource, sourcesUrl) {
   const manifestUrl = new URL('./sources/manifest.json', sourcesUrl);
   const manifestResponse = await fetchSource(manifestUrl);
   if (!manifestResponse.ok) {
+    if (manifestResponse.status !== 404) {
+      throw new Error(`Unable to load dashboard source manifest: ${manifestResponse.status}`);
+    }
     const response = await fetchSource(sourcesUrl);
     if (!response.ok) throw new Error(`Unable to load sources.json: ${response.status}`);
     return response.json();
   }
 
-    const manifest = /** @type {{ version?: unknown, sources?: unknown }} */ (await manifestResponse.json());
+  const manifest = /** @type {{ version?: unknown, sources?: unknown }} */ (await manifestResponse.json());
   if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.sources)
       || manifest.sources.some((/** @type {unknown} */ name) => typeof name !== 'string' || !/^[a-z0-9-]+$/.test(name))) {
     throw new Error('Dashboard source manifest is invalid.');
