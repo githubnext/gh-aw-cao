@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import * as core from "@actions/core";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
@@ -90,6 +91,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     dom: summarizeDomTree(domTree.nodes, domTree.structures),
     accessibility: summarizeAccessibilityTree(accessibilitySnapshot),
   };
+  core.info(`Mobile dashboard DOM analysis:\n${JSON.stringify(analysis.dom, null, 2)}`);
   await mkdir(testInfo.outputDir, { recursive: true });
   const analysisPath = testInfo.outputPath("mobile-dashboard-analysis.json");
   const accessibilityPath = testInfo.outputPath("mobile-dashboard-accessibility-tree.yml");
