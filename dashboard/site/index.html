@@ -13,7 +13,7 @@
   <body>
     <div id="root"></div>
     <script type="module">
-      import { renderDashboard, updateWithViewTransition } from "./src/presenter.js";
+      import { disposeDashboard, renderDashboard, updateWithViewTransition } from "./src/presenter.js";
       import { startLoadingProgress } from "./src/loading-progress.js";
       import { readCachedSources, writeCachedSources } from "./src/source-cache.js";
       import { octicon } from "./src/octicons.js";
@@ -173,6 +173,8 @@
           dashboard.querySelector(".report-body")?.prepend(status);
         }
         attachCopilotPanel(dashboard);
+        const previousDashboard = root.firstElementChild;
+        if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
         return dashboard;
       };

@@ -31,6 +31,7 @@ import {
   sep,
 } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import { bundleDashboardFiles } from "./report/bundle-dashboards.mjs";
 import { validateDashboardDocument } from "./site/src/validator.js";
 
@@ -64,6 +65,59 @@ const contentTypes = new Map([
   [".webp", "image/webp"],
 ]);
 const redactedTextExtensions = new Set([".css", ".html", ".js", ".md", ".mjs", ".svg"]);
+const compressibleContentTypes = new Set([
+  "application/json; charset=utf-8",
+  "image/svg+xml",
+  "text/css; charset=utf-8",
+  "text/html; charset=utf-8",
+  "text/javascript; charset=utf-8",
+  "text/markdown; charset=utf-8",
+]);
+const minimumCompressedBytes = 1_024;
+const minimumCacheableCompressionBytes = 1_048_576;
+const maximumCachedCompressions = 4;
+/** @type {Map<string, Buffer>} */
+const compressedPayloads = new Map();
+
+function compressPayload(body) {
+  if (body.byteLength < minimumCacheableCompressionBytes) return gzipSync(body);
+  const key = createHash("sha256").update(body).digest("hex");
+  const cached = compressedPayloads.get(key);
+  if (cached) return cached;
+  const compressed = gzipSync(body);
+  compressedPayloads.set(key, compressed);
+  for (const staleKey of [...compressedPayloads.keys()].slice(0, -maximumCachedCompressions)) {
+    compressedPayloads.delete(staleKey);
+  }
+  return compressed;
+}
+
+/**
+ * Serves preview content the way GitHub Pages serves the deployed dashboard, so
+ * throttled-network previews measure compressed transfer sizes.
+ */
+function sendContent(request, response, contentType, content) {
+  const headers = { "Cache-Control": "no-store", "Content-Type": contentType };
+  const body = Buffer.isBuffer(content) ? content : Buffer.from(String(content));
+  const acceptsGzip = /(^|,)\s*gzip\s*(;|,|$)/.test(String(request.headers["accept-encoding"] ?? ""));
+  if (request.method === "HEAD") {
+    response.writeHead(200, compressibleContentTypes.has(contentType)
+      ? { ...headers, Vary: "Accept-Encoding" }
+      : headers);
+    response.end();
+    return;
+  }
+  if (acceptsGzip && compressibleContentTypes.has(contentType) && body.byteLength >= minimumCompressedBytes) {
+    const compressed = compressPayload(body);
+    response.writeHead(200, { ...headers, "Content-Encoding": "gzip", Vary: "Accept-Encoding" });
+    response.end(compressed);
+    return;
+  }
+  response.writeHead(200, compressibleContentTypes.has(contentType)
+    ? { ...headers, Vary: "Accept-Encoding" }
+    : headers);
+  response.end(body);
+}
 
 async function existingDirectories(paths) {
   const directories = [];
@@ -1786,11 +1840,7 @@ export async function startDashboardServer({
       }
       if (pathname === "/") pathname = "/index.html";
       if (pathname === "/sources.json") {
-        response.writeHead(200, {
-          "Cache-Control": "no-store",
-          "Content-Type": contentTypes.get(".json"),
-        });
-        response.end(request.method === "HEAD" ? undefined : sourcesContent);
+        sendContent(request, response, contentTypes.get(".json"), sourcesContent);
         return;
       }
       const candidate = resolve(resolvedSiteRoot, `.${pathname}`);
@@ -1824,11 +1874,7 @@ export async function startDashboardServer({
       let content;
       if (pathname === "/dashboard.json") content = dashboardContent;
       else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
-      response.writeHead(200, {
-        "Cache-Control": "no-store",
-        "Content-Type": contentTypes.get(extension),
-      });
-      response.end(request.method === "HEAD" ? undefined : content);
+      sendContent(request, response, contentTypes.get(extension), content);
     } catch (error) {
       console.log(`Dashboard request failed: ${error instanceof Error ? error.message : String(error)}`);
       if (!response.headersSent) response.writeHead(500);

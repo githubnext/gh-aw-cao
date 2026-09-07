@@ -17,6 +17,7 @@ import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from '
 import { renderDataView } from './components/data-view.js';
 import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
+import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -91,11 +92,7 @@ export function updateWithViewTransition(document, update) {
     return;
   }
 
-  const transition = transitionDocument.startViewTransition(update);
-  void transition?.ready?.catch((error) => {
-    if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') return;
-    queueMicrotask(() => { throw error; });
-  });
+  trackViewTransition(document, transitionDocument.startViewTransition(update));
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
@@ -212,6 +209,13 @@ export function renderDashboard(input) {
 
   );
   return root;
+}
+
+/** @param {HTMLElement} root */
+export function disposeDashboard(root) {
+  for (const page of root.querySelectorAll('.dashboard-page')) {
+    if (page instanceof HTMLElement) disconnectLazyViews(page);
+  }
 }
 
 /**
@@ -940,9 +944,32 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
   const renderedViews = views.map((view, index) => {
     const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : '';
     const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
-    const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
+    const isRouteView = Boolean(
+      routeParameter
+      && isPlainObject(view)
+      && isPlainObject(view.data)
+      && typeof view.data['route-field'] === 'string'
+      && view.mark !== 'element'
+    );
+    const render = () => {
+      const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      if (disclosure === 'essential') {
+        rendered.classList.add('custom-view');
+        rendered.setAttribute('data-view-layout', layout);
+      }
+      rendered.setAttribute('data-disclosure', disclosure);
+      return rendered;
+    };
+    const rendered = isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
+      ? render()
+      : renderLazyView({
+        label: getViewTitle(view, index),
+        headingLevel: headingTag,
+        minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
+        render
+      });
     rendered.classList.add('custom-view');
     rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
@@ -1346,6 +1373,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
             ? pageScroller.scrollTop
             : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop
         });
+        disconnectLazyViews(activePage);
         activePage.replaceChildren();
         activePage.removeAttribute('aria-busy');
         activePage.setAttribute('data-page-pending', '');
@@ -1368,6 +1396,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? '';
         currentPage.replaceWith(renderedPage);
         pages[pageIndex] = renderedPage;
+        enableLazyViews(renderedPage);
         placeDashboardHorizon(renderedPage);
         if (deferPopulation) {
           dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);

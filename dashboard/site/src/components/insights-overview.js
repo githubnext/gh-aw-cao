@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
 import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
+import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required']);
@@ -72,27 +73,39 @@ export function renderInsightsOverview(context) {
       insightPanel('Outcome disposition', 'What happened to retained outputs.',
         renderChartWidget('pie', [], [], pieSummary(outcomeEntries), 'Outcomes'),
         renderPieLegend(outcomeEntries, sumEntries(outcomeEntries))),
-      insightPanel('AI Credit allocation', 'Daily measured allocation, not monetary cost.',
+      renderLazyPanel('AI Credit allocation', () => insightPanel('AI Credit allocation', 'Daily measured allocation, not monetary cost.',
         renderChartWidget('line', usagePoints, usageSeries),
-        h('div', { className: 'insights-panel-stat' }, h('strong', null, formatNumber(totalAic)), h('span', null, 'AIC observed'))),
-      insightPanel('Execution health', 'Recent completed workflow-run conclusions.',
+        h('div', { className: 'insights-panel-stat' }, h('strong', null, formatNumber(totalAic)), h('span', null, 'AIC observed')))),
+      renderLazyPanel('Execution health', () => insightPanel('Execution health', 'Recent completed workflow-run conclusions.',
         renderChartWidget('swimlane', runPoints, listChartSeries(runPoints)),
         h('dl', { className: 'insights-inline-metrics' },
           metric(completedRuns.length ? `${Math.round((successfulRuns / completedRuns.length) * 100)}%` : '—', 'successful'),
           metric(formatNumber(failedRuns), 'failed'),
-          metric(formatNumber(activeRuns), 'active'))),
-      insightPanel('Threat detection', 'Usable verdicts remain distinct from unavailable evidence.',
+          metric(formatNumber(activeRuns), 'active')))),
+      renderLazyPanel('Threat detection', () => insightPanel('Threat detection', 'Usable verdicts remain distinct from unavailable evidence.',
         renderChartWidget('pie', [], [], pieSummary(detectionEntries), 'Observations'),
-        h('div', { className: 'insights-panel-stat' }, h('strong', null, usableVerdicts === null ? '—' : `${Math.round(usableVerdicts)}%`), h('span', null, 'usable verdict coverage')))),
+        h('div', { className: 'insights-panel-stat' }, h('strong', null, usableVerdicts === null ? '—' : `${Math.round(usableVerdicts)}%`), h('span', null, 'usable verdict coverage'))))),
 
-    h('section', { className: 'insights-experiment-band', 'aria-labelledby': 'insights-experiments-title' },
+    renderLazyPanel('Experiment decisions', () => h('section', { className: 'insights-experiment-band', 'aria-labelledby': 'insights-experiments-title' },
       h('div', { className: 'insights-section-heading' },
         h('div', null,
           h('span', { className: 'insights-eyebrow' }, 'Change confidence'),
           h('h2', { id: 'insights-experiments-title' }, 'Experiment decisions'),
           h('p', null, 'Observed decisions and readiness, without treating workflow execution as experiment success.')),
         h('strong', { className: 'insights-decision-count' }, formatNumber(decisionReady), h('small', null, ' decision-ready'))),
-      renderChartWidget('bar', entryPoints(experimentEntries), listChartSeries(entryPoints(experimentEntries)))));
+      renderChartWidget('bar', entryPoints(experimentEntries), listChartSeries(entryPoints(experimentEntries)))), 220));
+}
+
+/**
+ * Renders a secondary insights panel lazily, deferring chart/table hydration until
+ * it nears the viewport, is disclosed, or receives keyboard focus.
+ * @param {string} label
+ * @param {() => HTMLElement} render
+ * @param {number} [minHeight]
+ * @returns {HTMLElement}
+ */
+function renderLazyPanel(label, render, minHeight = 260) {
+  return renderLazyView({ label, headingLevel: 'h4', minHeight, render });
 }
 
 /**

@@ -152,6 +152,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/histogram.js
   - source: site/src/components/link-content.js
     destination: .github/aw/dashboard/site/src/components/link-content.js
+  - source: site/src/components/lazy-view.js
+    destination: .github/aw/dashboard/site/src/components/lazy-view.js
   - source: site/src/components/insights-overview.js
     destination: .github/aw/dashboard/site/src/components/insights-overview.js
   - source: site/src/components/linked-text.js
