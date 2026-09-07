@@ -840,6 +840,38 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
   });
 
+  it('keeps large notification sets within the Overview DOM budget', () => {
+    localStorage.clear();
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      'attention-signal-id': `signal:${index + 1}`,
+      'signal-type': 'authority-gate',
+      objective: `Notification ${index + 1}`,
+      scope: `github/repository-${index + 1}`,
+      reason: `Authority check ${index + 1}`,
+      'consequence-tier': 'high',
+      priority: 1,
+      'age-seconds': index
+    }));
+    const rendered = renderUiElement('signal-list', {
+      pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals'],
+      sources: {
+        'attention-signals': { source: 'attention-signals', rows, metadata }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(25);
+    expect(rendered?.querySelector('.notifications-result-count')?.textContent).toBe('Showing 1–25 of 100 notifications');
+    expect(rendered?.querySelectorAll('*').length).toBeLessThan(1500);
+
+    const next = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('[aria-label="Next notifications"]') ?? null);
+    next?.click();
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(25);
+    expect(rendered?.querySelector('.notifications-result-count')?.textContent).toBe('Showing 26–50 of 100 notifications');
+    expect(rendered?.textContent).toContain('Notification 26');
+    expect(rendered?.textContent).not.toContain('Notification 1Authority');
+  });
+
   it('leads a clear Home page with a catch-up briefing', () => {
     localStorage.clear();
     const rendered = renderUiElement('signal-list', {

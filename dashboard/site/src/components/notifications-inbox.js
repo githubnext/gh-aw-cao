@@ -7,6 +7,7 @@ import { smellMark } from './agent-marketplace-view.js';
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
 const DAY_MILLISECONDS = 86_400_000;
+const NOTIFICATIONS_PAGE_SIZE = 25;
 
 function readState() {
   try {
@@ -97,6 +98,7 @@ function matchesQuery(row, query, state) {
 export function renderNotificationsInbox(rows, sources = {}) {
   const state = readState();
   const selected = new Set();
+  let pageIndex = 0;
   /** @type {Record<string, unknown>[]} */
   let currentVisible = [];
   const list = h('div', { className: 'notifications-list' });
@@ -119,6 +121,12 @@ export function renderNotificationsInbox(rows, sources = {}) {
     type: 'button', className: 'notifications-icon-button', title: 'Mark selected as done',
     'aria-label': 'Mark selected as done', disabled: true
   }, octicon('check')));
+  const previousPage = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button', className: 'notifications-page-button', 'aria-label': 'Previous notifications'
+  }, octicon('chevron-left')));
+  const nextPage = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button', className: 'notifications-page-button', 'aria-label': 'Next notifications'
+  }, octicon('chevron-right')));
 
   const render = () => {
     let visible = rows.filter((row) => matchesQuery(row, search.value, state));
@@ -127,8 +135,17 @@ export function renderNotificationsInbox(rows, sources = {}) {
       const delta = Number(left['age-seconds'] || 0) - Number(right['age-seconds'] || 0);
       return sort.value === 'oldest' ? -delta : delta;
     });
-    currentVisible = visible;
-    count.textContent = `${visible.length} notification${visible.length === 1 ? '' : 's'}`;
+    const pageCount = Math.max(1, Math.ceil(visible.length / NOTIFICATIONS_PAGE_SIZE));
+    pageIndex = Math.min(pageIndex, pageCount - 1);
+    const pageStart = pageIndex * NOTIFICATIONS_PAGE_SIZE;
+    currentVisible = visible.slice(pageStart, pageStart + NOTIFICATIONS_PAGE_SIZE);
+    count.textContent = visible.length <= NOTIFICATIONS_PAGE_SIZE
+      ? `${visible.length} notification${visible.length === 1 ? '' : 's'}`
+      : `Showing ${pageStart + 1}–${pageStart + currentVisible.length} of ${visible.length} notifications`;
+    previousPage.hidden = visible.length <= NOTIFICATIONS_PAGE_SIZE;
+    previousPage.disabled = pageIndex === 0;
+    nextPage.hidden = visible.length <= NOTIFICATIONS_PAGE_SIZE;
+    nextPage.disabled = pageIndex >= pageCount - 1;
     selected.clear();
     selectAll.checked = false;
     bulkDone.disabled = true;
@@ -137,11 +154,11 @@ export function renderNotificationsInbox(rows, sources = {}) {
       return;
     }
     if (group.value === 'cause') {
-      list.replaceChildren(...renderCauseGroups(visible, state, selected, bulkDone, render));
+      list.replaceChildren(...renderCauseGroups(currentVisible, state, selected, bulkDone, render));
       return;
     }
     const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (new Map());
-    for (const row of visible) {
+    for (const row of currentVisible) {
       const label = group.value === 'date' ? dateGroup(row) : group.value === 'repository' ? repository(row) : '';
       const entries = groups.get(label) || [];
       entries.push(row);
@@ -156,9 +173,12 @@ export function renderNotificationsInbox(rows, sources = {}) {
 
   const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
   const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
-  search.addEventListener('input', render);
-  sort.addEventListener('change', render);
-  group.addEventListener('change', render);
+  const resetAndRender = () => { pageIndex = 0; render(); };
+  search.addEventListener('input', resetAndRender);
+  sort.addEventListener('change', resetAndRender);
+  group.addEventListener('change', resetAndRender);
+  previousPage.addEventListener('click', () => { pageIndex = Math.max(0, pageIndex - 1); render(); });
+  nextPage.addEventListener('click', () => { pageIndex += 1; render(); });
   selectAll.addEventListener('change', () => {
     selected.clear();
     if (selectAll.checked) {
@@ -186,6 +206,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
       h('div', { className: 'notifications-selection-bar' },
         h('label', null, selectAll, h('span', null, 'Select all')),
         count,
+        h('span', { className: 'notifications-pagination' }, previousPage, nextPage),
         bulkDone),
       list);
   const health = renderOperationalPulse(rows, sources);
