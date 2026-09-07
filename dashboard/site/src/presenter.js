@@ -212,16 +212,38 @@ export function renderDashboard(input) {
 
 /**
  * Maps every rendered element to the most specific dashboard JSON node that
- * owns it. The observer also covers elements created by lazy routes and
- * interactive re-renders.
+ * owns it. Only the initial render performs the full structural walk;
+ * subsequent DOM mutations (lazy pages, interactive re-renders) are handled
+ * incrementally so the observer never re-annotates the whole dashboard.
  * @param {HTMLElement} root
  * @param {PresentationDocument} document
  */
 function enableDashboardDomProvenance(root, document) {
-  const annotate = () => annotateDashboardDom(root, document);
-  annotate();
-  const observer = new MutationObserver(annotate);
+  annotateDashboardDom(root, document);
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        propagateDashboardDomProvenance(/** @type {Element} */ (node));
+      }
+    }
+  });
   observer.observe(root, { childList: true, subtree: true });
+}
+
+/**
+ * Propagates already-known JSON provenance onto a newly inserted element
+ * subtree without re-walking the whole dashboard. Subtrees that already
+ * carry `data-json-path` (for example, pages rendered and annotated ahead of
+ * lazy activation) are left untouched, since they were already annotated
+ * precisely before insertion.
+ * @param {Element} node
+ */
+function propagateDashboardDomProvenance(node) {
+  if (node.hasAttribute('data-json-path')) return;
+  const owner = node.parentElement?.closest('[data-json-path]');
+  if (!owner) return;
+  annotateDomTree(node, /** @type {string} */ (owner.getAttribute('data-json-path')), owner.getAttribute('data-js-view') ?? undefined);
 }
 
 /**
@@ -237,9 +259,11 @@ function annotateDashboardDom(root, document) {
     if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`);
   }
 
+  const navLinks = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')];
+  const pageElements = [...root.querySelectorAll('[data-page-id]')];
   document.dashboard.pages.forEach((page, pageIndex) => {
     const pagePath = `$.dashboard.pages[${pageIndex}]`;
-    for (const element of root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')) {
+    for (const element of navLinks) {
       if (
         element.getAttribute('data-nav-page-id') === page.id
         || element.getAttribute('data-mobile-nav-page-id') === page.id
@@ -248,8 +272,7 @@ function annotateDashboardDom(root, document) {
       }
     }
 
-    const renderedPage = [...root.querySelectorAll('[data-page-id]')]
-      .find((element) => element.getAttribute('data-page-id') === page.id);
+    const renderedPage = pageElements.find((element) => element.getAttribute('data-page-id') === page.id);
     if (!renderedPage) return;
     annotatePageDom(renderedPage, page, pageIndex);
   });
