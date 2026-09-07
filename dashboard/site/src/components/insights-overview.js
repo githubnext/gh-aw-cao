@@ -24,7 +24,7 @@ export function renderInsightsOverview(context) {
   const valueSeries = listChartSeries(valuePoints);
   const meanValue = mean(valuePoints.map((point) => point.y));
   const acceptedOutcomes = outcomes.filter((row) => String(row['outcome-state']) === 'accepted').length;
-  const matureValues = values.filter((row) => String(row['maturity-status']) === 'mature').length;
+  const matureValues = values.filter((row) => String(row['maturity-status']) === 'matured').length;
 
   const outcomeEntries = counts(outcomes, (row) => String(row['outcome-state'] || 'unknown'));
   const usagePoints = dailyPoints(usage, 'observed-at', (row) => Number(row.aic), () => 'AI Credits');

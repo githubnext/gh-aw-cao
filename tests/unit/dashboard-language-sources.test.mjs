@@ -354,11 +354,11 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   const dependabotKey = "githubnext/gh-aw-cao:.github/workflows/dependabot.md";
   const workerKey = "githubnext/gh-aw-cao:.github/workflows/worker.md";
   const reviewerKey = "githubnext/gh-aw-cao:.github/workflows/reviewer.md";
-  const dependabot = workItems.get(`${dependabotKey}:run:100`);
-  const previousDependabot = workItems.get(`${dependabotKey}:run:99`);
-  const worker = workItems.get(`${workerKey}:run:200`);
+  const dependabot = workItems.get(dependabotKey);
+  const worker = workItems.get(workerKey);
   const reviewer = workItems.get(reviewerKey);
-  assert.equal(workItems.size, 4);
+  assert.equal(workItems.size, 3);
+  assert.ok([...workItems.keys()].every((key) => !key.includes(":run:")));
   assert.equal(dependabot.name, "Dependabot · Run 100");
   assert.equal(dependabot["workflow-name"], "Dependabot");
   assert.equal(dependabot["workflow-icon"], "workflow");
@@ -367,7 +367,6 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(dependabot["lifecycle-state"], "blocked");
   assert.equal(dependabot.reason, "package-disabled");
   assert.equal(dependabot["consequence-tier"], "high");
-  assert.equal(previousDependabot["lifecycle-state"], "completed");
   assert.equal(worker["lifecycle-state"], "completed");
   assert.equal(worker["verification-state"], "accepted");
   assert.equal(worker["safe-output-kind"], "issue");

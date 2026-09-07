@@ -1852,7 +1852,7 @@ function latestByWorkItemKey(rows, keyFor, sortField) {
   return grouped;
 }
 
-function workItemRows(workflows, runs, outcomes, latestOnly = false) {
+function workItemRows(workflows, runs, outcomes) {
   const runsByWorkItem = latestByWorkItemKey(
     runs,
     (run) => workItemKey(run.organization, run.repository, run.workflow),
@@ -1869,7 +1869,7 @@ function workItemRows(workflows, runs, outcomes, latestOnly = false) {
   return workflows.flatMap((workflow) => {
     const key = workItemKey(workflow.organization, workflow.repository, workflow.workflow);
     const workflowRuns = runsByWorkItem.get(key) || [];
-    const selectedRuns = latestOnly ? workflowRuns.slice(0, 1) : workflowRuns;
+    const selectedRuns = workflowRuns.slice(0, 1);
     const runCandidates = selectedRuns.length > 0 ? selectedRuns : [undefined];
     const workflowOutcomes = outcomesByWorkItem.get(key) || [];
     return runCandidates.map((run, index) => {
@@ -1879,45 +1879,45 @@ function workItemRows(workflows, runs, outcomes, latestOnly = false) {
         : workflowOutcomes[0];
       const lifecycleState = workItemLifecycle(run, matchedOutcome);
       return {
-      "work-item-id": latestOnly || !run ? key : `${key}:run:${run.run}`,
-      name: run
-        ? `${workflow["workflow-name"] || workflow.workflow} · ${run["run-title"]}`
-        : workflow["workflow-name"] || workflow.workflow,
-      objective: workflow["workflow-name"] || workflow.workflow,
-      organization: workflow.organization,
-      repository: workflow.repository,
-      workflow: workflow.workflow,
-      run: run?.run || "",
-      "workflow-name": workflow["workflow-name"] || workflow.workflow,
-      "workflow-icon": workflow["package-icon"] || "workflow",
-      package: workflow["package-name"] || "standalone",
-      scope: `${workflow.organization}/${workflow.repository}`,
-      domain: workflow["package-name"] || "standalone",
-      "work-type": workflow["workflow-role"] || "unknown",
-      "lifecycle-state": lifecycleState,
-      phase: run?.["run-status"] || "unknown",
-      reason: run?.["admission-reason"] || run?.["failure-message"]
-        || (lifecycleState === "review" ? "Produced outcome awaits review or user consent" : "No blocking condition observed"),
-      "reason-evidence-class": run ? "observed" : "inferred",
-      "next-action": workItemNextAction(lifecycleState),
-      "next-actor": workItemNextActor(lifecycleState),
-      "safe-output-kind": workItemSafeOutputKind(matchedOutcome),
-      "waiting-on": lifecycleState === "review"
-        ? "reviewer decision"
-        : lifecycleState === "waiting" || lifecycleState === "blocked"
-          ? (run?.resource || "scheduled run")
-        : "",
-      "waiting-since": run?.["resource-reset-at"] || run?.["started-at"] || matchedOutcome?.["observed-at"] || "",
-      owner: workflow["package-name"] || workflow.organization,
-      "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
-      "verification-state": outcomeVerificationState(matchedOutcome?.["outcome-state"]),
-      "outcome-state": matchedOutcome?.["outcome-state"] || "pending",
-      "started-at": run?.["started-at"] || "",
-      "ended-at": run?.["ended-at"] || "",
-      "observed-at": run?.["started-at"] || workflow["observed-at"],
-      "evidence-link": matchedOutcome?.["external-link"] || run?.["run-link"],
-      "run-link": run?.["run-link"],
-    };
+        "work-item-id": key,
+        name: run
+          ? `${workflow["workflow-name"] || workflow.workflow} · ${run["run-title"]}`
+          : workflow["workflow-name"] || workflow.workflow,
+        objective: workflow["workflow-name"] || workflow.workflow,
+        organization: workflow.organization,
+        repository: workflow.repository,
+        workflow: workflow.workflow,
+        run: run?.run || "",
+        "workflow-name": workflow["workflow-name"] || workflow.workflow,
+        "workflow-icon": workflow["package-icon"] || "workflow",
+        package: workflow["package-name"] || "standalone",
+        scope: `${workflow.organization}/${workflow.repository}`,
+        domain: workflow["package-name"] || "standalone",
+        "work-type": workflow["workflow-role"] || "unknown",
+        "lifecycle-state": lifecycleState,
+        phase: run?.["run-status"] || "unknown",
+        reason: run?.["admission-reason"] || run?.["failure-message"]
+          || (lifecycleState === "review" ? "Produced outcome awaits review or user consent" : "No blocking condition observed"),
+        "reason-evidence-class": run ? "observed" : "inferred",
+        "next-action": workItemNextAction(lifecycleState),
+        "next-actor": workItemNextActor(lifecycleState),
+        "safe-output-kind": workItemSafeOutputKind(matchedOutcome),
+        "waiting-on": lifecycleState === "review"
+          ? "reviewer decision"
+          : lifecycleState === "waiting" || lifecycleState === "blocked"
+            ? (run?.resource || "scheduled run")
+          : "",
+        "waiting-since": run?.["resource-reset-at"] || run?.["started-at"] || matchedOutcome?.["observed-at"] || "",
+        owner: workflow["package-name"] || workflow.organization,
+        "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
+        "verification-state": outcomeVerificationState(matchedOutcome?.["outcome-state"]),
+        "outcome-state": matchedOutcome?.["outcome-state"] || "pending",
+        "started-at": run?.["started-at"] || "",
+        "ended-at": run?.["ended-at"] || "",
+        "observed-at": run?.["started-at"] || workflow["observed-at"],
+        "evidence-link": matchedOutcome?.["external-link"] || run?.["run-link"],
+        "run-link": run?.["run-link"],
+      };
     });
   });
 }
@@ -2338,11 +2338,10 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const workItemsAvailable = workflows.length > 0;
   const workItemsComplete = workItemsAvailable && runComplete;
   const workItems = workItemRows(workflows, runs, outcomes);
-  const latestWorkItems = workItemRows(workflows, runs, outcomes, true);
-  const attentionSignals = attentionSignalRows(latestWorkItems, generatedAt);
-  const agentAssignments = agentAssignmentRows(workflows, runs, latestWorkItems);
+  const attentionSignals = attentionSignalRows(workItems, generatedAt);
+  const agentAssignments = agentAssignmentRows(workflows, runs, workItems);
   const evidenceAvailable = workItemsAvailable || outcomes.length > 0 || findings.length > 0;
-  const evidenceRecords = evidenceRecordRows(outcomes, findings, latestWorkItems);
+  const evidenceRecords = evidenceRecordRows(outcomes, findings, workItems);
   const values = operationalValueRows(operationalValues);
   const experiments = experimentTelemetryRows(usage);
   const graders = graderTelemetryRows(usage);

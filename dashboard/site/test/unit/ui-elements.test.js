@@ -206,10 +206,10 @@ describe('UI elements', () => {
       sourceNames: ['operational-values', 'outcomes', 'usage', 'runs', 'detection-observations', 'experiments'],
       sources: {
         'operational-values': source([
-          { 'operational-value': 0.6, 'operational-value-definition': 'Accepted change', 'maturity-status': 'mature', 'observed-at': '2026-08-29T10:00:00Z' },
-          { 'operational-value': 0.8, 'operational-value-definition': 'Accepted change', 'maturity-status': 'mature', 'observed-at': '2026-08-30T10:00:00Z' },
-          { 'operational-value': 0.5, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'mature', 'observed-at': '2026-08-29T10:00:00Z' },
-          { 'operational-value': 0.9, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'mature', 'observed-at': '2026-08-30T10:00:00Z' }
+          { 'operational-value': 0.6, 'operational-value-definition': 'Accepted change', 'maturity-status': 'matured', 'observed-at': '2026-08-29T10:00:00Z' },
+          { 'operational-value': 0.8, 'operational-value-definition': 'Accepted change', 'maturity-status': 'matured', 'observed-at': '2026-08-30T10:00:00Z' },
+          { 'operational-value': 0.5, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'matured', 'observed-at': '2026-08-29T10:00:00Z' },
+          { 'operational-value': 0.9, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'matured', 'observed-at': '2026-08-30T10:00:00Z' }
         ]),
         outcomes: source([
           { 'outcome-state': 'accepted' }, { 'outcome-state': 'accepted' }, { 'outcome-state': 'rejected' }
@@ -235,6 +235,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe('Operational value attainment');
     expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent).toBe('70%');
     expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[1]?.textContent).toBe('2');
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[2]?.textContent).toBe('4');
     expect(rendered?.querySelectorAll('[data-chart-widget]')).toHaveLength(6);
     expect(rendered?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(2);
     expect(rendered?.querySelector('[data-chart-widget="swimlane"]')).not.toBeNull();
