@@ -87,10 +87,11 @@ function boundedAssessmentText(value) {
 function agenticAssessments(summary) {
   return Array.isArray(summary?.agentic_assessments)
     ? summary.agentic_assessments
-      .filter((assessment) => AGENTIC_ASSESSMENT_KINDS.has(assessment?.kind))
+      .filter((assessment) => AGENTIC_ASSESSMENT_KINDS.has(assessment?.kind)
+        && ["low", "medium", "high"].includes(assessment?.severity))
       .map((assessment) => ({
         kind: assessment.kind,
-        severity: ["low", "medium", "high"].includes(assessment.severity) ? assessment.severity : "medium",
+        severity: assessment.severity,
         summary: boundedAssessmentText(assessment.summary),
         evidence: boundedAssessmentText(assessment.evidence),
         recommendation: boundedAssessmentText(assessment.recommendation),
