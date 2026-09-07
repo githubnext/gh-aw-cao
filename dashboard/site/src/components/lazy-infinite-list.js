@@ -27,7 +27,7 @@ export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEm
     }
 
     const loadMore = () => {
-      renderedLimit = Math.min(currentItems.length, renderedLimit + batchSize);
+      renderedLimit = Math.min(items().length, renderedLimit + batchSize);
       render(false);
     };
     const boundary = remaining > 0 ? h('div', {
