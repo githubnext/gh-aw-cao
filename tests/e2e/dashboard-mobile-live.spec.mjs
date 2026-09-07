@@ -34,7 +34,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   });
 
   await page.goto(`${preview.url}/`, { waitUntil: "domcontentloaded" });
-  const dashboard = page.locator(".dashboard");
+  const dashboard = page.locator(".dashboard-root");
   await expect(dashboard).toBeVisible();
   await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
 
