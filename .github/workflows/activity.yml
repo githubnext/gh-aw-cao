@@ -63,10 +63,12 @@ jobs:
           if [[ -f .github/aw/activity/index.mjs ]]; then
             echo "ACTIVITY_INDEXER=.github/aw/activity/index.mjs" >> "$GITHUB_ENV"
             echo "ACTIVITY_LOGS=.github/aw/activity/logs.mjs" >> "$GITHUB_ENV"
+            echo "ACTIVITY_RUNNER=.github/aw/activity/run-activity.mjs" >> "$GITHUB_ENV"
             echo "GITHUB_TELEMETRY=.github/aw/activity/github-telemetry.mjs" >> "$GITHUB_ENV"
           elif [[ -f activity/index.mjs ]]; then
             echo "ACTIVITY_INDEXER=activity/index.mjs" >> "$GITHUB_ENV"
             echo "ACTIVITY_LOGS=activity/logs.mjs" >> "$GITHUB_ENV"
+            echo "ACTIVITY_RUNNER=activity/run-activity.mjs" >> "$GITHUB_ENV"
             echo "GITHUB_TELEMETRY=activity/github-telemetry.mjs" >> "$GITHUB_ENV"
           else
             echo "Activity indexer is unavailable" >&2
@@ -107,110 +109,13 @@ jobs:
           restore-keys: |
             cao-activity-
 
-      - name: Download agentic workflow logs
-        id: collect-gh-aw-logs
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
-          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
-          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
-          REPORT_RUN_WINDOW_DAYS: "30"
-        with:
-          github-token: ${{ steps.activity-app-token.outputs.token || github.token }}
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const activity = await import(pathToFileURL(path.resolve(process.env.ACTIVITY_LOGS)).href);
-            await activity.main({ core, github, context, exec, io, getOctokit });
-
-      - name: Restore recent GitHub API telemetry
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const telemetry = await import(pathToFileURL(path.resolve(process.env.GITHUB_TELEMETRY)).href);
-            await telemetry.main(
-              { core, github, context, exec, io, getOctokit },
-              ["prepare", path.join(process.env.RUNNER_TEMP, "cao-activity", "cao-gh.jsonl")],
-            );
-
-      - name: Record gh-aw logs GitHub API state
-        continue-on-error: true
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-          CAO_OPERATION_OUTCOME: ${{ steps.collect-gh-aw-logs.outputs.collection-outcome || steps.collect-gh-aw-logs.outcome }}
-        with:
-          github-token: ${{ steps.activity-app-token.outputs.token || github.token }}
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const telemetry = await import(pathToFileURL(path.resolve(process.env.GITHUB_TELEMETRY)).href);
-            await telemetry.main(
-              { core, github, context, exec, io, getOctokit },
-              ["after", "collect-gh-aw-logs"],
-            );
-
-      - name: Resolve authoritative control policy
-        if: env.DASHBOARD_COLLECTION == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        with:
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const settings = await import(pathToFileURL(path.resolve(process.env.DASHBOARD_REPORT_ROOT, "control-settings.mjs")).href);
-            await settings.main(
-              { core, github, context, exec, io, getOctokit },
-              [
-                ".github/cao/src/control.mjs",
-                ".github/workflows/cao.json",
-                path.join(process.env.RUNNER_TEMP, "cao-activity", "control-settings.json"),
-              ],
-            );
-
-      - name: Extract control-plane inventory
-        if: env.DASHBOARD_COLLECTION == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
-        with:
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const inventory = await import(pathToFileURL(path.resolve(process.env.DASHBOARD_REPORT_ROOT, "inventory.mjs")).href);
-            await inventory.main({ core, github, context, exec, io, getOctokit });
-
-      - name: Refresh activity index
-        id: refresh-activity
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
-          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
-          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
-          REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
-          REPORT_RUN_WINDOW_DAYS: "30"
-        with:
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const activity = await import(pathToFileURL(path.resolve(process.env.ACTIVITY_INDEXER)).href);
-            await activity.main({ core, github, context, exec, io, getOctokit });
-
-      - name: Process cached gh-aw logs
-        id: process-activity
-        if: env.DASHBOARD_COLLECTION == 'true'
+      - name: Run activity workflow
+        id: run-activity
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           GITHUB_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
@@ -224,13 +129,14 @@ jobs:
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
           REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
+          REPORT_RUN_WINDOW_DAYS: "30"
         with:
           github-token: ${{ steps.activity-app-token.outputs.token || github.token }}
           script: |
             const path = require("node:path");
             const { pathToFileURL } = require("node:url");
-            const collectors = await import(pathToFileURL(path.resolve(process.env.DASHBOARD_REPORT_ROOT, "activity-collectors.mjs")).href);
-            await collectors.main({ core, github, context, exec, io, getOctokit });
+            const runner = await import(pathToFileURL(path.resolve(process.env.ACTIVITY_RUNNER)).href);
+            await runner.main({ core, github, context, exec, io, getOctokit });
 
       - name: List activity cache files
         if: always()

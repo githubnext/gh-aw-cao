@@ -104,6 +104,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     }, null, 2)}\n`);
     await writeOutcome("success");
     log.info`Downloaded ${snapshot.runs.length} runs for ${targets.length} control-repository workflows with one gh aw logs invocation`;
+    return "success";
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);
     await writeFile(logsPath, `${JSON.stringify(snapshot, null, 2)}\n`);
@@ -122,12 +123,13 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     }, null, 2)}\n`);
     await writeOutcome("failure");
     log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
+    return "failure";
   }
 }
 
 export async function main(actions = {}) {
   setActionsGlobals(actions);
-  await collectActivityLogs();
+  return collectActivityLogs();
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

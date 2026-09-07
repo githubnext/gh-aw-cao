@@ -18,6 +18,8 @@ The local runner uses `@github/local-action` to provide Actions Toolkit shims. I
 node activity/local-runner.mjs activity/index.mjs
 ```
 
+The `CAO Activity` workflow runs `run-activity.mjs` as a single `actions/github-script` step. It sequentially imports and invokes the log downloader, GitHub API telemetry recorder, control policy resolver, control-plane inventory extractor, activity indexer, and dashboard collectors, sharing the same Actions singleton across every call.
+
 ## Cache contract
 
 The action restores and saves this directory:

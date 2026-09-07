@@ -18,6 +18,8 @@ resources:
     destination: .github/aw/activity/index.mjs
   - source: logs.mjs
     destination: .github/aw/activity/logs.mjs
+  - source: run-activity.mjs
+    destination: .github/aw/activity/run-activity.mjs
   - source: github-telemetry.mjs
     destination: .github/aw/activity/github-telemetry.mjs
   - source: run-health-snapshot.mjs
