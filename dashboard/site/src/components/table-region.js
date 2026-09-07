@@ -7,12 +7,16 @@ import { processRows, processTableSummaries } from '../data-processor.js';
 import { formatCount } from './count-formatters.js';
 import { renderReactiveTableSummaryRow, renderTableSummaryRow } from './table-summary.js';
 import { renderEmptyTableRow, renderLabeledControl } from './ui-primitives.js';
+import { renderViewportCollection, updateViewportCollection } from './viewport-collection.js';
 
 /**
  * @typedef {{ key: string, label: string, allLabel?: string, columnIndex: number, always?: boolean }} TableFilterField
  */
 
 const DEFAULT_PAGE_SIZE = 25;
+const VIRTUALIZE_THRESHOLD = 40;
+const tableRowKeys = new WeakMap();
+let nextTableRowKey = 0;
 
 /**
  * Renders a table inside a scroll region. Column sorting is enabled
@@ -62,6 +66,20 @@ export function renderTableRegion(options) {
   const facets = getTableFacets(bodyRows, filterFields, rowCount);
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
+  const sourceRows = Array.isArray(bodyRows)
+    ? bodyRows.filter((row) => row instanceof HTMLTableRowElement)
+    : null;
+  const body = sourceRows && hasRows
+    ? renderViewportCollection({
+        items: sourceRows,
+        renderItem: (row) => /** @type {HTMLTableRowElement} */ (row),
+        key: (row) => tableRowKey(/** @type {HTMLTableRowElement} */ (row)),
+        tagName: 'tbody',
+        colSpan,
+        estimatedItemSize: 44,
+        threshold: VIRTUALIZE_THRESHOLD
+      })
+    : h('tbody', null, hasRows ? bodyRows : renderEmptyTableRow(colSpan, emptyMessage));
 
   const region = h(
     'div',
@@ -100,6 +118,7 @@ export function renderTableRegion(options) {
         {
           className: tableClassName,
           ...(options.tableRole ? { role: options.tableRole } : {}),
+          ...(sourceRows && sourceRows.length > VIRTUALIZE_THRESHOLD ? { 'aria-rowcount': String(sourceRows.length + 1) } : {}),
           ...(tableClassName === 'custom-table' ? { 'data-custom-view-mark': 'table' } : {}),
           ...(tableClassName === 'custom-chart-table' ? { 'data-custom-view-mark': 'chart' } : {})
         },
@@ -127,13 +146,7 @@ export function renderTableRegion(options) {
           ),
           summaryColumns.length > 0 ? renderDeferredTableSummaryRow(summaryColumns) : null
         ),
-        h(
-          'tbody',
-          null,
-          hasRows
-            ? bodyRows
-            : renderEmptyTableRow(colSpan, emptyMessage)
-        )
+        body
       )
     ),
     interactive
@@ -142,11 +155,11 @@ export function renderTableRegion(options) {
   );
 
   if (hasRows && sortable) {
-    enableTableSort(region);
+    enableTableSort(region, sourceRows);
   }
 
   if (interactive) {
-    enableTableFilter(region, { filterId, pageSize, resultNoun, resultNounPlural });
+    enableTableFilter(region, { filterId, pageSize, resultNoun, resultNounPlural }, sourceRows);
   }
   return region;
 }
@@ -167,8 +180,9 @@ function renderDeferredTableSummaryRow(columns) {
  * Enables click-to-sort on column headers, cycling ascending then descending.
  *
  * @param {HTMLElement} region
+ * @param {HTMLTableRowElement[] | null} sourceRows
  */
-function enableTableSort(region) {
+function enableTableSort(region, sourceRows) {
   const body = region.querySelector('tbody');
   if (!(body instanceof HTMLTableSectionElement)) return;
   const headers = [...region.querySelectorAll('th[aria-sort]')]
@@ -184,14 +198,20 @@ function enableTableSort(region) {
       const requestRevision = ++revision;
       for (const other of headers) other.setAttribute('aria-sort', 'none');
       header.setAttribute('aria-sort', direction);
-      const rows = [...body.rows];
+      const rows = sourceRows ?? [...body.rows];
       const result = processRows(
         rows.map((row, index) => ({ index, value: cellText(row, columnIndex) })),
         [{ op: 'arrange', by: [{ field: 'value', direction: direction === 'descending' ? 'desc' : 'asc' }] }]
       );
       applyProcessed(result, (processed) => {
         if (requestRevision !== revision) return;
-        for (const item of processed) body.append(rows[Number(item.index)]);
+        const orderedRows = processed.map((item) => rows[Number(item.index)]);
+        if (sourceRows) {
+          sourceRows.splice(0, sourceRows.length, ...orderedRows);
+          updateViewportCollection(body, sourceRows);
+        } else {
+          for (const row of orderedRows) body.append(row);
+        }
         region.dispatchEvent(new Event('table-sorted'));
       });
     });
@@ -215,15 +235,20 @@ function cellText(row, columnIndex) {
 /**
  * @param {HTMLElement} region
  * @param {{ filterId?: string, pageSize: number, resultNoun?: string, resultNounPlural?: string }} options
+ * @param {HTMLTableRowElement[] | null} sourceRows
  */
-function enableTableFilter(region, options) {
+function enableTableFilter(region, options, sourceRows) {
+  const body = region.querySelector('tbody');
   const input = region.querySelector('[data-table-filter]');
   const output = region.querySelector('.table-filter-result');
   const more = region.querySelector('[data-table-more]');
   const facets = [...region.querySelectorAll('[data-table-facet]')]
    .filter((facet) => facet instanceof HTMLSelectElement);
-  const currentRows = () => [...region.querySelectorAll('tbody > tr')]
-   .filter((row) => row instanceof HTMLTableRowElement);
+  /** @returns {HTMLTableRowElement[]} */
+  const currentRows = () => sourceRows ?? /** @type {HTMLTableRowElement[]} */ (
+   [...region.querySelectorAll('tbody > tr')]
+     .filter((row) => row instanceof HTMLTableRowElement && !row.classList.contains('viewport-spacer'))
+  );
   if (
    !(input instanceof HTMLInputElement)
    || !(output instanceof HTMLOutputElement)
@@ -272,6 +297,9 @@ function enableTableFilter(region, options) {
        row.hidden = !visible;
        if (visible) shown += 1;
      }
+     if (sourceRows && body instanceof HTMLElement) {
+       updateViewportCollection(body, rows.filter((row) => !row.hidden), rows);
+     }
      output.textContent = formatResultCount(shown, processed.length, options.resultNoun, options.resultNounPlural);
      more.hidden = shown >= processed.length;
    });
@@ -290,6 +318,7 @@ function enableTableFilter(region, options) {
      if (value) currentParameters.set(key, value);
      else currentParameters.delete(key);
    }
+
    const query = currentParameters.toString();
    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   };
@@ -306,6 +335,19 @@ function enableTableFilter(region, options) {
   });
   region.addEventListener('table-sorted', () => apply());
   apply();
+}
+
+/** @param {HTMLTableRowElement} row */
+function tableRowKey(row) {
+  const declared = row.dataset.key ?? row.dataset.customPointKey;
+  if (declared) return declared;
+  let key = tableRowKeys.get(row);
+  if (!key) {
+    nextTableRowKey += 1;
+    key = `table-row-${nextTableRowKey}`;
+    tableRowKeys.set(row, key);
+  }
+  return key;
 }
 
 /**

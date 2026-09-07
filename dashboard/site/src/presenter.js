@@ -18,6 +18,7 @@ import { renderDataView } from './components/data-view.js';
 import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
+import { disconnectViewportCollections } from './components/viewport-collection.js';
 import { processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -214,7 +215,10 @@ export function renderDashboard(input) {
 /** @param {HTMLElement} root */
 export function disposeDashboard(root) {
   for (const page of root.querySelectorAll('.dashboard-page')) {
-    if (page instanceof HTMLElement) disconnectLazyViews(page);
+    if (page instanceof HTMLElement) {
+      disconnectLazyViews(page);
+      disconnectViewportCollections(page);
+    }
   }
 }
 
@@ -1374,6 +1378,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
             : root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop
         });
         disconnectLazyViews(activePage);
+        disconnectViewportCollections(activePage);
         activePage.replaceChildren();
         activePage.removeAttribute('aria-busy');
         activePage.setAttribute('data-page-pending', '');

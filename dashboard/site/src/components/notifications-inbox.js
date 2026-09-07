@@ -3,6 +3,7 @@ import { octicon } from '../octicons.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
+import { disconnectViewportCollections, renderViewportCollection } from './viewport-collection.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -121,6 +122,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
   }, octicon('check')));
 
   const render = () => {
+    disconnectViewportCollections(list);
     let visible = rows.filter((row) => matchesQuery(row, search.value, state));
     visible = [...visible].sort((left, right) => {
       if (sort.value === 'priority') return Number(left.priority || 99) - Number(right.priority || 99);
@@ -148,8 +150,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
       groups.set(label, entries);
     }
     list.replaceChildren(...[...groups].flatMap(([label, entries]) => {
-      const entriesList = h('ul', { className: 'notifications-group' },
-        ...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)));
+      const entriesList = renderNotificationList(entries, state, selected, bulkDone, render);
       return label ? [h('h3', { className: 'notifications-group-heading' }, label), entriesList] : [entriesList];
     }));
   };
@@ -233,13 +234,15 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
   const repeated = [...byCause.values()].filter((entries) => entries.length > 1);
   const content = [];
   if (priorityRows.length > 0) {
-    content.push(h('ul', { className: 'notifications-group notifications-priority-group', 'aria-label': 'Priority and unique notifications' },
-      ...priorityRows.map((row) => renderNotification(row, state, selected, bulkDone, render))));
+    content.push(renderNotificationList(priorityRows, state, selected, bulkDone, render, {
+      className: 'notifications-group notifications-priority-group',
+      ariaLabel: 'Priority and unique notifications'
+    }));
   }
   for (const entries of repeated) {
     const first = entries[0];
     const repositories = new Set(entries.map(repository).filter(Boolean));
-    const entriesList = h('ul', { className: 'notifications-group' });
+    let entriesList = h('ul', { className: 'notifications-group' });
     const cluster = h('details', { className: 'notifications-cause-cluster' },
       h('summary', { className: 'notifications-cause-summary' },
         h('span', { className: 'notification-kind' }, first?.['signal-type'] === 'agent-smell' ? smellMark() : octicon(String(first?.icon || 'issue'))),
@@ -250,12 +253,40 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
       entriesList);
     cluster.addEventListener('toggle', () => {
       if (/** @type {HTMLDetailsElement} */ (cluster).open && entriesList.childElementCount === 0) {
-        entriesList.replaceChildren(...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)));
+        const renderedList = renderNotificationList(entries, state, selected, bulkDone, render);
+        entriesList.replaceWith(renderedList);
+        entriesList = renderedList;
       }
     });
     content.push(cluster);
   }
   return content;
+}
+
+/**
+ * @param {Record<string, unknown>[]} rows
+ * @param {{ read: Set<string>, saved: Set<string>, done: Set<string> }} state
+ * @param {Set<string>} selected
+ * @param {HTMLButtonElement} bulkDone
+ * @param {() => void} render
+ * @param {{ className?: string, ariaLabel?: string }} [options]
+ */
+function renderNotificationList(rows, state, selected, bulkDone, render, options = {}) {
+  const list = renderViewportCollection({
+    items: rows,
+    key: (item) => rowId(/** @type {Record<string, unknown>} */ (item)),
+    renderItem: (item) => renderNotification(
+      /** @type {Record<string, unknown>} */ (item),
+      state,
+      selected,
+      bulkDone,
+      render
+    ),
+    className: options.className ?? 'notifications-group',
+    estimatedItemSize: 62
+  });
+  if (options.ariaLabel) list.setAttribute('aria-label', options.ariaLabel);
+  return list;
 }
 
 const ACTIVE_STATUSES = new Set(['queued', 'in-progress', 'in_progress', 'waiting', 'pending']);
@@ -534,6 +565,7 @@ function renderNotification(row, state, selected, bulkDone, render) {
     h('span', { className: 'notification-unread-dot', 'aria-label': unread ? 'Unread' : 'Read' }),
     h('input', {
       type: 'checkbox', dataset: { notificationId: id },
+      checked: selected.has(id),
       'aria-label': `Select ${String(row.objective || 'notification')}`,
       onChange: /** @param {Event} event */ (event) => {
         /** @type {HTMLInputElement} */ (event.currentTarget).checked ? selected.add(id) : selected.delete(id);
