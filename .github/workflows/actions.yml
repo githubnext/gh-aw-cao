@@ -62,7 +62,7 @@ jobs:
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: baseline
       - name: Test mobile dashboard with restricted memory
-        if: ${{ !cancelled() && matrix.browser == 'chromium' }}
+        if: ${{ !cancelled() }}
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
@@ -71,7 +71,7 @@ jobs:
           MOBILE_PROFILE: low-memory
           MOBILE_MEMORY_MB: 256
       - name: Test mobile dashboard with throttled network
-        if: ${{ !cancelled() && matrix.browser == 'chromium' }}
+        if: ${{ !cancelled() }}
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
@@ -82,7 +82,7 @@ jobs:
           MOBILE_NETWORK_UPLOAD_KBPS: 750
           MOBILE_NETWORK_LATENCY_MS: 150
       - name: Test mobile dashboard with restricted memory and network
-        if: ${{ !cancelled() && matrix.browser == 'chromium' }}
+        if: ${{ !cancelled() }}
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json

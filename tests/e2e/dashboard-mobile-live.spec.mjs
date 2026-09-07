@@ -58,14 +58,19 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const pageErrors = [];
   let crashed = false;
   let sourcesResponse;
+  const memoryMb = optionalNumber("MOBILE_MEMORY_MB");
   const network = {
     downloadKbps: optionalNumber("MOBILE_NETWORK_DOWNLOAD_KBPS"),
     uploadKbps: optionalNumber("MOBILE_NETWORK_UPLOAD_KBPS"),
     latencyMs: optionalNumber("MOBILE_NETWORK_LATENCY_MS"),
   };
   const networkIsConstrained = Object.values(network).some((value) => value !== null);
+  const browserIsChromium = process.env.MOBILE_BROWSER === "chromium";
+  test.skip(
+    (memoryMb !== null || networkIsConstrained) && !browserIsChromium,
+    "Restricted memory and network throttling constraints require Chromium; running this profile on another browser would silently skip the constraint.",
+  );
   if (networkIsConstrained) {
-    expect(process.env.MOBILE_BROWSER, "Network throttling requires Chromium").toBe("chromium");
     expect(Object.values(network), "All network constraint values are required").not.toContain(null);
     const session = await page.context().newCDPSession(page);
     await session.send("Network.enable");
@@ -152,7 +157,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     device: process.env.MOBILE_DEVICE,
     browser: process.env.MOBILE_BROWSER,
     constraints: {
-      memoryMb: optionalNumber("MOBILE_MEMORY_MB"),
+      memoryMb,
       network: networkIsConstrained ? network : null,
     },
     runtime,
