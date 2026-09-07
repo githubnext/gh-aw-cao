@@ -107,14 +107,7 @@ export function renderExternalLinkOrFallback(link, labelOverride, fallback = nul
  */
 export function renderWorkflowRunLink(row, label, trailingContent) {
   const link = findLink(row, 'run-link');
-  return link
-    ? h('a', {
-        href: link.href,
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        'aria-label': link.label
-      }, label, trailingContent)
-    : label;
+  return link ? h('a', safeLinkAnchorAttrs(link, isExternalLink(link)), label, trailingContent) : label;
 }
 
 /**
