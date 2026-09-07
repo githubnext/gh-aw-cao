@@ -39,3 +39,21 @@ test("mobile dashboard screenshot failure does not fail the test", async () => {
 
   assert.equal(attached, false);
 });
+
+test("mobile dashboard screenshot handles non-Error throwables", async () => {
+  let attached = false;
+  const page = {
+    screenshot: async () => {
+      throw "screenshot is too large";
+    },
+  };
+  const testInfo = {
+    attach: async () => {
+      attached = true;
+    },
+  };
+
+  await captureMobileDashboardScreenshot(page, testInfo, "/tmp/mobile-dashboard.png");
+
+  assert.equal(attached, false);
+});
