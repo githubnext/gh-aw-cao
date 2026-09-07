@@ -11,6 +11,12 @@ on:
       - dashboard/**
       - playwright.mobile.config.mjs
       - tests/e2e/dashboard-mobile-live.spec.mjs
+  pull_request:
+    paths:
+      - .github/workflows/actions.yml
+      - dashboard/**
+      - playwright.mobile.config.mjs
+      - tests/e2e/dashboard-mobile-live.spec.mjs
 
 permissions:
   actions: read
@@ -45,6 +51,14 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --ignore-scripts
+      - name: Restore latest dashboard from main
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/central-agentic-ops-dashboard
+          key: cao-dashboard-mobile-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            cao-dashboard-
+          fail-on-cache-miss: true
       - name: Install browser
         run: npx playwright install --with-deps "$MOBILE_BROWSER"
         env:
@@ -52,7 +66,7 @@ jobs:
       - name: Test latest dashboard data on mobile
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
-          GH_TOKEN: ${{ github.token }}
+          DASHBOARD_DATA_ROOT: ${{ runner.temp }}/central-agentic-ops-dashboard
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
       - name: Upload failure evidence

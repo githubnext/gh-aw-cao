@@ -1,12 +1,21 @@
 import { expect, test } from "@playwright/test";
+import { copyFile, glob, mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 
 const maximumDomNodes = 1_400;
 let preview;
 
 test.beforeAll(async () => {
+  const dataRoot = process.env.DASHBOARD_DATA_ROOT;
+  if (!dataRoot) throw new Error("DASHBOARD_DATA_ROOT is required.");
+  const sources = await Array.fromAsync(glob("**/sources.json", { cwd: dataRoot }));
+  if (sources.length !== 1) throw new Error("The dashboard cache must contain exactly one sources.json file.");
   preview = await startDashboardServer({
-    repository: process.env.GITHUB_REPOSITORY,
+    downloadData: async (destination) => {
+      await mkdir(destination, { recursive: true });
+      await copyFile(join(dataRoot, sources[0]), join(destination, "sources.json"));
+    },
     host: "127.0.0.1",
     port: 0,
   });

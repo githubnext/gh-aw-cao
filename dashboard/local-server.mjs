@@ -148,9 +148,9 @@ async function downloadDashboardData(destination, repository, ghExecutable) {
     defaultBranch = repositoryResult.stdout.trim();
     const result = await executeFile(ghExecutable, [
       "api",
-      `repos/${repositoryPath}/actions/workflows/dashboard-build.yml/runs?branch=${encodeURIComponent(defaultBranch)}&status=success&per_page=1`,
+      `repos/${repositoryPath}/actions/artifacts?name=${dataArtifactName}&per_page=100`,
       "--jq",
-      ".workflow_runs[0].id // empty",
+      "[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id // empty",
     ]);
     runId = result.stdout.trim();
   } catch (error) {
