@@ -242,6 +242,43 @@ function renderChartWidgetShell(chartType, extraAttrs, ...children) {
 }
 
 /**
+ * Renders the small `<g><rect/><text/></g>` tooltip shell shown alongside a
+ * chart point, segment, or bar on hover/focus. Shared by the pie, histogram,
+ * and line/scatter/dot chart renderers, which otherwise duplicated the same
+ * hidden-tooltip markup with only their sizing and positioning attributes
+ * differing.
+ * @param {{
+ *   className?: string,
+ *   transform: string,
+ *   width?: number,
+ *   height?: number,
+ *   rx?: number,
+ *   textX?: number,
+ *   textY?: number,
+ *   textLengthAttrs?: Record<string, unknown> | null,
+ *   label: string
+ * }} options
+ */
+function renderChartPointTooltip({
+  className = 'point-tooltip',
+  transform,
+  width = 42,
+  height = 9,
+  rx = 2,
+  textX = 3,
+  textY = 6,
+  textLengthAttrs = null,
+  label
+}) {
+  return h(
+    'g',
+    { className, transform, 'aria-hidden': 'true' },
+    h('rect', { width, height, rx }),
+    h('text', { x: textX, y: textY, ...(textLengthAttrs ?? {}) }, label)
+  );
+}
+
+/**
  * Re-appends a chart point/segment to its parent on hover or focus so its
  * tooltip paints above sibling marks instead of being clipped underneath them.
  * @param {Element} mark
@@ -317,20 +354,16 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             'stroke-linecap': 'round',
             'data-chart-category': label
           }),
-          h(
-            'g',
-            {
-              className: 'point-tooltip pie-chart-tooltip',
-              transform: `translate(${tooltipX} ${tooltipY})`,
-              'aria-hidden': 'true'
-            },
-            h('rect', { width: tooltipWidth, height: 7, rx: 2 }),
-            h('text', {
-              x: 2.5,
-              y: 4.75,
-              ...(tooltipWidth === 40 ? { textLength: 35, lengthAdjust: 'spacingAndGlyphs' } : {})
-            }, segmentLabel)
-          ));
+          renderChartPointTooltip({
+            className: 'point-tooltip pie-chart-tooltip',
+            transform: `translate(${tooltipX} ${tooltipY})`,
+            width: tooltipWidth,
+            height: 7,
+            textX: 2.5,
+            textY: 4.75,
+            textLengthAttrs: tooltipWidth === 40 ? { textLength: 35, lengthAdjust: 'spacingAndGlyphs' } : null,
+            label: segmentLabel
+          }));
           raiseChartPointOnInteraction(segment);
           return segment;
         }),
@@ -402,20 +435,12 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             height,
             rx: 0.75
           }),
-          h(
-            'g',
-            {
-              className: 'point-tooltip histogram-chart-tooltip',
-              transform: `translate(${tooltipX} ${Math.max(38 - height - 12, 1)})`,
-              'aria-hidden': 'true'
-            },
-            h('rect', { width: 42, height: 9, rx: 2 }),
-            h('text', {
-              x: 3,
-              y: 6,
-              ...(label.length > 22 ? { textLength: 36, lengthAdjust: 'spacingAndGlyphs' } : {})
-            }, label)
-          ));
+          renderChartPointTooltip({
+            className: 'point-tooltip histogram-chart-tooltip',
+            transform: `translate(${tooltipX} ${Math.max(38 - height - 12, 1)})`,
+            textLengthAttrs: label.length > 22 ? { textLength: 36, lengthAdjust: 'spacingAndGlyphs' } : null,
+            label
+          }));
           raiseChartPointOnInteraction(mark);
           return mark;
         })
@@ -579,16 +604,10 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
                 x2: x + NON_SCALING_POINT_LENGTH,
                 y2: y
               }),
-            h(
-              'g',
-              {
-                className: 'point-tooltip',
-                transform: `translate(${Math.min(Math.max(x - 21, 1), 57)} ${Math.max(y - 12, 1)})`,
-                'aria-hidden': 'true'
-              },
-              h('rect', { width: 42, height: 9, rx: 2 }),
-              h('text', { x: 3, y: 6 }, chartPointLabel(point, unit))
-            ))) : [])
+            renderChartPointTooltip({
+              transform: `translate(${Math.min(Math.max(x - 21, 1), 57)} ${Math.max(y - 12, 1)})`,
+              label: chartPointLabel(point, unit)
+            }))) : [])
           ];
         })
       ),
