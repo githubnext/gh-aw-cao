@@ -73,6 +73,64 @@ const ELEMENT_RENDERERS = new Map([
 ]);
 
 const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view']);
+/** @type {Map<string, (context: ElementRenderContext) => Promise<HTMLElement | null>>} */
+const LAZY_ELEMENT_RENDERERS = new Map([
+  ['package-activity-lazy', async ({ sources, pageId }) => {
+    const { renderPackagesView } = await import('./packages-view.js');
+    return renderPackagesView(sources, pageId);
+  }],
+  ['package-utilization-lazy', async ({ sources }) => {
+    const { renderPackageUtilization } = await import('./packages-view.js');
+    return renderPackageUtilization(sources);
+  }],
+  ['package-run-trend-lazy', async ({ sources }) => {
+    const { renderRunTrend } = await import('./packages-view.js');
+    return renderRunTrend(sources);
+  }],
+  ['package-summary-table-lazy', async ({ sources }) => {
+    const { renderPackageSummary } = await import('./packages-view.js');
+    return renderPackageSummary(sources);
+  }],
+  ['package-activity-shell-lazy', async (context) => {
+    const { renderPackageUtilization, renderRunTrend, renderPackageSummary } = await import('./packages-view.js');
+    return renderPackagesModeShell({
+      pageId: context.pageId,
+      sections: [
+        { id: 'utilization', render: (mode) => renderPackageUtilization(context.sources, mode) },
+        { id: 'run-trend', render: (mode) => renderRunTrend(context.sources, mode) },
+        { id: 'summary', render: (mode) => renderPackageSummary(context.sources, mode) }
+      ]
+    });
+  }],
+  ['package-insights-lazy', async (context) => {
+    const { renderPackageRouteVariant } = await import('./package-route-view.js');
+    return renderPackageRouteVariant(context, 'insights');
+  }],
+  ['package-detail-lazy', async (context) => {
+    const { renderPackageRouteVariant } = await import('./package-route-view.js');
+    return renderPackageRouteVariant(context, 'workflows');
+  }],
+  ['package-dispatches-lazy', async (context) => {
+    const { renderPackageRouteVariant } = await import('./package-route-view.js');
+    return renderPackageRouteVariant(context, 'dispatches');
+  }],
+  ['package-reports-lazy', async (context) => {
+    const { renderPackageRouteVariant } = await import('./package-route-view.js');
+    return renderPackageRouteVariant(context, 'reports');
+  }],
+  ['package-route-lazy', async (context) => {
+    const { renderPackageRouteView } = await import('./package-route-view.js');
+    return renderPackageRouteView(context);
+  }],
+  ['workflow-route-lazy', async (context) => {
+    const { renderWorkflowRouteView } = await import('./workflow-route-view.js');
+    return renderWorkflowRouteView(context);
+  }],
+  ['workflow-route-page-lazy', async (context) => {
+    const { renderWorkflowRoutePage } = await import('./workflow-route-page.js');
+    return renderWorkflowRoutePage(context);
+  }]
+]);
 
 /**
  * @param {string} name
@@ -81,6 +139,17 @@ const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'cont
  */
 export function renderUiElement(name, context) {
   return ELEMENT_RENDERERS.get(name)?.({ ...context, element: name }) ?? null;
+}
+
+/**
+ * @param {string} name
+ * @param {ElementRenderContext} context
+ * @returns {Promise<HTMLElement | null>}
+ */
+export async function renderUiElementAsync(name, context) {
+  const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
+  if (lazyRenderer) return lazyRenderer({ ...context, element: name });
+  return renderUiElement(name, context);
 }
 
 /**

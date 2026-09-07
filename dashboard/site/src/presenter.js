@@ -13,7 +13,7 @@ import { formatMediumUtcDateTime, renderTooltip, renderEmptyMessage, renderLabel
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
 import { toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
-import { elementHandlesEmptyRows, renderUiElement } from './components/ui-elements.js';
+import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
 import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
@@ -89,6 +89,7 @@ export function updateWithViewTransition(document, update) {
     update();
     return;
   }
+
   transitionDocument.startViewTransition(update);
 }
 
@@ -832,7 +833,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
           ? new Set(['runs', 'findings', 'outcomes'])
           : new Set(pageSources.keys())
       );
-      /** @param {Record<string, LogicalSourceInput>} filteredSources */
+      /** @type {(filteredSources: Record<string, LogicalSourceInput>) => void} */
       const apply = (filteredSources) => {
         if (revision !== filterRevision) return;
         const pageFilteredSources = page.id === 'readiness'
@@ -841,20 +842,22 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
         const effectiveSources = page.id === 'readiness'
           ? deriveOverviewSources(pageFilteredSources, { readinessWindow: timeWindow })
           : pageFilteredSources;
-        const replacement = renderCustomPage(
+        void renderCustomPageAsync(
           page,
           title,
           effectiveSources,
           units,
           dashboardDefaults,
           false
-        );
-        const detailsState = [...root.querySelectorAll('details')].map((details) => details.open);
-        [...replacement.querySelectorAll('details')].forEach((details, index) => {
-          if (detailsState[index] !== undefined) details.open = detailsState[index];
-        });
-        root.replaceChildren(...replacement.children);
-        dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');
+        ).then((replacement) => {
+          if (revision !== filterRevision) return;
+          const detailsState = [...root.querySelectorAll('details')].map((details) => details.open);
+          [...replacement.querySelectorAll('details')].forEach((details, index) => {
+            if (detailsState[index] !== undefined) details.open = detailsState[index];
+          });
+          root.replaceChildren(...replacement.children);
+          dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');
+        }).catch(() => {});
       };
       result.then(apply).catch(() => {});
     }, {
@@ -943,6 +946,20 @@ function latestSourceCoverageEnd(sources) {
 }
 
 /**
+ * @param {Record<string, unknown>} view
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @returns {string[]}
+ */
+function resolveViewContextDetails(view, sources) {
+  const sourceName = getViewSources(view)[0] ?? null;
+  if (!sourceName) return ['Source unavailable.'];
+  const sourceInput = sources[sourceName];
+  return sourceInput && Array.isArray(sourceInput.rows)
+    ? []
+    : [`Source unavailable: ${sourceName}`];
+}
+
+/**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @returns {string}
  */
@@ -980,7 +997,8 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
     sectionViews[0].setAttribute('data-section-layout', section.layout);
     return sectionViews[0];
   }
-  return h(
+
+    return h(
     'section',
     {
       className: 'layout-section',
@@ -1319,6 +1337,101 @@ function updateNavigationLinks(links, pageId) {
  */
 function getNavigationPageId(link) {
   return link.dataset.navPageId ?? link.dataset.mobileNavPageId ?? '';
+}
+
+/**
+ * @param {PresentableCustomPage} page
+ * @param {string} title
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {Record<string, { name: string, symbol: string, significant: number }>} units
+ * @param {Record<string, unknown>} dashboardDefaults
+ * @param {boolean} [withFilterBar]
+ * @returns {Promise<HTMLElement>}
+ */
+async function renderCustomPageAsync(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
+  const views = Array.isArray(page.views)
+    ? page.views.map((view) => applyDashboardDefaults(view, dashboardDefaults))
+    : [];
+  const sections = Array.isArray(page.sections) ? page.sections : [];
+  const standaloneCalloutViewIds = new Set(sections.flatMap((section) => {
+    if (!Array.isArray(section.views) || section.views.length !== 1) return [];
+    const viewId = section.views[0];
+    const candidate = views.find((entry) => isPlainObject(entry) && entry.id === viewId);
+    return isPlainObject(candidate) && candidate.mark === 'callout' ? [viewId] : [];
+  }));
+  const routeParameter = typeof page.route?.['hash-query-parameter'] === 'string'
+    ? page.route['hash-query-parameter']
+    : undefined;
+  const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string'
+    ? page.route['navigation-page']
+    : undefined;
+  const pageSources = new Map();
+  for (const view of views) {
+    for (const sourceName of getViewSources(view)) {
+      if (sources[sourceName]) pageSources.set(sourceName, sources[sourceName]);
+    }
+  }
+  const renderedViews = await Promise.all(views.map(async (view, index) => {
+    const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : '';
+    const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
+    const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
+      ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
+      : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+    const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
+    const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
+    rendered.classList.add('custom-view');
+    rendered.setAttribute('data-view-layout', layout);
+    rendered.setAttribute('data-disclosure', disclosure);
+    if (disclosure === 'essential') return rendered;
+    rendered.classList.remove('custom-view');
+    rendered.removeAttribute('data-view-layout');
+    return h(
+      'details',
+      {
+        className: 'custom-view view-disclosure',
+        'data-view-layout': layout,
+        'data-disclosure': disclosure
+      },
+      h(
+        'summary',
+        { className: 'view-disclosure-summary' },
+        h('span', null, getViewTitle(view, index)),
+        h('span', { className: 'view-disclosure-hint' }, 'Show details')
+      ),
+      rendered
+    );
+  }));
+  const renderedViewsById = new Map(views.map((view, index) => [
+    isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,
+    renderedViews[index]
+  ]));
+  const renderedContent = sections.length > 0
+    ? h('div', { className: 'page-layout-grid' }, ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources)))
+    : h('div', { className: 'custom-view-grid' }, ...renderedViews);
+  const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
+    ? ` ${page['class-name']}`
+    : '';
+  const filterBar = withFilterBar
+    ? renderCustomPage(page, title, sources, units, dashboardDefaults, true).firstElementChild
+    : null;
+  return h(
+    'section',
+    {
+      className: `dashboard-page${pageClassName}`,
+      id: `page-${page.id}`,
+      'data-page-kind': 'custom',
+      'data-page-name': page.id,
+      'data-page-id': page.id,
+      'data-page-title': title,
+      'data-page-description': page.description ?? '',
+      'data-route-parameter': routeParameter,
+      'data-route-navigation-page': routeNavigationPage
+    },
+    ...(filterBar ? [filterBar] : []),
+    ...(renderedViews.length > 0
+      ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
+      : [h('p', null, 'No custom views available.')])
+  );
 }
 
 /**
@@ -1675,6 +1788,82 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
   return ['summary-grid', 'readiness-verdict'].includes(elementName)
     ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered;
+}
+
+/**
+ * @param {string} pageId
+ * @param {string} title
+ * @param {Record<string, unknown>} view
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {string[]} contextDetails
+ * @param {'h3'|'h4'} headingTag
+ * @param {string} [routeParameter]
+ * @returns {Promise<HTMLElement>}
+ */
+async function renderElementViewAsync(pageId, title, view, sources, contextDetails, headingTag, routeParameter) {
+  const elementName = typeof view.element === 'string' ? view.element : '';
+  const sourceNames = getViewSources(view);
+  const viewData = isPlainObject(view.data) ? view.data : undefined;
+  if (sourceNames.length === 0) {
+    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag);
+  }
+
+  const selectedSources = Object.fromEntries(sourceNames.flatMap((sourceName) => {
+    const source = sources[sourceName];
+    return source && Array.isArray(source.rows)
+      ? [[sourceName, { ...source, rows: filterRowsForView(source.rows, viewData) }]]
+      : [];
+  }));
+
+  if (sourceNames.length === 1) {
+    const sourceName = sourceNames[0];
+    const source = selectedSources[sourceName];
+    if (!source) {
+      return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag);
+    }
+    const state = source.metadata?.availability ?? inferAvailability(source.rows);
+    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
+      return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag);
+    }
+    if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
+      return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag);
+    }
+  }
+
+  const rendered = await renderUiElementAsync(elementName, {
+    pageId,
+    title,
+    description: typeof view.description === 'string' ? view.description : undefined,
+    sourceNames,
+    sources: selectedSources,
+    contextDetails,
+    scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
+    titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
+    routeParameter,
+    viewId: typeof view.id === 'string' ? view.id : undefined,
+    elementConfig: isPlainObject(view.config) ? view.config : undefined,
+    headingTag
+  });
+  const syncRendered = rendered ?? renderUiElement(elementName, {
+    pageId,
+    title,
+    description: typeof view.description === 'string' ? view.description : undefined,
+    sourceNames,
+    sources: selectedSources,
+    contextDetails,
+    scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
+    titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
+    routeParameter,
+    viewId: typeof view.id === 'string' ? view.id : undefined,
+    elementConfig: isPlainObject(view.config) ? view.config : undefined,
+    headingTag
+  });
+  if (!syncRendered) {
+    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag);
+  }
+  return ['summary-grid', 'readiness-verdict'].includes(elementName)
+    ? renderPageSection(pageId, title, [syncRendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
+    : syncRendered;
 }
 
 /**
