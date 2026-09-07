@@ -24,6 +24,26 @@ describe('UI elements', () => {
     expect(notifications).toHaveLength(0);
   });
 
+  it('uses derived repository links for agent smell evidence', () => {
+    const notifications = agentSmellNotifications([{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.md', 'workflow-name': 'Upgrade agent',
+      'repository-link': {
+        relation: 'repository',
+        href: 'https://ghe.example/github/mona-tools',
+        label: 'View github/mona-tools'
+      }
+    }], [], [{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.lock.yml',
+      'security-feature': 'threat-detection',
+      'security-signal': 'Prompt injection',
+      'security-status': 'detected'
+    }]);
+
+    expect(notifications[0]?.['evidence-link']?.href).toBe('https://ghe.example/github/mona-tools');
+  });
+
   it('renders marketplace agent tiles with details, health badges, and sorting', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',

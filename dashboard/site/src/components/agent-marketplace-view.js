@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
+import { findLink } from './link-content.js';
 import { renderIconSpan } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
@@ -9,7 +10,7 @@ const STALE_HOURS = 24;
 const SMELLS_ICON_URL = new URL('../smells.svg', import.meta.url).href;
 
 /** @typedef {{ name: string, role: string }} AgentMember */
-/** @typedef {{ id: string, name: string, icon: string, description: string, permissions: string, state: string, owner: string, totalRuntimeSeconds: number, runCount: number, observedAt: string, lastObserved: string, featured: boolean, slow: boolean, stale: boolean, kind: string, workItemId: string, workflowKeys: string[], smellReasons: string[], members: AgentMember[] }} AgentCatalogEntry */
+/** @typedef {{ id: string, name: string, icon: string, description: string, permissions: string, state: string, owner: string, repositoryLink: import('./link-content.js').SafeLink | null, totalRuntimeSeconds: number, runCount: number, observedAt: string, lastObserved: string, featured: boolean, slow: boolean, stale: boolean, kind: string, workItemId: string, workflowKeys: string[], smellReasons: string[], members: AgentMember[] }} AgentCatalogEntry */
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -183,6 +184,7 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
     const reasons = agentSmellReasons(agent);
     if (reasons.length === 0) return [];
     const observedAt = Date.parse(agent.observedAt);
+    const repositoryHref = agent.repositoryLink?.externalHref ?? agent.repositoryLink?.href;
     return [{
       'attention-signal-id': `agent-smell:${agent.id}`,
       'signal-type': 'agent-smell',
@@ -194,13 +196,13 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
       'consequence-tier': 'high',
       priority: 1,
       icon: 'copilot',
-      'evidence-link': {
+      ...(repositoryHref ? { 'evidence-link': {
         relation: 'evidence',
-        href: `https://github.com/${agent.owner}`,
+        href: repositoryHref,
         label: `View ${agent.name}`,
         'dashboard-href': '#page-agents',
         'dashboard-label': `View ${agent.name} in Agents`
-      }
+      } } : {})
     }];
   });
 }
@@ -266,6 +268,7 @@ function catalogAgents(workflows, assignmentRows, securityObservations = []) {
       permissions: permissions.join(', ') || 'Not declared',
       state,
       owner: repositoryOwner(primary),
+      repositoryLink: findLink(primary, 'repository-link'),
       totalRuntimeSeconds,
       runCount,
       observedAt: observed,
@@ -324,6 +327,7 @@ function normalizeAgent(row) {
     permissions: text(row.permissions) || 'Not declared',
     state: text(row['agent-state']) || 'unknown',
     owner: repositoryOwner(row),
+    repositoryLink: findLink(row, 'repository-link'),
     totalRuntimeSeconds,
     runCount: Number(row['run-count']) || 0,
     lastObserved: observed ? new Date(observed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',

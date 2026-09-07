@@ -27,6 +27,10 @@ const item = {
     relation: 'evidence',
     href: 'https://example.com/evidence/dependabot',
     label: 'Dependabot evidence'
+  },
+  repositoryLink: {
+    href: 'https://ghe.example/github/gh-aw',
+    label: 'Open github/gh-aw'
   }
 };
 
@@ -51,7 +55,7 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('time')?.getAttribute('dateTime')).toBe('2026-08-30T09:00:00Z');
     expect(rendered.querySelector('.work-task-owner')?.textContent).toContain('github/gh-aw');
     expect(rendered.querySelector('.work-task-owner .octicon-repo')).not.toBeNull();
-    expect(rendered.querySelector('.work-task-owner a')?.getAttribute('href')).toBe('https://github.com/github/gh-aw');
+    expect(rendered.querySelector('.work-task-owner a')?.getAttribute('href')).toBe('https://ghe.example/github/gh-aw');
     expect(rendered.querySelector('.work-task-owner a')?.getAttribute('target')).toBe('_blank');
   });
 

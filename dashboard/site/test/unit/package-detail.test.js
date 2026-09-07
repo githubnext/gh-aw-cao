@@ -25,7 +25,12 @@ const workflows = [
     'rollout-mode': 'review',
     'package-description': 'Keeps repository guidance current.',
     'package-readme-path': 'ambient-context/README.md',
-    'package-readme': '# Ambient Context\n\nKeeps shared guidance current.\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
+    'package-readme': '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
+    'repository-link': {
+      relation: 'repository',
+      href: 'https://ghe.example/githubnext/gh-aw-cao',
+      label: 'View githubnext/gh-aw-cao'
+    },
     'workflow-link': {
       relation: 'workflow',
       href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
@@ -187,12 +192,14 @@ describe('renderPackageNavigation', () => {
     expect(rendered.querySelector('.package-marketplace-detail')?.getAttribute('data-package')).toBe('ambient-context');
     expect(rendered.querySelector('.package-marketplace-title')?.textContent).toBe('Ambient ContextPackage');
     expect(rendered.querySelector('.package-rollout')?.textContent).toBe('review');
-    expect(rendered.querySelector('.package-marketplace-actions a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
+    expect(rendered.querySelector('.package-marketplace-actions a')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
+    expect([...rendered.querySelectorAll('.package-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md');
     const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.package-readme-resources'));
     expect(resources.open).toBe(false);
     expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details');
     resources.open = true;
     expect(resources.textContent).toContain('Source repository');
+    expect([...resources.querySelectorAll('a')].at(-1)?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao');
     expect(rendered.textContent).not.toContain('Other');
   });
 

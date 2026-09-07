@@ -127,6 +127,23 @@ function renderSettingControl(name, value, path, onChange) {
     }));
   }
   if (Array.isArray(value)) {
+    if (!value.every((item) => typeof item === 'string')) {
+      return /** @type {HTMLTextAreaElement} */ (h('textarea', {
+        id,
+        className: 'configuration-setting-list configuration-setting-json',
+        rows: Math.min(12, Math.max(4, value.length + 2)),
+        value: JSON.stringify(value, null, 2),
+        onInput: /** @param {Event} event */ (event) => {
+          const input = /** @type {HTMLTextAreaElement} */ (event.currentTarget);
+          try {
+            const parsed = JSON.parse(input.value);
+            if (Array.isArray(parsed)) onChange(parsed);
+          } catch {
+            // Keep the last valid typed array while the JSON edit is incomplete.
+          }
+        }
+      }));
+    }
     return /** @type {HTMLTextAreaElement} */ (h('textarea', {
       id,
       className: 'configuration-setting-list',

@@ -84,6 +84,28 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
   });
 
+  it('preserves typed values when editing non-string arrays', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const rendered = renderConfigurationView(context({
+      document: { values: [1, true, { mode: 'review' }] },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    const values = rendered.querySelector('.configuration-setting-json');
+    if (!(values instanceof HTMLTextAreaElement)) throw new Error('typed array editor did not render');
+    values.value = '[2, false, {"mode":"live"}]';
+    values.dispatchEvent(new Event('input'));
+    const copyButton = rendered.querySelector('.configuration-copy-button');
+    if (!(copyButton instanceof HTMLButtonElement)) throw new Error('copy button did not render');
+    copyButton.click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+
+    expect(JSON.parse(writeText.mock.calls[0][0]).values).toEqual([2, false, { mode: 'live' }]);
+  });
+
   it('copies edited JSON and can discard local changes', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });

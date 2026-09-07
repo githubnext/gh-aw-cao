@@ -9,6 +9,7 @@ import { renderIconSpan } from './ui-primitives.js';
  *   name: string,
  *   icon: string,
  *   evidenceLink?: SafeLink | null,
+ *   repositoryLink?: SafeLink | null,
  *   repository: string,
  *   owner: string,
  *   timeLabel: string,
@@ -41,17 +42,14 @@ export function renderWorkItemRow(item) {
       : '—'),
     h('time', { dateTime: item.started, title: item.timeLabel }, item.startedLabel),
     h('span', { className: 'work-task-end' }, item.timeLabel === 'Observed' ? 'Point observation' : item.stoppedLabel),
-    renderRepositoryOwner(item.repository)
+    renderRepositoryOwner(item.repository, item.repositoryLink)
   );
 }
 
-/** @param {string} repository */
-export function renderRepositoryOwner(repository) {
-  const validRepository = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository);
+/** @param {string} repository @param {SafeLink | null} [repositoryLink] */
+export function renderRepositoryOwner(repository, repositoryLink = null) {
   const content = h('span', { className: 'work-task-repository' },
     renderIconSpan('work-task-repository-icon', 'repo', { ariaHidden: true }),
     h('span', null, repository));
-  return h('span', { className: 'work-task-owner', title: repository }, validRepository
-    ? renderSafeLink(content, { href: `https://github.com/${repository}`, label: `Open ${repository} on GitHub` })
-    : content);
+  return h('span', { className: 'work-task-owner', title: repository }, renderSafeLink(content, repositoryLink));
 }

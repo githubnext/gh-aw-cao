@@ -433,6 +433,7 @@ function normalizeWorkItem(row) {
     stopTime,
     pointInTime,
     evidenceLink: findLink(row, 'evidence-link') || findLink(row, 'run-link'),
+    repositoryLink: findLink(row, 'repository-link'),
     durationLabel: Number.isFinite(stopTime - startTime) ? formatClockDuration(Math.max(0, (stopTime - startTime) / 1000)) : ''
   };
 }

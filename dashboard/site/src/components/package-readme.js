@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { findLink } from './link-content.js';
 
 /** @param {{ packageId: string, packageName: string, workflows: Array<Record<string, unknown>> }} args */
 export function renderPackageReadme({ packageId, packageName, workflows }) {
@@ -152,14 +153,16 @@ function tableCells(line) {
 function readmeHref(href, source) {
   if (/^https:\/\//i.test(href)) return href;
   if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#')) return '';
-  const organization = value(source.organization);
-  const repository = value(source.repository);
+  const repositoryUrl = ownerUrl(source);
   const readmePath = value(source['package-readme-path']);
-  if (!organization || !repository || !readmePath) return '';
+  if (!repositoryUrl || !readmePath) return '';
   const directory = readmePath.includes('/') ? readmePath.slice(0, readmePath.lastIndexOf('/') + 1) : '';
   try {
-    const resolved = new URL(href, `https://github.com/${organization}/${repository}/blob/HEAD/${directory}`);
-    return resolved.origin === 'https://github.com' ? resolved.href : '';
+    const base = new URL(`${repositoryUrl}/blob/HEAD/${directory}`);
+    const resolved = new URL(href, base);
+    return resolved.origin === base.origin && resolved.pathname.startsWith(`${new URL(repositoryUrl).pathname}/`)
+      ? resolved.href
+      : '';
   } catch {
     return '';
   }
@@ -167,9 +170,8 @@ function readmeHref(href, source) {
 
 /** @param {Record<string, unknown>} source */
 function ownerUrl(source) {
-  const organization = value(source.organization);
-  const repository = value(source.repository);
-  return organization && repository ? `https://github.com/${organization}/${repository}` : '';
+  const link = findLink(source, 'repository-link');
+  return link?.externalHref ?? link?.href ?? '';
 }
 
 /** @param {Record<string, unknown>} source @param {string} filePath */
