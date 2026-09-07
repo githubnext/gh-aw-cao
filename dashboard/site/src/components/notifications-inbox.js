@@ -171,8 +171,8 @@ export function renderNotificationsInbox(rows, sources = {}) {
     }));
   };
 
-  const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
-  const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
+  const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); pageIndex = 0; render(); } }, 'All');
+  const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); pageIndex = 0; render(); } }, 'Unread');
   const resetAndRender = () => { pageIndex = 0; render(); };
   search.addEventListener('input', resetAndRender);
   sort.addEventListener('change', resetAndRender);

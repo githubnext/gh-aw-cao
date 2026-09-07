@@ -862,7 +862,7 @@ describe('UI elements', () => {
 
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(25);
     expect(rendered?.querySelector('.notifications-result-count')?.textContent).toBe('Showing 1–25 of 100 notifications');
-    expect(rendered?.querySelectorAll('*').length).toBeLessThan(1500);
+    expect(rendered?.querySelectorAll('*').length).toBeLessThan(1000);
 
     const next = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('[aria-label="Next notifications"]') ?? null);
     next?.click();
