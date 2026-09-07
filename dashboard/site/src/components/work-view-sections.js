@@ -2,12 +2,16 @@
  * Declarative work view section renderers.
  */
 
-/** @typedef {'renderBoard'|'renderTasks'|'renderRoadmap'} WorkViewRendererName */
+import {
+  renderWorkBoardSection,
+  renderWorkRoadmapSection,
+  renderWorkTaskSection
+} from './work-project-sections.js';
 
 const WORK_VIEW_SECTION_RENDERERS = {
-  board: 'renderBoard',
-  tasks: 'renderTasks',
-  roadmap: 'renderRoadmap'
+  board: renderWorkBoardSection,
+  tasks: renderWorkTaskSection,
+  roadmap: renderWorkRoadmapSection
 };
 
 /**
@@ -20,13 +24,9 @@ export function isWorkViewSection(section) {
 
 /**
  * @param {string} section
- * @param {Record<WorkViewRendererName, unknown>} renderers
- * @returns {WorkViewRendererName | null}
+ * @returns {(typeof WORK_VIEW_SECTION_RENDERERS)[keyof typeof WORK_VIEW_SECTION_RENDERERS] | null}
  */
-export function workViewSectionRenderer(section, renderers) {
+export function workViewSectionRenderer(section) {
   if (!isWorkViewSection(section)) return null;
-  const rendererName = /** @type {WorkViewRendererName} */ (WORK_VIEW_SECTION_RENDERERS[section]);
-  return rendererName && typeof renderers[rendererName] === 'function'
-    ? rendererName
-    : null;
+  return WORK_VIEW_SECTION_RENDERERS[section] ?? null;
 }

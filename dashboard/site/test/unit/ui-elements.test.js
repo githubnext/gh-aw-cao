@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
+import { renderWorkBoardSection, renderWorkRoadmapSection, renderWorkTaskSection } from '../../src/components/work-project-sections.js';
 
 const metadata = {
   'source-id': 'signal-fixture',
@@ -156,6 +157,32 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-tasks')).not.toBeNull();
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
+  });
+
+  it('renders reusable work layout sections independently of the page view shell', () => {
+    const items = [
+      {
+        id: 'one',
+        name: 'Dependabot release train',
+        icon: 'dependabot',
+        repository: 'github/gh-aw',
+        owner: 'dependency-automation',
+        state: 'active',
+        stateLabel: 'Active',
+        started: '2026-08-30T09:00:00Z',
+        startedLabel: 'Aug 30, 2026, 9:00 AM',
+        stoppedLabel: 'Aug 30, 2026, 9:30 AM',
+        startTime: Date.parse('2026-08-30T09:00:00Z'),
+        stopTime: Date.parse('2026-08-30T09:30:00Z'),
+        evidenceLink: { relation: 'evidence', href: 'https://example.com/evidence/dependabot', label: 'Dependabot evidence' },
+        durationLabel: '30m'
+      }
+    ];
+    const section = { id: 'work-board', className: 'work-board', landmarkLabel: 'Board', title: 'Board' };
+
+    expect(renderWorkBoardSection(items, section).querySelector('.work-board-active .work-card')?.textContent).toContain('Dependabot release train');
+    expect(renderWorkTaskSection(items, { ...section, id: 'work-tasks', className: 'work-tasks', landmarkLabel: 'Tasks', title: 'Tasks' }).querySelector('.work-task-list')).not.toBeNull();
+    expect(renderWorkRoadmapSection(items, { ...section, id: 'work-roadmap', className: 'work-roadmap', landmarkLabel: 'Roadmap', title: 'Roadmap' }).querySelector('.work-roadmap-scroll')).not.toBeNull();
   });
 
   it('renders anomaly readiness as a reusable note widget', () => {
