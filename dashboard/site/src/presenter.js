@@ -197,10 +197,12 @@ export function renderDashboard(input) {
     root,
     document.dashboard.title,
     (pageId) => {
-      const page = pages.find((candidate) => candidate.id === pageId);
-      return page
-        ? renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults)
-        : null;
+      const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
+      const page = pages[pageIndex];
+      if (!page) return null;
+      const renderedPage = renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      annotatePageDom(renderedPage, page, pageIndex);
+      return renderedPage;
     },
     sidebar.dataset.defaultPageId
 
@@ -249,32 +251,39 @@ function annotateDashboardDom(root, document) {
     const renderedPage = [...root.querySelectorAll('[data-page-id]')]
       .find((element) => element.getAttribute('data-page-id') === page.id);
     if (!renderedPage) return;
-    annotateDomTree(renderedPage, pagePath);
+    annotatePageDom(renderedPage, page, pageIndex);
+  });
+}
 
-    const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-    const definitionPath = page.kind === 'built-in' ? `${pagePath}.definition` : pagePath;
-    const sections = Array.isArray(payload.sections) ? payload.sections : [];
-    sections.forEach((section, sectionIndex) => {
-      for (const element of renderedPage.querySelectorAll('[data-section-id]')) {
-        if (element.getAttribute('data-section-id') === section.id) {
-          annotateDomTree(element, `${definitionPath}.sections[${sectionIndex}]`);
-        }
-      }
-    });
+/**
+ * @param {Element} renderedPage
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @param {number} pageIndex
+ */
+function annotatePageDom(renderedPage, page, pageIndex) {
+  const pagePath = `$.dashboard.pages[${pageIndex}]`;
+  annotateDomTree(renderedPage, pagePath);
 
-    const views = Array.isArray(payload.views) ? payload.views : [];
-    views.forEach((view, viewIndex) => {
-      if (!isPlainObject(view)) return;
-      const viewId = typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
-      for (const element of renderedPage.querySelectorAll('[data-view-id]')) {
-        if (element.getAttribute('data-view-id') !== viewId) continue;
-        const viewRoot = element.closest('.custom-view') ?? element;
-        annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`);
-        if (typeof view.element === 'string') {
-          annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, view.element);
-        }
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  const definitionPath = page.kind === 'built-in' ? `${pagePath}.definition` : pagePath;
+  const sections = Array.isArray(payload.sections) ? payload.sections : [];
+  sections.forEach((section, sectionIndex) => {
+    for (const element of renderedPage.querySelectorAll('[data-section-id]')) {
+      if (element.getAttribute('data-section-id') === section.id) {
+        annotateDomTree(element, `${definitionPath}.sections[${sectionIndex}]`);
       }
-    });
+    }
+  });
+
+  const views = Array.isArray(payload.views) ? payload.views : [];
+  views.forEach((view, viewIndex) => {
+    if (!isPlainObject(view)) return;
+    const viewId = typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
+    for (const element of renderedPage.querySelectorAll('[data-view-id]')) {
+      if (element.getAttribute('data-view-id') !== viewId) continue;
+      const viewRoot = element.closest('.custom-view') ?? element;
+      annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, typeof view.element === 'string' ? view.element : undefined);
+    }
   });
 }
 

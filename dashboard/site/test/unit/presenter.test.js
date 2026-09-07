@@ -94,7 +94,9 @@ describe('dashboard DOM provenance', () => {
     expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
     expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
     expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]');
-    expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
+    await vi.waitFor(() => {
+      expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true);
+    });
 
     const dynamicChild = document.createElement('span');
     summary?.append(dynamicChild);
