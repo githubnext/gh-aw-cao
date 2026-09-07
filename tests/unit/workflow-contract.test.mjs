@@ -1279,9 +1279,9 @@ test("orchestrators emit dedicated bounded telemetry", () => {
   assert.match(configuration, /`Authorization: <GH_AW_OTEL_GRAFANA_AUTHORIZATION>`/);
   assert.match(configuration, /`DD-API-KEY: <GH_AW_OTEL_DATADOG_API_KEY or DD_API_KEY>`/);
   assert.match(configuration, /Installed Central Agentic Ops packages do not include these optional provider files by default/);
-  assert.match(operations, /`central-agentic-ops\.orchestrator\.run` span/);
+  assert.match(operations, /`central-agentic-ops\.orchestrator` span/);
   assert.match(operations, /`requested` status records dispatch intent before safe-output handlers call the GitHub API/);
-  assert.match(packageSkill, /inherits the dedicated `central-agentic-ops\.orchestrator\.run` OTEL span from `shared\/orchestrator\.md`/);
+  assert.match(packageSkill, /inherits the dedicated `central-agentic-ops\.orchestrator` OTEL span from `shared\/orchestrator\.md`/);
   assert.match(packageSkill, /configure OTLP exporters only/);
 });
 
