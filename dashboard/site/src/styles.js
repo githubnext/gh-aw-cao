@@ -1023,7 +1023,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-edit-status[data-state="modified"] { color: var(--attention); font-weight: 600; }
 .configuration-editor-actions { justify-content: flex-end; flex-wrap: wrap; }
 .configuration-copy-button, .configuration-reset-button { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
-.configuration-copy-button { border-color: var(--success); background: var(--success); color: #fff; }
+.configuration-copy-button { border-color: var(--success); background: var(--success); color: var(--on-emphasis); }
 .configuration-reset-button:hover { background: var(--neutral-muted); }
 .configuration-copy-button:hover { filter: brightness(.94); }
 .configuration-copy-status { color: var(--muted); font-size: .75rem; }
@@ -1403,7 +1403,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-roadmap-zoom summary:hover, .work-roadmap-zoom[open] summary { background: var(--neutral-muted); }
 .work-roadmap-zoom summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .work-roadmap-zoom-icon { width: 14px; height: 14px; color: var(--muted); }
-.work-roadmap-zoom-popover { width: 194px; display: grid; gap: 8px; position: absolute; top: calc(100% + 7px); right: 0; padding: 12px 8px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-overlay, var(--canvas)); box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent); }
+.work-roadmap-zoom-popover { width: 194px; display: grid; gap: 8px; position: absolute; top: calc(100% + 7px); right: 0; padding: 12px 8px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-overlay, var(--canvas)); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
 .work-roadmap-zoom-popover > strong { padding: 0 8px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .work-roadmap-zoom-menu { display: grid; }
 .work-roadmap-zoom-menu button { min-height: 34px; display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 7px; padding: 0 8px; border: 0; border-radius: 5px; background: transparent; color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; text-align: left; cursor: pointer; }
