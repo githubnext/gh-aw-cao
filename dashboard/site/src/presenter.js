@@ -415,7 +415,7 @@ function enableSidebarToggle(root) {
 
   let collapsed = false;
   try {
-    collapsed = globalThis.window?.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+    collapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
   } catch {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
@@ -425,7 +425,7 @@ function enableSidebarToggle(root) {
     collapsed = !collapsed;
     setCollapsed(collapsed);
     try {
-      globalThis.window?.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+      globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
     } catch {
       // The display mode still works for the current page when storage is unavailable.
     }

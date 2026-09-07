@@ -57,6 +57,43 @@ describe('time-window filter bar', () => {
     });
   });
 
+  it('keeps filters interactive when localStorage is unavailable', async () => {
+    const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: undefined });
+    try {
+      const onChange = vi.fn();
+      const filterBar = renderFilterBar(onChange, {
+        defaultRange: '24h',
+        referenceEnd: '2026-09-04T12:00:00Z'
+      });
+      document.body.append(filterBar);
+      await Promise.resolve();
+
+      const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+      select.value = '6h';
+      select.dispatchEvent(new Event('change'));
+      const filterInput = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'));
+      filterInput.value = 'repository:gh-aw-cao';
+      filterInput.dispatchEvent(new Event('input'));
+
+      await vi.waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith(
+          new Map([
+            ['repository', ['gh-aw-cao']],
+            ['mode', ['review', 'live', 'unknown']]
+          ]),
+          {
+            range: '6h',
+            start: '2026-09-04T06:00:00.000Z',
+            end: '2026-09-04T12:00:00.000Z'
+          }
+        );
+      });
+    } finally {
+      if (storageDescriptor) Object.defineProperty(window, 'localStorage', storageDescriptor);
+    }
+  });
+
   it('toggles tuning controls from the horizon text', () => {
     const filterBar = renderFilterBar(vi.fn(), { defaultRange: '24h' });
     const toggle = document.createElement('button');

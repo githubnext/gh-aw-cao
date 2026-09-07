@@ -978,6 +978,26 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
+  it('keeps the sidebar interactive when localStorage is unavailable', () => {
+    const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: undefined });
+    try {
+      const rendered = renderDashboard({
+        document: authoritativeDashboardDocument,
+        sources: {}
+      });
+      const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.sidebar-toggle'));
+      const shell = rendered.querySelector('.app-shell');
+
+      expect(shell?.classList.contains('sidebar-collapsed')).toBe(false);
+      toggle?.click();
+      expect(shell?.classList.contains('sidebar-collapsed')).toBe(true);
+      expect(toggle?.getAttribute('aria-label')).toBe('Expand navigation');
+    } finally {
+      if (storageDescriptor) Object.defineProperty(window, 'localStorage', storageDescriptor);
+    }
+  });
+
   it('renders a mobile view menu with full labels and closes it after selection', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
