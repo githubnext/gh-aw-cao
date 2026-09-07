@@ -1,9 +1,12 @@
 import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
-import { findLink, renderLinkedValue } from './link-content.js';
+import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCountBadge, renderDlRow, renderEmptyMessage, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { formatUtcDateTime, renderCountBadge, renderEmptyMessage, renderSectionHeading } from './ui-primitives.js';
+import { renderWorkItemCard } from './work-item-card.js';
+import { renderWorkItemRow } from './work-item-row.js';
+import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
 import { workViewComposition } from './work-view-composition.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
@@ -85,31 +88,11 @@ function renderBoard(items, section) {
         h(
           'div',
           { className: 'work-board-cards' },
-          ...columnItems.map(renderWorkCard)
+          ...columnItems.map(renderWorkItemCard)
         )
       );
     })
   );
-}
-
-/** @param {ReturnType<typeof normalizeWorkItem>} item */
-function renderWorkCard(item) {
-  const body = [
-    h(
-      'header',
-      null,
-      renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-      h('strong', null, renderLinkedValue(item.name, item.evidenceLink))
-    ),
-    h('p', null, item.repository),
-    h('dl', null,
-      renderDlRow('Owner', item.owner),
-      renderDlRow('Started', item.startedLabel),
-      renderDlRow('Stopped', item.stoppedLabel),
-      renderDlRow('Duration', item.durationLabel)
-    )
-  ];
-  return h('article', { className: 'work-card', 'data-work-state': item.state }, ...body);
 }
 
 /**
@@ -124,19 +107,7 @@ function renderTasks(items, section) {
     h(
       'div',
       { className: 'work-task-list', role: 'list' },
-      ...items.map((item) => h(
-        'article',
-        { className: 'work-task-row', role: 'listitem' },
-        renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-        h('div', { className: 'work-task-main' },
-          h('strong', null, renderLinkedValue(item.name, item.evidenceLink)),
-          h('span', null, item.repository)
-        ),
-        h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel),
-        h('span', { className: 'work-task-owner' }, item.owner),
-        h('time', { dateTime: item.started }, item.startedLabel),
-        h('span', null, item.stoppedLabel)
-      ))
+      ...items.map(renderWorkItemRow)
     )
   );
 }
@@ -162,30 +133,7 @@ function renderRoadmap(items, section) {
           h('span', null, formatUtcDateTime(extents.start)),
           h('span', null, formatUtcDateTime(extents.stop))
         ),
-        ...items.map((item) => {
-          const startOffset = extents.duration > 0 ? ((item.startTime - extents.start) / extents.duration) * 100 : 0;
-          const itemDuration = Math.max(item.stopTime - item.startTime, 60_000);
-          const width = extents.duration > 0 ? Math.max(8, (itemDuration / extents.duration) * 100) : 100;
-          const barStyle = `--work-start: ${Math.max(0, Math.min(100, startOffset)).toFixed(2)}%; --work-width: ${Math.min(100, width).toFixed(2)}%;`;
-          return h(
-            'article',
-            { className: 'work-roadmap-lane' },
-            h('div', { className: 'work-roadmap-label' },
-              renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-              h('strong', null, item.name)
-            ),
-            h('div', { className: 'work-roadmap-track' },
-              h('span', {
-                className: `work-roadmap-bar work-state-${item.state}`,
-                style: barStyle
-              },
-                h('span', { className: 'work-roadmap-avatar' }, renderIconSpan('work-roadmap-avatar-icon', item.icon, { ariaHidden: true })),
-                h('span', { className: 'work-roadmap-owner' }, item.owner),
-                h('span', { className: 'work-roadmap-dates' }, `${item.startedLabel} → ${item.stoppedLabel}`)
-              )
-            )
-          );
-        })
+        ...items.map((item) => renderWorkItemTimelineLane(item, extents))
       )
     )
   );
