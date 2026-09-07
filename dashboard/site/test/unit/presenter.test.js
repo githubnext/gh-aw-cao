@@ -127,6 +127,49 @@ describe('dashboard DOM provenance', () => {
     }
   });
 
+  it('surfaces a dom-provenance-error data attribute when the debug-only loader fails', async () => {
+    vi.resetModules();
+    vi.doMock('../../src/dom-provenance.js', () => {
+      return {
+        enableDashboardDomProvenance: () => {
+          throw new Error('provenance module failed to load');
+        },
+        annotatePageDom: () => {
+          throw new Error('provenance module failed to load');
+        }
+      };
+    });
+    const { renderDashboard: renderDashboardWithFailingProvenance } = await import('../../src/presenter.js');
+    window.history.pushState(null, '', '?debug=1');
+    try {
+      const rendered = renderDashboardWithFailingProvenance({
+        document: {
+          languageVersion: '0.1.0',
+          dashboard: {
+            id: 'provenance-error-dashboard',
+            title: 'Provenance error dashboard',
+            pages: [{
+              id: 'trace',
+              kind: 'custom',
+              title: 'Trace',
+              views: [],
+              sections: []
+            }]
+          }
+        },
+        sources: {}
+      });
+
+      await vi.waitFor(() => {
+        expect(rendered.dataset.domProvenanceError).toContain('provenance module failed to load');
+      });
+    } finally {
+      window.history.pushState(null, '', '/');
+      vi.doUnmock('../../src/dom-provenance.js');
+      vi.resetModules();
+    }
+  });
+
   it('does not annotate the dashboard when ?debug=1 is absent', async () => {
     const rendered = renderDashboard({
       document: {
