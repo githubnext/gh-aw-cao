@@ -8,7 +8,6 @@ import { firstText } from "./text-utils.mjs";
 
 const apiRoot = "https://api.github.com";
 const rateLimitDocs = "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api";
-const METADATA_CONCURRENCY = 4;
 
 class GitHubRateLimitError extends Error {
   constructor(pathname, response, detail) {
@@ -463,7 +462,7 @@ async function collectDashboardRecordsImpl({
     ...(await Promise.all(reportSources.flatMap((source) => source.artifacts
       .map((artifact) => recordFromArtifact(artifact, source.repository))))).filter(Boolean),
   ];
-  const records = (await mapWithConcurrency(discoveredRecords, METADATA_CONCURRENCY, async (record) => {
+  const records = (await Promise.all(discoveredRecords.map(async (record) => {
     const metadata = record.mode && record.conclusion
       ? { mode: record.mode, conclusion: record.conclusion, runtimeRepository: "", workflowPath: "", workflowId: "", workflowName: "" }
       : await metadataFromRunUrl(record.runUrl);
@@ -500,7 +499,7 @@ async function collectDashboardRecordsImpl({
       workflowId,
       workflow: metadata.workflowName || inventoryWorkflow?.name || record.workflow,
     };
-  })).sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
+  }))).sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
   const scopedRecords = allowedRepositories.size === 0
     ? records
     : records.filter((record) => allowedRepositories.has(record.repository.toLowerCase()));

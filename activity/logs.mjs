@@ -35,7 +35,7 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
       "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
       "--count", String(runLimit), "--timeout", "15",
-      "--max-github-api-rate-limit", "-2000", "--max-storage", "2048",
+      "--max-github-api-rate-limit", "-2000", "--max-storage", "1200",
       ...targets,
     ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
@@ -60,8 +60,8 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
 }
 
 function runGhApi(target, repository, windowStart, runLimit, execute = spawn) {
-  const workflow = target.slice(`${repository}/`.length);
-  const workflowFile = workflow.split("/").at(-1);
+  const workflow = target;
+  const workflowFile = target.split("/").at(-1);
   return new Promise((resolve, reject) => {
     const child = execute("gh", [
       "api", "--method", "GET", `repos/${repository}/actions/workflows/${workflowFile}/runs`,
@@ -169,7 +169,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     const workflowDirectory = path.join(root, ".github", "workflows");
     targets = (await readdir(workflowDirectory, { withFileTypes: true }))
       .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
-      .map((entry) => `${repository}/.github/workflows/${entry.name}`)
+      .map((entry) => `.github/workflows/${entry.name}`)
       .sort();
     const raw = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
     const snapshot = JSON.parse(raw);
