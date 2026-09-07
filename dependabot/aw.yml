@@ -4,6 +4,7 @@ min-version: v0.88.4
 experimental: true
 includes:
   - .github/workflows/dependabot.md
+  - .github/workflows/dependabot-release-train-updater.md
   - .github/workflows/shared/control.md
   - .github/workflows/shared/orchestrator.md
   - .github/workflows/shared/worker.md
