@@ -7254,7 +7254,7 @@
         "title": "Work",
         "icon": "table",
         "class-name": "dashboard-next-work-page",
-        "description": "Scan delegated work as a compact, sortable task inventory.",
+        "description": "Scan delegated work as a compact, configurable record list.",
         "route": {
           "navigation-page": "work"
         },
@@ -7262,8 +7262,8 @@
           {
             "id": "work-project-tasks",
             "locked": true,
-            "title": "Tasks",
-            "description": "Owners, repositories, lifecycle state, and runtime windows for every delegated work item.",
+            "title": "Table",
+            "description": "A structured record list with owners, repositories, lifecycle state, and runtime windows.",
             "data": {
               "sources": [
                 "work-items"

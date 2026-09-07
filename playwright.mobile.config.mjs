@@ -15,12 +15,13 @@ export default defineConfig({
   testMatch: ["**/dashboard-mobile-live.spec.mjs"],
   timeout: 120_000,
   workers: 1,
+  preserveOutput: "always",
   use: {
     ...devices[deviceName],
     browserName,
     headless: true,
     launchOptions: browserName === "chromium" ? {
-      args: ["--no-sandbox", "--disable-dev-shm-usage", "--js-flags=--max-old-space-size=256"],
+      args: ["--no-sandbox", "--disable-dev-shm-usage"],
       ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
     } : {},
     screenshot: "only-on-failure",

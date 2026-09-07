@@ -84,14 +84,18 @@ const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
  * @param {() => void} update
  */
 export function updateWithViewTransition(document, update) {
-  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => unknown }} */ (document);
+  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown> } | void }} */ (document);
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
   if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
     update();
     return;
   }
 
-  transitionDocument.startViewTransition(update);
+  const transition = transitionDocument.startViewTransition(update);
+  void transition?.ready?.catch((error) => {
+    if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') return;
+    queueMicrotask(() => { throw error; });
+  });
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
@@ -898,6 +902,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
     rendered.classList.add('custom-view');
+    rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
     if (disclosure === 'essential') {

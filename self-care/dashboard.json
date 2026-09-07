@@ -3,14 +3,14 @@
   "dashboard": {
     "id": "self-care-dashboard",
     "title": "SelfCare",
-    "description": "Track dashboard performance improvements, build-time investigations, and clustered failures across represented public projects.",
+    "description": "Track production Pages health, dashboard performance improvements, build-time investigations, and clustered failures across represented public projects.",
     "repository": "githubnext/gh-aw-cao",
     "pages": [
       {
         "id": "self-care-dashboard",
         "kind": "custom",
         "title": "SelfCare",
-        "description": "Track Lighthouse improvements, build-time investigations, speed attainment, and remediation findings for clustered public-project failures.",
+        "description": "Track production browser health, Lighthouse improvements, build-time investigations, speed attainment, and remediation findings for clustered public-project failures.",
         "icon": "check-circle",
         "views": [
           {
@@ -166,6 +166,85 @@
                 "field": "operational-value-definition",
                 "type": "nominal"
               }
+            }
+          },
+          {
+            "id": "self-care-pages-health-runs",
+            "title": "Pages health runs",
+            "description": "Run conclusions for the six-hour desktop, mobile, and low-bandwidth production sweep.",
+            "disclosure": "essential",
+            "data": {
+              "source": "runs",
+              "time": {
+                "range": "30d"
+              },
+              "filters": {
+                "workflow": [
+                  ".github/workflows/self-care-pages-health.md"
+                ]
+              }
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "encoding": {
+              "x": {
+                "field": "run-conclusion",
+                "type": "nominal"
+              },
+              "y": {
+                "field": "run",
+                "type": "quantitative",
+                "aggregate": "count"
+              },
+              "color": {
+                "field": "run-conclusion",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "self-care-pages-health-outcomes",
+            "title": "Current Pages health reports",
+            "description": "Replacement reports covering browser errors and per-view Lighthouse evidence across all production profiles.",
+            "disclosure": "essential",
+            "data": {
+              "source": "outcomes",
+              "filters": {
+                "workflow": [
+                  ".github/workflows/self-care-pages-health.md"
+                ]
+              },
+              "limit": 50
+            },
+            "mark": "table",
+            "empty-message": "No Pages health reports were retained.",
+            "encoding": {
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal"
+                },
+                {
+                  "field": "outcome-title",
+                  "type": "nominal",
+                  "title": "Report"
+                },
+                {
+                  "field": "outcome-state",
+                  "type": "nominal",
+                  "title": "Disposition",
+                  "display": "status"
+                },
+                {
+                  "field": "published-at",
+                  "type": "temporal",
+                  "title": "Published"
+                }
+              ]
             }
           },
           {

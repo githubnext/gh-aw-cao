@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCountBadge, renderEmptyMessage, renderIconSpan } from './ui-primitives.js';
+import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderIconSpan } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -19,7 +19,7 @@ const BOARD_COLUMNS = [
 
 const WORK_LAYOUT_ROUTES = [
   { key: 'board', title: 'Board', icon: 'project-roadmap', href: '#page-work' },
-  { key: 'tasks', title: 'Tasks', icon: 'table', href: '#page-work-tasks' },
+  { key: 'tasks', title: 'Table', icon: 'table', href: '#page-work-tasks' },
   { key: 'roadmap', title: 'Roadmap', icon: 'calendar', href: '#page-work-roadmap' }
 ];
 
@@ -35,8 +35,13 @@ export function renderWorkProjectView(context) {
   const sections = workViewComposition(context.elementConfig);
   const activeSection = sections[0]?.key ?? 'board';
   const viewBody = h('div', { className: 'work-project-body' });
+  let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
-  const renderers = { renderBoard, renderTasks, renderRoadmap };
+  const renderers = {
+    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, reapplyFilters),
+    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, reapplyFilters),
+    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, reapplyFilters)
+  };
   /** @param {Array<ReturnType<typeof normalizeWorkItem>>} filteredItems */
   const renderItems = (filteredItems) => {
     if (items.length === 0) {
@@ -63,6 +68,7 @@ export function renderWorkProjectView(context) {
       .filter((element) => element instanceof HTMLElement));
   };
   const filterBar = renderWorkFilterBar(items, renderItems);
+  reapplyFilters = filterBar.apply;
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
@@ -79,7 +85,7 @@ export function renderWorkProjectView(context) {
         route.title
       ))
     ),
-    filterBar,
+    filterBar.element,
     viewBody
   );
   renderItems(items);
@@ -89,6 +95,7 @@ export function renderWorkProjectView(context) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {(items: Array<ReturnType<typeof normalizeWorkItem>>) => void} onChange
+ * @returns {{ element: HTMLElement, apply: () => void }}
  */
 function renderWorkFilterBar(items, onChange) {
   const search = /** @type {HTMLInputElement} */ (h('input', {
@@ -108,6 +115,33 @@ function renderWorkFilterBar(items, onChange) {
     'aria-label': 'Clear work filters',
     title: 'Clear filters'
   }, renderIconSpan('work-filter-clear-icon', 'x', { ariaHidden: true })));
+  const mobileFilterToggle = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'work-filter-mobile-toggle',
+    'aria-expanded': 'false'
+  }, renderIconSpan('work-filter-mobile-icon', 'filter', { ariaHidden: true }), 'Filters'));
+  const closeMobileFilters = renderCloseButton({
+    className: 'work-mobile-sheet-close',
+    label: 'Close work filters',
+    onClick: () => closeMobileSheet()
+  });
+  const facets = h('div', { className: 'work-filter-facets' },
+    h('div', { className: 'work-filter-sheet-panel' },
+      h('header', { className: 'work-mobile-sheet-header' }, h('strong', null, 'Filter work'), closeMobileFilters),
+      state, repository, owner, packageName
+    )
+  );
+  const closeMobileSheet = () => {
+    facets.classList.remove('is-open');
+    mobileFilterToggle.setAttribute('aria-expanded', 'false');
+    mobileFilterToggle.focus();
+  };
+  mobileFilterToggle.addEventListener('click', () => {
+    const open = !facets.classList.contains('is-open');
+    facets.classList.toggle('is-open', open);
+    mobileFilterToggle.setAttribute('aria-expanded', String(open));
+    if (open) state.focus();
+  });
   const controls = [search, state, repository, owner, packageName];
   const apply = () => {
     const query = search.value.trim().toLowerCase();
@@ -134,7 +168,7 @@ function renderWorkFilterBar(items, onChange) {
   });
   queueMicrotask(apply);
 
-  return h('form', {
+  const element = h('form', {
     className: 'work-filter-bar',
     role: 'search',
     'aria-label': 'Work filters',
@@ -144,9 +178,11 @@ function renderWorkFilterBar(items, onChange) {
     renderIconSpan('work-filter-search-icon', 'search', { ariaHidden: true }),
     search
   ),
-  h('div', { className: 'work-filter-facets' }, state, repository, owner, packageName),
+  mobileFilterToggle,
+  facets,
   resultCount,
   clear);
+  return { element, apply };
 }
 
 /** @param {string} label @param {string[]} values */
@@ -160,57 +196,90 @@ function renderFacetSelect(label, values) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ * @param {() => void} onUpdate
  */
-function renderBoard(items, section) {
+function renderBoard(items, section, onUpdate) {
   const orchestratedPackages = orchestratedPackageNames(items);
+  const choices = workItemChoices(items);
+  const populatedAttentionColumn = ['needs-review', 'in-progress', 'todo', 'done']
+    .find((tone) => items.some((item) => item.state === tone));
+  let activeTone = populatedAttentionColumn ?? 'todo';
+  const tabs = h('div', { className: 'work-board-group-tabs', role: 'tablist', 'aria-label': 'Board status' });
+  const columns = BOARD_COLUMNS.map((column) => {
+    const columnItems = items.filter((item) => column.states.includes(item.state));
+    return h(
+      'section',
+      {
+        className: `work-board-column work-board-${column.tone}`,
+        'aria-label': `${column.title} work`,
+        dataset: { mobileActive: String(column.tone === activeTone) }
+      },
+      h(
+        'header',
+        null,
+        h('h4', null, column.title),
+        renderCountBadge(columnItems.length, `${columnItems.length} work items`)
+      ),
+      h(
+        'div',
+        { className: 'work-board-cards' },
+        ...groupWorkItems(columnItems, orchestratedPackages).map((group) => group.grouped
+          ? h('section', { className: 'work-card-stack', 'aria-label': `${group.label} work` },
+            h('header', null,
+              h('strong', null, group.label),
+              renderCountBadge(group.items.length, `${group.items.length} work items`)
+            ),
+            decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate),
+            ...(group.items.length > 1
+              ? [h('details', { className: 'work-card-workers' },
+                h('summary', null,
+                  renderIconSpan('work-card-workers-chevron', 'chevron-right', { ariaHidden: true }),
+                  h('span', null, `${group.items.length - 1} worker${group.items.length === 2 ? '' : 's'}`),
+                  h('small', null, 'Show cards')
+                ),
+                h('div', { className: 'work-card-worker-list' }, ...group.items.slice(1).map((item) => decorateMobileWorkItem(renderWorkItemCard(item), item, choices, onUpdate)))
+              )]
+              : [])
+          )
+          : decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate))
+      )
+    );
+  });
+  tabs.append(...BOARD_COLUMNS.map((column) => {
+    const count = items.filter((item) => column.states.includes(item.state)).length;
+    const button = h('button', {
+      type: 'button',
+      className: 'work-board-group-tab',
+      role: 'tab',
+      'aria-selected': String(column.tone === activeTone),
+      onclick: () => {
+        activeTone = column.tone;
+        for (const tab of tabs.querySelectorAll('[role="tab"]')) {
+          tab.setAttribute('aria-selected', String(tab === button));
+        }
+        for (const boardColumn of columns) {
+          boardColumn.setAttribute('data-mobile-active', String(boardColumn.classList.contains(`work-board-${activeTone}`)));
+        }
+      }
+    }, column.title, renderCountBadge(count, `${count} work items`));
+    return button;
+  }));
   return h(
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
-    ...BOARD_COLUMNS.map((column) => {
-      const columnItems = items.filter((item) => column.states.includes(item.state));
-      return h(
-        'section',
-        { className: `work-board-column work-board-${column.tone}`, 'aria-label': `${column.title} work` },
-        h(
-          'header',
-          null,
-          h('h4', null, column.title),
-          renderCountBadge(columnItems.length, `${columnItems.length} work items`)
-        ),
-        h(
-          'div',
-          { className: 'work-board-cards' },
-          ...groupWorkItems(columnItems, orchestratedPackages).map((group) => group.grouped
-            ? h('section', { className: 'work-card-stack', 'aria-label': `${group.label} work` },
-              h('header', null,
-                h('strong', null, group.label),
-                renderCountBadge(group.items.length, `${group.items.length} work items`)
-              ),
-              renderWorkItemCard(group.items[0]),
-              ...(group.items.length > 1
-                ? [h('details', { className: 'work-card-workers' },
-                  h('summary', null,
-                    renderIconSpan('work-card-workers-chevron', 'chevron-right', { ariaHidden: true }),
-                    h('span', null, `${group.items.length - 1} worker${group.items.length === 2 ? '' : 's'}`),
-                    h('small', null, 'Show cards')
-                  ),
-                  h('div', { className: 'work-card-worker-list' }, ...group.items.slice(1).map(renderWorkItemCard))
-                )]
-                : [])
-            )
-            : renderWorkItemCard(group.items[0]))
-        )
-      );
-    })
+    tabs,
+    ...columns
   );
 }
 
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ * @param {() => void} onUpdate
  */
-function renderTasks(items, section) {
-  const list = h('div', { className: 'work-task-list', role: 'list' });
+function renderTasks(items, section, onUpdate) {
+  const list = h('div', { className: 'work-task-list work-mobile-hide-repository work-mobile-hide-dates', role: 'list' });
+  const choices = workItemChoices(items);
   const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort tasks by' },
     h('option', { value: 'started' }, 'Start date'),
     h('option', { value: 'name' }, 'Title'),
@@ -221,7 +290,7 @@ function renderTasks(items, section) {
   let descending = true;
   const renderRows = () => {
     const sorted = items.toSorted((left, right) => compareWorkItems(left, right, sort.value) * (descending ? -1 : 1));
-    list.replaceChildren(...sorted.map(renderWorkItemRow));
+    list.replaceChildren(...sorted.map((item) => decorateMobileWorkItem(renderWorkItemRow(item), item, choices, onUpdate, 'table')));
   };
   sort.addEventListener('change', renderRows);
   direction.addEventListener('click', () => {
@@ -248,14 +317,68 @@ function renderTasks(items, section) {
       renderRows();
     }
   }, label, renderIconSpan('work-task-header-sort-icon', 'triangle-down', { ariaHidden: true }));
+  const sortControls = h('div', { className: 'work-task-sort-controls' },
+    h('label', { className: 'work-task-sort' }, h('span', null, 'Sort by'), sort),
+    direction
+  );
+  const fieldOptions = [
+    { value: 'repository', label: 'Repository', checked: false },
+    { value: 'status', label: 'Status', checked: true },
+    { value: 'owner', label: 'Owner', checked: true },
+    { value: 'label', label: 'Label', checked: true },
+    { value: 'dates', label: 'Dates', checked: false }
+  ];
+  const settingsSheet = h('div', { className: 'work-task-settings-sheet' },
+    h('div', { className: 'work-task-settings-panel' },
+      h('header', { className: 'work-mobile-sheet-header' },
+        h('strong', null, 'Table settings'),
+        renderCloseButton({
+          className: 'work-mobile-sheet-close',
+          label: 'Close Table settings',
+          onClick: () => closeSettings()
+        })
+      ),
+      h('fieldset', { className: 'work-mobile-field-settings' },
+        h('legend', null, 'Fields shown'),
+        ...fieldOptions.map(({ value, label, checked }) => h('label', null,
+          h('input', {
+            type: 'checkbox',
+            name: 'mobile-work-field',
+            value,
+            checked,
+            onchange: (/** @type {Event} */ event) => {
+              const input = /** @type {HTMLInputElement} */ (event.currentTarget);
+              list.classList.toggle(`work-mobile-hide-${value}`, !input.checked);
+            }
+          }),
+          label
+        ))
+      ),
+      sortControls
+    )
+  );
+  const settingsToggle = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'work-task-settings-toggle',
+    'aria-expanded': 'false',
+    onclick: () => {
+      settingsSheet.classList.add('is-open');
+      settingsToggle.setAttribute('aria-expanded', 'true');
+      settingsSheet.querySelector('input')?.focus();
+    }
+  }, renderIconSpan('work-task-settings-icon', 'filter', { ariaHidden: true }), 'Fields & sort'));
+  const closeSettings = () => {
+    settingsSheet.classList.remove('is-open');
+    settingsToggle.setAttribute('aria-expanded', 'false');
+    settingsToggle.focus();
+  };
   renderRows();
   return h(
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
     h('div', { className: 'work-task-viewbar' },
       h('div', { className: 'work-task-view-name' }, renderIconSpan('work-task-view-icon', 'table', { ariaHidden: true }), h('strong', null, 'Operations tasks'), h('span', null, `${items.length} items`)),
-      h('label', { className: 'work-task-sort' }, h('span', null, 'Sort by'), sort),
-      direction
+      h('div', { className: 'work-task-settings' }, settingsToggle, settingsSheet)
     ),
     h('div', { className: 'work-task-scroll' },
       h('div', { className: 'work-task-table-header', role: 'row' },
@@ -284,11 +407,16 @@ function compareWorkItems(left, right, field) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ * @param {() => void} onUpdate
  */
-function renderRoadmap(items, section) {
+function renderRoadmap(items, section, onUpdate) {
   const body = h('div', { className: 'work-roadmap-body' });
+  const choices = workItemChoices(items);
   const zoomLevels = ['day', 'week', 'month', 'quarter', 'year'];
   let range = 'year';
+  let periodOffset = 0;
+  /** @type {HTMLElement | null} */
+  let root = null;
   const zoomLabel = h('span', { className: 'work-roadmap-zoom-label' }, 'Year');
   const zoomMenu = h('div', { className: 'work-roadmap-zoom-menu', role: 'menu', 'aria-label': 'Zoom level' });
   const zoom = h('details', { className: 'work-roadmap-zoom' },
@@ -302,8 +430,46 @@ function renderRoadmap(items, section) {
     )
   );
   const today = h('button', { type: 'button', className: 'work-roadmap-today-button' }, 'Today');
+  const mobilePeriod = h('span', { className: 'work-roadmap-mobile-period', 'aria-live': 'polite' });
+  const previousPeriod = h('button', {
+    type: 'button',
+    'aria-label': 'Previous month',
+    onclick: () => {
+      range = 'month';
+      periodOffset -= 1;
+      renderTimeline();
+    }
+  }, renderIconSpan('work-roadmap-period-icon', 'chevron-left', { ariaHidden: true }));
+  const nextPeriod = h('button', {
+    type: 'button',
+    'aria-label': 'Next month',
+    onclick: () => {
+      range = 'month';
+      periodOffset += 1;
+      renderTimeline();
+    }
+  }, renderIconSpan('work-roadmap-period-icon', 'chevron-right', { ariaHidden: true }));
+  const mobilePeriodControls = h('div', { className: 'work-roadmap-mobile-controls', 'aria-label': 'Visual timeline period' },
+    previousPeriod, mobilePeriod, nextPeriod
+  );
+  const visualToggle = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'work-roadmap-visual-toggle',
+    'aria-label': 'Show visual timeline',
+    onclick: () => {
+      const visual = !root?.classList.contains('work-roadmap-visual');
+      root?.classList.toggle('work-roadmap-visual', visual);
+      visualToggle.setAttribute('aria-label', visual ? 'Show list timeline' : 'Show visual timeline');
+      visualToggle.replaceChildren(renderIconSpan('work-roadmap-visual-icon', visual ? 'list-unordered' : 'project-roadmap', { ariaHidden: true }), visual ? 'List' : 'Visual');
+      if (visual) {
+        range = 'month';
+        periodOffset = 0;
+        renderTimeline();
+      }
+    }
+  }, renderIconSpan('work-roadmap-visual-icon', 'project-roadmap', { ariaHidden: true }), 'Visual'));
   const renderTimeline = () => {
-    const extents = calendarExtents(items, range);
+    const extents = calendarExtents(items, range, periodOffset);
     const ticks = timelineDateTicks(extents, range);
     const periods = timelinePeriods(extents, range);
     const contextBands = timelineContextBands(extents, range);
@@ -311,6 +477,7 @@ function renderRoadmap(items, section) {
     const now = Date.now();
     const todayOffset = ((now - extents.start) / extents.duration) * 100;
     const todayLabel = `Today · ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(now))}`;
+    mobilePeriod.textContent = timelinePeriodLabel(extents, range);
     const scroll = h(
       'div',
       { className: 'work-roadmap-scroll' },
@@ -341,7 +508,7 @@ function renderRoadmap(items, section) {
             )
           )
         ),
-        ...items.toSorted((left, right) => left.startTime - right.startTime).map((item, index) => renderWorkItemTimelineLane(item, extents, index, Math.max(1, ticks.length))),
+        ...renderRoadmapItems(items, extents, Math.max(1, ticks.length), choices, onUpdate),
         todayOffset >= 0 && todayOffset <= 100
           ? h('span', {
             className: 'work-roadmap-today',
@@ -362,6 +529,11 @@ function renderRoadmap(items, section) {
       scroll.scrollLeft = Math.max(0, focusOffset * rangeSize - Math.max(0, scroll.clientWidth - labelWidth) / 2);
     });
     today.onclick = () => {
+      if (periodOffset !== 0) {
+        periodOffset = 0;
+        renderTimeline();
+        return;
+      }
       const labelWidth = scroll.querySelector('.work-roadmap-corner')?.getBoundingClientRect().width ?? 320;
       const left = (Math.max(0, Math.min(100, todayOffset)) / 100) * rangeSize;
       scroll.scrollTo({ left: Math.max(0, left - Math.max(0, scroll.clientWidth - labelWidth) / 2), behavior: 'smooth' });
@@ -374,23 +546,27 @@ function renderRoadmap(items, section) {
     'data-roadmap-zoom': level,
     onclick: (/** @type {MouseEvent} */ event) => {
       range = level;
+      periodOffset = 0;
       zoomLabel.textContent = titleCase(level);
       for (const button of zoomMenu.querySelectorAll('[role="menuitemradio"]')) button.setAttribute('aria-checked', String(button === event.currentTarget));
       zoom.removeAttribute('open');
       renderTimeline();
     }
   }, renderIconSpan('work-roadmap-zoom-check', 'check', { ariaHidden: true }), titleCase(level))));
-  renderTimeline();
-  return h(
+  root = h(
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
     h('div', { className: 'work-roadmap-toolbar' },
       h('div', null, renderIconSpan('work-roadmap-toolbar-icon', 'project-roadmap', { ariaHidden: true }), h('strong', null, section.title), h('span', null, `${items.length} items`)),
+      visualToggle,
+      mobilePeriodControls,
       zoom,
       today
     ),
     body
   );
+  renderTimeline();
+  return root;
 }
 
 /** @param {string} pageId @param {'board'|'tasks'|'roadmap'} key */
@@ -434,16 +610,164 @@ function normalizeWorkItem(row) {
     pointInTime,
     evidenceLink: findLink(row, 'evidence-link') || findLink(row, 'run-link'),
     repositoryLink: findLink(row, 'repository-link'),
-    durationLabel: Number.isFinite(stopTime - startTime) ? formatClockDuration(Math.max(0, (stopTime - startTime) / 1000)) : ''
+    durationLabel: Number.isFinite(stopTime - startTime) ? formatClockDuration(Math.max(0, (stopTime - startTime) / 1000)) : '',
+    reason: text(row.reason),
+    nextAction: text(row['next-action']),
+    waitingOn: text(row['waiting-on']),
+    consequenceTier: text(row['consequence-tier']),
+    verificationState: text(row['verification-state']),
+    outcomeState: text(row['outcome-state'])
   };
 }
 
-/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items @param {string} range */
-function calendarExtents(items, range) {
+/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
+function workItemChoices(items) {
+  return {
+    owners: [...new Set(items.map((item) => item.owner).filter(Boolean))].sort(),
+    labels: [...new Set(items.map((item) => item.packageName).filter(Boolean))].sort()
+  };
+}
+
+/**
+ * @param {HTMLElement} element
+ * @param {ReturnType<typeof normalizeWorkItem>} item
+ * @param {{ owners: string[], labels: string[] }} choices
+ * @param {() => void} onUpdate
+ * @param {'board'|'table'|'roadmap'} [variant]
+ */
+function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'board') {
+  element.setAttribute('data-work-id', item.id);
+  if (variant === 'table') {
+    element.append(h('span', { className: 'work-mobile-owner' }, item.owner));
+  }
+  if (variant === 'roadmap') {
+    element.querySelector('.work-roadmap-label')?.append(h('div', { className: 'work-roadmap-mobile-meta' },
+      h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel),
+      h('span', null, item.timeLabel === 'Observed' ? item.startedLabel : `${item.startedLabel} – ${item.stoppedLabel}`),
+      ...(item.waitingOn ? [h('span', null, `Waiting on ${item.waitingOn}`)] : [])
+    ));
+  }
+  const move = /** @type {HTMLSelectElement} */ (h('select', {
+    'aria-label': `Move ${item.name} to`,
+    onchange: (/** @type {Event} */ event) => {
+      const state = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
+      if (!state) return;
+      item.state = state;
+      item.stateLabel = titleCase(state);
+      onUpdate();
+    }
+  },
+  h('option', { value: '' }, 'Move to…'),
+  ...BOARD_COLUMNS.map((column) => h('option', { value: column.tone }, column.title))));
+  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', {
+    className: 'work-mobile-detail',
+    'aria-label': `${item.name} details`
+  }));
+  const closeDetail = () => {
+    if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+    else dialog.removeAttribute('open');
+  };
+  /** @param {string} label @param {string} value @param {string[]} values @param {'owner'|'packageName'} property */
+  const updateSelect = (label, value, values, property) => {
+    const optionValues = [...new Set([value, ...values])];
+    return h('label', { className: 'work-mobile-detail-control' },
+      h('span', null, label),
+      h('select', {
+        'aria-label': `${label} for ${item.name}`,
+        onchange: (/** @type {Event} */ event) => {
+          item[property] = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
+          onUpdate();
+        }
+      }, ...optionValues.map((option) => h('option', { value: option, selected: option === value }, option || 'None')))
+    );
+  };
+  dialog.append(
+    h('header', null,
+      h('div', null, renderIconSpan('work-avatar', item.icon, { ariaHidden: true }), h('h2', null, item.name)),
+      renderCloseButton({ className: 'work-mobile-detail-close', label: `Close ${item.name} details`, onClick: closeDetail })
+    ),
+    h('main', null,
+      h('div', { className: 'work-mobile-detail-status' }, h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel), item.repository),
+      h('dl', null,
+        mobileDetailRow('Owner', item.owner),
+        mobileDetailRow('Label', item.packageName || 'None'),
+        mobileDetailRow('Type', item.workType === 'unknown' ? 'Unknown' : item.workType),
+        mobileDetailRow(item.timeLabel, item.startedLabel),
+        ...(item.timeLabel === 'Observed' ? [] : [mobileDetailRow('End', item.stoppedLabel), mobileDetailRow('Duration', item.durationLabel)]),
+        ...(item.reason ? [mobileDetailRow('Why it needs attention', item.reason)] : []),
+        ...(item.waitingOn ? [mobileDetailRow('Waiting on', item.waitingOn)] : []),
+        ...(item.nextAction ? [mobileDetailRow('Next action', item.nextAction)] : []),
+        ...(item.consequenceTier ? [mobileDetailRow('Priority', item.consequenceTier)] : []),
+        ...(item.verificationState ? [mobileDetailRow('Verification', item.verificationState)] : [])
+      ),
+      h('section', { className: 'work-mobile-quick-update', 'aria-label': `Quick update ${item.name}` },
+        h('h3', null, 'Quick update'),
+        updateSelect('Owner', item.owner, choices.owners, 'owner'),
+        updateSelect('Label', item.packageName, choices.labels, 'packageName')
+      )
+    )
+  );
+  const detailsButton = h('button', {
+    type: 'button',
+    className: 'work-mobile-details-button',
+    'aria-label': `Open ${item.name} details`,
+    onclick: () => {
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    }
+  }, 'Details', renderIconSpan('work-mobile-details-icon', 'chevron-right', { ariaHidden: true }));
+  element.append(h('footer', { className: 'work-mobile-item-actions' }, move, detailsButton), dialog);
+  return element;
+}
+
+/** @param {string} label @param {string} value */
+function mobileDetailRow(label, value) {
+  return h('div', null, h('dt', null, label), h('dd', null, value || 'Unavailable'));
+}
+
+/**
+ * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
+ * @param {{ start: number, duration: number }} extents
+ * @param {number} divisions
+ * @param {{ owners: string[], labels: string[] }} choices
+ * @param {() => void} onUpdate
+ */
+function renderRoadmapItems(items, extents, divisions, choices, onUpdate) {
+  const rendered = [];
+  let period = '';
+  const sorted = items.toSorted((left, right) => left.startTime - right.startTime);
+  for (const [index, item] of sorted.entries()) {
+    const itemPeriod = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(item.startTime));
+    if (itemPeriod !== period) {
+      period = itemPeriod;
+      rendered.push(h('h4', { className: 'work-roadmap-period-heading' }, period));
+    }
+    rendered.push(decorateMobileWorkItem(renderWorkItemTimelineLane(item, extents, index, divisions), item, choices, onUpdate, 'roadmap'));
+  }
+  return rendered;
+}
+
+/** @param {{ start: number }} extents @param {string} range */
+function timelinePeriodLabel(extents, range) {
+  const options = /** @type {Intl.DateTimeFormatOptions} */ (range === 'day'
+    ? { month: 'short', day: 'numeric', year: 'numeric' }
+    : range === 'year'
+      ? { year: 'numeric' }
+      : { month: 'long', year: 'numeric' });
+  return new Intl.DateTimeFormat('en-US', { ...options, timeZone: 'UTC' }).format(new Date(extents.start));
+}
+
+/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items @param {string} range @param {number} [offset] */
+function calendarExtents(items, range, offset = 0) {
   const starts = items.map((item) => item.startTime).filter(Number.isFinite);
   const stops = items.map((item) => item.stopTime).filter(Number.isFinite);
   const anchor = Math.max(...stops, ...starts);
   const date = new Date(Number.isFinite(anchor) ? anchor : Date.now());
+  if (range === 'day') date.setUTCDate(date.getUTCDate() + offset);
+  else if (range === 'week') date.setUTCDate(date.getUTCDate() + offset * 7);
+  else if (range === 'month') date.setUTCMonth(date.getUTCMonth() + offset);
+  else if (range === 'quarter') date.setUTCMonth(date.getUTCMonth() + offset * 3);
+  else date.setUTCFullYear(date.getUTCFullYear() + offset);
   const year = date.getUTCFullYear();
   const month = date.getUTCMonth();
   const day = date.getUTCDate();
