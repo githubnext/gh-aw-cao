@@ -188,6 +188,7 @@ export function renderDashboard(input) {
     skipLink,
     appShell
   );
+  enableDashboardDomProvenance(root, document);
   enableSidebarToggle(root);
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
@@ -205,6 +206,92 @@ export function renderDashboard(input) {
 
   );
   return root;
+}
+
+/**
+ * Maps every rendered element to the most specific dashboard JSON node that
+ * owns it. The observer also covers elements created by lazy routes and
+ * interactive re-renders.
+ * @param {HTMLElement} root
+ * @param {PresentationDocument} document
+ */
+function enableDashboardDomProvenance(root, document) {
+  const annotate = () => annotateDashboardDom(root, document);
+  annotate();
+  const observer = new MutationObserver(annotate);
+  observer.observe(root, { childList: true, subtree: true });
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {PresentationDocument} document
+ */
+function annotateDashboardDom(root, document) {
+  annotateDomTree(root, '$.dashboard');
+
+  const callouts = Array.isArray(document.dashboard.callouts) ? document.dashboard.callouts : [];
+  for (const element of root.querySelectorAll('[data-site-callout]')) {
+    const index = callouts.findIndex((callout) => callout.id === element.getAttribute('data-site-callout'));
+    if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`);
+  }
+
+  document.dashboard.pages.forEach((page, pageIndex) => {
+    const pagePath = `$.dashboard.pages[${pageIndex}]`;
+    for (const element of root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')) {
+      if (
+        element.getAttribute('data-nav-page-id') === page.id
+        || element.getAttribute('data-mobile-nav-page-id') === page.id
+      ) {
+        annotateDomTree(element, pagePath);
+      }
+    }
+
+    const renderedPage = [...root.querySelectorAll('[data-page-id]')]
+      .find((element) => element.getAttribute('data-page-id') === page.id);
+    if (!renderedPage) return;
+    annotateDomTree(renderedPage, pagePath);
+
+    const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+    const definitionPath = page.kind === 'built-in' ? `${pagePath}.definition` : pagePath;
+    const sections = Array.isArray(payload.sections) ? payload.sections : [];
+    sections.forEach((section, sectionIndex) => {
+      for (const element of renderedPage.querySelectorAll('[data-section-id]')) {
+        if (element.getAttribute('data-section-id') === section.id) {
+          annotateDomTree(element, `${definitionPath}.sections[${sectionIndex}]`);
+        }
+      }
+    });
+
+    const views = Array.isArray(payload.views) ? payload.views : [];
+    views.forEach((view, viewIndex) => {
+      if (!isPlainObject(view)) return;
+      const viewId = typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
+      for (const element of renderedPage.querySelectorAll('[data-view-id]')) {
+        if (element.getAttribute('data-view-id') !== viewId) continue;
+        const viewRoot = element.closest('.custom-view') ?? element;
+        annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`);
+        if (typeof view.element === 'string') {
+          annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, view.element);
+        }
+      }
+    });
+  });
+}
+
+/**
+ * @param {Element} root
+ * @param {string} jsonPath
+ * @param {string} [javascriptView]
+ */
+function annotateDomTree(root, jsonPath, javascriptView) {
+  for (const element of [root, ...root.querySelectorAll('*')]) {
+    element.setAttribute('data-json-path', jsonPath);
+    if (javascriptView) {
+      element.setAttribute('data-js-view', javascriptView);
+    } else {
+      element.removeAttribute('data-js-view');
+    }
+  }
 }
 
 /**
@@ -1517,6 +1604,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
     rendered.classList.add('custom-view');
+    rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
     if (disclosure === 'essential') return rendered;
