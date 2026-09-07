@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
   it('renders shared section-heading markup with configurable heading levels', () => {
@@ -144,6 +145,18 @@ describe('ui primitives', () => {
 
     const empty = renderListWithFallback('my-list', [], (value) => `item ${value}`, 'No items.');
     expect(empty.querySelectorAll('li')).toHaveLength(1);
+    expect(empty.textContent).toBe('No items.');
+  });
+
+  it('renders the shared list-or-empty-message pattern for populated and empty item sets', () => {
+    const populated = renderListOrEmptyMessage('my-list', [1, 2], (value) => h('li', null, `item ${value}`), 'my-empty', 'No items.');
+    expect(populated.tagName).toBe('UL');
+    expect(populated.className).toBe('my-list');
+    expect([...populated.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['item 1', 'item 2']);
+
+    const empty = renderListOrEmptyMessage('my-list', [], (value) => h('li', null, `item ${value}`), 'my-empty', 'No items.');
+    expect(empty.tagName).toBe('P');
+    expect(empty.className).toBe('my-empty');
     expect(empty.textContent).toBe('No items.');
   });
 

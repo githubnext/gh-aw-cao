@@ -10,7 +10,7 @@ import { renderPackagesView, renderPackageSummary, renderPackageUtilization, ren
 import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js';
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan } from './ui-primitives.js';
+import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
 import { slugify, clampPercent } from './count-formatters.js';
 import { renderDefinitionList, renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
@@ -336,21 +336,21 @@ function renderPackageStatusGridElement(context) {
               h('span', null, 'Target repositories'),
               h('span', null, 'Mode')
             ),
-            repoEntries.length > 0
-              ? h(
-                  'ul',
-                  { className: 'package-status-repositories' },
-                  ...repoEntries.map((entry) => {
-                    const repoMode = stringValue(entry.mode || 'review');
-                    return h(
-                      'li',
-                      null,
-                      h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
-                      h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
-                    );
-                  })
-                )
-              : h('p', { className: 'package-status-repositories-empty' }, 'No repositories reported')
+            renderListOrEmptyMessage(
+              'package-status-repositories',
+              repoEntries,
+              (entry) => {
+                const repoMode = stringValue(entry.mode || 'review');
+                return h(
+                  'li',
+                  null,
+                  h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
+                  h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
+                );
+              },
+              'package-status-repositories-empty',
+              'No repositories reported'
+            )
           ),
           h(
             'a',
