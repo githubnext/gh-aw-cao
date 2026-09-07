@@ -290,6 +290,20 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders the shared `<header>{title}{count badge}</header>` pattern used by
+ * the work-project board's column headers and grouped-card stack headers,
+ * which both pair a title node with a `renderCountBadge` describing how many
+ * work items the section contains.
+ * @param {Node} titleNode
+ * @param {number|string} count
+ * @param {string} ariaLabel
+ * @returns {HTMLElement}
+ */
+export function renderCountHeader(titleNode, count, ariaLabel) {
+  return h('header', null, titleNode, renderCountBadge(count, ariaLabel));
+}
+
+/**
  * Renders the shared `<details><summary>label</summary>...body</details>`
  * disclosure pattern used by evidence menus, raw-policy panels, and
  * value-report evidence sections to hide secondary content behind a toggle.

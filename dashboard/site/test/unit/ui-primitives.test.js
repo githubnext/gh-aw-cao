@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderCountHeader, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -43,6 +43,16 @@ describe('ui primitives', () => {
     expect(withDetail.querySelector('p')?.textContent).toBe('observed orchestrator runs');
     expect(withoutDetail.textContent).toBe('Measured AIC—');
     expect(withoutDetail.querySelector('p')).toBeNull();
+  });
+
+  it('renders shared count-header pairing a title node with a count badge', () => {
+    const rendered = renderCountHeader(h('h4', null, 'Todo'), 3, '3 work items');
+
+    expect(rendered.tagName).toBe('HEADER');
+    expect(rendered.querySelector('h4')?.textContent).toBe('Todo');
+    const badge = rendered.querySelector('.count-badge');
+    expect(badge?.textContent).toBe('3');
+    expect(badge?.getAttribute('aria-label')).toBe('3 work items');
   });
 
   it('renders the shared dt/dd row primitive used across metadata and stat lists', () => {
