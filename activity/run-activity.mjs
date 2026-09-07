@@ -15,8 +15,13 @@ export async function runActivity(actions = {}) {
   const indexerModulePath = process.env.ACTIVITY_INDEXER;
   const dashboardReportRoot = process.env.DASHBOARD_REPORT_ROOT;
   const dashboardCollectionEnabled = process.env.DASHBOARD_COLLECTION === "true";
-  if (!logsModulePath || !telemetryModulePath || !indexerModulePath) {
-    throw new Error("ACTIVITY_LOGS, GITHUB_TELEMETRY, and ACTIVITY_INDEXER are required");
+  const missing = [
+    ["ACTIVITY_LOGS", logsModulePath],
+    ["GITHUB_TELEMETRY", telemetryModulePath],
+    ["ACTIVITY_INDEXER", indexerModulePath],
+  ].filter(([, value]) => !value).map(([name]) => name);
+  if (missing.length > 0) {
+    throw new Error(`${missing.join(", ")} ${missing.length > 1 ? "are" : "is"} required`);
   }
   if (dashboardCollectionEnabled && !dashboardReportRoot) {
     throw new Error("DASHBOARD_REPORT_ROOT is required when DASHBOARD_COLLECTION is true");
