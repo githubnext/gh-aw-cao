@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import { summarizeAccessibilityTree, summarizeDomTree } from "./dashboard-tree-analysis.mjs";
 
 const maximumDomNodes = 6_000;
@@ -165,7 +166,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const screenshotPath = testInfo.outputPath("mobile-dashboard.png");
   await writeFile(analysisPath, `${JSON.stringify(analysis, null, 2)}\n`);
   await writeFile(accessibilityPath, accessibilitySnapshot);
-  await page.screenshot({ path: screenshotPath, fullPage: true });
+  await captureMobileDashboardScreenshot(page, testInfo, screenshotPath);
   await testInfo.attach("mobile-dashboard-analysis", {
     path: analysisPath,
     contentType: "application/json",
@@ -173,10 +174,6 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   await testInfo.attach("mobile-dashboard-accessibility-tree", {
     path: accessibilityPath,
     contentType: "application/yaml",
-  });
-  await testInfo.attach("mobile-dashboard-screenshot", {
-    path: screenshotPath,
-    contentType: "image/png",
   });
   expect(analysis.dom.totalElements, `Dashboard rendered ${analysis.dom.totalElements} DOM elements`).toBeLessThanOrEqual(maximumDomNodes);
 });
