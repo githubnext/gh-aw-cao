@@ -5,13 +5,13 @@ import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransiti
 afterEach(() => {
   document.body.replaceChildren();
   Reflect.deleteProperty(window, 'IntersectionObserver');
+  vi.restoreAllMocks();
 });
 
 describe('lazy dashboard views', () => {
   it('renders immediately when IntersectionObserver is unavailable', async () => {
     const render = vi.fn(() => document.createElement('article'));
     const lazyView = renderLazyView({ label: 'Run trend', minHeight: 240, render });
-    lazyView.dataset.lazyView = '';
     document.body.append(lazyView);
 
     enableLazyViews(document.body);
@@ -40,11 +40,11 @@ describe('lazy dashboard views', () => {
     });
     const render = vi.fn(() => document.createElement('article'));
     const lazyView = renderLazyView({ label: 'Outcomes', minHeight: 320, render });
-    lazyView.dataset.lazyView = '';
     document.body.append(lazyView);
 
     enableLazyViews(document.body);
 
+    expect(lazyView.getAttribute('data-lazy-view')).toBe('');
     expect(lazyView.style.getPropertyValue('--dashboard-lazy-view-min-height')).toBe('320px');
     expect(lazyView.querySelector('.dashboard-lazy-view-skeleton')).not.toBeNull();
     expect(render).not.toHaveBeenCalled();
@@ -80,7 +80,6 @@ describe('lazy dashboard views', () => {
     trackViewTransition(document, { finished });
     const render = vi.fn(() => document.createElement('article'));
     const lazyView = renderLazyView({ label: 'Findings', render });
-    lazyView.dataset.lazyView = '';
     document.body.append(lazyView);
     enableLazyViews(document.body);
 
@@ -93,6 +92,33 @@ describe('lazy dashboard views', () => {
 
     finishTransition();
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+  });
+
+  it('ignores skipped view transition readiness rejections', async () => {
+    trackViewTransition(document, {
+      ready: Promise.reject(new Error('Transition was skipped')),
+      finished: Promise.resolve()
+    });
+
+    await Promise.resolve();
+  });
+
+  it('reports hydration failures without leaving the placeholder busy', async () => {
+    const error = new Error('renderer failed');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const render = vi.fn(() => {
+      throw error;
+    });
+    const lazyView = renderLazyView({ label: 'Findings', render });
+    document.body.append(lazyView);
+
+    enableLazyViews(document.body);
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+
+    expect(consoleError).toHaveBeenCalledWith(error);
+    expect(lazyView.getAttribute('aria-busy')).toBe('false');
+    expect(lazyView.getAttribute('aria-label')).toBe('Unable to load Findings');
+    expect(document.body.querySelector('.dashboard-lazy-view')).toBe(lazyView);
   });
 
   it('exposes a heading and hydrates when keyboard focus reaches the placeholder', async () => {
@@ -109,7 +135,6 @@ describe('lazy dashboard views', () => {
     const article = document.createElement('article');
     const render = vi.fn(() => article);
     const lazyView = renderLazyView({ label: 'Evidence', headingLevel: 'h4', render });
-    lazyView.dataset.lazyView = '';
     document.body.append(lazyView);
     enableLazyViews(document.body);
 

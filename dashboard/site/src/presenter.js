@@ -922,7 +922,6 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     rendered.classList.add('custom-view');
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
-    if (rendered.classList.contains('dashboard-lazy-view')) rendered.setAttribute('data-lazy-view', '');
     if (disclosure === 'essential') {
       return rendered;
     }

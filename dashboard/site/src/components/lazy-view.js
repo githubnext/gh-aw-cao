@@ -11,11 +11,22 @@ const activeTransitions = new WeakMap();
  */
 export function trackViewTransition(document, transition) {
   if (!transition || typeof transition !== 'object' || !('finished' in transition)) return;
-  const finished = Promise.resolve(transition.finished).catch(() => {});
+  const transitionRecord = /** @type {{ finished?: unknown, ready?: unknown, updateCallbackDone?: unknown }} */ (transition);
+  ignorePromiseRejection(transitionRecord.ready);
+  ignorePromiseRejection(transitionRecord.updateCallbackDone);
+  const finished = Promise.resolve(transitionRecord.finished).catch(() => {});
   activeTransitions.set(document, finished);
-  void finished.finally(() => {
+  void finished.then(() => {
     if (activeTransitions.get(document) === finished) activeTransitions.delete(document);
   });
+}
+
+/**
+ * @param {unknown} value
+ */
+function ignorePromiseRejection(value) {
+  if (!value || (typeof value !== 'object' && typeof value !== 'function')) return;
+  void Promise.resolve(value).catch(() => {});
 }
 
 /**
@@ -31,6 +42,7 @@ export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, re
       tabIndex: 0,
       'aria-busy': 'true',
       'aria-label': `Loading ${label}`,
+      dataset: { lazyView: '' },
       style: `--dashboard-lazy-view-min-height: ${Math.max(1, minHeight)}px`
     },
     h(headingLevel, { className: 'sr-only' }, label),
@@ -104,49 +116,66 @@ function hydrateLazyView(element) {
   const existing = hydrationPromises.get(element);
   if (existing) return existing;
 
-  const replace = async () => {
-    if (!element.parentNode) return;
-    const render = renderers.get(element);
-    if (!render) return;
-    const rendered = await render();
-    if (!element.parentNode) return;
-    const restoreFocus = element.ownerDocument.activeElement === element;
-    element.replaceWith(rendered);
-    if (restoreFocus) {
-      rendered.tabIndex = -1;
-      rendered.focus();
-    }
-  };
+  const render = renderers.get(element);
+  if (!render || !element.parentNode) return Promise.resolve();
+  const handleHydrationError = (/** @type {unknown} */ error) => reportHydrationError(element, error);
+
   const transition = activeTransitions.get(element.ownerDocument);
   if (!transition) {
-    const render = renderers.get(element);
-    if (!render || !element.parentNode) return Promise.resolve();
-    const rendered = render();
-    if (rendered instanceof HTMLElement) {
-      const restoreFocus = element.ownerDocument.activeElement === element;
-      element.replaceWith(rendered);
-      if (restoreFocus) {
-        rendered.tabIndex = -1;
-        rendered.focus();
+    try {
+      const rendered = render();
+      if (rendered instanceof HTMLElement) {
+        replaceLazyView(element, rendered);
+        const hydration = Promise.resolve();
+        hydrationPromises.set(element, hydration);
+        return hydration;
       }
+      const hydration = Promise.resolve(rendered)
+        .then((resolved) => replaceLazyView(element, resolved))
+        .catch(handleHydrationError);
+      hydrationPromises.set(element, hydration);
+      return hydration;
+    } catch (error) {
+      reportHydrationError(element, error);
       const hydration = Promise.resolve();
       hydrationPromises.set(element, hydration);
       return hydration;
     }
-    const hydration = Promise.resolve(rendered).then((resolved) => {
-      if (!element.parentNode) return;
-      const restoreFocus = element.ownerDocument.activeElement === element;
-      element.replaceWith(resolved);
-      if (restoreFocus) {
-        resolved.tabIndex = -1;
-        resolved.focus();
-      }
-    });
-    hydrationPromises.set(element, hydration);
-    return hydration;
   }
 
-  const hydration = transition.then(replace);
+  const hydration = transition
+    .then(async () => {
+      if (!element.parentNode) return;
+      replaceLazyView(element, await render());
+    })
+    .catch(handleHydrationError);
+
   hydrationPromises.set(element, hydration);
   return hydration;
+}
+
+/**
+ * @param {HTMLElement} element
+ * @param {HTMLElement} rendered
+ */
+function replaceLazyView(element, rendered) {
+  if (!element.parentNode) return;
+  const restoreFocus = element.ownerDocument.activeElement === element;
+  element.replaceWith(rendered);
+  if (restoreFocus) {
+    rendered.tabIndex = -1;
+    rendered.focus();
+  }
+}
+
+/**
+ * @param {HTMLElement} element
+ * @param {unknown} error
+ */
+function reportHydrationError(element, error) {
+  console.error(error);
+  if (!element.parentNode) return;
+  element.setAttribute('aria-busy', 'false');
+  const label = element.getAttribute('aria-label')?.replace(/^Loading /, '') || 'view';
+  element.setAttribute('aria-label', `Unable to load ${label}`);
 }
