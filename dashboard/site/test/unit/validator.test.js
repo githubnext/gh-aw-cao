@@ -894,6 +894,28 @@ dashboard:
     }
   });
 
+  it('defines work-project-view composition through canonical body values', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const pages = new Map(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]));
+
+    expect(pages.get('work')?.views[0]).toMatchObject({
+      mark: 'element',
+      element: 'work-project-view',
+      config: { body: 'board' }
+    });
+    expect(pages.get('work-tasks')?.views[0]).toMatchObject({
+      mark: 'element',
+      element: 'work-project-view',
+      config: { body: 'tasks' }
+    });
+    expect(pages.get('work-roadmap')?.views[0]).toMatchObject({
+      mark: 'element',
+      element: 'work-project-view',
+      config: { body: 'roadmap' }
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('defines experiments composition through a reusable experiments-evaluation element', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');

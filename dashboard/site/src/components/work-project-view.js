@@ -8,6 +8,8 @@ import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
 import { workViewComposition } from './work-view-composition.js';
+import { renderWorkViewNavigation } from './work-view-navigation.js';
+import { workRoutePageConfigForBody, workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
@@ -15,12 +17,6 @@ const BOARD_COLUMNS = [
   { title: 'In progress', states: ['in-progress'], tone: 'in-progress' },
   { title: 'Needs review', states: ['needs-review'], tone: 'needs-review' },
   { title: 'Done', states: ['done'], tone: 'done' }
-];
-
-const WORK_LAYOUT_ROUTES = [
-  { key: 'board', title: 'Board', icon: 'project-roadmap', href: '#page-work' },
-  { key: 'tasks', title: 'Table', icon: 'table', href: '#page-work-tasks' },
-  { key: 'roadmap', title: 'Roadmap', icon: 'calendar', href: '#page-work-roadmap' }
 ];
 
 /** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
@@ -33,7 +29,7 @@ const WORK_LAYOUT_ROUTES = [
 export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const sections = workViewComposition(context.elementConfig);
-  const activeSection = sections[0]?.key ?? 'board';
+  const activeSection = workRoutePageConfigForBody(context.elementConfig?.body).key;
   const viewBody = h('div', { className: 'work-project-body' });
   let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
@@ -72,19 +68,7 @@ export function renderWorkProjectView(context) {
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
-    h(
-      'nav',
-      { className: 'work-project-tabs', 'aria-label': 'Work views' },
-      ...WORK_LAYOUT_ROUTES.map((route) => h(
-        'a',
-        {
-          href: route.href,
-          'aria-current': route.key === activeSection ? 'page' : undefined
-        },
-        renderIconSpan('work-project-tab-icon', route.icon, { ariaHidden: true }),
-        route.title
-      ))
-    ),
+    renderWorkViewNavigation(workRoutePageConfigs(), activeSection),
     filterBar.element,
     viewBody
   );
