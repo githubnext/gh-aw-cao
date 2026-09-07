@@ -3044,8 +3044,17 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
+  assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
+  assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
+  assert.match(workflow, /Test mobile dashboard with restricted memory and network[\s\S]*?MOBILE_MEMORY_MB: 256[\s\S]*?MOBILE_NETWORK_LATENCY_MS: 150/);
   assert.match(workflow, /Upload mobile analysis evidence[\s\S]*?if: always\(\)[\s\S]*?path: test-results\//);
-  assert.match(readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8"), /preserveOutput: "always"/);
+  assert.match(workflow, /github\.event_name == 'pull_request'[\s\S]*?Comment with mobile analysis[\s\S]*?mobile-dashboard-analysis/);
+  const playwrightConfig = readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8");
+  assert.match(playwrightConfig, /preserveOutput: "always"/);
+  assert.match(playwrightConfig, /--max-old-space-size=\$\{memoryMb\}/);
+  const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
+  assert.match(mobileTest, /Network\.emulateNetworkConditions/);
+  assert.match(mobileTest, /mobile-dashboard\.png/);
   assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });

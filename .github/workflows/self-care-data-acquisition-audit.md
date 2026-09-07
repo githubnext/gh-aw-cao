@@ -116,7 +116,8 @@ Re-audit the target repository and update `specs/data-acquisition-audit.md` only
 - Preserve the document's scope, inventory, duplicate-work analysis, prioritized bottlenecks, cache-safety constraints, and staged recommendations.
 - Correct stale paths, claims, counts, priorities, or omissions using current repository evidence.
 - Set the audit date to the current UTC date when making a material update.
-- Keep the report concise and evidence-based. Do not speculate about runtime request counts when source code cannot establish them.
+- Keep the report compact and evidence-based: prefer short tables and one-sentence findings, remove repeated explanations, and keep detailed evidence in citations rather than reproducing source text. Do not speculate about runtime request counts when source code cannot establish them.
+- Include a `## API Request Relationships` section in the specification. Under that heading, generate one concise Mermaid `flowchart LR` diagram that shows each material GitHub API or `gh aw logs` request family, the workflow or utility that issues it, and the cache, snapshot, artifact, or report it feeds. Connect duplicated or overlapping acquisition paths explicitly; label edges with the request or reuse relationship, and omit non-API browser traffic unless it is needed to explain a relationship. Keep the diagram synchronized with the inventory and bottleneck sections.
 - Do not change runtime code, workflow files, generated locks, policy, documentation outside this specification, or credentials.
 - Never print or copy secret values while investigating.
 
