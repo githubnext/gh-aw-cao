@@ -894,6 +894,30 @@ dashboard:
     }
   });
 
+  it('defines work view composition through declarative sections on the reusable work-project-view element', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const workPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'work');
+    const workTasksPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'work-tasks');
+    const workRoadmapPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'work-roadmap');
+
+    expect(workPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'work-project-board')).toMatchObject({
+      mark: 'element',
+      element: 'work-project-view',
+      config: { sections: ['board'] }
+    });
+    expect(workTasksPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'work-project-tasks')).toMatchObject({
+      mark: 'element',
+      element: 'work-project-view',
+      config: { sections: ['tasks'] }
+    });
+    expect(workRoadmapPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'work-project-roadmap')).toMatchObject({
+      mark: 'element',
+      element: 'work-project-view',
+      config: { sections: ['roadmap'] }
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('defines experiments composition through a reusable experiments-evaluation element', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');

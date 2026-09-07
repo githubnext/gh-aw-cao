@@ -7229,7 +7229,7 @@
             "id": "work-project-board",
             "locked": true,
             "title": "Board",
-            "description": "Delegated work grouped by its current lifecycle state.",
+            "description": "Delegated work grouped by its current lifecycle state, with the work view navigation composed declaratively.",
             "data": {
               "sources": [
                 "work-items"
@@ -7238,7 +7238,9 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "board"
+              "sections": [
+                "board"
+              ]
             },
             "layout": "full"
           }
@@ -7268,7 +7270,9 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "tasks"
+              "sections": [
+                "tasks"
+              ]
             },
             "layout": "full"
           }
@@ -7298,7 +7302,9 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "roadmap"
+              "sections": [
+                "roadmap"
+              ]
             },
             "layout": "full"
           }

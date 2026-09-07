@@ -4,6 +4,7 @@ import { renderWorkProjectView } from '../../src/components/work-project-view.js
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
+import { defaultWorkViewComposition } from '../../src/components/work-view-composition-config.js';
 
 const item = {
   name: 'Dependabot release train',
@@ -35,6 +36,14 @@ const item = {
 };
 
 describe('work project view primitives', () => {
+  it('defines reusable work view composition metadata independently of the work page', () => {
+    expect(defaultWorkViewComposition()).toEqual([
+      { key: 'board', className: 'work-board', title: 'Board', landmarkLabel: 'Board', icon: 'project-roadmap', href: '#page-work' },
+      { key: 'tasks', className: 'work-tasks', title: 'Table', landmarkLabel: 'Tasks', icon: 'table', href: '#page-work-tasks' },
+      { key: 'roadmap', className: 'work-roadmap', title: 'Roadmap', landmarkLabel: 'Roadmap', icon: 'calendar', href: '#page-work-roadmap' }
+    ]);
+  });
+
   it('renders reusable work cards independently of the work page', () => {
     const rendered = renderWorkItemCard(item);
     expect(rendered.className).toBe('work-card');

@@ -8,19 +8,14 @@ import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
 import { workViewComposition } from './work-view-composition.js';
+import { defaultWorkViewComposition } from './work-view-composition-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
-const BOARD_COLUMNS = [
+export const BOARD_COLUMNS = [
   { title: 'Todo', states: ['todo'], tone: 'todo' },
   { title: 'In progress', states: ['in-progress'], tone: 'in-progress' },
   { title: 'Needs review', states: ['needs-review'], tone: 'needs-review' },
   { title: 'Done', states: ['done'], tone: 'done' }
-];
-
-const WORK_LAYOUT_ROUTES = [
-  { key: 'board', title: 'Board', icon: 'project-roadmap', href: '#page-work' },
-  { key: 'tasks', title: 'Table', icon: 'table', href: '#page-work-tasks' },
-  { key: 'roadmap', title: 'Roadmap', icon: 'calendar', href: '#page-work-roadmap' }
 ];
 
 /** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
@@ -75,7 +70,7 @@ export function renderWorkProjectView(context) {
     h(
       'nav',
       { className: 'work-project-tabs', 'aria-label': 'Work views' },
-      ...WORK_LAYOUT_ROUTES.map((route) => h(
+      ...defaultWorkViewComposition().map((route) => h(
         'a',
         {
           href: route.href,
