@@ -9,6 +9,8 @@ function importModule(modulePath) {
   return import(pathToFileURL(path.resolve(modulePath)).href);
 }
 
+const COLLECT_GH_AW_LOGS_OPERATION = "collect-gh-aw-logs";
+
 export async function runActivity(actions = {}) {
   const logsModulePath = process.env.ACTIVITY_LOGS;
   const telemetryModulePath = process.env.GITHUB_TELEMETRY;
@@ -35,15 +37,19 @@ export async function runActivity(actions = {}) {
 
   const collectionOutcome = await logs.main(actions);
 
+  // Preparing telemetry history is required for later recording; let a
+  // failure here abort the run, matching the original unprotected step.
   await telemetry.main(actions, [
     "prepare",
     path.join(process.env.RUNNER_TEMP, "cao-activity", "cao-gh.jsonl"),
   ]);
 
+  // Recording telemetry is best-effort and must not fail the run, matching
+  // the original step's continue-on-error behavior.
   try {
-    await telemetry.main(actions, ["after", "collect-gh-aw-logs", collectionOutcome]);
+    await telemetry.main(actions, ["after", COLLECT_GH_AW_LOGS_OPERATION, collectionOutcome]);
   } catch (error) {
-    log.warning`Recording GitHub API telemetry for collect-gh-aw-logs failed: ${error instanceof Error ? error.message : error}`;
+    log.warning`Recording GitHub API telemetry for ${COLLECT_GH_AW_LOGS_OPERATION} failed: ${error instanceof Error ? error.message : error}`;
   }
 
   if (dashboardCollectionEnabled) {
