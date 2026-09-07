@@ -44,6 +44,25 @@ describe('UI elements', () => {
     expect(notifications[0]?.['evidence-link']?.href).toBe('https://ghe.example/github/mona-tools');
   });
 
+  it.each([
+    ['low', 'low', 3],
+    ['medium', 'medium', 2],
+    ['high', 'high', 1]
+  ])('preserves %s severity in agent smell notifications', (smellSeverity, consequenceTier, priority) => {
+    const notifications = agentSmellNotifications([{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.md', 'workflow-name': 'Upgrade agent'
+    }], [], [], [{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.lock.yml',
+      'smell-id': 'partially-reducible', 'smell-name': 'Partially reducible',
+      'smell-severity': smellSeverity
+    }]);
+
+    expect(notifications[0]?.['consequence-tier']).toBe(consequenceTier);
+    expect(notifications[0]?.priority).toBe(priority);
+  });
+
   it('renders structured smell observations on matching agents', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',

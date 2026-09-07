@@ -187,6 +187,7 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
     if (reasons.length === 0) return [];
     const observedAt = Date.parse(agent.observedAt);
     const repositoryHref = agent.repositoryLink?.externalHref ?? agent.repositoryLink?.href;
+    const severity = smellSeverity(agent.workflowKeys, smellObservations);
     return [{
       'attention-signal-id': `agent-smell:${agent.id}`,
       'signal-type': 'agent-smell',
@@ -195,8 +196,8 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
       reason: reasons.join(', '),
       'expected-actor': 'repository-owner',
       'age-seconds': Number.isFinite(observedAt) ? Math.max(0, Math.floor((Date.now() - observedAt) / 1000)) : 0,
-      'consequence-tier': 'high',
-      priority: 1,
+      'consequence-tier': severity,
+      priority: severity === 'high' ? 1 : severity === 'medium' ? 2 : 3,
       icon: 'copilot',
       ...(repositoryHref ? { 'evidence-link': {
         relation: 'evidence',
@@ -406,6 +407,18 @@ function smellReasons(agentWorkflowKeys, securityObservations, smellObservations
       return summary ? `${name}: ${summary}` : name;
     });
   return [...new Set([...structured, ...(smellObservations.length > 0 ? [] : threatReasons(agentWorkflowKeys, securityObservations))])];
+}
+
+/** @param {string[]} agentWorkflowKeys @param {Record<string, unknown>[]} observations */
+function smellSeverity(agentWorkflowKeys, observations) {
+  const keys = new Set(agentWorkflowKeys.map(threatWorkflowKey));
+  const severities = observations
+    .filter((row) => keys.has(threatWorkflowKey(workflowKey(row))))
+    .map((row) => text(row['smell-severity']));
+  if (severities.includes('high')) return 'high';
+  if (severities.includes('medium')) return 'medium';
+  if (severities.includes('low')) return 'low';
+  return 'high';
 }
 
 /** @param {string} key */
