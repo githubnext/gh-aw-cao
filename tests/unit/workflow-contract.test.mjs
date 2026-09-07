@@ -2990,12 +2990,12 @@ test("Documentation Pages deploys docs with the packaged dashboard builder", () 
   assert.match(astroConfig, /label: "Control plane status", link: "\/cao\/"/);
 });
 
-test("mobile dashboard integration restores default-branch dashboard data", () => {
+test("mobile dashboard integration downloads deployed dashboard data", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8");
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
-  assert.match(workflow, /name: Restore latest dashboard from main[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard[\s\S]*?restore-keys: \|[\s\S]*?cao-dashboard-[\s\S]*?fail-on-cache-miss: true/);
-  assert.match(workflow, /DASHBOARD_DATA_ROOT: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard/);
+  assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
+  assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
 
