@@ -1509,7 +1509,7 @@ function securityFindingRows(securityObservations) {
 function agentSmellRows(securityRuns = []) {
   return securityRuns.flatMap((run) => (run.security?.agenticAssessments || []).map((assessment) => ({
     ...repositoryParts(run.repository),
-    workflow: run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "",
+    workflow: run.workflowPath?.replace(/\.lock\.ya?ml$/i, ".md") || run.workflowName || "",
     run: String(run.runId),
     "smell-observation-id": `agentic-assessment:${run.repository}:${run.runId}:${assessment.kind}`,
     "smell-id": assessment.kind.replaceAll("_", "-"),
