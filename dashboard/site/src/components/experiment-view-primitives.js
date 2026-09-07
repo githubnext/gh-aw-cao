@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { isSafeHttpsUrl } from './ui-primitives.js';
+import { formatShortLocalDate, isSafeHttpsUrl } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -74,7 +74,7 @@ export function sourceMetricLabel(source, identifier) {
  */
 export function formatExperimentDate(value) {
   const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : UNKNOWN;
+  return formatShortLocalDate(timestamp, UNKNOWN);
 }
 
 /**

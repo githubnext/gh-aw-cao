@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { formatClockDuration, formatNumber } from '../view-formatters.js';
-import { renderDlRow, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
+import { formatShortLocalDate, renderDlRow, renderIconSpan, renderSectionHeading } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -101,7 +101,7 @@ function normalizeAgent(row) {
     state: text(row['agent-state']) || 'unknown',
     totalRuntimeSeconds,
     runCount: Number(row['run-count']) || 0,
-    lastObserved: observed ? new Date(observed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+    lastObserved: observed ? formatShortLocalDate(observed, '', 'en-US') : '',
     longRunning: Boolean(row['long-running']) || totalRuntimeSeconds >= LONG_RUNNING_SECONDS,
     stale: Boolean(row.stale) || !Number.isFinite(Date.parse(observed)) || ageHours >= STALE_HOURS
   };

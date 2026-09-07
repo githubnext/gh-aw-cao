@@ -199,6 +199,23 @@ export function formatMediumUtcDate(input) {
 }
 
 /**
+ * Formats a `Date`, millisecond timestamp, or date string as a short local
+ * date (e.g. `Aug 30, 2026`). Callers pass a `fallback` string to render
+ * when the input does not parse to a finite timestamp, and may pass an
+ * explicit `locale` (defaults to the runtime's locale).
+ * @param {Date | number | string} input
+ * @param {string} [fallback]
+ * @param {string} [locale]
+ * @returns {string}
+ */
+export function formatShortLocalDate(input, fallback = '', locale = undefined) {
+  const date = input instanceof Date ? input : new Date(input);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
+    : fallback;
+}
+
+/**
  * @param {unknown} value
  * @returns {string}
  */
