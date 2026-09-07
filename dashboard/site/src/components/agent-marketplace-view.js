@@ -244,7 +244,6 @@ export function smellObservationNotifications(rows, options) {
     };
   });
 }
-
 function scentLines() {
   return h('svg', {
     className: 'agent-scent-lines', viewBox: '0 0 16 16', 'aria-hidden': 'true', focusable: 'false'
