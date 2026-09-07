@@ -534,7 +534,7 @@ if [ "$1" = "api" ]; then
     printf 'main\\n'
     exit
   fi
-  if [ "$2" = "repos/acme/control/actions/artifacts?name=central-agentic-ops-dashboard-data&per_page=100" ]; then
+  if [ "$2" = "repos/acme/control/actions/workflows/dashboard-build.yml/runs?branch=main&status=success&per_page=1" ]; then
     printf '42\\n'
     exit
   fi
