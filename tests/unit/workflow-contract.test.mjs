@@ -3044,6 +3044,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
+  assert.match(workflow, /Upload mobile analysis evidence[\s\S]*?if: always\(\)[\s\S]*?path: test-results\//);
+  assert.match(readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8"), /preserveOutput: "always"/);
   assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
