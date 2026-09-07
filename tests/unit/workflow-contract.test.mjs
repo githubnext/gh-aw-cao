@@ -2258,6 +2258,8 @@ test("SelfCare Pages health worker audits every deployed view on three profiles"
   const views = dashboard.dashboard.pages[0].views;
 
   assert.match(source, /^name: "SelfCare \/ Pages Health"$/m);
+  assert.match(source, /^\s+workflow_dispatch:$/m);
+  assert.doesNotMatch(source, /^\s+schedule:/m);
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: pages-health/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\//);
