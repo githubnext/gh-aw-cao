@@ -11,7 +11,7 @@ import { renderPackageRouteVariant, renderPackageRouteView } from './package-rou
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan } from './ui-primitives.js';
-import { slugify } from './count-formatters.js';
+import { slugify, clampPercent } from './count-formatters.js';
 import { renderDefinitionList, renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
 import { renderWorkflowRouteView } from './workflow-route-view.js';
@@ -200,7 +200,7 @@ function renderPackageStatusGridElement(context) {
         const rolloutLiveRepositories = Number(row['rollout-live-repositories']);
         const rolloutRepositories = Number(row['rollout-repositories']);
         const coverageKnown = Number.isFinite(liveCoveragePercent) && Number.isFinite(rolloutLiveRepositories) && rolloutRepositories > 0;
-        const coveragePercent = coverageKnown ? Math.min(100, Math.max(0, liveCoveragePercent)) : null;
+        const coveragePercent = coverageKnown ? clampPercent(liveCoveragePercent) : null;
         const reviewRepositories = coverageKnown ? rolloutRepositories - rolloutLiveRepositories : null;
         const dispatchCount = row['dispatch-count'] == null ? null : Number(row['dispatch-count']);
         const runTelemetryUnavailable = context.sources.runs?.metadata?.availability === 'unavailable' || !context.sources.runs;

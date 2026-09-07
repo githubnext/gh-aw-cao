@@ -82,6 +82,17 @@ export function formatCoveragePercent(coverage, unknown = '—') {
 }
 
 /**
+ * Clamps a percentage value to the closed `[0, 100]` range, guarding chart
+ * and progress-bar rendering against out-of-range inputs (e.g. rounding
+ * artifacts or partially available telemetry).
+ * @param {number} value
+ * @returns {number}
+ */
+export function clampPercent(value) {
+  return Math.max(0, Math.min(100, value));
+}
+
+/**
  * Converts a value into a lowercase, hyphen-delimited slug suitable for use
  * as (part of) an HTML `id` attribute, collapsing runs of non-alphanumeric
  * characters and trimming leading/trailing hyphens.
