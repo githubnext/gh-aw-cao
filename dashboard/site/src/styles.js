@@ -1904,7 +1904,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-task-row > * { padding: 0; border: 0; }
   .work-task-main { grid-column: 1 / -1; }
   .work-task-title { gap: 2px; }
-  .work-task-type, .work-task-row > time, .work-task-end, .work-task-owner { display: none; }
+  .work-task-type, .work-task-owner { display: none; }
+  .work-mobile-hide-dates .work-task-row > time, .work-mobile-hide-dates .work-task-end { display: none; }
   .work-mobile-owner { display: grid; }
   .work-task-status-cell, .work-task-labels, .work-mobile-owner { min-width: 0; align-content: start; gap: 3px; overflow: hidden; font-size: .6875rem; }
   .work-task-status-cell::before, .work-task-labels::before, .work-mobile-owner::before { color: var(--muted); font-size: .625rem; font-weight: 600; }
