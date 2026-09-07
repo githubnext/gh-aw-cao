@@ -276,7 +276,7 @@ function renderTasks(items, section) {
 function compareWorkItems(left, right, field) {
   if (field === 'started') return left.startTime - right.startTime;
   if (field === 'state') return left.state.localeCompare(right.state);
-  if (field === 'owner') return left.repository.localeCompare(right.repository);
+  if (field === 'owner') return left.owner.localeCompare(right.owner);
   if (field === 'package') return left.packageName.localeCompare(right.packageName);
   return left.name.localeCompare(right.name);
 }

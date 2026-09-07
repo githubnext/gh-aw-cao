@@ -78,8 +78,8 @@ describe('work project view primitives', () => {
 
   it('renders a compact custom Tasks table with configurable sorting', () => {
     const rows = [
-      { 'work-item-id': 'alpha', name: 'Alpha task', owner: 'Zed', scope: 'github/zeta', 'lifecycle-state': 'waiting', 'started-at': '2026-08-29T09:00:00Z' },
-      { 'work-item-id': 'beta', name: 'Beta task', owner: 'Ada', scope: 'github/alpha', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' }
+      { 'work-item-id': 'alpha', name: 'Alpha task', owner: 'Zed', scope: 'github/alpha', 'lifecycle-state': 'waiting', 'started-at': '2026-08-29T09:00:00Z' },
+      { 'work-item-id': 'beta', name: 'Beta task', owner: 'Ada', scope: 'github/zeta', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' }
     ];
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work-tasks',
