@@ -30,6 +30,10 @@ test("long code remains in a keyboard-focusable local scroll region", async ({ p
   await page.goto("configuration/");
 
   const code = page.locator(".sl-markdown-content pre").first();
-  expect(await code.evaluate((element) => element.scrollWidth)).toBeGreaterThan(await code.evaluate((element) => element.clientWidth));
+  const dimensions = await code.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
   await expect(code).toHaveAttribute("tabindex", "0");
 });
