@@ -12,7 +12,7 @@ Activity entrypoints export `main(actions, args)` and receive the same `core`, `
 npm run activity:local -- activity/.env
 ```
 
-The local runner uses `@github/local-action` to provide Actions Toolkit shims. It can also run directly with the installed toolkit packages:
+The local-action wrapper uses `@github/local-action` to provide Actions Toolkit shims. The local runner can also be invoked directly with the installed toolkit packages:
 
 ```console
 npm run activity:local:node -- activity/index.mjs
