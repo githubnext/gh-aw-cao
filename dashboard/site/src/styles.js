@@ -1277,7 +1277,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .dashboard-next-insights-page .custom-view-grid { display: block; }
 .insights-overview { display: grid; gap: 28px; }
 .insights-value-lead { min-width: 0; display: grid; gap: 14px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
-.insights-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.insights-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; min-width: 0; }
 .insights-section-heading h2, .insights-plot-panel h2 { margin: 2px 0 4px; font-size: .9375rem; }
 .insights-section-heading p, .insights-plot-panel header p { max-width: 680px; margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.45; }
 .insights-eyebrow { color: var(--accent); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
@@ -1764,7 +1764,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mode-filter-control input { width: auto; }
   .time-window-control > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
-  main.dashboard-prototype { overflow: visible; padding: 0 14px 28px; }
+  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 0 14px 28px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }

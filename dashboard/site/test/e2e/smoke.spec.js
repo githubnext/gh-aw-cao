@@ -730,7 +730,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     await page.evaluate((nextPage) => { window.location.hash = `#page-${nextPage}`; }, pageName);
     const activePage = page.locator(`[data-page-id="${pageName}"]`);
     await expect(activePage).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     for (const chart of await activePage.locator('[data-chart-widget]').all()) {
       const box = await chart.boundingBox();
       expect(box?.width).toBeGreaterThan(0);
