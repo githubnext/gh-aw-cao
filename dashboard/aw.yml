@@ -166,3 +166,21 @@ resources:
     destination: .github/aw/dashboard/site/src/components/workflow-route-view.js
   - source: site/src/components/workflow-runtime.js
     destination: .github/aw/dashboard/site/src/components/workflow-runtime.js
+  - source: site/src/components/work-item-card.js
+    destination: .github/aw/dashboard/site/src/components/work-item-card.js
+  - source: site/src/components/work-item-row.js
+    destination: .github/aw/dashboard/site/src/components/work-item-row.js
+  - source: site/src/components/work-item-timeline-lane.js
+    destination: .github/aw/dashboard/site/src/components/work-item-timeline-lane.js
+  - source: site/src/components/work-project-sections.js
+    destination: .github/aw/dashboard/site/src/components/work-project-sections.js
+  - source: site/src/components/work-project-shell.js
+    destination: .github/aw/dashboard/site/src/components/work-project-shell.js
+  - source: site/src/components/work-project-view.js
+    destination: .github/aw/dashboard/site/src/components/work-project-view.js
+  - source: site/src/components/work-view-composition.js
+    destination: .github/aw/dashboard/site/src/components/work-view-composition.js
+  - source: site/src/components/work-view-primitives.js
+    destination: .github/aw/dashboard/site/src/components/work-view-primitives.js
+  - source: site/src/components/work-view-sections.js
+    destination: .github/aw/dashboard/site/src/components/work-view-sections.js

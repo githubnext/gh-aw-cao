@@ -3,12 +3,13 @@
  */
 
 /** @typedef {'renderBoard'|'renderTasks'|'renderRoadmap'} WorkViewRendererName */
+/** @typedef {'board'|'tasks'|'roadmap'} WorkViewSection */
 
-const WORK_VIEW_SECTION_RENDERERS = {
+const WORK_VIEW_SECTION_RENDERERS = /** @type {Record<WorkViewSection, WorkViewRendererName>} */ ({
   board: 'renderBoard',
   tasks: 'renderTasks',
   roadmap: 'renderRoadmap'
-};
+});
 
 /**
  * @param {string} section

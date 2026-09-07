@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
+import { normalizeWorkItem, renderWorkProjectBoard, renderWorkProjectRoadmap, renderWorkProjectTasks } from '../../src/components/work-project-sections.js';
+import { renderWorkProjectShell, workSectionId } from '../../src/components/work-project-shell.js';
 
 const metadata = {
   'source-id': 'signal-fixture',
@@ -156,6 +158,79 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-tasks')).not.toBeNull();
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
+  });
+
+  it('renders reusable work-project shell and section primitives for multiple compositions', () => {
+    const items = [
+      normalizeWorkItem({
+        'work-item-id': 'github/gh-aw:.github/workflows/dependabot.md',
+        'workflow-name': 'Dependabot release train',
+        scope: 'github/gh-aw',
+        owner: 'dependency-automation',
+        'lifecycle-state': 'active',
+        'started-at': '2026-08-30T09:00:00Z',
+        'ended-at': '2026-08-30T09:30:00Z'
+      }),
+      normalizeWorkItem({
+        'work-item-id': 'github/mona-tools:.github/workflows/review.md',
+        'workflow-name': 'Review security posture',
+        scope: 'github/mona-tools',
+        owner: 'security',
+        'lifecycle-state': 'review',
+        'started-at': '2026-08-30T10:00:00Z'
+      })
+    ];
+    const sections = [
+      { key: 'tasks', className: 'work-tasks', title: 'Tasks', landmarkLabel: 'Tasks' },
+      { key: 'roadmap', className: 'work-roadmap', title: 'Roadmap', landmarkLabel: 'Roadmap' }
+    ];
+    const rendered = renderWorkProjectShell({
+      pageId: 'work',
+      title: 'Work layouts',
+      description: 'GitHub Projects-style work planning view.',
+      sourceNames: ['work-items'],
+      sources: {},
+      contextDetails: [],
+      headingTag: 'h3'
+    }, sections, items.length, (section) => {
+      if (section.key === 'tasks') {
+        return renderWorkProjectTasks(items, {
+          ...section,
+          id: workSectionId('work', section.key)
+        });
+      }
+      return renderWorkProjectRoadmap(items, {
+        ...section,
+        id: workSectionId('work', section.key)
+      });
+    });
+
+    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('TasksRoadmap');
+    expect(rendered.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered.querySelector('.work-roadmap')).not.toBeNull();
+  });
+
+  it('renders reusable work board section independently', () => {
+    const items = [
+      normalizeWorkItem({
+        'work-item-id': 'github/gh-aw:.github/workflows/dependabot.md',
+        'workflow-name': 'Dependabot release train',
+        scope: 'github/gh-aw',
+        owner: 'dependency-automation',
+        'lifecycle-state': 'active',
+        'started-at': '2026-08-30T09:00:00Z',
+        'ended-at': '2026-08-30T09:30:00Z'
+      })
+    ];
+    const rendered = renderWorkProjectBoard(items, {
+      id: 'work-board',
+      className: 'work-board',
+      landmarkLabel: 'Board',
+      title: 'Board'
+    });
+
+    expect(rendered.querySelectorAll('.work-board-column')).toHaveLength(4);
+    expect(rendered.textContent).toContain('Dependabot release train');
   });
 
   it('renders anomaly readiness as a reusable note widget', () => {
