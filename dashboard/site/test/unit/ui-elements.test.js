@@ -44,6 +44,62 @@ describe('UI elements', () => {
     expect(notifications[0]?.['evidence-link']?.href).toBe('https://ghe.example/github/mona-tools');
   });
 
+  it.each([
+    ['low', 'low', 3],
+    ['medium', 'medium', 2],
+    ['high', 'high', 1]
+  ])('preserves %s severity in agent smell notifications', (smellSeverity, consequenceTier, priority) => {
+    const notifications = agentSmellNotifications([{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.md', 'workflow-name': 'Upgrade agent'
+    }], [], [], [{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.lock.yml',
+      'smell-id': 'partially-reducible', 'smell-name': 'Partially reducible',
+      'smell-severity': smellSeverity
+    }]);
+
+    expect(notifications[0]?.['consequence-tier']).toBe(consequenceTier);
+    expect(notifications[0]?.priority).toBe(priority);
+  });
+
+  it('renders structured smell observations on matching agents', () => {
+    const rendered = renderUiElement('agent-marketplace-view', {
+      pageId: 'agents',
+      title: 'Agents',
+      description: 'Marketplace-style agent catalog.',
+      sourceNames: ['workflows', 'agent-smells'],
+      sources: {
+        workflows: {
+          source: 'workflows',
+          rows: [{
+            organization: 'github', repository: 'mona-tools', package: 'standalone',
+            workflow: '.github/workflows/upgrade.md', 'workflow-name': 'Upgrade agent',
+            'workflow-role': 'standalone', 'workflow-active': 'true'
+          }],
+          metadata
+        },
+        'agent-smells': {
+          source: 'agent-smells',
+          rows: [{
+            organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.lock.yml',
+            'smell-id': 'overkill-for-agentic', 'smell-name': 'Agent by default',
+            'smell-category': 'design', 'smell-severity': 'medium',
+            'smell-summary': 'Deterministic automation would be simpler.'
+          }],
+          metadata
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.agent-badge-smell')?.getAttribute('title'))
+      .toContain('Agent by default: Deterministic automation would be simpler.');
+    expect(rendered?.querySelector('.agent-icon-smell')).toBeNull();
+    expect(rendered?.querySelector('[aria-label="Filter agents by status"]')?.textContent).toContain('Smells (1)');
+  });
+
   it('renders marketplace agent tiles with details, health badges, and sorting', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',
@@ -101,7 +157,7 @@ describe('UI elements', () => {
       statusFilter.value = 'all';
       statusFilter.dispatchEvent(new Event('change'));
     }
-    expect(rendered?.querySelector('[aria-label^="Health smells:"]')).toBeNull();
+    expect(rendered?.querySelector('[aria-label^="Agent smells:"]')).toBeNull();
     expect(rendered?.textContent).toContain('Runs release automation.');
     expect(rendered?.querySelector('[aria-label="View Zeta Agent"]')?.getAttribute('href')).toContain('#page-workflow-runtime?workflow=');
     const select = rendered?.querySelector('[aria-label="Sort agents"]');
@@ -579,7 +635,7 @@ describe('UI elements', () => {
       pageId: 'overview',
       title: 'Need attention',
       description: 'Unresolved conditions that require an authorized person to act or investigate.',
-      sourceNames: ['attention-signals', 'workflows', 'agent-assignments', 'security-observations', 'runs'],
+      sourceNames: ['attention-signals', 'workflows', 'agent-assignments', 'agent-smells', 'workflow-smells', 'security-findings', 'control-plane-smells', 'security-observations', 'runs'],
       sources: {
         'attention-signals': {
           source: 'attention-signals',
@@ -644,6 +700,53 @@ describe('UI elements', () => {
           }],
           metadata
         },
+        'agent-smells': {
+          source: 'agent-smells',
+          rows: [{
+            'smell-observation-id': 'agent:42:partially-reducible',
+            'smell-id': 'partially-reducible', 'smell-name': 'Partially reducible',
+            'smell-summary': 'Half of the turns could be deterministic.',
+            organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.md',
+            'observed-at': new Date(Date.now() - 60_000).toISOString()
+          }],
+          metadata
+        },
+        'workflow-smells': {
+          source: 'workflow-smells',
+          rows: [{
+            'smell-observation-id': 'workflow:upgrade:strict-disabled',
+            'smell-id': 'strict-disabled', 'smell-name': 'Strict mode disabled',
+            'smell-summary': 'Workflow validation is not fail-closed.',
+            organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.md',
+            'workflow-link': {
+              relation: 'workflow', href: 'https://github.com/github/mona-tools/actions/workflows/upgrade.yml', label: 'View workflow'
+            },
+            'observed-at': new Date(Date.now() - 120_000).toISOString()
+          }],
+          metadata
+        },
+        'security-findings': {
+          source: 'security-findings',
+          rows: [{
+            'smell-observation-id': 'security:42:prompt-injection',
+            'smell-id': 'threat-detection-prompt-injection', 'smell-name': 'Prompt injection detected',
+            'smell-summary': 'Threat detection reported unsafe behavior.',
+            organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.md',
+            'observed-at': new Date(Date.now() - 180_000).toISOString()
+          }],
+          metadata
+        },
+        'control-plane-smells': {
+          source: 'control-plane-smells',
+          rows: [{
+            'smell-observation-id': 'control:upgrade:inventory-incomplete',
+            'smell-id': 'inventory-incomplete', 'smell-name': 'Package inventory incomplete',
+            'smell-summary': 'Declared package workers are missing.',
+            organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.md',
+            'observed-at': new Date(Date.now() - 240_000).toISOString()
+          }],
+          metadata
+        },
         runs: {
           source: 'runs',
           rows: [
@@ -664,7 +767,7 @@ describe('UI elements', () => {
     expect(rendered?.textContent).not.toContain("Here's what changed while you were away");
     expect(rendered?.lastElementChild?.classList.contains('notifications-main')).toBe(true);
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
-    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(3);
+    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(6);
     expect(/** @type {HTMLInputElement | null} */ (rendered?.querySelector('.notifications-search input'))?.value).toBe('is:unread');
     expect(rendered?.querySelector('[aria-label="Sort notifications"]')).not.toBeNull();
     expect(rendered?.querySelector('[aria-label="Group notifications"]')).not.toBeNull();
@@ -673,8 +776,15 @@ describe('UI elements', () => {
     expect(rendered?.textContent).toContain('Upgrade agentic workflow dependencies');
     expect(rendered?.textContent).toContain('github/mona-tools');
     expect(rendered?.textContent).toContain('repository-owner2h 30m ago');
-    expect(rendered?.textContent).toContain('Agent health smell: Upgrade agent');
+    expect(rendered?.textContent).toContain('Agent smell: Upgrade agent');
+    expect(rendered?.textContent).toContain('Partially reducible');
+    expect(rendered?.textContent).toContain('Strict mode disabled');
+    const workflowSmell = [...(rendered?.querySelectorAll('.notification-item') ?? [])]
+      .find((item) => item.textContent?.includes('Strict mode disabled'));
+    expect(workflowSmell?.querySelector('[href^="#page-workflow-runtime"]')?.getAttribute('href'))
+      .toBe('#page-workflow-runtime?workflow=github%2Fmona-tools%3A.github%2Fworkflows%2Fupgrade.md');
     expect(rendered?.textContent).toContain('Prompt injection detected');
+    expect(rendered?.textContent).toContain('Package inventory incomplete');
     expect(rendered?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
     expect(rendered?.querySelector('.home-catchup-stories .home-origin-agents')).not.toBeNull();
     expect(rendered?.textContent).toContain('Agents');

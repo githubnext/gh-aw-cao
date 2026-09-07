@@ -78,13 +78,12 @@ function valueLabel(value) {
  */
 function renderEntry(name, value, path, segments, onChange, depth = 0) {
   if (isPlainObject(value)) {
-    return h('details', { className: 'configuration-setting-group', open: depth < 2 },
-      h('summary', null,
-        h('span', null, settingLabel(name)),
-        h('small', null, valueLabel(value))
-      ),
-      h('p', { className: 'configuration-setting-description' }, explanation(path, value)),
-      h('div', { className: 'configuration-setting-children' },
+    const initiallyOpen = depth < 2;
+    const children = h('div', { className: 'configuration-setting-children' });
+    let rendered = false;
+    const renderChildren = () => {
+      if (rendered) return;
+      children.replaceChildren(
         ...Object.entries(value).map(([childName, childValue]) => renderEntry(
           childName,
           childValue,
@@ -93,7 +92,24 @@ function renderEntry(name, value, path, segments, onChange, depth = 0) {
           onChange,
           depth + 1
         ))
-      )
+      );
+      rendered = true;
+    };
+    if (initiallyOpen) renderChildren();
+
+    return h('details', {
+      className: 'configuration-setting-group',
+      open: initiallyOpen,
+      onToggle: /** @param {Event} event */ (event) => {
+        if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) renderChildren();
+      }
+    },
+      h('summary', null,
+        h('span', null, settingLabel(name)),
+        h('small', null, valueLabel(value))
+      ),
+      h('p', { className: 'configuration-setting-description' }, explanation(path, value)),
+      children
     );
   }
 

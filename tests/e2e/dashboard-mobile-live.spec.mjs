@@ -2,10 +2,38 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import { summarizeAccessibilityTree, summarizeDomTree } from "./dashboard-tree-analysis.mjs";
 
 const maximumDomNodes = 6_000;
 let preview;
+
+function optionalNumber(name) {
+  const value = process.env[name];
+  if (value === undefined) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`${name} must be a positive number.`);
+  return parsed;
+}
+
+function formatDomAnalysis(dom) {
+  const formatDistribution = ({ mean, median, p95, maximum }) => `mean ${mean}, median ${median}, p95 ${p95}, max ${maximum}`;
+  const formatFrequencies = (values) => values.slice(0, 5).map(({ name, count }) => `${name} (${count})`).join(", ") || "none";
+  const formatStructures = dom.topStructures
+    .slice(0, 5)
+    .map(({ tag, id, descendantElements }) => `${tag}${id ? `#${id}` : ""} (${descendantElements} descendants)`)
+    .join(", ") || "none";
+
+  return [
+    "Mobile dashboard DOM analysis:",
+    `  Elements: ${dom.totalElements}`,
+    `  Depth: ${formatDistribution(dom.depth)}`,
+    `  Child elements: ${formatDistribution(dom.childElements)}`,
+    `  Tags: ${formatFrequencies(dom.byTag)}`,
+    `  Classes: ${formatFrequencies(dom.byClass)}`,
+    `  Largest structures: ${formatStructures}`,
+  ].join("\n");
+}
 
 test.beforeAll(async () => {
   const dataUrl = process.env.DASHBOARD_DATA_URL;
@@ -30,6 +58,29 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const pageErrors = [];
   let crashed = false;
   let sourcesResponse;
+  const memoryMb = optionalNumber("MOBILE_MEMORY_MB");
+  const network = {
+    downloadKbps: optionalNumber("MOBILE_NETWORK_DOWNLOAD_KBPS"),
+    uploadKbps: optionalNumber("MOBILE_NETWORK_UPLOAD_KBPS"),
+    latencyMs: optionalNumber("MOBILE_NETWORK_LATENCY_MS"),
+  };
+  const networkIsConstrained = Object.values(network).some((value) => value !== null);
+  const browserIsChromium = process.env.MOBILE_BROWSER === "chromium";
+  test.skip(
+    (memoryMb !== null || networkIsConstrained) && !browserIsChromium,
+    "Restricted memory and network throttling constraints require Chromium; running this profile on another browser would silently skip the constraint.",
+  );
+  if (networkIsConstrained) {
+    expect(Object.values(network), "All network constraint values are required").not.toContain(null);
+    const session = await page.context().newCDPSession(page);
+    await session.send("Network.enable");
+    await session.send("Network.emulateNetworkConditions", {
+      offline: false,
+      latency: network.latencyMs,
+      downloadThroughput: network.downloadKbps * 1024 / 8,
+      uploadThroughput: network.uploadKbps * 1024 / 8,
+    });
+  }
 
   page.on("crash", () => {
     crashed = true;
@@ -84,17 +135,43 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     return { nodes, structures };
   });
   const accessibilitySnapshot = await page.locator("body").ariaSnapshot();
+  const runtime = await page.evaluate(() => {
+    const navigation = performance.getEntriesByType("navigation")[0];
+    const memory = performance.memory;
+    return {
+      navigation: navigation ? {
+        domContentLoadedMs: Number(navigation.domContentLoadedEventEnd.toFixed(2)),
+        loadMs: Number(navigation.loadEventEnd.toFixed(2)),
+        transferSize: navigation.transferSize,
+        decodedBodySize: navigation.decodedBodySize,
+      } : null,
+      memory: memory ? {
+        jsHeapSizeLimit: memory.jsHeapSizeLimit,
+        totalJSHeapSize: memory.totalJSHeapSize,
+        usedJSHeapSize: memory.usedJSHeapSize,
+      } : null,
+    };
+  });
   const analysis = {
+    profile: process.env.MOBILE_PROFILE ?? "baseline",
     device: process.env.MOBILE_DEVICE,
     browser: process.env.MOBILE_BROWSER,
+    constraints: {
+      memoryMb,
+      network: networkIsConstrained ? network : null,
+    },
+    runtime,
     dom: summarizeDomTree(domTree.nodes, domTree.structures),
     accessibility: summarizeAccessibilityTree(accessibilitySnapshot),
   };
+  console.log(formatDomAnalysis(analysis.dom));
   await mkdir(testInfo.outputDir, { recursive: true });
   const analysisPath = testInfo.outputPath("mobile-dashboard-analysis.json");
   const accessibilityPath = testInfo.outputPath("mobile-dashboard-accessibility-tree.yml");
+  const screenshotPath = testInfo.outputPath("mobile-dashboard.png");
   await writeFile(analysisPath, `${JSON.stringify(analysis, null, 2)}\n`);
   await writeFile(accessibilityPath, accessibilitySnapshot);
+  await captureMobileDashboardScreenshot(page, testInfo, screenshotPath);
   await testInfo.attach("mobile-dashboard-analysis", {
     path: analysisPath,
     contentType: "application/json",

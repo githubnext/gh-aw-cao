@@ -38,6 +38,10 @@ const sourceNames = [
   "work-items",
   "attention-signals",
   "agent-assignments",
+  "agent-smells",
+  "workflow-smells",
+  "security-findings",
+  "control-plane-smells",
   "evidence-records",
   "configuration-summary",
   "configuration-policy",
@@ -1473,6 +1477,139 @@ function securityObservationRows(usage) {
   ]);
 }
 
+const AGENTIC_SMELL_NAMES = {
+  overkill_for_agentic: "Agentic overkill",
+  resource_heavy_for_domain: "Resource-heavy for domain",
+  poor_agentic_control: "Poor agentic control",
+  partially_reducible: "Partially reducible",
+  model_downgrade_available: "Model downgrade available",
+};
+
+function securityFindingRows(securityObservations) {
+  return securityObservations
+    .filter((row) => row["security-feature"] === "threat-detection"
+      && row["security-analysis"] === "summary"
+      && row["security-status"] === "detected")
+    .map((row) => ({
+      ...repositoryParts([row.organization, row.repository].filter(Boolean).join("/")),
+      workflow: row.workflow,
+      run: row.run,
+      "smell-observation-id": `threat-detection:${row["security-observation"]}`,
+      "smell-id": `threat-detection-${String(row["security-signal"] || "threat").toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+      "smell-name": `${row["security-signal"] || "Threat"} detected`,
+      "smell-category": "trust-and-security",
+      "smell-severity": "high",
+      "smell-summary": "Threat detection reported untrusted or unsafe agent behavior.",
+      "smell-evidence": row["security-subject"] || row["security-signal"] || "",
+      "observed-at": row["observed-at"],
+      "run-link": row["run-link"],
+    }));
+}
+
+function agentSmellRows(securityRuns = []) {
+  return securityRuns.flatMap((run) => (run.security?.agenticAssessments || []).map((assessment) => ({
+    ...repositoryParts(run.repository),
+    workflow: run.workflowPath?.replace(/\.lock\.ya?ml$/i, ".md") || run.workflowName || "",
+    run: String(run.runId),
+    "smell-observation-id": `agentic-assessment:${run.repository}:${run.runId}:${assessment.kind}`,
+    "smell-id": assessment.kind.replaceAll("_", "-"),
+    "smell-name": AGENTIC_SMELL_NAMES[assessment.kind] || assessment.kind,
+    "smell-category": ["resource_heavy_for_domain", "model_downgrade_available"].includes(assessment.kind)
+      ? "cost-memory-and-value" : "design",
+    "smell-severity": assessment.severity,
+    "smell-summary": assessment.summary,
+    "smell-evidence": assessment.evidence,
+    "smell-recommendation": assessment.recommendation,
+    "observed-at": run.createdAt,
+    "run-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
+  })));
+}
+
+function workflowSmellRows(workflows) {
+  return workflows.flatMap((workflow) => {
+    const rows = [];
+    const metadata = workflow["gh-aw-metadata"] && typeof workflow["gh-aw-metadata"] === "object"
+      ? workflow["gh-aw-metadata"] : {};
+    const manifest = workflow["gh-aw-manifest"] && typeof workflow["gh-aw-manifest"] === "object"
+      ? workflow["gh-aw-manifest"] : {};
+    const identity = `${workflow.organization}/${workflow.repository}:${workflow.workflow}`;
+    const common = {
+      organization: workflow.organization,
+      repository: workflow.repository,
+      workflow: workflow.workflow,
+      "observed-at": workflow["observed-at"],
+      "repository-link": workflow["repository-link"],
+      "workflow-link": workflow["workflow-link"],
+    };
+    if (metadata.strict === false) rows.push({
+      ...common,
+      "smell-observation-id": `workflow:${identity}:strict-disabled`,
+      "smell-id": "strict-disabled",
+      "smell-name": "Strict mode disabled",
+      "smell-category": "configuration",
+      "smell-severity": "high",
+      "smell-summary": "Workflow validation is not configured to fail closed.",
+      "smell-recommendation": "Enable strict mode and recompile the workflow.",
+    });
+    const unpinnedActions = Array.isArray(manifest.actions) ? manifest.actions.filter((action) => !action?.sha).length : 0;
+    const unpinnedContainers = Array.isArray(manifest.containers)
+      ? manifest.containers.filter((container) => !container?.digest && !container?.pinned_image).length : 0;
+    if (unpinnedActions + unpinnedContainers > 0) rows.push({
+      ...common,
+      "smell-observation-id": `workflow:${identity}:unpinned-dependencies`,
+      "smell-id": "unpinned-dependencies",
+      "smell-name": "Unpinned dependencies",
+      "smell-category": "supply-chain",
+      "smell-severity": "high",
+      "smell-summary": `${unpinnedActions} action and ${unpinnedContainers} container references lack immutable pins.`,
+      "smell-recommendation": "Pin actions to commit SHAs and containers to digests, then recompile.",
+    });
+    return rows;
+  });
+}
+
+function controlPlaneSmellRows(workflows, configuration, controlRepository, observedAt) {
+  const packageRows = workflows.filter((workflow) => Number(workflow["package-inventory-warnings"]) > 0);
+  const seenPackages = new Set();
+  const inventorySmells = packageRows.flatMap((workflow) => {
+    const identity = `${workflow.organization}/${workflow.repository}:${workflow.package || workflow.workflow}`;
+    if (seenPackages.has(identity)) return [];
+    seenPackages.add(identity);
+    return [{
+      organization: workflow.organization,
+      repository: workflow.repository,
+      workflow: workflow.workflow,
+      "smell-observation-id": `control-plane:${identity}:inventory-incomplete`,
+      "smell-id": "inventory-incomplete",
+      "smell-name": "Package inventory incomplete",
+      "smell-category": "control-plane",
+      "smell-severity": "high",
+      "smell-summary": `${workflow["package-inventory-warnings"]} package inventory warning(s) require review.`,
+      "smell-recommendation": "Restore missing compiled orchestration or declared worker inventory.",
+      "observed-at": workflow["observed-at"],
+      "repository-link": workflow["repository-link"],
+    }];
+  });
+  const policyIdentity = repositoryParts(controlRepository);
+  const policySmells = (configuration.policy[0]?.diagnostics || [])
+    .filter((diagnostic) => ["error", "warning"].includes(diagnostic.severity))
+    .map((diagnostic, index) => ({
+      ...policyIdentity,
+      "smell-observation-id": `control-plane:policy:${index}:${diagnostic.path}`,
+      "smell-id": "policy-diagnostic",
+      "smell-name": diagnostic.title || "Control policy diagnostic",
+      "smell-category": "control-plane",
+      "smell-severity": diagnostic.severity === "error" ? "high" : "medium",
+      "smell-summary": diagnostic.detail || "Control policy requires review.",
+      "smell-recommendation": "Review and validate .github/workflows/cao.json.",
+      "observed-at": observedAt,
+      ...(controlRepository ? {
+        "repository-link": link("repository", `https://github.com/${controlRepository}`, `View ${controlRepository} on GitHub`),
+      } : {}),
+    }));
+  return [...inventorySmells, ...policySmells];
+}
+
 const DETECTION_FAILURE_CONCLUSIONS = new Set([
   "failure", "cancelled", "timed-out", "action-required", "stale", "startup-failure",
 ]);
@@ -2373,6 +2510,11 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const usageComplete = usage.complete === true;
   const valueAvailable = operationalValues.records !== undefined;
   const configuration = configurationData(controlSettings);
+  const workflowSmells = workflowSmellRows(workflows);
+  const controlRepository = deployed.workflows?.find((workflow) => workflow.repository)?.repository
+    || deployed.bundles?.find((bundle) => bundle.repository)?.repository
+    || "";
+  const controlPlaneSmells = controlPlaneSmellRows(workflows, configuration, controlRepository, generatedAt);
 
   const sources = Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]));
   sources.organizations = source("organizations", organizations, generatedAt, discoveryAvailable, workflowInventoryComplete);
@@ -2469,13 +2611,30 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     usage.mcpAvailable === true,
     usage.mcpComplete === true,
   );
+  const securityObservations = securityObservationRows(usage);
   sources["security-observations"] = source(
     "security-observations",
-    securityObservationRows(usage),
+    securityObservations,
     generatedAt,
     usage.securityAvailable === true,
     usage.securityComplete === true,
   );
+  sources["agent-smells"] = source(
+    "agent-smells",
+    agentSmellRows(usage.securityRuns),
+    generatedAt,
+    usage.securityAvailable === true,
+    usage.securityComplete === true,
+  );
+  sources["workflow-smells"] = source("workflow-smells", workflowSmells, generatedAt, workflowsAvailable, workflowInventoryComplete);
+  sources["security-findings"] = source(
+    "security-findings",
+    securityFindingRows(securityObservations),
+    generatedAt,
+    usage.securityAvailable === true,
+    usage.securityComplete === true,
+  );
+  sources["control-plane-smells"] = source("control-plane-smells", controlPlaneSmells, generatedAt, true, workflowInventoryComplete);
   sources["detection-observations"] = source(
     "detection-observations",
     detectionObservations,

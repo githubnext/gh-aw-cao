@@ -63,6 +63,39 @@ describe('Configuration dashboard view', () => {
     expect(rendered.textContent).not.toContain('Raw JSON');
   });
 
+  it('defers settings inside collapsed groups until they are expanded', () => {
+    const targets = Object.fromEntries(Array.from({ length: 100 }, (_, index) => [
+      `githubnext/repository-${index}`,
+      { mode: 'review' }
+    ]));
+    const rendered = renderConfigurationView(context({
+      document: { 'control-plane': { packages: { maintenance: { targets } } } },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    const maintenanceGroup = [...rendered.querySelectorAll('details')]
+      .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Maintenance');
+    if (!(maintenanceGroup instanceof HTMLDetailsElement)) throw new Error('maintenance group did not render');
+    expect(maintenanceGroup.open).toBe(false);
+    expect(rendered.textContent).not.toContain('Targets');
+    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+
+    maintenanceGroup.open = true;
+    maintenanceGroup.dispatchEvent(new Event('toggle'));
+    const targetsGroup = [...maintenanceGroup.querySelectorAll('details')]
+      .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Targets');
+    if (!(targetsGroup instanceof HTMLDetailsElement)) throw new Error('targets group did not render');
+    expect(targetsGroup.open).toBe(false);
+    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+
+    targetsGroup.open = true;
+    targetsGroup.dispatchEvent(new Event('toggle'));
+    expect(targetsGroup.querySelectorAll(':scope > .configuration-setting-children > details')).toHaveLength(100);
+    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+  });
+
   it('edits lists without losing the nested policy path', () => {
     const rendered = renderConfigurationView(context({
       document: {
