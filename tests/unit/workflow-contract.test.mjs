@@ -3041,6 +3041,7 @@ test("Documentation Pages deploys docs with the packaged dashboard builder", () 
 
 test("mobile dashboard integration downloads deployed dashboard data", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "actions.yml"), "utf8");
+  const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
@@ -3052,6 +3053,10 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const playwrightConfig = readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8");
   assert.match(playwrightConfig, /preserveOutput: "always"/);
   assert.match(playwrightConfig, /--max-old-space-size=\$\{memoryMb\}/);
+  assert.match(packageDocument.scripts["dashboard:local:mobile"], /DASHBOARD_DATA_URL=https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
+  assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_DEVICE='Pixel 7'/);
+  assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_MEMORY_MB=256/);
+  assert.match(packageDocument.scripts["dashboard:local:mobile"], /playwright\.mobile\.config\.mjs/);
   const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
   assert.match(mobileTest, /Network\.emulateNetworkConditions/);
   assert.match(mobileTest, /mobile-dashboard\.png/);
