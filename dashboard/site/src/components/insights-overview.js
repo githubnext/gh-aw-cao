@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
 import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { rowsFor } from './source-rows.js';
+import { renderVitalStat } from './ui-primitives.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required']);
 
@@ -62,9 +63,9 @@ export function renderInsightsOverview(context) {
           h('h2', { id: 'insights-value-title' }, 'Operational value attainment'),
           h('p', null, 'Measured attainment and accepted repository outcomes, without inferring unsupported ROI.')),
         h('dl', { className: 'insights-lead-metrics' },
-          metric(meanValue === null ? '—' : `${Math.round(meanValue * 100)}%`, 'mean attainment'),
-          metric(formatNumber(acceptedOutcomes), 'accepted outcomes'),
-          metric(formatNumber(matureValues), 'mature observations'))),
+          renderVitalStat('mean attainment', meanValue === null ? '—' : `${Math.round(meanValue * 100)}%`),
+          renderVitalStat('accepted outcomes', formatNumber(acceptedOutcomes)),
+          renderVitalStat('mature observations', formatNumber(matureValues)))),
       valueSeries.length > 1 ? renderValueSeriesSelector(valuePoints, valueSeries, valueChart) : null,
       valueChart),
 
@@ -78,9 +79,9 @@ export function renderInsightsOverview(context) {
       insightPanel('Execution health', 'Recent completed workflow-run conclusions.',
         renderChartWidget('swimlane', runPoints, listChartSeries(runPoints)),
         h('dl', { className: 'insights-inline-metrics' },
-          metric(completedRuns.length ? `${Math.round((successfulRuns / completedRuns.length) * 100)}%` : '—', 'successful'),
-          metric(formatNumber(failedRuns), 'failed'),
-          metric(formatNumber(activeRuns), 'active'))),
+          renderVitalStat('successful', completedRuns.length ? `${Math.round((successfulRuns / completedRuns.length) * 100)}%` : '—'),
+          renderVitalStat('failed', formatNumber(failedRuns)),
+          renderVitalStat('active', formatNumber(activeRuns)))),
       insightPanel('Threat detection', 'Usable verdicts remain distinct from unavailable evidence.',
         renderChartWidget('pie', [], [], pieSummary(detectionEntries), 'Observations'),
         h('div', { className: 'insights-panel-stat' }, h('strong', null, usableVerdicts === null ? '—' : `${Math.round(usableVerdicts)}%`), h('span', null, 'usable verdict coverage')))),
@@ -151,11 +152,6 @@ function insightPanel(title, description, ...children) {
   return h('section', { className: 'insights-plot-panel' },
     h('header', null, h('h2', null, title), h('p', null, description)),
     ...children);
-}
-
-/** @param {string} value @param {string} label */
-function metric(value, label) {
-  return h('div', null, h('dt', null, label), h('dd', null, value));
 }
 
 /** @param {number[]} values */
