@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { parseWorkflowRoute, workflowRouteValue } from '../../src/components/workflow-route.js';
 import { selectConfigBody } from '../../src/components/route-body-composition.js';
-import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES } from '../../src/components/route-body-specification.js';
+import { workflowRoutePageBody } from '../../src/components/workflow-route-page-body.js';
+import { workflowRoutePageConfigForBody } from '../../src/components/workflow-route-page-config.js';
+import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES, WORKFLOW_ROUTE_TAB_VALUES } from '../../src/components/route-body-specification.js';
 
 describe('workflow-route helpers', () => {
   it('formats and parses valid workflow routes', () => {
@@ -38,5 +40,12 @@ describe('workflow-route helpers', () => {
 
   it('keeps workflow-route-page body values aligned with workflow-route values', () => {
     expect(WORKFLOW_ROUTE_PAGE_BODY_VALUES).toEqual(WORKFLOW_ROUTE_BODY_VALUES);
+  });
+
+  it('normalizes workflow-route-page tabs independently of page ids', () => {
+    expect(WORKFLOW_ROUTE_TAB_VALUES).toEqual(WORKFLOW_ROUTE_BODY_VALUES);
+    expect(workflowRoutePageBody('insights')).toBe('insights');
+    expect(workflowRoutePageBody('summary')).toBe('reports');
+    expect(workflowRoutePageConfigForBody('runs')).toMatchObject({ body: 'runs', pageId: 'workflow-runs' });
   });
 });

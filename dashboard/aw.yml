@@ -234,6 +234,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/workflow-route.js
   - source: site/src/components/workflow-route-bodies.js
     destination: .github/aw/dashboard/site/src/components/workflow-route-bodies.js
+  - source: site/src/components/workflow-route-page-body.js
+    destination: .github/aw/dashboard/site/src/components/workflow-route-page-body.js
   - source: site/src/components/workflow-route-page-config.js
     destination: .github/aw/dashboard/site/src/components/workflow-route-page-config.js
   - source: site/src/components/workflow-route-page-views.js

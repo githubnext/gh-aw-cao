@@ -3,6 +3,7 @@
  */
 
 import { selectNamedComposition } from './route-composition.js';
+import { workflowRoutePageBody } from './workflow-route-page-body.js';
 
 /**
  * @typedef {'workflow-runtime'|'workflow-detail'|'workflow-runs'} WorkflowRoutePageId
@@ -15,7 +16,7 @@ import { selectNamedComposition } from './route-composition.js';
  * }} WorkflowRoutePageConfig
  */
 
-const WORKFLOW_ROUTE_PAGE_CONFIGS = /** @type {Readonly<Record<WorkflowRoutePageId, WorkflowRoutePageConfig>>} */ ({
+export const WORKFLOW_ROUTE_PAGE_CONFIGS = /** @type {Readonly<Record<WorkflowRoutePageId, WorkflowRoutePageConfig>>} */ ({
   'workflow-runtime': {
     body: 'insights',
     pageId: 'workflow-runtime'
@@ -55,8 +56,8 @@ const WORKFLOW_ROUTE_PAGE_ID_BY_BODY = /** @type {Readonly<Record<'insights'|'re
 export function workflowRoutePageConfigForBody(body) {
   return selectNamedComposition(
     WORKFLOW_ROUTE_PAGE_CONFIGS,
-    typeof body === 'string' && Object.hasOwn(WORKFLOW_ROUTE_PAGE_ID_BY_BODY, body)
-      ? WORKFLOW_ROUTE_PAGE_ID_BY_BODY[/** @type {'insights'|'reports'|'runs'} */ (body)]
+    Object.hasOwn(WORKFLOW_ROUTE_PAGE_ID_BY_BODY, workflowRoutePageBody(body))
+      ? WORKFLOW_ROUTE_PAGE_ID_BY_BODY[workflowRoutePageBody(body)]
       : 'workflow-detail',
     'workflow-detail'
   );
