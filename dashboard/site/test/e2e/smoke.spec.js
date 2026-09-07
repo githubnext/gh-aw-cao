@@ -1612,7 +1612,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });
-  await expect(page.getByRole('heading', { name: 'Ambient Context', level: 1 })).toBeVisible();
+  await expect(page.locator('[data-page-id="package-detail"]').getByRole('heading', { name: 'Ambient Context', level: 1 })).toBeVisible();
   await expect(page.locator('[data-page-mode]')).toHaveText('Review');
   await expect(page.locator('[data-nav-page-id="packages"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('navigation', { name: 'Ambient Context views' })).toContainText('InsightsWorkflowsDispatchesReports');

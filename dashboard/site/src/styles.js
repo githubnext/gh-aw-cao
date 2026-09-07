@@ -1815,7 +1815,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .home-catchup-story:nth-child(n) { padding: 11px 2px; border-left: 0; }
   .home-catchup-story:nth-child(n + 2) { border-top: 1px solid var(--border-muted); }
   .insights-section-heading { align-items: start; flex-direction: column; gap: 14px; }
-  .insights-lead-metrics { width: 100%; justify-content: space-between; gap: 12px; }
+  .insights-lead-metrics { width: 100%; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .insights-lead-metrics dd, .insights-inline-metrics dd { font-size: 1rem; }
   .insights-value-lead > .chart-legend { display: none; }
   .insights-plot-grid { grid-template-columns: minmax(0, 1fr); }
