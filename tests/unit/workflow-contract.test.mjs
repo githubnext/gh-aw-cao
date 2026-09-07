@@ -885,6 +885,9 @@ test("release increments the semantic version, creates its tag, and prepares a c
   assert.match(prepare, /sha: context\.sha/);
   assert.match(prepare, /tag_name: releaseTag/);
   assert.match(prepare, /name: releaseTag/);
+  assert.match(prepare, /git\.deleteRef/);
+  assert.match(prepare, /ref: `tags\/\$\{releaseTag\}`/);
+  assert.match(prepare, /throw error/);
   assert.match(prepare, /draft: true/);
   assert.match(prepare, /generate_release_notes: true/);
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
