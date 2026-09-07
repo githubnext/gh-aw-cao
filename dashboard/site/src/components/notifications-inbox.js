@@ -113,6 +113,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
   /** @type {Record<string, unknown>[]} */
   let currentVisible = [];
   let render = () => {};
+  let syncSelection = () => {};
   const lazyList = renderLazyInfiniteList({
     items: () => currentVisible,
     batchSize: notificationBatchSize(),
@@ -131,7 +132,8 @@ export function renderNotificationsInbox(rows, sources = {}) {
         return label ? [h('h3', { className: 'notifications-group-heading' }, label), entriesList] : [entriesList];
       });
     },
-    renderEmpty: () => h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up'))
+    renderEmpty: () => h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up')),
+    afterRender: () => syncSelection()
   });
   const list = lazyList.element;
   const count = h('span', { className: 'notifications-result-count', 'aria-live': 'polite' });
@@ -153,6 +155,13 @@ export function renderNotificationsInbox(rows, sources = {}) {
     type: 'button', className: 'notifications-icon-button', title: 'Mark selected as done',
     'aria-label': 'Mark selected as done', disabled: true
   }, octicon('check')));
+  syncSelection = () => {
+    for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
+      if (!(checkbox instanceof HTMLInputElement)) continue;
+      const notificationId = checkbox.dataset.notificationId;
+      checkbox.checked = notificationId !== undefined && selected.has(notificationId);
+    }
+  };
 
   /** @param {boolean} [resetWindow] */
   render = (resetWindow = true) => {
@@ -170,11 +179,6 @@ export function renderNotificationsInbox(rows, sources = {}) {
       bulkDone.disabled = true;
     }
     lazyList.render(resetWindow);
-    for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
-      if (!(checkbox instanceof HTMLInputElement)) continue;
-      const notificationId = checkbox.dataset.notificationId;
-      checkbox.checked = notificationId !== undefined && selected.has(notificationId);
-    }
   };
   const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
   const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');

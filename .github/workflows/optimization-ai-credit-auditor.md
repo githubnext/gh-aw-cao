@@ -134,7 +134,7 @@ timeout-minutes: 35
 
 steps:
   - name: Setup Python
-    uses: actions/setup-python@v7.0.0
+    uses: actions/setup-python@v7
     with:
       python-version: "3.12"
   - name: Setup local chart workspace

@@ -6,10 +6,11 @@ import { h } from '../dom.js';
  *   items: () => T[],
  *   batchSize: number,
  *   renderItems: (items: T[]) => Node[],
- *   renderEmpty: () => Node
+ *   renderEmpty: () => Node,
+ *   afterRender?: () => void
  * }} options
  */
-export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEmpty }) {
+export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEmpty, afterRender = () => {} }) {
   const list = h('div', { className: 'notifications-list' });
   let renderedLimit = batchSize;
   /** @type {IntersectionObserver | null} */
@@ -23,6 +24,7 @@ export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEm
     if (currentItems.length === 0) {
       boundaryObserver?.disconnect();
       list.replaceChildren(renderEmpty());
+      afterRender();
       return;
     }
 
@@ -39,6 +41,7 @@ export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEm
 
     boundaryObserver?.disconnect();
     list.replaceChildren(...renderItems(renderedItems), ...(boundary ? [boundary] : []));
+    afterRender();
     if (!boundary || typeof globalThis.IntersectionObserver !== 'function') return;
     boundaryObserver = new globalThis.IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) loadMore();
