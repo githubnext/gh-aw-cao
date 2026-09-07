@@ -1568,7 +1568,7 @@ function workflowSmellRows(workflows) {
   });
 }
 
-function controlPlaneSmellRows(workflows, configuration) {
+function controlPlaneSmellRows(workflows, configuration, controlRepository, observedAt) {
   const packageRows = workflows.filter((workflow) => Number(workflow["package-inventory-warnings"]) > 0);
   const seenPackages = new Set();
   const inventorySmells = packageRows.flatMap((workflow) => {
@@ -1590,9 +1590,11 @@ function controlPlaneSmellRows(workflows, configuration) {
       "repository-link": workflow["repository-link"],
     }];
   });
+  const policyIdentity = repositoryParts(controlRepository);
   const policySmells = (configuration.policy[0]?.diagnostics || [])
     .filter((diagnostic) => ["error", "warning"].includes(diagnostic.severity))
     .map((diagnostic, index) => ({
+      ...policyIdentity,
       "smell-observation-id": `control-plane:policy:${index}:${diagnostic.path}`,
       "smell-id": "policy-diagnostic",
       "smell-name": diagnostic.title || "Control policy diagnostic",
@@ -1600,6 +1602,10 @@ function controlPlaneSmellRows(workflows, configuration) {
       "smell-severity": diagnostic.severity === "error" ? "high" : "medium",
       "smell-summary": diagnostic.detail || "Control policy requires review.",
       "smell-recommendation": "Review and validate .github/workflows/cao.json.",
+      "observed-at": observedAt,
+      ...(controlRepository ? {
+        "repository-link": link("repository", `https://github.com/${controlRepository}`, `View ${controlRepository} on GitHub`),
+      } : {}),
     }));
   return [...inventorySmells, ...policySmells];
 }
@@ -2505,7 +2511,10 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const valueAvailable = operationalValues.records !== undefined;
   const configuration = configurationData(controlSettings);
   const workflowSmells = workflowSmellRows(workflows);
-  const controlPlaneSmells = controlPlaneSmellRows(workflows, configuration);
+  const controlRepository = deployed.workflows?.find((workflow) => workflow.repository)?.repository
+    || deployed.bundles?.find((bundle) => bundle.repository)?.repository
+    || "";
+  const controlPlaneSmells = controlPlaneSmellRows(workflows, configuration, controlRepository, generatedAt);
 
   const sources = Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]));
   sources.organizations = source("organizations", organizations, generatedAt, discoveryAvailable, workflowInventoryComplete);

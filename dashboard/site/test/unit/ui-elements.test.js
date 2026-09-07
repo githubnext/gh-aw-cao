@@ -718,6 +718,9 @@ describe('UI elements', () => {
             'smell-id': 'strict-disabled', 'smell-name': 'Strict mode disabled',
             'smell-summary': 'Workflow validation is not fail-closed.',
             organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.md',
+            'workflow-link': {
+              relation: 'workflow', href: 'https://github.com/github/mona-tools/actions/workflows/upgrade.yml', label: 'View workflow'
+            },
             'observed-at': new Date(Date.now() - 120_000).toISOString()
           }],
           metadata
@@ -776,6 +779,10 @@ describe('UI elements', () => {
     expect(rendered?.textContent).toContain('Agent smell: Upgrade agent');
     expect(rendered?.textContent).toContain('Partially reducible');
     expect(rendered?.textContent).toContain('Strict mode disabled');
+    const workflowSmell = [...(rendered?.querySelectorAll('.notification-item') ?? [])]
+      .find((item) => item.textContent?.includes('Strict mode disabled'));
+    expect(workflowSmell?.querySelector('[href^="#page-workflow-runtime"]')?.getAttribute('href'))
+      .toBe('#page-workflow-runtime?workflow=github%2Fmona-tools%3A.github%2Fworkflows%2Fupgrade.md');
     expect(rendered?.textContent).toContain('Prompt injection detected');
     expect(rendered?.textContent).toContain('Package inventory incomplete');
     expect(rendered?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();

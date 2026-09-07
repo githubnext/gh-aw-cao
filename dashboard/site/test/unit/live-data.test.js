@@ -264,6 +264,13 @@ describe("live Dashboard Language sources", () => {
         "smell-id": "inventory-incomplete",
         "smell-severity": "high",
       }));
+      expect(sources["control-plane-smells"].rows).toContainEqual(expect.objectContaining({
+        organization: "githubnext",
+        repository: "gh-aw-cao",
+        "smell-id": "policy-diagnostic",
+        "observed-at": "2026-08-30T12:00:00Z",
+        "repository-link": expect.objectContaining({ href: "https://github.com/githubnext/gh-aw-cao" }),
+      }));
       const overview = deriveOverviewSources(sources);
       expect(overview["overview-managed-packages"].rows).toContainEqual(expect.objectContaining({
         package: "dependabot",

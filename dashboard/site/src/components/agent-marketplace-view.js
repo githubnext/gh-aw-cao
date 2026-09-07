@@ -218,6 +218,11 @@ export function smellObservationNotifications(rows, options) {
   return rows.map((row) => {
     const observedAt = Date.parse(text(row['observed-at']));
     const severity = text(row['smell-severity']);
+    const qualifiedRepository = repositoryOwner(row);
+    const workflow = text(row.workflow);
+    const navigationHref = options.signalType === 'workflow-smell' && qualifiedRepository !== 'Unknown owner' && workflow
+      ? `#page-workflow-runtime?workflow=${encodeURIComponent(`${qualifiedRepository}:${workflow}`)}`
+      : options.navigationHref;
     const evidenceLink = findLink(row, 'evidence-link')
       ?? findLink(row, 'run-link')
       ?? findLink(row, 'workflow-link')
@@ -239,7 +244,7 @@ export function smellObservationNotifications(rows, options) {
         relation: 'evidence',
         href: evidenceHref,
         label: evidenceLink.label,
-        'dashboard-href': options.navigationHref,
+        'dashboard-href': navigationHref,
         'dashboard-label': 'Review finding'
       } } : {})
     };
