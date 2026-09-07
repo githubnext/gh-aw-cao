@@ -15,7 +15,7 @@ npm run activity:local -- activity/.env
 The local runner uses `@github/local-action` to provide Actions Toolkit shims. It can also run directly with the installed toolkit packages:
 
 ```console
-node activity/local-runner.mjs activity/index.mjs
+npm run activity:local:node -- activity/index.mjs
 ```
 
 The `CAO Activity` workflow runs `run-activity.mjs` as a single `actions/github-script` step. It sequentially imports and invokes the log downloader, GitHub API telemetry recorder, control policy resolver, control-plane inventory extractor, activity indexer, and dashboard collectors, sharing the same Actions singleton across every call.
