@@ -103,9 +103,9 @@ Continue with the repository targeting and workflow dispatch steps below.
   - `target_repo`: selected target repository
   - `safe_output_mode`: `effective_safe_output_mode`
   - `safe_output_repo`: `effective_safe_output_repo`
-  - `correlation_id`: `${{ github.run_id }}-${{ github.run_number }}`
-  - `central_repo`: `${{ github.repository }}`
-  - `control_plane_run_url`: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+  - `correlation_id`: `__GH_AW_GITHUB_RUN_ID__-__GH_AW_GITHUB_RUN_NUMBER__`
+  - `central_repo`: `__GH_AW_GITHUB_REPOSITORY__`
+  - `control_plane_run_url`: `__GH_AW_GITHUB_SERVER_URL__/__GH_AW_GITHUB_REPOSITORY__/actions/runs/__GH_AW_GITHUB_RUN_ID__`
   - `batch_label`: omitted unless a worker requires it
 
   If a dispatch fails or is rate-limited, do not retry it in the same run. Record that target and worker as deferred, continue only when doing so stays within all remaining caps, and report the partial outcome as incomplete.

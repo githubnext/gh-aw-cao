@@ -85,7 +85,7 @@ jobs:
         run: |
           set -uo pipefail
           read_dispatch_input() {
-            node -e 'const inputs = JSON.parse(process.env.CAO_WORKFLOW_DISPATCH_INPUTS || "{}"); const value = inputs[process.argv[1]]; process.stdout.write(value == null ? "" : String(value));' "$1"
+            node -e 'const parsed = JSON.parse(process.env.CAO_WORKFLOW_DISPATCH_INPUTS || "{}"); const inputs = parsed && typeof parsed === "object" ? parsed : {}; const value = inputs[process.argv[1]]; process.stdout.write(value == null ? "" : String(value));' "$1"
           }
           export CAO_TARGET_REPOSITORY="$(read_dispatch_input target_repo)"
           export CAO_REQUESTED_MODE="$(read_dispatch_input safe_output_mode)"
@@ -220,7 +220,7 @@ jobs:
         run: |
           set -euo pipefail
           read_dispatch_input() {
-            node -e 'const inputs = JSON.parse(process.env.CAO_WORKFLOW_DISPATCH_INPUTS || "{}"); const value = inputs[process.argv[1]]; process.stdout.write(value == null ? "" : String(value));' "$1"
+            node -e 'const parsed = JSON.parse(process.env.CAO_WORKFLOW_DISPATCH_INPUTS || "{}"); const inputs = parsed && typeof parsed === "object" ? parsed : {}; const value = inputs[process.argv[1]]; process.stdout.write(value == null ? "" : String(value));' "$1"
           }
           target_repo="$(read_dispatch_input target_repo)"
           requested_mode="$(read_dispatch_input safe_output_mode)"

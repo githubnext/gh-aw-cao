@@ -4,6 +4,9 @@ min-version: v0.88.4
 experimental: true
 includes:
   - .github/workflows/dependabot.md
+  - .github/workflows/shared/control.md
+  - .github/workflows/shared/orchestrator.md
+  - .github/workflows/shared/worker.md
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/dependabot.json
