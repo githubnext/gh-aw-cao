@@ -74,13 +74,13 @@ const compressibleContentTypes = new Set([
   "text/markdown; charset=utf-8",
 ]);
 const minimumCompressedBytes = 1_024;
-const cachedCompressionBytes = 1_048_576;
+const minimumCacheableCompressionBytes = 1_048_576;
 const maximumCachedCompressions = 4;
 /** @type {Map<string, Buffer>} */
 const compressedPayloads = new Map();
 
 function compressPayload(body) {
-  if (body.byteLength < cachedCompressionBytes) return gzipSync(body);
+  if (body.byteLength < minimumCacheableCompressionBytes) return gzipSync(body);
   const key = createHash("sha256").update(body).digest("hex");
   const cached = compressedPayloads.get(key);
   if (cached) return cached;
