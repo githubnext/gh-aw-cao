@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { enableLazyViews } from '../../src/components/lazy-view.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { agentSmellNotifications } from '../../src/components/agent-marketplace-view.js';
 
@@ -287,6 +288,7 @@ describe('UI elements', () => {
       },
       contextDetails: [], headingTag: 'h3'
     });
+    if (rendered) enableLazyViews(rendered);
 
     expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe('Operational value attainment');
     expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent).toBe('70%');
