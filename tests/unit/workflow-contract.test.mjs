@@ -846,7 +846,7 @@ test("workflow contracts isolate authenticated package lifecycle checks", () => 
   assert.match(packageLifecycle, /exit "\$status"/);
 });
 
-test("release computes an authorized semantic version bump and creates a draft for manual publication", () => {
+test("release increments the semantic version, creates its tag, and prepares a correctly titled draft", () => {
   const source = workflow("release.yml");
   const config = parse(source);
   const jobs = generatedJobs(source);
@@ -869,7 +869,7 @@ test("release computes an authorized semantic version bump and creates a draft f
   assert.match(version, /\['maintain', 'admin'\]\.includes\(role\)/);
   assert.match(version, /listReleases/);
   assert.match(version, /listTags/);
-  assert.match(version, /\.filter\(\(release\) => !release\.draft\)/);
+  assert.match(version, /const releaseTags = releases\.map\(\(release\) => release\.tag_name\)/);
   assert.match(version, /const versionNames = new Set\(\[\.\.\.releaseTags, \.\.\.tags\.map/);
   assert.match(version, /const versions = \[\.\.\.versionNames\]\.flatMap\(toVersion\)/);
   assert.match(version, /No stable semantic version releases or tags found/);
@@ -880,6 +880,11 @@ test("release computes an authorized semantic version bump and creates a draft f
   assert.match(validation, /CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: \$\{\{ github\.repository \}\}@\$\{\{ github\.sha \}\}/);
   assert.match(validation, /npm run test:package-lifecycle/);
   assert.deepEqual(jobs.get("prepare-release")?.needs, ["resolve-version", "validate-package"]);
+  assert.match(prepare, /git\.createRef/);
+  assert.match(prepare, /ref: `refs\/tags\/\$\{releaseTag\}`/);
+  assert.match(prepare, /sha: context\.sha/);
+  assert.match(prepare, /tag_name: releaseTag/);
+  assert.match(prepare, /name: releaseTag/);
   assert.match(prepare, /draft: true/);
   assert.match(prepare, /generate_release_notes: true/);
   assert.match(prepare, /publish the draft, and mark it as the latest release from the GitHub website/);
