@@ -108,6 +108,20 @@ describe('dashboard DOM provenance', () => {
         expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
         expect(dynamicChild.getAttribute('data-js-view')).toBe('summary-grid');
       });
+
+      const replacementSection = rendered.ownerDocument.createElement('section');
+      replacementSection.setAttribute('data-section-id', 'main');
+      const replacementView = rendered.ownerDocument.createElement('article');
+      replacementView.className = 'custom-view';
+      replacementView.setAttribute('data-view-id', 'summary');
+      replacementView.append(rendered.ownerDocument.createElement('dt'));
+      replacementSection.append(replacementView);
+      page?.replaceChildren(replacementSection);
+      await vi.waitFor(() => {
+        expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]');
+        expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]');
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid');
+      });
     } finally {
       window.history.pushState(null, '', '/');
     }

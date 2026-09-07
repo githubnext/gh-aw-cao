@@ -188,7 +188,7 @@ export function renderDashboard(input) {
     skipLink,
     appShell
   );
-  void enableDashboardDomProvenanceWhenDebugging(root, document);
+  void enableDashboardDomProvenanceWhenDebugging(root, document).catch(() => {});
   enableSidebarToggle(root);
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
@@ -201,7 +201,7 @@ export function renderDashboard(input) {
       const page = pages[pageIndex];
       if (!page) return null;
       const renderedPage = renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
-      void annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex);
+      void annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex).catch(() => {});
       return renderedPage;
     },
     sidebar.dataset.defaultPageId

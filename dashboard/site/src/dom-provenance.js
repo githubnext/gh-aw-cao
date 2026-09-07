@@ -20,15 +20,82 @@
  */
 export function enableDashboardDomProvenance(root, document, getBuiltInPagePayload) {
   annotateDashboardDom(root, document, getBuiltInPagePayload);
+  const pagesById = new Map(document.dashboard.pages.map((page, pageIndex) => [page.id, { page, pageIndex }]));
   const observer = new MutationObserver((mutations) => {
+    const pagesToAnnotate = new Set();
+    const provenanceRoots = [];
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         if (node.nodeType !== Node.ELEMENT_NODE) continue;
-        propagateDashboardDomProvenance(/** @type {Element} */ (node));
+        const element = /** @type {Element} */ (node);
+        if (!queueAffectedPageDom(element, pagesToAnnotate)) {
+          provenanceRoots.push(element);
+        }
+      }
+    }
+    for (const renderedPage of pagesToAnnotate) {
+      annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload);
+    }
+    for (const node of provenanceRoots) {
+      if (!isInsideElementSet(node, pagesToAnnotate)) {
+        propagateDashboardDomProvenance(node);
       }
     }
   });
   observer.observe(root, { childList: true, subtree: true });
+}
+
+/**
+ * @param {Element} element
+ * @param {Set<Element>} pagesToAnnotate
+ * @returns {boolean}
+ */
+function queueAffectedPageDom(element, pagesToAnnotate) {
+  if (!hasProvenanceBoundary(element)) return false;
+  const page = element.closest('[data-page-id]');
+  if (page) {
+    pagesToAnnotate.add(page);
+    return true;
+  }
+  const pages = [...element.querySelectorAll('[data-page-id]')];
+  for (const renderedPage of pages) {
+    if (hasProvenanceBoundary(renderedPage)) pagesToAnnotate.add(renderedPage);
+  }
+  return pages.length > 0;
+}
+
+/**
+ * @param {Element} element
+ * @returns {boolean}
+ */
+function hasProvenanceBoundary(element) {
+  return element.matches('[data-view-id], [data-section-id], [data-page-id]')
+    || element.querySelector('[data-view-id], [data-section-id], [data-page-id]') !== null;
+}
+
+/**
+ * @param {Element} renderedPage
+ * @param {Map<string, { page: import('./presenter.js').PresentableBuiltInPage | import('./presenter.js').PresentableCustomPage, pageIndex: number }>} pagesById
+ * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
+ */
+function annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload) {
+  const pageId = renderedPage.getAttribute('data-page-id');
+  if (!pageId) return;
+  const entry = pagesById.get(pageId);
+  if (!entry) return;
+  annotatePageDom(renderedPage, entry.page, entry.pageIndex, getBuiltInPagePayload);
+}
+
+/**
+ * @param {Element} element
+ * @param {Set<Element>} elements
+ * @returns {boolean}
+ */
+function isInsideElementSet(element, elements) {
+  for (const candidate of elements) {
+    if (candidate.contains(element)) return true;
+  }
+  return false;
 }
 
 /**
