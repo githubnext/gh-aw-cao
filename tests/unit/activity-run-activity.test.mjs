@@ -96,7 +96,10 @@ test("runActivity skips dashboard-only steps when collection is disabled", async
     assert.equal(calls[2].args[0], "after");
     assert.equal(calls[2].args[2], "success");
   } finally {
-    process.env = originalEnv;
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) delete process.env[key];
+    }
+    Object.assign(process.env, originalEnv);
   }
 });
 
@@ -124,7 +127,10 @@ test("runActivity runs dashboard collection steps in order when enabled", async 
       "activity-collectors",
     ]);
   } finally {
-    process.env = originalEnv;
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) delete process.env[key];
+    }
+    Object.assign(process.env, originalEnv);
   }
 });
 
@@ -145,6 +151,9 @@ test("runActivity swallows telemetry recording failures without stopping the run
     const calls = await readCalls(item.callsPath);
     assert.deepEqual(calls.map((call) => call.name), ["logs", "telemetry", "telemetry", "indexer"]);
   } finally {
-    process.env = originalEnv;
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) delete process.env[key];
+    }
+    Object.assign(process.env, originalEnv);
   }
 });
