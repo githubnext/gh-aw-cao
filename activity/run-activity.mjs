@@ -33,7 +33,7 @@ export async function runActivity(actions = {}) {
     importModule(indexerModulePath),
   ]);
 
-  const collectionOutcome = (await logs.main(actions)) || "unknown";
+  const collectionOutcome = await logs.main(actions);
 
   await telemetry.main(actions, [
     "prepare",
@@ -41,8 +41,7 @@ export async function runActivity(actions = {}) {
   ]);
 
   try {
-    process.env.CAO_OPERATION_OUTCOME = collectionOutcome;
-    await telemetry.main(actions, ["after", "collect-gh-aw-logs"]);
+    await telemetry.main(actions, ["after", "collect-gh-aw-logs", collectionOutcome]);
   } catch (error) {
     log.warning`Recording GitHub API telemetry for collect-gh-aw-logs failed: ${error instanceof Error ? error.message : error}`;
   }

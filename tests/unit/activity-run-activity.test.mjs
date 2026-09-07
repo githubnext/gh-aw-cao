@@ -22,7 +22,7 @@ async function fixture() {
   const record = (name) => `
     const fs = await import("node:fs/promises");
     const existing = JSON.parse(await fs.readFile(${JSON.stringify(callsPath)}, "utf8").catch(() => "[]"));
-    existing.push({ name: ${JSON.stringify(name)}, args, outcome: process.env.CAO_OPERATION_OUTCOME });
+    existing.push({ name: ${JSON.stringify(name)}, args });
     await fs.writeFile(${JSON.stringify(callsPath)}, JSON.stringify(existing));
   `;
 
@@ -94,7 +94,7 @@ test("runActivity skips dashboard-only steps when collection is disabled", async
     assert.deepEqual(calls.map((call) => call.name), ["logs", "telemetry", "telemetry", "indexer"]);
     assert.equal(calls[1].args[0], "prepare");
     assert.equal(calls[2].args[0], "after");
-    assert.equal(calls[2].outcome, "success");
+    assert.equal(calls[2].args[2], "success");
   } finally {
     process.env = originalEnv;
   }

@@ -173,18 +173,18 @@ export async function recordGithubTelemetry({
 
 export async function main(actions = {}, args = process.argv.slice(2)) {
   setActionsGlobals(actions);
-  const [phase, operation] = args;
+  const [phase, operation, outcome] = args;
   if (phase === "prepare") {
     await prepareGithubTelemetryHistory({ sourcePath: operation });
     return;
   }
   if (!["before", "after"].includes(phase) || !operation) {
-    throw new Error("usage: github-telemetry.mjs prepare [prior-ledger] | <before|after> <operation>");
+    throw new Error("usage: github-telemetry.mjs prepare [prior-ledger] | <before|after> <operation> [outcome]");
   }
   await recordGithubTelemetry({
     phase,
     operation,
-    outcome: process.env.CAO_OPERATION_OUTCOME || "unknown",
+    outcome: outcome || process.env.CAO_OPERATION_OUTCOME || "unknown",
   });
 }
 
