@@ -72,7 +72,6 @@ export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, re
     )
   );
   renderers.set(element, render);
-  console.debug('[lazy-view] placeholder rendered', label);
   return element;
 }
 
@@ -86,11 +85,9 @@ export function enableLazyViews(root) {
   const lazyViews = [...root.querySelectorAll('[data-lazy-view]')]
     .filter((element) => element instanceof HTMLElement);
   if (lazyViews.length === 0) return;
-  console.debug('[lazy-view] observing views', lazyViews.length);
 
   const Observer = root.ownerDocument.defaultView?.IntersectionObserver;
   if (typeof Observer !== 'function') {
-    console.debug('[lazy-view] IntersectionObserver unavailable, hydrating immediately');
     for (const element of lazyViews) void hydrateLazyView(element, { immediate: true });
     return;
   }
@@ -100,7 +97,6 @@ export function enableLazyViews(root) {
       if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
       observer.unobserve(entry.target);
       if (entry.target instanceof HTMLElement) {
-        console.debug('[lazy-view] hydrating on intersection', entry.target.getAttribute('data-view-id'));
         void hydrateLazyView(entry.target);
       }
     }
@@ -112,13 +108,11 @@ export function enableLazyViews(root) {
     disclosure?.addEventListener('toggle', () => {
       if (disclosure.open) {
         observer.unobserve(element);
-        console.debug('[lazy-view] hydrating on disclosure', element.getAttribute('data-view-id'));
         void hydrateLazyView(element);
       }
     }, { once: true });
     element.addEventListener('focusin', () => {
       observer.unobserve(element);
-      console.debug('[lazy-view] hydrating on focus', element.getAttribute('data-view-id'));
       void hydrateLazyView(element);
     }, { once: true });
   }
@@ -128,7 +122,6 @@ export function enableLazyViews(root) {
  * @param {HTMLElement} root
  */
 export function disconnectLazyViews(root) {
-  if (observers.has(root)) console.debug('[lazy-view] disconnecting observer');
   observers.get(root)?.disconnect();
   observers.delete(root);
 }
@@ -144,11 +137,10 @@ function hydrateLazyView(element, { immediate = false } = {}) {
 
   const render = renderers.get(element);
   if (!render || !element.parentNode) return Promise.resolve();
-  const viewId = element.getAttribute('data-view-id');
   const ownerDocument = element.ownerDocument;
 
   if (immediate && !activeTransitions.has(ownerDocument)) {
-    const hydration = renderHydratedView(element, render, viewId);
+    const hydration = renderHydratedView(element, render);
     hydrationPromises.set(element, hydration);
     return hydration;
   }
@@ -156,11 +148,10 @@ function hydrateLazyView(element, { immediate = false } = {}) {
   const hydration = queueHydration(ownerDocument, async () => {
     const transition = activeTransitions.get(ownerDocument);
     if (transition) {
-      console.debug('[lazy-view] deferring hydration until transition finishes', viewId);
       await transition;
     }
     if (!element.parentNode) return;
-    await renderHydratedView(element, render, viewId);
+    await renderHydratedView(element, render);
   });
 
   hydrationPromises.set(element, hydration);
@@ -170,22 +161,18 @@ function hydrateLazyView(element, { immediate = false } = {}) {
 /**
  * @param {HTMLElement} element
  * @param {() => HTMLElement | Promise<HTMLElement>} render
- * @param {string | null} viewId
  * @returns {Promise<void>}
  */
-function renderHydratedView(element, render, viewId) {
-  console.debug('[lazy-view] hydrating view', viewId);
+function renderHydratedView(element, render) {
   try {
     const rendered = render();
     if (rendered instanceof HTMLElement) {
       replaceLazyView(element, rendered);
-      console.debug('[lazy-view] hydrated view', viewId);
       return Promise.resolve();
     }
     return Promise.resolve(rendered)
       .then((resolved) => {
         replaceLazyView(element, resolved);
-        console.debug('[lazy-view] hydrated view', viewId);
       })
       .catch((error) => reportHydrationError(element, error));
   } catch (error) {
