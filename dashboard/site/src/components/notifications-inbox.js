@@ -170,6 +170,11 @@ export function renderNotificationsInbox(rows, sources = {}) {
       bulkDone.disabled = true;
     }
     lazyList.render(resetWindow);
+    for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
+      if (!(checkbox instanceof HTMLInputElement)) continue;
+      const notificationId = checkbox.dataset.notificationId;
+      checkbox.checked = notificationId !== undefined && selected.has(notificationId);
+    }
   };
   const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
   const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');

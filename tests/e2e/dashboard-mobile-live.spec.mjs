@@ -106,6 +106,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const sourceIndexResponse = sourceManifestResponse;
   expect(sourceIndexResponse, "The dashboard must request the split source manifest").toBeDefined();
   expect(sourceIndexResponse?.ok(), `Dashboard source manifest returned ${sourceIndexResponse?.status()}`).toBe(true);
+  expect(sourcesResponse, "The dashboard must avoid fetching the monolithic sources.json when the manifest is available").toBeUndefined();
   expect(crashed, "The mobile browser page crashed while rendering the dashboard").toBe(false);
   expect(pageErrors, "The dashboard emitted browser errors").toEqual([]);
 
