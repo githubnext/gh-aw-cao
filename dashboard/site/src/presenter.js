@@ -188,6 +188,9 @@ export function renderDashboard(input) {
     skipLink,
     appShell
   );
+  void enableDashboardDomProvenanceWhenDebugging(root, document).catch((error) => {
+    root.dataset.domProvenanceError = String(error?.message ?? error);
+  });
   enableSidebarToggle(root);
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
@@ -196,15 +199,54 @@ export function renderDashboard(input) {
     root,
     document.dashboard.title,
     (pageId) => {
-      const page = pages.find((candidate) => candidate.id === pageId);
-      return page
-        ? renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults)
-        : null;
+      const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
+      const page = pages[pageIndex];
+      if (!page) return null;
+      const renderedPage = renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      void annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex).catch((error) => {
+        root.dataset.domProvenanceError = String(error?.message ?? error);
+      });
+      return renderedPage;
     },
     sidebar.dataset.defaultPageId
 
   );
   return root;
+}
+
+/**
+ * Lazily loads the debug-only DOM provenance module (never bundled into the
+ * default dashboard load) and enables it only when `?debug=1` is present in
+ * the page URL, so Playwright/agent analysis can opt in without imposing any
+ * cost on regular dashboard visits.
+ * @param {HTMLElement} root
+ * @param {PresentationDocument} document
+ */
+async function enableDashboardDomProvenanceWhenDebugging(root, document) {
+  if (!isDomProvenanceDebugRequested(root)) return;
+  const { enableDashboardDomProvenance } = await import('./dom-provenance.js');
+  enableDashboardDomProvenance(root, document, getBuiltInPagePayload);
+}
+
+/**
+ * @param {HTMLElement} root
+ * @returns {boolean}
+ */
+function isDomProvenanceDebugRequested(root) {
+  const search = root.ownerDocument.defaultView?.location.search ?? '';
+  return new URLSearchParams(search).get('debug') === '1';
+}
+
+/**
+ * @param {HTMLElement} root
+ * @param {Element} renderedPage
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @param {number} pageIndex
+ */
+async function annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex) {
+  if (!isDomProvenanceDebugRequested(root)) return;
+  const { annotatePageDom } = await import('./dom-provenance.js');
+  annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload);
 }
 
 /**
@@ -1517,6 +1559,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
     rendered.classList.add('custom-view');
+    rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
     if (disclosure === 'essential') return rendered;
