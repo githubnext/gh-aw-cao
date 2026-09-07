@@ -9,7 +9,7 @@ import { buildDashboardSite } from "../../dashboard/site/scripts/build.mjs";
 
 function localDependencies(source) {
   const dependencies = [];
-  const pattern = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)["'](\.{1,2}\/[^"']+)["']|new URL\(\s*["'](\.{1,2}\/[^"']+)["']\s*,\s*import\.meta\.url\s*\)/g;
+  const pattern = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|\bexport\s+(?:\*|\{[^}]*\})\s+from\s+)["'](\.{1,2}\/[^"']+)["']|new URL\(\s*["'](\.{1,2}\/[^"']+)["']\s*,\s*import\.meta\.url\s*\)/g;
   for (const match of source.matchAll(pattern)) dependencies.push(match[1] ?? match[2]);
   return dependencies;
 }
