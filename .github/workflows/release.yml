@@ -81,9 +81,7 @@ jobs:
               const match = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(name);
               return match ? [[Number(match[1]), Number(match[2]), Number(match[3])]] : [];
             };
-            const releaseTags = releases
-              .filter((release) => !release.draft)
-              .map((release) => release.tag_name);
+            const releaseTags = releases.map((release) => release.tag_name);
             const versionNames = new Set([...releaseTags, ...tags.map(({ name }) => name)]);
             const versions = [...versionNames].flatMap(toVersion);
             versions.sort((left, right) => compareVersions(right, left));
@@ -142,16 +140,36 @@ jobs:
         with:
           script: |
             const releaseTag = process.env.RELEASE_TAG;
-            core.info(`Creating draft release ${releaseTag}.`);
-            const { data: release } = await github.rest.repos.createRelease({
+            core.info(`Creating tag and draft release ${releaseTag}.`);
+            await github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: releaseTag,
-              target_commitish: context.sha,
-              name: releaseTag,
-              draft: true,
-              generate_release_notes: true,
+              ref: `refs/tags/${releaseTag}`,
+              sha: context.sha,
             });
+            let release;
+            try {
+              ({ data: release } = await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: releaseTag,
+                target_commitish: context.sha,
+                name: releaseTag,
+                draft: true,
+                generate_release_notes: true,
+              }));
+            } catch (error) {
+              try {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `tags/${releaseTag}`,
+                });
+              } catch (cleanupError) {
+                core.error(`Failed to remove tag ${releaseTag} after release creation failed: ${cleanupError.message}`);
+              }
+              throw error;
+            }
             core.summary
               .addHeading(`Prepared ${releaseTag}`)
               .addRaw('A maintainer must review the generated notes, publish the draft, and mark it as the latest release from the GitHub website.')
