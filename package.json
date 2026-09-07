@@ -43,8 +43,5 @@
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
     "typescript": "^7.0.2"
-  },
-  "overrides": {
-    "undici": "^6.28.1"
   }
 }
