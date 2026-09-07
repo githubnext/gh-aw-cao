@@ -7203,6 +7203,10 @@
                 "attention-signals",
                 "workflows",
                 "agent-assignments",
+                "agent-smells",
+                "workflow-smells",
+                "security-findings",
+                "control-plane-smells",
                 "security-observations",
                 "runs",
                 "work-items",
@@ -7321,6 +7325,7 @@
               "sources": [
                 "agent-assignments",
                 "workflows",
+                "agent-smells",
                 "security-observations"
               ]
             },

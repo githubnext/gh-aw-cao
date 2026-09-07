@@ -19,7 +19,7 @@ import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { renderWorkProjectView } from './work-project-view.js';
-import { agentSmellNotifications, renderAgentMarketplaceView } from './agent-marketplace-view.js';
+import { agentSmellNotifications, renderAgentMarketplaceView, smellObservationNotifications } from './agent-marketplace-view.js';
 import { renderNotificationsInbox } from './notifications-inbox.js';
 import { renderInsightsOverview } from './insights-overview.js';
 import { modeBadgeClassName } from './badge.js';
@@ -581,9 +581,26 @@ function renderSignalListElement(context) {
   const source = context.sources[sourceName];
   const isCanonicalAttention = sourceName === 'attention-signals';
   const sourceRows = rowsFor(context, sourceName);
-  const smellRows = isCanonicalAttention
-    ? agentSmellNotifications(rowsFor(context, 'workflows'), rowsFor(context, 'agent-assignments'), rowsFor(context, 'security-observations'))
-    : [];
+  const smellRows = isCanonicalAttention ? [
+    ...agentSmellNotifications(
+      rowsFor(context, 'workflows'),
+      rowsFor(context, 'agent-assignments'),
+      rowsFor(context, 'security-observations'),
+      rowsFor(context, 'agent-smells')
+    ),
+    ...smellObservationNotifications(rowsFor(context, 'workflow-smells'), {
+      signalType: 'workflow-smell', objectivePrefix: 'Workflow smell', icon: 'workflow',
+      expectedActor: 'workflow-owner', navigationHref: '#page-agents'
+    }),
+    ...smellObservationNotifications(rowsFor(context, 'security-findings'), {
+      signalType: 'security-finding', objectivePrefix: 'Security finding', icon: 'shield',
+      expectedActor: 'security-reviewer', navigationHref: '#page-security'
+    }),
+    ...smellObservationNotifications(rowsFor(context, 'control-plane-smells'), {
+      signalType: 'control-plane-smell', objectivePrefix: 'Control-plane smell', icon: 'gear',
+      expectedActor: 'control-plane-owner', navigationHref: '#page-configuration'
+    })
+  ] : [];
   const rows = isCanonicalAttention ? rankCanonicalAttention([...sourceRows, ...smellRows]) : sourceRows;
   if (isCanonicalAttention && source) return renderNotificationsInbox(rows, {
     runs: rowsFor(context, 'runs'),

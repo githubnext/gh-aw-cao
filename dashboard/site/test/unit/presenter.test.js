@@ -773,7 +773,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'overview');
     const smell = [...page?.querySelectorAll('.notification-item') ?? []]
-      .find((item) => item.textContent?.includes('Agent health smell: Review agent'));
+      .find((item) => item.textContent?.includes('Agent smell: Review agent'));
     expect(smell?.textContent).toContain('Malicious patch detected');
     expect(smell?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
     expect(smell?.querySelector('.notification-content')?.getAttribute('href')).toBe('#page-agents');

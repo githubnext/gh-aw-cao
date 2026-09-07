@@ -191,8 +191,6 @@ body { margin: 0; background: var(--canvas); color: var(--fg); font: .875rem/1.5
 .agent-marketplace-icon-wrap { width: 48px; height: 48px; position: relative; flex: 0 0 48px; }
 .agent-icon-indicator { width: 17px; height: 17px; display: grid; place-items: center; position: absolute; right: -2px; border: 2px solid var(--canvas-subtle); border-radius: 50%; background: var(--canvas); }
 .agent-icon-indicator .octicon { width: 10px; height: 10px; }
-.agent-icon-smell { width: 18px; height: 9px; position: absolute; z-index: 2; top: -7px; left: 7px; color: var(--danger); }
-.agent-icon-smell .agent-scent-lines { width: 18px; height: 9px; }
 .agent-icon-disabled { bottom: -3px; color: var(--muted); }
 .agent-icon-slow { bottom: -3px; color: var(--danger); }
 .agent-icon-stale { bottom: -3px; left: -3px; color: var(--muted); }
