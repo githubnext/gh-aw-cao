@@ -146,4 +146,28 @@ describe('lazy dashboard views', () => {
     disconnectLazyViews(document.body);
     expect(disconnect).toHaveBeenCalledOnce();
   });
+
+  it('preserves an existing tabindex when restoring focus to a hydrated view', async () => {
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        constructor() {}
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    });
+    const section = document.createElement('section');
+    section.tabIndex = 0;
+    const render = vi.fn(() => section);
+    const lazyView = renderLazyView({ label: 'Tabbable Section', render });
+    document.body.append(lazyView);
+    enableLazyViews(document.body);
+
+    lazyView.focus();
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    expect(document.activeElement).toBe(section);
+    expect(section.tabIndex).toBe(0);
+    expect(section.getAttribute('tabindex')).toBe('0');
+  });
 });

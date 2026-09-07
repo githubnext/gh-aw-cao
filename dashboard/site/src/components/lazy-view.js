@@ -167,7 +167,9 @@ function replaceLazyView(element, rendered) {
   }
   element.replaceWith(rendered);
   if (restoreFocus) {
-    rendered.tabIndex = -1;
+    if (!rendered.hasAttribute('tabindex') && rendered.tabIndex < 0) {
+      rendered.tabIndex = -1;
+    }
     rendered.focus();
   }
 }
