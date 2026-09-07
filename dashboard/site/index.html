@@ -16,6 +16,7 @@
       import { renderDashboard, updateWithViewTransition } from "./src/presenter.js";
       import { startLoadingProgress } from "./src/loading-progress.js";
       import { readCachedSources, writeCachedSources } from "./src/source-cache.js";
+      import { octicon } from "./src/octicons.js";
 
       const metadata = (id, overrides = {}) => ({
         "source-id": id,
@@ -82,11 +83,63 @@
         console.log("Dashboard preview socket initialized.");
       }
       let copilotPrompt;
+      let copilotPanelOpen = false;
       if (previewMode === "copilot") {
         const { renderCopilotPrompt } = await import("./src/copilot-prompt.js");
         copilotPrompt = renderCopilotPrompt(dashboardSocket);
         console.log("Copilot dashboard prompt initialized.");
       }
+
+      const attachCopilotPanel = (dashboard) => {
+        if (!copilotPrompt) return;
+        const panel = document.createElement("aside");
+        panel.id = "dashboard-copilot-panel";
+        panel.className = "dashboard-copilot-panel";
+        panel.setAttribute("aria-label", "Modify this view with Copilot");
+        panel.hidden = !copilotPanelOpen;
+
+        const toggleButton = document.createElement("button");
+        toggleButton.type = "button";
+        toggleButton.className = "copilot-panel-toggle";
+        toggleButton.setAttribute("aria-controls", panel.id);
+        toggleButton.setAttribute("aria-label", "Modify this view with Copilot");
+        toggleButton.title = "Modify this view with Copilot";
+        const toggleLabel = document.createElement("span");
+        toggleLabel.textContent = "Modify this view";
+        const sidebar = dashboard.querySelector(".org-sidebar");
+
+        const setOpen = (open, restoreFocus = false) => {
+          copilotPanelOpen = open;
+          panel.hidden = !open;
+          toggleButton.replaceChildren(
+            octicon("sparkle"),
+            toggleLabel,
+            octicon(open ? "chevron-down" : "chevron-up")
+          );
+          if (open) {
+            const triggerBounds = toggleButton.getBoundingClientRect();
+            toggleButton.style.setProperty("--copilot-toggle-left", `${triggerBounds.left}px`);
+            toggleButton.style.setProperty("--copilot-toggle-width", `${triggerBounds.width}px`);
+            panel.prepend(toggleButton);
+          } else {
+            sidebar?.append(toggleButton);
+          }
+          toggleButton.setAttribute("aria-expanded", String(open));
+          dashboard.classList.toggle("dashboard-copilot-panel-open", open);
+          if (open) copilotPrompt.querySelector("textarea")?.focus();
+          else if (restoreFocus) toggleButton.focus();
+        };
+        toggleButton.addEventListener("click", () => setOpen(!copilotPanelOpen, copilotPanelOpen));
+        panel.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") setOpen(false, true);
+        });
+
+        panel.append(copilotPrompt);
+  sidebar?.append(toggleButton);
+        dashboard.append(panel);
+        dashboard.classList.add("dashboard-copilot-enabled");
+        setOpen(copilotPanelOpen);
+      };
 
       const renderSources = (sources, state = "ready") => {
         renderedSources = sources;
@@ -119,15 +172,7 @@
           status.textContent = "Showing cached data while loading the latest dashboard data…";
           dashboard.querySelector(".report-body")?.prepend(status);
         }
-        if (copilotPrompt) {
-          const appShell = dashboard.querySelector(".app-shell");
-          const sidebarToggle = dashboard.querySelector(".sidebar-toggle");
-          if (appShell?.classList.contains("sidebar-collapsed") && sidebarToggle instanceof HTMLButtonElement) {
-            sidebarToggle.click();
-          }
-          dashboard.classList.add("dashboard-copilot-enabled");
-          dashboard.querySelector(".org-sidebar")?.append(copilotPrompt);
-        }
+        attachCopilotPanel(dashboard);
         root.replaceChildren(dashboard);
         return dashboard;
       };

@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Dashboard Specification
 description: Normative product, information-architecture, interaction, evidence, and conformance requirements for the Central Agentic Ops dashboard.
-version: 1.0.0
+version: 2.0.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Dashboard Specification
 
-**Version:** 1.0.0  
+**Version:** 2.0.0
 **Status:** Working Draft  
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard.md  
 **Editors:** GitHub Next
@@ -308,17 +308,18 @@ The primary navigation is:
 1. **Home:** orientation and intervention;
 2. **Work:** complete objective and work-item inventory;
 3. **Agents:** assignments, coordination, health, and capacity;
-4. **Evidence:** verification, findings, artifacts, decisions, and provenance; and
-5. **Insights:** outcomes, operational value, effectiveness, cost, capacity, and longer-horizon analysis.
+4. **Insights:** outcomes, operational value, effectiveness, cost, capacity, and longer-horizon analysis; and
+5. **Settings:** control-plane configuration and policy inspection.
 
-Settings, Help, dashboard freshness, and identity controls are global utilities, not primary operational destinations.
+Evidence remains mandatory through contextual links and subordinate investigation routes rather than occupying the primary navigation. Help, dashboard freshness, theme, and repository identity are global utilities.
 
-- **CAOD-IA-001:** A Level 1 presenter **MUST** provide Home, Work, and Evidence destinations.
+- **CAOD-IA-001:** A Level 1 presenter **MUST** provide Home, Work, and Settings destinations and contextual access to supporting evidence.
 - **CAOD-IA-002:** A Level 2 presenter **MUST** additionally provide Agents and Insights destinations.
 - **CAOD-IA-003:** Primary navigation **MUST** preserve the distinctions between attention, operational investigation, and analytical exploration.
 - **CAOD-IA-004:** Run, log, prompt, model, tool-call, and token views **MUST** be subordinate detail destinations rather than the default Home experience.
 - **CAOD-IA-005:** A detail route **MUST** preserve a navigable relationship to its parent work item, agent, evidence object, or insight.
 - **CAOD-IA-006:** A presenter **MUST** preserve scope, time, and applicable filter state when navigating from a summary to supporting detail.
+- **CAOD-IA-011:** Evidence supporting a material state, reason, action, outcome, or value claim **MUST** remain reachable from that claim without first navigating through an undifferentiated evidence inventory.
 
 ### 5.2 Progressive Disclosure Levels
 
@@ -364,6 +365,8 @@ The shell contains:
 - **CAOD-SHELL-008:** Time intervals **MUST** identify exact start and exclusive end timestamps in detail, even when a concise label such as `Last 7 days` is shown.
 - **CAOD-SHELL-009:** Filters with a stable representation **SHOULD** be encoded in the URL and restored on reload and shared navigation.
 - **CAOD-SHELL-010:** A filter change **MUST** update all dependent summaries or explicitly identify regions that use a different fixed scope.
+- **CAOD-SHELL-011:** Global horizon, theme, and repository controls **MUST** remain in global shell chrome and **MUST NOT** wrap into page title or description content at narrow widths.
+- **CAOD-SHELL-012:** An icon-only global control **MUST** have a descriptive accessible name. Its state or value **MUST** remain available on keyboard focus and pointer hover, and activating it **MUST** expose the same configuration available at wider widths.
 
 ---
 
@@ -377,21 +380,19 @@ Home is an operational command surface, not a marketing page and not an exhausti
 
 Home contains, in this order:
 
-1. **Need attention:** unresolved items requiring action or investigation;
-2. **Work in progress:** a bounded list of meaningful work items;
-3. **Outcomes:** recent accepted, rejected, pending, or otherwise classified results; and
-4. **Operational pulse:** directly observed autonomy, evidence, cost, and capacity facts.
+1. **Operational pulse:** a compact, calm summary of recent observed run health; and
+2. **Needs attention:** unresolved items requiring action or investigation, grouped by deterministic cause when repetition would obscure distinct work.
 
-Ask CAO and new-work controls are commands subordinate to these regions and do not count as additional information regions.
+Work and outcome context may appear inside an attention item when relevant and link to their complete destinations. Ask CAO and new-work controls are commands subordinate to these regions and do not count as additional information regions.
 
-- **CAOD-HOME-001:** Home **MUST** place unresolved attention before normal activity, outcomes, aggregate health, cost, and launch controls in reading and focus order.
-- **CAOD-HOME-002:** The first viewport **MUST** expose the highest-ranked attention item and at least one current work item when each exists.
+- **CAOD-HOME-001:** Home **MUST** place a bounded operational pulse before the attention list, and the pulse **MUST NOT** displace, obscure, or visually outrank unresolved attention.
+- **CAOD-HOME-002:** The first viewport **MUST** expose the operational pulse and the highest-ranked attention item when attention exists.
 - **CAOD-HOME-003:** Home **MUST NOT** require an operator to interpret a chart before discovering that work is waiting for human action.
-- **CAOD-HOME-004:** Home **MUST** show work items rather than raw workflow runs as the primary row grain.
-- **CAOD-HOME-005:** Each Home work row **MUST** expose work identity, repository or scope, current phase or lifecycle state, reason, next action, and accountable owner when known.
+- **CAOD-HOME-004:** Home **MUST** show independently actionable attention signals or work items rather than raw workflow runs as the primary row grain.
+- **CAOD-HOME-005:** Each Home attention row **MUST** expose affected work or scope, reason, next action, expected actor, age, and an investigation target when known.
 - **CAOD-HOME-006:** Home **MUST** summarize communication waits and **MUST NOT** expose raw conversation or prompt content by default.
 - **CAOD-HOME-007:** Home **MUST NOT** show raw run history, token graphs, tool-call counts, full audit logs, dense dependency graphs, model-comparison charts, or repository rankings as essential regions.
-- **CAOD-HOME-008:** A presenter **SHOULD** limit each Home list to the five highest-priority or most-recent relevant rows and provide an explicit route to the complete inventory.
+- **CAOD-HOME-008:** A presenter **SHOULD** bound initially rendered Home items, progressively disclose repeated causes, and provide an explicit route to complete matching evidence.
 
 ### 7.3 Operational Pulse
 
@@ -403,9 +404,11 @@ Home may also present recent meaningful changes: a bounded set of state-changing
 - **CAOD-HOME-010:** Home **MUST NOT** present an opaque composite autonomy, health, risk, value, or efficiency score as the primary explanation of system state.
 - **CAOD-HOME-011:** When a composite indicator is present, its definition, components, window, and unavailable inputs **MUST** be inspectable, and the component reasons **MUST** be more prominent than the score.
 - **CAOD-HOME-012:** Home **MUST NOT** reserve persistent cost or capacity regions when neither an applicable policy nor usable telemetry exists. When present and within policy, cost and capacity **SHOULD** remain compact; an applicable threshold breach **MUST** become an attention item.
-- **CAOD-HOME-016:** Home **MAY** present recent meaningful changes as a subregion of Work in progress or Operational pulse, or as a collapsible supplemental surface. It **MUST NOT** become a fifth essential region and **MUST NOT** displace the four required regions of Section 7.2.
+- **CAOD-HOME-016:** Home **MAY** present recent meaningful changes as a subregion of Operational pulse or as a collapsible supplemental surface. It **MUST NOT** become a third essential region or displace the two required regions of Section 7.2.
 - **CAOD-HOME-017:** When present, recent meaningful changes **MUST** be limited to state-changing events such as attention recovered or resolved, a newly accepted or rejected outcome, a verification result change, a handoff, an ownership change, a lifecycle or phase transition, or evidence degradation. Routine execution activity, ordinary agent messages, and unchanged status **MUST NOT** appear.
 - **CAOD-HOME-018:** Each recent meaningful change **MUST** identify the affected work or scope, what changed, the observation time, the evidence class, and a route to the supporting evidence.
+- **CAOD-HOME-019:** A catch-up surface **MUST** disclose its selected interval, bound the stories rendered from retained evidence, and preserve outcome, review, runtime, evidence-acceptance, and operational-value signals as distinct facts.
+- **CAOD-HOME-020:** Persisting a catch-up interval or acknowledging that interval as reviewed **MUST** change only user presentation state; it **MUST NOT** alter source observations, resolve attention, or imply that underlying work was accepted.
 
 ### 7.4 Healthy and Empty States
 
@@ -483,6 +486,14 @@ The Work page is the complete operational inventory. It supports filters for lif
 - **CAOD-WORK-003:** A presenter **MUST** label missing reason, next action, owner, or waiting-on values as unavailable rather than omitting the field in a way that implies none exists.
 - **CAOD-WORK-004:** Work filtering, sorting, and grouping **MUST** preserve stable work identity and **MUST NOT** duplicate one work item because it has multiple executions or agents.
 - **CAOD-WORK-005:** Completed and cancelled work **MUST** be excluded from the default active view but remain available through filters and direct links.
+- **CAOD-WORK-022:** The Work board **MUST** present four concise columns: `Todo`, `In progress`, `Needs review`, and `Done`. Proposed, queued, waiting, pending, and unknown source states map to `Todo`; active and running states map to `In progress`; blocked and review states map to `Needs review`; terminal states map to `Done`. This presentation mapping **MUST NOT** rewrite or collapse the source lifecycle, phase, runtime, verification, or outcome evidence available in detail.
+- **CAOD-WORK-023:** Work **MUST** provide Board, Tasks, and Roadmap presentations over the same retained work-item inventory and active filters. Switching presentation **MUST NOT** change work identity, source state, ownership, timestamps, or evidence associations.
+- **CAOD-WORK-024:** Tasks **MUST** present orchestrators and workers as ordinary sortable rows rather than replacing an orchestrator and its workers with a collapsed package summary. Repository ownership **MUST** use the authoritative repository identity and link only when a valid repository URL can be constructed safely.
+- **CAOD-WORK-025:** Roadmap **MUST** retain a fixed work-title pane, a continuous UTC time grid, and one lane for every matching work item. It **MUST NOT** invent start dates, end dates, durations, actors, or artifact kinds to fill a planning interval.
+- **CAOD-WORK-026:** Roadmap **MUST** provide `Day`, `Week`, `Month`, `Quarter`, and `Year` zoom levels. Each level **MUST** disclose the represented interval and use calendar bands and ticks appropriate to that scale without changing recorded item timestamps.
+- **CAOD-WORK-027:** When the current date is inside the displayed Roadmap interval, the presenter **MUST** render a visually restrained current-date line with a non-color-only accessible label and provide a control that returns the viewport to that date.
+- **CAOD-WORK-028:** A Roadmap item **MUST** begin with the observed safe-output primitive when available, such as pull request, issue, label, report, review bundle, or no-op. Missing primitive evidence **MUST** remain a generic workflow output and **MUST NOT** be inferred from title text.
+- **CAOD-WORK-029:** A Roadmap item **SHOULD** end with the involved human, agent, scheduler, reviewer, or maintainer identity when authoritatively available. When only a role is available, the role **MAY** be shown; absent identity and role evidence **MUST** be labeled `Unassigned` or unavailable rather than represented by a fabricated avatar.
 
 ### 9.2 Progress
 
@@ -567,6 +578,12 @@ The Agents page answers who or what is assigned, what it is doing, whether it ca
 - **CAOD-AGENT-002:** Model, engine, tools, environment, utilization, retries, and attributed usage **MAY** be shown as supplemental facts and **MUST NOT** replace assignment and work context.
 - **CAOD-AGENT-003:** An idle agent **MUST NOT** be labeled unhealthy solely because it has no assignment.
 - **CAOD-AGENT-004:** Agent health **MUST** distinguish unavailable telemetry, execution failure, policy denial, waiting, idle, and healthy active work.
+- **CAOD-AGENT-019:** The default Agents experience **MUST** present a policy-scoped inventory of package and standalone agents before runtime detail, with facets for inventory kind and material health conditions.
+- **CAOD-AGENT-020:** Package members **SHOULD** remain grouped under their package identity while preserving each workflow's role, declared permissions, state, and evidence links.
+- **CAOD-AGENT-021:** Disabled registration **MUST** remain distinct from a security smell. A smell label **MUST** require an observed threat, policy violation, stale evidence beyond a disclosed threshold, or another explicitly defined adverse condition.
+- **CAOD-AGENT-022:** A presenter **MUST NOT** infer that runtime duration or activity is anomalous without a representative baseline and disclosed method.
+- **CAOD-AGENT-023:** The Agents inventory **MUST** distinguish package identities from standalone workflows and provide a route from each package to its retained package detail.
+- **CAOD-AGENT-024:** Package detail **SHOULD** render the package README when retained by the authoritative inventory. Missing README content **MUST** produce an explicit unavailable state and **MUST NOT** be replaced with generated package claims.
 
 ### 11.2 Coordination
 
@@ -647,6 +664,10 @@ Insights contains longer-horizon analysis, including outcomes, operational value
 - **CAOD-INSIGHT-002:** Home-level summaries **MUST** link to the corresponding Insights investigation when one exists.
 - **CAOD-INSIGHT-003:** Charts **MUST** expose a textual or tabular equivalent containing material values.
 - **CAOD-INSIGHT-004:** A ranking **MUST** disclose its measure, denominator when applicable, missing-data treatment, and tie-breaking rule.
+- **CAOD-INSIGHT-019:** The default Insights overview **MUST** lead with operational-value attainment and accepted outcomes, followed by outcome disposition, measured AI Credit allocation, execution health, detection observations, and experiment decisions.
+- **CAOD-INSIGHT-020:** The Insights overview **MUST NOT** present attainment as causal ROI, AI Credits as monetary cost, workflow execution as experiment success, or unavailable detection evidence as zero threats.
+- **CAOD-INSIGHT-021:** A high-cardinality multi-series chart **MUST NOT** render an expanded legend that materially delays subsequent content. It **SHOULD** provide a collapsed, keyboard-operable series selector with all series enabled initially and a persistent selected-series count.
+- **CAOD-INSIGHT-022:** Toggling a chart series **MUST** change presentation only, preserve each series' stable identity and color, and leave the underlying observations and aggregate headline metrics unchanged.
 
 ### 13.2 Distinct Resource Questions
 
@@ -675,6 +696,15 @@ The dashboard keeps these questions separate:
 - **CAOD-INSIGHT-014:** An anomaly label **MUST** require a representative comparable baseline and disclose cohort, lookback interval, sample count, method and version, parameters, and false-alarm interpretation.
 - **CAOD-INSIGHT-015:** When a prerequisite is absent, the presenter **MUST** display `not evaluated` or `unavailable` and identify the missing prerequisite.
 - **CAOD-INSIGHT-016:** A statistically unusual observation **MUST** remain distinct from a failure, policy breach, or required human action.
+
+### 13.4 Settings and Authored-View Stability
+
+Settings exposes the checked-in control policy for inspection and bounded editing without becoming a second policy authority.
+
+- **CAOD-SET-001:** Settings **MUST** identify `.github/workflows/cao.json` as the persistent non-secret rollout policy authority and **MUST NOT** imply that unsaved or uncommitted edits are effective policy.
+- **CAOD-SET-002:** A policy editing surface **MUST** preserve fail-closed validation, reject unresolved placeholders, and present generated JSON for review before it can be committed through an authorized repository workflow.
+- **CAOD-SET-003:** Dashboard Language views marked `locked: true` **MUST** be treated as stable authored product surfaces. Agents evolving the dashboard **SHOULD NOT** modify a locked view except to correct a defect or satisfy an explicit reviewed change request; locking **MUST NOT** alter runtime presentation or data semantics.
+- **CAOD-SET-004:** A conforming built-in dashboard **SHOULD** lock the authored Home, Work Board, Work Tasks, Work Roadmap, Agents, Insights, and Settings views after their contracts have been reviewed.
 
 ---
 
@@ -827,7 +857,7 @@ A semantic visualization is a graphical form whose structure encodes operational
 
 - **CAOD-RESP-001:** The dashboard **MUST NOT** introduce horizontal page overflow at a 320 CSS pixel viewport.
 - **CAOD-RESP-002:** A labeled timeline, matrix, or data table **MAY** scroll within its own region when all essential controls and labels remain reachable.
-- **CAOD-RESP-003:** At narrow widths, Home **MUST** preserve the order Attention, Work, Outcomes, and Operational pulse.
+- **CAOD-RESP-003:** At narrow widths, Home **MUST** preserve the order Operational pulse then Needs attention, and global controls **MUST** remain contained within global navigation chrome.
 - **CAOD-RESP-004:** Responsive reduction **MUST NOT** remove state, reason, next action, data quality, or access to evidence.
 - **CAOD-RESP-005:** Text **MUST** wrap or truncate without overlapping adjacent content, and truncated text **MUST** remain available to assistive technology and on keyboard focus.
 - **CAOD-RESP-006:** When a semantic visualization cannot be presented at the available width, the presenter **MUST** apply a semantic reduction that preserves the distinctions required by Section 17.1 rather than removing the visualization. Recommended reductions are:
@@ -929,19 +959,19 @@ Implementers should evaluate the dashboard with representative users and realist
 | T-CAOD-CONF-001 | CAOD-CONF-001 through 005 | 1-3 | Inspect complete and partial claims; verify class, version, level, results, and no implied cross-specification claim. |
 | T-CAOD-MODEL-001 | CAOD-MODEL-001 through 006 | 1 | Supply retries and multi-run work plus ambiguous nearby runs; verify stable work identity and rejection of proximity joins. |
 | T-CAOD-MODEL-002 | CAOD-MODEL-007 through 015 | 1 | Supply conflicting runtime, verification, outcome, and work states plus missing reason fields; verify independent axes and explicit unavailable values. |
-| T-CAOD-IA-001 | CAOD-IA-001 through 010; CAOD-VIS-006 | 1-3 | Inspect navigation, detail ancestry, filter preservation, disclosure count, and absence of unsupported charts and diagrams; supply chart-ready and diagram-ready fixtures and verify that the leading summary of each analytical view answers its stated operator question in either a statistical-chart, semantic-visualization, or ranked-list form. |
-| T-CAOD-SHELL-001 | CAOD-SHELL-001 through 010 | 1 | Change scope, time, source state, and refresh mode; verify labels, URL state, synchronized regions, and accurate `Live` semantics. |
-| T-CAOD-HOME-001 | CAOD-HOME-001 through 008 | 1 | Render mixed attention and active work; verify first-viewport order, work-item grain, required row fields, bounded lists, and excluded raw telemetry. |
-| T-CAOD-HOME-002 | CAOD-HOME-009 through 018 | 1 | Render healthy, unavailable, idle, composite-score, no-resource-policy, threshold-breach, and recent-meaningful-change fixtures; verify separated pulse dimensions, conditional resource regions, truthful empty states, the four-region cap, and exclusion of routine activity from meaningful changes. |
+| T-CAOD-IA-001 | CAOD-IA-001 through 011; CAOD-VIS-006 | 1-3 | Inspect navigation, contextual evidence access, detail ancestry, filter preservation, disclosure count, and absence of unsupported charts and diagrams; supply chart-ready and diagram-ready fixtures and verify that the leading summary of each analytical view answers its stated operator question in either a statistical-chart, semantic-visualization, or ranked-list form. |
+| T-CAOD-SHELL-001 | CAOD-SHELL-001 through 012 | 1 | Change scope, time, source state, refresh mode, and viewport; verify labels, URL state, synchronized regions, accurate `Live` semantics, global-control containment, and icon-control keyboard disclosure. |
+| T-CAOD-HOME-001 | CAOD-HOME-001 through 008 | 1 | Render mixed attention and active work; verify pulse-first orientation, highest-ranked actionable signal, required row fields, bounded initial disclosure, and excluded raw telemetry. |
+| T-CAOD-HOME-002 | CAOD-HOME-009 through 018 | 1 | Render healthy, unavailable, idle, composite-score, no-resource-policy, threshold-breach, and recent-meaningful-change fixtures; verify separated pulse dimensions, conditional resource facts, truthful empty states, the two-region cap, and exclusion of routine activity from meaningful changes. |
 | T-CAOD-ATTN-001 | CAOD-ATTN-001 through 006 | 1 | Supply human requests, verification contradictions, exactly correlated autonomous recovery, ambiguous recovery, human-assisted recovery, unresolved failures, routine events, and conflicts; verify eligibility and suppression. |
 | T-CAOD-ATTN-002 | CAOD-ATTN-007 through 016 | 1 | Shuffle tied attention fixtures; verify deterministic rank, consequence treatment, direct destinations, action previews, dismissal history, and that the highest-ranked signal exposes reason, requested action, expected actor, and investigation target without changing rank order. |
-| T-CAOD-WORK-001 | CAOD-WORK-001 through 010 | 1 | Render work with multiple attempts, phase regressions, and versioned and unversioned denominators; verify deduplication, required fields, filters, phase evidence, and rejection of fabricated percentages. |
+| T-CAOD-WORK-001 | CAOD-WORK-001 through 010; CAOD-WORK-022 | 1 | Render work with multiple attempts, source states, phase regressions, and versioned and unversioned denominators; verify four-column display mapping, retained source evidence, deduplication, required fields, filters, phase evidence, and rejection of fabricated percentages. |
 | T-CAOD-WORK-002 | CAOD-WORK-011 through 021 | 1 | Inspect detail for timeline provenance, dependencies, attributed executions, and contradictory evidence preservation; supply a phase regression, a waiting interval, and an unavailable observation interval, and verify preserved regression order, inspectable transition evidence, interval rendering, and visible discontinuity. |
 | T-CAOD-OUT-001 | CAOD-OUT-001 through 017 | 2 | Supply mixed runtime, verification, artifact, outcome, maturity, value-definition, and trend fixtures, including an immature outcome; verify semantic separation, valid aggregation, distinct artifact, outcome, maturity, and value stages, and that pending, immature, and unknown do not collapse into zero or failure. |
-| T-CAOD-AGENT-001 | CAOD-AGENT-001 through 010 | 2 | Supply idle, waiting, failed, unavailable, assigned, handoff, conflict, and unattributed fixtures; verify states and exact correlation. |
+| T-CAOD-AGENT-001 | CAOD-AGENT-001 through 010; CAOD-AGENT-019 through 022 | 2 | Supply package, standalone, disabled, idle, waiting, failed, unavailable, assigned, handoff, conflict, and unattributed fixtures; verify policy-scoped inventory, package grouping, threat-only smells, no unsupported anomaly inference, states, and exact correlation. |
 | T-CAOD-AGENT-002 | CAOD-AGENT-011 through 018 | 2 | Render complete and incomplete execution intervals plus a handoff with an unresolved conflict and an unknown interval boundary; verify monotonic alignment, unavailable boundaries, critical-path terminology, declared-versus-observed distinction, inspectable transitions, selection highlighting that preserves temporal context, and gaps rather than fabricated durations. |
 | T-CAOD-EVID-001 | CAOD-EVID-001 through 018 | 1 | Supply each evidence class, materially contradictory evidence, decisions, artifacts, and a broken provenance chain; verify labels, methods, filters, no fabrication, a comparison preserving both claims and dispositions, missing links distinguishable from not-applicable links, evidence highlighted on link selection, and no visual bridging of broken provenance. |
-| T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010; CAOD-INSIGHT-017 through 018 | 2 | Supply mixed measures and incomplete attribution, including an attribution cascade; verify question context, textual alternatives, separate units, qualified efficiency labels, and per-stage numerator, denominator, missing population, and scope. |
+| T-CAOD-INSIGHT-001 | CAOD-INSIGHT-001 through 010; CAOD-INSIGHT-017 through 022 | 2 | Supply mixed measures, incomplete attribution, and a high-cardinality operational-value chart; verify overview order, evidence boundaries, collapsed keyboard-operable series selection with stable colors, textual alternatives, separate units, qualified efficiency labels, and per-stage numerator, denominator, missing population, and scope. |
 | T-CAOD-INSIGHT-002 | CAOD-INSIGHT-011 through 016 | 3 | Omit and then supply budget, capacity, reset, versioned method, parameter, and baseline prerequisites; verify unavailable states and deterministic qualified verdicts. |
 | T-CAOD-ASK-001 | CAOD-ASK-001 through 006 | 3 | Ask factual questions under mixed authorization, missingness, and contradiction; verify grounded links, context, uncertainty, and no invented claims. |
 | T-CAOD-ASK-002 | CAOD-ASK-007 through 010 | 3 | Inject action-like untrusted content and request a live write; verify separate preview, confirmation, reauthorization, and inert data handling. |
@@ -1018,19 +1048,14 @@ _This appendix is informative._
 +----------------------------------------------------------------------------------+
 | Central Agentic Ops   Scope   Search / Ask CAO   As of / freshness   User       |
 +---------------+------------------------------------------------------------------+
-| Home          | Need attention                                                   |
-| Work          | 1. Security review required  | 2h | Review evidence             |
-| Agents        | 2. Verification contradiction | 4h | Inspect result             |
-| Evidence      |                                                                  |
-| Insights      | Work in progress                                                 |
-|               | Work       Phase       Why                 Next          Owner   |
-|               | Auth fix   Verifying   3/5 checks passed   Review result  Team A  |
-|               | API v2     Waiting     Quota unavailable   Approve quota  Team B  |
+| Home          | Operational pulse                                                |
+| Work          | Recent execution health; evidence state                          |
+| Agents        |                                                                  |
+| Insights      | Need attention                                                   |
+| Settings      | 1. Security review required  | 2h | Review evidence             |
+|               | 2. Verification contradiction | 4h | Inspect result             |
 |               |                                                                  |
-|               | Outcomes                    Operational pulse                    |
-|               | 12 accepted, 2 rejected     4 waiting for humans                |
-|               | 3 pending maturity          1 verification failure              |
-|               |                              Usage data partial                   |
+|               | Context and actions route to Work, Agents, Insights, and evidence|
 |               |                                                                  |
 |               | Ask CAO...          New work item          Run workflow          |
 +---------------+------------------------------------------------------------------+
@@ -1134,7 +1159,14 @@ This specification defines what the CAO dashboard must communicate and how users
 
 ## 23. Change Log
 
-### Version 1.0.0 (Working Draft)
+### Version 2.0.0 (Working Draft)
+
+- **Changed:** Primary navigation is Home, Work, Agents, Insights, and Settings; evidence remains mandatory through contextual and subordinate investigation routes.
+- **Changed:** Home leads with a bounded catch-up and operational pulse followed by cause-grouped Needs attention work.
+- **Added:** Board, sortable Tasks, and UTC Roadmap presentations over one Work inventory, including Day, Week, Month, Quarter, and Year zoom levels, a current-date marker, truthful safe-output primitives, and evidence-bounded actor identity.
+- **Added:** Policy-scoped Agents Marketplace and retained package README detail, composed Insights overview, collapsed multi-series selection, policy Settings, locked authored-view guidance, and responsive global-control containment.
+
+### Version 1.0.0
 
 - **Added:** Task-centered dashboard model informed by two independent studies of external public datasets, with explicit limits on their applicability to CAO.
 - **Added:** Normative Home, attention, work, outcome, agent, evidence, Insights, and Ask CAO requirements.

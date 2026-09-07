@@ -50,8 +50,14 @@ resources:
     destination: .github/aw/dashboard/site/src/data-worker.js
   - source: site/src/copilot-prompt.js
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
+  - source: site/src/compliance.js
+    destination: .github/aw/dashboard/site/src/compliance.js
+  - source: site/src/data-health.js
+    destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/debounce.js
+    destination: .github/aw/dashboard/site/src/debounce.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
   - source: site/src/loading-progress.js
@@ -72,12 +78,20 @@ resources:
     destination: .github/aw/dashboard/site/src/repository-data.js
   - source: site/src/runtime-data.js
     destination: .github/aw/dashboard/site/src/runtime-data.js
+  - source: site/src/scatter-clustering.js
+    destination: .github/aw/dashboard/site/src/scatter-clustering.js
+  - source: site/src/smells.svg
+    destination: .github/aw/dashboard/site/src/smells.svg
   - source: site/src/specification.js
     destination: .github/aw/dashboard/site/src/specification.js
   - source: site/src/source-cache.js
     destination: .github/aw/dashboard/site/src/source-cache.js
   - source: site/src/styles.js
     destination: .github/aw/dashboard/site/src/styles.js
+  - source: site/src/table-summary-data.js
+    destination: .github/aw/dashboard/site/src/table-summary-data.js
+  - source: site/src/validator.js
+    destination: .github/aw/dashboard/site/src/validator.js
   - source: site/src/view-formatters.js
     destination: .github/aw/dashboard/site/src/view-formatters.js
   - source: site/src/workflow-data.js
@@ -88,12 +102,16 @@ resources:
     destination: .github/aw/dashboard/site/src/components/attention-rules.js
   - source: site/src/components/attention-rules.json
     destination: .github/aw/dashboard/site/src/components/attention-rules.json
+  - source: site/src/components/agent-marketplace-view.js
+    destination: .github/aw/dashboard/site/src/components/agent-marketplace-view.js
   - source: site/src/components/badge.js
     destination: .github/aw/dashboard/site/src/components/badge.js
   - source: site/src/components/cell-display.js
     destination: .github/aw/dashboard/site/src/components/cell-display.js
   - source: site/src/components/configuration-view.js
     destination: .github/aw/dashboard/site/src/components/configuration-view.js
+  - source: site/src/components/configuration-actions.js
+    destination: .github/aw/dashboard/site/src/components/configuration-actions.js
   - source: site/src/components/chart-elements.js
     destination: .github/aw/dashboard/site/src/components/chart-elements.js
   - source: site/src/components/count-formatters.js
@@ -106,22 +124,62 @@ resources:
     destination: .github/aw/dashboard/site/src/components/dispatch-type-classification.json
   - source: site/src/components/filter-bar.js
     destination: .github/aw/dashboard/site/src/components/filter-bar.js
+  - source: site/src/components/experiment-decision-surface.js
+    destination: .github/aw/dashboard/site/src/components/experiment-decision-surface.js
+  - source: site/src/components/experiment-detail-sections.js
+    destination: .github/aw/dashboard/site/src/components/experiment-detail-sections.js
+  - source: site/src/components/experiment-detail-view.js
+    destination: .github/aw/dashboard/site/src/components/experiment-detail-view.js
+  - source: site/src/components/experiment-summary-view.js
+    destination: .github/aw/dashboard/site/src/components/experiment-summary-view.js
+  - source: site/src/components/experiment-table-view.js
+    destination: .github/aw/dashboard/site/src/components/experiment-table-view.js
+  - source: site/src/components/experiment-view-primitives.js
+    destination: .github/aw/dashboard/site/src/components/experiment-view-primitives.js
+  - source: site/src/components/experiment-view-sections.js
+    destination: .github/aw/dashboard/site/src/components/experiment-view-sections.js
+  - source: site/src/components/experiments-evaluation.js
+    destination: .github/aw/dashboard/site/src/components/experiments-evaluation.js
+  - source: site/src/components/experiments-view-composition.js
+    destination: .github/aw/dashboard/site/src/components/experiments-view-composition.js
+  - source: site/src/components/experiments-view-primitives.js
+    destination: .github/aw/dashboard/site/src/components/experiments-view-primitives.js
+  - source: site/src/components/experiments-view-shell.js
+    destination: .github/aw/dashboard/site/src/components/experiments-view-shell.js
   - source: site/src/components/histogram.js
     destination: .github/aw/dashboard/site/src/components/histogram.js
   - source: site/src/components/link-content.js
     destination: .github/aw/dashboard/site/src/components/link-content.js
+  - source: site/src/components/insights-overview.js
+    destination: .github/aw/dashboard/site/src/components/insights-overview.js
   - source: site/src/components/linked-text.js
     destination: .github/aw/dashboard/site/src/components/linked-text.js
   - source: site/src/components/outcome-detail.js
     destination: .github/aw/dashboard/site/src/components/outcome-detail.js
+  - source: site/src/components/notifications-inbox.js
+    destination: .github/aw/dashboard/site/src/components/notifications-inbox.js
+  - source: site/src/components/outcome-detail-sections.js
+    destination: .github/aw/dashboard/site/src/components/outcome-detail-sections.js
   - source: site/src/components/package-aic-utilization-thresholds.json
     destination: .github/aw/dashboard/site/src/components/package-aic-utilization-thresholds.json
   - source: site/src/components/package-detail.js
     destination: .github/aw/dashboard/site/src/components/package-detail.js
+  - source: site/src/components/package-readme.js
+    destination: .github/aw/dashboard/site/src/components/package-readme.js
+  - source: site/src/components/package-route-composition.js
+    destination: .github/aw/dashboard/site/src/components/package-route-composition.js
+  - source: site/src/components/package-route-shell.js
+    destination: .github/aw/dashboard/site/src/components/package-route-shell.js
+  - source: site/src/components/package-route-view.js
+    destination: .github/aw/dashboard/site/src/components/package-route-view.js
+  - source: site/src/components/packages-mode-shell.js
+    destination: .github/aw/dashboard/site/src/components/packages-mode-shell.js
   - source: site/src/components/packages-view.js
     destination: .github/aw/dashboard/site/src/components/packages-view.js
   - source: site/src/components/route-empty-state.js
     destination: .github/aw/dashboard/site/src/components/route-empty-state.js
+  - source: site/src/components/route-page-shell.js
+    destination: .github/aw/dashboard/site/src/components/route-page-shell.js
   - source: site/src/components/route-composition.js
     destination: .github/aw/dashboard/site/src/components/route-composition.js
   - source: site/src/components/route-body-composition.js
@@ -134,6 +192,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/run-classification.js
   - source: site/src/components/run-conclusion-classification.json
     destination: .github/aw/dashboard/site/src/components/run-conclusion-classification.json
+  - source: site/src/components/source-rows.js
+    destination: .github/aw/dashboard/site/src/components/source-rows.js
   - source: site/src/components/site-callout.js
     destination: .github/aw/dashboard/site/src/components/site-callout.js
   - source: site/src/components/tab-nav.js
@@ -148,6 +208,22 @@ resources:
     destination: .github/aw/dashboard/site/src/components/ui-primitives.js
   - source: site/src/components/view-chrome.js
     destination: .github/aw/dashboard/site/src/components/view-chrome.js
+  - source: site/src/components/view-element-composition.js
+    destination: .github/aw/dashboard/site/src/components/view-element-composition.js
+  - source: site/src/components/work-item-card.js
+    destination: .github/aw/dashboard/site/src/components/work-item-card.js
+  - source: site/src/components/work-item-row.js
+    destination: .github/aw/dashboard/site/src/components/work-item-row.js
+  - source: site/src/components/work-item-timeline-lane.js
+    destination: .github/aw/dashboard/site/src/components/work-item-timeline-lane.js
+  - source: site/src/components/work-project-view.js
+    destination: .github/aw/dashboard/site/src/components/work-project-view.js
+  - source: site/src/components/work-view-composition.js
+    destination: .github/aw/dashboard/site/src/components/work-view-composition.js
+  - source: site/src/components/work-view-primitives.js
+    destination: .github/aw/dashboard/site/src/components/work-view-primitives.js
+  - source: site/src/components/work-view-sections.js
+    destination: .github/aw/dashboard/site/src/components/work-view-sections.js
   - source: site/src/components/workflow-badges.js
     destination: .github/aw/dashboard/site/src/components/workflow-badges.js
   - source: site/src/components/workflow-detail.js
@@ -160,6 +236,12 @@ resources:
     destination: .github/aw/dashboard/site/src/components/workflow-route-bodies.js
   - source: site/src/components/workflow-route-page-config.js
     destination: .github/aw/dashboard/site/src/components/workflow-route-page-config.js
+  - source: site/src/components/workflow-route-page-views.js
+    destination: .github/aw/dashboard/site/src/components/workflow-route-page-views.js
+  - source: site/src/components/workflow-route-page.js
+    destination: .github/aw/dashboard/site/src/components/workflow-route-page.js
+  - source: site/src/components/workflow-route-shell.js
+    destination: .github/aw/dashboard/site/src/components/workflow-route-shell.js
   - source: site/src/components/workflow-route-composition.js
     destination: .github/aw/dashboard/site/src/components/workflow-route-composition.js
   - source: site/src/components/workflow-route-view.js

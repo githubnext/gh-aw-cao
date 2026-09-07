@@ -179,6 +179,7 @@
     "navigation": [
       {
         "label": "Package operations",
+        "experimental": true,
         "pages": [
           "dependabot-dashboard"
         ]

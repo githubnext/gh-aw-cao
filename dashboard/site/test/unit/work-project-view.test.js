@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { renderWorkProjectView } from '../../src/components/work-project-view.js';
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
@@ -9,18 +10,27 @@ const item = {
   icon: 'dependabot',
   repository: 'github/gh-aw',
   owner: 'dependency-automation',
+  packageName: 'dependabot',
+  workType: 'worker',
   started: '2026-08-30T09:00:00Z',
+  timeLabel: 'Started',
   startedLabel: 'Aug 30, 2026, 9:00 AM',
   stoppedLabel: 'Aug 30, 2026, 9:30 AM',
   durationLabel: '30m',
-  state: 'active',
-  stateLabel: 'Active',
+  state: 'in-progress',
+  stateLabel: 'In Progress',
   startTime: Date.parse('2026-08-30T09:00:00Z'),
   stopTime: Date.parse('2026-08-30T09:30:00Z'),
+  safeOutputKind: 'pull-request',
+  actor: 'reviewer',
   evidenceLink: {
     relation: 'evidence',
     href: 'https://example.com/evidence/dependabot',
     label: 'Dependabot evidence'
+  },
+  repositoryLink: {
+    href: 'https://ghe.example/github/gh-aw',
+    label: 'Open github/gh-aw'
   }
 };
 
@@ -28,9 +38,13 @@ describe('work project view primitives', () => {
   it('renders reusable work cards independently of the work page', () => {
     const rendered = renderWorkItemCard(item);
     expect(rendered.className).toBe('work-card');
-    expect(rendered.getAttribute('data-work-state')).toBe('active');
+    expect(rendered.getAttribute('data-work-state')).toBe('in-progress');
     expect(rendered.textContent).toContain('Dependabot release train');
     expect(rendered.textContent).toContain('dependency-automation');
+    expect(rendered.querySelector('.work-owner-avatar')?.textContent).toBe('DA');
+    expect(rendered.querySelector('.work-owner-avatar')?.getAttribute('aria-label')).toBe('Owner: dependency-automation');
+    expect(rendered.querySelector('.work-card-label-package')?.textContent).toBe('dependabot');
+    expect(rendered.querySelector('.work-card-label-role')?.textContent).toBe('worker');
   });
 
   it('renders reusable work rows independently of the work page', () => {
@@ -39,15 +53,81 @@ describe('work project view primitives', () => {
     expect(rendered.getAttribute('role')).toBe('listitem');
     expect(rendered.textContent).toContain('github/gh-aw');
     expect(rendered.querySelector('time')?.getAttribute('dateTime')).toBe('2026-08-30T09:00:00Z');
+    expect(rendered.querySelector('.work-task-owner')?.textContent).toContain('github/gh-aw');
+    expect(rendered.querySelector('.work-task-owner .octicon-repo')).not.toBeNull();
+    expect(rendered.querySelector('.work-task-owner a')?.getAttribute('href')).toBe('https://ghe.example/github/gh-aw');
+    expect(rendered.querySelector('.work-task-owner a')?.getAttribute('target')).toBe('_blank');
   });
 
   it('renders reusable work timeline lanes independently of the work page', () => {
     const rendered = renderWorkItemTimelineLane(item, {
       start: item.startTime,
       duration: 30 * 60 * 1000
-    });
+    }, 3, 6);
     expect(rendered.className).toBe('work-roadmap-lane');
     expect(rendered.querySelector('.work-roadmap-bar')?.getAttribute('style')).toContain('--work-start: 0.00%');
-    expect(rendered.textContent).toContain('Aug 30, 2026, 9:00 AM');
+    expect(rendered.querySelector('.work-roadmap-index')?.textContent).toBe('4');
+    expect(rendered.querySelector('.work-roadmap-label-copy')?.textContent).toContain('github/gh-aw · dependency-automation');
+    expect(rendered.querySelector('.work-roadmap-track')?.getAttribute('style')).toContain('--roadmap-divisions: 6');
+    expect(rendered.querySelector('.work-roadmap-primitive .octicon-git-pull-request')).not.toBeNull();
+    expect(rendered.querySelector('.work-roadmap-primitive')?.getAttribute('aria-label')).toBe('Safe output: Pull request');
+    expect(rendered.querySelector('.work-roadmap-avatar')?.textContent).toBe('R');
+    expect(rendered.querySelector('.work-roadmap-owner')?.textContent).toBe('reviewer');
+    expect(rendered.querySelector('.work-roadmap-end')?.getAttribute('style')).toContain('--work-stop: 100.00%');
+  });
+
+  it('renders a compact custom Tasks table with configurable sorting', () => {
+    const rows = [
+      { 'work-item-id': 'alpha', name: 'Alpha task', owner: 'Zed', scope: 'github/alpha', 'lifecycle-state': 'waiting', 'started-at': '2026-08-29T09:00:00Z' },
+      { 'work-item-id': 'beta', name: 'Beta task', owner: 'Ada', scope: 'github/zeta', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work-tasks',
+      title: 'Tasks',
+      sources: { 'work-items': { rows } },
+      elementConfig: { body: 'tasks' }
+    }));
+
+    expect(rendered.querySelector('.work-task-view-name')?.textContent).toContain('Operations tasks');
+    expect([...rendered.querySelectorAll('.work-task-table-header > *')].map((header) => header.textContent)).toEqual([
+      '', 'Title', 'Status', 'Type', 'Labels', 'Start', 'End', 'Owned by'
+    ]);
+    expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
+
+    const sort = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Sort tasks by"]'));
+    sort.value = 'name';
+    sort.dispatchEvent(new Event('change'));
+    expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Sort descending"]')).click();
+    expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Alpha task', 'Beta task']);
+    expect(rendered.querySelector('[aria-label="Sort ascending"]')).not.toBeNull();
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Sort by owned by"]')).click();
+    expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
+  });
+
+  it('presents telemetry states as todo, in progress, needs review, and done', () => {
+    const rows = [
+      { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
+      { 'work-item-id': 'progress', name: 'Running item', 'lifecycle-state': 'active' },
+      { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' },
+      { 'work-item-id': 'done', name: 'Completed item', 'lifecycle-state': 'completed' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work',
+      title: 'Work',
+      sources: { 'work-items': { rows } }
+    }));
+    const columns = [...rendered.querySelectorAll('.work-board-column')];
+
+    expect(columns.map((column) => column.querySelector('h4')?.textContent)).toEqual([
+      'Todo', 'In progress', 'Needs review', 'Done'
+    ]);
+    expect(columns.map((column) => column.querySelector('.work-card')?.getAttribute('data-work-state'))).toEqual([
+      'todo', 'in-progress', 'needs-review', 'done'
+    ]);
+    expect(rendered.textContent).not.toContain('Waiting');
+    expect(rendered.textContent).not.toContain('Active');
   });
 });

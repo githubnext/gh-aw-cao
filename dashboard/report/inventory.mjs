@@ -70,10 +70,13 @@ function relative(filePath) {
 function discoverInventory() {
   const manifests = findFiles(root, "aw.yml").map((manifestPath) => {
     const source = readFileSync(manifestPath, "utf8");
+    const readmePath = path.join(path.dirname(manifestPath), "README.md");
     return {
       path: relative(manifestPath),
       name: scalar(source, "name"),
       description: scalar(source, "description"),
+      readmePath: existsSync(readmePath) ? relative(readmePath) : "",
+      readme: existsSync(readmePath) ? readFileSync(readmePath, "utf8") : "",
       includes: manifestIncludes(source),
     };
   });
@@ -114,6 +117,8 @@ function discoverInventory() {
     id: orchestrator.id,
     name: orchestrator.package?.name || orchestrator.name,
     description: orchestrator.package?.description || orchestrator.description,
+    readmePath: orchestrator.package?.readmePath || "",
+    readme: orchestrator.package?.readme || "",
     workflow: orchestrator.sourcePath,
     controlPackage: orchestrator.controlPackage,
     maxAiCredits: orchestrator.maxAiCredits,

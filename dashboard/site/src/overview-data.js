@@ -68,9 +68,23 @@ export function deriveOverviewSources(sources, options = {}) {
     outcomes: readinessSources.outcomes,
     'coverage-diagnostics': sources['coverage-diagnostics']
   });
+  const overviewInbox = buildOverviewInboxRows(sources);
+  const overviewInboxMetadata = createOverviewMetadata({
+    'attention-signals': sources['attention-signals'],
+    'agent-assignments': sources['agent-assignments'],
+    'evidence-records': sources['evidence-records'],
+    'github-api-rate-limits': sources['github-api-rate-limits'],
+    usage: sources.usage,
+    'operational-values': sources['operational-values']
+  });
 
   return {
     ...sources,
+    'attention-signals': {
+      source: 'attention-signals',
+      rows: overviewInbox,
+      metadata: overviewInboxMetadata
+    },
     'overview-status': {
       source: 'overview-status',
       rows: [buildOverviewStatusRow({ sources, workflows, repositories, runs, usage, packages, health, disabledWorkflows })],
@@ -200,6 +214,94 @@ export function deriveOverviewSources(sources, options = {}) {
       metadata: overviewMetadata
     }
   };
+}
+
+/**
+ * Builds the quiet Overview inbox from explicit actionable states owned by the
+ * Work, Agents, Evidence, and Insights views.
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ */
+function buildOverviewInboxRows(sources) {
+  const workSignals = rowsFor(sources, 'attention-signals')
+    .filter((row) => /blocked|failure|approval|review|authority|human/i.test([
+      row['signal-type'], row.reason, row.action
+    ].join(' ')))
+    .map((row) => ({ ...row, 'navigation-page': 'work' }));
+
+  const agentSignals = rowsFor(sources, 'agent-assignments')
+    .filter((row) => Boolean(row.stale) || Boolean(row['long-running']))
+    .map((row) => {
+      const stale = Boolean(row.stale);
+      const runtimeSeconds = Number(row['total-runtime-seconds']);
+      const runtime = Number.isFinite(runtimeSeconds) ? `${formatNumber(Math.round(runtimeSeconds / 60))} min runtime` : '';
+      return {
+        'attention-signal-id': `agent:${row['assignment-id'] ?? row['agent-id']}`,
+        'signal-type': stale ? 'stale-agent' : 'expensive-agent',
+        objective: row['agent-name'] ?? row.objective ?? 'Agent needs attention',
+        scope: row.objective ?? '',
+        reason: stale ? 'Agent telemetry is stale.' : 'Agent runtime exceeded the long-running threshold.',
+        action: 'Review agent',
+        'expected-actor': 'agent owner',
+        'consequence-tier': stale ? 'medium' : 'low',
+        priority: stale ? 2 : 3,
+        'observed-at': row['last-observed-at'] ?? row['observed-at'],
+        evidence: runtime,
+        'navigation-page': 'agents',
+        'evidence-link': row['evidence-link'],
+        'run-link': row['run-link']
+      };
+    });
+
+  const uncertainEvidenceStates = new Set(['pending', 'unknown', 'unavailable', 'incomplete', 'unsupported']);
+  const evidenceSignals = rowsFor(sources, 'evidence-records')
+    .filter((row) => uncertainEvidenceStates.has(String(row['verification-state']).toLowerCase())
+      || uncertainEvidenceStates.has(String(row['provenance-state']).toLowerCase())
+      || ['inferred', 'unsupported'].includes(String(row['evidence-class']).toLowerCase()))
+    .map((row) => ({
+      'attention-signal-id': `evidence:${row['evidence-id']}`,
+      'signal-type': 'evidence-uncertainty',
+      objective: row.objective ?? 'Evidence needs review',
+      scope: row['evidence-kind'] ?? '',
+      reason: row.claim ?? 'Evidence is incomplete or uncertain.',
+      action: 'Review evidence',
+      'expected-actor': 'evidence owner',
+      'consequence-tier': 'medium',
+      priority: 2,
+      'observed-at': row['observed-at'],
+      'navigation-page': 'insights',
+      'evidence-link': row['evidence-link'],
+      'run-link': row['run-link']
+    }));
+
+  const insightSources = ['github-api-rate-limits', 'usage', 'operational-values'];
+  const insightSignals = insightSources.flatMap((sourceName) => rowsFor(sources, sourceName)
+    .filter((row) => ['critical', 'warning', 'exceeded'].includes(String(row['risk-status'] ?? row.status).toLowerCase())
+      || row['threshold-exceeded'] === true
+      || (Number.isFinite(Number(row.threshold)) && Number.isFinite(Number(row.value)) && Number(row.value) > Number(row.threshold)))
+    .map((row, index) => ({
+      'attention-signal-id': `insight:${sourceName}:${row.run ?? row.invocation ?? index}`,
+      'signal-type': 'threshold-exceeded',
+      objective: row.title ?? row.metric ?? row.resource ?? 'Operational threshold exceeded',
+      scope: [row.organization, row.repository].filter(Boolean).join('/'),
+      reason: row.detail ?? row.reason ?? 'An observed operational threshold was exceeded.',
+      action: 'Review insight',
+      'expected-actor': row.owner ?? 'operations owner',
+      'consequence-tier': String(row['risk-status']).toLowerCase() === 'critical' ? 'high' : 'medium',
+      priority: String(row['risk-status']).toLowerCase() === 'critical' ? 0 : 2,
+      'observed-at': row['observed-at'],
+      evidence: Number.isFinite(Number(row['remaining-percent'])) ? `${row['remaining-percent']}% remaining` : '',
+      'navigation-page': 'insights',
+      'run-link': row['run-link']
+    })));
+
+  const rows = /** @type {Array<Record<string, unknown>>} */ ([
+    ...workSignals,
+    ...agentSignals,
+    ...evidenceSignals,
+    ...insightSignals
+  ]);
+  return rows
+    .filter((row, index, rows) => rows.findIndex((candidate) => candidate['attention-signal-id'] === row['attention-signal-id']) === index);
 }
 
 /**

@@ -311,6 +311,47 @@ async function collectDashboardRecordsImpl({
     return items;
   }
 
+  async function githubWorkflowPages(repositoryName, maxPages = 10) {
+    const workflows = [];
+    for (let page = 1; page <= maxPages; page += 1) {
+      const response = await github(`/repos/${repositoryName}/actions/workflows?per_page=100&page=${page}`);
+      if (!Array.isArray(response.workflows)) throw new Error(`Expected workflows from ${repositoryName}`);
+      workflows.push(...response.workflows);
+      if (response.workflows.length < 100) break;
+    }
+    return workflows;
+  }
+
+  async function repositoryWorkflowSource(repositoryName) {
+    try {
+      const workflows = await githubWorkflowPages(repositoryName);
+      return {
+        repository: repositoryName,
+        complete: true,
+        workflows: workflows
+          .filter((workflow) => String(workflow.path || "").endsWith(".lock.yml"))
+          .map((workflow) => ({
+            repository: repositoryName,
+            path: workflow.path,
+            name: workflow.name || workflow.path.split("/").at(-1)?.replace(/\.lock\.yml$/, "") || "Unknown workflow",
+            state: workflow.state || "unknown",
+            htmlUrl: safeUrl(workflow.html_url),
+            createdAt: workflow.created_at || null,
+            updatedAt: workflow.updated_at || null,
+            role: "standalone",
+            runHealth: { runRecords: [] },
+            sourceAvailable: false,
+            ghAwMetadata: null,
+            ghAwManifest: null,
+          })),
+      };
+    } catch (error) {
+      if (error instanceof GitHubRateLimitError) throw error;
+      log.warning`${error.message}; remote workflow discovery will be incomplete for ${repositoryName}`;
+      return { repository: repositoryName, complete: false, workflows: [], reason: error.message };
+    }
+  }
+
   async function repositoryReportSources(repositoryName) {
     const required = repositoryName.toLowerCase() === repository.toLowerCase();
     const optional = async (loader, fallback) => {
@@ -373,7 +414,21 @@ async function collectDashboardRecordsImpl({
     ...(deployedInventory.allowedRepositories || []),
     ...allowedRepositories,
   ].filter(Boolean))].sort();
-  const reportSources = await mapWithConcurrency(reportRepositoryNames, 4, repositoryReportSources);
+  const remoteWorkflowRepositories = [...allowedRepositories]
+    .filter((repositoryName) => repositoryName !== repository.toLowerCase());
+  const [reportSources, remoteWorkflowSources] = await Promise.all([
+    mapWithConcurrency(reportRepositoryNames, 4, repositoryReportSources),
+    mapWithConcurrency(remoteWorkflowRepositories, 4, repositoryWorkflowSource),
+  ]);
+  const remoteWorkflows = remoteWorkflowSources.flatMap((source) => source.workflows);
+  const workflowDiscovery = {
+    complete: remoteWorkflowSources.every((source) => source.complete),
+    repositoriesExpected: remoteWorkflowRepositories.length,
+    repositoriesObserved: remoteWorkflowSources.filter((source) => source.complete).length,
+    workflowsObserved: remoteWorkflows.length,
+    failures: remoteWorkflowSources.filter((source) => !source.complete)
+      .map((source) => ({ repository: source.repository, reason: source.reason })),
+  };
   const issueByUrl = new Map(reportSources.flatMap((source) => source.issues.map((issue) => [issue.url, issue])));
   const runCache = new Map();
 
@@ -448,7 +503,7 @@ async function collectDashboardRecordsImpl({
   const scopedRecords = allowedRepositories.size === 0
     ? records
     : records.filter((record) => allowedRepositories.has(record.repository.toLowerCase()));
-  return { generatedAt, repository, inventory, records: scopedRecords };
+  return { generatedAt, repository, inventory, records: scopedRecords, remoteWorkflows, workflowDiscovery };
 }
 
 export async function collectDashboardRecords(options) {
@@ -469,6 +524,14 @@ export async function collectDashboardRecords(options) {
       repository: options.repository,
       inventory: options.inventory,
       records: Array.isArray(retained) ? retained : [],
+      remoteWorkflows: Array.isArray(options.previousSnapshot?.remoteWorkflows) ? options.previousSnapshot.remoteWorkflows : [],
+      workflowDiscovery: options.previousSnapshot?.workflowDiscovery || {
+        complete: false,
+        repositoriesExpected: 0,
+        repositoriesObserved: 0,
+        workflowsObserved: 0,
+        failures: [{ repository: "", reason: error.message }],
+      },
       error: error.message,
       errorStatus: error.status,
       errorEndpoint: error.pathname,

@@ -181,6 +181,7 @@
     "navigation": [
       {
         "label": "Package operations",
+        "experimental": true,
         "pages": [
           "uk-ai-advisory-dashboard"
         ]

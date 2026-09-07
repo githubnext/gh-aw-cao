@@ -1,6 +1,5 @@
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
-import { isPlainObject, renderSectionHeading, createCopyControl, renderDisclosure } from './ui-primitives.js';
+import { isPlainObject, renderSectionHeading, createCopyControl } from './ui-primitives.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -68,68 +67,185 @@ function valueLabel(value) {
   return JSON.stringify(value);
 }
 
-/** @param {string} name @param {unknown} value @param {string} path @param {number} [depth] */
-function renderEntry(name, value, path, depth = 0) {
-  const children = Array.isArray(value)
-    ? value.map((item, index) => [
-        ['string', 'number', 'boolean'].includes(typeof item) ? String(item) : String(index),
-        item,
-        String(index)
-      ])
-    : isPlainObject(value) ? Object.entries(value).map(([childName, childValue]) => [childName, childValue, childName]) : [];
-  const content = [
-    h('div', { className: 'configuration-entry-heading' },
-      h('code', null, name),
-      h('span', { className: 'configuration-entry-value' }, valueLabel(value))),
-    h('p', null, explanation(path, value))
-  ];
-  if (children.length > 0) {
-    content.push(h('div', { className: 'configuration-entry-children' },
-      ...children.map(([childName, childValue, pathSegment]) => renderEntry(
-        childName,
-        childValue,
-        path === '$' ? pathSegment : `${path}.${pathSegment}`,
-        depth + 1
-      ))));
+/**
+ * @param {string} name
+ * @param {unknown} value
+ * @param {string} path
+ * @param {string[]} segments
+ * @param {(segments: string[], value: unknown) => void} onChange
+ * @param {number} [depth]
+ * @returns {HTMLElement}
+ */
+function renderEntry(name, value, path, segments, onChange, depth = 0) {
+  if (isPlainObject(value)) {
+    return h('details', { className: 'configuration-setting-group', open: depth < 2 },
+      h('summary', null,
+        h('span', null, settingLabel(name)),
+        h('small', null, valueLabel(value))
+      ),
+      h('p', { className: 'configuration-setting-description' }, explanation(path, value)),
+      h('div', { className: 'configuration-setting-children' },
+        ...Object.entries(value).map(([childName, childValue]) => renderEntry(
+          childName,
+          childValue,
+          `${path}.${childName}`,
+          [...segments, childName],
+          onChange,
+          depth + 1
+        ))
+      )
+    );
   }
-  return h(
-    children.length > 0 ? 'details' : 'div',
-    {
-      className: 'configuration-entry',
-      style: `--configuration-depth: ${depth}`,
-      ...(children.length > 0 ? { open: true } : {})
-    },
-    ...(children.length > 0 ? [h('summary', null, ...content.slice(0, 2)), ...content.slice(2)] : content)
+
+  const control = renderSettingControl(name, value, path, (nextValue) => onChange(segments, nextValue));
+  return h('div', { className: 'configuration-setting-row' },
+    h('div', { className: 'configuration-setting-copy' },
+      h('label', { htmlFor: control.id }, settingLabel(name)),
+      h('code', null, path),
+      h('p', null, explanation(path, value))
+    ),
+    control
   );
 }
 
-/** @param {Array<Record<string, unknown>>} diagnostics */
-function renderDiagnostics(diagnostics) {
-  return h('section', { className: 'configuration-diagnostics', 'aria-label': 'Policy diagnostics' },
-    ...diagnostics.map((diagnostic) => h(
-      'article',
-      { className: `configuration-diagnostic configuration-diagnostic-${diagnostic.severity}` },
-      octicon(diagnostic.severity === 'error' ? 'x-circle' : diagnostic.severity === 'valid' ? 'check-circle' : 'alert'),
-      h('div', null,
-        h('strong', null, String(diagnostic.title ?? 'Policy diagnostic')),
-        h('code', null, String(diagnostic.path ?? '')),
-        h('p', null, String(diagnostic.detail ?? '')))
-    )));
+/** @param {string} name */
+function settingLabel(name) {
+  if (name === '$schema') return 'Schema';
+  return name.replaceAll('-', ' ').replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
 }
 
-/** @param {string} raw */
-function renderRawPolicy(raw) {
-  const { button: copyButton, status: copyStatus } = createCopyControl({
-    getContent: () => raw,
-    label: 'Copy JSON',
+/** @param {string} name @param {unknown} value @param {string} path @param {(value: unknown) => void} onChange */
+function renderSettingControl(name, value, path, onChange) {
+  const id = `configuration-${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()}`;
+  if (typeof value === 'boolean') {
+    return /** @type {HTMLInputElement} */ (h('input', {
+      id,
+      className: 'configuration-setting-toggle',
+      type: 'checkbox',
+      checked: value,
+      onChange: /** @param {Event} event */ (event) => onChange(/** @type {HTMLInputElement} */ (event.currentTarget).checked)
+    }));
+  }
+  if (Array.isArray(value)) {
+    if (!value.every((item) => typeof item === 'string')) {
+      return /** @type {HTMLTextAreaElement} */ (h('textarea', {
+        id,
+        className: 'configuration-setting-list configuration-setting-json',
+        rows: Math.min(12, Math.max(4, value.length + 2)),
+        value: JSON.stringify(value, null, 2),
+        onInput: /** @param {Event} event */ (event) => {
+          const input = /** @type {HTMLTextAreaElement} */ (event.currentTarget);
+          try {
+            const parsed = JSON.parse(input.value);
+            if (Array.isArray(parsed)) onChange(parsed);
+          } catch {
+            // Keep the last valid typed array while the JSON edit is incomplete.
+          }
+        }
+      }));
+    }
+    return /** @type {HTMLTextAreaElement} */ (h('textarea', {
+      id,
+      className: 'configuration-setting-list',
+      rows: Math.min(8, Math.max(3, value.length)),
+      value: value.map(String).join('\n'),
+      onInput: /** @param {Event} event */ (event) => onChange(
+        /** @type {HTMLTextAreaElement} */ (event.currentTarget).value.split('\n').map((item) => item.trim()).filter(Boolean)
+      )
+    }));
+  }
+  if (name === 'mode' || name === 'max-mode') {
+    return /** @type {HTMLSelectElement} */ (h('select', {
+      id,
+      value: String(value),
+      onChange: /** @param {Event} event */ (event) => onChange(/** @type {HTMLSelectElement} */ (event.currentTarget).value)
+    },
+    h('option', { value: 'review' }, 'Review'),
+    h('option', { value: 'live' }, 'Live')));
+  }
+  return /** @type {HTMLInputElement} */ (h('input', {
+    id,
+    type: typeof value === 'number' ? 'number' : 'text',
+    value: String(value ?? ''),
+    ...(typeof value === 'number' ? { min: 0 } : {}),
+    onInput: /** @param {Event} event */ (event) => {
+      const input = /** @type {HTMLInputElement} */ (event.currentTarget);
+      if (typeof value !== 'number') onChange(input.value);
+      else if (input.value !== '' && Number.isFinite(input.valueAsNumber)) onChange(input.valueAsNumber);
+    }
+  }));
+}
+
+/** @param {Record<string, unknown>} document @param {string[]} segments @param {unknown} value */
+function setDocumentValue(document, segments, value) {
+  let parent = document;
+  for (const segment of segments.slice(0, -1)) {
+    const child = parent[segment];
+    if (!isPlainObject(child)) return;
+    parent = child;
+  }
+  parent[segments.at(-1) ?? ''] = value;
+}
+
+/** @param {Record<string, unknown>} value */
+function cloneDocument(value) {
+  return /** @type {Record<string, unknown>} */ (JSON.parse(JSON.stringify(value)));
+}
+
+/** @param {Record<string, unknown>} policyDocument */
+function renderSettingsEditor(policyDocument) {
+  const original = cloneDocument(policyDocument);
+  let draft = cloneDocument(policyDocument);
+  const status = /** @type {HTMLOutputElement} */ (h('output', {
+    className: 'configuration-edit-status',
+    'aria-live': 'polite'
+  }, 'No changes'));
+  const settings = h('div', { className: 'configuration-settings' });
+  const updateStatus = () => {
+    const modified = JSON.stringify(draft) !== JSON.stringify(original);
+    status.textContent = modified ? 'Modified locally' : 'No changes';
+    status.setAttribute('data-state', modified ? 'modified' : 'clean');
+  };
+  /** @param {string[]} segments @param {unknown} value */
+  const updateValue = (segments, value) => {
+    setDocumentValue(draft, segments, value);
+    updateStatus();
+  };
+  const renderSettings = () => settings.replaceChildren(
+    ...Object.entries(draft).map(([name, value]) => renderEntry(name, value, name, [name], updateValue))
+  );
+  const { button: copyButton, status: copyStatus, reset: resetCopy } = createCopyControl({
+    getContent: () => `${JSON.stringify(draft, null, 2)}\n`,
+    label: 'Copy updated JSON',
     buttonClassName: 'configuration-copy-button',
     statusClassName: 'configuration-copy-status'
   });
-  return renderDisclosure(
-    'configuration-raw',
-    'Raw JSON',
-    h('div', { className: 'configuration-raw-actions' }, copyButton, copyStatus),
-    h('pre', null, h('code', null, raw || 'Raw policy is unavailable.')));
+  const resetButton = h('button', {
+    type: 'button',
+    className: 'configuration-reset-button',
+    onClick: () => {
+      draft = cloneDocument(original);
+      renderSettings();
+      updateStatus();
+      resetCopy();
+    }
+  }, 'Discard changes');
+  renderSettings();
+  updateStatus();
+
+  return h('div', { className: 'configuration-editor' },
+    h('div', { className: 'configuration-editor-toolbar' },
+      h('div', null,
+        h('strong', null, '.github/workflows/cao.json'),
+        status
+      ),
+      h('div', { className: 'configuration-editor-actions' }, resetButton, copyButton, copyStatus)
+    ),
+    settings,
+    h('p', { className: 'configuration-save-note' },
+      'Edits stay in this browser. Copy the updated JSON and commit it to apply the policy.'
+    )
+  );
 }
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
@@ -137,7 +253,6 @@ export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
   if (!row) return null;
   const policyDocument = row.document;
-  const diagnostics = Array.isArray(row.diagnostics) ? row.diagnostics.filter(isPlainObject) : [];
   const headingId = `${context.pageId}-configuration-heading`;
   return h('section', { className: 'configuration-view', 'aria-labelledby': headingId },
     renderSectionHeading({
@@ -147,10 +262,8 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
-    renderDiagnostics(diagnostics),
     isPlainObject(policyDocument)
-      ? renderDisclosure('configuration-entries', 'Explained entries', renderEntry('.github/workflows/cao.json', policyDocument, '$'))
-      : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be explained until it contains valid JSON.'),
-    renderRawPolicy(String(row.raw ?? ''))
+      ? renderSettingsEditor(policyDocument)
+      : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.')
   );
 }

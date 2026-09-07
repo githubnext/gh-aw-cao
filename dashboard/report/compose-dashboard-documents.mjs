@@ -3,7 +3,7 @@
  *   "language-version": string,
  *   dashboard: {
  *     pages: Array<Record<string, unknown>>,
- *     navigation?: Array<{ label: string, pages: string[] }>,
+ *     navigation?: Array<{ label?: string, pages: string[], experimental?: boolean }>,
  *     [key: string]: unknown
  *   },
  *   [key: string]: unknown

@@ -240,6 +240,7 @@
     "navigation": [
       {
         "label": "Package operations",
+        "experimental": true,
         "pages": [
           "aw-doctor-dashboard"
         ]

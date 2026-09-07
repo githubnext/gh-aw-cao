@@ -42,9 +42,24 @@ test("every production dashboard page starts with an executive summary or prescr
       const isAgentsMarketplace = page.id === "agents"
         && summary.mark === "element"
         && summary.element === "agent-marketplace-view";
+      const isPackageDetail = page.id === "package-detail"
+        && summary.mark === "element"
+        && summary.element === "package-route";
+      const isWorkProjectView = ["work", "work-tasks", "work-roadmap"].includes(page.id)
+        && summary.mark === "element"
+        && summary.element === "work-project-view";
+      const isInsightsOverview = page.id === "insights"
+        && summary.mark === "element"
+        && summary.element === "insights-overview";
       const isAttentionFirstHome = page.id === "home"
         && page["class-name"] === "dashboard-next-home-page"
         && summary.id === "home-attention"
+        && summary.mark === "element"
+        && summary.element === "signal-list"
+        && summary.data?.sources?.includes("attention-signals");
+      const isCatchUpHome = page.id === "overview"
+        && page["class-name"] === "dashboard-overview-page"
+        && summary.id === "overview-attention"
         && summary.mark === "element"
         && summary.element === "signal-list"
         && summary.data?.sources?.includes("attention-signals");
@@ -65,6 +80,10 @@ test("every production dashboard page starts with an executive summary or prescr
           || isExperimentsEvaluation
           || isConfigurationPolicy
           || isAgentsMarketplace
+          || isPackageDetail
+          || isWorkProjectView
+          || isInsightsOverview
+          || isCatchUpHome
           || isAttentionFirstHome,
         `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`
           + ` (first view "${summary.id ?? "<unnamed>"}" has ${summaryDescription})`,

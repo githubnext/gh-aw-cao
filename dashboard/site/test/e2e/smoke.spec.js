@@ -62,11 +62,12 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
           metadata
         }
       };
+      window.location.hash = '#page-operations';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
 
-  const firstView = page.locator('[data-page-id="overview"] .custom-view').first();
+  const firstView = page.locator('[data-page-id="operations"] .custom-view').first();
   const chart = firstView.locator('[data-chart-widget="swimlane"]');
   await expect(chart).toBeVisible();
   const ticks = chart.locator('.swimlane-time-label');
@@ -165,6 +166,7 @@ test('GitHub API rate-limit dashboard remains operable at desktop and narrow wid
           }]
         }
       };
+      window.location.hash = '#page-overview?show=experimental';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
@@ -241,7 +243,7 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
         },
         'coverage-diagnostics': { source: 'coverage-diagnostics', rows: [], metadata }
       };
-      window.location.hash = '#page-readiness';
+      window.location.hash = '#page-readiness?show=experimental';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
@@ -427,7 +429,7 @@ test('desktop navigation sections collapse and expand around the current view', 
   await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
 });
 
-test('Dashboard Next preserves the Home decision hierarchy across desktop and mobile', async ({ page }) => {
+test('clean navigation preserves the Overview decision hierarchy across desktop and mobile', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -453,18 +455,33 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
       const sources = {
         'work-items': {
           source: 'work-items',
-          rows: [{
-            'work-item-id': 'dependabot:github/gh-aw:release-train',
-            objective: 'Update the Dependabot release train',
-            scope: 'github/gh-aw',
-            'lifecycle-state': 'review',
-            phase: 'verifying',
-            reason: 'Security review remains pending.',
-            'next-action': 'Review the dependency update evidence',
-            'waiting-on': 'security-reviewers',
-            owner: 'dependency-automation',
-            'evidence-link': evidenceLink
-          }],
+          rows: [
+            {
+              'work-item-id': 'dependabot:github/gh-aw:release-train',
+              objective: 'Update the Dependabot release train',
+              scope: 'github/gh-aw',
+              'lifecycle-state': 'review',
+              phase: 'verifying',
+              reason: 'Security review remains pending.',
+              'next-action': 'Review the dependency update evidence',
+              'waiting-on': 'security-reviewers',
+              owner: 'dependency-automation',
+              'started-at': '2026-08-29T08:00:00Z',
+              'ended-at': '2026-08-29T12:00:00Z',
+              'evidence-link': evidenceLink
+            },
+            {
+              'work-item-id': 'aw-doctor:github/gh-aw:inventory',
+              objective: 'Inspect workflow inventory',
+              scope: 'github/gh-aw',
+              'lifecycle-state': 'unknown',
+              phase: 'unknown',
+              reason: 'Run telemetry is incomplete.',
+              'next-action': 'Collect run telemetry',
+              owner: 'aw-doctor',
+              'started-at': '2026-08-01T08:00:00Z'
+            }
+          ],
           metadata
         },
         'attention-signals': {
@@ -591,55 +608,115 @@ test('Dashboard Next preserves the Home decision hierarchy across desktop and mo
     </script>
   `);
 
-  const dashboardNext = page.locator('.nav-section').filter({ hasText: 'Dashboard Next' });
-  await dashboardNext.locator('summary').click();
-  await expect(dashboardNext.getByRole('link')).toHaveText(['Home', 'Work', 'Agents', 'Evidence', 'Insights']);
+  const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
+  const attention = page.locator('.nav-section').filter({ hasText: 'Attention' });
+  await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Agents', 'Insights', 'Settings']);
+  await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
+  await expect(cleanNavigation.last().locator('.octicon-gear')).toBeVisible();
+  await expect(page.locator('.theme-toggle')).toHaveCSS('border-top-width', '0px');
+  const headerHeight = await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height);
+  const description = page.locator('.overview-header .lede');
+  expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+  await expect(page.getByText('Dashboard Next', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Show experimental')).toHaveCount(0);
+  await expect(attention).toBeHidden();
 
-  await dashboardNext.getByRole('link', { name: 'Home' }).click();
-  const homePage = page.locator('[data-page-id="home"]');
-  await expect(homePage.getByRole('heading', { level: 3 })).toHaveText([
-    'Need attention',
-    'Work in progress',
-    'Operational pulse'
-  ]);
-  const outcomesDisclosure = homePage.locator('details.view-disclosure').filter({ hasText: 'Outcomes' });
-  await expect(outcomesDisclosure).not.toHaveAttribute('open');
-  await outcomesDisclosure.locator('summary').click();
-  await expect(homePage.getByRole('heading', { level: 3 })).toHaveText([
-    'Need attention',
-    'Work in progress',
-    'Outcomes',
-    'Operational pulse'
-  ]);
-  await expect(homePage.getByRole('columnheader')).toHaveText([
-    'Work', 'Scope', 'Phase', 'Why', 'Next action', 'Owner',
-    'Outcome', 'Repository', 'Disposition', 'Observed'
-  ]);
-  await expect(homePage.locator('.canonical-attention-item')).toHaveCount(1);
-  await expect(homePage.locator('.signal-priority-rank strong')).toHaveText('1');
-  await expect(homePage.locator('.canonical-attention-item')).toContainText('Upgrade agentic workflow dependencies');
-  await expect(homePage.locator('.canonical-attention-item')).not.toContainText('Update the Dependabot release train');
-  await expect(homePage.locator('a[href="https://example.com/evidence/release-train"]')).not.toHaveCount(0);
+  await page.evaluate(() => { window.location.hash = '#page-overview?show=experimental'; });
+  await expect(attention).toBeVisible();
+  await cleanNavigation.filter({ hasText: 'Work' }).click();
+  await expect(page).toHaveURL(/#page-work\?show=experimental$/);
+
+  await page.evaluate(() => { window.location.hash = '#page-work'; });
+  await expect(attention).toBeHidden();
+  await expect(page).toHaveURL(/#page-work$/);
+  const workPage = page.locator('[data-page-id="work"]');
+  await expect(workPage.locator('.work-board')).toBeVisible();
+  await expect(workPage.locator('.work-tasks, .work-roadmap')).toHaveCount(0);
+  const workFilters = workPage.getByRole('search', { name: 'Work filters' });
+  await expect(workFilters.getByRole('searchbox', { name: 'Filter work items' })).toBeVisible();
+  await expect(workFilters.locator('.work-filter-count')).toHaveText('2 of 2');
+  await workFilters.getByRole('searchbox', { name: 'Filter work items' }).fill('missing workflow');
+  await expect(workPage).toContainText('No work items match the current filters.');
+  await workFilters.getByRole('button', { name: 'Clear work filters' }).click();
+  await expect(workPage.locator('.work-card')).toHaveCount(2);
+
+  await workPage.getByRole('link', { name: 'Tasks' }).click();
+  await expect(page).toHaveURL(/#page-work-tasks$/);
+  const tasksPage = page.locator('[data-page-id="work-tasks"]');
+  await expect(tasksPage.locator('.work-tasks')).toBeVisible();
+  await expect(tasksPage.locator('.work-board, .work-roadmap')).toHaveCount(0);
+  await expect(cleanNavigation.filter({ hasText: 'Work' })).toHaveAttribute('aria-current', 'page');
+
+  await tasksPage.getByRole('link', { name: 'Roadmap' }).click();
+  await expect(page).toHaveURL(/#page-work-roadmap$/);
+  const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
+  await expect(roadmapPage.locator('.work-roadmap')).toBeVisible();
+  await expect(roadmapPage.locator('.work-board, .work-tasks')).toHaveCount(0);
+  const roadmapGeometry = await roadmapPage.evaluate((element) => {
+    const scroll = element.querySelector('.work-roadmap-scroll');
+    const calendar = element.querySelector('.work-roadmap-calendar-grid');
+    const track = element.querySelector('.work-roadmap-track');
+    const bar = element.querySelector('.work-roadmap-bar');
+    if (!(scroll instanceof HTMLElement) || !(calendar instanceof HTMLElement) || !(track instanceof HTMLElement) || !(bar instanceof HTMLElement)) return null;
+    const calendarBox = calendar.getBoundingClientRect();
+    const trackBox = track.getBoundingClientRect();
+    const barBox = bar.getBoundingClientRect();
+    return {
+      calendarLeft: calendarBox.left,
+      calendarWidth: calendarBox.width,
+      trackLeft: trackBox.left,
+      trackWidth: trackBox.width,
+      barWidth: barBox.width,
+      scrollsInternally: scroll.scrollWidth > scroll.clientWidth
+    };
+  });
+  expect(roadmapGeometry).not.toBeNull();
+  expect(Math.abs((roadmapGeometry?.calendarLeft ?? 0) - (roadmapGeometry?.trackLeft ?? 1))).toBeLessThan(1);
+  expect(Math.abs((roadmapGeometry?.calendarWidth ?? 0) - (roadmapGeometry?.trackWidth ?? 1))).toBeLessThan(1);
+  expect(roadmapGeometry?.barWidth).toBeGreaterThan(0);
+  expect(roadmapGeometry?.scrollsInternally).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
-  for (const pageName of ['Work', 'Agents', 'Evidence', 'Insights']) {
-    await dashboardNext.getByRole('link', { name: pageName }).click();
-    await expect(page.getByRole('heading', { name: pageName, exact: true, level: 1 })).toBeVisible();
-    if (['Work', 'Agents', 'Evidence'].includes(pageName)) {
-      await expect(page.locator(`[data-page-id="${pageName.toLowerCase()}"] .table-summary-row`)).toHaveCount(0);
+  await cleanNavigation.filter({ hasText: 'Home' }).click();
+  const overviewPage = page.locator('[data-page-id="overview"]');
+  await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
+  await expect(overviewPage.getByRole('searchbox', { name: 'Filter notifications' })).toHaveValue('is:unread');
+  await expect(overviewPage.getByRole('columnheader')).toHaveCount(0);
+  await expect(overviewPage.locator('.canonical-attention-item')).toHaveCount(3);
+  await expect(overviewPage).toContainText('Upgrade agentic workflow dependencies');
+  await expect(overviewPage).toContainText('Update the Dependabot release train');
+  await expect(overviewPage).toContainText('Three required validations passed.');
+  await expect(overviewPage.locator('a[href="https://example.com/evidence/release-train"]')).not.toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  for (const { label, pageId } of [
+    { label: 'Work', pageId: 'work' },
+    { label: 'Agents', pageId: 'agents' },
+    { label: 'Insights', pageId: 'insights' },
+    { label: 'Settings', pageId: 'configuration' }
+  ]) {
+    await cleanNavigation.filter({ hasText: label }).click();
+    await expect(page.getByRole('heading', { name: label, exact: true, level: 1 })).toBeVisible();
+    expect(await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height)).toBe(headerHeight);
+    expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+    if (['work', 'agents'].includes(pageId)) {
+      await expect(page.locator(`[data-page-id="${pageId}"] .table-summary-row`)).toHaveCount(0);
     }
   }
 
   // A 320px window can leave 305px of layout width when the browser reserves a scrollbar gutter.
   await page.setViewportSize({ width: 305, height: 844 });
-  await page.evaluate(() => { window.location.hash = '#page-home'; });
-  await expect(homePage).toBeVisible();
-  await expect(homePage.locator('.canonical-attention-item').first()).toBeInViewport();
-  await expect(homePage.locator('.custom-view').nth(1).locator('tbody tr').first()).toBeInViewport();
+  await page.evaluate(() => { window.location.hash = '#page-overview'; });
+  await expect(overviewPage).toBeVisible();
+  await page.locator('.mobile-nav-menu > summary').click();
+  await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeHidden();
+  await page.locator('.mobile-nav-menu > summary').click();
+  await expect(overviewPage.locator('.canonical-attention-item').first()).toBeInViewport();
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  await expect(homePage.locator('.table-scroll').first()).toBeVisible();
+  await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 
-  for (const pageName of ['home', 'work', 'agents', 'evidence', 'insights']) {
+  for (const pageName of ['overview', 'work', 'agents', 'insights']) {
     await page.evaluate((nextPage) => { window.location.hash = `#page-${nextPage}`; }, pageName);
     const activePage = page.locator(`[data-page-id="${pageName}"]`);
     await expect(activePage).toBeVisible();
@@ -715,7 +792,7 @@ test('performance page renders a full heatmap and lays out supporting charts sid
   expect(Math.max(...chartLayout.widgetHeights) - Math.min(...chartLayout.widgetHeights)).toBeLessThan(1);
 });
 
-test('DLS-DOC-014 horizon help is available on hover and keyboard focus', async ({ page }) => {
+test('DLS-DOC-014 horizon details are available in the expanded window picker', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setContent(`
     <div id="root"></div>
@@ -756,33 +833,28 @@ test('DLS-DOC-014 horizon help is available on hover and keyboard focus', async 
     </script>
   `);
 
-  const trigger = page.getByRole('button', { name: 'Horizon details' });
-  const tooltip = page.getByRole('tooltip');
-  await expect(trigger).toHaveAttribute('aria-describedby', 'dashboard-horizon-details');
-  await expect(tooltip).toBeHidden();
-  await trigger.hover();
-  await expect(tooltip).toBeVisible();
-  await expect(tooltip).toContainText('StartAug 25, 2026, 12:00 PM UTC');
-  await expect(tooltip).toContainText('EndSep 1, 2026, 12:00 PM UTC');
-  await expect(tooltip).toContainText('Duration1 week');
-  await page.mouse.move(0, 0);
-  await trigger.focus();
-  await expect(tooltip).toBeVisible();
+  const trigger = page.getByRole('button', { name: /Horizon 1 week/ });
+  const details = page.getByRole('group', { name: 'Horizon details' });
+  await expect(page.getByRole('button', { name: 'Horizon details', exact: true })).toHaveCount(0);
+  await expect(details).toBeHidden();
+  await trigger.click();
+  await expect(details).toBeVisible();
+  await expect(details).toContainText('StartAug 25, 2026, 12:00 PM UTC');
+  await expect(details).toContainText('EndSep 1, 2026, 12:00 PM UTC');
+  await expect(details).toContainText('Duration1 week');
 
   await page.setViewportSize({ width: 393, height: 852 });
-  await trigger.blur();
-  await trigger.focus();
-  await expect(tooltip).toBeVisible();
+  await expect(details).toBeVisible();
   await expect(page.locator('.refresh-button > span')).toBeHidden();
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
     const bounds = item.getBoundingClientRect();
     return Math.round(bounds.top + bounds.height / 2);
   }));
   expect(new Set(actionCenters).size).toBe(1);
-  const tooltipBox = await tooltip.boundingBox();
-  expect(tooltipBox).not.toBeNull();
-  expect(tooltipBox?.x).toBeGreaterThanOrEqual(0);
-  expect((tooltipBox?.x ?? 0) + (tooltipBox?.width ?? 0)).toBeLessThanOrEqual(393);
+  const detailsBox = await details.boundingBox();
+  expect(detailsBox).not.toBeNull();
+  expect(detailsBox?.x).toBeGreaterThanOrEqual(0);
+  expect((detailsBox?.x ?? 0) + (detailsBox?.width ?? 0)).toBeLessThanOrEqual(393);
 });
 
 test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style six-domain operational overview in browser', async ({ page }) => {
@@ -2525,7 +2597,9 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await expect(page.locator('#page-workflow-detail .custom-table .mode-review')).toHaveText('review');
   await page.getByRole('link', { name: 'Runs', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
-  await expect(page.locator('.dashboard-horizon').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('.horizon-summary').getByRole('group', { name: 'Data status' })).toHaveCount(0);
+  await page.locator('.horizon-toggle').click();
+  await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
   await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
   await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();
@@ -3104,7 +3178,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   `);
 
   const toggle = page.getByRole('button', { name: 'Collapse navigation' });
-  await expect(page.locator('.org-sidebar')).toHaveCSS('width', '232px');
+  await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
   await toggle.click();
 
   await expect(page.locator('.app-shell')).toHaveClass(/sidebar-collapsed/);
@@ -3117,6 +3191,9 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/);
   await expect(page.locator('.nav-label').first()).toBeVisible();
   await expect(page.locator('.sidebar-brand')).toBeVisible();
+
+  await page.locator('.dashboard-root').evaluate((root) => root.classList.add('dashboard-copilot-enabled'));
+  await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
 });
 
 test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {

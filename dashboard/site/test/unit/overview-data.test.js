@@ -447,4 +447,42 @@ describe('overview attention', () => {
       'external-link': expect.objectContaining({ href: officialGuidance })
     }));
   });
+
+  it('builds the Overview inbox only from actionable Work, Agents, Evidence, and Insights states', () => {
+    const sources = deriveOverviewSources({
+      workflows: source('workflows'),
+      repositories: source('repositories'),
+      runs: source('runs'),
+      outcomes: source('outcomes'),
+      findings: source('findings'),
+      'grader-observations': source('grader-observations'),
+      'coverage-diagnostics': source('coverage-diagnostics'),
+      'attention-signals': source('attention-signals', [
+        { 'attention-signal-id': 'blocked', 'signal-type': 'blocked', objective: 'Blocked deployment', priority: 1 },
+        { 'attention-signal-id': 'scheduled', 'signal-type': 'waiting', objective: 'Scheduled work', priority: 2 }
+      ]),
+      'agent-assignments': source('agent-assignments', [
+        { 'assignment-id': 'stale', 'agent-name': 'Stale agent', stale: true },
+        { 'assignment-id': 'healthy', 'agent-name': 'Healthy agent', stale: false, 'long-running': false }
+      ]),
+      'evidence-records': source('evidence-records', [
+        { 'evidence-id': 'uncertain', objective: 'Pending claim', 'verification-state': 'pending', 'provenance-state': 'complete' },
+        { 'evidence-id': 'accepted', objective: 'Accepted claim', 'verification-state': 'accepted', 'provenance-state': 'durable' }
+      ]),
+      usage: source('usage'),
+      'operational-values': source('operational-values'),
+      'github-api-rate-limits': source('github-api-rate-limits', [
+        { resource: 'core', 'risk-status': 'warning', 'remaining-percent': 10 },
+        { resource: 'graphql', 'risk-status': 'healthy', 'remaining-percent': 95 }
+      ])
+    });
+
+    expect(sources['attention-signals'].rows).toHaveLength(4);
+    expect(sources['attention-signals'].rows.map((row) => row['navigation-page'])).toEqual([
+      'work', 'agents', 'insights', 'insights'
+    ]);
+    expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Scheduled work');
+    expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Healthy agent');
+    expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Accepted claim');
+  });
 });

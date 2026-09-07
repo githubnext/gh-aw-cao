@@ -32,7 +32,11 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('await import("./src/copilot-prompt.js")');
     expect(preview).toContain('copilotPrompt = renderCopilotPrompt(dashboardSocket)');
     expect(preview).toContain('dashboard.classList.add("dashboard-copilot-enabled")');
-    expect(preview).toContain('dashboard.querySelector(".org-sidebar")?.append(copilotPrompt)');
+    expect(preview).toContain('octicon(open ? "chevron-down" : "chevron-up")');
+    expect(preview).toContain('panel.prepend(toggleButton)');
+    expect(preview).toContain('sidebar?.append(toggleButton)');
+    expect(preview).toContain('dashboard.append(panel)');
+    expect(preview).not.toContain('dashboard.querySelector(".org-sidebar")?.append(copilotPrompt)');
     expect(preview).not.toContain("Retain the illustrative fixture data");
   });
 

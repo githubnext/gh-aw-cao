@@ -55,20 +55,15 @@ function browserTrace(socket, event, traceId, details = {}) {
  * @returns {HTMLFormElement}
  */
 export function renderCopilotPrompt(socket) {
-  const input = /** @type {HTMLInputElement} */ (h('input', {
+  const input = /** @type {HTMLTextAreaElement} */ (h('textarea', {
     id: 'dashboard-copilot-request',
     name: 'request',
-    type: 'text',
+    rows: 2,
     required: true,
     maxLength: 10000,
     'aria-label': 'Modify this view',
     placeholder: 'Describe the change to this view'
   }));
-  const inputLabel = h(
-    'label',
-    { className: 'dashboard-copilot-label', htmlFor: input.id },
-    'Modify this view'
-  );
   const sendButton = /** @type {HTMLButtonElement} */ (h(
     'button',
     {
@@ -103,7 +98,6 @@ export function renderCopilotPrompt(socket) {
    */
   const appendAssistantMessage = (content = '', kind = 'response') => {
     if (!content.trim()) return null;
-    inputLabel.hidden = true;
     const message = h(
       'div',
       {
@@ -178,14 +172,8 @@ export function renderCopilotPrompt(socket) {
       className: 'dashboard-copilot-prompt',
       'aria-labelledby': 'dashboard-copilot-title'
     },
-    h(
-      'header',
-      { className: 'dashboard-copilot-header' },
-      octicon('copilot'),
-      h('h2', { id: 'dashboard-copilot-title' }, 'Copilot')
-    ),
+    h('h2', { id: 'dashboard-copilot-title', className: 'sr-only' }, 'Modify this view'),
     conversation,
-    inputLabel,
     h(
       'div',
       { className: 'dashboard-copilot-composer' },
@@ -320,7 +308,6 @@ export function renderCopilotPrompt(socket) {
     assistantContent = null;
     reasoningContent = null;
     activeReasoningId = '';
-    inputLabel.hidden = true;
     conversation.append(
       h(
         'div',

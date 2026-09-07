@@ -9,6 +9,7 @@ import { actionsLog as log } from "./actions-log.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RUN_LIMIT = 100;
+const ACTIONS_API_CONCURRENCY = 4;
 
 async function existingSnapshot(file) {
   try {
@@ -56,6 +57,89 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
       ));
     });
   });
+}
+
+function runGhApi(target, repository, windowStart, runLimit, execute = spawn) {
+  const workflow = target.slice(`${repository}/`.length);
+  const workflowFile = workflow.split("/").at(-1);
+  return new Promise((resolve, reject) => {
+    const child = execute("gh", [
+      "api", "--method", "GET", `repos/${repository}/actions/workflows/${workflowFile}/runs`,
+      "-f", `per_page=${Math.min(runLimit, 100)}`,
+      "-f", `created=>=${windowStart}`,
+    ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    const stdout = [];
+    const stderr = [];
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code, signal) => {
+      if (code !== 0 || signal) {
+        reject(new Error(
+          Buffer.concat(stderr).toString("utf8").trim()
+            || `gh api exited with ${signal || code}`,
+        ));
+        return;
+      }
+      try {
+        const response = JSON.parse(Buffer.concat(stdout).toString("utf8"));
+        resolve((response.workflow_runs || []).map((run) => ({
+          ...run,
+          database_id: run.id,
+          workflow_path: workflow,
+          started_at: run.run_started_at || run.created_at,
+          repository,
+        })));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+function mergeRunMetadata(cachedRuns, actionRuns) {
+  const byRunId = new Map(actionRuns.map((run) => [String(run.database_id), run]));
+  for (const cached of cachedRuns) {
+    const runId = String(cached.database_id ?? cached.run_id ?? cached.id ?? "");
+    const actionRun = byRunId.get(runId);
+    if (!actionRun) {
+      byRunId.set(runId, cached);
+      continue;
+    }
+    byRunId.set(runId, Object.fromEntries(
+      [...new Set([...Object.keys(actionRun), ...Object.keys(cached)])]
+        .map((key) => [key, cached[key] === undefined || cached[key] === null || cached[key] === ""
+          ? actionRun[key]
+          : cached[key]]),
+    ));
+  }
+  return [...byRunId.values()];
+}
+
+async function enrichFromActions(targets, repository, windowDays, runLimit, cachedRuns, execute) {
+  const windowStart = new Date(Date.now() - windowDays * 86_400_000).toISOString().slice(0, 10);
+  const results = new Array(targets.length);
+  let nextTarget = 0;
+  const worker = async () => {
+    while (nextTarget < targets.length) {
+      const index = nextTarget++;
+      try {
+        results[index] = { status: "fulfilled", value: await runGhApi(targets[index], repository, windowStart, runLimit, execute) };
+      } catch (reason) {
+        results[index] = { status: "rejected", reason };
+      }
+    }
+  };
+  await Promise.all(Array.from(
+    { length: Math.min(ACTIONS_API_CONCURRENCY, targets.length) },
+    () => worker(),
+  ));
+  const actionRuns = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  return {
+    runs: mergeRunMetadata(cachedRuns, actionRuns),
+    observedTargets: results.filter((result) => result.status === "fulfilled").length,
+    failedTargets: results.filter((result) => result.status === "rejected").length,
+  };
 }
 
 export async function collectActivityLogs({ execute = spawn } = {}) {
@@ -107,23 +191,38 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
     return "success";
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);
-    await writeFile(logsPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    const cachedRuns = Array.isArray(snapshot.runs) ? snapshot.runs : [];
+    const enrichment = await enrichFromActions(
+      targets,
+      repository,
+      windowDays,
+      runLimit,
+      cachedRuns,
+      execute,
+    );
+    const enriched = enrichment.observedTargets > 0;
+    const mergedSnapshot = { ...snapshot, runs: enrichment.runs };
+    await writeFile(logsPath, `${JSON.stringify(mergedSnapshot, null, 2)}\n`);
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,
-      available: false,
+      available: enriched,
       complete: false,
       targetCount: targets.length,
-      runCount: Array.isArray(snapshot.runs) ? snapshot.runs.length : 0,
+      runCount: enrichment.runs.length,
       windowDays,
       runLimit,
-      fallback: Array.isArray(snapshot.runs) && snapshot.runs.length > 0,
+      fallback: cachedRuns.length > 0,
       snapshotObservedAt: previousState.snapshotObservedAt || previousState.observedAt || null,
+      actionsEnrichment: enriched,
+      actionsTargetsObserved: enrichment.observedTargets,
+      actionsTargetsFailed: enrichment.failedTargets,
       error: error instanceof Error ? error.message : String(error),
     }, null, 2)}\n`);
-    await writeOutcome("failure");
-    log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error instanceof Error ? error.message : String(error)}`;
-    return "failure";
+  const outcome = enriched ? "partial" : "failure";
+  await writeOutcome(outcome);
+  log.warning`gh aw logs collection failed; ${enriched ? `enriched the cache with Actions metadata from ${enrichment.observedTargets} workflows` : cachedRuns.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error instanceof Error ? error.message : String(error)}`;
+  return outcome;
   }
 }
 

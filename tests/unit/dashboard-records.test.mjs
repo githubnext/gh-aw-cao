@@ -33,6 +33,7 @@ test("dashboard records retain durable-output target and run attribution", async
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
+    else if (url.pathname.endsWith("/actions/workflows")) value = { workflows: [] };
     else if (url.pathname.endsWith("/actions/runs/42")) value = {
       name: "Maintenance / Worker",
       path: ".github/workflows/maintenance-worker.lock.yml",
@@ -171,6 +172,7 @@ test("dashboard records retain report model and agent metadata when available", 
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
+    else if (url.pathname.endsWith("/actions/workflows")) value = { workflows: [] };
     else if (url.pathname.endsWith("/actions/runs/43")) value = {
       name: "Maintenance / Worker",
       path: ".github/workflows/maintenance-worker.lock.yml",
@@ -222,6 +224,56 @@ test("dashboard records cannot widen checked-in repository policy", async () => 
     deployedInventory: { workflows: [] },
     requestedRepositories: ["acme/other"],
   }), /cannot widen checked-in control policy/);
+});
+
+test("dashboard records discover gh-aw workflows in allowed repositories", async () => {
+  const fetchImpl = async (input) => {
+    const url = new URL(input);
+    if (url.pathname === "/repos/acme/service/actions/workflows") {
+      return new Response(JSON.stringify({
+        workflows: [
+          { name: "Remote agent", path: ".github/workflows/remote-agent.lock.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/remote-agent.lock.yml" },
+          { name: "CI", path: ".github/workflows/ci.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/ci.yml" },
+        ],
+      }), { status: 200 });
+    }
+    if (url.pathname.endsWith("/issues") || url.pathname.endsWith("/issues/comments")) {
+      return new Response("[]", { status: 200 });
+    }
+    if (url.pathname.endsWith("/actions/artifacts")) {
+      return new Response(JSON.stringify({ artifacts: [] }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  const output = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    fetchImpl,
+    generatedAt: "2026-09-07T12:00:00Z",
+  });
+
+  assert.deepEqual(output.remoteWorkflows.map((workflow) => ({
+    repository: workflow.repository,
+    path: workflow.path,
+    name: workflow.name,
+    role: workflow.role,
+  })), [{
+    repository: "acme/service",
+    path: ".github/workflows/remote-agent.lock.yml",
+    name: "Remote agent",
+    role: "standalone",
+  }]);
+  assert.deepEqual(output.workflowDiscovery, {
+    complete: true,
+    repositoriesExpected: 1,
+    repositoriesObserved: 1,
+    workflowsObserved: 1,
+    failures: [],
+  });
 });
 
 test("dashboard records stop on a GitHub rate limit and return a renderable error", async () => {

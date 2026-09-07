@@ -12,14 +12,16 @@ import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
 import { slugify, clampPercent } from './count-formatters.js';
-import { renderDefinitionList, renderPageSection, renderViewSectionChrome } from './view-chrome.js';
+import { renderDefinitionList } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
 import { renderWorkflowRouteView } from './workflow-route-view.js';
 import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { renderWorkProjectView } from './work-project-view.js';
-import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
+import { agentSmellNotifications, renderAgentMarketplaceView } from './agent-marketplace-view.js';
+import { renderNotificationsInbox } from './notifications-inbox.js';
+import { renderInsightsOverview } from './insights-overview.js';
 import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
@@ -69,10 +71,11 @@ const ELEMENT_RENDERERS = new Map([
   ['configuration-actions', renderConfigurationActions],
   ['experiments-evaluation', renderExperimentsEvaluation],
   ['work-project-view', renderWorkProjectView],
-  ['agent-marketplace-view', renderAgentMarketplaceView]
+  ['agent-marketplace-view', renderAgentMarketplaceView],
+  ['insights-overview', renderInsightsOverview]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -578,7 +581,17 @@ function renderSignalListElement(context) {
   const source = context.sources[sourceName];
   const isCanonicalAttention = sourceName === 'attention-signals';
   const sourceRows = rowsFor(context, sourceName);
-  const rows = isCanonicalAttention ? rankCanonicalAttention(sourceRows).slice(0, 1) : sourceRows;
+  const smellRows = isCanonicalAttention
+    ? agentSmellNotifications(rowsFor(context, 'workflows'), rowsFor(context, 'agent-assignments'), rowsFor(context, 'security-observations'))
+    : [];
+  const rows = isCanonicalAttention ? rankCanonicalAttention([...sourceRows, ...smellRows]) : sourceRows;
+  if (isCanonicalAttention && source) return renderNotificationsInbox(rows, {
+    runs: rowsFor(context, 'runs'),
+    workItems: rowsFor(context, 'work-items'),
+    outcomes: rowsFor(context, 'outcomes'),
+    operationalValues: rowsFor(context, 'operational-values'),
+    evidenceRecords: rowsFor(context, 'evidence-records')
+  });
   const list = h(
     'div',
     { className: `signal-list-region${isCanonicalAttention ? ' canonical-attention-list' : ''}` },
@@ -598,14 +611,7 @@ function renderSignalListElement(context) {
         )])
     )
   );
-  if (!isCanonicalAttention || !source) return list;
-  return renderPageSection(
-    context.pageId,
-    context.title,
-    [...renderViewSectionChrome(source.metadata, context.contextDetails), list],
-    context.headingTag,
-    context.description
-  );
+  return list;
 }
 
 /**

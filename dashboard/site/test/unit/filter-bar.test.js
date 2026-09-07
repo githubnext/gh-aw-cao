@@ -9,7 +9,7 @@ import {
 afterEach(() => {
   document.body.replaceChildren();
   window.history.replaceState(null, '', '/');
-  localStorage.clear();
+  window.localStorage.clear();
 });
 
 describe('time-window filter bar', () => {
@@ -51,10 +51,47 @@ describe('time-window filter bar', () => {
     const selected = onChange.mock.calls.at(-1)?.[1];
     expect(selected.range).toBe('custom');
     expect(Date.parse(selected.end) - Date.parse(selected.start)).toBe(2 * 3_600_000);
-    expect(JSON.parse(localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({
       range: 'custom',
       modes: ['review', 'live', 'unknown']
     });
+  });
+
+  it('keeps filters interactive when localStorage is unavailable', async () => {
+    const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: undefined });
+    try {
+      const onChange = vi.fn();
+      const filterBar = renderFilterBar(onChange, {
+        defaultRange: '24h',
+        referenceEnd: '2026-09-04T12:00:00Z'
+      });
+      document.body.append(filterBar);
+      await Promise.resolve();
+
+      const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+      select.value = '6h';
+      select.dispatchEvent(new Event('change'));
+      const filterInput = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'));
+      filterInput.value = 'repository:gh-aw-cao';
+      filterInput.dispatchEvent(new Event('input'));
+
+      await vi.waitFor(() => {
+        expect(onChange).toHaveBeenLastCalledWith(
+          new Map([
+            ['repository', ['gh-aw-cao']],
+            ['mode', ['review', 'live', 'unknown']]
+          ]),
+          {
+            range: '6h',
+            start: '2026-09-04T06:00:00.000Z',
+            end: '2026-09-04T12:00:00.000Z'
+          }
+        );
+      });
+    } finally {
+      if (storageDescriptor) Object.defineProperty(window, 'localStorage', storageDescriptor);
+    }
   });
 
   it('toggles tuning controls from the horizon text', () => {
@@ -136,11 +173,11 @@ describe('time-window filter bar', () => {
       ['repository', ['gh-aw-cao']],
       ['mode', []]
     ]));
-    expect(JSON.parse(localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').modes).toEqual([]);
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').modes).toEqual([]);
   });
 
   it('falls back to default modes when persisted modes array contains only invalid entries', async () => {
-    localStorage.setItem(
+    window.localStorage.setItem(
       HORIZON_FILTER_STORAGE_KEY,
       JSON.stringify({ range: '24h', modes: ['corrupted_mode', 'invalid'] })
     );

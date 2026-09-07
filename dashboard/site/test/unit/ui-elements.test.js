@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderUiElement } from '../../src/components/ui-elements.js';
+import { agentSmellNotifications } from '../../src/components/agent-marketplace-view.js';
 
 const metadata = {
   'source-id': 'signal-fixture',
@@ -13,6 +14,36 @@ const metadata = {
 };
 
 describe('UI elements', () => {
+  it('does not classify blocked assignment state as an agent smell', () => {
+    const notifications = agentSmellNotifications([], [{
+      'agent-id': 'review-agent', 'agent-name': 'Review agent', 'agent-state': 'blocked',
+      'work-item-id': 'githubnext/gh-aw:.github/workflows/review.md:run:42',
+      'last-observed-at': new Date().toISOString()
+    }]);
+
+    expect(notifications).toHaveLength(0);
+  });
+
+  it('uses derived repository links for agent smell evidence', () => {
+    const notifications = agentSmellNotifications([{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.md', 'workflow-name': 'Upgrade agent',
+      'repository-link': {
+        relation: 'repository',
+        href: 'https://ghe.example/github/mona-tools',
+        label: 'View github/mona-tools'
+      }
+    }], [], [{
+      organization: 'github', repository: 'mona-tools',
+      workflow: '.github/workflows/upgrade.lock.yml',
+      'security-feature': 'threat-detection',
+      'security-signal': 'Prompt injection',
+      'security-status': 'detected'
+    }]);
+
+    expect(notifications[0]?.['evidence-link']?.href).toBe('https://ghe.example/github/mona-tools');
+  });
+
   it('renders marketplace agent tiles with details, health badges, and sorting', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',
@@ -30,8 +61,9 @@ describe('UI elements', () => {
               'agent-description': 'Runs release automation.',
               permissions: 'contents: read',
               'agent-state': 'active',
+              'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/release.md:run:3',
               'run-count': 3,
-              'total-runtime-seconds': 3600,
+              'total-runtime-seconds': 5400,
               'last-observed-at': '2026-08-30T09:00:00Z'
             },
             {
@@ -41,6 +73,7 @@ describe('UI elements', () => {
               'agent-description': 'Reviews pull requests.',
               permissions: 'pull-requests: write',
               'agent-state': 'completed',
+              'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/review.md:run:1',
               'run-count': 1,
               'total-runtime-seconds': 60,
               'last-observed-at': '2026-08-30T09:00:00Z'
@@ -54,22 +87,179 @@ describe('UI elements', () => {
     });
 
     expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2);
-    expect(rendered?.querySelector('.agent-marketplace-tile')?.textContent).toContain('Long running');
+    expect(rendered?.querySelector('.agent-marketplace-tile')?.textContent).toContain('Slow');
+    expect(rendered?.querySelector('[data-facet="smells"]')).toBeNull();
+    const statusFilter = rendered?.querySelector('[aria-label="Filter agents by status"]');
+    expect(statusFilter?.textContent).toBe('All statusesSmells (0)Disabled (0)Slow (1)Stale (2)');
+    if (statusFilter instanceof HTMLSelectElement) {
+      statusFilter.value = 'slow';
+      statusFilter.dispatchEvent(new Event('change'));
+    }
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
+    expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Zeta Agent');
+    if (statusFilter instanceof HTMLSelectElement) {
+      statusFilter.value = 'all';
+      statusFilter.dispatchEvent(new Event('change'));
+    }
+    expect(rendered?.querySelector('[aria-label^="Health smells:"]')).toBeNull();
     expect(rendered?.textContent).toContain('Runs release automation.');
-    expect(rendered?.textContent).toContain('contents: read');
-    const select = rendered?.querySelector('select');
+    expect(rendered?.querySelector('[aria-label="View Zeta Agent"]')?.getAttribute('href')).toContain('#page-workflow-runtime?workflow=');
+    const select = rendered?.querySelector('[aria-label="Sort agents"]');
     expect(select).not.toBeNull();
-    if (select) {
+    if (select instanceof HTMLSelectElement) {
       select.value = 'name';
       select.dispatchEvent(new Event('change'));
     }
     expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Alpha Agent');
   });
 
-  it('renders Work as a Projects-style Board, Tasks, and Roadmap view', () => {
+  it('populates the agent marketplace from package and standalone workflow inventory', () => {
+    const rendered = renderUiElement('agent-marketplace-view', {
+      pageId: 'agents',
+      title: 'Agents',
+      sourceNames: ['agent-assignments', 'workflows'],
+      sources: {
+        'agent-assignments': { source: 'agent-assignments', rows: [], metadata },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', package: 'aw-doctor',
+              'package-name': 'AW Doctor', 'package-icon': 'gear', 'workflow-role': 'orchestrator',
+              workflow: '.github/workflows/aw-doctor.md', 'workflow-name': 'AW Doctor', 'workflow-active': 'true',
+              'inventory-ready': true, 'package-rollout-percent': 100
+            },
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', package: 'aw-doctor',
+              'package-name': 'AW Doctor', 'package-icon': 'gear', 'workflow-role': 'worker',
+              workflow: '.github/workflows/aw-doctor-failures.md', 'workflow-name': 'AW Doctor / Failures', 'workflow-active': 'true'
+            },
+            {
+              organization: 'githubnext', repository: 'gh-aw-cao', 'workflow-role': 'standalone',
+              workflow: '.github/workflows/activity.md', 'workflow-name': 'CAO Activity', 'workflow-active': 'true'
+            }
+          ],
+          metadata
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
+    expect(rendered?.textContent).toContain('AW Doctor');
+    expect(rendered?.textContent).toContain('Package');
+    expect(rendered?.textContent).toContain('Standalone');
+    expect(rendered?.querySelector('[aria-label="Featured"]')).toBeNull();
+    expect(rendered?.textContent).not.toContain('available');
+    expect(rendered?.querySelector('[aria-label="Agent status legend"]')).toBeNull();
+    expect(rendered?.querySelector('[aria-label="Filter agents by owner"]')?.textContent).toContain('githubnext/gh-aw-cao');
+    const agentFilters = rendered?.querySelector('[aria-label="Agent filters"]');
+    expect(agentFilters).not.toBeNull();
+    expect(agentFilters?.textContent ?? '').toBe('Packages1Standalone1All agents2');
+    expect(rendered?.querySelector('.agent-marketplace-owner')?.textContent).toBe('githubnext/gh-aw-cao');
+    expect(rendered?.querySelector('[aria-label="View AW Doctor"]')?.getAttribute('href')).toBe('#page-package-detail?package=aw-doctor');
+    const packageFacet = rendered?.querySelector('[data-facet="package"]');
+    expect(packageFacet).not.toBeNull();
+    expect(packageFacet?.getAttribute('aria-current')).toBe('page');
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
+    const allFacet = rendered?.querySelector('[data-facet="all"]');
+    if (allFacet instanceof HTMLButtonElement) allFacet.click();
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2);
+    expect(rendered?.textContent).toContain('CAO Activity');
+  });
+
+  it('shows descriptions on card faces and filters path-like agent names', () => {
+    const rendered = renderUiElement('agent-marketplace-view', {
+      pageId: 'agents', title: 'Agents', description: 'Agent inventory.',
+      sourceNames: ['agent-assignments'],
+      sources: {
+        'agent-assignments': {
+          source: 'agent-assignments', metadata,
+          rows: [
+            { 'agent-id': 'valid', 'agent-name': 'Review assistant', 'agent-description': 'Reviews changes before merge.' },
+            { 'agent-id': 'absolute-path', 'agent-name': '/tmp/review-agent.md', 'agent-description': 'Invalid absolute path.' },
+            { 'agent-id': 'workflow-path', 'agent-name': '.github/workflows/review.md', 'agent-description': 'Invalid workflow path.' },
+            { 'agent-id': 'bracketed', 'agent-name': '[aw] Failure Investigator', 'agent-description': 'Invalid bracketed name.' },
+            { 'agent-id': 'numbered', 'agent-name': '1. List all packages', 'agent-description': 'Invalid numbered instruction.' }
+          ]
+        }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
+    expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Review assistant');
+    expect(rendered?.querySelector('.agent-marketplace-summary .agent-marketplace-description')?.textContent).toBe('Reviews changes before merge.');
+    expect(rendered?.querySelector('.agent-marketplace-count')?.textContent).toBe('1 of 1 agents');
+    expect(rendered?.textContent).not.toContain('/tmp/review-agent.md');
+    expect(rendered?.textContent).not.toContain('.github/workflows/review.md');
+    expect(rendered?.textContent).not.toContain('[aw] Failure Investigator');
+    expect(rendered?.textContent).not.toContain('1. List all packages');
+  });
+
+  it('composes operational value, outcomes, cost, runtime, security, and experiments in Insights', () => {
+    /** @param {Array<Record<string, unknown>>} rows */
+    const source = (rows) => ({ source: 'fixture', rows, metadata });
+    const rendered = renderUiElement('insights-overview', {
+      pageId: 'insights', title: 'Insights', description: 'Operational impact.',
+      sourceNames: ['operational-values', 'outcomes', 'usage', 'runs', 'detection-observations', 'experiments'],
+      sources: {
+        'operational-values': source([
+          { 'operational-value': 0.6, 'operational-value-definition': 'Accepted change', 'maturity-status': 'matured', 'observed-at': '2026-08-29T10:00:00Z' },
+          { 'operational-value': 0.8, 'operational-value-definition': 'Accepted change', 'maturity-status': 'matured', 'observed-at': '2026-08-30T10:00:00Z' },
+          { 'operational-value': 0.5, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'matured', 'observed-at': '2026-08-29T10:00:00Z' },
+          { 'operational-value': 0.9, 'operational-value-definition': 'Issue resolved', 'maturity-status': 'matured', 'observed-at': '2026-08-30T10:00:00Z' }
+        ]),
+        outcomes: source([
+          { 'outcome-state': 'accepted' }, { 'outcome-state': 'accepted' }, { 'outcome-state': 'rejected' }
+        ]),
+        usage: source([
+          { aic: 4, 'observed-at': '2026-08-29T10:00:00Z' }, { aic: 6, 'observed-at': '2026-08-30T10:00:00Z' }
+        ]),
+        runs: source([
+          { run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' },
+          { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'failure' }
+        ]),
+        'detection-observations': source([
+          { 'detection-state': 'clean', 'detection-state-label': 'Clean', 'usable-verdict-percent': 100 },
+          { 'detection-state': 'threat', 'detection-state-label': 'Threat', 'usable-verdict-percent': 100 }
+        ]),
+        experiments: source([
+          { decision: 'PROMOTE' }, { decision: 'INCONCLUSIVE' }
+        ])
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe('Operational value attainment');
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent).toBe('70%');
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[1]?.textContent).toBe('2');
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[2]?.textContent).toBe('4');
+    expect(rendered?.querySelectorAll('[data-chart-widget]')).toHaveLength(6);
+    expect(rendered?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(2);
+    expect(rendered?.querySelector('[data-chart-widget="swimlane"]')).not.toBeNull();
+    expect(rendered?.querySelector('[data-chart-widget="bar"]')).not.toBeNull();
+    expect(rendered?.textContent).toContain('10AIC observed');
+    expect(rendered?.textContent).toContain('1 decision-ready');
+    const seriesSelector = rendered?.querySelector('.insights-series-selector');
+    expect(seriesSelector?.hasAttribute('open')).toBe(false);
+    expect(seriesSelector?.querySelector('summary')?.textContent).toBe('Series2 of 2');
+    expect(rendered?.querySelector('.insights-value-lead > .chart-legend')).toBeNull();
+    const seriesInputs = seriesSelector?.querySelectorAll('input[type="checkbox"]');
+    expect(seriesInputs).toHaveLength(2);
+    if (seriesInputs?.[0] instanceof HTMLInputElement) {
+      seriesInputs[0].checked = false;
+      seriesInputs[0].dispatchEvent(new Event('change'));
+      expect(seriesSelector?.querySelector('summary')?.textContent).toBe('Series1 of 2');
+      expect(rendered?.querySelector('.insights-value-chart')?.textContent).not.toContain('No data is available');
+    }
+  });
+
+  it('renders the routed Work roadmap as a Projects-style timeline', () => {
     const rendered = renderUiElement('work-project-view', {
-      pageId: 'work',
-      title: 'Work layouts',
+      pageId: 'work-roadmap',
+      title: 'Roadmap',
       description: 'GitHub Projects-style work planning view.',
       sourceNames: ['work-items'],
       sources: {
@@ -81,6 +271,7 @@ describe('UI elements', () => {
               name: 'Dependabot release train',
               'workflow-name': 'Dependabot release train',
               'workflow-icon': 'dependabot',
+              package: 'dependabot',
               scope: 'github/gh-aw',
               repository: 'gh-aw',
               owner: 'dependency-automation',
@@ -97,6 +288,7 @@ describe('UI elements', () => {
               'work-item-id': 'github/mona-tools:.github/workflows/review.md',
               'workflow-name': 'Review security posture',
               'workflow-icon': 'shield-check',
+              package: 'security-review',
               scope: 'github/mona-tools',
               owner: 'security',
               'lifecycle-state': 'review',
@@ -107,23 +299,59 @@ describe('UI elements', () => {
         }
       },
       elementConfig: {
-        sections: ['board', 'tasks', 'roadmap']
+        body: 'roadmap'
       },
       contextDetails: [],
       headingTag: 'h3'
     });
 
     expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
-    expect(rendered?.querySelectorAll('.work-board-column')).toHaveLength(4);
-    expect(rendered?.querySelector('.work-board-active .work-card')?.textContent).toContain('Dependabot release train');
-    expect(rendered?.querySelector('.work-board-review .work-card')?.textContent).toContain('Review security posture');
+    expect(rendered?.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered?.querySelector('.work-board')).toBeNull();
+    expect(rendered?.querySelector('.work-tasks')).toBeNull();
     expect(rendered?.querySelector('.work-avatar .octicon-dependabot')).not.toBeNull();
-    expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('dependency-automation');
-    expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('Aug 30, 2026, 9:00 AM');
-    expect(rendered?.querySelector('.work-task-list')?.textContent).toContain('Aug 30, 2026, 9:30 AM');
     expect(rendered?.querySelector('.work-roadmap-scroll')).not.toBeNull();
+    expect(rendered?.querySelector('.work-roadmap-calendar')).not.toBeNull();
+    expect(rendered?.querySelectorAll('.work-roadmap-ticks time').length).toBeGreaterThan(1);
+    expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
     expect(rendered?.querySelector('.work-roadmap-avatar')).not.toBeNull();
-    expect(rendered?.querySelector('.work-roadmap')?.textContent).toContain('Still running');
+    expect(rendered?.querySelector('.work-roadmap-label')?.textContent).toContain('dependency-automation');
+    expect(rendered?.querySelector('.work-roadmap-end')).not.toBeNull();
+    const zoomButtons = rendered ? [...rendered.querySelectorAll('[data-roadmap-zoom]')] : [];
+    expect(zoomButtons.map((button) => button.textContent)).toEqual([
+      'Day', 'Week', 'Month', 'Quarter', 'Year'
+    ]);
+    expect(rendered?.querySelector('[data-roadmap-zoom="year"]')?.getAttribute('aria-checked')).toBe('true');
+    const dayZoom = rendered?.querySelector('[data-roadmap-zoom="day"]');
+    if (!(dayZoom instanceof HTMLButtonElement)) throw new Error('day zoom control did not render');
+    dayZoom.click();
+    expect(rendered?.querySelector('.work-roadmap-zoom-label')?.textContent).toBe('Day');
+    expect(rendered?.querySelectorAll('.work-roadmap-ticks time')).toHaveLength(12);
+    expect(rendered?.querySelector('[data-roadmap-zoom="day"]')?.getAttribute('aria-checked')).toBe('true');
+
+    const filterBar = rendered?.querySelector('.work-filter-bar');
+    const stateFilter = filterBar?.querySelector('[aria-label="Filter by state"]');
+    expect(filterBar?.querySelector('[aria-label="Filter by package"]')?.textContent).toContain('dependabot');
+    if (!(stateFilter instanceof HTMLSelectElement)) throw new Error('state filter did not render');
+    stateFilter.value = 'Needs Review';
+    stateFilter.dispatchEvent(new Event('change'));
+    expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(1);
+    expect(rendered?.querySelector('.work-roadmap-lane')?.textContent).toContain('Review security posture');
+    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('1 of 2');
+
+    const search = filterBar?.querySelector('[aria-label="Filter work items"]');
+    if (!(search instanceof HTMLInputElement)) throw new Error('work search did not render');
+    search.value = 'missing workflow';
+    search.dispatchEvent(new Event('input'));
+    expect(rendered?.textContent).toContain('No work items match the current filters.');
+
+    const clear = filterBar?.querySelector('[aria-label="Clear work filters"]');
+    if (!(clear instanceof HTMLButtonElement)) throw new Error('clear filters button did not render');
+    clear.click();
+    expect(search.value).toBe('');
+    expect(stateFilter.value).toBe('');
+    expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
+    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('2 of 2');
   });
 
   it('renders a single declarative work slice when config.body selects one', () => {
@@ -152,10 +380,90 @@ describe('UI elements', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered?.querySelector('.work-project-tabs')).toBeNull();
+    expect(rendered?.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered?.querySelector('.work-tasks')).not.toBeNull();
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
+  });
+
+  it('groups packages in Board while keeping every Tasks and Roadmap item visible', () => {
+    const rows = [
+      {
+        'work-item-id': 'daily-ops:orchestrator',
+        'workflow-name': 'Daily Ops',
+        package: 'daily-ops',
+        'work-type': 'orchestrator',
+        scope: 'githubnext/gh-aw-cao',
+        'lifecycle-state': 'active',
+        'started-at': '2026-09-06T08:00:00Z'
+      },
+      {
+        'work-item-id': 'daily-ops:worker',
+        'workflow-name': 'Daily Ops worker',
+        package: 'daily-ops',
+        'work-type': 'worker',
+        scope: 'githubnext/gh-aw-cao',
+        'lifecycle-state': 'active',
+        'started-at': '2026-09-06T08:05:00Z'
+      }
+    ];
+    /** @param {'board'|'tasks'|'roadmap'} body */
+    const render = (body) => renderUiElement('work-project-view', {
+      pageId: `work-${body}`,
+      title: body,
+      sourceNames: ['work-items'],
+      sources: { 'work-items': { source: 'work-items', rows, metadata } },
+      elementConfig: { body },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    const board = render('board');
+    expect(board?.querySelectorAll('.work-card-stack')).toHaveLength(1);
+    expect(board?.querySelectorAll('.work-card-stack .work-card')).toHaveLength(2);
+    const boardWorkers = board?.querySelector('.work-card-workers');
+    expect(boardWorkers?.hasAttribute('open')).toBe(false);
+    expect(boardWorkers?.querySelector('summary')?.textContent).toContain('1 worker');
+    expect(boardWorkers?.querySelector('summary')?.textContent).toContain('Show cards');
+
+    const tasks = render('tasks');
+    expect(tasks?.querySelector('.work-task-group')).toBeNull();
+    expect(tasks?.querySelectorAll('.work-task-row')).toHaveLength(2);
+    expect([...(tasks?.querySelectorAll('.work-task-type') ?? [])].map((cell) => cell.textContent)).toEqual(['worker', 'orchestrator']);
+
+    const roadmap = render('roadmap');
+    expect(roadmap?.querySelector('.work-roadmap-group')).toBeNull();
+    expect(roadmap?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
+  });
+
+  it('renders inferred Work timestamps as point observations instead of running intervals', () => {
+    const rendered = renderUiElement('work-project-view', {
+      pageId: 'work-roadmap',
+      title: 'Roadmap',
+      sourceNames: ['work-items'],
+      sources: {
+        'work-items': {
+          source: 'work-items',
+          rows: [{
+            'work-item-id': 'aw-doctor:inventory',
+            'workflow-name': 'AW Doctor',
+            scope: 'githubnext/gh-aw-cao',
+            'lifecycle-state': 'unknown',
+            'reason-evidence-class': 'inferred',
+            'observed-at': '2026-09-07T05:23:02Z'
+          }],
+          metadata
+        }
+      },
+      elementConfig: { body: 'roadmap' },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    const point = rendered?.querySelector('.work-roadmap-point');
+    expect(point).not.toBeNull();
+    expect(point?.getAttribute('title')).toContain('observed');
+    expect(rendered?.querySelector('.work-roadmap-end')).toBeNull();
   });
 
   it('renders anomaly readiness as a reusable note widget', () => {
@@ -266,11 +574,12 @@ describe('UI elements', () => {
   });
 
   it('renders canonical attention as a complete priority-first action region', () => {
+    localStorage.clear();
     const rendered = renderUiElement('signal-list', {
-      pageId: 'home',
+      pageId: 'overview',
       title: 'Need attention',
       description: 'Unresolved conditions that require an authorized person to act or investigate.',
-      sourceNames: ['attention-signals'],
+      sourceNames: ['attention-signals', 'workflows', 'agent-assignments', 'security-observations', 'runs'],
       sources: {
         'attention-signals': {
           source: 'attention-signals',
@@ -306,21 +615,166 @@ describe('UI elements', () => {
             }
           ],
           metadata
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [{
+            organization: 'github', repository: 'mona-tools', 'workflow-role': 'standalone',
+            workflow: '.github/workflows/upgrade.md', 'workflow-name': 'Upgrade agent', 'workflow-active': 'true'
+          }],
+          metadata
+        },
+        'agent-assignments': {
+          source: 'agent-assignments',
+          rows: [{
+            'agent-id': 'upgrade-agent', 'agent-name': 'Upgrade agent', 'agent-state': 'blocked',
+            'work-item-id': 'github/mona-tools:.github/workflows/upgrade.md:run:42',
+            'run-count': 1, 'total-runtime-seconds': 2400, stale: true,
+            'last-observed-at': new Date(Date.now() - 90_000).toISOString()
+          }],
+          metadata
+        },
+        'security-observations': {
+          source: 'security-observations',
+          rows: [{
+            organization: 'github', repository: 'mona-tools',
+            workflow: '.github/workflows/upgrade.lock.yml',
+            'security-feature': 'threat-detection', 'security-analysis': 'summary',
+            'security-signal': 'Prompt injection', 'security-status': 'detected'
+          }],
+          metadata
+        },
+        runs: {
+          source: 'runs',
+          rows: [
+            { run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' },
+            { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'in_progress', 'run-conclusion': null }
+          ],
+          metadata
         }
       },
       contextDetails: [],
       headingTag: 'h3'
     });
 
-    expect(rendered?.getAttribute('aria-labelledby')).toBe('home-need-attention-heading');
+    expect(rendered?.classList.contains('notifications-inbox')).toBe(true);
+    expect(rendered?.firstElementChild?.classList.contains('notifications-health')).toBe(true);
+    expect(rendered?.querySelector('.home-catchup')?.getAttribute('aria-label')).toBe('Catch-up briefing');
+    expect(rendered?.textContent).not.toContain('Your catch-up');
+    expect(rendered?.textContent).not.toContain("Here's what changed while you were away");
+    expect(rendered?.lastElementChild?.classList.contains('notifications-main')).toBe(true);
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
-    expect(rendered?.querySelector('.canonical-attention-item.signal-action')).not.toBeNull();
-    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(1);
-    expect(rendered?.querySelector('.signal-priority-rank strong')?.textContent).toBe('1');
-    expect(rendered?.textContent).toContain('medium · authority gate');
+    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(3);
+    expect(/** @type {HTMLInputElement | null} */ (rendered?.querySelector('.notifications-search input'))?.value).toBe('is:unread');
+    expect(rendered?.querySelector('[aria-label="Sort notifications"]')).not.toBeNull();
+    expect(rendered?.querySelector('[aria-label="Group notifications"]')).not.toBeNull();
+    expect(/** @type {HTMLSelectElement | null} */ (rendered?.querySelector('[aria-label="Group notifications"]'))?.value).toBe('cause');
+    expect(rendered?.querySelector('.notifications-sidebar')).toBeNull();
     expect(rendered?.textContent).toContain('Upgrade agentic workflow dependencies');
-    expect(rendered?.textContent).toContain('github/mona-tools · Live target authority is unavailable.');
-    expect(rendered?.textContent).toContain('repository-owner · 2h 30m old');
+    expect(rendered?.textContent).toContain('github/mona-tools');
+    expect(rendered?.textContent).toContain('repository-owner2h 30m ago');
+    expect(rendered?.textContent).toContain('Agent health smell: Upgrade agent');
+    expect(rendered?.textContent).toContain('Prompt injection detected');
+    expect(rendered?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
+    expect(rendered?.querySelector('.home-catchup-stories .home-origin-agents')).not.toBeNull();
+    expect(rendered?.textContent).toContain('Agents');
+    expect(rendered?.textContent).toContain('Work');
+
+    const dependabotNotification = [...(rendered?.querySelectorAll('.notification-item') ?? [])]
+      .find((item) => item.textContent?.includes('Update the Dependabot release train'));
+    const save = /** @type {HTMLButtonElement | null} */ (dependabotNotification?.querySelector('[aria-label="Save"]') ?? null);
+    save?.click();
+    const notificationSearch = /** @type {HTMLInputElement | null} */ (rendered?.querySelector('.notifications-search input'));
+    if (notificationSearch) {
+      notificationSearch.value = 'is:saved';
+      notificationSearch.dispatchEvent(new Event('input'));
+    }
+    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(1);
+    expect(rendered?.textContent).toContain('Update the Dependabot release train');
+    localStorage.clear();
+  });
+
+  it('clusters repeated notification causes while leaving unique notifications visible', () => {
+    localStorage.clear();
+    /** @param {string} id @param {string} scope */
+    const repeated = (id, scope) => ({
+      'attention-signal-id': id, 'signal-type': 'workflow-output', objective: 'Daily scan', scope,
+      reason: 'Workflow completed with no safe outputs', 'consequence-tier': 'medium', priority: 3,
+      'age-seconds': 60
+    });
+    const rendered = renderUiElement('signal-list', {
+      pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals'],
+      sources: {
+        'attention-signals': {
+          source: 'attention-signals',
+          rows: [
+            repeated('repeat:1', 'github/one'), repeated('repeat:2', 'github/two'),
+            { 'attention-signal-id': 'unique', 'signal-type': 'authority-gate', objective: 'Confirm authority', scope: 'github/three', reason: 'Authority missing', 'consequence-tier': 'medium', priority: 2, 'age-seconds': 30 }
+          ],
+          metadata
+        }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelectorAll('.notifications-cause-cluster')).toHaveLength(1);
+    expect(rendered?.querySelector('.notifications-cause-summary')?.textContent).toContain('2 occurrences across 2 repositories');
+    const cluster = /** @type {HTMLDetailsElement | null} */ (rendered?.querySelector('.notifications-cause-cluster') ?? null);
+    expect(cluster?.open).toBe(false);
+    expect(rendered?.querySelector('.notifications-priority-group')?.textContent).toContain('Confirm authority');
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(1);
+    if (cluster) {
+      cluster.open = true;
+      cluster.dispatchEvent(new Event('toggle'));
+    }
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
+  });
+
+  it('leads a clear Home page with a catch-up briefing', () => {
+    localStorage.clear();
+    const rendered = renderUiElement('signal-list', {
+      pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals', 'runs'],
+      sources: {
+        'attention-signals': { source: 'attention-signals', rows: [], metadata },
+        runs: {
+          source: 'runs',
+          rows: [
+            { run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' },
+            { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' }
+          ],
+          metadata
+        }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.firstElementChild?.classList.contains('notifications-health')).toBe(true);
+    expect(rendered?.querySelector('#notifications-health-title')).toBeNull();
+    expect(rendered?.querySelector('[aria-label="Catch-up interval"]')).not.toBeNull();
+    expect(rendered?.querySelector('.home-momentum-chart')?.getAttribute('aria-label')).toContain('0 delivered outcomes');
+    expect(rendered?.querySelector('.home-origin-work')).not.toBeNull();
+    expect(rendered?.lastElementChild?.classList.contains('notifications-main')).toBe(true);
+  });
+
+  it('keeps the clear inbox available when catch-up evidence is unavailable', () => {
+    const rendered = renderUiElement('signal-list', {
+      pageId: 'overview',
+      title: 'Need attention',
+      description: 'Unresolved conditions that require an authorized person to act or investigate.',
+      sourceNames: ['attention-signals'],
+      sources: {
+        'attention-signals': { source: 'attention-signals', rows: [], metadata }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.classList.contains('notifications-inbox')).toBe(true);
+    expect(rendered?.classList.contains('is-clear')).toBe(true);
+    expect(rendered?.firstElementChild?.classList.contains('notifications-health')).toBe(true);
+    expect(rendered?.querySelector('#notifications-health-title')).toBeNull();
+    expect(rendered?.textContent).toContain('No meaningful state changes were observed');
+    expect(rendered?.querySelector('.notifications-empty')?.textContent).toBe('All caught up');
   });
 
   it('renders a blocked readiness verdict with the next unblock action', () => {
