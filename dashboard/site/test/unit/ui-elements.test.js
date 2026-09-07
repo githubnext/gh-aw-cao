@@ -707,7 +707,7 @@ describe('UI elements', () => {
           source: 'security-findings',
           rows: [{
             'smell-observation-id': 'security:42:prompt-injection',
-            'smell-id': 'prompt-injection', 'smell-name': 'Prompt injection detected',
+            'smell-id': 'threat-detection-prompt-injection', 'smell-name': 'Prompt injection detected',
             'smell-summary': 'Threat detection reported unsafe behavior.',
             organization: 'github', repository: 'mona-tools', workflow: '.github/workflows/upgrade.md',
             'observed-at': new Date(Date.now() - 180_000).toISOString()
