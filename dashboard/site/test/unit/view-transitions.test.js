@@ -22,6 +22,23 @@ describe('dashboard view transitions', () => {
     expect(update).toHaveBeenCalledOnce();
   });
 
+  it('handles an expected abort when a transition is superseded', async () => {
+    const update = vi.fn();
+    const ready = Promise.reject(new DOMException('Transition was superseded', 'AbortError'));
+    Object.defineProperty(document, 'startViewTransition', {
+      configurable: true,
+      value: vi.fn((callback) => {
+        callback();
+        return { ready };
+      })
+    });
+
+    updateWithViewTransition(document, update);
+
+    await expect(ready).rejects.toMatchObject({ name: 'AbortError' });
+    expect(update).toHaveBeenCalledOnce();
+  });
+
   it('updates directly when the View Transition API is unavailable', () => {
     const update = vi.fn();
 
