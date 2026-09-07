@@ -160,7 +160,10 @@ async function loadDashboard(siteUrl) {
 }
 
 async function main() {
-  const siteUrl = new URL(process.env.PAGES_HEALTH_URL || defaultSiteUrl).href;
+  // Normalize to a trailing slash so relative resolution (e.g. dashboard.json)
+  // stays within this directory instead of resolving to the parent.
+  const rawSiteUrl = new URL(process.env.PAGES_HEALTH_URL || defaultSiteUrl).href;
+  const siteUrl = rawSiteUrl.endsWith('/') ? rawSiteUrl : `${rawSiteUrl}/`;
   const outputRoot = resolve(process.env.PAGES_HEALTH_OUTPUT_DIR || defaultOutputRoot);
   await access(lighthouseCli);
   await rm(outputRoot, { force: true, recursive: true });
