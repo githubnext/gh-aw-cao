@@ -60,6 +60,39 @@ jobs:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
+          MOBILE_PROFILE: baseline
+      - name: Test mobile dashboard with restricted memory
+        if: matrix.browser == 'chromium'
+        run: npx playwright test --config=playwright.mobile.config.mjs
+        env:
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
+          MOBILE_BROWSER: ${{ matrix.browser }}
+          MOBILE_DEVICE: ${{ matrix.device }}
+          MOBILE_PROFILE: low-memory
+          MOBILE_MEMORY_MB: 256
+      - name: Test mobile dashboard with throttled network
+        if: matrix.browser == 'chromium'
+        run: npx playwright test --config=playwright.mobile.config.mjs
+        env:
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
+          MOBILE_BROWSER: ${{ matrix.browser }}
+          MOBILE_DEVICE: ${{ matrix.device }}
+          MOBILE_PROFILE: slow-network
+          MOBILE_NETWORK_DOWNLOAD_KBPS: 1600
+          MOBILE_NETWORK_UPLOAD_KBPS: 750
+          MOBILE_NETWORK_LATENCY_MS: 150
+      - name: Test mobile dashboard with restricted memory and network
+        if: matrix.browser == 'chromium'
+        run: npx playwright test --config=playwright.mobile.config.mjs
+        env:
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
+          MOBILE_BROWSER: ${{ matrix.browser }}
+          MOBILE_DEVICE: ${{ matrix.device }}
+          MOBILE_PROFILE: low-memory-slow-network
+          MOBILE_MEMORY_MB: 256
+          MOBILE_NETWORK_DOWNLOAD_KBPS: 1600
+          MOBILE_NETWORK_UPLOAD_KBPS: 750
+          MOBILE_NETWORK_LATENCY_MS: 150
       - name: Upload mobile analysis evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -68,3 +101,91 @@ jobs:
           path: test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  mobile-analysis-comment:
+    name: Report mobile dashboard analysis
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Download mobile analysis evidence
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mobile-dashboard-*
+          path: mobile-analysis
+          merge-multiple: true
+      - name: Comment with mobile analysis
+        if: steps.download.outcome == 'success'
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+            const find = (directory) => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+              const target = path.join(directory, entry.name)
+              return entry.isDirectory()
+                ? find(target)
+                : entry.name === 'mobile-dashboard-analysis.json' ? [target] : []
+            })
+            const files = find('mobile-analysis')
+            if (files.length === 0) {
+              core.warning('No mobile dashboard analysis files were found; skipping PR feedback.')
+              return
+            }
+            const analyses = files.map((file) => JSON.parse(fs.readFileSync(file, 'utf8')))
+              .sort((left, right) =>
+                `${left.browser}:${left.profile}`.localeCompare(`${right.browser}:${right.profile}`)
+              )
+            const formatBytes = (value) => value == null ? 'n/a' : `${(value / 1024 / 1024).toFixed(1)} MiB`
+            const rows = analyses.map((analysis) => {
+              const memory = analysis.constraints?.memoryMb ? `${analysis.constraints.memoryMb} MiB` : 'default'
+              const network = analysis.constraints?.network
+              const networkLabel = network
+                ? `${network.downloadKbps}/${network.uploadKbps} Kbps, ${network.latencyMs} ms`
+                : 'default'
+              return `| ${analysis.device} | ${analysis.browser} | ${analysis.profile} | ${memory} | ${networkLabel} | ${analysis.dom.totalElements} | ${analysis.runtime?.navigation?.loadMs ?? 'n/a'} | ${formatBytes(analysis.runtime?.memory?.usedJSHeapSize)} |`
+            })
+            const marker = '<!-- mobile-dashboard-analysis -->'
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const body = [
+              marker,
+              '## Mobile dashboard analysis',
+              '',
+              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | JS heap used |',
+              '| --- | --- | --- | --- | --- | ---: | ---: | ---: |',
+              ...rows,
+              '',
+              `[View detailed JSON, accessibility trees, traces, and screenshots in the workflow artifacts.](${runUrl})`,
+            ].join('\n')
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            )
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
