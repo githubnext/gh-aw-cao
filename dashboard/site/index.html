@@ -13,7 +13,7 @@
   <body>
     <div id="root"></div>
     <script type="module">
-      import { renderDashboard, updateWithViewTransition } from "./src/presenter.js";
+      import { disposeDashboard, renderDashboard, updateWithViewTransition } from "./src/presenter.js";
       import { startLoadingProgress } from "./src/loading-progress.js";
       import { readCachedSources, writeCachedSources } from "./src/source-cache.js";
       import { loadDashboardSources } from "./src/source-loader.js";
@@ -174,6 +174,8 @@
           dashboard.querySelector(".report-body")?.prepend(status);
         }
         attachCopilotPanel(dashboard);
+        const previousDashboard = root.firstElementChild;
+        if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
         return dashboard;
       };
@@ -497,6 +499,80 @@
             },
           ],
           metadata: metadata("agent-assignments-fixture"),
+        },
+        "agent-smells": {
+          source: "agent-smells",
+          rows: [{
+            "smell-observation-id": "agent:2004:partially-reducible",
+            "smell-id": "partially-reducible",
+            "smell-name": "Partially reducible",
+            "smell-category": "design",
+            "smell-severity": "medium",
+            "smell-summary": "Most turns gather data that deterministic pre-steps could provide.",
+            "smell-evidence": "agentic_fraction=0.18 turns=17",
+            "smell-recommendation": "Move repository and alert collection into deterministic pre-steps.",
+            organization: "githubnext",
+            repository: "gh-aw-cao",
+            workflow: ".github/workflows/dependabot-release-train-updater.md",
+            run: "2004",
+            "observed-at": "2026-08-29T09:40:00Z",
+            "run-link": runLink("2004"),
+          }],
+          metadata: metadata("agent-smells-fixture"),
+        },
+        "workflow-smells": {
+          source: "workflow-smells",
+          rows: [{
+            "smell-observation-id": "workflow:release:strict-disabled",
+            "smell-id": "strict-disabled",
+            "smell-name": "Strict mode disabled",
+            "smell-category": "configuration",
+            "smell-severity": "high",
+            "smell-summary": "Workflow validation is not configured to fail closed.",
+            "smell-recommendation": "Enable strict mode and recompile the workflow.",
+            organization: "octo-org",
+            repository: "octo-repo",
+            workflow: ".github/workflows/release.yml",
+            "observed-at": "2026-08-29T09:30:00Z",
+            "repository-link": { relation: "repository", href: "https://github.com/octo-org/octo-repo", label: "Open octo-org/octo-repo" },
+          }],
+          metadata: metadata("workflow-smells-fixture"),
+        },
+        "security-findings": {
+          source: "security-findings",
+          rows: [{
+            "smell-observation-id": "threat-detection:1002:prompt-injection",
+            "smell-id": "threat-detection-prompt-injection",
+            "smell-name": "Prompt injection detected",
+            "smell-category": "trust-and-security",
+            "smell-severity": "high",
+            "smell-summary": "Threat detection reported untrusted instructions in workflow context.",
+            "smell-recommendation": "Review the run evidence and remove the untrusted instruction path.",
+            organization: "github",
+            repository: "mona-tools",
+            workflow: ".github/workflows/codeql.yml",
+            run: "1002",
+            "observed-at": "2026-08-29T09:20:00Z",
+            "run-link": runLink("1002"),
+          }],
+          metadata: metadata("security-findings-fixture"),
+        },
+        "control-plane-smells": {
+          source: "control-plane-smells",
+          rows: [{
+            "smell-observation-id": "control-plane:aw-doctor:inventory-incomplete",
+            "smell-id": "inventory-incomplete",
+            "smell-name": "Package inventory incomplete",
+            "smell-category": "control-plane",
+            "smell-severity": "high",
+            "smell-recommendation": "Restore the worker source and compile its lock file.",
+            organization: "githubnext",
+            repository: "gh-aw-cao",
+            workflow: ".github/workflows/aw-doctor.md",
+            "observed-at": "2026-08-29T09:10:00Z",
+            "repository-link": { relation: "repository", href: "https://github.com/githubnext/gh-aw-cao", label: "Open githubnext/gh-aw-cao" },
+          }],
+          metadata: metadata("control-plane-smells-fixture"),
         },
         "evidence-records": {
           source: "evidence-records",

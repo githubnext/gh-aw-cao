@@ -371,6 +371,10 @@ export const SOURCE_VALUES = [
   'work-items',
   'attention-signals',
   'agent-assignments',
+  'agent-smells',
+  'workflow-smells',
+  'security-findings',
+  'control-plane-smells',
   'evidence-records'
 ];
 
@@ -454,6 +458,10 @@ export const SOURCE_FIELDS = {
   'work-items': ['work-item-id', 'name', 'objective', 'organization', 'repository', 'workflow', 'workflow-name', 'workflow-icon', 'scope', 'domain', 'work-type', 'lifecycle-state', 'phase', 'reason', 'reason-evidence-class', 'next-action', 'next-actor', 'safe-output-kind', 'waiting-on', 'waiting-since', 'owner', 'consequence-tier', 'verification-state', 'outcome-state', 'started-at', 'ended-at', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'attention-signals': ['attention-signal-id', 'signal-type', 'work-item-id', 'objective', 'scope', 'reason', 'action', 'expected-actor', 'age-seconds', 'consequence-tier', 'priority', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
   'agent-assignments': ['assignment-id', 'agent-id', 'agent-name', 'agent-icon', 'agent-description', 'permissions', 'agent-state', 'work-item-id', 'objective', 'assignment-state', 'handoff-state', 'dependency-state', 'conflict-state', 'run-count', 'total-runtime-seconds', 'last-observed-at', 'long-running', 'stale', 'observed-at', 'evidence-link', 'repository-link', 'run-link'],
+  'agent-smells': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],
+  'workflow-smells': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],
+  'security-findings': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],
+  'control-plane-smells': ['smell-observation-id', 'smell-id', 'smell-name', 'smell-category', 'smell-severity', 'smell-summary', 'smell-evidence', 'smell-recommendation', 'organization', 'repository', 'workflow', 'run', 'observed-at', 'evidence-link', 'repository-link', 'workflow-link', 'run-link'],
   'evidence-records': ['evidence-id', 'evidence-class', 'evidence-kind', 'work-item-id', 'objective', 'claim', 'verification-state', 'provenance-state', 'source-revision', 'observed-at', 'evidence-link', 'repository-link', 'run-link']
 };
 

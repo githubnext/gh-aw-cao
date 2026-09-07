@@ -61,6 +61,8 @@ describe("live Dashboard Language sources", () => {
           role: "orchestrator",
           state: "active",
           updatedAt: "2026-08-30T11:00:00Z",
+          ghAwMetadata: { strict: false },
+          ghAwManifest: { actions: [{ repo: "actions/checkout", sha: "" }] },
           runHealth: {
             runRecords: [{
               runId: 42,
@@ -78,6 +80,27 @@ describe("live Dashboard Language sources", () => {
         generatedAt: "2026-08-30T12:00:00Z",
         available: true,
         complete: true,
+        securityAvailable: true,
+        securityComplete: true,
+        securityRuns: [{
+          repository: "githubnext/gh-aw-cao",
+          runId: 42,
+          workflowPath: ".github/workflows/dependabot.lock.yml",
+          createdAt: "2026-08-30T10:00:00Z",
+          security: {
+            agenticAssessments: [{
+              kind: "partially_reducible",
+              severity: "low",
+              summary: "Half of the turns could be deterministic.",
+              evidence: "agentic_fraction=0.50 turns=8",
+              recommendation: "Move data fetching into pre-steps.",
+            }],
+            threatDetection: {
+              available: true,
+              verdict: { promptInjection: true, secretLeak: false, maliciousPatch: false },
+            },
+          },
+        }],
         runs: [{
           repository: "githubnext/gh-aw-cao",
           runId: 42,
@@ -211,6 +234,49 @@ describe("live Dashboard Language sources", () => {
         "coverage-end": "2026-08-30T12:00:00Z",
       });
       expect(sources.usage.rows[0]).toMatchObject({ run: "42", aic: 2.5 });
+      expect(sources["security-findings"].rows).toContainEqual(expect.objectContaining({
+        organization: "githubnext",
+        repository: "gh-aw-cao",
+        workflow: ".github/workflows/dependabot.md",
+        run: "42",
+        "smell-id": "threat-detection-prompt-injection",
+        "smell-name": "Prompt injection detected",
+        "smell-category": "trust-and-security",
+        "smell-severity": "high",
+      }));
+      expect(sources["agent-smells"].rows).toContainEqual(expect.objectContaining({
+        workflow: ".github/workflows/dependabot.md",
+        run: "42",
+        "smell-id": "partially-reducible",
+        "smell-name": "Partially reducible",
+        "smell-category": "design",
+        "smell-severity": "low",
+        "smell-evidence": "agentic_fraction=0.50 turns=8",
+        "smell-recommendation": "Move data fetching into pre-steps.",
+      }));
+      expect(sources["workflow-smells"].rows).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          workflow: ".github/workflows/dependabot.md",
+          "smell-id": "strict-disabled",
+          "smell-severity": "high",
+        }),
+        expect.objectContaining({
+          workflow: ".github/workflows/dependabot.md",
+          "smell-id": "unpinned-dependencies",
+          "smell-severity": "high",
+        }),
+      ]));
+      expect(sources["control-plane-smells"].rows).toContainEqual(expect.objectContaining({
+        "smell-id": "inventory-incomplete",
+        "smell-severity": "high",
+      }));
+      expect(sources["control-plane-smells"].rows).toContainEqual(expect.objectContaining({
+        organization: "githubnext",
+        repository: "gh-aw-cao",
+        "smell-id": "policy-diagnostic",
+        "observed-at": "2026-08-30T12:00:00Z",
+        "repository-link": expect.objectContaining({ href: "https://github.com/githubnext/gh-aw-cao" }),
+      }));
       const overview = deriveOverviewSources(sources);
       expect(overview["overview-managed-packages"].rows).toContainEqual(expect.objectContaining({
         package: "dependabot",

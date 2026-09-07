@@ -56,6 +56,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/dom-provenance.js
+    destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js
     destination: .github/aw/dashboard/site/src/debounce.js
   - source: site/src/horizon.js
@@ -154,6 +156,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/link-content.js
   - source: site/src/components/lazy-infinite-list.js
     destination: .github/aw/dashboard/site/src/components/lazy-infinite-list.js
+  - source: site/src/components/lazy-view.js
+    destination: .github/aw/dashboard/site/src/components/lazy-view.js
   - source: site/src/components/insights-overview.js
     destination: .github/aw/dashboard/site/src/components/insights-overview.js
   - source: site/src/components/linked-text.js

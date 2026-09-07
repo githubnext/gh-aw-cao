@@ -25,7 +25,7 @@ export function renderPackageReadme({ packageId, packageName, workflows }) {
     h('div', { className: 'package-readme-layout' },
       h('article', { className: 'package-readme markdown-body', 'aria-label': `${packageName} README` },
         ...(markdown ? renderMarkdownBlocks(markdown, primary) : [
-          h('h1', null, packageName),
+          h('h2', null, packageName),
           h('p', null, description),
           h('p', { className: 'value-details-unavailable' }, 'Package README content is unavailable in this inventory.')
         ])),
