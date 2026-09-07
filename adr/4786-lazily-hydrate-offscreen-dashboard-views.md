@@ -8,7 +8,7 @@ Draft
 
 Dashboard pages previously rendered every custom view eagerly, including views outside the viewport. This pull request (githubnext/gh-aw-cao#4786, "Lazily hydrate offscreen dashboard views") changes this by deferring the rendering of offscreen views while preserving layout stability and navigation behavior.
 
-The change touches 7 files: `dashboard/aw.yml`, `dashboard/site/index.html`, a new component `dashboard/site/src/components/lazy-view.js`, `dashboard/site/src/presenter.js`, `dashboard/site/src/styles.js`, and updated tests `dashboard/site/test/e2e/smoke.spec.js` and `dashboard/site/test/unit/lazy-view.test.js`.
+The change includes `dashboard/aw.yml`, `dashboard/site/index.html`, the new `dashboard/site/src/components/lazy-view.js` component, `dashboard/site/src/presenter.js`, `dashboard/site/src/styles.js`, and updated dashboard tests.
 
 The diff shows `renderCustomPage` in `presenter.js` now renders a view eagerly only when it is route-driven, is the first view (`index === 0`), or is marked as a `callout`; all other custom views are wrapped via `renderLazyView(...)` from the new `lazy-view.js` module. `lazy-view.js` implements:
 - `renderLazyView`, which produces a placeholder element (`role="region"`, `tabIndex="0"`, `aria-busy="true"`, and an `aria-label` of the form "Loading {label}") with a reserved `--dashboard-lazy-view-min-height` and an accessible skeleton (`dashboard-lazy-view-skeleton` with `aria-hidden` spans), and stores the deferred `render` function in a `WeakMap`.

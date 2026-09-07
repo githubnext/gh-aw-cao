@@ -904,6 +904,13 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
+    const isRouteView = Boolean(
+      routeParameter
+      && isPlainObject(view)
+      && isPlainObject(view.data)
+      && typeof view.data['route-field'] === 'string'
+      && view.mark !== 'element'
+    );
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
       if (disclosure === 'essential') {
@@ -913,7 +920,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       rendered.setAttribute('data-disclosure', disclosure);
       return rendered;
     };
-    const rendered = routeParameter || index === 0 || (isPlainObject(view) && view.mark === 'callout')
+    const rendered = isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
       ? render()
       : renderLazyView({
         label: getViewTitle(view, index),
