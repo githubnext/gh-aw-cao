@@ -45,6 +45,7 @@ async function readBounded(file) {
 
 function emptySecurityTelemetry() {
   return {
+    agenticAssessments: [],
     accessControl: { available: false, fileDenials: {}, toolDenials: {}, guardPolicy: null },
     firewall: {
       available: false,
@@ -69,6 +70,32 @@ function emptySecurityTelemetry() {
     mcp: { available: false, cliVersion: null, servers: [], calls: [], failures: [] },
     threatDetection: { available: false, verdict: null },
   };
+}
+
+const AGENTIC_ASSESSMENT_KINDS = new Set([
+  "overkill_for_agentic",
+  "resource_heavy_for_domain",
+  "poor_agentic_control",
+  "partially_reducible",
+  "model_downgrade_available",
+]);
+
+function boundedAssessmentText(value) {
+  return firstText(value).slice(0, 2_000);
+}
+
+function agenticAssessments(summary) {
+  return Array.isArray(summary?.agentic_assessments)
+    ? summary.agentic_assessments
+      .filter((assessment) => AGENTIC_ASSESSMENT_KINDS.has(assessment?.kind))
+      .map((assessment) => ({
+        kind: assessment.kind,
+        severity: ["low", "medium", "high"].includes(assessment.severity) ? assessment.severity : "medium",
+        summary: boundedAssessmentText(assessment.summary),
+        evidence: boundedAssessmentText(assessment.evidence),
+        recommendation: boundedAssessmentText(assessment.recommendation),
+      }))
+    : [];
 }
 
 function relativeEvidencePath(runRoot, file) {
@@ -279,6 +306,7 @@ export async function readRunSecurityTelemetry(outputDirectory, runId) {
     const content = await readBounded(summaryFile);
     if (content !== null) try {
       summary = JSON.parse(content);
+      telemetry.agenticAssessments = agenticAssessments(summary);
       telemetry.mcp.cliVersion = firstText(summary.cli_version);
       const toolUsage = summary.mcp_tool_usage;
       if (toolUsage && typeof toolUsage === "object") {

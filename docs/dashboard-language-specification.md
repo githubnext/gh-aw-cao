@@ -265,6 +265,10 @@ The `source` vocabulary is closed in version 0.1.0.
 | `workflows` | workflow | `organization`, `repository`, optional `package` and `package-name`, `workflow`, `workflow-name`, `workflow-role`, `workflow-active`, `gh-aw-version`, `gh-aw-current-version`, `gh-aw-version-label`, `gh-aw-update-state`, complete `gh-aw-metadata` and `gh-aw-manifest` JSON payloads, `rollout-mode`, `max-ai-credits`, `package-aic-allowance`, `package-worker-count`, `package-inventory-warnings`, `inventory-ready`, `observed-at`, `organization-link`, `repository-link`, `workflow-link` |
 | `work-items` | stable delegated work item | `work-item-id`, `name`, `objective`, scope IDs, `workflow-name`, `workflow-icon`, `scope`, `domain`, `work-type`, `lifecycle-state`, `phase`, `reason`, `reason-evidence-class`, `next-action`, `next-actor`, `waiting-on`, `waiting-since`, `owner`, `consequence-tier`, `verification-state`, `outcome-state`, `started-at`, `ended-at`, `observed-at`, `evidence-link`, `repository-link`, `run-link` |
 | `agent-assignments` | agent assignment to a work item | `assignment-id`, `agent-id`, `agent-name`, `agent-icon`, `agent-description`, `permissions`, `agent-state`, `work-item-id`, `objective`, `assignment-state`, `handoff-state`, `dependency-state`, `conflict-state`, `run-count`, `total-runtime-seconds`, `last-observed-at`, `long-running`, `stale`, `observed-at`, `evidence-link`, `repository-link`, `run-link` |
+| `agent-smells` | evidence-backed smell observation for one workflow or run | `smell-observation-id`, `smell-id`, `smell-name`, `smell-category`, `smell-severity`, `smell-summary`, `smell-evidence`, `smell-recommendation`, scope IDs, `run`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
+| `workflow-smells` | deterministic workflow configuration smell | smell fields, scope IDs, `run`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
+| `security-findings` | detected unsafe or untrusted workflow behavior | smell fields, scope IDs, `run`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
+| `control-plane-smells` | control policy, rollout, or package inventory smell | smell fields, scope IDs, `run`, `observed-at`, `evidence-link`, `repository-link`, `workflow-link`, `run-link` |
 | `runs` | run | `organization`, `repository`, `workflow`, `run`, `started-at`, `ended-at`, `run-status`, `run-conclusion`, `rollout-mode`, `engine`, `engine-version`, `requested-model`, `resolved-model`, `organization-link`, `repository-link`, `workflow-link`, `run-link` |
 | `run-performance` | completed workflow run | `organization`, `repository`, `workflow`, `run`, `started-at`, `run-conclusion`, `rollout-mode`, `run-duration-seconds`, `sandbox-runtime`, `engine`, `model`, `run-link` |
 | `job-performance` | workflow job | `organization`, `repository`, `workflow`, `run`, `started-at`, `run-conclusion`, `rollout-mode`, `job`, `job-status`, `job-conclusion`, `job-duration-seconds`, `runner`, `runner-name`, `runner-group`, `sandbox-runtime`, `engine`, `model`, `run-link` |
@@ -290,6 +294,38 @@ The `source` vocabulary is closed in version 0.1.0.
 
 For `outcomes`, `repository` identifies the target repository that owns the durable safe output, while `runtime-repository` identifies the repository where the attributed workflow ran.
 
+#### 5.1.1 Smell Classification
+
+A smell is an evidence-backed warning signal, not a synonym for every unhealthy state and not necessarily a defect. The source identifies what the finding is about:
+
+| Source | Classification boundary | Evidence authority |
+|---|---|---|
+| `agent-smells` | Agent execution behavior, control quality, reducibility, or resource choice | Native `gh aw audit` agentic assessments |
+| `workflow-smells` | Static workflow configuration or supply-chain defects | Deterministic inspection of compiled workflow metadata and manifests |
+| `security-findings` | Observed unsafe or untrusted behavior | Threat-detection verdicts |
+| `control-plane-smells` | Control policy, package inventory, rollout, or governance defects | Deterministic control policy and installed-package validation |
+
+Agent smells and security findings are intentionally distinct. An agent smell indicates questionable efficiency, reducibility, model choice, or behavioral control; it does not assert compromise or exploitability. A security finding records an observed threat verdict and requires security review. The same workflow may have both without either finding implying the other.
+
+The following smell IDs are currently emitted:
+
+| Source | `smell-id` | Meaning | Category | Severity |
+|---|---|---|---|---|
+| `agent-smells` | `overkill-for-agentic` | Deterministic automation would be simpler than an agentic run. | `design` | Preserved from audit |
+| `agent-smells` | `resource-heavy-for-domain` | Turns, tools, duration, or writes are excessive for the inferred task domain. | `cost-memory-and-value` | Preserved from audit |
+| `agent-smells` | `poor-agentic-control` | Exploration, failures, missing evidence, or writes indicate weak behavioral control. | `design` | Preserved from audit |
+| `agent-smells` | `partially-reducible` | A material share of data gathering can move to deterministic steps. | `design` | Preserved from audit |
+| `agent-smells` | `model-downgrade-available` | A less expensive model is likely sufficient for the observed task. | `cost-memory-and-value` | Preserved from audit |
+| `workflow-smells` | `strict-disabled` | Strict workflow validation is disabled, weakening fail-closed behavior. | `configuration` | `high` |
+| `workflow-smells` | `unpinned-dependencies` | An action lacks a commit SHA or a container lacks an immutable digest. | `supply-chain` | `high` |
+| `security-findings` | `threat-detection-prompt-injection` | Threat detection observed prompt-injection behavior. | `trust-and-security` | `high` |
+| `security-findings` | `threat-detection-secret-leak` | Threat detection observed secret-leak behavior. | `trust-and-security` | `high` |
+| `security-findings` | `threat-detection-malicious-patch` | Threat detection observed a malicious patch. | `trust-and-security` | `high` |
+| `control-plane-smells` | `inventory-incomplete` | Declared package orchestration or worker inventory is missing. | `control-plane` | `high` |
+| `control-plane-smells` | `policy-diagnostic` | Control policy validation emitted an error or warning requiring review. | `control-plane` | `high` for errors; `medium` for warnings |
+
+All smell rows use `low`, `medium`, or `high` severity. `low` identifies an optimization opportunity with limited immediate consequence. `medium` identifies a material maintainability, cost, or governance concern. `high` identifies fail-open configuration, supply-chain exposure, detected unsafe behavior, or a control-plane defect that can invalidate safe operation. Severity controls Home attention priority but does not replace the source-specific meaning.
+
 ### 5.2 Raw Token Classes
 
 The canonical raw-token measures are `input-tokens`, `output-tokens`, `cache-read-tokens`, `cache-write-tokens`, and `reasoning-tokens`. They remain separate because provider reporting conventions may overlap.
@@ -312,6 +348,10 @@ A package groups one orchestrator and one or more workers that execute centrally
 - **DLS-SEM-026:** Operation consumption attribution **MUST** use paired `before` and `after` observations with the same stable `operation-execution-id`, credential, resource, and reset window. When this evidence is absent or inconsistent, `attribution-status` **MUST** be `unavailable` and `operation-consumed` **MUST** be null.
 - **DLS-SEM-027:** `github-api-collector-health` **MUST** remain distinct from GitHub quota health. A credential identifier **MUST** be a non-secret operational alias or role and **MUST NOT** contain a token or credential value.
 - **DLS-SEM-028:** A `github-api-call-stacks` row **MUST** preserve one captured JavaScript frame as text, identify its checkpoint, and use `stack-frame-id` and `stack-parent-id` to preserve call order without fabricating unavailable frames.
+- **DLS-SEM-029:** Every smell row **MUST** identify exactly one source classification from Section 5.1.1 and **MUST** use `low`, `medium`, or `high` severity. Producers **MUST NOT** reclassify a security verdict as an agent smell or infer a security finding from cost, duration, or tool breadth.
+- **DLS-SEM-030:** A smell **MUST** carry observed evidence or deterministic configuration evidence. Disabled, blocked, slow, stale, expensive, or unsuccessful state alone **MUST NOT** be classified as a smell.
+- **DLS-SEM-031:** Native agentic assessment kind names **MUST** be normalized from snake case to canonical kebab-case `smell-id` values without changing their audit-provided severity, summary, evidence, or recommendation.
+- **DLS-SEM-032:** The canonical Home attention view **MUST** preserve smell source classification, evidence attribution, severity, expected actor, and remediation when normalizing smell rows into attention signals.
 
 ---
 
@@ -643,6 +683,8 @@ Allowed encoding channels are `value`, `columns`, `x`, `y`, `color`, `reference`
 Field `type` values are `nominal`, `ordinal`, `quantitative`, and `temporal`. When omitted, type defaults to the intrinsic field type. A field title defaults to its kebab-case field name with words capitalized. A field may reference one dashboard unit through `unit`; the unit applies to metric, table, and chart value presentation. `published-at` is temporal.
 
 Callout views declare static explanatory content rather than logical-source observations. A callout requires non-empty view `title` and `description` fields plus a `callout` mapping with a non-empty `label` and canonical Octicon `icon`; it does not declare `data` or `encoding`.
+
+A smell row identifies one detected condition with a stable `smell-id` and unique `smell-observation-id`. `smell-category` classifies the condition, `smell-severity` expresses its consequence, `smell-summary` states the finding, `smell-evidence` records the supporting observation, and optional `smell-recommendation` carries bounded remediation guidance. `agent-smells` contains native behavioral audit assessments, `workflow-smells` contains deterministic workflow configuration defects, `security-findings` contains detected unsafe behavior, and `control-plane-smells` contains policy, rollout, or package inventory defects. Producers **MUST NOT** emit a smell solely from an agent's disabled, blocked, slow, or stale runtime state. A workflow-attributable smell **SHOULD** include the narrowest available evidence link. The `agent-marketplace-view` aggregates agent smell observations across package members, and the canonical Home attention view normalizes all four smell sources into independently attributable attention signals.
 
 The optional table-column field `display` is `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, or `digest` and defaults to `text`. It selects presentation independently from the field name. Named UI element values include `domain-attention`, `package-status-grid`, `summary-grid`, `context-summary`, `signal-list`, `package-activity`, `package-detail`, `package-reports`, `repository-workflows`, `workflow-detail`, `workflow-runtime`, `outcome-detail`, `outcome-detail-section`, `experiments-evaluation`, `work-project-view`, `agent-marketplace-view`, `insights-overview`, and `dispatch-catalog`; renderers dispatch these values without inferring behavior from page IDs, view IDs, or source contents. The overview domain-attention element keeps its six operational domains distinct, package-status-grid surfaces per-package readiness as an island of cards, and the remaining elements can be independently assembled through `views`, `sections`, and `layout`. The `signal-list` element presents an attention-first Home surface: observed run health precedes unresolved signals, repeated signals may be grouped by deterministic cause, and unavailable health evidence **MUST NOT** be presented as healthy or zero activity. The `work-project-view` element renders `work-items` as GitHub Projects-style `board`, `tasks`, and `roadmap` slices using workflow names, icons, owners, repositories, lifecycle states, and `started-at`/`ended-at` runtime windows while retaining the page-level filter bar. Its presentation maps non-started or unknown states to `Todo`, active or running states to `In progress`, blocked or review states to `Needs review`, and terminal states to `Done`; this display mapping **MUST NOT** rewrite source evidence. It may declare `config.body` to render one reusable slice or `config.sections` to declaratively compose one or more of those same reusable slices in order. The `agent-marketplace-view` element renders `agent-assignments` as expandable Marketplace-style tiles with agent identity, declared permissions, state, run count, total runtime, and the latest observation. It supports ordering by total runtime, name, or state, and identifies long-running and stale agent telemetry. The `insights-overview` element composes operational-value attainment, outcome disposition, measured AIC allocation, run conclusions, detection observations, and experiment decisions. It **MUST** keep AIC distinct from monetary cost, distinguish unavailable detection evidence from zero threats, and **MUST NOT** claim causal ROI or experiment success from workflow execution alone. The `experiments-evaluation` element may declare `config.body` to render one reusable `overview`, `table`, or `detail` slice, or `config.sections` to declaratively compose one or more of those same reusable slices in order.
 

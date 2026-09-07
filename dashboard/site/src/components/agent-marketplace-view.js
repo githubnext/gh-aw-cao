@@ -20,7 +20,8 @@ export function renderAgentMarketplaceView(context) {
   const agents = catalogAgents(
     rowsFor(context.sources, 'workflows'),
     rowsFor(context.sources, 'agent-assignments'),
-    rowsFor(context.sources, 'security-observations')
+    rowsFor(context.sources, 'security-observations'),
+    rowsFor(context.sources, 'agent-smells')
   );
   const grid = h('div', { className: 'agent-marketplace-grid', role: 'list' });
   const search = /** @type {HTMLInputElement} */ (h('input', {
@@ -130,7 +131,6 @@ function renderAgentTile(agent) {
     agent.stale ? h('span', { className: 'agent-badge agent-badge-stale' }, 'Stale') : null
   ];
   const indicators = [
-    smellReasons.length > 0 ? h('span', { className: 'agent-icon-smell', title: `Health smells: ${smellReasons.join(', ')}`, 'aria-label': `Health smells: ${smellReasons.join(', ')}` }, scentLines()) : null,
     agent.state === 'disabled' ? h('span', { className: 'agent-icon-indicator agent-icon-disabled', title: 'Disabled', 'aria-label': 'Disabled' }, octicon('stop')) : null,
     agent.slow ? h('span', { className: 'agent-icon-indicator agent-icon-slow', title: 'Slow average runtime', 'aria-label': 'Slow' }, octicon('clock-fill')) : null,
     agent.stale ? h('span', { className: 'agent-icon-indicator agent-icon-stale', title: 'Stale runtime telemetry', 'aria-label': 'Stale' }, octicon('history')) : null
@@ -178,9 +178,11 @@ export function smellMark() {
  * @param {Record<string, unknown>[]} workflows
  * @param {Record<string, unknown>[]} assignments
  * @param {Record<string, unknown>[]} securityObservations
+ * @param {Record<string, unknown>[]} smellObservations
  */
-export function agentSmellNotifications(workflows, assignments, securityObservations = []) {
-  return catalogAgents(workflows, assignments, securityObservations).flatMap((agent) => {
+export function agentSmellNotifications(workflows, assignments, securityObservations = [], smellObservations = []) {
+  const legacySecurityObservations = smellObservations.length > 0 ? [] : securityObservations;
+  return catalogAgents(workflows, assignments, legacySecurityObservations, smellObservations).flatMap((agent) => {
     const reasons = agentSmellReasons(agent);
     if (reasons.length === 0) return [];
     const observedAt = Date.parse(agent.observedAt);
@@ -188,7 +190,7 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
     return [{
       'attention-signal-id': `agent-smell:${agent.id}`,
       'signal-type': 'agent-smell',
-      objective: `Agent health smell: ${agent.name}`,
+      objective: `Agent smell: ${agent.name}`,
       scope: agent.owner,
       reason: reasons.join(', '),
       'expected-actor': 'repository-owner',
@@ -207,6 +209,38 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
   });
 }
 
+/**
+ * @param {Record<string, unknown>[]} rows
+ * @param {{ signalType: string, objectivePrefix: string, icon: string, expectedActor: string, navigationHref: string }} options
+ */
+export function smellObservationNotifications(rows, options) {
+  return rows.map((row) => {
+    const observedAt = Date.parse(text(row['observed-at']));
+    const severity = text(row['smell-severity']);
+    const evidenceLink = findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'repository-link');
+    return {
+      'attention-signal-id': `${options.signalType}:${text(row['smell-observation-id']) || text(row['smell-id'])}`,
+      'signal-type': options.signalType,
+      objective: `${options.objectivePrefix}: ${text(row['smell-name']) || text(row['smell-id']) || 'Smell detected'}`,
+      scope: repositoryOwner(row),
+      reason: text(row['smell-summary']) || text(row['smell-evidence']) || 'Review the supporting evidence.',
+      action: text(row['smell-recommendation']) || 'Review and remediate the finding.',
+      'expected-actor': options.expectedActor,
+      'age-seconds': Number.isFinite(observedAt) ? Math.max(0, Math.floor((Date.now() - observedAt) / 1000)) : 0,
+      'consequence-tier': severity === 'high' ? 'high' : severity === 'low' ? 'low' : 'medium',
+      priority: severity === 'high' ? 1 : severity === 'low' ? 3 : 2,
+      icon: options.icon,
+      ...(evidenceLink ? { 'evidence-link': {
+        relation: 'evidence',
+        href: evidenceLink.href,
+        label: evidenceLink.label,
+        'dashboard-href': options.navigationHref,
+        'dashboard-label': 'Review finding'
+      } } : {})
+    };
+  });
+}
+
 function scentLines() {
   return h('svg', {
     className: 'agent-scent-lines', viewBox: '0 0 16 16', 'aria-hidden': 'true', focusable: 'false'
@@ -219,8 +253,9 @@ function scentLines() {
  * @param {Record<string, unknown>[]} workflows
  * @param {Record<string, unknown>[]} assignmentRows
  * @param {Record<string, unknown>[]} securityObservations
+ * @param {Record<string, unknown>[]} smellObservations
  */
-function catalogAgents(workflows, assignmentRows, securityObservations = []) {
+function catalogAgents(workflows, assignmentRows, securityObservations = [], smellObservations = []) {
   const assignments = assignmentRows.map(normalizeAgent);
   if (workflows.length === 0) {
     const agents = [...assignments.reduce((byId, agent) => {
@@ -230,7 +265,7 @@ function catalogAgents(workflows, assignmentRows, securityObservations = []) {
     }, /** @type {Map<string, AgentCatalogEntry>} */ (new Map())).values()];
     return agents
       .filter((agent) => isPresentableAgentName(agent.name))
-      .map((agent) => ({ ...agent, smellReasons: threatReasons(agent.workflowKeys, securityObservations) }));
+      .map((agent) => ({ ...agent, smellReasons: smellReasons(agent.workflowKeys, securityObservations, smellObservations) }));
   }
 
   /** @type {Map<string, Record<string, unknown>[]>} */
@@ -279,7 +314,7 @@ function catalogAgents(workflows, assignmentRows, securityObservations = []) {
       kind: packageEntry ? 'package' : 'standalone',
       workItemId: '',
       workflowKeys: [...memberKeys],
-      smellReasons: threatReasons([...memberKeys], securityObservations),
+      smellReasons: smellReasons([...memberKeys], securityObservations, smellObservations),
       members: members.map((member) => ({
         name: text(member['workflow-name']) || text(member.workflow),
         role: text(member['workflow-role']) || 'standalone'
@@ -351,6 +386,23 @@ function threatReasons(agentWorkflowKeys, observations) {
       && text(row['security-status']) === 'detected'
       && keys.has(threatWorkflowKey(workflowKey(row))))
     .map((row) => `${text(row['security-signal']) || 'Threat'} detected`))];
+}
+
+/**
+ * @param {string[]} agentWorkflowKeys
+ * @param {Record<string, unknown>[]} securityObservations
+ * @param {Record<string, unknown>[]} smellObservations
+ */
+function smellReasons(agentWorkflowKeys, securityObservations, smellObservations) {
+  const keys = new Set(agentWorkflowKeys.map(threatWorkflowKey));
+  const structured = smellObservations
+    .filter((row) => keys.has(threatWorkflowKey(workflowKey(row))))
+    .map((row) => {
+      const name = text(row['smell-name']) || text(row['smell-id']) || 'Agent smell';
+      const summary = text(row['smell-summary']);
+      return summary ? `${name}: ${summary}` : name;
+    });
+  return [...new Set([...structured, ...threatReasons(agentWorkflowKeys, securityObservations)])];
 }
 
 /** @param {string} key */

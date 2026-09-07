@@ -13,6 +13,17 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
   try {
     await writeFile(path.join(runDirectory, "run_summary.json"), JSON.stringify({
       cli_version: "0.88.0",
+      agentic_assessments: [{
+        kind: "partially_reducible",
+        severity: "low",
+        summary: "Half of the turns were deterministic data gathering.",
+        evidence: "agentic_fraction=0.50 turns=8",
+        recommendation: "Move data fetching into deterministic pre-steps.",
+      }, {
+        kind: "unsupported_future_assessment",
+        severity: "critical",
+        summary: "Must not be retained.",
+      }],
       firewall_analysis: {
         total_requests: 4,
         allowed_requests: 3,
@@ -67,6 +78,13 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
     }));
 
     const telemetry = await readRunSecurityTelemetry(root, 42);
+    assert.deepEqual(telemetry.agenticAssessments, [{
+      kind: "partially_reducible",
+      severity: "low",
+      summary: "Half of the turns were deterministic data gathering.",
+      evidence: "agentic_fraction=0.50 turns=8",
+      recommendation: "Move data fetching into deterministic pre-steps.",
+    }]);
     assert.deepEqual(telemetry.accessControl.fileDenials, { read: 1 });
     assert.deepEqual(telemetry.accessControl.toolDenials, { mcp: 1 });
     assert.equal(telemetry.firewall.analysis.blocked_requests, 1);

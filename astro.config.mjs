@@ -124,6 +124,7 @@ export default defineConfig({
             { label: "Control plane overview", link: "/architecture/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },
+            { label: "Agentic workflow smells", link: "/agentic-workflow-smells/" },
             { label: "Glossary", link: "/glossary/" },
             { label: "Orchestrators and workers", link: "/orchestrators-and-workers/" },
           ],
