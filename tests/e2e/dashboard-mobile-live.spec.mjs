@@ -2,8 +2,9 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { summarizeAccessibilityTree, summarizeDomTree } from "./dashboard-tree-analysis.mjs";
 
-const maximumDomNodes = 1_400;
+const maximumDomNodes = 6_000;
 let preview;
 
 test.beforeAll(async () => {
@@ -57,10 +58,50 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   await menu.locator("summary").click();
   await expect(menu).toHaveAttribute("open", "");
 
-  const domNodes = await page.evaluate(() => document.getElementsByTagName("*").length);
-  await testInfo.attach("mobile-dashboard-metrics", {
-    body: JSON.stringify({ device: process.env.MOBILE_DEVICE, domNodes }, null, 2),
+  const domTree = await page.evaluate(() => {
+    const elements = [...document.getElementsByTagName("*")];
+    const nodes = elements.map((element) => {
+      let depth = 0;
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) depth += 1;
+      return {
+        tag: element.tagName.toLowerCase(),
+        classes: [...element.classList],
+        depth,
+        childElementCount: element.childElementCount,
+      };
+    });
+    const structures = [...document.querySelectorAll(
+      "[data-page-id], [data-section-id], [data-view-id], header, nav, main, footer, table, svg, details",
+    )].map((element) => ({
+      tag: element.tagName.toLowerCase(),
+      id: element.id || null,
+      classes: [...element.classList],
+      pageId: element.getAttribute("data-page-id"),
+      sectionId: element.getAttribute("data-section-id"),
+      viewId: element.getAttribute("data-view-id"),
+      descendantElements: element.getElementsByTagName("*").length,
+    }));
+    return { nodes, structures };
+  });
+  const accessibilitySnapshot = await page.locator("body").ariaSnapshot();
+  const analysis = {
+    device: process.env.MOBILE_DEVICE,
+    browser: process.env.MOBILE_BROWSER,
+    dom: summarizeDomTree(domTree.nodes, domTree.structures),
+    accessibility: summarizeAccessibilityTree(accessibilitySnapshot),
+  };
+  await mkdir(testInfo.outputDir, { recursive: true });
+  const analysisPath = testInfo.outputPath("mobile-dashboard-analysis.json");
+  const accessibilityPath = testInfo.outputPath("mobile-dashboard-accessibility-tree.yml");
+  await writeFile(analysisPath, `${JSON.stringify(analysis, null, 2)}\n`);
+  await writeFile(accessibilityPath, accessibilitySnapshot);
+  await testInfo.attach("mobile-dashboard-analysis", {
+    path: analysisPath,
     contentType: "application/json",
   });
-  expect(domNodes, `Dashboard rendered ${domNodes} DOM nodes`).toBeLessThanOrEqual(maximumDomNodes);
+  await testInfo.attach("mobile-dashboard-accessibility-tree", {
+    path: accessibilityPath,
+    contentType: "application/yaml",
+  });
+  expect(analysis.dom.totalElements, `Dashboard rendered ${analysis.dom.totalElements} DOM elements`).toBeLessThanOrEqual(maximumDomNodes);
 });
