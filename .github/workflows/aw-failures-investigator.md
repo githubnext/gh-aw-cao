@@ -20,6 +20,10 @@ on:
       safe_output_repo:
         required: true
         type: string
+      max_repos:
+        type: number
+      rollout_percent:
+        type: number
       safe_output_mode:
         type: string
       correlation_id:

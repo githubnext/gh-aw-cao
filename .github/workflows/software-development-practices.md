@@ -35,6 +35,12 @@ on:
         options:
           - review
           - live
+      correlation_id:
+        type: string
+      central_repo:
+        type: string
+      control_plane_run_url:
+        type: string
   permissions:
     contents: read
     actions: read

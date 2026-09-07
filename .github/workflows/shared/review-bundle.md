@@ -132,9 +132,11 @@ safe-outputs:
               exit 0
             fi
 
-            echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
-            echo "bundle_path=$STAGING_DIR" >> "$GITHUB_OUTPUT"
-            echo "skip_upload=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "artifact_name=$ARTIFACT_NAME"
+              echo "bundle_path=$STAGING_DIR"
+              echo "skip_upload=false"
+            } >> "$GITHUB_OUTPUT"
 
         - name: Upload review bundle artifact
           if: steps.prepare.outputs.skip_upload != 'true'
