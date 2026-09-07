@@ -76,7 +76,7 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('.work-roadmap-end')?.getAttribute('style')).toContain('--work-stop: 100.00%');
   });
 
-  it('renders a compact custom Tasks table with configurable sorting', () => {
+  it('renders a compact custom Table with configurable sorting and mobile field selection', () => {
     const rows = [
       { 'work-item-id': 'alpha', name: 'Alpha task', owner: 'Zed', scope: 'github/alpha', 'lifecycle-state': 'waiting', 'started-at': '2026-08-29T09:00:00Z' },
       { 'work-item-id': 'beta', name: 'Beta task', owner: 'Ada', scope: 'github/zeta', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' }
@@ -89,6 +89,10 @@ describe('work project view primitives', () => {
     }));
 
     expect(rendered.querySelector('.work-task-view-name')?.textContent).toContain('Operations tasks');
+    expect(rendered.querySelector('.work-mobile-field-settings')).not.toBeNull();
+    expect([...rendered.querySelectorAll('[name="mobile-work-field"]')].map((field) => /** @type {HTMLInputElement} */ (field).value)).toEqual([
+      'repository', 'status', 'owner', 'label', 'dates'
+    ]);
     expect([...rendered.querySelectorAll('.work-task-table-header > *')].map((header) => header.textContent)).toEqual([
       '', 'Title', 'Status', 'Type', 'Labels', 'Start', 'End', 'Owned by'
     ]);
@@ -129,5 +133,87 @@ describe('work project view primitives', () => {
     ]);
     expect(rendered.textContent).not.toContain('Waiting');
     expect(rendered.textContent).not.toContain('Active');
+  });
+
+  it('provides a one-group mobile Board with tap-based moves and full-screen details', () => {
+    const rows = [
+      { 'work-item-id': 'todo', name: 'Queued item', owner: 'operations', package: 'core', 'lifecycle-state': 'waiting' },
+      { 'work-item-id': 'review', name: 'Blocked item', owner: 'security', package: 'review', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work',
+      title: 'Work',
+      sources: { 'work-items': { rows } }
+    }));
+    const tabs = [...rendered.querySelectorAll('.work-board-group-tab')];
+
+    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('BoardTableRoadmap');
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Todo1', 'In progress0', 'Needs review1', 'Done0']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
+    expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Needs review');
+
+    /** @type {HTMLButtonElement} */ (tabs[0]).click();
+    expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Todo');
+
+    const queuedCard = [...rendered.querySelectorAll('.work-card')].find((card) => card.textContent?.includes('Queued item'));
+    const move = /** @type {HTMLSelectElement} */ (queuedCard?.querySelector('[aria-label="Move Queued item to"]'));
+    move.value = 'in-progress';
+    move.dispatchEvent(new Event('change'));
+    expect(rendered.querySelector('.work-board-in-progress')?.textContent).toContain('Queued item');
+
+    const blockedCard = [...rendered.querySelectorAll('.work-card')].find((card) => card.textContent?.includes('Blocked item'));
+    if (!(blockedCard instanceof HTMLElement)) throw new Error('blocked card did not render');
+    /** @type {HTMLButtonElement} */ (blockedCard.querySelector('[aria-label="Open Blocked item details"]')).click();
+    const detail = rendered.querySelector('[aria-label="Blocked item details"]');
+    expect(detail?.hasAttribute('open')).toBe(true);
+    expect(detail?.textContent).toContain('Approval required');
+    expect(detail?.textContent).toContain('reviewer decision');
+  });
+
+  it('reapplies active filters after a mobile quick update', () => {
+    const rows = [
+      { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
+      { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work',
+      title: 'Work',
+      sources: { 'work-items': { rows } }
+    }));
+    const stateFilter = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Filter by state"]'));
+    stateFilter.value = 'Needs Review';
+    stateFilter.dispatchEvent(new Event('change'));
+
+    const move = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Move Blocked item to"]'));
+    move.value = 'todo';
+    move.dispatchEvent(new Event('change'));
+
+    expect(rendered.textContent).toContain('No work items match the current filters.');
+  });
+
+  it('defaults Roadmap to a period-grouped mobile timeline with an explicit visual mode', () => {
+    const rows = [
+      { 'work-item-id': 'august', name: 'August item', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' },
+      { 'work-item-id': 'september', name: 'September item', 'lifecycle-state': 'completed', 'started-at': '2026-09-02T09:00:00Z', 'ended-at': '2026-09-03T09:00:00Z' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work-roadmap',
+      title: 'Roadmap',
+      sources: { 'work-items': { rows } },
+      elementConfig: { body: 'roadmap' }
+    }));
+
+    expect([...rendered.querySelectorAll('.work-roadmap-period-heading')].map((heading) => heading.textContent)).toEqual([
+      'August 2026', 'September 2026'
+    ]);
+    expect(rendered.querySelectorAll('.work-roadmap-mobile-meta')).toHaveLength(2);
+    const visualToggle = /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Show visual timeline"]'));
+    visualToggle.click();
+    expect(rendered.querySelector('.work-roadmap')?.classList.contains('work-roadmap-visual')).toBe(true);
+    expect(visualToggle.getAttribute('aria-label')).toBe('Show list timeline');
+    const period = rendered.querySelector('.work-roadmap-mobile-period');
+    const initialPeriod = period?.textContent;
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Next month"]')).click();
+    expect(period?.textContent).not.toBe(initialPeriod);
   });
 });

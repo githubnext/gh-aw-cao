@@ -85,7 +85,7 @@ const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
  * @param {() => void} update
  */
 export function updateWithViewTransition(document, update) {
-  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => unknown }} */ (document);
+  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown> } | void }} */ (document);
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
   if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
     update();
