@@ -161,6 +161,10 @@ function hydrateLazyView(element) {
 function replaceLazyView(element, rendered) {
   if (!element.parentNode) return;
   const restoreFocus = element.ownerDocument.activeElement === element;
+  const viewId = element.getAttribute('data-view-id');
+  if (viewId && !rendered.hasAttribute('data-view-id')) {
+    rendered.setAttribute('data-view-id', viewId);
+  }
   element.replaceWith(rendered);
   if (restoreFocus) {
     rendered.tabIndex = -1;
