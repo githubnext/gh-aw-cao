@@ -70,7 +70,16 @@ export function enableLazyViews(root) {
     }
   }, { rootMargin: '320px 0px' });
   observers.set(root, observer);
-  for (const element of lazyViews) observer.observe(element);
+  for (const element of lazyViews) {
+    observer.observe(element);
+    const disclosure = element.closest('details');
+    disclosure?.addEventListener('toggle', () => {
+      if (disclosure.open) {
+        observer.unobserve(element);
+        void hydrateLazyView(element);
+      }
+    }, { once: true });
+  }
 }
 
 /**

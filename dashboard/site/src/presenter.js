@@ -904,7 +904,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       rendered.setAttribute('data-disclosure', disclosure);
       return rendered;
     };
-    const rendered = isPlainObject(view) && view.mark === 'callout'
+    const rendered = routeParameter || index === 0 || (isPlainObject(view) && view.mark === 'callout')
       ? render()
       : renderLazyView({
         label: getViewTitle(view, index),
