@@ -11,6 +11,10 @@ function importModule(modulePath) {
 
 const COLLECT_GH_AW_LOGS_OPERATION = "collect-gh-aw-logs";
 
+// Matches github-telemetry.mjs's fallback so paths stay consistent when
+// RUNNER_TEMP is unset (e.g. local/debug runs on non-standard runners).
+const runnerTemp = process.env.RUNNER_TEMP || "/tmp";
+
 export async function runActivity(actions = {}) {
   const logsModulePath = process.env.ACTIVITY_LOGS;
   const telemetryModulePath = process.env.GITHUB_TELEMETRY;
@@ -41,7 +45,7 @@ export async function runActivity(actions = {}) {
   // failure here abort the run, matching the original unprotected step.
   await telemetry.main(actions, [
     "prepare",
-    path.join(process.env.RUNNER_TEMP, "cao-activity", "cao-gh.jsonl"),
+    path.join(runnerTemp, "cao-activity", "cao-gh.jsonl"),
   ]);
 
   // Recording telemetry is best-effort and must not fail the run, matching
@@ -57,7 +61,7 @@ export async function runActivity(actions = {}) {
     await controlSettings.main(actions, [
       ".github/cao/src/control.mjs",
       ".github/workflows/cao.json",
-      path.join(process.env.RUNNER_TEMP, "cao-activity", "control-settings.json"),
+      path.join(runnerTemp, "cao-activity", "control-settings.json"),
     ]);
 
     const inventory = await importModule(path.join(dashboardReportRoot, "inventory.mjs"));
