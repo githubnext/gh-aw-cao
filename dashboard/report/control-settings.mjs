@@ -93,8 +93,9 @@ export function resolveDashboardControlSettings({
   }
 }
 
-export async function main(actions = {}, args = process.argv.slice(2)) {
+export async function main(actions = {}, args) {
   setActionsGlobals(actions);
+  args = args ?? process.argv.slice(2);
   const [controlProgram, policyPath, outputPath] = args;
   if (!controlProgram || !policyPath || !outputPath) {
     throw new Error("usage: control-settings.mjs <control.mjs> <policy.json> <output.json>");

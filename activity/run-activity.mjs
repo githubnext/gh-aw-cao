@@ -57,12 +57,10 @@ export async function runActivity(actions = {}) {
   }
 
   if (dashboardCollectionEnabled) {
+    const controlSettingsPath =
+      process.env.REPORT_CONTROL_SETTINGS || path.join(runnerTemp, "cao-activity", "control-settings.json");
     const controlSettings = await importModule(path.join(dashboardReportRoot, "control-settings.mjs"));
-    await controlSettings.main(actions, [
-      ".github/cao/src/control.mjs",
-      ".github/workflows/cao.json",
-      path.join(runnerTemp, "cao-activity", "control-settings.json"),
-    ]);
+    await controlSettings.main(actions, [".github/cao/src/control.mjs", ".github/workflows/cao.json", controlSettingsPath]);
 
     const inventory = await importModule(path.join(dashboardReportRoot, "inventory.mjs"));
     await inventory.main(actions);

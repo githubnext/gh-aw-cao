@@ -122,7 +122,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       error: error instanceof Error ? error.message : String(error),
     }, null, 2)}\n`);
     await writeOutcome("failure");
-    log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error.message}`;
+    log.warning`gh aw logs collection failed; ${Array.isArray(snapshot.runs) && snapshot.runs.length > 0 ? "preserved the cached snapshot" : "wrote an empty snapshot"}: ${error instanceof Error ? error.message : String(error)}`;
     return "failure";
   }
 }
