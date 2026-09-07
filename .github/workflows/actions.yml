@@ -11,9 +11,14 @@ on:
       - dashboard/**
       - playwright.mobile.config.mjs
       - tests/e2e/dashboard-mobile-live.spec.mjs
+  pull_request:
+    paths:
+      - .github/workflows/actions.yml
+      - dashboard/**
+      - playwright.mobile.config.mjs
+      - tests/e2e/dashboard-mobile-live.spec.mjs
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
@@ -52,7 +57,7 @@ jobs:
       - name: Test latest dashboard data on mobile
         run: npx playwright test --config=playwright.mobile.config.mjs
         env:
-          GH_TOKEN: ${{ github.token }}
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
       - name: Upload failure evidence
