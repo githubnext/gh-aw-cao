@@ -15,6 +15,23 @@ export function renderExperimentSectionHeading(id, title, description) {
 }
 
 /**
+ * Renders the shared `experiment-section` shell used by every experiment
+ * detail section: a heading followed by either the section's rendered
+ * content or a caller-supplied empty-state element when there is nothing
+ * to show.
+ * @param {{ id: string, title: string, description: string, className?: string, emptyState?: HTMLElement | null, renderContent: () => HTMLElement }} options
+ * @returns {HTMLElement}
+ */
+export function renderExperimentSection({ id, title, description, className, emptyState, renderContent }) {
+  return h(
+    'section',
+    { className: `experiment-section${className ? ` ${className}` : ''}`, 'aria-labelledby': id },
+    renderExperimentSectionHeading(id, title, description),
+    emptyState ?? renderContent()
+  );
+}
+
+/**
  * @param {number} value
  * @returns {HTMLElement}
  */
