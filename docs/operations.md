@@ -139,7 +139,7 @@ This favors bounded failure over eventual delivery. Scheduled, level-triggered o
 
 Optional observability imports for Sentry, Grafana, and Datadog configure exporter destinations; they do not emit the orchestrator span or replace GitHub Actions run history and correlation metadata as the primary execution audit trail.
 
-Every orchestrator emits a `central-agentic-ops.orchestrator.run` span after normalized agent output is available. Its attributes contain only the package, policy state, limits, and aggregate candidate, requested dispatch, target, workflow, and incomplete counts; target names, workflow inputs, run URLs, and error payloads are excluded. A `requested` status records dispatch intent before safe-output handlers call the GitHub API. Use gh-aw outcome spans and GitHub Actions run history to determine dispatch success or failure.
+Every orchestrator emits a `central-agentic-ops.orchestrator` span after normalized agent output is available. Its attributes contain only the package, policy state, limits, and aggregate candidate, requested dispatch, target, workflow, and incomplete counts; target names, workflow inputs, run URLs, and error payloads are excluded. A `requested` status records dispatch intent before safe-output handlers call the GitHub API. Use gh-aw outcome spans and GitHub Actions run history to determine dispatch success or failure.
 
 ## Publishing Reviewed Operation Issues
 
