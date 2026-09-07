@@ -840,6 +840,44 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
   });
 
+  it('keeps the Home overview below its DOM budget with large notification sets', () => {
+    localStorage.clear();
+    const rows = Array.from({ length: 250 }, (_, index) => ({
+      'attention-signal-id': `authority:${index}`,
+      'signal-type': 'authority-gate',
+      objective: `Confirm authority ${index}`,
+      scope: `github/repository-${index}`,
+      reason: `Authority evidence ${index} is missing`,
+      'consequence-tier': 'high',
+      priority: index + 1,
+      'age-seconds': index * 60
+    }));
+    const rendered = renderUiElement('signal-list', {
+      pageId: 'overview',
+      title: 'Notifications',
+      sourceNames: ['attention-signals'],
+      sources: {
+        'attention-signals': { source: 'attention-signals', rows, metadata }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelectorAll('*').length).toBeLessThan(1_500);
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(25);
+    expect(rendered?.querySelector('.notifications-result-count')?.textContent)
+      .toBe('250 notifications · showing 1–25');
+    expect(rendered?.querySelector('.notifications-pagination span')?.textContent).toBe('Page 1 of 10');
+
+    /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('[aria-label="Next notifications page"]') ?? null)?.click();
+
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(25);
+    expect(rendered?.querySelector('.notifications-result-count')?.textContent)
+      .toBe('250 notifications · showing 26–50');
+    expect(rendered?.querySelector('.notifications-list')?.textContent).toContain('Confirm authority 25');
+    expect(rendered?.querySelector('.notifications-list')?.textContent).not.toContain('Confirm authority 0Authority evidence');
+  });
+
   it('leads a clear Home page with a catch-up briefing', () => {
     localStorage.clear();
     const rendered = renderUiElement('signal-list', {

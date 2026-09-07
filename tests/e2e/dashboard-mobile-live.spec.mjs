@@ -5,7 +5,7 @@ import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
 import { summarizeAccessibilityTree, summarizeDomTree } from "./dashboard-tree-analysis.mjs";
 
-const maximumDomNodes = 6_000;
+const maximumDomNodes = 1_500;
 let preview;
 
 function optionalNumber(name) {
