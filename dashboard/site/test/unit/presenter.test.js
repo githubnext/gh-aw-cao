@@ -658,7 +658,7 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('shows clean navigation by default and toggles experimental groups through the URL', () => {
+  it('groups all experimental views in one section collapsed by default', () => {
     window.history.replaceState(null, '', '/');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
@@ -668,30 +668,24 @@ describe('presenter built-in and custom pages', () => {
 
     const labels = [...rendered.querySelectorAll('.nav-section-label')].map((node) => node.textContent?.trim());
     const sections = [...rendered.querySelectorAll('.nav-section')];
-    const controlPlaneNavigation = authoritativeDashboardDocument.dashboard.navigation?.find(
-      /** @param {{ label?: string }} section */
-      (section) => section.label === 'Control plane'
-    );
-    expect(labels).toEqual(['Attention', 'Investigate', 'Insights', 'Control plane', 'Explore', 'Package operations']);
-    expect([...rendered.querySelectorAll('.nav-section:not([hidden]) .nav-section-label')]).toHaveLength(0);
-    expect([...rendered.querySelectorAll('.mobile-nav-section-label:not([hidden])')]).toHaveLength(0);
+    expect(labels).toEqual(['Experimental']);
+    expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Home', 'Work', 'Agents', 'Insights', 'Settings'
     ]);
-    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([true, true, true, false, false, false]);
+    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([false]);
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
-    expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Attention');
-    expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')?.textContent).toContain('Investigate');
-    expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')?.textContent).toContain('Control plane');
-    expect(rendered.querySelector('[data-nav-page-id="readiness"]')?.closest('.nav-section')?.textContent).toContain('Control plane');
-    expect(controlPlaneNavigation?.pages).toEqual(expect.arrayContaining(['github-api']));
+    expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Experimental');
+    expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[0]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
-      'Operations',
       'Home',
       'Work',
       'Agents',
       'Insights',
       'Settings',
+      'Operations',
       'Runtime',
       'Performance',
       'Security',
@@ -727,17 +721,10 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Home');
 
-    window.history.replaceState(null, '', '/#page-overview?show=experimental');
-    window.dispatchEvent(new Event('hashchange'));
-
-    expect(window.location.hash).toBe('#page-overview?show=experimental');
-    expect(sections.every((section) => !section.hasAttribute('hidden'))).toBe(true);
-    expect([...rendered.querySelectorAll('[data-mobile-nav-page-id]')].every((item) => !item.hasAttribute('hidden'))).toBe(true);
-    expect(rendered.querySelector('[data-nav-page-id="cost"]')?.getAttribute('href')).toBe('#page-cost?show=experimental');
-
     /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'))?.click();
 
-    expect(window.location.hash).toBe('#page-cost?show=experimental');
+    expect(window.location.hash).toBe('#page-cost');
+    expect(/** @type {HTMLDetailsElement} */ (sections[0]).open).toBe(true);
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency');
@@ -793,16 +780,16 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('restores experimental navigation from a shared URL', () => {
-    window.history.replaceState(null, '', '/#page-overview?show=experimental');
+  it('expands experimental navigation for a directly linked experimental page', () => {
+    window.history.replaceState(null, '', '/#page-cost');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {}
     });
 
-    expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
-    expect([...rendered.querySelectorAll('[data-experimental-navigation]')].every((item) => !item.hasAttribute('hidden'))).toBe(true);
-    expect(rendered.querySelector('[data-mobile-nav-page-id="overview"]')?.getAttribute('href')).toBe('#page-overview?show=experimental');
+    expect(/** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.nav-section'))?.open).toBe(true);
+    expect(rendered.querySelector('[data-nav-page-id="cost"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered.querySelector('[data-mobile-nav-page-id="overview"]')?.getAttribute('href')).toBe('#page-overview');
 
     rendered.remove();
     window.history.replaceState(null, '', '/');
@@ -817,10 +804,8 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const sections = [...rendered.querySelectorAll('.nav-section')];
-    const attentionSection = sections.find((section) => section.querySelector('summary')?.textContent?.trim() === 'Attention');
-    const investigateSection = sections.find((section) => section.querySelector('summary')?.textContent?.trim() === 'Investigate');
-    expect(/** @type {HTMLDetailsElement | undefined} */ (attentionSection)?.open).toBe(true);
-    expect(/** @type {HTMLDetailsElement | undefined} */ (investigateSection)?.open).toBe(true);
+    const experimentalSection = sections.find((section) => section.querySelector('summary')?.textContent?.trim() === 'Experimental');
+    expect(/** @type {HTMLDetailsElement | undefined} */ (experimentalSection)?.open).toBe(true);
     expect(rendered.querySelector('[data-nav-page-id="security"]')?.getAttribute('aria-current')).toBe('page');
 
     rendered.remove();
@@ -1009,12 +994,12 @@ describe('presenter built-in and custom pages', () => {
     expect(menu?.querySelector('summary')?.getAttribute('aria-label')).toBe('Select view');
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
-      'Operations',
       'Home',
       'Work',
       'Agents',
       'Insights',
       'Settings',
+      'Operations',
       'Runtime',
       'Performance',
       'Security',
