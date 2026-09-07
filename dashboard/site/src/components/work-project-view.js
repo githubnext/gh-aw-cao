@@ -668,16 +668,19 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
     else dialog.removeAttribute('open');
   };
   /** @param {string} label @param {string} value @param {string[]} values @param {'owner'|'packageName'} property */
-  const updateSelect = (label, value, values, property) => h('label', { className: 'work-mobile-detail-control' },
-    h('span', null, label),
-    h('select', {
-      'aria-label': `${label} for ${item.name}`,
-      onchange: (/** @type {Event} */ event) => {
-        item[property] = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
-        onUpdate();
-      }
-    }, ...values.map((option) => h('option', { value: option, selected: option === value }, option)))
-  );
+  const updateSelect = (label, value, values, property) => {
+    const optionValues = [...new Set([value, ...values])];
+    return h('label', { className: 'work-mobile-detail-control' },
+      h('span', null, label),
+      h('select', {
+        'aria-label': `${label} for ${item.name}`,
+        onchange: (/** @type {Event} */ event) => {
+          item[property] = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
+          onUpdate();
+        }
+      }, ...optionValues.map((option) => h('option', { value: option, selected: option === value }, option || 'None')))
+    );
+  };
   dialog.append(
     h('header', null,
       h('div', null, renderIconSpan('work-avatar', item.icon, { ariaHidden: true }), h('h2', null, item.name)),
