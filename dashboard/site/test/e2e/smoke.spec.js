@@ -39,7 +39,7 @@ function buildPresenterModuleUrl() {
 async function hydrateView(page, title) {
   const placeholder = page.getByRole('region', { name: `Loading ${title}` });
   if (await placeholder.count() === 0) return;
-  await placeholder.scrollIntoViewIfNeeded().catch(() => {});
+  await placeholder.first().scrollIntoViewIfNeeded().catch(() => {});
   await expect(placeholder).toHaveCount(0);
 }
 

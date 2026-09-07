@@ -199,4 +199,6 @@ function reportHydrationError(element, error) {
   element.setAttribute('aria-busy', 'false');
   const label = element.getAttribute('aria-label')?.replace(/^Loading /, '') || 'view';
   element.setAttribute('aria-label', `Unable to load ${label}`);
+  const status = element.querySelector('span.sr-only');
+  if (status) status.textContent = `Unable to load ${label}`;
 }
