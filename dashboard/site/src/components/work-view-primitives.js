@@ -39,3 +39,34 @@ export function workViewCompositionForBody(body) {
 export function defaultWorkViewComposition() {
   return WORK_VIEW_BODY_VALUES.map((body) => workViewCompositionForBody(body));
 }
+
+/**
+ * @param {{
+ *   id: string,
+ *   title: string,
+ *   sources: string[],
+ *   description?: string,
+ *   body?: WorkViewBody,
+ *   sections?: WorkViewBody[],
+ *   layout?: 'full'|'wide'|'compact'
+ * }} options
+ */
+export function createWorkProjectView(options) {
+  const config = Array.isArray(options.sections) && options.sections.length > 0
+    ? { sections: options.sections }
+    : options.body
+      ? { body: workViewCompositionForBody(options.body).key }
+      : { sections: defaultWorkViewComposition().map((section) => section.key) };
+  return {
+    id: options.id,
+    title: options.title,
+    ...(typeof options.description === 'string' ? { description: options.description } : {}),
+    data: {
+      sources: options.sources
+    },
+    mark: 'element',
+    element: 'work-project-view',
+    config,
+    ...(options.layout ? { layout: options.layout } : {})
+  };
+}

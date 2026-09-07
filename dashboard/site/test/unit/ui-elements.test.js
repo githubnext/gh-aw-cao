@@ -114,6 +114,7 @@ describe('UI elements', () => {
     });
 
     expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
+    expect(rendered?.querySelector('.section-kicker')).toBeNull();
     expect(rendered?.querySelectorAll('.work-board-column')).toHaveLength(4);
     expect(rendered?.querySelector('.work-board-active .work-card')?.textContent).toContain('Dependabot release train');
     expect(rendered?.querySelector('.work-board-review .work-card')?.textContent).toContain('Review security posture');
