@@ -1104,6 +1104,13 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'performance');
+    const configuredPages = /** @type {Array<{ id: string, views: Array<{ id: string }> }>} */ (
+      authoritativeDashboardDocument.dashboard.pages
+    );
+    const configuredPage = configuredPages
+      .find(({ id }) => id === 'performance');
+    expect([...page?.querySelectorAll('[data-view-id]') ?? []].map((view) => view.getAttribute('data-view-id')))
+      .toEqual(configuredPage?.views.map(({ id }) => id));
     expect(page?.querySelectorAll('.custom-view-grid > [data-view-layout="half"]')).toHaveLength(3);
     expect(page?.querySelector('[data-chart-widget="histogram"]')).not.toBeNull();
     expect(page?.querySelectorAll('[data-chart-widget="histogram"] .histogram-chart-bar')).toHaveLength(2);

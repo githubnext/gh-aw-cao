@@ -145,6 +145,9 @@
           "open-source-failures": {
             "workflow": "self-care-open-source-failures"
           },
+          "pages-health": {
+            "workflow": "self-care-pages-health"
+          },
           "primer-brand-checker": {
             "workflow": "self-care-primer-brand-checker"
           }
