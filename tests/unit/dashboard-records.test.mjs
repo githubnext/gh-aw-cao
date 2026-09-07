@@ -276,6 +276,64 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   });
 });
 
+test("dashboard records bound concurrent run metadata requests", async () => {
+  let activeRequests = 0;
+  let maximumRequests = 0;
+  const issues = Array.from({ length: 12 }, (_, index) => ({
+    number: index + 1,
+    title: `[Maintenance] Finding ${index + 1}`,
+    body: `Generated from [Worker](https://github.com/acme/control/actions/runs/${index + 1})`,
+    body_html: "<p>Finding</p>",
+    state: "open",
+    html_url: `https://github.com/acme/control/issues/${index + 1}`,
+    url: `https://api.github.com/repos/acme/control/issues/${index + 1}`,
+    created_at: "2026-09-07T10:00:00Z",
+    updated_at: "2026-09-07T11:00:00Z",
+  }));
+  const fetchImpl = async (input) => {
+    const url = new URL(input);
+    if (url.pathname === "/repos/acme/control/issues") {
+      return new Response(JSON.stringify(issues), { status: 200 });
+    }
+    if (url.pathname.endsWith("/issues/comments")) {
+      return new Response("[]", { status: 200 });
+    }
+    if (url.pathname.endsWith("/actions/artifacts")) {
+      return new Response(JSON.stringify({ artifacts: [] }), { status: 200 });
+    }
+    if (/\/actions\/runs\/\d+$/.test(url.pathname)) {
+      activeRequests += 1;
+      maximumRequests = Math.max(maximumRequests, activeRequests);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      activeRequests -= 1;
+      return new Response(JSON.stringify({
+        name: "Maintenance / Worker",
+        path: ".github/workflows/maintenance-worker.lock.yml",
+        display_title: "Maintenance / Worker · review",
+        conclusion: "success",
+      }), { status: 200 });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  const output = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: {
+      allowed_repositories: ["acme/control"],
+      packages: { maintenance: { mode: "review" } },
+    },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    fetchImpl,
+    generatedAt: "2026-09-07T12:00:00Z",
+  });
+
+  assert.equal(output.records.length, issues.length);
+  assert.ok(maximumRequests > 1);
+  assert.ok(maximumRequests <= 4);
+});
+
 test("dashboard records stop on a GitHub rate limit and return a renderable error", async () => {
   const requests = [];
   const logs = [];
