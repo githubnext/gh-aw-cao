@@ -922,6 +922,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
         render
       });
     rendered.classList.add('custom-view');
+    rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);
     rendered.setAttribute('data-disclosure', disclosure);
     if (disclosure === 'essential') {
