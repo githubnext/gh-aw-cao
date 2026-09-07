@@ -188,7 +188,7 @@ export function renderDashboard(input) {
     skipLink,
     appShell
   );
-  enableDashboardDomProvenance(root, document);
+  void enableDashboardDomProvenanceWhenDebugging(root, document);
   enableSidebarToggle(root);
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
@@ -201,7 +201,7 @@ export function renderDashboard(input) {
       const page = pages[pageIndex];
       if (!page) return null;
       const renderedPage = renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
-      annotatePageDom(renderedPage, page, pageIndex);
+      void annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex);
       return renderedPage;
     },
     sidebar.dataset.defaultPageId
@@ -211,119 +211,38 @@ export function renderDashboard(input) {
 }
 
 /**
- * Maps every rendered element to the most specific dashboard JSON node that
- * owns it. Only the initial render performs the full structural walk;
- * subsequent DOM mutations (lazy pages, interactive re-renders) are handled
- * incrementally so the observer never re-annotates the whole dashboard.
+ * Lazily loads the debug-only DOM provenance module (never bundled into the
+ * default dashboard load) and enables it only when `?debug=1` is present in
+ * the page URL, so Playwright/agent analysis can opt in without imposing any
+ * cost on regular dashboard visits.
  * @param {HTMLElement} root
  * @param {PresentationDocument} document
  */
-function enableDashboardDomProvenance(root, document) {
-  annotateDashboardDom(root, document);
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue;
-        propagateDashboardDomProvenance(/** @type {Element} */ (node));
-      }
-    }
-  });
-  observer.observe(root, { childList: true, subtree: true });
-}
-
-/**
- * Propagates already-known JSON provenance onto a newly inserted element
- * subtree without re-walking the whole dashboard. Subtrees that already
- * carry `data-json-path` (for example, pages rendered and annotated ahead of
- * lazy activation) are left untouched, since they were already annotated
- * precisely before insertion.
- * @param {Element} node
- */
-function propagateDashboardDomProvenance(node) {
-  if (node.hasAttribute('data-json-path')) return;
-  const owner = node.parentElement?.closest('[data-json-path]');
-  if (!owner) return;
-  annotateDomTree(node, /** @type {string} */ (owner.getAttribute('data-json-path')), owner.getAttribute('data-js-view') ?? undefined);
+async function enableDashboardDomProvenanceWhenDebugging(root, document) {
+  if (!isDomProvenanceDebugRequested(root)) return;
+  const { enableDashboardDomProvenance } = await import('./dom-provenance.js');
+  enableDashboardDomProvenance(root, document, getBuiltInPagePayload);
 }
 
 /**
  * @param {HTMLElement} root
- * @param {PresentationDocument} document
+ * @returns {boolean}
  */
-function annotateDashboardDom(root, document) {
-  annotateDomTree(root, '$.dashboard');
-
-  const callouts = Array.isArray(document.dashboard.callouts) ? document.dashboard.callouts : [];
-  for (const element of root.querySelectorAll('[data-site-callout]')) {
-    const index = callouts.findIndex((callout) => callout.id === element.getAttribute('data-site-callout'));
-    if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`);
-  }
-
-  const navLinks = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')];
-  const pageElements = [...root.querySelectorAll('[data-page-id]')];
-  document.dashboard.pages.forEach((page, pageIndex) => {
-    const pagePath = `$.dashboard.pages[${pageIndex}]`;
-    for (const element of navLinks) {
-      if (
-        element.getAttribute('data-nav-page-id') === page.id
-        || element.getAttribute('data-mobile-nav-page-id') === page.id
-      ) {
-        annotateDomTree(element, pagePath);
-      }
-    }
-
-    const renderedPage = pageElements.find((element) => element.getAttribute('data-page-id') === page.id);
-    if (!renderedPage) return;
-    annotatePageDom(renderedPage, page, pageIndex);
-  });
+function isDomProvenanceDebugRequested(root) {
+  const search = root.ownerDocument.defaultView?.location.search ?? '';
+  return new URLSearchParams(search).get('debug') === '1';
 }
 
 /**
+ * @param {HTMLElement} root
  * @param {Element} renderedPage
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @param {number} pageIndex
  */
-function annotatePageDom(renderedPage, page, pageIndex) {
-  const pagePath = `$.dashboard.pages[${pageIndex}]`;
-  annotateDomTree(renderedPage, pagePath);
-
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  const definitionPath = page.kind === 'built-in' ? `${pagePath}.definition` : pagePath;
-  const sections = Array.isArray(payload.sections) ? payload.sections : [];
-  sections.forEach((section, sectionIndex) => {
-    for (const element of renderedPage.querySelectorAll('[data-section-id]')) {
-      if (element.getAttribute('data-section-id') === section.id) {
-        annotateDomTree(element, `${definitionPath}.sections[${sectionIndex}]`);
-      }
-    }
-  });
-
-  const views = Array.isArray(payload.views) ? payload.views : [];
-  views.forEach((view, viewIndex) => {
-    if (!isPlainObject(view)) return;
-    const viewId = typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
-    for (const element of renderedPage.querySelectorAll('[data-view-id]')) {
-      if (element.getAttribute('data-view-id') !== viewId) continue;
-      const viewRoot = element.closest('.custom-view') ?? element;
-      annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, typeof view.element === 'string' ? view.element : undefined);
-    }
-  });
-}
-
-/**
- * @param {Element} root
- * @param {string} jsonPath
- * @param {string} [javascriptView]
- */
-function annotateDomTree(root, jsonPath, javascriptView) {
-  for (const element of [root, ...root.querySelectorAll('*')]) {
-    element.setAttribute('data-json-path', jsonPath);
-    if (javascriptView) {
-      element.setAttribute('data-js-view', javascriptView);
-    } else {
-      element.removeAttribute('data-js-view');
-    }
-  }
+async function annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex) {
+  if (!isDomProvenanceDebugRequested(root)) return;
+  const { annotatePageDom } = await import('./dom-provenance.js');
+  annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload);
 }
 
 /**
