@@ -81,10 +81,10 @@ jobs:
           CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
-          CAO_TARGET_REPOSITORY: ${{ github.event.inputs.target_repo || '' }}
-          CAO_REQUESTED_MODE: ${{ github.event.inputs.safe_output_mode || '' }}
-          CAO_REQUESTED_MAX_REPOSITORIES: ${{ github.event.inputs.max_repos || '' }}
-          CAO_REQUESTED_ROLLOUT_PERCENT: ${{ github.event.inputs.rollout_percent || '' }}
+          CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
+          CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
+          CAO_REQUESTED_MAX_REPOSITORIES: ${{ inputs.max_repos || '' }}
+          CAO_REQUESTED_ROLLOUT_PERCENT: ${{ inputs.rollout_percent || '' }}
         run: |
           set -uo pipefail
           cao_dir="${GITHUB_WORKSPACE:-.}/.cao/.github/cao/src"
@@ -92,9 +92,11 @@ jobs:
             exit 0
           fi
           reason="cannot read or execute the CAO control modules at github.workflow_sha"
-          echo "authorized=false" >> "$GITHUB_OUTPUT"
-          echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "monthly_credit_budget=0" >> "$GITHUB_OUTPUT"
+          {
+            echo "authorized=false"
+            echo "reason=$reason"
+            echo "monthly_credit_budget=0"
+          } >> "$GITHUB_OUTPUT"
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
           <details>
           <summary><h3>Central Agentic Ops admission</h3></summary>
@@ -207,12 +209,12 @@ jobs:
           CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
-          CAO_TARGET_REPOSITORY: ${{ github.event.inputs.target_repo || '' }}
+          CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
           CAO_DISPATCH_MAX: "${{ github.aw.import-inputs.dispatch_max }}"
-          CAO_SAFE_OUTPUT_REPOSITORY: ${{ (github.event.inputs.safe_output_mode || 'review') == 'review' && (github.event.inputs.safe_output_repo || github.repository) || github.event.inputs.target_repo || '' }}
-          CAO_CORRELATION_ID: ${{ github.event.inputs.correlation_id || '' }}
-          CAO_CENTRAL_REPOSITORY: ${{ github.event.inputs.central_repo || '' }}
-          CAO_CONTROL_PLANE_RUN_URL: ${{ github.event.inputs.control_plane_run_url || '' }}
+          CAO_SAFE_OUTPUT_REPOSITORY: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
+          CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
+          CAO_CENTRAL_REPOSITORY: ${{ inputs.central_repo || '' }}
+          CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
           CAO_ORCHESTRATOR_CREDITS: "${{ github.aw.import-inputs.orchestrator_credits }}"
           CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
         run: |
@@ -275,7 +277,7 @@ jobs:
 
 post-steps:
   - name: Emit control-plane dispatcher telemetry
-    if: ${{ always() && github.aw.import-inputs.role == 'orchestrator' }}
+    if: ${{ always() }}
     continue-on-error: true
     uses: actions/github-script@v9.0.0
     with:
@@ -297,6 +299,10 @@ post-steps:
         }
 
         const precompute = readJson('/tmp/gh-aw/agent/control-precompute.json', {});
+        if (precompute.control_role !== 'orchestrator') {
+          return;
+        }
+
         const output = readJson('/tmp/gh-aw/agent_output.json', { items: [] });
         const items = Array.isArray(output.items) ? output.items : [];
         const dispatches = items.filter(item => item?.type === 'dispatch_workflow');
