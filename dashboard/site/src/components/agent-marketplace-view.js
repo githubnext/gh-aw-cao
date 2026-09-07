@@ -242,6 +242,7 @@ export function smellObservationNotifications(rows, options) {
         'dashboard-label': 'Review finding'
       } } : {})
     };
+  });
 }
 
 function scentLines() {
