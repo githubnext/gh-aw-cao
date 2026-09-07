@@ -35,11 +35,12 @@ export function renderWorkProjectView(context) {
   const sections = workViewComposition(context.elementConfig);
   const activeSection = sections[0]?.key ?? 'board';
   const viewBody = h('div', { className: 'work-project-body' });
+  let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
   const renderers = {
-    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, () => renderItems(filteredItems)),
-    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, () => renderItems(filteredItems)),
-    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, () => renderItems(filteredItems))
+    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, reapplyFilters),
+    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, reapplyFilters),
+    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, reapplyFilters)
   };
   /** @param {Array<ReturnType<typeof normalizeWorkItem>>} filteredItems */
   const renderItems = (filteredItems) => {
@@ -67,6 +68,7 @@ export function renderWorkProjectView(context) {
       .filter((element) => element instanceof HTMLElement));
   };
   const filterBar = renderWorkFilterBar(items, renderItems);
+  reapplyFilters = filterBar.apply;
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
@@ -83,7 +85,7 @@ export function renderWorkProjectView(context) {
         route.title
       ))
     ),
-    filterBar,
+    filterBar.element,
     viewBody
   );
   renderItems(items);
@@ -93,6 +95,7 @@ export function renderWorkProjectView(context) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {(items: Array<ReturnType<typeof normalizeWorkItem>>) => void} onChange
+ * @returns {{ element: HTMLElement, apply: () => void }}
  */
 function renderWorkFilterBar(items, onChange) {
   const search = /** @type {HTMLInputElement} */ (h('input', {
@@ -165,7 +168,7 @@ function renderWorkFilterBar(items, onChange) {
   });
   queueMicrotask(apply);
 
-  return h('form', {
+  const element = h('form', {
     className: 'work-filter-bar',
     role: 'search',
     'aria-label': 'Work filters',
@@ -179,6 +182,7 @@ function renderWorkFilterBar(items, onChange) {
   facets,
   resultCount,
   clear);
+  return { element, apply };
 }
 
 /** @param {string} label @param {string[]} values */

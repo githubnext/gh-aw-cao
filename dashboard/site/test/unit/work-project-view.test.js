@@ -170,6 +170,27 @@ describe('work project view primitives', () => {
     expect(detail?.textContent).toContain('reviewer decision');
   });
 
+  it('reapplies active filters after a mobile quick update', () => {
+    const rows = [
+      { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
+      { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work',
+      title: 'Work',
+      sources: { 'work-items': { rows } }
+    }));
+    const stateFilter = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Filter by state"]'));
+    stateFilter.value = 'Needs Review';
+    stateFilter.dispatchEvent(new Event('change'));
+
+    const move = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Move Blocked item to"]'));
+    move.value = 'todo';
+    move.dispatchEvent(new Event('change'));
+
+    expect(rendered.textContent).toContain('No work items match the current filters.');
+  });
+
   it('defaults Roadmap to a period-grouped mobile timeline with an explicit visual mode', () => {
     const rows = [
       { 'work-item-id': 'august', name: 'August item', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' },
