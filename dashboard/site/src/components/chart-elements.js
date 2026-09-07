@@ -242,6 +242,17 @@ function renderChartWidgetShell(chartType, extraAttrs, ...children) {
 }
 
 /**
+ * Re-appends a chart point/segment to its parent on hover or focus so its
+ * tooltip paints above sibling marks instead of being clipped underneath them.
+ * @param {Element} mark
+ */
+function raiseChartPointOnInteraction(mark) {
+  const bringToFront = () => mark.parentNode?.append(mark);
+  mark.addEventListener('pointerenter', bringToFront);
+  mark.addEventListener('focus', bringToFront);
+}
+
+/**
  * Renders a declaratively selected chart using normalized dashboard points.
  * @param {string} chartType
  * @param {ChartPointLike[]} points
@@ -320,9 +331,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               ...(tooltipWidth === 40 ? { textLength: 35, lengthAdjust: 'spacingAndGlyphs' } : {})
             }, segmentLabel)
           ));
-          const bringTooltipToFront = () => segment.parentNode?.append(segment);
-          segment.addEventListener('pointerenter', bringTooltipToFront);
-          segment.addEventListener('focus', bringTooltipToFront);
+          raiseChartPointOnInteraction(segment);
           return segment;
         }),
         h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true' }, formatNumber(total, unit, false)),
@@ -407,9 +416,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
               ...(label.length > 22 ? { textLength: 36, lengthAdjust: 'spacingAndGlyphs' } : {})
             }, label)
           ));
-          const bringTooltipToFront = () => mark.parentNode?.append(mark);
-          mark.addEventListener('pointerenter', bringTooltipToFront);
-          mark.addEventListener('focus', bringTooltipToFront);
+          raiseChartPointOnInteraction(mark);
           return mark;
         })
       ),
