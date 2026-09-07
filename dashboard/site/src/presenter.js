@@ -84,14 +84,18 @@ const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
  * @param {() => void} update
  */
 export function updateWithViewTransition(document, update) {
-  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => unknown }} */ (document);
+  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown> } | void }} */ (document);
   const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
   if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
     update();
     return;
   }
 
-  transitionDocument.startViewTransition(update);
+  const transition = transitionDocument.startViewTransition(update);
+  void transition?.ready?.catch((error) => {
+    if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') return;
+    queueMicrotask(() => { throw error; });
+  });
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
