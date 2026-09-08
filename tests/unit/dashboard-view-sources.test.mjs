@@ -27,6 +27,7 @@ test("dashboard view assessment recognizes renderer-derived sources", () => {
       { data: { source: "packaged-workflows" } },
       { data: { source: "dispatches" } },
       { data: { source: "package-reports" } },
+      { data: { source: "data-health-summary" } },
     ],
   };
 

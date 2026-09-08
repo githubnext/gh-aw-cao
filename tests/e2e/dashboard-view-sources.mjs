@@ -1,4 +1,4 @@
-import { deriveDataHealthCalloutSources } from "../../dashboard/site/src/data-health.js";
+import { deriveDataHealthSources } from "../../dashboard/site/src/data-health.js";
 import { deriveOverviewSources } from "../../dashboard/site/src/overview-data.js";
 import { deriveRepositorySources } from "../../dashboard/site/src/repository-data.js";
 import { deriveRuntimeSources } from "../../dashboard/site/src/runtime-data.js";
@@ -22,7 +22,7 @@ export function effectiveDashboardSources(rawSources) {
       ),
     ),
   );
-  const dataHealthSources = deriveDataHealthCalloutSources(rawSources);
+  const dataHealthSources = deriveDataHealthSources(rawSources);
   return {
     ...derivedSources,
     ...Object.fromEntries(

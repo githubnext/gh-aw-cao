@@ -6262,42 +6262,6 @@
             }
           },
           {
-            "id": "data-health-files",
-            "title": "Loaded files",
-            "data": {
-              "source": "data-health-files"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No dashboard files were loaded.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "file",
-                  "type": "nominal",
-                  "title": "File"
-                },
-                {
-                  "field": "size",
-                  "type": "quantitative",
-                  "title": "Size (bytes)"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
             "id": "data-health-summary",
             "title": "Data health summary",
             "disclosure": "supplemental",
@@ -6407,6 +6371,42 @@
                 "type": "nominal"
               }
             }
+          },
+          {
+            "id": "data-health-files",
+            "title": "Loaded files",
+            "data": {
+              "source": "data-health-files"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No dashboard files were loaded.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "file",
+                  "type": "nominal",
+                  "title": "File"
+                },
+                {
+                  "field": "size",
+                  "type": "quantitative",
+                  "title": "Size (bytes)"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
           },
           {
             "id": "data-health-domains",
