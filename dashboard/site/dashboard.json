@@ -4292,7 +4292,7 @@
                 "title": "Runs"
               },
               "color": {
-                "field": "detection-state",
+                "field": "detection-state-label",
                 "type": "nominal",
                 "title": "State"
               }
@@ -4309,7 +4309,7 @@
                   "threat-detection"
                 ],
                 "security-analysis": [
-                  "detail"
+                  "summary"
                 ]
               }
             },
@@ -4341,12 +4341,7 @@
             "title": "Detection job conclusions",
             "description": "Current conclusion distribution highlights failed, cancelled, and incomplete threat-detection jobs.",
             "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ]
-              }
+              "source": "detection-observations"
             },
             "mark": "chart",
             "chart": "pie",
@@ -4359,7 +4354,7 @@
                 "title": "Conclusion"
               },
               "y": {
-                "field": "job",
+                "field": "run",
                 "type": "quantitative",
                 "aggregate": "count",
                 "title": "Jobs"
@@ -4371,11 +4366,8 @@
             "title": "Detection job duration trend",
             "description": "Daily mean duration reveals performance regressions in completed threat-detection jobs.",
             "data": {
-              "source": "job-performance",
+              "source": "detection-observations",
               "filters": {
-                "job": [
-                  "detection"
-                ],
                 "job-status": [
                   "completed"
                 ]
@@ -4387,10 +4379,10 @@
             "disclosure": "supplemental",
             "encoding": {
               "x": {
-                "field": "started-at",
+                "field": "observed-at",
                 "type": "temporal",
                 "time-unit": "day",
-                "title": "Started"
+                "title": "Observed"
               },
               "y": {
                 "field": "job-duration-seconds",
@@ -4411,11 +4403,8 @@
             "title": "Detection time by runner",
             "description": "Mean duration by runner identifies infrastructure-specific performance differences.",
             "data": {
-              "source": "job-performance",
+              "source": "detection-observations",
               "filters": {
-                "job": [
-                  "detection"
-                ],
                 "job-status": [
                   "completed"
                 ]
@@ -4445,15 +4434,10 @@
             "disclosure-label": "Detection job diagnostics",
             "description": "Recent threat-detection jobs provide status, conclusion, duration, runner, workflow, and run evidence for investigation.",
             "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ]
-              },
+              "source": "detection-observations",
               "order-by": [
                 {
-                  "field": "started-at",
+                  "field": "observed-at",
                   "direction": "desc"
                 }
               ]
@@ -4507,9 +4491,9 @@
                   "title": "Run"
                 },
                 {
-                  "field": "started-at",
+                  "field": "observed-at",
                   "type": "temporal",
-                  "title": "Started"
+                  "title": "Observed"
                 }
               ],
               "href": {

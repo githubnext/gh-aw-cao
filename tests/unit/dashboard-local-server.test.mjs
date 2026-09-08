@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  diagnoseDashboardPageBindings,
   isWithinCopilotFileRoots,
   shellPermissionRejection,
   startDashboardServer,
@@ -53,6 +54,24 @@ test("Copilot shell policy allows safe text tools and rejects mutating sed", () 
     null,
   );
   assert.equal(
+    shellPermissionRejection(
+      shellPermission("grep -n key data.json | awk -F: '$1>19063' | head -3", ["grep", "awk", "head"]),
+    ),
+    null,
+  );
+  assert.match(
+    shellPermissionRejection(shellPermission("awk 'BEGIN { system(\"id\") }' data.json", ["awk"])),
+    /command execution/,
+  );
+  assert.match(
+    shellPermissionRejection(shellPermission("awk '{ print $1 > \"output\" }' data.json", ["awk"])),
+    /file-writing/,
+  );
+  assert.match(
+    shellPermissionRejection(shellPermission("echo ready > output.txt", ["echo"])),
+    /redirection/,
+  );
+  assert.equal(
     shellPermissionRejection(shellPermission("sed -n '1,20p' dashboard.json", ["sed"])),
     null,
   );
@@ -77,6 +96,62 @@ test("Copilot file roots include the workspace and system temporary directory", 
   assert.equal(isWithinCopilotFileRoots("/workspace", "/tmp", "/workspace/dashboard.json"), true);
   assert.equal(isWithinCopilotFileRoots("/workspace", "/tmp", "/tmp/copilot-notes.json"), true);
   assert.equal(isWithinCopilotFileRoots("/workspace", "/tmp", "/etc/passwd"), false);
+});
+
+test("dashboard binding diagnostics report filter mismatches and field population", () => {
+  assert.deepEqual(diagnoseDashboardPageBindings({
+    id: "detection",
+    views: [{
+      id: "findings",
+      data: {
+        source: "security-observations",
+        filters: { "security-analysis": ["detail"] },
+      },
+      encoding: {
+        x: { field: "security-signal" },
+        y: { field: "security-count", aggregate: "sum" },
+      },
+    }],
+  }, {
+    "security-observations": {
+      rows: [
+        { "security-analysis": "summary", "security-signal": "Telemetry unavailable", "security-count": 1 },
+        { "security-analysis": "summary", "security-signal": "Telemetry unavailable", "security-count": 1 },
+      ],
+      metadata: { availability: "available" },
+    },
+  }), {
+    page: "detection",
+    views: [{
+      view: "findings",
+      source: "security-observations",
+      availability: "available",
+      sourceRows: 2,
+      matchingRows: 0,
+      filters: [{
+        field: "security-analysis",
+        expected: ["detail"],
+        presentRows: 2,
+        observedValues: [{ value: "summary", count: 2 }],
+      }],
+      fields: [
+        {
+          field: "security-signal",
+          aggregate: "none",
+          presentRows: 2,
+          populatedRows: 2,
+          observedValues: [{ value: "Telemetry unavailable", count: 2 }],
+        },
+        {
+          field: "security-count",
+          aggregate: "sum",
+          presentRows: 2,
+          populatedRows: 2,
+          observedValues: [{ value: "1", count: 2 }],
+        },
+      ],
+    }],
+  });
 });
 
 async function openDashboardSocket(previewUrl) {

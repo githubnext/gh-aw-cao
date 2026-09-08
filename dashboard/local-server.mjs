@@ -303,7 +303,77 @@ function validateDashboardSource(source) {
   throw new Error(`Dashboard validation failed:\n${formatDashboardValidationErrors(result.errors)}`);
 }
 
+function bindingFieldDefinitions(view) {
+  if (!view?.encoding || typeof view.encoding !== "object") return [];
+  return [
+    view.encoding.x,
+    view.encoding.y,
+    view.encoding.color,
+    view.encoding.value,
+    view.encoding.reference,
+    view.encoding.href,
+    ...(Array.isArray(view.encoding.columns) ? view.encoding.columns : []),
+  ].filter((definition) =>
+    definition && typeof definition === "object" && typeof definition.field === "string");
+}
+
+function bindingValueCounts(rows, field) {
+  const counts = new Map();
+  for (const row of rows) {
+    const value = row[field];
+    const label = value == null || value === "" ? "<empty>" : truncatedLogText(String(value), 120);
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 12)
+    .map(([value, count]) => ({ value, count }));
+}
+
+export function diagnoseDashboardPageBindings(page, sources) {
+  const views = Array.isArray(page?.views) ? page.views : [];
+  return {
+    page: typeof page?.id === "string" ? page.id : null,
+    views: views.map((view) => {
+      const sourceName = typeof view?.data?.source === "string" ? view.data.source : null;
+      const source = sourceName ? sources[sourceName] : null;
+      const rows = Array.isArray(source?.rows) ? source.rows : [];
+      const filters = view?.data?.filters && typeof view.data.filters === "object"
+        ? view.data.filters
+        : {};
+      const filterEntries = Object.entries(filters);
+      const matchingRows = rows.filter((row) => filterEntries.every(([field, expected]) => {
+        const candidates = Array.isArray(expected) ? expected : [expected];
+        return candidates.some((candidate) =>
+          row[field] == null ? candidate === "unknown" : String(row[field]) === String(candidate));
+      }));
+      return {
+        view: typeof view?.id === "string" ? view.id : null,
+        source: sourceName,
+        availability: source?.metadata?.availability ?? (source ? "unknown" : "missing"),
+        sourceRows: rows.length,
+        matchingRows: matchingRows.length,
+        filters: filterEntries.map(([field, expected]) => ({
+          field,
+          expected,
+          presentRows: rows.filter((row) => Object.hasOwn(row, field)).length,
+          observedValues: bindingValueCounts(rows, field),
+        })),
+        fields: bindingFieldDefinitions(view).map((definition) => ({
+          field: definition.field,
+          aggregate: definition.aggregate ?? "none",
+          presentRows: rows.filter((row) => Object.hasOwn(row, definition.field)).length,
+          populatedRows: rows.filter((row) =>
+            row[definition.field] != null && row[definition.field] !== "").length,
+          observedValues: bindingValueCounts(rows, definition.field),
+        })),
+      };
+    }),
+  };
+}
+
 const copilotReadOnlyShellCommands = new Set([
+  "awk",
   "basename",
   "cat",
   "cd",
@@ -327,6 +397,31 @@ const copilotReadOnlyShellCommands = new Set([
   "uniq",
   "wc",
 ]);
+
+function hasUnquotedShellRedirection(command) {
+  let quote;
+  let escaped = false;
+  for (const character of command) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === "\\" && quote !== "'") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === "'" || character === "\"") {
+      quote = character;
+      continue;
+    }
+    if (character === "<" || character === ">") return true;
+  }
+  return false;
+}
 
 function shellCommandDetails(permission) {
   return {
@@ -356,12 +451,21 @@ function shellAbsolutePaths(permission) {
 }
 
 export function shellPermissionRejection(permission) {
-  if (permission.hasWriteFileRedirection || /[<>]/.test(permission.fullCommandText)) {
+  if (permission.hasWriteFileRedirection || hasUnquotedShellRedirection(permission.fullCommandText)) {
     return "shell command uses redirection";
   }
   if (permission.possibleUrls.length > 0) return "shell command may access a URL";
   const identifiers = shellCommandIdentifiers(permission);
   if (identifiers.length === 0) return "shell command could not be classified";
+  if (identifiers.includes("awk")) {
+    if (/\bsystem\s*\(/i.test(permission.fullCommandText)) {
+      return "awk command execution is not allowed";
+    }
+    if (/\b(?:print|printf)\b[^;\n}]*>>?/.test(permission.fullCommandText)
+        || /\|\s*getline\b/.test(permission.fullCommandText)) {
+      return "awk file-writing and command-reading operations are not allowed";
+    }
+  }
   if (identifiers.includes("sed")) {
     if (/(?:^|\s)(?:-i(?:\S*)?|--in-place(?:=\S*)?)(?:\s|$)/.test(permission.fullCommandText)) {
       return "sed in-place editing is not allowed";
@@ -601,7 +705,11 @@ function resolveCopilotCliPath() {
   return undefined;
 }
 
-async function startCopilotRuntime({ workingDirectory, copilotExecutable }) {
+async function startCopilotRuntime({
+  workingDirectory,
+  copilotExecutable,
+  inspectDashboardBindings = async () => ({ page: null, views: [] }),
+}) {
   console.log("Loading Copilot SDK runtime.", { workingDirectory });
   let sdk;
   try {
@@ -735,6 +843,27 @@ async function startCopilotRuntime({ workingDirectory, copilotExecutable }) {
               bytes: Buffer.byteLength(source),
             });
             return source;
+          },
+        }),
+        defineTool("inspect_current_dashboard_bindings", {
+          description: "Inspect live source rows, filter matches, observed values, and field population for every view on the current dashboard page.",
+          parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
+          skipPermission: true,
+          defer: "never",
+          handler: async () => {
+            const diagnostics = await inspectDashboardBindings(
+              context.viewDashboardPath,
+              context.view,
+            );
+            console.log("Inspected live dashboard bindings for Copilot.", {
+              view: context.view,
+              diagnostics: redactedLogValue(diagnostics),
+            });
+            return diagnostics;
           },
         }),
         defineTool("validate_current_dashboard_view", {
@@ -979,6 +1108,7 @@ async function startCopilotRuntime({ workingDirectory, copilotExecutable }) {
             "builtin:bash",
             "custom:read_dashboard_language_reference",
             "custom:read_current_dashboard_view",
+            "custom:inspect_current_dashboard_bindings",
             "custom:validate_current_dashboard_view",
             "custom:validate_dashboard_json",
             "custom:save_current_dashboard_view",
@@ -1107,7 +1237,7 @@ The original dashboard source most likely defining this view is ${JSON.stringify
 The complete set of editable original dashboard sources is:
 ${editableDashboardPaths.map((path) => `- ${path}`).join("\n")}
 
-Built-in views come from the site's dashboard.json. Package views come from their package dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level package directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and validate_current_dashboard_view to inspect and validate the selected page. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
+Built-in views come from the site's dashboard.json. Package views come from their package dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level package directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and inspect_current_dashboard_bindings to inspect the selected page and its live data. Use validate_current_dashboard_view before saving. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
 
 JavaScript, HTML, CSS, and all other application files are outside this session's scope. Do not propose or attempt changes to them because they require a full application reload; make the requested improvement only through the selected dashboard.json page.
 
@@ -1823,6 +1953,21 @@ export async function startDashboardServer({
       copilotRuntime = await createCopilotRuntime({
         workingDirectory: resolvedWorkingDirectory,
         copilotExecutable,
+        inspectDashboardBindings: async (dashboardPath, view) => {
+          const document = JSON.parse(await readFile(dashboardPath, "utf8"));
+          const pageIndex = dashboardPageIndex(document, view);
+          if (pageIndex < 0) throw new Error("The selected dashboard view no longer exists.");
+          const page = document.dashboard.pages[pageIndex];
+          const sourceNames = [...new Set(page.views.flatMap((pageView) => {
+            const name = pageView?.data?.source;
+            return typeof name === "string" ? [name] : [];
+          }))];
+          const sources = Object.fromEntries(sourceNames.flatMap((name) => {
+            const content = splitSourceContent.get(name);
+            return content === undefined ? [] : [[name, JSON.parse(content)]];
+          }));
+          return diagnoseDashboardPageBindings(page, sources);
+        },
       });
     }
   } catch (error) {
