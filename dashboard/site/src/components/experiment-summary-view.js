@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
+import { computeObservationCoverage, countBy, formatCoveragePercent } from './count-formatters.js';
 import { renderDlRow } from './ui-primitives.js';
 
 /**
@@ -67,16 +67,3 @@ function percentage(value, total) {
   return total > 0 ? value / total * 360 : 0;
 }
 
-/**
- * @param {any[]} rows
- * @param {(row: any) => string} key
- * @returns {Map<string, number>}
- */
-function countBy(rows, key) {
-  const counts = new Map();
-  for (const row of rows) {
-    const value = key(row);
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  }
-  return counts;
-}

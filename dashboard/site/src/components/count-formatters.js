@@ -126,3 +126,20 @@ export function clampPercent(value) {
 export function slugify(value, fallback = '') {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
 }
+
+/**
+ * Tallies rows into a `Map` keyed by a derived label, counting how many rows
+ * produced each key. Shared by experiment summary and detail views that
+ * group observations by state, readiness, or reason.
+ * @param {Array<Record<string, any>>} rows
+ * @param {(row: Record<string, any>) => string} key
+ * @returns {Map<string, number>}
+ */
+export function countBy(rows, key) {
+  const counts = new Map();
+  for (const row of rows) {
+    const value = key(row);
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return counts;
+}

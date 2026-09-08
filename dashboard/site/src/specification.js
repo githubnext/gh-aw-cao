@@ -222,10 +222,10 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   overview: ['repositories', 'workflows', 'runs', 'usage', 'findings', 'operational-values'],
   organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
   repositories: ['repository-activity'],
-  packages: ['workflows', 'runs', 'outcomes', 'usage'],
-  workflows: ['workflows', 'runs', 'outcomes', 'usage', 'findings', 'operational-values'],
+  packages: ['package-inventory'],
+  workflows: ['workflow-inventory'],
   runs: ['runs'],
-  experiments: ['experiments', 'experiment-assignments', 'grader-observations', 'eval-observations', 'outcomes', 'usage', 'operational-values'],
+  experiments: ['experiments'],
   graders: ['graders', 'grader-observations'],
   evals: ['evals', 'eval-observations'],
   usage: ['usage'],
@@ -254,30 +254,16 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status']
   },
   packages: {
-    workflows: ['organization', 'repository', 'package', 'package-name', 'workflow', 'workflow-role', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance'],
-    runs: ['organization', 'repository', 'workflow', 'run', 'started-at', 'run-conclusion', 'rollout-mode'],
-    outcomes: ['package', 'runtime-repository', 'run', 'run-conclusion', 'rollout-mode', 'published-at', 'observed-at', 'run-link'],
-    usage: ['organization', 'repository', 'workflow', 'run', 'aic', 'rollout-mode', 'observed-at']
+    'package-inventory': ['package-name', 'workflows', 'repositories', 'roles', 'modes', 'registration', 'runs', 'aic']
   },
   workflows: {
-    workflows: ['workflow', 'workflow-active', 'rollout-mode'],
-    runs: ['run', 'run-conclusion'],
-    outcomes: ['outcome-state'],
-    usage: ['aic'],
-    findings: ['finding'],
-    'operational-values': ['operational-value']
+    'workflow-inventory': ['package-name', 'repository', 'workflow', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs']
   },
   runs: {
     runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']
   },
   experiments: {
-    experiments: ['experiment'],
-    'experiment-assignments': ['run', 'variant'],
-    'grader-observations': ['grader'],
-    'eval-observations': ['eval'],
-    outcomes: ['outcome-state'],
-    usage: ['aic'],
-    'operational-values': ['operational-value']
+    experiments: ['experiment']
   },
   graders: {
     graders: ['grader'],

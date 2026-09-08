@@ -688,7 +688,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             h(
               'summary',
               {
-                className: 'account-menu-avatar',
+                className: viewer?.avatarUrl ? 'account-menu-avatar' : 'account-menu-avatar account-menu-icon',
                 'aria-label': viewer ? `Open account menu for ${viewer.name || viewer.login}` : 'Open account menu',
                 title: viewer ? `${viewer.name || viewer.login} (${viewer.login})` : 'Open account menu'
               },
@@ -699,11 +699,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   alt: '',
                   referrerPolicy: 'no-referrer'
                 })
-                : h('img', {
-                  className: 'account-menu-avatar-image',
-                  src: './assets/avatar-monalisa-octocat.png',
-                  alt: ''
-                })
+                : octicon('gear')
             ),
             h(
               'div',

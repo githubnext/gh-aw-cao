@@ -102,34 +102,23 @@ describe('dashboard document validation', () => {
     expect(pages['overview-security-findings'].views[0].encoding.href).toBeUndefined();
   });
 
-  it('accepts the aggregated call-site table and rejects hierarchy-breaking tree controls', () => {
+  it('accepts the GitHub API full-view lazy-list table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const apiPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api');
-    const stackView = apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-call-stacks');
 
-    expect(stackView).toMatchObject({
-      mark: 'table',
-      controls: 'interactive',
-      data: { limit: 20 },
-      encoding: {
-        columns: expect.arrayContaining([
-          expect.objectContaining({ field: 'operation-execution-id', aggregate: 'distinct-count', as: 'distinct-executions' })
-        ])
-      }
+    expect(apiPage.views).toEqual([
+      expect.objectContaining({
+        id: 'github-api-observations',
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
+      })
+    ]);
+    expect(apiPage.views[0].data).toMatchObject({
+      source: 'github-api-rate-limits'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-
-    stackView.data = { source: 'github-api-call-stacks' };
-    stackView.tree = {
-      'id-field': 'stack-frame-id',
-      'parent-field': 'stack-parent-id'
-    };
-    stackView.controls = 'interactive';
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    expect(rejected.errors).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'tree tables must use static controls to preserve hierarchy.' })
-    ]));
   });
 
   it('defines the Preview issue attribution views', () => {
@@ -418,31 +407,27 @@ describe('dashboard document validation', () => {
       'navigation-label': 'MCPs',
       views: [
         {
-          id: 'mcp-status-distribution',
-          mark: 'chart',
-          chart: 'pie',
-          data: { source: 'mcp-servers' }
-        },
-        {
-          id: 'mcp-server-inventory',
+          id: 'mcp-tool-inventory',
           mark: 'table',
-          disclosure: 'supplemental',
           controls: 'interactive',
-          data: { source: 'mcp-servers', limit: 25 }
+          'lazy-list': true,
+          layout: 'full-view',
+          data: {
+            source: 'mcp-calls',
+            'order-by': [{ field: 'observed-at', direction: 'desc' }]
+          }
         }
       ]
     });
-    expect(mcps.views).toHaveLength(2);
-    expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+    expect(mcps.views).toHaveLength(1);
+    expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-server',
+      'mcp-tool',
       'mcp-server-version',
       'mcp-protocol-version',
       'gh-aw-version',
       'mcp-status',
-      'tool-calls',
-      'failed-calls',
-      'total-response-bytes',
-      'max-response-bytes',
+      'response-bytes',
       'repository',
       'workflow',
       'run',
@@ -451,59 +436,44 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines detection diagnostics and performance in a dedicated Explore page', () => {
+  it('defines detection results as a full-view lazy table in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const detection = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'detection');
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('detection');
-    expect(detection.description).toContain('Threat-detection verdicts');
-    expect(detection.sections.map((/** @type {{ id: string }} */ section) => section.id)).toEqual([
-      'detection-health',
-      'security-findings',
-      'requires-attention',
-      'reliability-performance'
+    expect(detection.views).toHaveLength(1);
+    expect(detection).not.toHaveProperty('sections');
+    expect(detection.views[0]).toMatchObject({
+      id: 'detection-results',
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      'column-summaries': true,
+      layout: 'full-view',
+      data: {
+        source: 'detection-observations',
+        'order-by': [
+          { field: 'observed-at', direction: 'desc' }
+        ]
+      }
+    });
+    expect(detection.views[0].encoding.columns.map(
+      (/** @type {{ field: string }} */ column) => column.field
+    )).toEqual([
+      'detection-state',
+      'detection-signal',
+      'inspection-warning',
+      'job-status',
+      'job-conclusion',
+      'job-duration-seconds',
+      'runner',
+      'repository',
+      'workflow',
+      'run',
+      'observed-at'
     ]);
-    expect(detection.views.slice(0, 5)).toMatchObject([
-      { id: 'detection-state-distribution', mark: 'chart', chart: 'pie', data: { source: 'detection-observations' }, disclosure: 'essential' },
-      { id: 'detection-verdict-coverage', mark: 'metric', data: { source: 'detection-observations' }, disclosure: 'essential' },
-      { id: 'detection-state-trend', mark: 'chart', chart: 'line', data: { source: 'detection-observations' }, disclosure: 'supplemental' },
-      { id: 'detection-security-findings', mark: 'chart', chart: 'bar', data: { source: 'security-observations' }, disclosure: 'essential' },
-      { id: 'detection-attention', mark: 'table', controls: 'interactive', data: { source: 'detection-observations' }, disclosure: 'supplemental' }
-    ]);
-    expect(detection.views.filter(
-      (/** @type {{ mark: string }} */ view) => view.mark === 'chart'
-    ).every(
-      (/** @type {{ mark: string }} */ view) => !Object.hasOwn(view, 'table')
-    )).toBe(true);
-    expect(detection.views.filter(
-      (/** @type {{ mark: string }} */ view) => view.mark === 'table'
-    ).every(
-      (/** @type {{ disclosure: string }} */ view) => view.disclosure === 'supplemental'
-    )).toBe(true);
-    expect(detection.views.slice(5).map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
-      'detection-job-conclusions',
-      'detection-job-duration-trend',
-      'detection-job-runner-performance',
-      'detection-job-ledger'
-    ]);
-    expect(detection.views.slice(5).every(
-      (/** @type {{ disclosure: string }} */ view) => view.disclosure === 'supplemental'
-    )).toBe(true);
-    expect(detection.views[4].encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'detection-state', display: 'status' }),
-      expect.objectContaining({ field: 'detection-signal' }),
-      expect.objectContaining({ field: 'inspection-warning' }),
-      expect.objectContaining({ field: 'run' })
-    ]));
-    expect(detection.views[4].encoding.href).toEqual({ field: 'run-link', type: 'nominal' });
-    expect(detection.views[8].encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'job-status', display: 'status' }),
-      expect.objectContaining({ field: 'job-conclusion', display: 'status' }),
-      expect.objectContaining({ field: 'job-duration-seconds', unit: 'human-duration' }),
-      expect.objectContaining({ field: 'run' })
-    ]));
-    expect(detection.views[8].encoding.href).toEqual({ field: 'run-link', type: 'nominal' });
+    expect(detection.views[0].encoding.href).toEqual({ field: 'run-link', type: 'nominal' });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -693,24 +663,30 @@ dashboard:
     expect(accepted.ok).toBe(true);
   });
 
-  it('defines the packages page through a reusable package activity shell element', () => {
+  it('defines packages, workflows, and runs as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+    const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
+    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
 
-    expect(packagesPage.definition.views).toEqual([
-      expect.objectContaining({
-        id: 'packages-by-aic',
-        mark: 'chart'
-      }),
-      expect.objectContaining({
-        id: 'packages-activity-shell',
-        mark: 'element',
-        element: 'package-activity-shell',
-        data: {
-          sources: ['workflows', 'usage', 'runs', 'outcomes', 'findings']
-        }
-      })
-    ]);
+    const packagesView = packagesPage.definition.views[0];
+    const workflowsView = workflowsPage.definition.views[0];
+    const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
+    for (const view of [packagesView, workflowsView, runsView]) {
+      expect(view).toMatchObject({
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        'column-summaries': true,
+        layout: 'full-view'
+      });
+    }
+    expect(packagesView.data.source).toBe('package-inventory');
+    expect(workflowsView.data.source).toBe('workflow-inventory');
+    expect(runsView.data.source).toBe('runs');
+    expect(packagesPage.definition.views).toHaveLength(1);
+    expect(workflowsPage.definition.views).toHaveLength(1);
+    expect(runsPage.definition.views).toHaveLength(1);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -1049,24 +1025,18 @@ dashboard:
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines experiments composition through a reusable experiments-evaluation element', () => {
+  it('defines experiments as a full-view interactive lazy-list table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
 
-    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-overview')).toMatchObject({
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: { body: 'overview' }
-    });
-    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-table')).toMatchObject({
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: { body: 'table' }
-    });
-    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-evaluation')).toMatchObject({
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: { sections: ['detail'] }
+    expect(experimentsPage.definition.views).toHaveLength(1);
+    expect(experimentsPage.definition.views[0]).toMatchObject({
+      id: 'experiments-list',
+      data: { source: 'experiments' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -2424,15 +2394,7 @@ dashboard:
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "workflows".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "runs".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "usage".'
+            message: 'built-in page "packages" requires declarative definitions for source "package-inventory".'
           })
         ])
       );

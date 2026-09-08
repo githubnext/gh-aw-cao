@@ -315,16 +315,19 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .account-menu-avatar .octicon { width: 16px; height: 16px; }
 .account-menu-avatar-image { width: 100%; height: 100%; display: block; border-radius: inherit; object-fit: cover; }
-.account-menu-popover { width: 220px; display: grid; gap: 8px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
+.account-menu-icon { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.account-menu-icon:hover, .account-menu[open] .account-menu-icon { background: var(--neutral-muted); color: var(--fg); box-shadow: none; }
+.account-menu-popover { width: 260px; display: grid; gap: 8px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
 .account-menu-settings { min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; color: var(--fg); font-size: .8125rem; font-weight: 500; text-decoration: none; }
 .account-menu-settings:hover { background: var(--neutral-muted); }
 .account-menu-settings .octicon { width: 15px; height: 15px; color: var(--muted); }
 .appearance-settings { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
 .appearance-settings legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
-.appearance-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .appearance-options button { min-width: 0; min-height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border); background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; cursor: pointer; }
 .appearance-options button:first-child { border-radius: 6px 0 0 6px; }
-.appearance-options button:last-child { margin-left: -1px; border-radius: 0 6px 6px 0; }
+.appearance-options button + button { margin-left: -1px; }
+.appearance-options button:last-child { border-radius: 0 6px 6px 0; }
 .appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .appearance-options .octicon { width: 14px; height: 14px; }
 main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 24px 40px; }

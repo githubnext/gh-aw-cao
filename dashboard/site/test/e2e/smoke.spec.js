@@ -227,7 +227,7 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
   expect(widePlotBox?.width).toBeGreaterThan((wideChartBox?.width ?? 0) * 0.95);
 });
 
-test('GitHub API rate-limit dashboard remains operable at desktop and narrow widths', async ({ page }) => {
+test('GitHub API raw quota table remains operable at desktop and narrow widths', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -307,23 +307,23 @@ test('GitHub API rate-limit dashboard remains operable at desktop and narrow wid
   await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
   await page.locator('[data-nav-page-id="github-api"]').click();
   const apiPage = page.locator('[data-page-id="github-api"]');
-  const capacity = apiPage.locator('[aria-labelledby="github-api-remaining-capacity-heading"]');
-  const capacityChart = capacity.locator('[data-chart-widget="bar"]');
-  await expect(capacityChart).toBeVisible();
-  await expect(apiPage.getByText('critical', { exact: true }).first()).toBeVisible();
+  const observations = apiPage.locator('[data-view-layout="full-view"]');
+  const table = observations.locator('[data-lazy-list]');
+  await expect(table).toBeVisible();
+  await expect(apiPage.getByText('core', { exact: true }).first()).toBeVisible();
   await expect.poll(async () => {
-    const box = await capacityChart.boundingBox();
+    const box = await table.boundingBox();
     return box !== null && box.width <= 1200;
   }).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(capacityChart).toBeVisible();
+  await expect(table).toBeVisible();
   await expect.poll(async () => {
-    const box = await capacityChart.boundingBox();
+    const box = await table.boundingBox();
     return box !== null && box.x >= 0 && box.x + box.width <= 390;
   }).toBe(true);
-  await expect(apiPage.locator('details[data-disclosure="supplemental"]')).toHaveCount(6);
-  await expect(apiPage.locator('details[data-disclosure="supplemental"]').filter({ hasText: 'Rate-limit health' })).toHaveCount(1);
+  await expect(apiPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
 test('control-plane readiness surfaces blocking regressions', async ({ page }) => {
@@ -519,12 +519,11 @@ test('experiments page composes reusable declarative slices with rendered parity
 
   const experimentsPage = page.locator('[data-page-id="experiments"]');
   await expect(experimentsPage).toBeVisible();
-  await expect(experimentsPage.locator('.experiment-filters').first()).toBeVisible();
-  await expect(experimentsPage.locator('.experiment-overview')).toHaveCount(1);
-  await expect(experimentsPage.locator('.experiment-decision-table')).toHaveCount(1);
-  await hydrateView(page, 'Experiment decisions and evidence');
-  await expect(experimentsPage.locator('.experiment-detail')).toHaveCount(1);
-  await expect(experimentsPage.getByRole('heading', { name: 'Tool routing v3' })).toBeVisible();
+  const experimentsView = experimentsPage.locator('[data-view-layout="full-view"]');
+  await expect(experimentsView).toHaveCount(1);
+  await expect(experimentsView.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(experimentsView.getByRole('searchbox', { name: 'Filter Experiments' })).toBeVisible();
+  await expect(experimentsView.getByRole('cell', { name: 'routing-v3' })).toBeVisible();
 });
 
 test('desktop navigation sections collapse and expand around the current view', async ({ page }) => {
@@ -750,6 +749,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
+  await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
@@ -1916,25 +1916,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   `);
 
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
-  await expect(page.locator('.package-utilization-card')).toHaveCount(2);
-  await expect(page.locator('[data-package-id="aw-doctor"]')).toContainText('9.6%');
-  await expect(page.locator('[data-package-id="aw-doctor"] .octicon-gear')).toBeVisible();
-  await expect(page.locator('[data-package-id="ambient-context"]')).toContainText('No AIC usage was reported');
-  await expect(page.getByRole('heading', { name: 'All output by package', level: 3 })).toBeVisible();
-  await expect(page.locator('.package-trend-panel + .package-summary')).toBeVisible();
-  const awDoctorSummary = page.locator('.package-summary-table tbody tr').filter({ hasText: 'AW Doctor' });
+  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
+  const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
+  await expect(packageRows).toHaveCount(2);
+  const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
-  await expect(awDoctorSummary.locator('.octicon-gear')).toBeVisible();
-  await expect(awDoctorSummary.locator('td')).toHaveText(['2', '1', '1', '1', '1', '23.9', 'Aug 29, 2026, 10:05 AM']);
-  await expect(page.getByRole('heading', { name: 'All runs over time', level: 3 })).toBeVisible();
-  await expect(page.locator('.package-chart-point')).toHaveCount(30);
-  await expect(page.locator('[data-package-id="ambient-context"] a')).toHaveAttribute('href', '#page-package-insights?package=ambient-context');
-
-  await page.locator('[data-package-id="ambient-context"] a').click();
-  await expect(page).toHaveURL(/#page-package-insights\?package=ambient-context$/);
-  await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
-  await expect(page.getByText('No workflow observations yet')).toBeVisible();
-
+  await expect(awDoctorSummary).toContainText('23.9');
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });

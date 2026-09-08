@@ -454,6 +454,35 @@ export function renderCloseButton({ className, label, onClick }) {
 }
 
 /**
+ * Creates a `<dialog>` element with open/close helpers that fall back to the
+ * `open` attribute on runtimes without `HTMLDialogElement.showModal`/`close`
+ * support. Shared by the table intent-action prompt preview and the
+ * work-item mobile detail sheet, which both otherwise duplicated the same
+ * feature-detection branches.
+ * @param {{ className: string, ariaLabel: string, onFallbackClose?: () => void }} options
+ * @returns {{ dialog: HTMLDialogElement, open: () => void, close: () => void }}
+ */
+export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
+  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', { className, 'aria-label': ariaLabel }));
+  const open = () => {
+    if (typeof dialog.showModal === 'function') {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute('open', '');
+    }
+  };
+  const close = () => {
+    if (typeof dialog.close === 'function' && dialog.open) {
+      dialog.close();
+    } else {
+      dialog.removeAttribute('open');
+      onFallbackClose?.();
+    }
+  };
+  return { dialog, open, close };
+}
+
+/**
  * Wires a toggle button to expand/collapse a companion panel, keeping the
  * button's `aria-expanded` attribute and the panel's expanded CSS class in
  * sync. Shared by the work-item mobile filter sheet, the settings sheet, and

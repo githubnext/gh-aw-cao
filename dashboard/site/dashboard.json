@@ -299,399 +299,11 @@
         "navigation-label": "GitHub API",
         "icon": "meter",
         "class-name": "github-api-page",
-        "description": "GitHub quota health by resource and credential, with reset-safe burn forecasts and explicit observation quality.",
-        "sections": [
-          {
-            "id": "github-api-quota-health",
-            "title": "GitHub quota health",
-            "description": "Current capacity and reset-safe forecasts are kept separate for each credential and quota resource.",
-            "layout": "full",
-            "views": [
-              "github-api-remaining-trend",
-              "github-api-remaining-capacity",
-              "github-api-at-risk",
-              "github-api-health"
-            ]
-          },
-          {
-            "id": "github-api-diagnostics",
-            "title": "Diagnostics",
-            "description": "Reset, attribution, raw observation, and collector details are available on demand.",
-            "layout": "full",
-            "views": [
-              "github-api-reset-horizon",
-              "github-api-operation-consumption",
-              "github-api-observations",
-              "github-api-collector-health",
-              "github-api-call-stacks"
-            ]
-          }
-        ],
+        "description": "Raw GitHub API quota checkpoints by resource and credential.",
         "views": [
           {
-            "id": "github-api-remaining-trend",
-            "title": "Quota history",
-            "description": "Hourly minimum remaining capacity for the latest 96 resource and credential intervals, colored by maximum quota.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "time": {
-                "range": "1w"
-              },
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ],
-              "limit": 96
-            },
-            "mark": "chart",
-            "chart": "scatter",
-            "layout": "full",
-            "disclosure": "essential",
-            "empty-message": "No quota observations are available for the selected time range.",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "hour",
-                "title": "Observed (UTC)"
-              },
-              "y": {
-                "field": "remaining-percent",
-                "type": "quantitative",
-                "aggregate": "min",
-                "title": "Remaining capacity",
-                "unit": "percent"
-              },
-              "color": {
-                "field": "maximum-lane",
-                "type": "nominal",
-                "title": "Maximum lane"
-              }
-            }
-          },
-          {
-            "id": "github-api-remaining-capacity",
-            "title": "Remaining capacity",
-            "description": "Current quota buckets ordered from least capacity remaining. The companion table and health inventory preserve absolute remaining and limit values.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "time": {
-                "range": "1w"
-              },
-              "filters": {
-                "is-current": "true"
-              },
-              "order-by": [
-                {
-                  "field": "remaining-percent",
-                  "direction": "asc"
-                },
-                {
-                  "field": "bucket",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 24
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "bucket",
-                "type": "nominal",
-                "title": "Resource and credential"
-              },
-              "y": {
-                "field": "remaining-percent",
-                "type": "quantitative",
-                "title": "Remaining capacity",
-                "unit": "percent"
-              },
-              "color": {
-                "field": "risk-status",
-                "type": "ordinal",
-                "title": "Risk"
-              }
-            }
-          },
-          {
-            "id": "github-api-at-risk",
-            "title": "At-risk buckets",
-            "description": "Current credential and resource buckets classified critical or warning. The source status below supplies the as-of, freshness, and completeness context.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "time": {
-                "range": "1w"
-              },
-              "filters": {
-                "is-current": "true",
-                "risk-status": [
-                  "critical",
-                  "warning"
-                ]
-              },
-              "limit": 1
-            },
-            "mark": "metric",
-            "layout": "third",
-            "disclosure": "essential",
-            "encoding": {
-              "value": {
-                "field": "observation-id",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Critical or warning buckets"
-              }
-            }
-          },
-          {
-            "id": "github-api-health",
-            "disclosure-label": "Rate-limit health",
-            "description": "Current quota state ordered by risk, runway, and remaining capacity. Unknown means the forecast lacks fresh, complete, or sufficient history.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "time": {
-                "range": "1w"
-              },
-              "filters": {
-                "is-current": "true"
-              },
-              "order-by": [
-                {
-                  "field": "risk-order",
-                  "direction": "asc"
-                },
-                {
-                  "field": "runway-ratio",
-                  "direction": "asc"
-                },
-                {
-                  "field": "remaining-percent",
-                  "direction": "asc"
-                },
-                {
-                  "field": "resource",
-                  "direction": "asc"
-                },
-                {
-                  "field": "credential",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 24
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "risk-order",
-                  "type": "quantitative",
-                  "title": "Risk priority"
-                },
-                {
-                  "field": "risk-status",
-                  "type": "ordinal",
-                  "title": "Risk",
-                  "display": "status"
-                },
-                {
-                  "field": "resource",
-                  "type": "nominal",
-                  "title": "Resource"
-                },
-                {
-                  "field": "remaining",
-                  "type": "quantitative",
-                  "title": "Remaining"
-                },
-                {
-                  "field": "limit",
-                  "type": "quantitative",
-                  "title": "Limit"
-                },
-                {
-                  "field": "remaining-percent",
-                  "type": "quantitative",
-                  "title": "Remaining",
-                  "unit": "percent"
-                },
-                {
-                  "field": "burn-rate-per-minute",
-                  "type": "quantitative",
-                  "title": "Burn",
-                  "unit": "requests-per-minute"
-                },
-                {
-                  "field": "runway-ratio",
-                  "type": "quantitative",
-                  "title": "Runway ratio"
-                },
-                {
-                  "field": "reset-at",
-                  "type": "temporal",
-                  "title": "Reset (UTC)"
-                },
-                {
-                  "field": "minutes-to-reset",
-                  "type": "quantitative",
-                  "title": "Time to reset",
-                  "unit": "minutes"
-                },
-                {
-                  "field": "projected-remaining-at-reset",
-                  "type": "quantitative",
-                  "title": "Projected at reset"
-                },
-                {
-                  "field": "projected-exhaustion-at",
-                  "type": "temporal",
-                  "title": "Projected exhaustion (UTC)"
-                },
-                {
-                  "field": "credential",
-                  "type": "nominal",
-                  "title": "Credential"
-                },
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Last operation"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Last observed (UTC)"
-                }
-              ]
-            }
-          },
-          {
-            "id": "github-api-reset-horizon",
-            "title": "Reset horizon",
-            "description": "Current buckets ordered by relative reset time; exact reset timestamps remain available in rate-limit health.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "time": {
-                "range": "1w"
-              },
-              "filters": {
-                "is-current": "true"
-              },
-              "order-by": [
-                {
-                  "field": "minutes-to-reset",
-                  "direction": "asc"
-                },
-                {
-                  "field": "bucket",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 24
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "bucket",
-                "type": "nominal",
-                "title": "Resource and credential"
-              },
-              "y": {
-                "field": "minutes-to-reset",
-                "type": "quantitative",
-                "title": "Time to reset",
-                "unit": "minutes"
-              },
-              "color": {
-                "field": "risk-status",
-                "type": "ordinal",
-                "title": "Risk"
-              }
-            }
-          },
-          {
-            "id": "github-api-operation-consumption",
-            "disclosure-label": "Consumption by operation",
-            "description": "Top operation, credential, and resource groups by peak requests consumed across reliably paired checkpoints.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "filters": {
-                "phase": "after",
-                "attribution-status": "available"
-              },
-              "order-by": [
-                {
-                  "field": "max-operation-consumed",
-                  "direction": "desc"
-                },
-                {
-                  "field": "operation",
-                  "direction": "asc"
-                },
-                {
-                  "field": "resource",
-                  "direction": "asc"
-                },
-                {
-                  "field": "credential",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 20
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "empty-message": "Operation attribution is unavailable because no reliable paired checkpoints match the selected filters.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Operation"
-                },
-                {
-                  "field": "resource",
-                  "type": "nominal",
-                  "title": "Resource"
-                },
-                {
-                  "field": "credential",
-                  "type": "nominal",
-                  "title": "Credential"
-                },
-                {
-                  "field": "operation-consumed",
-                  "type": "quantitative",
-                  "aggregate": "max",
-                  "as": "max-operation-consumed",
-                  "title": "Peak requests consumed"
-                },
-                {
-                  "field": "operation-execution-id",
-                  "type": "quantitative",
-                  "aggregate": "distinct-count",
-                  "as": "distinct-executions",
-                  "title": "Executions"
-                }
-              ]
-            }
-          },
-          {
             "id": "github-api-observations",
-            "disclosure-label": "Raw quota observations",
+            "title": "Raw quota observations",
             "description": "Detailed GitHub quota checkpoints retain calculation inputs and correlation state for diagnostics.",
             "data": {
               "source": "github-api-rate-limits",
@@ -708,13 +320,12 @@
                   "field": "credential",
                   "direction": "asc"
                 }
-              ],
-              "limit": 25
+              ]
             },
             "mark": "table",
             "controls": "interactive",
-            "layout": "full",
-            "disclosure": "supplemental",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
             "encoding": {
               "href": {
@@ -787,131 +398,6 @@
                   "field": "attribution-status",
                   "type": "nominal",
                   "title": "Attribution"
-                }
-              ]
-            }
-          },
-          {
-            "id": "github-api-collector-health",
-            "disclosure-label": "Collector and cache health",
-            "description": "Top collector checkpoint groups summarize collection outcomes and peak cache state without expanding every retrieval.",
-            "data": {
-              "source": "github-api-collector-health",
-              "order-by": [
-                {
-                  "field": "count-checkpoints",
-                  "direction": "desc"
-                },
-                {
-                  "field": "operation",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 20
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "empty-message": "Collector and cache observations are unavailable for the selected time range.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Operation"
-                },
-                {
-                  "field": "phase",
-                  "type": "nominal",
-                  "title": "Phase"
-                },
-                {
-                  "field": "outcome",
-                  "type": "nominal",
-                  "title": "Outcome"
-                },
-                {
-                  "field": "credential",
-                  "type": "nominal",
-                  "title": "Credential"
-                },
-                {
-                  "field": "operation-execution-id",
-                  "type": "quantitative",
-                  "aggregate": "count",
-                  "as": "count-checkpoints",
-                  "title": "Checkpoints"
-                },
-                {
-                  "field": "cache-hydrated",
-                  "type": "nominal",
-                  "title": "Cache hydrated"
-                },
-                {
-                  "field": "cache-entries",
-                  "type": "quantitative",
-                  "aggregate": "max",
-                  "as": "max-cache-entries",
-                  "title": "Peak cache entries"
-                },
-                {
-                  "field": "cache-folders",
-                  "type": "quantitative",
-                  "aggregate": "max",
-                  "as": "max-cache-folders",
-                  "title": "Peak top-level folders"
-                }
-              ]
-            }
-          },
-          {
-            "id": "github-api-call-stacks",
-            "disclosure-label": "Frequent collection call sites",
-            "description": "The most frequent stack frames are grouped across collection executions instead of expanding every captured call stack.",
-            "data": {
-              "source": "github-api-call-stacks",
-              "order-by": [
-                {
-                  "field": "distinct-executions",
-                  "direction": "desc"
-                },
-                {
-                  "field": "stack-frame",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 20
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": false,
-            "layout": "full",
-            "disclosure": "supplemental",
-            "empty-message": "Collection call stacks are unavailable for the selected time range.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "stack-frame",
-                  "type": "nominal",
-                  "title": "Stack frame"
-                },
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Operation"
-                },
-                {
-                  "field": "credential",
-                  "type": "nominal",
-                  "title": "Credential"
-                },
-                {
-                  "field": "operation-execution-id",
-                  "type": "quantitative",
-                  "aggregate": "distinct-count",
-                  "as": "distinct-executions",
-                  "title": "Executions"
                 }
               ]
             }
@@ -1680,59 +1166,34 @@
         "description": "Diagnose MCP reliability, response payload sizes, and observed server versions across agentic workflow runs.",
         "views": [
           {
-            "id": "mcp-status-distribution",
-            "title": "MCP success, failure, and missing rate",
-            "description": "Observed MCP server health by workflow run distinguishes successful activity, reported failures, and missing telemetry.",
+            "id": "mcp-tool-inventory",
+            "title": "MCP tools",
+            "description": "Individual MCP tool calls, response payload sizes, and available server versions remain attributable to workflow runs.",
             "data": {
-              "source": "mcp-servers"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "mcp-status",
-                "type": "ordinal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "mcp-server-observation",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Server observations"
-              }
-            }
-          },
-          {
-            "id": "mcp-server-inventory",
-            "disclosure-label": "Observed MCP servers",
-            "disclosure": "supplemental",
-            "description": "Server identity, available version metadata, call volume, failures, and response payload totals remain attributable to workflow runs.",
-            "data": {
-              "source": "mcp-servers",
+              "source": "mcp-calls",
               "order-by": [
                 {
-                  "field": "failed-calls",
-                  "direction": "desc"
-                },
-                {
-                  "field": "max-response-bytes",
+                  "field": "observed-at",
                   "direction": "desc"
                 }
-              ],
-              "limit": 25
+              ]
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No MCP server activity was observed.",
-            "layout": "full",
+            "lazy-list": true,
+            "empty-message": "No MCP tool activity was observed.",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
                   "field": "mcp-server",
                   "type": "nominal",
                   "title": "MCP server"
+                },
+                {
+                  "field": "mcp-tool",
+                  "type": "nominal",
+                  "title": "MCP tool"
                 },
                 {
                   "field": "mcp-server-version",
@@ -1756,24 +1217,9 @@
                   "display": "status"
                 },
                 {
-                  "field": "tool-calls",
-                  "type": "quantitative",
-                  "title": "Calls"
-                },
-                {
-                  "field": "failed-calls",
-                  "type": "quantitative",
-                  "title": "Failures"
-                },
-                {
-                  "field": "total-response-bytes",
+                  "field": "response-bytes",
                   "type": "quantitative",
                   "title": "Response bytes"
-                },
-                {
-                  "field": "max-response-bytes",
-                  "type": "quantitative",
-                  "title": "Largest response"
                 },
                 {
                   "field": "repository",
@@ -2743,48 +2189,67 @@
           },
           "views": [
             {
-              "id": "packages-by-aic",
-              "title": "AI Credit usage by package",
-              "description": "Measured AI Credit allocation highlights where managed-package activity is concentrated.",
+              "id": "packages-inventory",
+              "title": "Packages",
+              "description": "Centrally managed package inventory and observed execution totals.",
               "data": {
-                "source": "packaged-workflows"
+                "source": "package-inventory"
               },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
+              "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No packages discovered.",
               "encoding": {
-                "x": {
-                  "field": "package-name",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
                 "href": {
                   "field": "package-link",
                   "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "packages-activity-shell",
-              "title": "Package activity",
-              "data": {
-                "sources": [
-                  "workflows",
-                  "usage",
-                  "runs",
-                  "outcomes",
-                  "findings"
+                },
+                "columns": [
+                  {
+                    "field": "package-name",
+                    "type": "nominal",
+                    "title": "Package"
+                  },
+                  {
+                    "field": "workflows",
+                    "type": "quantitative",
+                    "title": "Workflows"
+                  },
+                  {
+                    "field": "repositories",
+                    "type": "quantitative",
+                    "title": "Control repositories"
+                  },
+                  {
+                    "field": "roles",
+                    "type": "nominal",
+                    "title": "Roles"
+                  },
+                  {
+                    "field": "modes",
+                    "type": "nominal",
+                    "title": "Modes"
+                  },
+                  {
+                    "field": "registration",
+                    "type": "nominal",
+                    "title": "Registration"
+                  },
+                  {
+                    "field": "runs",
+                    "type": "quantitative",
+                    "title": "Runs"
+                  },
+                  {
+                    "field": "aic",
+                    "type": "quantitative",
+                    "title": "AIC",
+                    "unit": "aic"
+                  }
                 ]
-              },
-              "mark": "element",
-              "element": "package-activity-shell"
+              }
             }
           ]
         }
@@ -3266,98 +2731,26 @@
             "completeness": true,
             "freshness": true
           },
-          "sections": [
-            {
-              "id": "workflow-inventory",
-              "title": "Workflow inventory",
-              "layout": "full",
-              "views": [
-                "workflows-run-health",
-                "workflow-topology-summary",
-                "packaged-workflows",
-                "standalone-workflows"
-              ],
-              "description": "Starts with registered workflows and their evidence state; source tables remain available for deeper inspection."
-            },
-            {
-              "id": "workflow-aic",
-              "title": "AIC",
-              "description": "Observed AI Credit allocation highlights the workflows with the highest measured usage.",
-              "layout": "full",
-              "views": [
-                "workflow-aic-usage"
-              ]
-            },
-            {
-              "id": "workflow-evidence-sources",
-              "title": "Evidence sources",
-              "layout": "full",
-              "views": [
-                "workflows-runs-source",
-                "workflows-outcomes-source",
-                "workflows-usage-source",
-                "workflows-findings-source",
-                "workflows-operational-values-source"
-              ]
-            }
-          ],
           "views": [
             {
-              "id": "workflows-run-health",
-              "title": "Workflow run health trend",
-              "description": "Daily conclusions show whether authored workflows are operating reliably.",
+              "id": "workflows-inventory",
+              "title": "Workflows",
+              "description": "Central package and repository-owned workflow inventory with observed execution totals.",
               "data": {
-                "source": "runs"
-              },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "workflow-topology-summary",
-              "title": "Definition summary",
-              "description": "Declared workflow relationships describe expected structure; they do not assert that a dispatch occurred.",
-              "data": {
-                "sources": [
-                  "workflow-topology-summary",
-                  "workflows"
-                ]
-              },
-              "mark": "element",
-              "element": "summary-grid",
-              "disclosure": "supplemental"
-            },
-            {
-              "id": "packaged-workflows",
-              "title": "Operation package workflows",
-              "description": "Orchestrators and workers declared by centrally managed operation packages.",
-              "data": {
-                "source": "packaged-workflows",
+                "source": "workflow-inventory",
                 "order-by": [
                   {
-                    "field": "package-name",
+                    "field": "repository",
                     "direction": "asc"
                   }
                 ]
               },
               "mark": "table",
-              "empty-message": "No operation package workflows observed.",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No workflows observed.",
               "encoding": {
                 "href": {
                   "field": "package-link",
@@ -3402,182 +2795,13 @@
                     "type": "quantitative",
                     "title": "AIC",
                     "unit": "aic"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "standalone-workflows",
-              "disclosure": "supplemental",
-              "disclosure-label": "Repository-owned workflows",
-              "description": "Standalone workflows run in their owning repositories and are not part of a central operation package.",
-              "data": {
-                "source": "standalone-workflows",
-                "order-by": [
-                  {
-                    "field": "repository",
-                    "direction": "asc"
-                  }
-                ]
-              },
-              "mark": "table",
-              "empty-message": "No standalone workflows observed.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "workflow",
-                    "type": "nominal",
-                    "format": "workflow-relative-path",
-                    "title": "Workflow"
                   },
                   {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "title": "Mode",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "workflow-active",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
-                  },
-                  {
-                    "field": "aic",
+                    "field": "runs",
                     "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
+                    "title": "Runs"
                   }
                 ]
-              }
-            },
-            {
-              "id": "workflow-aic-usage",
-              "title": "Highest AIC usage",
-              "description": "The ten workflows with the highest measured AI Credit totals. AIC is authoritative allocation evidence, not a raw token count.",
-              "data": {
-                "source": "usage",
-                "limit": 10,
-                "order-by": [
-                  {
-                    "field": "total-aic",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "format": "workflow-relative-path",
-                  "title": "Workflow"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-aic",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
-                "href": {
-                  "field": "workflow-link",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "workflows-runs-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "runs"
-              },
-              "mark": "table",
-              "encoding": {
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "run",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run-conclusion",
-                    "type": "nominal",
-                    "display": "status"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "workflows-outcomes-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "outcomes"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "outcome-state",
-                  "type": "nominal",
-                  "aggregate": "count"
-                }
-              }
-            },
-            {
-              "id": "workflows-usage-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "unit": "aic"
-                }
-              }
-            },
-            {
-              "id": "workflows-findings-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "findings"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "finding",
-                  "type": "nominal",
-                  "aggregate": "count"
-                }
-              }
-            },
-            {
-              "id": "workflows-operational-values-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "operational-values"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "operational-value",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                }
               }
             }
           ]
@@ -3924,42 +3148,18 @@
           },
           "views": [
             {
-              "id": "runs-health-trend",
-              "title": "Run health trend",
-              "description": "Daily conclusions reveal the leading execution-health signal before individual run details.",
-              "data": {
-                "source": "runs",
-                "time": {
-                  "range": "30d"
-                }
-              },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
               "id": "runs-runs-source",
-              "disclosure": "supplemental",
+              "title": "Runs",
+              "description": "Observed workflow runs across the configured repository scope.",
               "data": {
                 "source": "runs"
               },
               "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No runs observed.",
               "encoding": {
                 "href": {
                   "field": "run-link",
@@ -4202,147 +3402,15 @@
         "title": "Detection",
         "icon": "shield-check",
         "class-name": "detection-page",
-        "description": "Threat-detection verdicts, coverage, degraded inspections, and execution health.",
+        "description": "Detection job results and threat-detection verdicts for each observed workflow run.",
         "views": [
           {
-            "id": "detection-state-distribution",
-            "title": "Detection health",
-            "description": "Usable security verdicts remain distinct from degraded inspections, detector failures, skipped runs, and unavailable evidence.",
-            "data": {
-              "source": "detection-observations"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "detection-state-label",
-                "type": "ordinal",
-                "title": "Detection state"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Runs"
-              },
-              "color": {
-                "field": "detection-state",
-                "type": "nominal",
-                "title": "State"
-              }
-            }
-          },
-          {
-            "id": "detection-verdict-coverage",
-            "title": "Usable verdict coverage",
-            "description": "Percentage of observed detection runs with a structurally valid verdict. Partial or unavailable evidence is shown by the data-quality state.",
-            "data": {
-              "source": "detection-observations"
-            },
-            "mark": "metric",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "value": {
-                "field": "usable-verdict-percent",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Usable verdict coverage",
-                "unit": "percent"
-              }
-            }
-          },
-          {
-            "id": "detection-state-trend",
-            "title": "Detection state trend",
-            "description": "Daily verdict state shows changes in threats, degraded inspections, and unusable results.",
-            "data": {
-              "source": "detection-observations"
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Runs"
-              },
-              "color": {
-                "field": "detection-state",
-                "type": "nominal",
-                "title": "State"
-              }
-            }
-          },
-          {
-            "id": "detection-security-findings",
-            "title": "Security findings",
-            "description": "Actual threat verdicts and inspection warnings are shown separately; zero detected threats does not establish complete coverage.",
-            "data": {
-              "source": "security-observations",
-              "filters": {
-                "security-feature": [
-                  "threat-detection"
-                ],
-                "security-analysis": [
-                  "detail"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "security-signal",
-                "type": "nominal",
-                "title": "Signal"
-              },
-              "y": {
-                "field": "security-count",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Observations"
-              },
-              "color": {
-                "field": "security-status",
-                "type": "nominal",
-                "title": "Result"
-              }
-            }
-          },
-          {
-            "id": "detection-attention",
-            "disclosure-label": "Requires attention",
-            "description": "Threats, detector failures, degraded inspections, skipped detection, and unavailable evidence are ordered by operational urgency.",
+            "id": "detection-results",
+            "title": "Detection results",
+            "description": "Detection job execution and threat-detection verdicts remain joined to their authoritative workflow run.",
             "data": {
               "source": "detection-observations",
-              "filters": {
-                "detection-state": [
-                  "threat",
-                  "tooling-failure",
-                  "degraded",
-                  "unknown",
-                  "skipped"
-                ]
-              },
               "order-by": [
-                {
-                  "field": "attention-priority",
-                  "direction": "asc"
-                },
                 {
                   "field": "observed-at",
                   "direction": "desc"
@@ -4351,36 +3419,22 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No detection observations require attention in the selected horizon.",
-            "layout": "full",
-            "disclosure": "supplemental",
+            "lazy-list": true,
+            "column-summaries": true,
+            "empty-message": "No detection results were observed in the current run window.",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
-                  "field": "attention-priority",
-                  "type": "quantitative",
-                  "title": "Priority"
-                },
-                {
                   "field": "detection-state",
                   "type": "nominal",
-                  "title": "State",
+                  "title": "Threat detection",
                   "display": "status"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
                 },
                 {
                   "field": "detection-signal",
                   "type": "nominal",
-                  "title": "Signal / reason"
+                  "title": "Threat detection result"
                 },
                 {
                   "field": "inspection-warning",
@@ -4388,178 +3442,15 @@
                   "title": "Inspection warning"
                 },
                 {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Investigate this threat-detection observation using the linked GitHub Actions run as authoritative evidence.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "repository",
-                    "workflow",
-                    "run",
-                    "detection-state",
-                    "detection-signal",
-                    "inspection-warning",
-                    "run-link"
-                  ]
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "detection-job-conclusions",
-            "title": "Detection job conclusions",
-            "description": "Current conclusion distribution highlights failed, cancelled, and incomplete threat-detection jobs.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "job-conclusion",
-                "type": "ordinal",
-                "title": "Conclusion"
-              },
-              "y": {
-                "field": "job",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Jobs"
-              }
-            }
-          },
-          {
-            "id": "detection-job-duration-trend",
-            "title": "Detection job duration trend",
-            "description": "Daily mean duration reveals performance regressions in completed threat-detection jobs.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ],
-                "job-status": [
-                  "completed"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "started-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Started"
-              },
-              "y": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean duration",
-                "unit": "human-duration"
-              },
-              "color": {
-                "field": "job-conclusion",
-                "type": "ordinal",
-                "title": "Conclusion"
-              }
-            }
-          },
-          {
-            "id": "detection-job-runner-performance",
-            "title": "Detection time by runner",
-            "description": "Mean duration by runner identifies infrastructure-specific performance differences.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ],
-                "job-status": [
-                  "completed"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "runner",
-                "type": "nominal",
-                "title": "Runner"
-              },
-              "y": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean duration",
-                "unit": "human-duration"
-              }
-            }
-          },
-          {
-            "id": "detection-job-ledger",
-            "disclosure-label": "Detection job diagnostics",
-            "description": "Recent threat-detection jobs provide status, conclusion, duration, runner, workflow, and run evidence for investigation.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "started-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No detection jobs were observed in the current run window.",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "columns": [
-                {
                   "field": "job-status",
                   "type": "nominal",
-                  "title": "Status",
+                  "title": "Job status",
                   "display": "status"
                 },
                 {
                   "field": "job-conclusion",
                   "type": "nominal",
-                  "title": "Conclusion",
+                  "title": "Job conclusion",
                   "display": "status"
                 },
                 {
@@ -4574,17 +3465,14 @@
                   "title": "Runner"
                 },
                 {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
                   "field": "workflow",
                   "type": "nominal",
                   "title": "Workflow"
-                },
-                {
-                  "field": "organization",
-                  "type": "nominal"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal"
                 },
                 {
                   "field": "run",
@@ -4592,9 +3480,28 @@
                   "title": "Run"
                 },
                 {
-                  "field": "started-at",
+                  "field": "observed-at",
                   "type": "temporal",
-                  "title": "Started"
+                  "title": "Observed"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Investigate this detection result using the linked GitHub Actions run as authoritative evidence.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Investigate",
+                  "context": [
+                    "repository",
+                    "workflow",
+                    "run",
+                    "detection-state",
+                    "detection-signal",
+                    "inspection-warning",
+                    "job-status",
+                    "job-conclusion",
+                    "run-link"
+                  ]
                 }
               ],
               "href": {
@@ -4602,49 +3509,6 @@
                 "type": "nominal"
               }
             }
-          }
-        ],
-        "sections": [
-          {
-            "id": "detection-health",
-            "title": "Detection health",
-            "description": "Verdict coverage and state are the primary trust signals.",
-            "layout": "full",
-            "views": [
-              "detection-state-distribution",
-              "detection-verdict-coverage",
-              "detection-state-trend"
-            ]
-          },
-          {
-            "id": "security-findings",
-            "title": "Security findings",
-            "description": "Threat categories and detector-authored inspection warnings.",
-            "layout": "full",
-            "views": [
-              "detection-security-findings"
-            ]
-          },
-          {
-            "id": "requires-attention",
-            "title": "Requires attention",
-            "description": "Highest-priority evidence to investigate next.",
-            "layout": "full",
-            "views": [
-              "detection-attention"
-            ]
-          },
-          {
-            "id": "reliability-performance",
-            "title": "Reliability and performance",
-            "description": "Supporting job mechanics and execution diagnostics.",
-            "layout": "full",
-            "views": [
-              "detection-job-conclusions",
-              "detection-job-duration-trend",
-              "detection-job-runner-performance",
-              "detection-job-ledger"
-            ]
           }
         ]
       },
@@ -4859,108 +3723,73 @@
           },
           "views": [
             {
-              "id": "experiment-decision-summary",
-              "title": "Experiment decision summary",
-              "description": "Counts experiment decisions for the current filters without treating workflow execution success as experiment success.",
+              "id": "experiments-list",
+              "title": "Experiments",
+              "description": "Experiment readiness, evidence, and decisions without treating workflow execution success as experiment success.",
               "data": {
                 "source": "experiments"
               },
               "mark": "table",
-              "layout": "full",
+              "controls": "interactive",
+              "lazy-list": true,
+              "layout": "full-view",
+              "empty-message": "No experiments configured.",
               "encoding": {
                 "columns": [
                   {
-                    "field": "decision",
-                    "type": "nominal",
-                    "title": "Decision"
-                  },
-                  {
                     "field": "experiment",
                     "type": "nominal",
-                    "aggregate": "distinct-count",
-                    "as": "experiments",
-                    "title": "Experiments"
+                    "title": "Experiment"
+                  },
+                  {
+                    "field": "workflow",
+                    "type": "nominal",
+                    "title": "Workflow / agent"
+                  },
+                  {
+                    "field": "control-variant",
+                    "type": "nominal",
+                    "title": "Control"
+                  },
+                  {
+                    "field": "candidate-variant",
+                    "type": "nominal",
+                    "title": "Candidate"
+                  },
+                  {
+                    "field": "primary-metric",
+                    "type": "nominal",
+                    "title": "Primary metric"
                   },
                   {
                     "field": "normalized-effect",
                     "type": "quantitative",
-                    "aggregate": "mean",
-                    "as": "mean-normalized-effect",
-                    "title": "Mean normalized effect"
+                    "title": "Normalized effect"
+                  },
+                  {
+                    "field": "evidence-strength",
+                    "type": "ordinal",
+                    "title": "Evidence"
+                  },
+                  {
+                    "field": "readiness",
+                    "type": "ordinal",
+                    "title": "Readiness",
+                    "display": "status"
+                  },
+                  {
+                    "field": "decision",
+                    "type": "ordinal",
+                    "title": "Decision",
+                    "display": "status"
+                  },
+                  {
+                    "field": "last-observation",
+                    "type": "temporal",
+                    "title": "Last observation"
                   }
                 ]
               }
-            },
-            {
-              "id": "experiments-overview",
-              "title": "Experiment readiness overview",
-              "description": "Summarizes readiness, evidence coverage, and decision pressure for the current filters.",
-              "data": {
-                "sources": [
-                  "experiments",
-                  "experiment-assignments",
-                  "graders",
-                  "grader-observations",
-                  "evals",
-                  "eval-observations",
-                  "runs"
-                ]
-              },
-              "mark": "element",
-              "element": "experiments-evaluation",
-              "config": {
-                "body": "overview"
-              },
-              "layout": "full"
-            },
-            {
-              "id": "experiments-table",
-              "title": "Experiment decision table",
-              "description": "Ranks experiments by readiness and guardrail regressions for the current filters.",
-              "data": {
-                "sources": [
-                  "experiments",
-                  "experiment-assignments",
-                  "graders",
-                  "grader-observations",
-                  "evals",
-                  "eval-observations",
-                  "runs"
-                ]
-              },
-              "mark": "element",
-              "element": "experiments-evaluation",
-              "config": {
-                "body": "table"
-              },
-              "layout": "full"
-            },
-            {
-              "id": "experiments-evaluation",
-              "title": "Experiment decisions and evidence",
-              "description": "Controlled comparisons retain distinct experiment, observation, grader or eval, run, and evidence semantics.",
-              "data": {
-                "sources": [
-                  "experiments",
-                  "experiment-assignments",
-                  "graders",
-                  "grader-observations",
-                  "evals",
-                  "eval-observations",
-                  "runs",
-                  "outcomes",
-                  "usage",
-                  "operational-values"
-                ]
-              },
-              "mark": "element",
-              "element": "experiments-evaluation",
-              "config": {
-                "sections": [
-                  "detail"
-                ]
-              },
-              "layout": "full"
             }
           ]
         }
