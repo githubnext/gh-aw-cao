@@ -1033,8 +1033,8 @@ test('histogram keeps a low constant DOM size for 100,000 observations', async (
 
   const histogram = page.locator('[data-chart-widget="histogram"]');
   await expect(histogram).toBeVisible();
-  await expect(histogram.locator('.histogram-chart-bar')).toHaveCount(12);
-  expect(await histogram.locator('*').count()).toBeLessThan(100);
+  await expect(histogram.locator('.histogram-chart-bar')).toHaveCount(18);
+  expect(await histogram.locator('*').count()).toBeLessThan(150);
 });
 
 test('DLS-DOC-014 horizon details are available in the expanded window picker', async ({ page }) => {

@@ -1,7 +1,7 @@
 const RUN_SUMMARY_FIELDS = new Set(['run', 'run-link']);
 const RUN_SUMMARY_LABELS = new Set(['run', 'run link', 'workflow run', 'workflow runs']);
 const SUMMARY_TYPES = new Set(['boolean', 'nominal', 'ordinal', 'quantitative', 'temporal']);
-const MAX_AUTOMATIC_HISTOGRAM_BINS = 12;
+const MAX_AUTOMATIC_HISTOGRAM_BINS = 48;
 
 /** @param {number} sampleSize */
 function histogramBinCountForSampleSize(sampleSize) {
