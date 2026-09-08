@@ -709,7 +709,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Agents', 'Insights']);
+  await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Operations', 'Insights']);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(cleanNavigation.last().locator('.octicon-graph')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
@@ -730,9 +730,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page.getByLabel('Show experimental')).toHaveCount(0);
   await expect(experimental).toBeVisible();
   await expect(experimental).not.toHaveAttribute('open', '');
-  await expect(experimental.getByRole('link', { name: 'Operations' })).toBeHidden();
+  await expect(experimental.getByRole('link', { name: 'Operational health' })).toBeHidden();
   await experimental.locator('summary').click();
-  await expect(experimental.getByRole('link', { name: 'Operations' })).toBeVisible();
+  await expect(experimental.getByRole('link', { name: 'Operational health' })).toBeVisible();
   await cleanNavigation.filter({ hasText: 'Work' }).click();
   await expect(page).toHaveURL(/#page-work$/);
 
@@ -798,7 +798,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   for (const { label, pageId } of [
     { label: 'Work', pageId: 'work' },
-    { label: 'Agents', pageId: 'agents' },
+    { label: 'Operations', pageId: 'agents' },
     { label: 'Insights', pageId: 'insights' }
   ]) {
     await cleanNavigation.filter({ hasText: label }).click();
