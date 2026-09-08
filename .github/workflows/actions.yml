@@ -113,8 +113,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: read
-      issues: write
-      pull-requests: read
+      pull-requests: write
     steps:
       - name: Download mobile analysis evidence
         id: download
