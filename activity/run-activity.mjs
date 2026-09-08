@@ -1,12 +1,34 @@
 #!/usr/bin/env node
 
 import path from "node:path";
+import { lstat, readdir, rm } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 
 function importModule(modulePath) {
   return import(pathToFileURL(path.resolve(modulePath)).href);
+}
+
+async function removeCachedAgentDirectories(directory) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return;
+    throw error;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !/^run-\d+$/.test(entry.name)) continue;
+    const agentDirectory = path.join(directory, entry.name, "agent");
+    const stats = await lstat(agentDirectory).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (!stats?.isDirectory()) continue;
+    await rm(agentDirectory, { recursive: true, force: true });
+    log.info`Removed cached agent logs from ${entry.name}`;
+  }
 }
 
 const COLLECT_GH_AW_LOGS_OPERATION = "collect-gh-aw-logs";
@@ -39,6 +61,9 @@ export async function runActivity(actions = {}) {
     importModule(indexerModulePath),
   ]);
 
+  await removeCachedAgentDirectories(
+    path.resolve(process.env.REPORT_AIC_CACHE || "_activity/gh-aw-logs"),
+  );
   const collectionOutcome = await logs.main(actions);
 
   // Preparing telemetry history is required for later recording; let a
