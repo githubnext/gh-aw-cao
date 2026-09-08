@@ -2285,7 +2285,7 @@ describe('presenter built-in and custom pages', () => {
             { field: 'reports', type: 'quantitative', title: 'Reports' },
             { field: 'evaluated-workflows', type: 'quantitative', title: 'Evaluated AWs' },
             { field: 'runs', type: 'quantitative', title: 'Local runs' },
-            { field: 'failure-summary', type: 'nominal', title: 'Failure rate' },
+            { field: 'failure-summary', type: 'nominal', title: 'Failure rate', filter: false },
             { field: 'aic', type: 'quantitative', title: 'Local AIC', unit: 'aic' },
             { field: 'status', type: 'nominal', title: 'Status', display: 'status' }
           ],
