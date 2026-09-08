@@ -818,7 +818,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(overviewPage.locator('.canonical-attention-item').first()).toBeInViewport();
+  const mobileHomeOrder = await overviewPage.evaluate((element) => {
+    const briefing = element.querySelector('.notifications-health');
+    const notifications = element.querySelector('.notifications-main');
+    if (!(briefing instanceof HTMLElement) || !(notifications instanceof HTMLElement)) return null;
+    return briefing.getBoundingClientRect().top < notifications.getBoundingClientRect().top;
+  });
+  expect(mobileHomeOrder).toBe(true);
+  await expect(overviewPage.getByText('running now', { exact: true })).toBeInViewport();
   await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);

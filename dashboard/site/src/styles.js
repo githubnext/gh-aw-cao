@@ -2009,7 +2009,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 @media (max-width: 420px) {
   .primary-nav .nav-item.narrow-mobile-nav-overflow { display: none; }
   .data-state-summary, .metrics { grid-template-columns: 1fr; }
-  .notifications-inbox.has-notifications .notifications-main { order: -1; }
   .home-catchup-controls { align-items: stretch; flex-direction: column; }
   .home-catchup-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .home-catchup-metric:nth-child(3) { border-left: 0; }
