@@ -773,6 +773,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
     expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
+    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
   });
 
@@ -924,6 +925,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
     expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open account menu for The Octocat');
+    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(false);
     expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
     expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('referrerpolicy')).toBe('no-referrer');
     expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
