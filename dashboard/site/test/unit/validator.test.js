@@ -38,21 +38,28 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
-  it('accepts static tree tables and rejects hierarchy-breaking controls', () => {
+  it('accepts the aggregated call-site table and rejects hierarchy-breaking tree controls', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const apiPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api');
     const stackView = apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-call-stacks');
 
     expect(stackView).toMatchObject({
       mark: 'table',
-      controls: 'static',
-      tree: {
-        'id-field': 'stack-frame-id',
-        'parent-field': 'stack-parent-id'
+      controls: 'interactive',
+      data: { limit: 20 },
+      encoding: {
+        columns: expect.arrayContaining([
+          expect.objectContaining({ field: 'operation-execution-id', aggregate: 'distinct-count', as: 'distinct-executions' })
+        ])
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
+    stackView.data = { source: 'github-api-call-stacks' };
+    stackView.tree = {
+      'id-field': 'stack-frame-id',
+      'parent-field': 'stack-parent-id'
+    };
     stackView.controls = 'interactive';
     const rejected = validateDashboardDocument(JSON.stringify(document));
     expect(rejected.ok).toBe(false);

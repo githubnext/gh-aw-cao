@@ -181,7 +181,7 @@ async function renderApiPage(rateLimitSource = {
 }
 
 describe('GitHub API rate-limit dashboard', () => {
-  it('renders four essential operational views with accessible capacity evidence', async () => {
+  it('renders three essential operational views with bounded capacity evidence', async () => {
     const { link, page } = await renderApiPage();
     const apiPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'github-api');
 
@@ -192,18 +192,20 @@ describe('GitHub API rate-limit dashboard', () => {
       title: 'GitHub API Rate Limits',
       icon: 'meter'
     });
-    expect(apiPage.views.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'essential')).toHaveLength(4);
-    expect(apiPage.views.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental')).toHaveLength(5);
+    expect(apiPage.views.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'essential')).toHaveLength(3);
+    expect(apiPage.views.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental')).toHaveLength(6);
+    expect(apiPage.views.every((/** @type {{ data?: { limit?: number } }} */ view) => Number.isInteger(view.data?.limit))).toBe(true);
     expect(apiPage.views[0]).toMatchObject({
       id: 'github-api-remaining-trend',
       chart: 'scatter',
       table: false,
-      data: { filters: { 'is-unhealthy': 'true' } }
+      data: { filters: { 'is-unhealthy': 'true' }, limit: 96 }
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-remaining-capacity')).toMatchObject({
       id: 'github-api-remaining-capacity',
       chart: 'bar',
-      table: true
+      table: false,
+      data: expect.objectContaining({ limit: 24 })
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-at-risk')).toMatchObject({
       mark: 'metric',
@@ -213,8 +215,17 @@ describe('GitHub API rate-limit dashboard', () => {
       chart: 'scatter',
       table: false,
       encoding: {
-        y: expect.objectContaining({ field: 'remaining-percent', unit: 'percent' }),
+        x: expect.objectContaining({ field: 'observed-at', 'time-unit': 'hour' }),
+        y: expect.objectContaining({ field: 'remaining-percent', aggregate: 'min', unit: 'percent' }),
         color: expect.objectContaining({ field: 'maximum-lane' })
+      }
+    });
+    expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-operation-consumption')).toMatchObject({
+      data: { limit: 20, 'order-by': expect.arrayContaining([expect.objectContaining({ field: 'max-operation-consumed' })]) },
+      encoding: {
+        columns: expect.arrayContaining([
+          expect.objectContaining({ field: 'operation-consumed', aggregate: 'max', as: 'max-operation-consumed' })
+        ])
       }
     });
     expect(page?.querySelector('[aria-labelledby="github-api-remaining-capacity-heading"]')
@@ -234,42 +245,37 @@ describe('GitHub API rate-limit dashboard', () => {
     const { page } = await renderApiPage();
     const supplemental = [...(page?.querySelectorAll('details[data-disclosure="supplemental"]') ?? [])];
 
-    expect(supplemental).toHaveLength(5);
+    expect(supplemental).toHaveLength(6);
     expect(supplemental.map((view) => view.querySelector('summary')?.textContent)).toEqual(expect.arrayContaining([
       expect.stringContaining('Raw quota observations'),
       expect.stringContaining('Collector and cache health'),
-      expect.stringContaining('Collection call stacks')
+      expect.stringContaining('Frequent collection call sites')
     ]));
     const observations = supplemental.find((view) => view.querySelector('summary')?.textContent?.includes('Raw quota observations'));
     expect(observations?.querySelector('tbody td:first-child a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1');
-    expect(page?.textContent).toContain('Collection completeness, retrieval failures, and activity-cache state');
-    const stackTable = page?.querySelector('table[role="treegrid"]');
-    expect(stackTable?.getAttribute('role')).toBe('treegrid');
-    expect(stackTable?.querySelectorAll('tbody tr[aria-level]')).toHaveLength(2);
-    expect(stackTable?.querySelector('tbody tr:nth-child(2)')?.getAttribute('aria-level')).toBe('2');
-    expect(stackTable?.querySelectorAll('.tree-table-cell')).toHaveLength(2);
-    expect(stackTable?.querySelector('tbody tr:nth-child(2) .tree-table-cell')?.getAttribute('style')).toContain('--tree-depth: 1');
+    expect(page?.textContent).toContain('Top collector checkpoint groups');
+    const stackTable = [...(page?.querySelectorAll('table') ?? [])]
+      .find((table) => table.closest('section')?.textContent?.includes('Frequent collection call sites'));
+    expect(stackTable?.getAttribute('role')).not.toBe('treegrid');
+    expect(stackTable?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(stackTable?.textContent).toContain('activity/github-telemetry.mjs:100:16');
+    expect(stackTable?.textContent).toContain('Executions');
   });
 
-  it('keeps call-stack rows with missing tree ids as independent roots', async () => {
+  it('groups repeated call sites across collection executions', async () => {
     const { page } = await renderApiPage(undefined, [
-      { 'stack-frame': 'missing id root one', 'stack-parent-id': '' },
-      { 'stack-frame': 'missing id root two', 'stack-parent-id': '' },
-      { 'stack-frame': 'parent row', 'stack-frame-id': 'parent', 'stack-parent-id': '' },
-      { 'stack-frame': 'child row', 'stack-frame-id': 'child', 'stack-parent-id': 'parent' },
-      { 'stack-frame': 'orphan row', 'stack-frame-id': 'orphan', 'stack-parent-id': 'missing-parent' }
+      { 'stack-frame': 'repeated call site', operation: 'refresh', credential: 'reader', 'operation-execution-id': 'run-1' },
+      { 'stack-frame': 'repeated call site', operation: 'refresh', credential: 'reader', 'operation-execution-id': 'run-2' },
+      { 'stack-frame': 'other call site', operation: 'refresh', credential: 'reader', 'operation-execution-id': 'run-1' }
     ]);
-    const rows = [...(page?.querySelectorAll('table[role="treegrid"] tbody tr') ?? [])];
-    /** @param {string} text */
-    const levelFor = (text) => rows.find((row) => row.textContent?.includes(text))?.getAttribute('aria-level');
+    const stackTable = [...(page?.querySelectorAll('table') ?? [])]
+      .find((table) => table.closest('section')?.textContent?.includes('Frequent collection call sites'));
+    const rows = [...(stackTable?.querySelectorAll('tbody tr') ?? [])];
+    const repeated = rows.find((row) => row.textContent?.includes('repeated call site'));
 
-    expect(levelFor('missing id root one')).toBe('1');
-    expect(levelFor('missing id root two')).toBe('1');
-    expect(levelFor('parent row')).toBe('1');
-    expect(levelFor('child row')).toBe('2');
-    expect(levelFor('orphan row')).toBe('1');
+    expect(rows).toHaveLength(2);
+    expect(repeated?.textContent).toContain('2');
   });
 
   it('exposes stale, partial, unavailable, and empty source states without fabricated quota values', async () => {
@@ -304,6 +310,7 @@ describe('GitHub API rate-limit dashboard', () => {
           'observed-at': observedAt,
           resource: 'search',
           bucket: 'search · reader',
+          'maximum-lane': 'search · reader · max 30',
           'history-series': 'search · reader',
           'has-history': false,
           'risk-status': 'critical'

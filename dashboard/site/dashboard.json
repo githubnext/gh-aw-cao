@@ -565,8 +565,7 @@
                   "type": "temporal",
                   "title": "Last observed (UTC)"
                 }
-              ],
-              "limit": 24
+              ]
             }
           },
           {
@@ -587,7 +586,8 @@
                   "field": "bucket",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 24
             },
             "mark": "chart",
             "chart": "bar",
@@ -616,7 +616,7 @@
           {
             "id": "github-api-operation-consumption",
             "title": "Consumption by operation",
-            "description": "Top operation, credential, and resource groups by total requests consumed across reliably paired checkpoints.",
+            "description": "Top operation, credential, and resource groups by peak requests consumed across reliably paired checkpoints.",
             "data": {
               "source": "github-api-rate-limits",
               "filters": {
@@ -625,7 +625,7 @@
               },
               "order-by": [
                 {
-                  "field": "sum-operation-consumed",
+                  "field": "max-operation-consumed",
                   "direction": "desc"
                 },
                 {
@@ -668,12 +668,18 @@
                 {
                   "field": "operation-consumed",
                   "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "sum-operation-consumed",
-                  "title": "Requests consumed"
+                  "aggregate": "max",
+                  "as": "max-operation-consumed",
+                  "title": "Peak requests consumed"
+                },
+                {
+                  "field": "operation-execution-id",
+                  "type": "quantitative",
+                  "aggregate": "distinct-count",
+                  "as": "distinct-executions",
+                  "title": "Executions"
                 }
-              ],
-              "limit": 25
+              ]
             }
           },
           {
@@ -695,7 +701,8 @@
                   "field": "credential",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 25
             },
             "mark": "table",
             "controls": "interactive",
