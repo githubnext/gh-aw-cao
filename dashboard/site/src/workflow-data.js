@@ -35,8 +35,8 @@ export function deriveWorkflowSources(sources) {
     .sort(compareStandaloneWorkflows);
   const packages = new Set(packaged.map((row) => text(row.package)));
   const metadata = sources.workflows?.metadata ?? unavailableMetadata();
-  const workflowInventory = [...packaged, ...standalone]
-    .map((row) => ({
+  const workflowInventory = /** @type {Row[]} */ ([...packaged, ...standalone])
+    .map((row) => /** @type {Row} */ ({
       ...row,
       'package-name': text(row['package-name']) || 'Repository-owned',
       'workflow-role': text(row['workflow-role']) || 'standalone'
@@ -124,12 +124,16 @@ function summarizePackageInventory(workflows) {
   for (const workflow of workflows) {
     const packageId = text(workflow.package);
     if (!packageId) continue;
-    const rows = grouped.get(packageId) ?? [];
+    const key = `${text(workflow.repository).toLowerCase()}:${packageId.toLowerCase()}`;
+    const rows = grouped.get(key) ?? [];
     rows.push(workflow);
-    grouped.set(packageId, rows);
+    grouped.set(key, rows);
   }
-  return [...grouped].map(([packageId, rows]) => {
+  return [...grouped.values()].map((rows) => {
+    const packageId = text(rows[0]?.package);
+    /** @param {string} field */
     const values = (field) => [...new Set(rows.map((row) => text(row[field])).filter(Boolean))].sort();
+    /** @param {string} field */
     const total = (field) => rows.reduce((sum, row) => {
       const value = Number(row[field]);
       return Number.isFinite(value) ? sum + value : sum;
@@ -374,6 +378,7 @@ function normalizeWorkflowIdentity(value) {
 function derivePackagedWorkflow(row, runs, aic) {
   const packageId = text(row.package);
   const repositoryLink = isPlainObject(row['repository-link']) ? row['repository-link'] : null;
+  const packageTargetLink = repositoryLink ?? (isPlainObject(row['workflow-link']) ? row['workflow-link'] : null);
   return {
     package: packageId,
     'package-name': text(row['package-name']) || titleCase(packageId),
@@ -385,15 +390,11 @@ function derivePackagedWorkflow(row, runs, aic) {
     'workflow-active': text(row['workflow-active']) || 'unknown',
     ...(runs === undefined ? {} : { runs }),
     ...(aic === undefined ? {} : { aic }),
-    ...(repositoryLink
-      ? {
-          'package-link': {
-            ...repositoryLink,
-            'dashboard-href': `#page-package-insights?package=${encodeURIComponent(packageId)}`,
-            'dashboard-label': `View ${text(row['package-name']) || titleCase(packageId)} package dashboard`
-          }
-        }
-      : {}),
+    'package-link': {
+      ...(packageTargetLink ?? {}),
+      'dashboard-href': `#page-package-insights?package=${encodeURIComponent(packageId)}`,
+      'dashboard-label': `View ${text(row['package-name']) || titleCase(packageId)} package dashboard`
+    },
     ...(row['repository-link'] ? { 'repository-link': row['repository-link'] } : {}),
     ...(row['workflow-link'] ? { 'workflow-link': row['workflow-link'] } : {})
   };
