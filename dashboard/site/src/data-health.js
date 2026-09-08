@@ -48,6 +48,7 @@ const RECONCILIATION_CONTRACTS = Object.freeze([
 export function deriveDataHealthSources(sources) {
   const sourceRows = Object.entries(sources).map(([name, source]) => sourceDiagnostic(name, source));
   const fieldRows = Object.entries(sources).flatMap(([name, source]) => fieldDiagnostics(name, source));
+  const fileRows = Object.entries(sources).map(([name, source]) => loadedFileDiagnostic(name, source));
   const compatibilityRows = compatibilityDiagnostics(sources.workflows);
   const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
   const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));
@@ -89,7 +90,8 @@ export function deriveDataHealthSources(sources) {
     'data-health-reconciliation': healthSource('data-health-reconciliation', reconciliationRows, metadata),
     'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata),
     'data-health-sources': healthSource('data-health-sources', sourceRows, metadata),
-    'data-health-fields': healthSource('data-health-fields', fieldRows, metadata)
+    'data-health-fields': healthSource('data-health-fields', fieldRows, metadata),
+    'data-health-files': healthSource('data-health-files', fileRows, metadata)
   };
 }
 
@@ -132,6 +134,18 @@ function sourceDiagnostic(name, source) {
     completeness,
     freshness,
     reason: confidenceReason({ availability, completeness, freshness })
+  };
+}
+
+/** @param {string} name @param {LogicalSourceInput} source */
+function loadedFileDiagnostic(name, source) {
+  const serialized = JSON.stringify(source);
+  return {
+    file: `${name}.json`,
+    source: name,
+    size: new TextEncoder().encode(serialized).length,
+    rows: Array.isArray(source?.rows) ? source.rows.length : 0,
+    status: source?.metadata?.availability ?? 'unknown'
   };
 }
 

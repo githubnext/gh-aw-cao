@@ -102,6 +102,7 @@ describe('coverage and collection provenance', () => {
     const summary = derived['data-health-summary'].rows[0];
     const attempts = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'attempts');
     const conclusion = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'conclusion');
+    const runsFile = derived['data-health-files'].rows.find((item) => item.source === 'runs');
 
     expect(summary).toMatchObject({
       sources: Object.keys(sources).length,
@@ -111,6 +112,8 @@ describe('coverage and collection provenance', () => {
     expect(summary.fields).toBe(derived['data-health-fields'].rows.length);
     expect(attempts).toMatchObject({ types: 'number, string', rows: 2, populated: 2, empty: 0, coverage: '100%', shape: 'mixed' });
     expect(conclusion).toMatchObject({ types: 'Unknown', rows: 2, populated: 0, empty: 2, coverage: '0%', shape: 'unknown' });
+    expect(runsFile).toMatchObject({ file: 'runs.json', rows: 2, status: 'available' });
+    expect(runsFile?.size).toBeGreaterThan(0);
   });
 
   it('calculates authoritative expected-versus-observed coverage', () => {

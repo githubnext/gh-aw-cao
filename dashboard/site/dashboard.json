@@ -9,9 +9,8 @@
       {
         "id": "partial-data-rate-limit",
         "title": "Dashboard data is partial",
-        "description": "Data Health reports a collection gap caused by a GitHub API rate limit. Open Data health for the affected source and evidence horizon.",
+        "description": "Data Health reports a collection gap caused by a GitHub API rate limit.",
         "icon": "alert",
-        "navigation-page": "data-health",
         "visible-when": {
           "source": "data-health-collections",
           "field": "failure-class",
@@ -6124,6 +6123,15 @@
         "class-name": "data-health-page",
         "sections": [
           {
+            "id": "loaded-files",
+            "title": "Loaded files",
+            "description": "Files loaded for this dashboard snapshot and their serialized sizes.",
+            "layout": "full",
+            "views": [
+              "data-health-files"
+            ]
+          },
+          {
             "id": "dashboard-confidence",
             "title": "Dashboard confidence",
             "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
@@ -6199,6 +6207,42 @@
           }
         ],
         "views": [
+          {
+            "id": "data-health-files",
+            "title": "Loaded files",
+            "data": {
+              "source": "data-health-files"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No dashboard files were loaded.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "file",
+                  "type": "nominal",
+                  "title": "File"
+                },
+                {
+                  "field": "size",
+                  "type": "quantitative",
+                  "title": "Size (bytes)"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          },
           {
             "id": "data-health-confidence",
             "title": "Overall confidence",
@@ -6675,8 +6719,7 @@
                 {
                   "field": "shape",
                   "type": "nominal",
-                  "title": "Shape",
-                  "display": "status"
+                  "title": "Shape"
                 }
               ]
             },

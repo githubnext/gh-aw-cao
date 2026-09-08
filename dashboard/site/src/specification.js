@@ -412,6 +412,7 @@ export const SOURCE_FIELDS = {
   'data-health-coverage': ['area', 'expected', 'observed', 'missing', 'coverage-percent', 'state', 'reason', 'requested-horizon', 'observed-horizon'],
   'data-health-sources': ['source', 'source-id', 'source-kind', 'as-of', 'retrieved-at', 'rows', 'fields', 'populated-fields', 'empty-fields', 'populated-cells', 'empty-cells', 'field-coverage', 'cell-coverage', 'status', 'availability', 'completeness', 'freshness', 'reason'],
   'data-health-fields': ['source', 'field', 'types', 'rows', 'populated', 'empty', 'coverage', 'shape'],
+  'data-health-files': ['file', 'source', 'size', 'rows', 'status'],
   'runtime-episode-summary': ['label', 'value'],
   'runtime-episodes': ['run', 'run-title', 'package', 'workflow', 'started-at', 'duration', 'status', 'control-transition', 'attribution', 'run-link'],
   'runtime-attribution-gaps': ['run', 'run-title', 'workflow', 'status', 'control-transition', 'reason-code', 'evidence', 'run-link'],
