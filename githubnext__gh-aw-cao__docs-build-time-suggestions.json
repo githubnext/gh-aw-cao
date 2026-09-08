@@ -1,0 +1,14 @@
+{
+  "source_sha": "955a066e11aa546834cbedc2722011fb01f531ab",
+  "next_category": "artifact transfer and Pages packaging",
+  "evaluations": [
+    {
+      "evaluated_at": "2026-09-08T17:26:00Z",
+      "worker_run_id": 34256744618,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [34256689787, 34256544184, 34256484719, 34256193682, 34256021502, 34255335447, 34255084587, 34255048519, 34254636645, 34253095487, 34252305936, 34252270220, 34251983649, 34251534154, 34251468600, 34251165027, 34248546635],
+      "outcome": "no_actionable_improvement",
+      "suggestion_fingerprint": null
+    }
+  ]
+}
