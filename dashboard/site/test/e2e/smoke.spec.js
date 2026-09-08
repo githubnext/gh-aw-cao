@@ -227,6 +227,48 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
   expect(widePlotBox?.width).toBeGreaterThan((wideChartBox?.width ?? 0) * 0.95);
 });
 
+test('work page composes board, tasks, and roadmap from the shared declarative work view', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'work-fixture',
+        'source-kind': 'fixture',
+        'retrieved-at': '2026-09-07T12:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'work-items': {
+          source: 'work-items',
+          rows: [
+            { 'work-item-id': '1', name: 'Board item', owner: 'ops', package: 'core', 'lifecycle-state': 'active', 'started-at': '2026-09-06T12:00:00Z' },
+            { 'work-item-id': '2', name: 'Review item', owner: 'review', package: 'core', 'lifecycle-state': 'blocked', 'started-at': '2026-09-07T12:00:00Z' }
+          ],
+          metadata
+        }
+      };
+      window.location.hash = '#page-work';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  await hydrateView(page, 'Work views');
+  const workPage = page.locator('[data-page-id="work"]');
+  await expect(workPage.locator('.work-board')).toHaveCount(1);
+  await expect(workPage.locator('.work-tasks')).toHaveCount(1);
+  await expect(workPage.locator('.work-roadmap')).toHaveCount(1);
+  await expect(workPage.locator('.work-project-tabs')).toContainText('Board');
+  await expect(workPage.locator('.work-project-tabs')).toContainText('Tasks');
+  await expect(workPage.locator('.work-project-tabs')).toContainText('Roadmap');
+});
+
 test('GitHub API rate-limit dashboard remains operable at desktop and narrow widths', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
@@ -778,7 +820,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const workPage = page.locator('[data-page-id="work"]');
   await expect(workPage.locator('.work-board')).toBeVisible();
-  await expect(workPage.locator('.work-tasks, .work-roadmap')).toHaveCount(0);
+  await expect(workPage.locator('.work-tasks, .work-roadmap')).toHaveCount(2);
   const workFilters = workPage.getByRole('search', { name: 'Work filters' });
   await expect(workFilters.getByRole('searchbox', { name: 'Filter work items' })).toBeVisible();
   await expect(workFilters.locator('.work-filter-count')).toHaveText('2 of 2');
@@ -923,7 +965,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   await boardPage.getByRole('button', { name: 'Filters', exact: true }).click();
   await expect(boardPage.locator('.work-filter-facets')).toBeVisible();
   await boardPage.getByRole('button', { name: 'Close work filters' }).click();
-  await boardPage.getByRole('button', { name: 'Open Prepare rollout details' }).click();
+  await boardPage.locator('.work-board').getByRole('button', { name: 'Open Prepare rollout details' }).click();
   const detail = boardPage.getByRole('dialog', { name: 'Prepare rollout details' });
   await expect(detail).toBeVisible();
   const detailBox = await detail.boundingBox();

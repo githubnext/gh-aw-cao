@@ -909,7 +909,7 @@ dashboard:
     expect(pages.get('work')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'board' }
+      config: { sections: ['board', 'tasks', 'roadmap'] }
     });
     expect(pages.get('work-tasks')?.views[0]).toMatchObject({
       mark: 'element',

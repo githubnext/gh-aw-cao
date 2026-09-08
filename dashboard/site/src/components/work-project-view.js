@@ -11,6 +11,7 @@ import { workViewComposition } from './work-view-composition.js';
 import { renderWorkViewNavigation } from './work-view-navigation.js';
 import { workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
+import { renderWorkViewSection } from './work-view-section.js';
 
 const BOARD_COLUMNS = [
   { title: 'Todo', states: ['todo'], tone: 'todo' },
@@ -29,7 +30,7 @@ const BOARD_COLUMNS = [
 export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const sections = workViewComposition(context.elementConfig);
-  const activeSection = sections[0].key;
+  const activeSection = sections[0]?.key ?? 'board';
   const viewBody = h('div', { className: 'work-project-body' });
   let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
@@ -53,12 +54,7 @@ export function renderWorkProjectView(context) {
         const rendererName = workViewSectionRenderer(section.key, renderers);
         const renderer = rendererName ? renderers[rendererName] : null;
         return typeof renderer === 'function'
-          ? renderer(filteredItems, {
-            id: workSectionId(context.pageId, section.key),
-            className: section.className,
-            landmarkLabel: section.landmarkLabel,
-            title: section.title
-          })
+          ? renderer(filteredItems, sectionDescriptor(context.pageId, section))
           : null;
       })
       .filter((element) => element instanceof HTMLElement));
@@ -171,6 +167,19 @@ function renderFacetSelect(label, values) {
 }
 
 /**
+ * @param {string} pageId
+ * @param {ReturnType<typeof workViewComposition>[number]} section
+ */
+function sectionDescriptor(pageId, section) {
+  return {
+    id: workSectionId(pageId, section.key),
+    className: section.className,
+    landmarkLabel: section.landmarkLabel,
+    title: section.title
+  };
+}
+
+/**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
  * @param {() => void} onUpdate
@@ -241,12 +250,10 @@ function renderBoard(items, section, onUpdate) {
     }, column.title, renderCountBadge(count, `${count} work items`));
     return button;
   }));
-  return h(
-    'section',
-    { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
-    tabs,
-    ...columns
-  );
+  return renderWorkViewSection({
+    ...section,
+    children: [tabs, ...columns]
+  });
 }
 
 /**
@@ -350,26 +357,27 @@ function renderTasks(items, section, onUpdate) {
     settingsToggle.focus();
   };
   renderRows();
-  return h(
-    'section',
-    { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
-    h('div', { className: 'work-task-viewbar' },
-      h('div', { className: 'work-task-view-name' }, renderIconSpan('work-task-view-icon', 'table', { ariaHidden: true }), h('strong', null, 'Operations tasks'), h('span', null, `${items.length} items`)),
-      h('div', { className: 'work-task-settings' }, settingsToggle, settingsSheet)
-    ),
-    h('div', { className: 'work-task-scroll' },
-      h('div', { className: 'work-task-table-header', role: 'row' },
-        h('span', { 'aria-hidden': 'true' }),
-        sortableHeader('name', 'Title'),
-        sortableHeader('state', 'Status'),
-        h('span', null, 'Type'),
-        sortableHeader('package', 'Labels'),
-        sortableHeader('started', 'Start'),
-        h('span', null, 'End'),
-        sortableHeader('owner', 'Owned by')),
-      list
-    )
-  );
+  return renderWorkViewSection({
+    ...section,
+    children: [
+      h('div', { className: 'work-task-viewbar' },
+        h('div', { className: 'work-task-view-name' }, renderIconSpan('work-task-view-icon', 'table', { ariaHidden: true }), h('strong', null, 'Operations tasks'), h('span', null, `${items.length} items`)),
+        h('div', { className: 'work-task-settings' }, settingsToggle, settingsSheet)
+      ),
+      h('div', { className: 'work-task-scroll' },
+        h('div', { className: 'work-task-table-header', role: 'row' },
+          h('span', { 'aria-hidden': 'true' }),
+          sortableHeader('name', 'Title'),
+          sortableHeader('state', 'Status'),
+          h('span', null, 'Type'),
+          sortableHeader('package', 'Labels'),
+          sortableHeader('started', 'Start'),
+          h('span', null, 'End'),
+          sortableHeader('owner', 'Owned by')),
+        list
+      )
+    ]
+  });
 }
 
 /** @param {ReturnType<typeof normalizeWorkItem>} left @param {ReturnType<typeof normalizeWorkItem>} right @param {string} field */
@@ -530,18 +538,19 @@ function renderRoadmap(items, section, onUpdate) {
       renderTimeline();
     }
   }, renderIconSpan('work-roadmap-zoom-check', 'check', { ariaHidden: true }), titleCase(level))));
-  root = h(
-    'section',
-    { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
-    h('div', { className: 'work-roadmap-toolbar' },
-      h('div', null, renderIconSpan('work-roadmap-toolbar-icon', 'project-roadmap', { ariaHidden: true }), h('strong', null, section.title), h('span', null, `${items.length} items`)),
-      visualToggle,
-      mobilePeriodControls,
-      zoom,
-      today
-    ),
-    body
-  );
+  root = renderWorkViewSection({
+    ...section,
+    children: [
+      h('div', { className: 'work-roadmap-toolbar' },
+        h('div', null, renderIconSpan('work-roadmap-toolbar-icon', 'project-roadmap', { ariaHidden: true }), h('strong', null, section.title), h('span', null, `${items.length} items`)),
+        visualToggle,
+        mobilePeriodControls,
+        zoom,
+        today
+      ),
+      body
+    ]
+  });
   renderTimeline();
   return root;
 }

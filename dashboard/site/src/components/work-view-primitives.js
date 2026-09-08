@@ -40,3 +40,12 @@ export function workViewCompositionForBody(body) {
 export function defaultWorkViewComposition() {
   return WORK_VIEW_BODY_VALUES.map((body) => workViewCompositionForBody(body));
 }
+
+/**
+ * @param {unknown} sections
+ * @returns {sections is readonly WorkViewBody[]}
+ */
+export function isWorkViewSectionList(sections) {
+  return Array.isArray(sections)
+    && sections.every((section) => WORK_VIEW_BODY_VALUES.includes(/** @type {WorkViewBody} */ (section)));
+}

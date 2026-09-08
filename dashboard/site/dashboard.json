@@ -7353,12 +7353,23 @@
         "icon": "project-roadmap",
         "class-name": "dashboard-next-work-page",
         "description": "Plan and track delegated work by lifecycle state.",
+        "sections": [
+          {
+            "id": "work-overview",
+            "title": "Delegated work",
+            "description": "Board, table, and roadmap views share the same filtered work-item telemetry.",
+            "layout": "full",
+            "views": [
+              "work-project"
+            ]
+          }
+        ],
         "views": [
           {
-            "id": "work-project-board",
+            "id": "work-project",
             "locked": true,
-            "title": "Board",
-            "description": "Delegated work grouped by its current lifecycle state.",
+            "title": "Work views",
+            "description": "Delegated work grouped by lifecycle state, listed in a compact table, and arranged on a shared roadmap.",
             "data": {
               "sources": [
                 "work-items"
@@ -7367,7 +7378,11 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "board"
+              "sections": [
+                "board",
+                "tasks",
+                "roadmap"
+              ]
             },
             "layout": "full"
           }
@@ -7383,6 +7398,17 @@
         "route": {
           "navigation-page": "work"
         },
+        "sections": [
+          {
+            "id": "work-tasks-overview",
+            "title": "Delegated work",
+            "description": "The compact task list reuses the shared work-project composition.",
+            "layout": "full",
+            "views": [
+              "work-project-tasks"
+            ]
+          }
+        ],
         "views": [
           {
             "id": "work-project-tasks",
@@ -7413,6 +7439,17 @@
         "route": {
           "navigation-page": "work"
         },
+        "sections": [
+          {
+            "id": "work-roadmap-overview",
+            "title": "Delegated work",
+            "description": "The shared roadmap view remains available directly from its route page.",
+            "layout": "full",
+            "views": [
+              "work-project-roadmap"
+            ]
+          }
+        ],
         "views": [
           {
             "id": "work-project-roadmap",

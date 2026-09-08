@@ -4,6 +4,7 @@ import { renderWorkProjectView } from '../../src/components/work-project-view.js
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
+import { renderWorkViewSection } from '../../src/components/work-view-section.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
 import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
 
@@ -76,6 +77,20 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('.work-roadmap-avatar')?.textContent).toBe('R');
     expect(rendered.querySelector('.work-roadmap-owner')?.textContent).toBe('reviewer');
     expect(rendered.querySelector('.work-roadmap-end')?.getAttribute('style')).toContain('--work-stop: 100.00%');
+  });
+
+  it('renders reusable work sections independently of the work page shell', () => {
+    const rendered = renderWorkViewSection({
+      id: 'work-board',
+      className: 'work-board',
+      landmarkLabel: 'Board',
+      title: 'Board',
+      children: [document.createElement('div')]
+    });
+    expect(rendered.className).toBe('work-board');
+    expect(rendered.id).toBe('work-board');
+    expect(rendered.getAttribute('aria-label')).toBe('Board');
+    expect(rendered.querySelector('.work-view-section-header h3')?.textContent).toBe('Board');
   });
 
   it('derives reusable work route navigation from declarative body selection', () => {
@@ -165,6 +180,23 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBeNull();
     expect(rendered.querySelector('.work-tasks')).not.toBeNull();
     expect(rendered.querySelector('.work-roadmap')).toBeNull();
+  });
+
+  it('renders all work sections when declarative config.sections composes the shared family', () => {
+    const rows = [
+      { 'work-item-id': 'task', name: 'Section-driven task', owner: 'ops', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' }
+    ];
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work',
+      title: 'Work',
+      sources: { 'work-items': { rows } },
+      elementConfig: { sections: ['board', 'tasks', 'roadmap'] }
+    }));
+
+    expect(rendered.querySelector('.work-board')).not.toBeNull();
+    expect(rendered.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered.querySelector('.work-roadmap')).not.toBeNull();
+    expect(rendered.querySelector('[href="#page-work"]')?.getAttribute('aria-current')).toBe('page');
   });
 
   it('presents telemetry states as todo, in progress, needs review, and done', () => {
