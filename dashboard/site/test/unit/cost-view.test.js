@@ -137,21 +137,24 @@ describe('Cost and efficiency dashboard view', () => {
     expect(page?.querySelector('.summary-grid')?.textContent).toContain('Measured AIC9');
     expect(page?.querySelector('.summary-grid')?.textContent).toContain('Measured runs2');
 
-    const filterInput = /** @type {HTMLInputElement | null} */ (
-      rendered.querySelector('[aria-label="Current filters"]')
-    );
-    expect(filterInput).not.toBeNull();
-    if (filterInput) {
-      filterInput.value = 'repository:gh-aw-cao';
-      filterInput.dispatchEvent(new Event('input'));
-    }
+    try {
+      const filterInput = /** @type {HTMLInputElement | null} */ (
+        rendered.querySelector('[aria-label="Current filters"]')
+      );
+      expect(filterInput).not.toBeNull();
+      if (filterInput) {
+        filterInput.value = 'repository:gh-aw-cao';
+        filterInput.dispatchEvent(new Event('input'));
+      }
 
-    await vi.waitFor(() => {
-      const filteredSummary = rendered.querySelector('[data-page-id="cost"] .summary-grid');
-      expect(filteredSummary?.textContent).toContain('Measured AIC5');
-      expect(filteredSummary?.textContent).toContain('Measured runs1');
-    });
-    window.localStorage.clear();
+      await vi.waitFor(() => {
+        const filteredSummary = rendered.querySelector('[data-page-id="cost"] .summary-grid');
+        expect(filteredSummary?.textContent).toContain('Measured AIC5');
+        expect(filteredSummary?.textContent).toContain('Measured runs1');
+      });
+    } finally {
+      window.localStorage.clear();
+    }
   });
 
   it('does not report a telemetry coverage boundary for a complete usage source', async () => {
