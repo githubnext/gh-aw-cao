@@ -4,6 +4,7 @@ description: Systematically exercises experimental and Operations dashboard view
 intent: Keep every editable experimental and Operations dashboard view correct, scalable, and useful across browsers and realistic data-source shapes.
 on:
   bots: ["github-actions[bot]", "cao-githubnext-gh-aw-cao-write[bot]"]
+  schedule: every 30 minutes
   workflow_dispatch:
     inputs:
       target_repo:
