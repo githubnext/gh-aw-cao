@@ -231,4 +231,3 @@ export function renderLayoutSectionChrome(pageId, section, count) {
       : null
   );
 }
-

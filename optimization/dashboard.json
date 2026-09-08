@@ -93,7 +93,7 @@
           },
           {
             "id": "optimization-attainment",
-            "title": "Accuracy and efficiency evidence",
+            "disclosure-label": "Accuracy and efficiency evidence",
             "description": "AI Credit and ambient context evidence matures on each worker's frozen evaluation schedule.",
             "disclosure": "supplemental",
             "data": {

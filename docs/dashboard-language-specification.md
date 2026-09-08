@@ -762,6 +762,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-037:** A presenter **MAY** cluster a dense scatter chart before rendering, provided clustering preserves every color series when the rendered-point budget permits and caps rendered points at a documented implementation limit. Clustering **MUST** run outside the main browser thread when workers are available. While clustering is pending, the chart **MUST** expose visible progress with `status` semantics; each rendered cluster **MUST** expose its observation count in its accessible name.
 - **DLS-VIEW-038:** Views are top-level graphical boxes and **MUST NOT** contain nested views. A validator **MUST** report nested views using `DLS-E014`. SVG content rendered by a `chart` view and locked views are excluded from this graphical nesting rule.
 - **DLS-VIEW-039:** A page **MUST NOT** expose more than one unlocked `table` view initially. Every additional unlocked table **MUST** use `disclosure: supplemental`.
+- **DLS-VIEW-040:** A supplemental `table` view **MUST NOT** declare `title`. It **MAY** declare a non-empty `disclosure-label`; otherwise, its presenter **MUST** derive the disclosure label from the view identifier. The presenter **MUST NOT** repeat that label as a visible heading inside the expanded table. Other views **MUST NOT** declare `disclosure-label`.
 
 ---
 

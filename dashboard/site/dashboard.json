@@ -247,8 +247,8 @@
           },
           {
             "id": "readiness-operational-observations",
+            "disclosure-label": "Worker, orchestrator, and no-op evidence",
             "disclosure": "supplemental",
-            "title": "Worker, orchestrator, and no-op evidence",
             "description": "Failures, authored warnings, and no-op reports are attributed to orchestrator and worker workflows from workflow inventory.",
             "data": {
               "source": "readiness-observations"
@@ -444,7 +444,7 @@
           },
           {
             "id": "github-api-health",
-            "title": "Rate-limit health",
+            "disclosure-label": "Rate-limit health",
             "description": "Current quota state ordered by risk, runway, and remaining capacity. Unknown means the forecast lacks fresh, complete, or sufficient history.",
             "data": {
               "source": "github-api-rate-limits",
@@ -610,7 +610,7 @@
           },
           {
             "id": "github-api-operation-consumption",
-            "title": "Consumption by operation",
+            "disclosure-label": "Consumption by operation",
             "description": "Top operation, credential, and resource groups by peak requests consumed across reliably paired checkpoints.",
             "data": {
               "source": "github-api-rate-limits",
@@ -679,7 +679,7 @@
           },
           {
             "id": "github-api-observations",
-            "title": "Raw quota observations",
+            "disclosure-label": "Raw quota observations",
             "description": "Detailed GitHub quota checkpoints retain calculation inputs and correlation state for diagnostics.",
             "data": {
               "source": "github-api-rate-limits",
@@ -781,7 +781,7 @@
           },
           {
             "id": "github-api-collector-health",
-            "title": "Collector and cache health",
+            "disclosure-label": "Collector and cache health",
             "description": "Top collector checkpoint groups summarize collection outcomes and peak cache state without expanding every retrieval.",
             "data": {
               "source": "github-api-collector-health",
@@ -855,7 +855,7 @@
           },
           {
             "id": "github-api-call-stacks",
-            "title": "Frequent collection call sites",
+            "disclosure-label": "Frequent collection call sites",
             "description": "The most frequent stack frames are grouped across collection executions instead of expanding every captured call stack.",
             "data": {
               "source": "github-api-call-stacks",
@@ -1278,7 +1278,7 @@
           },
           {
             "id": "firewall-policy-rules",
-            "title": "Policy attribution",
+            "disclosure-label": "Policy attribution",
             "description": "Observed policy attribution and rule utilization; unavailable attribution remains explicit.",
             "data": {
               "source": "firewall-observations",
@@ -1352,7 +1352,7 @@
           },
           {
             "id": "security-firewall-domains",
-            "title": "Domain activity",
+            "disclosure-label": "Domain activity",
             "description": "Inspect normalized destinations and policy decisions without equating allowed with safe or denied with failure.",
             "data": {
               "source": "firewall-observations",
@@ -1492,7 +1492,7 @@
           },
           {
             "id": "firewall-evidence-coverage",
-            "title": "Evidence and coverage",
+            "disclosure-label": "Evidence and coverage",
             "description": "Availability, completeness, freshness, requested and observed horizons, artifact provenance, legacy limitations, and last successful collection.",
             "data": {
               "source": "firewall-observations",
@@ -1694,8 +1694,8 @@
           },
           {
             "id": "mcp-server-inventory",
+            "disclosure-label": "Observed MCP servers",
             "disclosure": "supplemental",
-            "title": "Observed MCP servers",
             "description": "Server identity, available version metadata, call volume, failures, and response payload totals remain attributable to workflow runs.",
             "data": {
               "source": "mcp-servers",
@@ -1829,7 +1829,7 @@
           },
           {
             "id": "security-output-ledger",
-            "title": "Output assurance records",
+            "disclosure-label": "Output assurance records",
             "data": {
               "source": "findings"
             },
@@ -2106,7 +2106,7 @@
             {
               "id": "repositories-activity",
               "disclosure": "supplemental",
-              "title": "Activity by repository",
+              "disclosure-label": "Activity by repository",
               "description": "Repository-local execution health and all attributed package or local-workflow outcomes.",
               "data": {
                 "source": "repository-activity"
@@ -2296,8 +2296,8 @@
           },
           {
             "id": "repository-authored-workflows",
+            "disclosure-label": "Agentic workflows",
             "disclosure": "supplemental",
-            "title": "Agentic workflows",
             "description": "Authored workflows with managed-package membership shown as data.",
             "data": {
               "source": "repository-workflows",
@@ -2410,8 +2410,8 @@
           },
           {
             "id": "workflow-report-table",
+            "disclosure-label": "Reports",
             "disclosure": "supplemental",
-            "title": "Reports",
             "data": {
               "source": "workflow-reports",
               "route-field": "workflow-route"
@@ -2511,7 +2511,7 @@
           },
           {
             "id": "workflow-runs-table",
-            "title": "Runs",
+            "disclosure-label": "Runs",
             "description": "Answers which recent workflow runs succeeded, failed, or remain in progress.",
             "data": {
               "source": "workflow-runs",
@@ -2556,7 +2556,7 @@
           },
           {
             "id": "workflow-run-details",
-            "title": "Run details",
+            "disclosure-label": "Run details",
             "description": "Supplemental metadata for deeper evidence review after the run-status table answers the current state.",
             "disclosure": "supplemental",
             "data": {
@@ -2954,8 +2954,8 @@
           },
           {
             "id": "package-workflow-table",
+            "disclosure-label": "Orchestrator and workers",
             "disclosure": "supplemental",
-            "title": "Orchestrator and workers",
             "data": {
               "source": "packaged-workflows",
               "route-field": "package"
@@ -3102,7 +3102,7 @@
           },
           {
             "id": "package-failed-dispatch-table",
-            "title": "Failed dispatches",
+            "disclosure-label": "Failed dispatches",
             "description": "Failure reasons first. Open a reason for the GitHub Actions run, or copy a debug prompt with retained context.",
             "data": {
               "source": "dispatches",
@@ -3175,8 +3175,8 @@
           },
           {
             "id": "package-dispatch-table",
+            "disclosure-label": "All dispatches",
             "disclosure": "supplemental",
-            "title": "All dispatches",
             "description": "Workflow dispatch runs attributed to this package, ordered newest first.",
             "data": {
               "source": "dispatches",
@@ -3286,8 +3286,8 @@
           },
           {
             "id": "package-report-table",
+            "disclosure-label": "Reports",
             "disclosure": "supplemental",
-            "title": "Reports",
             "data": {
               "source": "package-reports",
               "route-field": "package"
@@ -3486,7 +3486,7 @@
             {
               "id": "standalone-workflows",
               "disclosure": "supplemental",
-              "title": "Repository-owned workflows",
+              "disclosure-label": "Repository-owned workflows",
               "description": "Standalone workflows run in their owning repositories and are not part of a central operation package.",
               "data": {
                 "source": "standalone-workflows",
@@ -3730,7 +3730,7 @@
           },
           {
             "id": "runtime-execution-episodes",
-            "title": "Observed root episodes",
+            "disclosure-label": "Observed root episodes",
             "description": "Dispatch manifests are not retained, so attribution is partial by construction.",
             "data": {
               "source": "runtime-episodes"
@@ -3791,8 +3791,8 @@
           },
           {
             "id": "runtime-episode-attribution-gap",
+            "disclosure-label": "Worker attribution gaps",
             "disclosure": "supplemental",
-            "title": "Worker attribution gaps",
             "description": "Worker runs without a retained safe output carrying an exact root correlation ID remain unattributed.",
             "data": {
               "source": "runtime-attribution-gaps"
@@ -4200,8 +4200,8 @@
           },
           {
             "id": "safe-output-diagnostics",
+            "disclosure-label": "Safe-output diagnostics",
             "disclosure": "supplemental",
-            "title": "Safe-output diagnostics",
             "description": "Run-level evidence for delivered outputs and explicit noop, missing_data, missing_tool, or report_incomplete signals.",
             "data": {
               "source": "safe-output-performance",
@@ -4400,7 +4400,7 @@
           },
           {
             "id": "detection-attention",
-            "title": "Requires attention",
+            "disclosure-label": "Requires attention",
             "description": "Threats, detector failures, degraded inspections, skipped detection, and unavailable evidence are ordered by operational urgency.",
             "data": {
               "source": "detection-observations",
@@ -4602,7 +4602,7 @@
           },
           {
             "id": "detection-job-ledger",
-            "title": "Detection job diagnostics",
+            "disclosure-label": "Detection job diagnostics",
             "description": "Recent threat-detection jobs provide status, conclusion, duration, runner, workflow, and run evidence for investigation.",
             "data": {
               "source": "job-performance",
@@ -4794,7 +4794,7 @@
           },
           {
             "id": "package-dispatch-state",
-            "title": "Package dispatching state",
+            "disclosure-label": "Package dispatching state",
             "description": "Authoritative workflow_dispatch runs grouped by package. Worker counts, AI Credits, agents, and models reflect retained run and usage evidence; unavailable evidence is not inferred.",
             "data": {
               "source": "package-dispatch-state"
@@ -4856,7 +4856,7 @@
           },
           {
             "id": "package-worker-dispatches",
-            "title": "Workflow dispatch events",
+            "disclosure-label": "Workflow dispatch events",
             "description": "Runs whose authoritative GitHub Actions trigger is workflow_dispatch, ordered newest first.",
             "data": {
               "source": "dispatches"
@@ -5530,7 +5530,7 @@
             {
               "id": "engine-usage-table",
               "disclosure": "supplemental",
-              "title": "Agentic engines, versions, and totals",
+              "disclosure-label": "Agentic engines, versions, and totals",
               "data": {
                 "source": "engine-usage-summary",
                 "order-by": [
@@ -5592,7 +5592,7 @@
             },
             {
               "id": "engines-models-run-aggregates",
-              "title": "Runs by agent and model",
+              "disclosure-label": "Runs by agent and model",
               "disclosure": "supplemental",
               "data": {
                 "source": "run-aggregate-summary",
@@ -5776,7 +5776,7 @@
           },
           {
             "id": "durable-output-ledger",
-            "title": "Retained outputs",
+            "disclosure-label": "Retained outputs",
             "data": {
               "source": "outcomes"
             },
@@ -5832,8 +5832,8 @@
           },
           {
             "id": "operational-value-by-workflow",
+            "disclosure-label": "Comparable observations",
             "disclosure": "supplemental",
-            "title": "Comparable observations",
             "data": {
               "source": "value-workflows"
             },
@@ -5883,8 +5883,8 @@
           },
           {
             "id": "operational-value-ledger",
+            "disclosure-label": "Collected observations",
             "disclosure": "supplemental",
-            "title": "Collected observations",
             "data": {
               "source": "grader-observations"
             },
@@ -6162,7 +6162,7 @@
           },
           {
             "id": "data-health-files",
-            "title": "Loaded files",
+            "disclosure-label": "Loaded files",
             "disclosure": "supplemental",
             "data": {
               "source": "data-health-files"
@@ -6219,8 +6219,8 @@
           },
           {
             "id": "data-health-domains",
+            "disclosure-label": "Dashboard domain confidence",
             "disclosure": "supplemental",
-            "title": "Dashboard domain confidence",
             "data": {
               "source": "data-health-domains"
             },
@@ -6256,8 +6256,8 @@
           },
           {
             "id": "data-health-coverage",
+            "disclosure-label": "Scope and evidence coverage",
             "disclosure": "supplemental",
-            "title": "Scope and evidence coverage",
             "data": {
               "source": "data-health-coverage"
             },
@@ -6308,7 +6308,7 @@
           },
           {
             "id": "data-health-collections",
-            "title": "Collector state",
+            "disclosure-label": "Collector state",
             "disclosure": "supplemental",
             "data": {
               "source": "data-health-collections"
@@ -6360,7 +6360,7 @@
           },
           {
             "id": "data-health-compatibility",
-            "title": "Producer contracts",
+            "disclosure-label": "Producer contracts",
             "disclosure": "supplemental",
             "data": {
               "source": "data-health-compatibility"
@@ -6407,7 +6407,7 @@
           },
           {
             "id": "data-health-reconciliation",
-            "title": "Cross-source reconciliation",
+            "disclosure-label": "Cross-source reconciliation",
             "disclosure": "supplemental",
             "data": {
               "source": "data-health-reconciliation"
@@ -6459,8 +6459,8 @@
           },
           {
             "id": "data-health-sources",
+            "disclosure-label": "Cached source shape",
             "disclosure": "supplemental",
-            "title": "Cached source shape",
             "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
             "data": {
               "source": "data-health-sources"
@@ -6525,8 +6525,8 @@
           },
           {
             "id": "data-health-fields",
+            "disclosure-label": "Field shape",
             "disclosure": "supplemental",
-            "title": "Field shape",
             "description": "Observed field types and population across every cached source.",
             "data": {
               "source": "data-health-fields"
@@ -6582,7 +6582,7 @@
           },
           {
             "id": "data-health-schema",
-            "title": "Data shape preview",
+            "disclosure-label": "Data shape preview",
             "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
             "disclosure": "supplemental",
             "data": {
@@ -6609,7 +6609,7 @@
           },
           {
             "id": "data-health-provenance",
-            "title": "Collection provenance",
+            "disclosure-label": "Collection provenance",
             "disclosure": "supplemental",
             "data": {
               "source": "data-health-collections"
@@ -6746,8 +6746,8 @@
           },
           {
             "id": "coverage-diagnostics",
+            "disclosure-label": "Coverage diagnostics",
             "disclosure": "supplemental",
-            "title": "Coverage diagnostics",
             "description": "Collection gaps consume the same evidence used by Data Health confidence.",
             "data": {
               "source": "data-health-collections"
@@ -6773,7 +6773,7 @@
           },
           {
             "id": "coverage-technical-details",
-            "title": "Technical collection details",
+            "disclosure-label": "Technical collection details",
             "description": "Raw collection diagnostics for operators who need endpoint, retry, and snapshot context.",
             "disclosure": "supplemental",
             "data": {
@@ -6853,8 +6853,8 @@
           },
           {
             "id": "workflow-updates",
+            "disclosure-label": "Workflow update inventory",
             "disclosure": "supplemental",
-            "title": "Workflow update inventory",
             "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
             "data": {
               "source": "workflows"
@@ -6996,8 +6996,8 @@
           },
           {
             "id": "admission-decision-ledger",
+            "disclosure-label": "Admission evidence",
             "disclosure": "supplemental",
-            "title": "Admission evidence",
             "description": "Latest structured pre-activation records preserve the decision, failing gate, reason, role, and run provenance.",
             "data": {
               "source": "admissions",
@@ -7127,8 +7127,8 @@
           },
           {
             "id": "preview-issue-ledger",
+            "disclosure-label": "Issues by worker and package",
             "disclosure": "supplemental",
-            "title": "Issues by worker and package",
             "description": "Open an issue to inspect its full report and workflow provenance.",
             "data": {
               "source": "outcomes",

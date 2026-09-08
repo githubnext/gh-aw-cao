@@ -283,8 +283,8 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'data-health');
-    const sourceView = [...(page?.querySelectorAll('.custom-view') ?? [])]
-      .find((view) => view.querySelector('h3')?.textContent === 'Cached source shape');
+    const sourceView = [...(page?.querySelectorAll('details[data-disclosure="supplemental"]') ?? [])]
+      .find((view) => view.querySelector('summary')?.textContent?.includes('Cached source shape'));
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
     expect(page?.querySelector('[data-view-id="data-health-summary"]')?.previousElementSibling).toBeNull();
     expect(page?.querySelector('.layout-section')).toBeNull();
@@ -293,6 +293,8 @@ describe('presenter built-in and custom pages', () => {
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('unavailable');
+    expect(sourceView?.querySelector('.page-section h3')).toBeNull();
+    expect(sourceView?.querySelector('.page-section')?.getAttribute('aria-label')).toBe('Cached source shape');
     expect(sourceView?.querySelector('tbody')?.textContent).not.toContain('overview');
     expect(page?.textContent).toContain('Field shape');
     rendered.remove();
@@ -539,11 +541,11 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
     expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('dependabot.yml');
     expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('release-train-updater.yml');
-    expect(page?.querySelector('#workflows-repository-owned-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('ci.yml');
+    expect(page?.querySelector('section[aria-label="Repository-owned workflows"]')?.textContent).toContain('ci.yml');
     expect(page?.querySelector('#workflows-workflow-aic-layout-heading')?.textContent).toBe('AIC');
     expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
     const packagedRows = [...(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.querySelectorAll('tbody tr') ?? [])];
-    const standaloneRows = [...(page?.querySelector('#workflows-repository-owned-workflows-heading')?.parentElement?.parentElement?.querySelectorAll('tbody tr') ?? [])];
+    const standaloneRows = [...(page?.querySelector('section[aria-label="Repository-owned workflows"]')?.querySelectorAll('tbody tr') ?? [])];
     expect(packagedRows.find((row) => row.textContent?.includes('dependabot.yml'))?.lastElementChild?.textContent).toBe('30');
     expect(standaloneRows.find((row) => row.textContent?.includes('ci.yml'))?.lastElementChild?.textContent).toBe('5');
     expect(page?.querySelector('.mode-review')).not.toBeNull();
@@ -2345,7 +2347,7 @@ describe('presenter built-in and custom pages', () => {
       },
       {
         id: 'repositories-activity',
-        title: 'Activity by repository',
+        'disclosure-label': 'Activity by repository',
         description: 'Repository-local execution health and all attributed package or local-workflow outcomes.',
         data: { source: 'repository-activity' },
         mark: 'table',
@@ -2451,7 +2453,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
-    expect(headings).toEqual(['Run health trend', 'Runs Runs Source']);
+    expect(headings).toEqual(['Run health trend']);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });

@@ -97,7 +97,7 @@
           },
           {
             "id": "eu-cra-compliance-attainment",
-            "title": "Human-reviewed attainment evidence",
+            "disclosure-label": "Human-reviewed attainment evidence",
             "description": "Each domain preserves its stable target-commit opportunity, maturity state, and repository evidence link.",
             "disclosure": "supplemental",
             "data": {
