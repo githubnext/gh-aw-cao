@@ -408,6 +408,17 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
         ? h('div', { className: 'home-story-rail' }, ...queuedStories.slice(0, 4).map((story) => renderCatchUpStory(story, processStory)))
         : h('p', { className: 'home-catchup-quiet' }, size > 0
           ? "You're all caught up."
+          : 'No meaningful state changes were observed in this interval.')),
+    h('section', { className: 'home-catchup-mobile', 'aria-labelledby': 'home-catchup-mobile-title' },
+      h('header', null,
+        h('h3', { id: 'home-catchup-mobile-title' }, 'Catch Up'),
+        h('span', { 'aria-live': 'polite' }, size > 0
+          ? `${Math.min(size, size - queuedStories.length + 1)} of ${size}`
+          : 'No highlights')),
+      queuedStories.length > 0
+        ? renderMobileCatchUpStory(queuedStories[0], processStory)
+        : h('p', { className: 'home-catchup-quiet' }, size > 0
+          ? "You're all caught up."
           : 'No meaningful state changes were observed in this interval.')));
 }
 
@@ -598,6 +609,77 @@ function renderCatchUpStory(story, processStory) {
     h('span', { className: 'home-story-actions' },
       action('Save for later', 'clock', 'later'),
       action('Mark as done', 'check-circle', 'done')));
+}
+
+/**
+ * @param {{ id: string, classification: string, sourceType: string, title: string, detail: string, repository: string, deepLink: string }} story
+ * @param {(storyId: string, bucket: 'done' | 'later') => void} processStory
+ */
+function renderMobileCatchUpStory(story, processStory) {
+  /** @param {string} label @param {string} icon @param {'done' | 'later'} bucket */
+  const action = (label, icon, bucket) => h('button', {
+    type: 'button',
+    className: `home-catchup-mobile-action home-catchup-mobile-${bucket}`,
+    'aria-label': `${label} ${story.title}`,
+    onClick: () => processStory(story.id, bucket)
+  }, octicon(icon), h('span', null, label));
+  const card = h('article', { className: 'home-catchup-mobile-card' },
+    h(story.deepLink ? 'a' : 'div', {
+      className: 'home-catchup-mobile-link',
+      ...(story.deepLink ? { href: story.deepLink } : {})
+    },
+    h('span', { className: 'home-catchup-mobile-meta' },
+      h('span', { className: 'home-catchup-classification' }, catchUpClassificationLabel(story.classification)),
+      renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType }))),
+    h('strong', null, story.title),
+    h('p', null, story.detail),
+    story.repository ? h('small', null, story.repository) : null),
+    h('span', { className: 'home-catchup-mobile-hint', 'aria-hidden': 'true' }, 'Swipe right for Done · left for Later'),
+    h('span', { className: 'home-catchup-mobile-actions' },
+      action('Later', 'clock', 'later'),
+      action('Done', 'check-circle', 'done')));
+  enableCatchUpSwipe(card, story.id, processStory);
+  return card;
+}
+
+/** @param {HTMLElement} card @param {string} storyId @param {(storyId: string, bucket: 'done' | 'later') => void} processStory */
+function enableCatchUpSwipe(card, storyId, processStory) {
+  /** @type {{ pointerId: number | undefined, x: number, y: number } | null} */
+  let start = null;
+  let suppressClick = false;
+  card.addEventListener('pointerdown', (event) => {
+    const pointer = /** @type {PointerEvent} */ (event);
+    if (pointer.isPrimary === false || pointer.button !== 0) return;
+    start = { pointerId: pointer.pointerId, x: pointer.clientX, y: pointer.clientY };
+    if (pointer.pointerId !== undefined) card.setPointerCapture?.(pointer.pointerId);
+  });
+  card.addEventListener('pointerup', (event) => {
+    const pointer = /** @type {PointerEvent} */ (event);
+    if (!start || (start.pointerId !== undefined && pointer.pointerId !== start.pointerId)) return;
+    const horizontal = pointer.clientX - start.x;
+    const vertical = pointer.clientY - start.y;
+    start = null;
+    if (Math.abs(horizontal) < 48 || Math.abs(horizontal) <= Math.abs(vertical)) return;
+    pointer.preventDefault();
+    suppressClick = true;
+    processStory(storyId, horizontal > 0 ? 'done' : 'later');
+  });
+  card.addEventListener('pointercancel', () => {
+    start = null;
+  });
+  card.addEventListener('click', (event) => {
+    if (!suppressClick) return;
+    suppressClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+}
+
+/** @param {string} classification */
+function catchUpClassificationLabel(classification) {
+  if (classification === 'needs_you') return 'Needs you';
+  if (classification === 'fyi') return 'FYI';
+  return 'Update';
 }
 
 /** @param {Record<string, unknown>} row */
