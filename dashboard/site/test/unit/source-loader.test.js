@@ -24,7 +24,11 @@ describe('dashboard source loader', () => {
       outcomes: { source: 'outcomes', rows: [{ id: 'outcomes' }] }
     });
     expect(maximumActive).toBe(1);
-    expect(fetchSource).toHaveBeenCalledTimes(3);
+    expect(fetchSource.mock.calls).toEqual([
+      [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources/runs.json'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources/outcomes.json'), { cache: 'no-store' }]
+    ]);
   });
 
   it('rejects split sources from a different artifact generation', async () => {
@@ -50,6 +54,10 @@ describe('dashboard source loader', () => {
     await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).resolves.toEqual({
       workflows: { source: 'workflows', rows: [] }
     });
+    expect(fetchSource.mock.calls).toEqual([
+      [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
+      ['https://example.test/cao/sources.json', { cache: 'no-store' }]
+    ]);
   });
 
   it('does not mask a non-404 manifest failure by falling back to the monolith', async () => {

@@ -1317,6 +1317,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
+  /** @param {HTMLElement | undefined} page */
+  const syncFullViewMode = (page) => {
+    const fullView = page?.querySelector('.custom-view[data-view-layout="full-view"]');
+    root.classList.toggle('dashboard-full-view', Boolean(fullView));
+    if (!fullView) root.classList.remove('dashboard-full-view-scrolled');
+  };
   const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
     label: link?.textContent ?? '',
     href: link instanceof HTMLAnchorElement ? link.getAttribute('href') ?? '' : '',
@@ -1485,6 +1491,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           pages[pageIndex] = renderedPage;
           enableLazyViews(renderedPage);
           placeDashboardHorizon(renderedPage);
+          syncFullViewMode(renderedPage);
           if (deferPopulation) {
             dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
             restoreScroll(renderedPage);
@@ -1531,6 +1538,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     updateNavigationLinks(links, pageId);
     const page = pages.find((candidate) => candidate.dataset.pageId === pageId);
     placeDashboardHorizon(page);
+    syncFullViewMode(page);
     const routeNavigationPage = page?.dataset.routeNavigationPage;
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
       const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage);
@@ -1579,6 +1587,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   });
 
   const defaultView = root.ownerDocument.defaultView;
+  root.addEventListener('scroll', (event) => {
+    if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
+    const scroll = event.target.closest('.custom-view[data-view-layout="full-view"] .table-scroll');
+    if (scroll === event.target) {
+      root.classList.toggle('dashboard-full-view-scrolled', event.target.scrollTop > 0);
+    }
+  }, true);
   const onHashChange = () => {
     if (!root.isConnected) {
       defaultView?.removeEventListener('hashchange', onHashChange);

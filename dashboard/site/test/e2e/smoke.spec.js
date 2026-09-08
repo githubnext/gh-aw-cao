@@ -1439,7 +1439,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
 
 });
 
-test('built-in repositories page fills the viewport with a lazy interactive table', async ({ page }) => {
+test('JSON full-view mode fills the viewport and hides chrome while scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 
@@ -1461,34 +1461,44 @@ test('built-in repositories page fills the viewport with a lazy interactive tabl
       };
       const emptySource = (source) => ({ source, rows: [], metadata });
       const sources = {
-        repositories: {
-          source: 'repositories',
+        inventory: {
+          source: 'inventory',
           rows: Array.from({ length: 60 }, (_, index) => ({
             organization: 'githubnext',
             repository: \`repository-\${index + 1}\`
           })),
           metadata
         },
-        runs: emptySource('runs'),
-        usage: emptySource('usage'),
-        workflows: emptySource('workflows'),
-        outcomes: emptySource('outcomes'),
-        'operational-values': emptySource('operational-values')
+        runs: emptySource('runs')
       };
       const dashboardDocument = {
         languageVersion: '0.1.0',
         dashboard: {
-          id: 'repositories-layout',
-          title: 'Repositories Layout',
-          pages: [
-            {
-              id: 'repositories',
-              kind: 'built-in',
-              page: 'repositories',
-              title: 'Repositories'
-            }
-          ],
-          navigation: [{ label: 'Explore', pages: ['repositories'] }]
+          id: 'full-view-layout',
+          title: 'Full View Layout',
+          pages: [{
+            id: 'inventory',
+            kind: 'custom',
+            title: 'Inventory',
+            description: 'Inventory subtitle',
+            views: [{
+              id: 'inventory-list',
+              title: 'Inventory list',
+              description: 'Inventory view subtitle',
+              data: { source: 'inventory' },
+              mark: 'table',
+              controls: 'interactive',
+              'lazy-list': true,
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'organization', type: 'nominal' },
+                  { field: 'repository', type: 'nominal' }
+                ]
+              }
+            }]
+          }],
+          navigation: [{ label: 'Explore', pages: ['inventory'] }]
         }
       };
 
@@ -1497,12 +1507,24 @@ test('built-in repositories page fills the viewport with a lazy interactive tabl
   `);
 
   const view = page.locator('[data-view-layout="full-view"]');
+  const lazyList = view.locator('[data-lazy-list]');
   await expect(view).toHaveCount(1);
-  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.getByRole('searchbox', { name: 'Filter Repositories' })).toBeVisible();
-  const box = await view.boundingBox();
-  expect(box?.height).toBeGreaterThanOrEqual(700);
+  await expect(lazyList).toHaveCount(1);
+  await expect(view.getByRole('searchbox', { name: 'Filter Inventory list' })).toBeVisible();
+  await expect(page.locator('.overview-header .lede')).toBeHidden();
+  await expect(view.getByRole('heading', { name: 'Inventory list' })).toBeHidden();
+  expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+
+  await view.locator('.table-scroll').evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.top-nav')).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeHidden();
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
@@ -1893,25 +1915,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   `);
 
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
-  await expect(page.locator('.package-utilization-card')).toHaveCount(2);
-  await expect(page.locator('[data-package-id="aw-doctor"]')).toContainText('9.6%');
-  await expect(page.locator('[data-package-id="aw-doctor"] .octicon-gear')).toBeVisible();
-  await expect(page.locator('[data-package-id="ambient-context"]')).toContainText('No AIC usage was reported');
-  await expect(page.getByRole('heading', { name: 'All output by package', level: 3 })).toBeVisible();
-  await expect(page.locator('.package-trend-panel + .package-summary')).toBeVisible();
-  const awDoctorSummary = page.locator('.package-summary-table tbody tr').filter({ hasText: 'AW Doctor' });
+  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
+  const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
+  await expect(packageRows).toHaveCount(2);
+  const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
-  await expect(awDoctorSummary.locator('.octicon-gear')).toBeVisible();
-  await expect(awDoctorSummary.locator('td')).toHaveText(['2', '1', '1', '1', '1', '23.9', 'Aug 29, 2026, 10:05 AM']);
-  await expect(page.getByRole('heading', { name: 'All runs over time', level: 3 })).toBeVisible();
-  await expect(page.locator('.package-chart-point')).toHaveCount(30);
-  await expect(page.locator('[data-package-id="ambient-context"] a')).toHaveAttribute('href', '#page-package-insights?package=ambient-context');
-
-  await page.locator('[data-package-id="ambient-context"] a').click();
-  await expect(page).toHaveURL(/#page-package-insights\?package=ambient-context$/);
-  await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
-  await expect(page.getByText('No workflow observations yet')).toBeVisible();
-
+  await expect(awDoctorSummary).toContainText('23.9');
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });

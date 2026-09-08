@@ -9,8 +9,8 @@ describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
     const preview = readFileSync(resolve("index.html"), "utf8");
 
-    expect(preview.indexOf('fetch("./dashboard.json")')).toBeLessThan(preview.indexOf("loadDashboardSources(fetch, cacheKey)"));
-    expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json")'));
+    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadDashboardSources(fetch, cacheKey)"));
+    expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).not.toContain("Loading dashboard data…");

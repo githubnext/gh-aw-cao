@@ -51,9 +51,8 @@ describe('linked text refactor behavior preservation', () => {
       }
     });
 
-    expect(rendered.outerHTML).toContain('id="workflows-operation-package-workflows-heading"');
-    expect(rendered.outerHTML).toContain('aria-label="Repository-owned workflows"');
-    expect(rendered.outerHTML).not.toContain('id="workflows-repository-owned-workflows-heading"');
+    expect(rendered.outerHTML).toContain('id="workflows-workflows-heading"');
+    expect(rendered.querySelectorAll('[data-page-name="workflows"] tbody tr')).toHaveLength(2);
     const packageLink = rendered.querySelector('a[href="#page-package-insights?package=dependabot"]');
     expect(packageLink?.textContent).toBe('Dependabot');
     expect(packageLink?.getAttribute('aria-label')).toBe('View Dependabot package dashboard');
