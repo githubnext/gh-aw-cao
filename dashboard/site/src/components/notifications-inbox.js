@@ -6,6 +6,7 @@ import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
+import { renderSearchInput } from './ui-primitives.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -246,10 +247,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
   });
   const list = lazyList.element;
   const count = h('span', { className: 'notifications-result-count', 'aria-live': 'polite' });
-  const search = /** @type {HTMLInputElement} */ (h('input', {
-    type: 'search', value: 'is:unread', placeholder: 'Filter notifications',
-    'aria-label': 'Filter notifications', spellcheck: 'false'
-  }));
+  const search = renderSearchInput('Filter notifications', 'is:unread');
   const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort notifications' },
     h('option', { value: 'newest' }, 'Newest to oldest'),
     h('option', { value: 'oldest' }, 'Oldest to newest'),

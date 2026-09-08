@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -388,5 +388,21 @@ describe('ui primitives', () => {
       (left, right) => left.localeCompare(right));
 
     expect([...select.options].map((option) => option.value)).toEqual(['', 'alpha', 'bravo', 'Bravo']);
+  });
+
+  it('renders a search input with a shared placeholder and aria-label', () => {
+    const input = renderSearchInput('Filter work items');
+
+    expect(input.type).toBe('search');
+    expect(input.placeholder).toBe('Filter work items');
+    expect(input.getAttribute('aria-label')).toBe('Filter work items');
+    expect(input.getAttribute('spellcheck')).toBe('false');
+    expect(input.value).toBe('');
+  });
+
+  it('renders a search input with an initial value', () => {
+    const input = renderSearchInput('Filter notifications', 'is:unread');
+
+    expect(input.value).toBe('is:unread');
   });
 });
