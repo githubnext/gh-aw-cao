@@ -201,7 +201,12 @@ describe("live Dashboard Language sources", () => {
       const sourceManifest = JSON.parse(readFileSync(join(temporaryDirectory, "sources", "manifest.json"), "utf8"));
       const splitRuns = JSON.parse(readFileSync(join(temporaryDirectory, "sources", "runs.json"), "utf8"));
 
-      expect(sourceManifest).toEqual({ version: 1, sources: Object.keys(sources) });
+      expect(sourceManifest).toEqual({
+        version: 1,
+        generation: expect.stringMatching(/^[a-f0-9]{64}$/),
+        sources: Object.keys(sources),
+      });
+      expect(splitRuns.metadata["artifact-generation"]).toBe(sourceManifest.generation);
       expect(splitRuns.rows).toHaveLength(sources.runs.rows.length);
       expect(splitRuns.rows.every((/** @type {Record<string, unknown>} */ row) => !("logs-payload" in row))).toBe(true);
 

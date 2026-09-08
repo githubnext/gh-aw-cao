@@ -17,9 +17,10 @@ export async function loadDashboardSources(fetchSource, sourcesUrl) {
     return response.json();
   }
 
-  const manifest = /** @type {{ version?: unknown, sources?: unknown }} */ (await manifestResponse.json());
+  const manifest = /** @type {{ version?: unknown, generation?: unknown, sources?: unknown }} */ (await manifestResponse.json());
   if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.sources)
-      || manifest.sources.some((/** @type {unknown} */ name) => typeof name !== 'string' || !/^[a-z0-9-]+$/.test(name))) {
+      || manifest.sources.some((/** @type {unknown} */ name) => typeof name !== 'string' || !/^[a-z0-9-]+$/.test(name))
+      || (manifest.generation !== undefined && (typeof manifest.generation !== 'string' || !/^[a-f0-9]{64}$/.test(manifest.generation)))) {
     throw new Error('Dashboard source manifest is invalid.');
   }
 
@@ -28,7 +29,11 @@ export async function loadDashboardSources(fetchSource, sourcesUrl) {
   for (const name of manifest.sources) {
     const response = await fetchSource(new URL(`${name}.json`, manifestUrl));
     if (!response.ok) throw new Error(`Unable to load dashboard source ${name}: ${response.status}`);
-    sources[name] = await response.json();
+    const source = await response.json();
+    if (manifest.generation && source?.metadata?.['artifact-generation'] !== manifest.generation) {
+      throw new Error(`Dashboard source ${name} does not match the source manifest generation.`);
+    }
+    sources[name] = source;
   }
   return sources;
 }
