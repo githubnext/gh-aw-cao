@@ -18,6 +18,17 @@ export function titleCase(value) {
 }
 
 /**
+ * Coerces a value to a trimmed string, returning an empty string for
+ * non-string values. Shared by view components that read loosely-typed
+ * source rows and need a defensive plain-text accessor.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function textValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
  * Formats a count for UI text.
  * @param {unknown} value
  * @returns {string}
