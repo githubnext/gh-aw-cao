@@ -4137,68 +4137,6 @@
             }
           },
           {
-            "id": "safe-output-trend",
-            "title": "Safe-output trend",
-            "description": "Daily output and diagnostic volume highlights changes in delivery, no-op, missing-data, missing-tool, and incomplete-report behavior.",
-            "data": {
-              "source": "safe-output-performance",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "safe-output-count",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Safe outputs"
-              },
-              "color": {
-                "field": "safe-output-label",
-                "type": "nominal",
-                "title": "Disposition"
-              }
-            }
-          },
-          {
-            "id": "safe-output-workflow-performance",
-            "title": "Safe outputs by workflow",
-            "description": "Mean items per observed workflow run, split by output or diagnostic disposition.",
-            "data": {
-              "source": "safe-output-performance"
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "workflow",
-                "type": "nominal",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "safe-output-count",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean items per run"
-              },
-              "color": {
-                "field": "safe-output-label",
-                "type": "nominal",
-                "title": "Disposition"
-              }
-            }
-          },
-          {
             "id": "safe-output-diagnostics",
             "disclosure-label": "Safe-output diagnostics",
             "disclosure": "supplemental",
@@ -6219,7 +6157,7 @@
           },
           {
             "id": "data-health-domains",
-            "disclosure-label": "Dashboard domain confidence",
+            "title": "Dashboard domain confidence",
             "disclosure": "supplemental",
             "data": {
               "sources": [
