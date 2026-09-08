@@ -7,14 +7,15 @@ describe('dashboard source loader', () => {
     let maximumActive = 0;
     const fetchSource = vi.fn(async (input) => {
       const url = String(input);
+      const pathname = new URL(url).pathname;
       active += 1;
       maximumActive = Math.max(maximumActive, active);
       await Promise.resolve();
       active -= 1;
-      if (url.endsWith('/sources/manifest.json')) {
+      if (pathname.endsWith('/sources/manifest.json')) {
         return new Response(JSON.stringify({ version: 1, sources: ['runs', 'outcomes'] }));
       }
-      const name = url.endsWith('/runs.json') ? 'runs' : 'outcomes';
+      const name = pathname.endsWith('/runs.json') ? 'runs' : 'outcomes';
       return new Response(JSON.stringify({ source: name, rows: [{ id: name }] }));
     });
 
@@ -26,8 +27,23 @@ describe('dashboard source loader', () => {
     expect(fetchSource).toHaveBeenCalledTimes(3);
   });
 
+  it('rejects split sources from a different artifact generation', async () => {
+    const generation = 'a'.repeat(64);
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
+      ? new Response(JSON.stringify({ version: 1, generation, sources: ['runs'] }))
+      : new Response(JSON.stringify({
+        source: 'runs',
+        rows: [],
+        metadata: { 'artifact-generation': 'b'.repeat(64) }
+      })));
+
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).rejects.toThrow(
+      'Dashboard source runs does not match the source manifest generation.'
+    );
+  });
+
   it('falls back to the monolith only when no split manifest exists', async () => {
-    const fetchSource = vi.fn(async (input) => String(input).endsWith('/sources/manifest.json')
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
       ? new Response('', { status: 404 })
       : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
 
@@ -37,7 +53,7 @@ describe('dashboard source loader', () => {
   });
 
   it('does not mask a non-404 manifest failure by falling back to the monolith', async () => {
-    const fetchSource = vi.fn(async (input) => String(input).endsWith('/sources/manifest.json')
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
       ? new Response('', { status: 503 })
       : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
 
@@ -48,7 +64,7 @@ describe('dashboard source loader', () => {
   });
 
   it('does not fall back to the monolith when a declared source fails', async () => {
-    const fetchSource = vi.fn(async (input) => String(input).endsWith('/sources/manifest.json')
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
       ? new Response(JSON.stringify({ version: 1, sources: ['runs'] }))
       : new Response('', { status: 503 }));
 

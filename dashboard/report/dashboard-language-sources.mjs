@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -2770,16 +2771,23 @@ async function readJsonLines(filePath) {
 export async function writeDashboardLanguageSources(outputPath, sources) {
   const outputDirectory = path.dirname(outputPath);
   const splitDirectory = path.join(outputDirectory, "sources");
+  const serializedSources = `${JSON.stringify(sources, null, 2)}\n`;
+  const generation = createHash("sha256").update(serializedSources).digest("hex");
   await mkdir(splitDirectory, { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(sources, null, 2)}\n`);
+  await writeFile(outputPath, serializedSources);
   for (const [name, logicalSource] of Object.entries(sources)) {
-    const browserSource = name === "runs"
+    const redactedSource = name === "runs"
       ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
       : logicalSource;
+    const browserSource = {
+      ...redactedSource,
+      metadata: { ...redactedSource.metadata, "artifact-generation": generation },
+    };
     await writeFile(path.join(splitDirectory, `${name}.json`), JSON.stringify(browserSource));
   }
   await writeFile(path.join(splitDirectory, "manifest.json"), `${JSON.stringify({
     version: 1,
+    generation,
     sources: Object.keys(sources),
   }, null, 2)}\n`);
 }
