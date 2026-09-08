@@ -397,6 +397,12 @@ describe('catch up queue', () => {
     expect(refreshed.querySelectorAll('.notification-item')).toHaveLength(1);
     expect(refreshed.querySelector('.notification-content')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/repository/actions/runs/42');
+
+    /** @type {HTMLButtonElement} */ (refreshed.querySelector('.notifications-main [aria-label="Mark as done"]')).click();
+    expect(refreshed.querySelectorAll('.notification-item')).toHaveLength(0);
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.later).toEqual([]);
+    expect(stored.done).toHaveLength(2);
   });
 
   it('keeps deferred operational stories accessible from Notifications', () => {

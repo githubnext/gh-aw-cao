@@ -74,6 +74,18 @@ function writeCatchUpQueueState(state) {
   }
 }
 
+/** @param {Iterable<string>} ids */
+function markCatchUpStoriesDone(ids) {
+  const state = readCatchUpQueueState();
+  const done = new Set(ids);
+  for (const id of done) {
+    state.done.add(id);
+    state.later.delete(id);
+  }
+  state.queue = state.queue.filter((id) => !done.has(id));
+  writeCatchUpQueueState(state);
+}
+
 /** @param {Record<string, unknown>} row */
 function rowId(row) {
   return String(row.id || row['attention-signal-id'] || `${row.scope}:${row.objective}`);
@@ -301,6 +313,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
   });
   bulkDone.addEventListener('click', () => {
     for (const id of selected) state.done.add(id);
+    markCatchUpStoriesDone(selected);
     writeState(state);
     render();
   });
@@ -827,6 +840,7 @@ function renderNotification(row, state, selected, bulkDone, render) {
   const deepLink = typeof row.deepLink === 'string' && row.deepLink ? { href: row.deepLink } : null;
   const link = deepLink ?? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link');
   const unread = !hasRowState(state.read, row);
+  const done = hasRowState(state.done, row);
   /** @param {string} label @param {string} icon @param {boolean} active @param {() => void} change */
   const action = (label, icon, active, change) => h('button', {
     type: 'button', className: `notifications-icon-button${active ? ' active' : ''}`,
@@ -851,5 +865,8 @@ function renderNotification(row, state, selected, bulkDone, render) {
     h('span', { className: 'notification-actions' },
       action(unread ? 'Mark as read' : 'Mark as unread', unread ? 'check' : 'read', !unread, () => setRowState(state.read, row, unread)),
       action(hasRowState(state.saved, row) ? 'Unsave' : 'Save', 'bookmark', hasRowState(state.saved, row), () => setRowState(state.saved, row, !hasRowState(state.saved, row))),
-      action(hasRowState(state.done, row) ? 'Move to inbox' : 'Mark as done', hasRowState(state.done, row) ? 'inbox' : 'check-circle', hasRowState(state.done, row), () => setRowState(state.done, row, !hasRowState(state.done, row)))));
+      action(done ? 'Move to inbox' : 'Mark as done', done ? 'inbox' : 'check-circle', done, () => {
+        setRowState(state.done, row, !done);
+        if (!done) markCatchUpStoriesDone([id]);
+      })));
 }
