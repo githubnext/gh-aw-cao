@@ -608,7 +608,7 @@ function getPageIcon(page) {
  * @returns {HTMLElement}
  */
 function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer) {
-  const initialPage = pages[0];
+  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
   const initialPageDescription = initialPage?.description;
