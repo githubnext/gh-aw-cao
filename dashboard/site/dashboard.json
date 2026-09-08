@@ -1294,10 +1294,6 @@
               },
               "order-by": [
                 {
-                  "field": "observed-at",
-                  "direction": "desc"
-                },
-                {
                   "field": "rule-order",
                   "direction": "asc"
                 }
@@ -1378,7 +1374,7 @@
               },
               "order-by": [
                 {
-                  "field": "observed-at",
+                  "field": "last-seen-at",
                   "direction": "desc"
                 },
                 {
