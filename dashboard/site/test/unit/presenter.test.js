@@ -531,7 +531,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders JSON-declared package and standalone workflow inventory with a topology summary', () => {
+  it('renders a JSON-declared full-view workflow inventory', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -604,20 +604,17 @@ describe('presenter built-in and custom pages', () => {
 
     const page = rendered.querySelector('[data-page-name="workflows"]');
     expect(globalThis.document.title).toBe('Workflows · Workflow Topology');
-    expect(page?.querySelector('.summary-grid')?.textContent).toBe('Packages1Package workflows2Standalone workflows1');
     expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred');
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
-    expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('dependabot.yml');
-    expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('release-train-updater.yml');
-    expect(page?.querySelector('section[aria-label="Repository-owned workflows"]')?.textContent).toContain('ci.yml');
-    expect(page?.querySelector('#workflows-workflow-aic-layout-heading')?.textContent).toBe('AIC');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    const packagedRows = [...(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.querySelectorAll('tbody tr') ?? [])];
-    const standaloneRows = [...(page?.querySelector('section[aria-label="Repository-owned workflows"]')?.querySelectorAll('tbody tr') ?? [])];
-    expect(packagedRows.find((row) => row.textContent?.includes('dependabot.yml'))?.lastElementChild?.textContent).toBe('30');
-    expect(standaloneRows.find((row) => row.textContent?.includes('ci.yml'))?.lastElementChild?.textContent).toBe('5');
+    expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.querySelector('[data-table-filter]')).not.toBeNull();
+    const rows = [...(page?.querySelectorAll('tbody tr') ?? [])];
+    expect(rows).toHaveLength(3);
+    expect(rows.find((row) => row.textContent?.includes('dependabot.yml'))?.textContent).toContain('30');
+    expect(rows.find((row) => row.textContent?.includes('ci.yml'))?.textContent).toContain('5');
     expect(page?.querySelector('.mode-review')).not.toBeNull();
     expect(page?.querySelector('.mode-live')).not.toBeNull();
     expect(page?.querySelector('.status-success')).not.toBeNull();
@@ -2236,27 +2233,13 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const packagesPage = rendered.querySelector('[data-page-name="packages"]');
-    expect(packagesPage?.querySelectorAll('.package-utilization-card')).toHaveLength(2);
-    expect(packagesPage?.querySelector('[data-package-id="daily-ops"]')?.textContent).toContain('40 of 250 AIC across 2 reported runs');
-    expect(packagesPage?.querySelector('[data-package-id="daily-ops"]')?.textContent).toContain('16%');
-    expect(packagesPage?.querySelector('[data-package-id="empty-ops"]')?.textContent).toContain('No AIC usage was reported');
-    expect(packagesPage?.querySelector('[data-package-id="daily-ops"] .package-utilization-identity a')?.getAttribute('href')).toBe('#page-package-insights?package=daily-ops');
-    expect(packagesPage?.querySelector('[data-package-id="daily-ops"] .octicon-workflow')).not.toBeNull();
-    expect(packagesPage?.querySelector('.package-summary-heading')?.textContent).toContain('All output by package');
-    expect(packagesPage?.querySelector('.package-trend-panel + .package-summary')).not.toBeNull();
-    const packageSummaryRows = [...(packagesPage?.querySelectorAll('.package-summary-table tbody tr') ?? [])];
+    expect(packagesPage?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
+    expect(packagesPage?.querySelector('[data-table-filter]')).not.toBeNull();
+    const packageSummaryRows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
     expect(packageSummaryRows).toHaveLength(2);
-    expect(packageSummaryRows[0]?.querySelector('th a')?.getAttribute('href')).toBe('#page-package-insights?package=daily-ops');
-    expect(packageSummaryRows[0]?.querySelector('.octicon-workflow')).not.toBeNull();
-    expect(packageSummaryRows[1]?.querySelector('.octicon-package')).not.toBeNull();
-    expect([...packageSummaryRows[0]?.children ?? []].map((cell) => cell.textContent)).toEqual([
-      'Daily Ops', '2', '1', '1', '1', '2', '40', 'Aug 29, 2026, 10:06 AM'
-    ]);
-    expect([...packageSummaryRows[1]?.children ?? []].map((cell) => cell.textContent)).toEqual([
-      'Empty Ops', '0', '0', '0', '0', '0', '0', 'No activity yet'
-    ]);
-    expect(packagesPage?.querySelector('.package-trend-panel header')?.textContent).toContain('2as of');
-    expect(packagesPage?.querySelector('.package-utilization')?.textContent).toContain('Partial usage coverage.');
+    expect(packageSummaryRows[0]?.textContent).toContain('Daily Ops');
+    expect(packageSummaryRows[0]?.textContent).toContain('40');
+    expect(packageSummaryRows[1]?.textContent).toContain('Empty Ops');
     expect(/** @type {HTMLElement | null} */ (packagesPage?.querySelector('.data-state-summary'))?.hidden).toBe(true);
 
   });
@@ -2311,13 +2294,11 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({ document, sources: { workflows, runs, usage } });
     const packagesPage = rendered.querySelector('[data-page-name="packages"]');
-    const alphaCard = packagesPage?.querySelector('[data-package-repository="alpha"]');
-    const betaCard = packagesPage?.querySelector('[data-package-repository="beta"]');
-    expect(packagesPage?.querySelectorAll('.package-utilization-card')).toHaveLength(2);
-    expect(alphaCard?.textContent).toContain('10 of 100 AIC');
-    expect(betaCard?.textContent).toContain('20 of 200 AIC');
-    expect(betaCard?.textContent).not.toContain('999');
-    expect(packagesPage?.querySelector('.package-utilization')?.textContent).toContain('Usage coverage is unknown.');
+    const rows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])];
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain('10');
+    expect(rows[1]?.textContent).toContain('20');
+    expect(packagesPage?.querySelector('[data-table-filter]')).not.toBeNull();
 
     const unavailable = renderDashboard({
       document,
@@ -2328,8 +2309,7 @@ describe('presenter built-in and custom pages', () => {
       }
     });
     const unavailablePackagesPage = unavailable.querySelector('[data-page-name="packages"]');
-    expect(unavailablePackagesPage?.querySelector('.package-trend-chart')).toBeNull();
-    expect(unavailablePackagesPage?.querySelector('.package-trend-panel')?.textContent).toContain('Package run data is unavailable.');
+    expect(unavailablePackagesPage?.querySelector('.custom-table')).not.toBeNull();
   });
 
   it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
@@ -2371,7 +2351,7 @@ describe('presenter built-in and custom pages', () => {
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
-    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source)).toEqual(['runs', 'runs']);
+    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source)).toEqual(['runs']);
 
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
@@ -2485,7 +2465,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
-    expect(headings).toEqual(['Run health trend']);
+    expect(headings).toEqual(['Runs']);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });

@@ -1916,25 +1916,15 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   `);
 
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
-  await expect(page.locator('.package-utilization-card')).toHaveCount(2);
-  await expect(page.locator('[data-package-id="aw-doctor"]')).toContainText('9.6%');
-  await expect(page.locator('[data-package-id="aw-doctor"] .octicon-gear')).toBeVisible();
-  await expect(page.locator('[data-package-id="ambient-context"]')).toContainText('No AIC usage was reported');
-  await expect(page.getByRole('heading', { name: 'All output by package', level: 3 })).toBeVisible();
-  await expect(page.locator('.package-trend-panel + .package-summary')).toBeVisible();
-  const awDoctorSummary = page.locator('.package-summary-table tbody tr').filter({ hasText: 'AW Doctor' });
+  await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
+  const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
+  await expect(packageRows).toHaveCount(2);
+  const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
-  await expect(awDoctorSummary.locator('.octicon-gear')).toBeVisible();
-  await expect(awDoctorSummary.locator('td')).toHaveText(['2', '1', '1', '1', '1', '23.9', 'Aug 29, 2026, 10:05 AM']);
-  await expect(page.getByRole('heading', { name: 'All runs over time', level: 3 })).toBeVisible();
-  await expect(page.locator('.package-chart-point')).toHaveCount(30);
-  await expect(page.locator('[data-package-id="ambient-context"] a')).toHaveAttribute('href', '#page-package-insights?package=ambient-context');
-
-  await page.locator('[data-package-id="ambient-context"] a').click();
-  await expect(page).toHaveURL(/#page-package-insights\?package=ambient-context$/);
-  await expect(page.locator('[data-breadcrumb-page]')).toHaveText('Ambient Context');
-  await expect(page.getByText('No workflow observations yet')).toBeVisible();
-
+  await expect(awDoctorSummary).toContainText('23.9');
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });

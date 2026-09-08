@@ -50,6 +50,15 @@ describe('deriveWorkflowSources', () => {
       expect.objectContaining({ repository: 'githubnext/target', workflow: 'local.md' })
     ]);
     expect(sources['packaged-workflows'].metadata).toBe(metadata);
+    expect(sources['workflow-inventory'].rows).toHaveLength(3);
+    expect(sources['package-inventory'].rows).toEqual([
+      expect.objectContaining({
+        'package-name': 'Dependabot',
+        workflows: 2,
+        repositories: 1,
+        roles: 'orchestrator, worker'
+      })
+    ]);
   });
 
   it('still surfaces repository-owned rows whose workflow-role is missing or unrecognized', () => {
