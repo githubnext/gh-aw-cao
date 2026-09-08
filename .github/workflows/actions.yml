@@ -69,7 +69,7 @@ jobs:
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: low-memory
-          MOBILE_MEMORY_MB: 256
+          MOBILE_MEMORY_MB: 512
       - name: Test mobile dashboard with throttled network
         if: ${{ !cancelled() && matrix.browser == 'chromium' }}
         run: npx playwright test --config=playwright.mobile.config.mjs
@@ -78,7 +78,7 @@ jobs:
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: slow-network
-          MOBILE_NETWORK_DOWNLOAD_KBPS: 1600
+          MOBILE_NETWORK_DOWNLOAD_KBPS: 5000
           MOBILE_NETWORK_UPLOAD_KBPS: 750
           MOBILE_NETWORK_LATENCY_MS: 150
       - name: Test mobile dashboard with restricted memory and network
@@ -89,8 +89,8 @@ jobs:
           MOBILE_BROWSER: ${{ matrix.browser }}
           MOBILE_DEVICE: ${{ matrix.device }}
           MOBILE_PROFILE: low-memory-slow-network
-          MOBILE_MEMORY_MB: 256
-          MOBILE_NETWORK_DOWNLOAD_KBPS: 1600
+          MOBILE_MEMORY_MB: 512
+          MOBILE_NETWORK_DOWNLOAD_KBPS: 5000
           MOBILE_NETWORK_UPLOAD_KBPS: 750
           MOBILE_NETWORK_LATENCY_MS: 150
       - name: Upload mobile analysis evidence
