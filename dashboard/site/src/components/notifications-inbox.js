@@ -515,7 +515,9 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
     .sort((left, right) => observedAt(right) - observedAt(left))[0];
   const valueStory = latestValue ? [{
     ...latestValue,
-    'event-id': `operational-value:${String(latestValue['observation-id'] || latestValue.workflow || '')}`,
+    ...(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition']
+      ? { 'event-id': `operational-value:${String(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition'])}` }
+      : {}),
     classification: 'operational-value',
     title: String(latestValue.workflow || 'Operational value measured'),
     detail: `Matured operational value reached ${Math.round(Number(latestValue['operational-value']) * 100)}%.`,
