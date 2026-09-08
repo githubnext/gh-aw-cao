@@ -531,10 +531,10 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
     .slice(0, 4);
 }
 
-/** @param {{ classification: string, title: string, detail: string, timestamp: number, deepLink: string }} story */
+/** @param {{ classification: string, sourceType: string, title: string, detail: string, timestamp: number, deepLink: string }} story */
 function renderCatchUpStory(story) {
   const body = [
-    renderOriginBadge(notificationOrigin({ 'signal-type': story.classification })),
+    renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType })),
     h('span', { className: 'home-story-copy' }, h('strong', null, story.title), h('small', null, story.detail)),
     octicon('chevron-right')
   ];
