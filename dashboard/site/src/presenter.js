@@ -2559,15 +2559,32 @@ function filterRowsForView(rows, dataConfig) {
 function applyDashboardDefaults(view, dashboardDefaults) {
   if (!isPlainObject(view) || !isPlainObject(view.data)) return view;
   const data = view.data;
+  const time = data.time ?? dashboardDefaults.time;
   return {
     ...view,
     data: {
       ...dashboardDefaults,
       ...data,
       scope: data.scope ?? dashboardDefaults.scope,
-      time: data.time ?? dashboardDefaults.time,
+      time: resolveViewTime(time, dashboardDefaults.time),
       filters: data.filters ?? dashboardDefaults.filters
     }
+  };
+}
+
+/**
+ * @param {unknown} time
+ * @param {unknown} dashboardTime
+ * @returns {unknown}
+ */
+function resolveViewTime(time, dashboardTime) {
+  if (!isPlainObject(time) || typeof time.range !== 'string') return time;
+  if (!isPlainObject(dashboardTime) || typeof dashboardTime.end !== 'string') return time;
+  const evaluatedAt = Date.parse(dashboardTime.end);
+  if (!Number.isFinite(evaluatedAt)) return time;
+  return {
+    start: new Date(evaluatedAt - dashboardHorizonHours(time.range) * 3_600_000).toISOString(),
+    end: dashboardTime.end
   };
 }
 

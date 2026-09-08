@@ -239,22 +239,28 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(page?.textContent).not.toContain('As of');
   });
 
-  it('binds healthy observations at the source horizon boundary', async () => {
-    const observedAt = '2026-09-04T12:00:00Z';
+  it('includes observations at the inclusive start of the resolved source horizon', async () => {
+    const observedAt = '2026-08-28T13:00:00Z';
     const { page } = await renderApiPage({
       source: 'github-api-rate-limits',
       metadata: {
         ...metadata,
-        'as-of': observedAt,
-        'retrieved-at': observedAt
+        'as-of': '2026-09-04T13:00:00Z',
+        'retrieved-at': '2026-09-04T13:00:00Z'
       },
-      rows: [rateLimitRow({
-        'observed-at': observedAt,
-        'remaining-percent': 100,
-        'risk-status': 'unknown',
-        'risk-order': 3,
-        'is-unhealthy': false
-      })]
+      rows: [
+        rateLimitRow({
+          'observed-at': observedAt,
+          'remaining-percent': 100,
+          'risk-status': 'unknown',
+          'risk-order': 3,
+          'is-unhealthy': false
+        }),
+        rateLimitRow({
+          'observation-id': 'before-horizon',
+          'observed-at': '2026-08-28T12:59:59Z'
+        })
+      ]
     });
 
     expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(1);
