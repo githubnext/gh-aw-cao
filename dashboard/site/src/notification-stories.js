@@ -9,6 +9,12 @@ const LINK_FIELDS = [
   'repository-link'
 ];
 
+const TRANSITION_RULES = [
+  { initial: 'ci failed', terminal: 'ci passed', title: 'CI recovered' },
+  { initial: 'deployment started', terminal: 'deployment succeeded', title: 'deployment completed' },
+  { initial: 'review requested', terminal: 'review submitted', title: 'review completed' }
+];
+
 /** @param {unknown} value */
 function text(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -165,6 +171,30 @@ function eventDetail(event) {
     ?? event['smell-summary']) || 'No additional detail';
 }
 
+/** @param {Record<string, unknown>[]} events @param {string} objectType */
+function storyTitle(events, objectType) {
+  const latest = events[0];
+  const latestTitle = eventTitle(latest);
+  if (objectType === 'security-finding') return latestTitle;
+
+  const latestTimestamp = eventTimestamp(latest);
+  if (!latestTimestamp) return latestTitle;
+
+  const terminal = latestTitle.toLowerCase();
+  const rule = TRANSITION_RULES.find((candidate) => candidate.terminal === terminal);
+  if (!rule) return latestTitle;
+
+  const prior = events.slice(1).find((event) => {
+    const timestamp = eventTimestamp(event);
+    if (timestamp <= 0 || timestamp >= latestTimestamp) return false;
+    const title = eventTitle(event).toLowerCase();
+    return title === rule.initial || title === rule.terminal;
+  });
+
+  const priorTitle = prior ? eventTitle(prior).toLowerCase() : '';
+  return priorTitle === rule.initial ? rule.title : latestTitle;
+}
+
 /**
  * Groups raw attention and operational events into stable object-level stories.
  * @param {Record<string, unknown>[]} rawEvents
@@ -197,7 +227,7 @@ export function normalizeNotificationStories(rawEvents) {
     return {
       id: `notification-story:${encodeURIComponent(group.repository)}:${encodeURIComponent(group.objectType)}:${encodeURIComponent(group.objectId)}`,
       classification: eventClassification(latest),
-      title: eventTitle(latest),
+      title: storyTitle(events, group.objectType),
       detail: eventDetail(latest),
       repository: group.repository,
       objectType: group.objectType,

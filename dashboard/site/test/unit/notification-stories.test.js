@@ -8,7 +8,7 @@ const pullRequestLink = {
 };
 
 describe('notification story normalization', () => {
-  it('groups events for one object and preserves the latest event details and deep link', () => {
+  it('collapses a CI failure followed by success into one recovered story', () => {
     const events = [{
       'attention-signal-id': 'signal-ci-failed',
       'signal-type': 'runtime-failure',
@@ -29,10 +29,10 @@ describe('notification story normalization', () => {
       'pull-request-link': pullRequestLink
     }];
 
-    expect(normalizeNotificationStories(events)).toEqual([{
+    const expected = [{
       id: 'notification-story:octo%2Fwidgets:pull-request:42',
       classification: 'status-update',
-      title: 'CI passed',
+      title: 'CI recovered',
       detail: 'All required checks passed.',
       repository: 'octo/widgets',
       objectType: 'pull-request',
@@ -41,7 +41,130 @@ describe('notification story normalization', () => {
       deepLink: pullRequestLink.href,
       priority: 1,
       contributingRawEventIds: ['event-ci-passed', 'signal-ci-failed']
-    }]);
+    }];
+
+    expect(normalizeNotificationStories(events)).toEqual(expected);
+    expect(normalizeNotificationStories([...events].reverse())).toEqual(expected);
+  });
+
+  it.each([
+    {
+      initialTitle: 'deployment started',
+      terminalTitle: 'deployment succeeded',
+      storyTitle: 'deployment completed',
+      objectType: 'deployment'
+    },
+    {
+      initialTitle: 'review requested',
+      terminalTitle: 'review submitted',
+      storyTitle: 'review completed',
+      objectType: 'pull-request'
+    }
+  ])('collapses $initialTitle and $terminalTitle into $storyTitle', ({
+    initialTitle,
+    terminalTitle,
+    storyTitle,
+    objectType
+  }) => {
+    const events = [{
+      'event-id': 'initial',
+      title: initialTitle,
+      repository: 'octo/widgets',
+      objectType,
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      'event-id': 'terminal',
+      title: terminalTitle,
+      detail: 'The transition finished successfully.',
+      repository: 'octo/widgets',
+      objectType,
+      objectId: '42',
+      timestamp: '2026-09-08T02:00:00Z'
+    }];
+
+    expect(normalizeNotificationStories(events)[0]).toMatchObject({
+      title: storyTitle,
+      detail: 'The transition finished successfully.',
+      contributingRawEventIds: ['initial', 'terminal']
+    });
+  });
+
+  it('keeps a failure actionable when it is the latest state', () => {
+    const events = [{
+      'event-id': 'initial-ci-failed',
+      title: 'CI failed',
+      repository: 'octo/widgets',
+      objectType: 'pull-request',
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      'event-id': 'ci-passed',
+      title: 'CI passed',
+      repository: 'octo/widgets',
+      objectType: 'pull-request',
+      objectId: '42',
+      timestamp: '2026-09-08T02:00:00Z'
+    }, {
+      'event-id': 'ci-failed',
+      classification: 'runtime-failure',
+      title: 'CI failed',
+      detail: 'The newest run failed.',
+      repository: 'octo/widgets',
+      objectType: 'pull-request',
+      objectId: '42',
+      timestamp: '2026-09-08T03:00:00Z'
+    }];
+
+    expect(normalizeNotificationStories(events)[0]).toMatchObject({
+      classification: 'runtime-failure',
+      title: 'CI failed',
+      detail: 'The newest run failed.',
+      contributingRawEventIds: ['ci-failed', 'ci-passed', 'initial-ci-failed']
+    });
+  });
+
+  it('does not infer transitions from events without a strict time order', () => {
+    const events = [{
+      'event-id': 'z-initial',
+      title: 'deployment started',
+      repository: 'octo/widgets',
+      objectType: 'deployment',
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      'event-id': 'a-terminal',
+      title: 'deployment succeeded',
+      repository: 'octo/widgets',
+      objectType: 'deployment',
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z'
+    }];
+
+    expect(normalizeNotificationStories(events)[0]?.title).toBe('deployment succeeded');
+  });
+
+  it('does not replace security finding titles with transition summaries', () => {
+    const events = [{
+      'event-id': 'review-requested',
+      title: 'review requested',
+      repository: 'octo/widgets',
+      objectType: 'security-finding',
+      objectId: 'secret-scanning:7',
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      'event-id': 'review-submitted',
+      title: 'review submitted',
+      repository: 'octo/widgets',
+      objectType: 'security-finding',
+      objectId: 'secret-scanning:7',
+      timestamp: '2026-09-08T02:00:00Z'
+    }];
+
+    expect(normalizeNotificationStories(events)[0]).toMatchObject({
+      title: 'review submitted',
+      contributingRawEventIds: ['review-requested', 'review-submitted']
+    });
   });
 
   it('keeps story IDs stable across refreshes and does not merge unrelated objects', () => {
