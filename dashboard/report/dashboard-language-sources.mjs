@@ -2463,6 +2463,13 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
       observed: Number(localWorkflowCollection?.observed || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesObserved,
       workflowExpected: workflowInventoryComplete ? workflowsByIdentity.size : undefined,
       reason: remoteWorkflowDiscovery.failures?.map((failure) => `${failure.repository}: ${failure.reason}`).join("; ") || "",
+      ...(report.stale ? {
+        fallback: {
+          used: true,
+          snapshotGeneratedAt: report.snapshotGeneratedAt || null,
+          snapshotAgeSeconds: report.snapshotAgeSeconds ?? null,
+        },
+      } : {}),
     }
     : localWorkflowCollection;
   const workflowDeployed = {

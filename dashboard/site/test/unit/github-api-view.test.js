@@ -199,7 +199,7 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(apiPage.views[0]).toMatchObject({
       id: 'github-api-remaining-trend',
       chart: 'scatter',
-      data: { filters: { 'is-unhealthy': 'true' }, limit: 96 }
+      data: { time: { range: '1w' }, limit: 96 }
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-remaining-capacity')).toMatchObject({
       id: 'github-api-remaining-capacity',
@@ -228,7 +228,7 @@ describe('GitHub API rate-limit dashboard', () => {
     });
     expect(page?.querySelector('[aria-labelledby="github-api-remaining-capacity-heading"]')
       ?.querySelectorAll('.bar-chart-bar')).toHaveLength(2);
-    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(1);
+    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(3);
     expect(page?.querySelector('.line-chart-series')).toBeNull();
     expect(page?.textContent).toContain('At-risk buckets');
     expect(page?.textContent).toContain('1');
@@ -237,6 +237,57 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(page?.textContent).toContain('warning');
     expect(page?.textContent).toContain('Last observed (UTC)');
     expect(page?.textContent).not.toContain('As of');
+  });
+
+  it('includes observations at the inclusive start of the resolved source horizon', async () => {
+    const observedAt = '2026-08-28T13:00:00Z';
+    const { page } = await renderApiPage({
+      source: 'github-api-rate-limits',
+      metadata: {
+        ...metadata,
+        'as-of': '2026-09-04T13:00:00Z',
+        'retrieved-at': '2026-09-04T13:00:00Z'
+      },
+      rows: [
+        rateLimitRow({
+          'observed-at': observedAt,
+          'remaining-percent': 100,
+          'risk-status': 'unknown',
+          'risk-order': 3,
+          'is-unhealthy': false
+        }),
+        rateLimitRow({
+          'observation-id': 'before-horizon',
+          'observed-at': '2026-08-28T12:59:59Z'
+        })
+      ]
+    });
+
+    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(1);
+    expect(page?.textContent).not.toContain('No quota observations are available');
+  });
+
+  it('excludes observations older than the resolved source horizon', async () => {
+    const { page } = await renderApiPage({
+      source: 'github-api-rate-limits',
+      metadata: {
+        ...metadata,
+        'as-of': '2026-09-04T13:00:00Z',
+        'retrieved-at': '2026-09-04T13:00:00Z'
+      },
+      rows: [
+        rateLimitRow({
+          'observation-id': 'within-horizon',
+          'observed-at': '2026-09-04T12:00:00Z'
+        }),
+        rateLimitRow({
+          'observation-id': 'before-horizon',
+          'observed-at': '2026-08-28T12:59:59Z'
+        })
+      ]
+    });
+
+    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(1);
   });
 
   it('keeps raw quota and collector/cache diagnostics supplemental and distinct', async () => {

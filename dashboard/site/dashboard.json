@@ -334,8 +334,8 @@
             "description": "Hourly minimum remaining capacity for the latest 96 resource and credential intervals, colored by maximum quota.",
             "data": {
               "source": "github-api-rate-limits",
-              "filters": {
-                "is-unhealthy": "true"
+              "time": {
+                "range": "1w"
               },
               "order-by": [
                 {
@@ -377,6 +377,9 @@
             "description": "Current quota buckets ordered from least capacity remaining. The companion table and health inventory preserve absolute remaining and limit values.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true"
               },
@@ -421,6 +424,9 @@
             "description": "Current credential and resource buckets classified critical or warning. The source status below supplies the as-of, freshness, and completeness context.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true",
                 "risk-status": [
@@ -448,6 +454,9 @@
             "description": "Current quota state ordered by risk, runway, and remaining capacity. Unknown means the forecast lacks fresh, complete, or sufficient history.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true"
               },
@@ -570,6 +579,9 @@
             "description": "Current buckets ordered by relative reset time; exact reset timestamps remain available in rate-limit health.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true"
               },
@@ -3350,9 +3362,8 @@
               "title": "Workflow inventory",
               "layout": "full",
               "views": [
-                "workflow-package-count",
-                "workflow-packaged-count",
-                "workflow-standalone-count",
+                "workflows-run-health",
+                "workflow-topology-summary",
                 "packaged-workflows",
                 "standalone-workflows"
               ],
@@ -3372,7 +3383,6 @@
               "title": "Evidence sources",
               "layout": "full",
               "views": [
-                "workflows-workflows-source",
                 "workflows-runs-source",
                 "workflows-outcomes-source",
                 "workflows-usage-source",
@@ -3383,60 +3393,45 @@
           ],
           "views": [
             {
-              "id": "workflow-package-count",
-              "title": "Packages",
+              "id": "workflows-run-health",
+              "title": "Workflow run health trend",
+              "description": "Daily conclusions show whether authored workflows are operating reliably.",
+              "data": {
+                "source": "runs"
+              },
+              "mark": "chart",
+              "chart": "line",
+              "layout": "full",
+              "encoding": {
+                "x": {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "time-unit": "day"
+                },
+                "y": {
+                  "field": "run",
+                  "type": "quantitative",
+                  "aggregate": "count"
+                },
+                "color": {
+                  "field": "run-conclusion",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
+              "id": "workflow-topology-summary",
+              "title": "Definition summary",
               "description": "Declared workflow relationships describe expected structure; they do not assert that a dispatch occurred.",
-              "intent": "Show how many distinct operation packages declare workflows.",
               "data": {
-                "source": "packaged-workflows"
+                "sources": [
+                  "workflow-topology-summary",
+                  "workflows"
+                ]
               },
-              "mark": "metric",
-              "layout": "third",
-              "encoding": {
-                "value": {
-                  "field": "package-name",
-                  "type": "nominal",
-                  "aggregate": "distinct-count"
-                }
-              }
-            },
-            {
-              "id": "workflow-packaged-count",
-              "title": "Package workflows",
-              "description": "Orchestrators and workers declared by centrally managed operation packages.",
-              "intent": "Show how many workflows are declared by operation packages.",
-              "data": {
-                "source": "packaged-workflows"
-              },
-              "mark": "metric",
-              "layout": "third",
-              "encoding": {
-                "value": {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "aggregate": "count"
-                }
-              }
-            },
-            {
-              "id": "workflow-standalone-count",
-              "disclosure": "supplemental",
-              "disclosure-label": "Standalone workflow count",
-              "title": "Standalone workflows",
-              "description": "Standalone workflows run in their owning repositories and are not part of a central operation package.",
-              "intent": "Show how many workflows are repository-owned rather than package-declared.",
-              "data": {
-                "source": "standalone-workflows"
-              },
-              "mark": "metric",
-              "layout": "third",
-              "encoding": {
-                "value": {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "aggregate": "count"
-                }
-              }
+              "mark": "element",
+              "element": "summary-grid",
+              "disclosure": "supplemental"
             },
             {
               "id": "packaged-workflows",
@@ -3584,36 +3579,6 @@
                   "field": "workflow-link",
                   "type": "nominal"
                 }
-              }
-            },
-            {
-              "id": "workflows-workflows-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "workflows"
-              },
-              "mark": "table",
-              "encoding": {
-                "href": {
-                  "field": "workflow-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "workflow",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "workflow-active",
-                    "type": "nominal",
-                    "display": "active-state"
-                  }
-                ]
               }
             },
             {
@@ -4184,6 +4149,68 @@
             }
           },
           {
+            "id": "safe-output-trend",
+            "title": "Safe-output trend",
+            "description": "Daily output and diagnostic volume highlights changes in delivery, no-op, missing-data, missing-tool, and incomplete-report behavior.",
+            "data": {
+              "source": "safe-output-performance",
+              "time": {
+                "range": "30d"
+              }
+            },
+            "mark": "chart",
+            "chart": "line",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "observed-at",
+                "type": "temporal",
+                "time-unit": "day",
+                "title": "Observed"
+              },
+              "y": {
+                "field": "safe-output-count",
+                "type": "quantitative",
+                "aggregate": "sum",
+                "title": "Safe outputs"
+              },
+              "color": {
+                "field": "safe-output-label",
+                "type": "nominal",
+                "title": "Disposition"
+              }
+            }
+          },
+          {
+            "id": "safe-output-workflow-performance",
+            "title": "Safe outputs by workflow",
+            "description": "Mean items per observed workflow run, split by output or diagnostic disposition.",
+            "data": {
+              "source": "safe-output-performance"
+            },
+            "mark": "chart",
+            "chart": "bar",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "workflow",
+                "type": "nominal",
+                "title": "Workflow"
+              },
+              "y": {
+                "field": "safe-output-count",
+                "type": "quantitative",
+                "aggregate": "mean",
+                "title": "Mean items per run"
+              },
+              "color": {
+                "field": "safe-output-label",
+                "type": "nominal",
+                "title": "Disposition"
+              }
+            }
+          },
+          {
             "id": "safe-output-diagnostics",
             "disclosure-label": "Safe-output diagnostics",
             "disclosure": "supplemental",
@@ -4266,8 +4293,8 @@
         "views": [
           {
             "id": "detection-state-distribution",
-            "title": "Types of threats detected",
-            "description": "Prompt injection, secret leak, and malicious patch verdicts are shown alongside degraded inspections, detector failures, skipped runs, and unavailable evidence.",
+            "title": "Detection health",
+            "description": "Usable security verdicts remain distinct from degraded inspections, detector failures, skipped runs, and unavailable evidence.",
             "data": {
               "source": "detection-observations"
             },
@@ -4277,9 +4304,9 @@
             "disclosure": "essential",
             "encoding": {
               "x": {
-                "field": "detection-signal",
+                "field": "detection-state-label",
                 "type": "ordinal",
-                "title": "Threat type"
+                "title": "Detection state"
               },
               "y": {
                 "field": "run",
@@ -4288,9 +4315,9 @@
                 "title": "Runs"
               },
               "color": {
-                "field": "detection-signal",
-                "type": "ordinal",
-                "title": "Threat type"
+                "field": "detection-state",
+                "type": "nominal",
+                "title": "State"
               }
             }
           },
@@ -4339,7 +4366,7 @@
                 "title": "Runs"
               },
               "color": {
-                "field": "detection-state-label",
+                "field": "detection-state",
                 "type": "nominal",
                 "title": "State"
               }
@@ -4356,7 +4383,7 @@
                   "threat-detection"
                 ],
                 "security-analysis": [
-                  "summary"
+                  "detail"
                 ]
               }
             },
@@ -4384,11 +4411,114 @@
             }
           },
           {
+            "id": "detection-attention",
+            "disclosure-label": "Requires attention",
+            "description": "Threats, detector failures, degraded inspections, skipped detection, and unavailable evidence are ordered by operational urgency.",
+            "data": {
+              "source": "detection-observations",
+              "filters": {
+                "detection-state": [
+                  "threat",
+                  "tooling-failure",
+                  "degraded",
+                  "unknown",
+                  "skipped"
+                ]
+              },
+              "order-by": [
+                {
+                  "field": "attention-priority",
+                  "direction": "asc"
+                },
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No detection observations require attention in the selected horizon.",
+            "layout": "full",
+            "disclosure": "supplemental",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "attention-priority",
+                  "type": "quantitative",
+                  "title": "Priority"
+                },
+                {
+                  "field": "detection-state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "detection-signal",
+                  "type": "nominal",
+                  "title": "Signal / reason"
+                },
+                {
+                  "field": "inspection-warning",
+                  "type": "nominal",
+                  "title": "Inspection warning"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Investigate this threat-detection observation using the linked GitHub Actions run as authoritative evidence.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Investigate",
+                  "context": [
+                    "repository",
+                    "workflow",
+                    "run",
+                    "detection-state",
+                    "detection-signal",
+                    "inspection-warning",
+                    "run-link"
+                  ]
+                }
+              ],
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              }
+            }
+          },
+          {
             "id": "detection-job-conclusions",
             "title": "Detection job conclusions",
             "description": "Current conclusion distribution highlights failed, cancelled, and incomplete threat-detection jobs.",
             "data": {
-              "source": "detection-observations"
+              "source": "job-performance",
+              "filters": {
+                "job": [
+                  "detection"
+                ]
+              }
             },
             "mark": "chart",
             "chart": "pie",
@@ -4401,7 +4531,7 @@
                 "title": "Conclusion"
               },
               "y": {
-                "field": "run",
+                "field": "job",
                 "type": "quantitative",
                 "aggregate": "count",
                 "title": "Jobs"
@@ -4413,8 +4543,11 @@
             "title": "Detection job duration trend",
             "description": "Daily mean duration reveals performance regressions in completed threat-detection jobs.",
             "data": {
-              "source": "detection-observations",
+              "source": "job-performance",
               "filters": {
+                "job": [
+                  "detection"
+                ],
                 "job-status": [
                   "completed"
                 ]
@@ -4426,10 +4559,10 @@
             "disclosure": "supplemental",
             "encoding": {
               "x": {
-                "field": "observed-at",
+                "field": "started-at",
                 "type": "temporal",
                 "time-unit": "day",
-                "title": "Observed"
+                "title": "Started"
               },
               "y": {
                 "field": "job-duration-seconds",
@@ -4450,8 +4583,11 @@
             "title": "Detection time by runner",
             "description": "Mean duration by runner identifies infrastructure-specific performance differences.",
             "data": {
-              "source": "detection-observations",
+              "source": "job-performance",
               "filters": {
+                "job": [
+                  "detection"
+                ],
                 "job-status": [
                   "completed"
                 ]
@@ -4481,10 +4617,15 @@
             "disclosure-label": "Detection job diagnostics",
             "description": "Recent threat-detection jobs provide status, conclusion, duration, runner, workflow, and run evidence for investigation.",
             "data": {
-              "source": "detection-observations",
+              "source": "job-performance",
+              "filters": {
+                "job": [
+                  "detection"
+                ]
+              },
               "order-by": [
                 {
-                  "field": "observed-at",
+                  "field": "started-at",
                   "direction": "desc"
                 }
               ]
@@ -4538,9 +4679,9 @@
                   "title": "Run"
                 },
                 {
-                  "field": "observed-at",
+                  "field": "started-at",
                   "type": "temporal",
-                  "title": "Observed"
+                  "title": "Started"
                 }
               ],
               "href": {
@@ -4569,6 +4710,15 @@
             "layout": "full",
             "views": [
               "detection-security-findings"
+            ]
+          },
+          {
+            "id": "requires-attention",
+            "title": "Requires attention",
+            "description": "Highest-priority evidence to investigate next.",
+            "layout": "full",
+            "views": [
+              "detection-attention"
             ]
           },
           {
@@ -5928,60 +6078,98 @@
         "class-name": "data-health-page",
         "views": [
           {
-            "id": "data-health-confidence",
+            "id": "data-health-summary",
             "title": "Overall confidence",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "table",
+            "controls": "static",
+            "layout": "full",
             "description": "Availability, completeness, and freshness remain independent even when overall confidence changes.",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "metric",
-            "layout": "half",
             "encoding": {
-              "value": {
-                "field": "confidence"
-              }
-            }
-          },
-          {
-            "id": "data-health-reason",
-            "title": "Primary reason",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "metric",
-            "layout": "half",
-            "encoding": {
-              "value": {
-                "field": "reason"
-              }
-            }
-          },
-          {
-            "id": "data-health-affected-domains",
-            "title": "Affected areas",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "metric",
-            "layout": "half",
-            "encoding": {
-              "value": {
-                "field": "affected-domains"
-              }
-            }
-          },
-          {
-            "id": "data-health-next-action",
-            "title": "Next action",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "metric",
-            "layout": "half",
-            "encoding": {
-              "value": {
-                "field": "next-action"
-              }
+              "columns": [
+                {
+                  "field": "confidence",
+                  "type": "nominal",
+                  "title": "Confidence",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Primary reason"
+                },
+                {
+                  "field": "affected-domains",
+                  "type": "nominal",
+                  "title": "Affected areas"
+                },
+                {
+                  "field": "availability",
+                  "type": "nominal",
+                  "title": "Availability",
+                  "display": "status"
+                },
+                {
+                  "field": "completeness",
+                  "type": "nominal",
+                  "title": "Completeness",
+                  "display": "status"
+                },
+                {
+                  "field": "freshness",
+                  "type": "nominal",
+                  "title": "Freshness",
+                  "display": "status"
+                },
+                {
+                  "field": "scope-coverage",
+                  "type": "nominal",
+                  "title": "Scope coverage"
+                },
+                {
+                  "field": "collector-state",
+                  "type": "nominal",
+                  "title": "Collector state",
+                  "display": "status"
+                },
+                {
+                  "field": "compatibility-gaps",
+                  "type": "quantitative",
+                  "title": "Compatibility gaps"
+                },
+                {
+                  "field": "sources",
+                  "type": "quantitative",
+                  "title": "Sources"
+                },
+                {
+                  "field": "available-sources",
+                  "type": "quantitative",
+                  "title": "Available"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "fields",
+                  "type": "quantitative",
+                  "title": "Fields"
+                },
+                {
+                  "field": "total-size",
+                  "type": "nominal",
+                  "title": "Total size"
+                },
+                {
+                  "field": "next-action",
+                  "type": "nominal",
+                  "title": "Next action"
+                }
+              ]
             }
           },
           {
@@ -6038,6 +6226,438 @@
               "language": "json",
               "code-field": "schema",
               "label-field": "source"
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-activity",
+            "title": "CAO Activity",
+            "disclosure": "supplemental",
+            "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "third",
+            "encoding": {
+              "value": {
+                "field": "collector-state"
+              },
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              }
+            }
+          },
+          {
+            "id": "data-health-domains",
+            "title": "Dashboard domain confidence",
+            "disclosure": "supplemental",
+            "data": {
+              "sources": [
+                "data-health-domains"
+              ]
+            },
+            "mark": "element",
+            "element": "data-health-domain-list",
+            "layout": "full"
+          },
+          {
+            "id": "data-health-coverage",
+            "disclosure-label": "Scope and evidence coverage",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-coverage"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No coverage contracts are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "area",
+                  "type": "nominal",
+                  "title": "Evidence area"
+                },
+                {
+                  "field": "expected",
+                  "type": "nominal",
+                  "title": "Expected"
+                },
+                {
+                  "field": "observed",
+                  "type": "nominal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "missing",
+                  "type": "nominal",
+                  "title": "Missing"
+                },
+                {
+                  "field": "coverage-percent",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-collections",
+            "disclosure-label": "Collector state",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-collections"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No collection metadata is available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "operation",
+                  "type": "nominal",
+                  "title": "Operation"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "failure-class",
+                  "type": "nominal",
+                  "title": "Failure class"
+                },
+                {
+                  "field": "progress",
+                  "type": "nominal",
+                  "title": "Progress"
+                },
+                {
+                  "field": "evidence-horizon",
+                  "type": "nominal",
+                  "title": "Evidence horizon"
+                },
+                {
+                  "field": "fallback",
+                  "type": "nominal",
+                  "title": "Fallback"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-compatibility",
+            "disclosure-label": "Producer contracts",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-compatibility"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No producer versions were observed.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "producer-version",
+                  "type": "nominal",
+                  "title": "Producer version"
+                },
+                {
+                  "field": "compatibility",
+                  "type": "nominal",
+                  "title": "Compatibility",
+                  "display": "status"
+                },
+                {
+                  "field": "missing-field-class",
+                  "type": "nominal",
+                  "title": "Missing fields"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                },
+                {
+                  "field": "next-action",
+                  "type": "nominal",
+                  "title": "Next action"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-reconciliation",
+            "disclosure-label": "Cross-source reconciliation",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-reconciliation"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No reconciliation contracts are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "relationship",
+                  "type": "nominal",
+                  "title": "Relationship"
+                },
+                {
+                  "field": "expected",
+                  "type": "nominal",
+                  "title": "Expected"
+                },
+                {
+                  "field": "observed",
+                  "type": "nominal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "missing",
+                  "type": "nominal",
+                  "title": "Missing"
+                },
+                {
+                  "field": "coverage",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Reason"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-sources",
+            "disclosure-label": "Cached source shape",
+            "disclosure": "supplemental",
+            "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
+            "data": {
+              "source": "data-health-sources"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No cached data sources available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "fields",
+                  "type": "quantitative",
+                  "title": "Fields"
+                },
+                {
+                  "field": "field-coverage",
+                  "type": "nominal",
+                  "title": "Fields populated"
+                },
+                {
+                  "field": "cell-coverage",
+                  "type": "nominal",
+                  "title": "Cells populated"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Confidence",
+                  "display": "status"
+                },
+                {
+                  "field": "availability",
+                  "type": "nominal",
+                  "title": "Availability",
+                  "display": "status"
+                },
+                {
+                  "field": "completeness",
+                  "type": "nominal",
+                  "title": "Completeness",
+                  "display": "status"
+                },
+                {
+                  "field": "freshness",
+                  "type": "nominal",
+                  "title": "Freshness",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-fields",
+            "disclosure-label": "Field shape",
+            "disclosure": "supplemental",
+            "description": "Observed field types and population across every cached source.",
+            "data": {
+              "source": "data-health-fields"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No cached fields are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "field",
+                  "type": "nominal",
+                  "title": "Field"
+                },
+                {
+                  "field": "types",
+                  "type": "nominal",
+                  "title": "Observed types"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "populated",
+                  "type": "quantitative",
+                  "title": "Populated"
+                },
+                {
+                  "field": "empty",
+                  "type": "quantitative",
+                  "title": "Empty"
+                },
+                {
+                  "field": "coverage",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "shape",
+                  "type": "nominal",
+                  "title": "Shape"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-schema",
+            "disclosure-label": "Data shape preview",
+            "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-schema"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No cached sources are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "schema",
+                  "type": "nominal",
+                  "title": "Inferred shape"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-provenance",
+            "disclosure-label": "Collection provenance",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-collections"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No provenance metadata is available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "collector-completed-at",
+                  "type": "temporal",
+                  "title": "Collector completed"
+                },
+                {
+                  "field": "retrieved-at",
+                  "type": "temporal",
+                  "title": "Retrieved"
+                },
+                {
+                  "field": "source-as-of",
+                  "type": "temporal",
+                  "title": "Source as of"
+                },
+                {
+                  "field": "snapshot-age",
+                  "type": "nominal",
+                  "title": "Snapshot age"
+                },
+                {
+                  "field": "provenance",
+                  "type": "nominal",
+                  "title": "Provenance"
+                }
+              ]
             },
             "layout": "full"
           }

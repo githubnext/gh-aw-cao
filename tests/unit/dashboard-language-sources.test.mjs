@@ -1550,6 +1550,9 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
         name: "Remote agent",
         role: "standalone",
         state: "active",
+        ghAwVersion: "v0.88.7",
+        currentGhAwVersion: "v0.89.0",
+        updateState: "update-available",
         runHealth: { runRecords: [] },
       }],
     },
@@ -1559,14 +1562,26 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
     owner: `${row.organization}/${row.repository}`,
     workflow: row.workflow,
     name: row["workflow-name"],
+    version: row["gh-aw-version"],
+    currentVersion: row["gh-aw-current-version"],
+    versionLabel: row["gh-aw-version-label"],
+    updateState: row["gh-aw-update-state"],
   })), [{
     owner: "acme/control",
     workflow: ".github/workflows/local.md",
     name: "Local agent",
+    version: "unknown",
+    currentVersion: "unknown",
+    versionLabel: "unknown",
+    updateState: "unknown",
   }, {
     owner: "acme/service",
     workflow: ".github/workflows/remote.md",
     name: "Remote agent",
+    version: "v0.88.7",
+    currentVersion: "v0.89.0",
+    versionLabel: "v0.88.7",
+    updateState: "update-available",
   }]);
   assert.equal(sources.workflows.metadata.completeness, "complete");
 });
@@ -1920,6 +1935,21 @@ test("dashboard source bridge exposes rate-limit details for retained records", 
     report: {
       generatedAt: "2026-09-03T00:00:00Z",
       records: [{ repository: "githubnext/service", updatedAt: "2026-09-02T23:00:00Z" }],
+      remoteWorkflows: [{
+        repository: "githubnext/service",
+        path: ".github/workflows/remote.lock.yml",
+        name: "Remote agent",
+        role: "standalone",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+      workflowDiscovery: {
+        complete: false,
+        repositoriesExpected: 1,
+        repositoriesObserved: 1,
+        workflowsObserved: 1,
+        failures: [{ repository: "", reason: "GitHub API rate limit exceeded" }],
+      },
       error: "GitHub API rate limit exceeded",
       errorStatus: 403,
       errorEndpoint: "/repos/githubnext/service/issues",
@@ -1948,6 +1978,9 @@ test("dashboard source bridge exposes rate-limit details for retained records", 
   ]);
   assert.equal(sources.outcomes.metadata.completeness, "partial");
   assert.equal(sources.outcomes.metadata.freshness, "stale");
+  assert.equal(sources.workflows.metadata.completeness, "partial");
+  assert.equal(sources.workflows.metadata.freshness, "stale");
+  assert.equal(sources.workflows.metadata["fallback-source-as-of"], "2026-09-02T23:00:00Z");
 });
 
 test("dashboard source bridge derives admission gates from resolved control policy", () => {

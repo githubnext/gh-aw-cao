@@ -1540,6 +1540,25 @@ dashboard:
     );
     expect(validateDashboardDocument(accepted).ok).toBe(true);
 
+    const supplementalElement = accepted.replace(
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [data-health-domains] }\n          mark: element\n          element: data-health-domain-list\n'
+    );
+    expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
+
+    const primaryElementWithLabel = supplementalElement.replace(
+      '          disclosure: supplemental\n',
+      ''
+    );
+    const primaryElementResult = validateDashboardDocument(primaryElementWithLabel);
+    expect(primaryElementResult.ok).toBe(false);
+    if (!primaryElementResult.ok) {
+      expect(primaryElementResult.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E013',
+        path: '$.dashboard.pages[0].views[1].disclosure-label'
+      }));
+    }
+
     const emptyLabel = validateDashboardDocument(accepted.replace(
       'disclosure-label: Supporting table',
       'disclosure-label: ""'
