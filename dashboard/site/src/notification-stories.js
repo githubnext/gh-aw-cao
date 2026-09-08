@@ -48,6 +48,13 @@ function identifier(value) {
   return text(value);
 }
 
+/** @param {unknown} value */
+function numericPriority(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const priority = Number(value);
+  return Number.isFinite(priority) ? priority : null;
+}
+
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -234,15 +241,15 @@ function storyClassification(event, objectType, title) {
     event.type
   ].map(normalizedText).filter(Boolean).join(' ');
   const summary = normalizedText(`${eventTitle(event)} ${text(event.action ?? event['next-action'])}`);
-  const actor = normalizedText(event['expected-actor'] ?? event.actor);
+  const actor = normalizedText(event['expected-actor']);
   const resolved = /\b(?:accepted|closed|completed|passed|recovered|resolved|submitted|succeeded|success)\b/
     .test(`${state} ${normalizedText(title)}`);
 
   if (objectType === 'security-finding' || /\bsecurity (?:finding|alert)\b/.test(state)) return 'needs_you';
   if (resolved) return 'update';
   if (/\b(?:action required|blocked|failure|failed|pending|timed out)\b/.test(state)
-      || /\b(?:failure|failed|timed out)\b/.test(summary)
-      || /\b(?:mention(?:ed)?|review|assign(?:ed|ment))\b/.test(`${state} ${summary}`)
+      || /\b(?:failure|failed|failing|timed out)\b/.test(summary)
+      || /\b(?:mention(?:ed|s)?|review|assign(?:ed|ment|s)?)\b/.test(`${state} ${summary}`)
       || /\b(?:human|maintainer|operator|owner|reviewer|user)\b/.test(actor)) {
     return 'needs_you';
   }
@@ -257,6 +264,7 @@ function storyClassification(event, objectType, title) {
 function consequenceRank(events) {
   const declaredRanks = events.flatMap((event) => [
     event['consequence-tier'],
+    event.consequence,
     event.severity,
     event['finding-severity'],
     event['smell-severity']
@@ -264,7 +272,7 @@ function consequenceRank(events) {
     .filter((value) => value !== undefined);
   if (declaredRanks.length > 0) return Math.min(...declaredRanks);
 
-  const priorities = events.map((event) => Number(event.priority)).filter(Number.isFinite);
+  const priorities = events.map((event) => numericPriority(event.priority)).filter((value) => value !== null);
   return priorities.length > 0 ? Math.min(...priorities) : Number.MAX_SAFE_INTEGER;
 }
 
@@ -296,7 +304,7 @@ export function normalizeNotificationStories(rawEvents) {
     ));
     const latest = events[0];
     const deepLinkEvent = events.find((event) => eventDeepLink(event));
-    const priorities = events.map((event) => Number(event.priority)).filter(Number.isFinite);
+    const priorities = events.map((event) => numericPriority(event.priority)).filter((value) => value !== null);
     const title = storyTitle(events, group.objectType);
     return {
       consequence: consequenceRank(events),
