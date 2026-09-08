@@ -110,16 +110,20 @@ export function enableLazyViews(root) {
     if (disclosure instanceof HTMLDetailsElement) {
       const hydrateFromDisclosure = () => {
         if (!disclosure.open) return;
+        disclosure.removeEventListener('toggle', hydrateFromDisclosure);
+        disclosure.removeEventListener('click', handleDisclosureClick);
         observer.unobserve(element);
         void hydrateLazyView(element);
       };
-      disclosure.addEventListener('toggle', hydrateFromDisclosure);
-      disclosure.addEventListener('click', (event) => {
+      /** @param {MouseEvent} event */
+      const handleDisclosureClick = (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
         if (target.closest('summary') !== disclosure.querySelector('summary')) return;
         root.ownerDocument.defaultView?.setTimeout(hydrateFromDisclosure, 0);
-      });
+      };
+      disclosure.addEventListener('toggle', hydrateFromDisclosure);
+      disclosure.addEventListener('click', handleDisclosureClick);
     }
     element.addEventListener('focusin', () => {
       observer.unobserve(element);

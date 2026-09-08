@@ -51,6 +51,40 @@ describe('lazy dashboard views', () => {
     expect(disclosure.querySelector('article')).not.toBeNull();
   });
 
+  it('hydrates a supplemental view when its disclosure summary is clicked open', async () => {
+    const observe = vi.fn();
+    const unobserve = vi.fn();
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        constructor() {}
+        observe = observe;
+        unobserve = unobserve;
+        disconnect() {}
+      }
+    });
+    const render = vi.fn(() => document.createElement('article'));
+    const lazyView = renderLazyView({ label: 'Evidence', render });
+    const disclosure = document.createElement('details');
+    const summary = document.createElement('summary');
+    disclosure.append(summary, lazyView);
+    document.body.append(disclosure);
+
+    enableLazyViews(document.body);
+    await Promise.resolve();
+
+    expect(render).not.toHaveBeenCalled();
+
+    // Simulate a real click on the <summary>: jsdom's native behavior toggles
+    // `disclosure.open` as part of dispatching the click, so the disclosure
+    // starts closed and the click itself opens it (unlike the toggle-based
+    // test above, which opens it manually first).
+    summary.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    expect(unobserve).toHaveBeenCalledWith(lazyView);
+    expect(disclosure.querySelector('article')).not.toBeNull();
+  });
+
   it('reserves space and hydrates only after entering the viewport', async () => {
     /** @type {IntersectionObserverCallback} */
     let callback = () => {};
