@@ -144,6 +144,29 @@ describe('work project view primitives', () => {
     expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
   });
 
+  it('highlights the first rendered section when declarative sections override body', () => {
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work-custom',
+      title: 'Custom work',
+      sources: {
+        'work-items': {
+          rows: [
+            { 'work-item-id': 'task', name: 'Section-driven task', 'lifecycle-state': 'active' }
+          ]
+        }
+      },
+      elementConfig: {
+        body: 'roadmap',
+        sections: ['tasks']
+      }
+    }));
+
+    expect(rendered.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBeNull();
+    expect(rendered.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered.querySelector('.work-roadmap')).toBeNull();
+  });
+
   it('presents telemetry states as todo, in progress, needs review, and done', () => {
     const rows = [
       { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },

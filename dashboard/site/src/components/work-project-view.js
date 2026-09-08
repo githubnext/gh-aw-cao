@@ -9,7 +9,7 @@ import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
 import { workViewComposition } from './work-view-composition.js';
 import { renderWorkViewNavigation } from './work-view-navigation.js';
-import { workRoutePageConfigForBody, workRoutePageConfigs } from './work-view-route-config.js';
+import { workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
@@ -29,7 +29,7 @@ const BOARD_COLUMNS = [
 export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const sections = workViewComposition(context.elementConfig);
-  const activeSection = workRoutePageConfigForBody(context.elementConfig?.body).key;
+  const activeSection = sections[0].key;
   const viewBody = h('div', { className: 'work-project-body' });
   let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
