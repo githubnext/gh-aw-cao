@@ -76,7 +76,7 @@ const ELEMENT_RENDERERS = new Map([
   ['insights-overview', renderInsightsOverview]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -442,6 +442,9 @@ function renderSummaryGridElement(context) {
 /** @param {ElementRenderContext} context */
 function renderDataHealthDomainListElement(context) {
   const rows = rowsFor(context, context.sourceNames[0]);
+  if (rows.length === 0) {
+    return h('p', { className: 'data-health-domain-list-empty' }, 'No dashboard domain contracts are available.');
+  }
   return h(
     'dl',
     { className: 'data-health-domain-list' },

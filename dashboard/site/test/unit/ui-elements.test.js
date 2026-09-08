@@ -45,6 +45,25 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('dd')?.textContent).toContain('Refresh inventory.');
   });
 
+  it('renders the domain-specific empty state when no contracts are available', () => {
+    const rendered = renderUiElement('data-health-domain-list', {
+      pageId: 'data-health',
+      title: 'Dashboard domain confidence',
+      sourceNames: ['data-health-domains'],
+      sources: {
+        'data-health-domains': {
+          source: 'data-health-domains',
+          metadata,
+          rows: []
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.textContent).toBe('No dashboard domain contracts are available.');
+  });
+
   it('uses auto-fill to keep agent marketplace card widths stable when results shrink', () => {
     const styles = primerStylesheet();
     expect(styles).toContain(
