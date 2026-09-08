@@ -65,6 +65,10 @@ jobs:
               }
               return 0;
             };
+            const identifier = String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`;
+            const versionPattern = new RegExp(
+              String.raw`^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-${identifier}(?:\.${identifier})*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`,
+            );
             const [releases, tags] = await Promise.all([
               github.paginate(github.rest.repos.listReleases, {
                 owner: context.repo.owner,
@@ -78,10 +82,7 @@ jobs:
               }),
             ]);
             const toVersion = (name) => {
-              const identifier = String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`;
-              const match = new RegExp(
-                String.raw`^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-${identifier}(?:\.${identifier})*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`,
-              ).exec(name);
+              const match = versionPattern.exec(name);
               return match ? [[Number(match[1]), Number(match[2]), Number(match[3])]] : [];
             };
             const releaseTags = releases.map((release) => release.tag_name);
