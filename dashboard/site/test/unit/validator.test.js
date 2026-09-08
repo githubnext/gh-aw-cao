@@ -379,31 +379,27 @@ describe('dashboard document validation', () => {
       'navigation-label': 'MCPs',
       views: [
         {
-          id: 'mcp-status-distribution',
-          mark: 'chart',
-          chart: 'pie',
-          data: { source: 'mcp-servers' }
-        },
-        {
-          id: 'mcp-server-inventory',
+          id: 'mcp-tool-inventory',
           mark: 'table',
-          disclosure: 'supplemental',
           controls: 'interactive',
-          data: { source: 'mcp-servers', limit: 25 }
+          'lazy-list': true,
+          layout: 'full-view',
+          data: {
+            source: 'mcp-calls',
+            'order-by': [{ field: 'observed-at', direction: 'desc' }]
+          }
         }
       ]
     });
-    expect(mcps.views).toHaveLength(2);
-    expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+    expect(mcps.views).toHaveLength(1);
+    expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-server',
+      'mcp-tool',
       'mcp-server-version',
       'mcp-protocol-version',
       'gh-aw-version',
       'mcp-status',
-      'tool-calls',
-      'failed-calls',
-      'total-response-bytes',
-      'max-response-bytes',
+      'response-bytes',
       'repository',
       'workflow',
       'run',
