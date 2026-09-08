@@ -4241,9 +4241,9 @@
                 "title": "Runs"
               },
               "color": {
-                "field": "detection-state",
-                "type": "nominal",
-                "title": "State"
+                "field": "detection-state-label",
+                "type": "ordinal",
+                "title": "Detection state"
               }
             }
           },
@@ -4333,104 +4333,6 @@
                 "field": "security-status",
                 "type": "nominal",
                 "title": "Result"
-              }
-            }
-          },
-          {
-            "id": "detection-attention",
-            "disclosure-label": "Requires attention",
-            "description": "Threats, detector failures, degraded inspections, skipped detection, and unavailable evidence are ordered by operational urgency.",
-            "data": {
-              "source": "detection-observations",
-              "filters": {
-                "detection-state": [
-                  "threat",
-                  "tooling-failure",
-                  "degraded",
-                  "unknown",
-                  "skipped"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "attention-priority",
-                  "direction": "asc"
-                },
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No detection observations require attention in the selected horizon.",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "attention-priority",
-                  "type": "quantitative",
-                  "title": "Priority"
-                },
-                {
-                  "field": "detection-state",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "detection-signal",
-                  "type": "nominal",
-                  "title": "Signal / reason"
-                },
-                {
-                  "field": "inspection-warning",
-                  "type": "nominal",
-                  "title": "Inspection warning"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Investigate this threat-detection observation using the linked GitHub Actions run as authoritative evidence.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "repository",
-                    "workflow",
-                    "run",
-                    "detection-state",
-                    "detection-signal",
-                    "inspection-warning",
-                    "run-link"
-                  ]
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
               }
             }
           },
@@ -4636,15 +4538,6 @@
             "layout": "full",
             "views": [
               "detection-security-findings"
-            ]
-          },
-          {
-            "id": "requires-attention",
-            "title": "Requires attention",
-            "description": "Highest-priority evidence to investigate next.",
-            "layout": "full",
-            "views": [
-              "detection-attention"
             ]
           },
           {

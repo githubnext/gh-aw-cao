@@ -47,6 +47,12 @@ test("Copilot shell policy allows safe text tools and rejects mutating sed", () 
   assert.equal(shellPermissionRejection(shellPermission("echo ready", ["echo"])), null);
   assert.equal(shellPermissionRejection(shellPermission("cat dashboard.json", ["cat"])), null);
   assert.equal(
+    shellPermissionRejection(
+      shellPermission("cd dashboard/site && grep -n title dashboard.json | head", ["cd", "grep", "head"]),
+    ),
+    null,
+  );
+  assert.equal(
     shellPermissionRejection(shellPermission("sed -n '1,20p' dashboard.json", ["sed"])),
     null,
   );

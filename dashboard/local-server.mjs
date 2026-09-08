@@ -44,6 +44,7 @@ const socketEndpoint = "/__dashboard_socket";
 const dataArtifactName = "central-agentic-ops-dashboard-data";
 const devServerPidFileName = ".cao-dashboard-dev-server.json";
 const maxCopilotDashboardRepairAttempts = 3;
+const copilotDashboardTurnTimeoutMs = 10 * 60_000;
 const trustedDashboardWorkflowPaths = new Set([
   ".github/workflows/dashboard-build.yml",
   ".github/workflows/dashboard.yml",
@@ -305,6 +306,7 @@ function validateDashboardSource(source) {
 const copilotReadOnlyShellCommands = new Set([
   "basename",
   "cat",
+  "cd",
   "cut",
   "dirname",
   "du",
@@ -441,6 +443,7 @@ function browserSafeFileContent(path, content) {
 function errorMetadata(error) {
   return {
     name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? truncatedLogText(error.message) : undefined,
     code: error && typeof error === "object" && "code" in error
       ? String(error.code)
       : undefined,
@@ -1109,7 +1112,7 @@ Built-in views come from the site's dashboard.json. Package views come from thei
 JavaScript, HTML, CSS, and all other application files are outside this session's scope. Do not propose or attempt changes to them because they require a full application reload; make the requested improvement only through the selected dashboard.json page.
 
 After saving the validated dashboard page, respond with a short, plain-language summary of what changed in the dashboard and what the user will now see. Avoid implementation details, JSON field names, schema terminology, file paths, and developer-oriented language. Complete the edit rather than only describing it.`,
-          });
+          }, copilotDashboardTurnTimeoutMs);
         } catch (error) {
           if (context.aborted) return { aborted: true };
           console.log("Copilot dashboard session request failed.", {
@@ -1165,7 +1168,7 @@ Continue this same editing session and fix the current view. Use read_current_da
 
 Validation errors:
 ${validationErrors}`,
-            });
+            }, copilotDashboardTurnTimeoutMs);
           } catch (error) {
             if (context.aborted) return { aborted: true };
             console.log("Copilot dashboard repair request failed.", {
