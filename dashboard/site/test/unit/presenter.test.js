@@ -195,7 +195,7 @@ describe('dashboard DOM provenance', () => {
 });
 
 describe('presenter built-in and custom pages', () => {
-  it('renders distinct firewall enforcement, evidence, traffic, and drift scenarios', async () => {
+  it('renders aggregated firewall domains in a full-view lazy table', async () => {
     const metadata = /** @type {const} */ ({
       'source-id': 'firewall-fixture',
       'source-kind': 'fixture',
@@ -237,14 +237,15 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'firewall');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
-    expect(text).toContain('Enforcement disabled');
-    expect(text).toContain('Evidence missing');
-    expect(text).toContain('Newly allowed');
-    expect(text).toContain('Decision changed');
-    expect(text).toContain('Allowed');
-    expect(text).toContain('Denied');
+    expect(text).toContain('api.github.com');
+    expect(text).toContain('new.example');
+    expect(text).toContain('blocked.example');
+    expect(text).toContain('changed.example');
+    expect(text).toContain('Requests');
+    expect(text).toContain('Runs');
     expect(text).not.toContain('firewall failure');
     expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
     rendered.remove();

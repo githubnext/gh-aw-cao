@@ -580,278 +580,12 @@
         "navigation-label": "Firewall",
         "icon": "globe",
         "class-name": "firewall-page",
-        "description": "Network enforcement, policy decisions, destination drift, and evidence for agent egress.",
+        "description": "Observed firewall domains and aggregate request activity for agent egress.",
         "views": [
           {
-            "id": "security-firewall-decisions",
-            "title": "Enforcement posture",
-            "description": "Run-level enforcement states show whether agent egress was protected; unavailable evidence remains distinct from no observed traffic.",
-            "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "enforcement-label",
-                "type": "ordinal",
-                "title": "Enforcement"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "distinct-count",
-                "title": "Runs"
-              }
-            }
-          },
-          {
-            "id": "firewall-requires-review",
-            "title": "Requires review",
-            "description": "Prioritized enforcement gaps and workflow-relative network changes; denied requests are included only when the evidence indicates a new or changed condition.",
-            "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "review-state": [
-                  "enforcement-disabled",
-                  "evidence-missing",
-                  "newly-allowed",
-                  "newly-denied",
-                  "decision-changed",
-                  "volume-change",
-                  "repeated-denial",
-                  "unknown"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "review-priority",
-                  "direction": "asc"
-                },
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ],
-              "limit": 25
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No firewall conditions currently require review.",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "review-priority",
-                  "type": "quantitative",
-                  "title": "Priority"
-                },
-                {
-                  "field": "review-label",
-                  "type": "ordinal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal"
-                },
-                {
-                  "field": "domain",
-                  "type": "nominal"
-                },
-                {
-                  "field": "port",
-                  "type": "quantitative"
-                },
-                {
-                  "field": "drift-label",
-                  "type": "ordinal",
-                  "title": "Change",
-                  "display": "status"
-                },
-                {
-                  "field": "decision-label",
-                  "type": "ordinal",
-                  "title": "Decision",
-                  "display": "status"
-                },
-                {
-                  "field": "policy-rule-id",
-                  "type": "nominal",
-                  "title": "Policy rule"
-                },
-                {
-                  "field": "request-count",
-                  "type": "quantitative",
-                  "title": "Requests"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Investigate this firewall enforcement or network-change observation. Verify the linked evidence, explain the policy decision without treating allowed traffic as safe or denied traffic as a failure, and recommend a reviewed next step. Do not modify network policy.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "repository",
-                    "workflow",
-                    "run",
-                    "domain",
-                    "port",
-                    "current-decision",
-                    "policy-rule-id",
-                    "request-count",
-                    "drift-state",
-                    "run-link",
-                    "evidence-link"
-                  ]
-                }
-              ],
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "firewall-network-drift",
-            "title": "Network drift",
-            "description": "New and removed destinations, decision changes, and material request-volume changes use only the preceding run for the same repository and workflow.",
-            "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "drift-state": [
-                  "newly-allowed",
-                  "newly-denied",
-                  "decision-changed",
-                  "volume-change",
-                  "removed"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "drift-label",
-                "type": "ordinal",
-                "title": "Change"
-              },
-              "y": {
-                "field": "firewall-observation",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Destinations"
-              }
-            }
-          },
-          {
-            "id": "firewall-policy-rules",
-            "disclosure-label": "Policy attribution",
-            "description": "Observed policy attribution and rule utilization; unavailable attribution remains explicit.",
-            "data": {
-              "source": "firewall-policy-rules",
-              "time": {
-                "range": "30d"
-              },
-              "order-by": [
-                {
-                  "field": "rule-order",
-                  "direction": "asc"
-                }
-              ],
-              "limit": 25
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "Policy attribution is unavailable for the collected firewall evidence.",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "action",
-                  "type": "ordinal",
-                  "title": "Action",
-                  "display": "status"
-                },
-                {
-                  "field": "rule-id",
-                  "type": "nominal",
-                  "title": "Rule ID"
-                },
-                {
-                  "field": "rule-order",
-                  "type": "quantitative",
-                  "title": "Order"
-                },
-                {
-                  "field": "protocol",
-                  "type": "nominal"
-                },
-                {
-                  "field": "domain-pattern",
-                  "type": "nominal",
-                  "title": "Domain pattern"
-                },
-                {
-                  "field": "description",
-                  "type": "nominal"
-                },
-                {
-                  "field": "hit-count",
-                  "type": "quantitative",
-                  "title": "Requests"
-                },
-                {
-                  "field": "policy-source",
-                  "type": "nominal",
-                  "title": "Policy source"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal"
-                }
-              ],
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
             "id": "security-firewall-domains",
-            "disclosure-label": "Domain activity",
-            "description": "Inspect normalized destinations and policy decisions without equating allowed with safe or denied with failure.",
+            "title": "Domains",
+            "description": "Aggregate observed requests, runs, repositories, workflows, policy decisions, and policy rules by normalized domain over the requested 30-day horizon.",
             "data": {
               "source": "firewall-observations",
               "time": {
@@ -865,294 +599,67 @@
               },
               "order-by": [
                 {
-                  "field": "last-seen-at",
+                  "field": "requests",
                   "direction": "desc"
-                },
-                {
-                  "field": "domain",
-                  "direction": "asc"
                 }
-              ],
-              "limit": 25
+              ]
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No observed firewall traffic is available for this selection.",
-            "layout": "full",
-            "disclosure": "supplemental",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No observed firewall domains are available for this selection.",
             "encoding": {
               "columns": [
                 {
                   "field": "domain",
                   "type": "nominal"
-                },
-                {
-                  "field": "host",
-                  "type": "nominal"
-                },
-                {
-                  "field": "port",
-                  "type": "quantitative"
-                },
-                {
-                  "field": "protocol",
-                  "type": "nominal"
-                },
-                {
-                  "field": "decision-label",
-                  "type": "ordinal",
-                  "display": "status"
                 },
                 {
                   "field": "request-count",
                   "type": "quantitative",
+                  "aggregate": "sum",
+                  "as": "requests",
                   "title": "Requests"
                 },
                 {
-                  "field": "workflow",
-                  "type": "nominal"
+                  "field": "run",
+                  "type": "nominal",
+                  "aggregate": "distinct-count",
+                  "as": "runs",
+                  "title": "Runs"
                 },
                 {
                   "field": "repository",
-                  "type": "nominal"
+                  "type": "nominal",
+                  "aggregate": "distinct-count",
+                  "as": "repositories",
+                  "title": "Repositories"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "aggregate": "distinct-count",
+                  "as": "workflows",
+                  "title": "Workflows"
+                },
+                {
+                  "field": "decision",
+                  "type": "nominal",
+                  "aggregate": "distinct-count",
+                  "as": "decisions",
+                  "title": "Policy decisions"
                 },
                 {
                   "field": "policy-rule-id",
                   "type": "nominal",
-                  "title": "Policy rule"
-                },
-                {
-                  "field": "first-seen-at",
-                  "type": "temporal",
-                  "title": "First seen"
-                },
-                {
-                  "field": "last-seen-at",
-                  "type": "temporal",
-                  "title": "Last seen"
-                },
-                {
-                  "field": "drift-label",
-                  "type": "ordinal",
-                  "title": "Change",
-                  "display": "status"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal"
+                  "aggregate": "distinct-count",
+                  "as": "policy-rules",
+                  "title": "Policy rules"
                 }
-              ],
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              }
+              ]
             }
-          },
-          {
-            "id": "security-firewall-trend",
-            "title": "Traffic diagnostics",
-            "description": "Allowed and denied request volume over the requested 30-day horizon; source completeness discloses uncovered periods instead of replacing them with zeros.",
-            "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "decision": [
-                  "allowed",
-                  "denied"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "request-count",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Requests"
-              },
-              "color": {
-                "field": "decision",
-                "type": "ordinal",
-                "title": "Policy decision"
-              }
-            }
-          },
-          {
-            "id": "firewall-evidence-coverage",
-            "disclosure-label": "Evidence and coverage",
-            "description": "Availability, completeness, freshness, requested and observed horizons, artifact provenance, legacy limitations, and last successful collection.",
-            "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "order-by": [
-                {
-                  "field": "last-successful-collection-at",
-                  "direction": "desc"
-                }
-              ],
-              "limit": 25
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No firewall run metadata is available.",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "enforcement-label",
-                  "type": "ordinal",
-                  "title": "Enforcement",
-                  "display": "status"
-                },
-                {
-                  "field": "evidence-label",
-                  "type": "ordinal",
-                  "title": "Availability",
-                  "display": "status"
-                },
-                {
-                  "field": "evidence-completeness",
-                  "type": "ordinal",
-                  "title": "Completeness",
-                  "display": "status"
-                },
-                {
-                  "field": "evidence-freshness",
-                  "type": "ordinal",
-                  "title": "Freshness",
-                  "display": "status"
-                },
-                {
-                  "field": "evidence-coverage-percent",
-                  "type": "quantitative",
-                  "title": "Coverage %"
-                },
-                {
-                  "field": "requested-horizon-start",
-                  "type": "temporal",
-                  "title": "Requested start"
-                },
-                {
-                  "field": "evidence-horizon-start",
-                  "type": "temporal",
-                  "title": "Evidence start"
-                },
-                {
-                  "field": "evidence-horizon-end",
-                  "type": "temporal",
-                  "title": "Evidence end"
-                },
-                {
-                  "field": "last-successful-collection-at",
-                  "type": "temporal",
-                  "title": "Last collection"
-                },
-                {
-                  "field": "evidence-source",
-                  "type": "nominal",
-                  "title": "Artifact source"
-                },
-                {
-                  "field": "evidence-error",
-                  "type": "nominal",
-                  "title": "Limitation"
-                },
-                {
-                  "field": "gh-aw-firewall-version",
-                  "type": "nominal",
-                  "title": "AWF version"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
-          }
-        ],
-        "sections": [
-          {
-            "id": "firewall-enforcement-posture",
-            "title": "Enforcement posture",
-            "description": "Is agent network egress being enforced, and can the evidence be trusted?",
-            "layout": "full",
-            "views": [
-              "security-firewall-decisions"
-            ]
-          },
-          {
-            "id": "firewall-review",
-            "title": "Requires review",
-            "layout": "full",
-            "views": [
-              "firewall-requires-review"
-            ]
-          },
-          {
-            "id": "firewall-drift",
-            "title": "Network drift",
-            "layout": "full",
-            "views": [
-              "firewall-network-drift"
-            ]
-          },
-          {
-            "id": "firewall-policy-effectiveness",
-            "title": "Policy effectiveness",
-            "layout": "full",
-            "views": [
-              "firewall-policy-rules"
-            ]
-          },
-          {
-            "id": "firewall-domain-activity",
-            "title": "Domain activity",
-            "layout": "full",
-            "views": [
-              "security-firewall-domains"
-            ]
-          },
-          {
-            "id": "firewall-traffic-diagnostics",
-            "title": "Traffic diagnostics",
-            "layout": "full",
-            "views": [
-              "security-firewall-trend"
-            ]
-          },
-          {
-            "id": "firewall-evidence",
-            "title": "Evidence and coverage",
-            "layout": "full",
-            "views": [
-              "firewall-evidence-coverage"
-            ]
           }
         ]
       },
