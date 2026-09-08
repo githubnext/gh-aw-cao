@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
+import { formatRoundedPercent } from './count-formatters.js';
 import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
@@ -63,7 +64,7 @@ export function renderInsightsOverview(context) {
           h('h2', { id: 'insights-value-title' }, 'Operational value attainment'),
           h('p', null, 'Measured attainment and accepted repository outcomes, without inferring unsupported ROI.')),
         h('dl', { className: 'insights-lead-metrics' },
-          metric(meanValue === null ? '—' : `${Math.round(meanValue * 100)}%`, 'mean attainment'),
+          metric(meanValue === null ? '—' : formatRoundedPercent(meanValue), 'mean attainment'),
           metric(formatNumber(acceptedOutcomes), 'accepted outcomes'),
           metric(formatNumber(matureValues), 'mature observations'))),
       valueSeries.length > 1 ? renderValueSeriesSelector(valuePoints, valueSeries, valueChart) : null,
@@ -79,7 +80,7 @@ export function renderInsightsOverview(context) {
       renderLazyPanel('Execution health', () => insightPanel('Execution health', 'Recent completed workflow-run conclusions.',
         renderChartWidget('swimlane', runPoints, listChartSeries(runPoints)),
         h('dl', { className: 'insights-inline-metrics' },
-          metric(completedRuns.length ? `${Math.round((successfulRuns / completedRuns.length) * 100)}%` : '—', 'successful'),
+          metric(completedRuns.length ? formatRoundedPercent(successfulRuns / completedRuns.length) : '—', 'successful'),
           metric(formatNumber(failedRuns), 'failed'),
           metric(formatNumber(activeRuns), 'active')))),
       renderLazyPanel('Threat detection', () => insightPanel('Threat detection', 'Usable verdicts remain distinct from unavailable evidence.',

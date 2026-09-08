@@ -82,6 +82,18 @@ export function formatCoveragePercent(coverage, unknown = '—') {
 }
 
 /**
+ * Formats a 0-1 ratio as a whole-number percentage string, or a placeholder
+ * when the ratio is `null`/not finite. Unlike `formatCoveragePercent`, this
+ * rounds to the nearest whole percent for compact summary metrics.
+ * @param {number | null} ratio
+ * @param {string} [unknown]
+ * @returns {string}
+ */
+export function formatRoundedPercent(ratio, unknown = '—') {
+  return ratio === null || !Number.isFinite(ratio) ? unknown : `${Math.round(ratio * 100)}%`;
+}
+
+/**
  * Clamps a percentage value to the closed `[0, 100]` range, guarding chart
  * and progress-bar rendering against out-of-range inputs (e.g. rounding
  * artifacts or partially available telemetry).
