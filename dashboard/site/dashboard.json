@@ -6231,7 +6231,7 @@
           },
           {
             "id": "data-health-domains",
-            "disclosure-label": "Dashboard domain confidence",
+            "title": "Dashboard domain confidence",
             "disclosure": "supplemental",
             "data": {
               "sources": [
