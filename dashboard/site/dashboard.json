@@ -4005,7 +4005,30 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "board"
+              "body": "board",
+              "navigation": [
+                {
+                  "key": "board",
+                  "title": "Work",
+                  "icon": "project-roadmap",
+                  "pageId": "work",
+                  "href": "#page-work"
+                },
+                {
+                  "key": "tasks",
+                  "title": "Tasks",
+                  "icon": "table",
+                  "pageId": "work-tasks",
+                  "href": "#page-work-tasks"
+                },
+                {
+                  "key": "roadmap",
+                  "title": "Roadmap",
+                  "icon": "project-roadmap",
+                  "pageId": "work-roadmap",
+                  "href": "#page-work-roadmap"
+                }
+              ]
             },
             "layout": "full"
           }
@@ -4035,7 +4058,30 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "tasks"
+              "body": "tasks",
+              "navigation": [
+                {
+                  "key": "board",
+                  "title": "Work",
+                  "icon": "project-roadmap",
+                  "pageId": "work",
+                  "href": "#page-work"
+                },
+                {
+                  "key": "tasks",
+                  "title": "Tasks",
+                  "icon": "table",
+                  "pageId": "work-tasks",
+                  "href": "#page-work-tasks"
+                },
+                {
+                  "key": "roadmap",
+                  "title": "Roadmap",
+                  "icon": "project-roadmap",
+                  "pageId": "work-roadmap",
+                  "href": "#page-work-roadmap"
+                }
+              ]
             },
             "layout": "full"
           }
@@ -4065,7 +4111,30 @@
             "mark": "element",
             "element": "work-project-view",
             "config": {
-              "body": "roadmap"
+              "body": "roadmap",
+              "navigation": [
+                {
+                  "key": "board",
+                  "title": "Work",
+                  "icon": "project-roadmap",
+                  "pageId": "work",
+                  "href": "#page-work"
+                },
+                {
+                  "key": "tasks",
+                  "title": "Tasks",
+                  "icon": "table",
+                  "pageId": "work-tasks",
+                  "href": "#page-work-tasks"
+                },
+                {
+                  "key": "roadmap",
+                  "title": "Roadmap",
+                  "icon": "project-roadmap",
+                  "pageId": "work-roadmap",
+                  "href": "#page-work-roadmap"
+                }
+              ]
             },
             "layout": "full"
           }

@@ -751,6 +751,17 @@ dashboard:
           mark: element
           element: work-project-view
           config:
+            navigation:
+              - key: board
+                title: Work
+                icon: project-roadmap
+                pageId: work
+                href: "#page-work"
+              - key: tasks
+                title: Tasks
+                icon: table
+                pageId: work-tasks
+                href: "#page-work-tasks"
             sections: [board, tasks]
 `);
     expect(accepted.ok).toBe(true);
@@ -813,19 +824,77 @@ dashboard:
     expect(pages.get('work')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'board' }
+      config: {
+        body: 'board',
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
+      }
     });
     expect(pages.get('work-tasks')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'tasks' }
+      config: {
+        body: 'tasks',
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
+      }
     });
     expect(pages.get('work-roadmap')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'roadmap' }
+      config: {
+        body: 'roadmap',
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
+      }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
+  it('rejects invalid work-project-view navigation items', () => {
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: work-view-config
+  title: Work view config
+  pages:
+    - id: work-page
+      kind: custom
+      title: Work page
+      views:
+        - id: work-layouts
+          data:
+            sources: [work-items]
+          mark: element
+          element: work-project-view
+          config:
+            body: board
+            navigation:
+              - key: board
+                title: Work
+                icon: not-an-icon
+                pageId: work
+                href: "#page-work-tasks"
+`);
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.navigation[0].icon'
+      }));
+      expect(invalid.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.pages[0].views[0].config.navigation[0].href'
+      }));
+    }
   });
 
   it('defines experiments as a full-view interactive lazy-list table', () => {

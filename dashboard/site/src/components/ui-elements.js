@@ -37,10 +37,11 @@ import { renderWorkflowRoutePage } from './workflow-route-page.js';
  *   scope?: Record<string, unknown>,
  *   time?: Record<string, unknown>,
  *   routeParameter?: string,
+ *   routeNavigationPage?: string,
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
  *   viewId?: string,
- *   elementConfig?: { body?: string, sections?: string[], section?: string },
+ *   elementConfig?: { body?: string, sections?: string[], section?: string, navigation?: Array<{ key?: string, title?: string, icon?: string, pageId?: string, href?: string }> },
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */

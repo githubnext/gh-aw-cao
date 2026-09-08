@@ -9,7 +9,7 @@ import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
 import { workViewComposition } from './work-view-composition.js';
 import { renderWorkViewNavigation } from './work-view-navigation.js';
-import { workRoutePageConfigs } from './work-view-route-config.js';
+import { resolveWorkViewNavigation } from './work-view-navigation-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
@@ -30,6 +30,7 @@ export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const sections = workViewComposition(context.elementConfig);
   const activeSection = sections[0].key;
+  const navigation = resolveWorkViewNavigation(context.elementConfig?.navigation);
   const viewBody = h('div', { className: 'work-project-body' });
   let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
@@ -68,12 +69,20 @@ export function renderWorkProjectView(context) {
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
-    renderWorkViewNavigation(workRoutePageConfigs(), activeSection),
+    renderWorkViewNavigation(navigation.length > 0 ? navigation : defaultWorkNavigation(), activeSection),
     filterBar.element,
     viewBody
   );
   renderItems(items);
   return root;
+}
+
+function defaultWorkNavigation() {
+  return [
+    { key: 'board', title: 'Work', icon: 'project-roadmap', href: '#page-work' },
+    { key: 'tasks', title: 'Tasks', icon: 'table', href: '#page-work-tasks' },
+    { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', href: '#page-work-roadmap' }
+  ];
 }
 
 /**

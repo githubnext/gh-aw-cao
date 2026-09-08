@@ -419,13 +419,18 @@ describe('UI elements', () => {
         }
       },
       elementConfig: {
-        body: 'roadmap'
+        body: 'roadmap',
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
       },
       contextDetails: [],
       headingTag: 'h3'
     });
 
-    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
+    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('WorkTasksRoadmap');
     expect(rendered?.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-tasks')).toBeNull();
@@ -494,7 +499,12 @@ describe('UI elements', () => {
         }
       },
       elementConfig: {
-        body: 'tasks'
+        body: 'tasks',
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
       },
       contextDetails: [],
       headingTag: 'h3'
@@ -533,7 +543,14 @@ describe('UI elements', () => {
       title: body,
       sourceNames: ['work-items'],
       sources: { 'work-items': { source: 'work-items', rows, metadata } },
-      elementConfig: { body },
+      elementConfig: {
+        body,
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
+      },
       contextDetails: [],
       headingTag: 'h3'
     });
@@ -575,7 +592,14 @@ describe('UI elements', () => {
           metadata
         }
       },
-      elementConfig: { body: 'roadmap' },
+      elementConfig: {
+        body: 'roadmap',
+        navigation: [
+          { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+          { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+          { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+        ]
+      },
       contextDetails: [],
       headingTag: 'h3'
     });

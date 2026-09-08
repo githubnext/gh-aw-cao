@@ -5,7 +5,7 @@ import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
-import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
+import { resolveWorkViewNavigation } from '../../src/components/work-view-navigation-config.js';
 
 const item = {
   name: 'Dependabot release train',
@@ -35,6 +35,12 @@ const item = {
     label: 'Open github/gh-aw'
   }
 };
+
+const navigation = [
+  { key: 'board', title: 'Work', icon: 'project-roadmap', pageId: 'work', href: '#page-work' },
+  { key: 'tasks', title: 'Tasks', icon: 'table', pageId: 'work-tasks', href: '#page-work-tasks' },
+  { key: 'roadmap', title: 'Roadmap', icon: 'project-roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap' }
+];
 
 describe('work project view primitives', () => {
   it('renders reusable work cards independently of the work page', () => {
@@ -79,31 +85,32 @@ describe('work project view primitives', () => {
   });
 
   it('derives reusable work route navigation from declarative body selection', () => {
-    expect(workRoutePageConfigForBody('board')).toMatchObject({
+    const resolvedNavigation = resolveWorkViewNavigation(navigation);
+    expect(resolvedNavigation[0]).toMatchObject({
       key: 'board',
       pageId: 'work',
       href: '#page-work',
-      title: 'Board'
+      title: 'Work'
     });
-    expect(workRoutePageConfigForBody('tasks')).toMatchObject({
+    expect(resolvedNavigation[1]).toMatchObject({
       key: 'tasks',
       pageId: 'work-tasks',
       href: '#page-work-tasks',
       title: 'Tasks'
     });
-    expect(workRoutePageConfigForBody('roadmap')).toMatchObject({
+    expect(resolvedNavigation[2]).toMatchObject({
       key: 'roadmap',
       pageId: 'work-roadmap',
       href: '#page-work-roadmap',
       title: 'Roadmap'
     });
-    const rendered = renderWorkViewNavigation(workRoutePageConfigs(), 'tasks');
+    const rendered = renderWorkViewNavigation(resolvedNavigation, 'tasks');
     expect([...rendered.querySelectorAll('a')].map((link) => ({
       href: link.getAttribute('href'),
       current: link.getAttribute('aria-current'),
       text: link.textContent
     }))).toEqual([
-      { href: '#page-work', current: null, text: 'Board' },
+      { href: '#page-work', current: null, text: 'Work' },
       { href: '#page-work-tasks', current: 'page', text: 'Tasks' },
       { href: '#page-work-roadmap', current: null, text: 'Roadmap' }
     ]);
@@ -118,7 +125,10 @@ describe('work project view primitives', () => {
       pageId: 'work-tasks',
       title: 'Tasks',
       sources: { 'work-items': { rows } },
-      elementConfig: { body: 'tasks' }
+      elementConfig: {
+        body: 'tasks',
+        navigation
+      }
     }));
 
     expect(rendered.querySelector('.work-task-view-name')?.textContent).toContain('Operations tasks');
@@ -157,7 +167,8 @@ describe('work project view primitives', () => {
       },
       elementConfig: {
         body: 'roadmap',
-        sections: ['tasks']
+        sections: ['tasks'],
+        navigation
       }
     }));
 
@@ -177,7 +188,8 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
       title: 'Work',
-      sources: { 'work-items': { rows } }
+      sources: { 'work-items': { rows } },
+      elementConfig: { body: 'board', navigation }
     }));
     const columns = [...rendered.querySelectorAll('.work-board-column')];
 
@@ -199,11 +211,12 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
       title: 'Work',
-      sources: { 'work-items': { rows } }
+      sources: { 'work-items': { rows } },
+      elementConfig: { body: 'board', navigation }
     }));
     const tabs = [...rendered.querySelectorAll('.work-board-group-tab')];
 
-    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
+    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('WorkTasksRoadmap');
     expect(tabs.map((tab) => tab.textContent)).toEqual(['Todo1', 'In progress0', 'Needs review1', 'Done0']);
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
     expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Needs review');
@@ -234,7 +247,8 @@ describe('work project view primitives', () => {
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
       title: 'Work',
-      sources: { 'work-items': { rows } }
+      sources: { 'work-items': { rows } },
+      elementConfig: { body: 'board', navigation }
     }));
     const stateFilter = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Filter by state"]'));
     stateFilter.value = 'Needs Review';
@@ -256,7 +270,7 @@ describe('work project view primitives', () => {
       pageId: 'work-roadmap',
       title: 'Roadmap',
       sources: { 'work-items': { rows } },
-      elementConfig: { body: 'roadmap' }
+      elementConfig: { body: 'roadmap', navigation }
     }));
 
     expect([...rendered.querySelectorAll('.work-roadmap-period-heading')].map((heading) => heading.textContent)).toEqual([

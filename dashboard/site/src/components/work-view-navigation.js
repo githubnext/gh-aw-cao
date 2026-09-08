@@ -16,6 +16,7 @@ import { renderIconSpan } from './ui-primitives.js';
  * @returns {HTMLElement}
  */
 export function renderWorkViewNavigation(items, activeKey) {
+  if (items.length === 0) return h('nav', { className: 'work-project-tabs', 'aria-label': 'Work views' });
   return h(
     'nav',
     { className: 'work-project-tabs', 'aria-label': 'Work views' },

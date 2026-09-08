@@ -1843,6 +1843,30 @@ function getViewSources(view) {
 }
 
 /**
+ * @param {string} pageId
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @returns {Array<{ key: string, title: string, icon: string, pageId: string, href: string }>}
+ */
+function deriveWorkViewNavigationForPage(pageId, sources) {
+  const dashboardPages = Array.isArray(sources.pages?.rows)
+    ? sources.pages.rows
+    : [];
+  const workPageIds = new Set(['work', 'work-tasks', 'work-roadmap']);
+  if (!workPageIds.has(pageId)) return [];
+  return dashboardPages.flatMap((row) => {
+    if (!isPlainObject(row) || row.element !== 'work-project-view') return [];
+    const candidatePageId = typeof row.id === 'string' ? row.id : '';
+    if (!workPageIds.has(candidatePageId)) return [];
+    const config = isPlainObject(row.config) ? row.config : undefined;
+    const key = typeof config?.body === 'string' ? config.body : '';
+    const title = typeof row.title === 'string' ? row.title : '';
+    const icon = typeof row.icon === 'string' ? row.icon : '';
+    if (!candidatePageId || !key || !title || !icon) return [];
+    return [{ key, title, icon, pageId: candidatePageId, href: `#page-${candidatePageId}` }];
+  });
+}
+
+/**
  * @param {Array<Record<string, unknown>>} rows
  * @returns {DataState['availability']}
  */
@@ -2148,6 +2172,16 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
   const elementName = typeof view.element === 'string' ? view.element : '';
   const sourceNames = getViewSources(view);
   const viewData = isPlainObject(view.data) ? view.data : undefined;
+  const elementConfig = isPlainObject(view.config)
+    ? {
+      ...view.config,
+      ...(elementName === 'work-project-view'
+        ? {
+          navigation: deriveWorkViewNavigationForPage(pageId, sources)
+        }
+        : {})
+    }
+    : undefined;
   if (sourceNames.length === 0) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag);
   }
@@ -2189,8 +2223,9 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
+    routeNavigationPage: typeof pageId === 'string' ? pageId : undefined,
     viewId: typeof view.id === 'string' ? view.id : undefined,
-    elementConfig: isPlainObject(view.config) ? view.config : undefined,
+    elementConfig,
     headingTag
   });
   if (!rendered) {
@@ -2215,6 +2250,16 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
   const elementName = typeof view.element === 'string' ? view.element : '';
   const sourceNames = getViewSources(view);
   const viewData = isPlainObject(view.data) ? view.data : undefined;
+  const elementConfig = isPlainObject(view.config)
+    ? {
+      ...view.config,
+      ...(elementName === 'work-project-view'
+        ? {
+          navigation: deriveWorkViewNavigationForPage(pageId, sources)
+        }
+        : {})
+    }
+    : undefined;
   if (sourceNames.length === 0) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag);
   }
@@ -2252,8 +2297,9 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
+    routeNavigationPage: typeof pageId === 'string' ? pageId : undefined,
     viewId: typeof view.id === 'string' ? view.id : undefined,
-    elementConfig: isPlainObject(view.config) ? view.config : undefined,
+    elementConfig,
     headingTag
   });
   const syncRendered = rendered ?? renderUiElement(elementName, {
@@ -2267,8 +2313,9 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
+    routeNavigationPage: typeof pageId === 'string' ? pageId : undefined,
     viewId: typeof view.id === 'string' ? view.id : undefined,
-    elementConfig: isPlainObject(view.config) ? view.config : undefined,
+    elementConfig,
     headingTag
   });
   if (!syncRendered) {

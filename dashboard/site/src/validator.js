@@ -36,6 +36,7 @@ import {
   MAX_ESSENTIAL_VIEWS_PER_PAGE,
   NAVIGATION_SECTION_KEYS,
   NON_ADDITIVE_MEASURE_FIELDS,
+  OCTICON_NAMES,
   ORDER_BY_KEYS,
   ORDER_DIRECTION_VALUES,
   OUTCOME_STATE_VALUES,
@@ -1678,6 +1679,62 @@ function validateView(view, viewNode, path, viewIds, errors) {
          ERROR_CODES.missingOrInvalidRequiredField,
          'config.sections is supported only for the experiments-evaluation and work-project-view elements.',
          `${path}.config.sections`
+       ));
+      }
+      if (view.element === 'work-project-view' && view.config.navigation !== undefined) {
+       if (!Array.isArray(view.config.navigation) || view.config.navigation.length === 0) {
+         errors.push(createError(
+           ERROR_CODES.missingOrInvalidRequiredField,
+           'work-project-view config.navigation must be a non-empty list.',
+           `${path}.config.navigation`
+         ));
+       } else {
+         const navigationNode = getValueNodeByKey(configNode, 'navigation');
+         for (let index = 0; index < view.config.navigation.length; index += 1) {
+           const item = view.config.navigation[index];
+           const itemPath = `${path}.config.navigation[${index}]`;
+           if (!isPlainObject(item)) {
+             errors.push(createError(
+               ERROR_CODES.missingOrInvalidRequiredField,
+               'work-project-view config.navigation items must be mappings.',
+               itemPath
+             ));
+             continue;
+           }
+           validateObjectKeys(getSequenceItemNode(navigationNode, index), ['key', 'title', 'icon', 'pageId', 'href'], itemPath, errors);
+           validateStringField(item.key, `${itemPath}.key`, true, errors);
+           if (typeof item.key === 'string' && !WORK_VIEW_BODY_VALUES.includes(item.key)) {
+             errors.push(createError(
+               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+               'work-project-view config.navigation keys must use canonical body values.',
+               `${itemPath}.key`
+             ));
+           }
+           validateStringField(item.title, `${itemPath}.title`, true, errors);
+           validateStringField(item.icon, `${itemPath}.icon`, true, errors);
+           if (typeof item.icon === 'string' && !OCTICON_NAMES.includes(item.icon)) {
+             errors.push(createError(
+               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+               'work-project-view config.navigation icons must use canonical Octicon names.',
+               `${itemPath}.icon`
+             ));
+           }
+           validateStringField(item.pageId, `${itemPath}.pageId`, true, errors);
+           validateStringField(item.href, `${itemPath}.href`, true, errors);
+           if (typeof item.pageId === 'string' && typeof item.href === 'string' && item.href !== `#page-${item.pageId}`) {
+             errors.push(createError(
+               ERROR_CODES.missingOrInvalidRequiredField,
+               'work-project-view config.navigation href must match #page-<pageId>.',
+               `${itemPath}.href`
+             ));
+           }
+         }
+       }
+      } else if (view.config.navigation !== undefined) {
+       errors.push(createError(
+         ERROR_CODES.missingOrInvalidRequiredField,
+         'config.navigation is supported only for the work-project-view element.',
+         `${path}.config.navigation`
        ));
       }
     }
