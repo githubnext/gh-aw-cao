@@ -6,7 +6,7 @@ import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
-import { renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, renderSearchInput } from './ui-primitives.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -303,13 +303,9 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const filterToggle = h('button', {
     type: 'button',
     className: 'notifications-filter-toggle',
-    'aria-expanded': 'false',
-    onClick: () => {
-      const expanded = filterToggle.getAttribute('aria-expanded') !== 'true';
-      filterToggle.setAttribute('aria-expanded', String(expanded));
-      advancedFilters.classList.toggle('is-expanded', expanded);
-    }
+    onClick: () => setFiltersExpanded(filterToggle.getAttribute('aria-expanded') !== 'true')
   }, octicon('filter'), h('span', null, 'Filters'));
+  const setFiltersExpanded = createExpandableToggle(filterToggle, advancedFilters, { expandedClass: 'is-expanded' });
   search.addEventListener('input', () => render());
   sort.addEventListener('change', () => render());
   group.addEventListener('change', () => render());
