@@ -1514,7 +1514,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .overview-content > .layout-section > .layout-section-header { margin: 0 0 12px; padding-top: 20px; border-top: 1px solid var(--border); }
 .table-region { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; margin: 12px 0 20px; background: var(--canvas); }
 .table-scroll { max-height: 60vh; overflow: auto; overflow-anchor: none; overscroll-behavior: contain; }
-.table-region-static .table-scroll, .table-region-expanded .table-scroll { max-height: none; overflow: visible; overscroll-behavior: auto; }
+.table-region-static .table-scroll, .table-region-expanded:not(.table-region-virtualized) .table-scroll { max-height: none; overflow: visible; overscroll-behavior: auto; }
 .table-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .table-scroll thead th { position: sticky; top: 0; z-index: 1; }
 .table-sort { display: inline-flex; align-items: center; gap: 4px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }

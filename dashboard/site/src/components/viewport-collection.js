@@ -141,11 +141,18 @@ function createController(container, options) {
 
   const rememberFocus = () => {
     const active = container.ownerDocument.activeElement;
-    if (!(active instanceof Element)) return;
+    if (active === container) return false;
+    if (!(active instanceof Element)) return false;
     const row = active.closest('[data-viewport-key]');
-    if (!(row instanceof HTMLElement) || !container.contains(row)) return;
+    if (!(row instanceof HTMLElement) || !container.contains(row)) {
+      activeKey = '';
+      activeSlot = -1;
+      container.removeAttribute('tabindex');
+      return false;
+    }
     activeKey = row.dataset.viewportKey ?? '';
     activeSlot = [...row.querySelectorAll(FOCUSABLE_SELECTOR)].indexOf(active);
+    return activeSlot >= 0;
   };
 
   const restoreFocus = () => {
@@ -162,12 +169,7 @@ function createController(container, options) {
 
   /** @param {number} nextStart @param {number} nextEnd */
   const renderWindow = (nextStart, nextEnd) => {
-    rememberFocus();
-    const focusedKey = activeKey;
-    const focusedIndex = focusedKey
-      ? items.findIndex((item, index) => key(item, index) === focusedKey)
-      : -1;
-    if (focusedIndex >= 0) {
+    if (rememberFocus()) {
       container.tabIndex = -1;
       container.focus({ preventScroll: true });
     }
@@ -228,10 +230,17 @@ function createController(container, options) {
     if (typeof view?.ResizeObserver === 'function') {
       resizeObserver = new view.ResizeObserver((entries) => {
         let changed = false;
+        let scrollAdjustment = 0;
+        const visibleStart = viewport().start;
         for (const entry of entries) {
           const itemKey = entry.target instanceof HTMLElement ? entry.target.dataset.viewportKey : '';
           const size = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
           if (itemKey && size > 0 && measuredSizes.get(itemKey) !== size) {
+            const index = Number(entry.target instanceof HTMLElement ? entry.target.dataset.viewportIndex : -1);
+            const previousSize = measuredSizes.get(itemKey) ?? estimate;
+            if (index >= 0 && (offsets[index + 1] ?? 0) <= visibleStart) {
+              scrollAdjustment += size - previousSize;
+            }
             measuredSizes.set(itemKey, size);
             changed = true;
           }
@@ -242,6 +251,9 @@ function createController(container, options) {
           const bottomSpacer = container.querySelector('.viewport-spacer-end');
           setSpacerSize(topSpacer, offsets[start] ?? 0, tableMode);
           setSpacerSize(bottomSpacer, (offsets[items.length] ?? 0) - (offsets[end] ?? 0), tableMode);
+          if (scrollAdjustment !== 0 && scrollRoot instanceof HTMLElement) {
+            scrollRoot.scrollTop += scrollAdjustment;
+          }
           schedule();
         }
       });
@@ -259,14 +271,19 @@ function createController(container, options) {
         && typeof view.ResizeObserver === 'function'
         && typeof view.requestAnimationFrame === 'function';
       if (items.length <= threshold || !supported) {
-        renderedItems = fallbackItems.map((item, index) => renderItem(item, index));
+        const renderedSource = supported ? items : fallbackItems;
+        renderedItems = renderedSource.map((item, index) => renderItem(item, index));
         container.replaceChildren(...renderedItems);
       } else {
         renderWindow(0, Math.min(items.length, batchSize * 2));
         queueMicrotask(initializeObservers);
       }
       if (tableMode) {
-        queueMicrotask(() => container.closest('table')?.setAttribute('aria-rowcount', String(items.length + 1)));
+        queueMicrotask(() => {
+          const table = container.closest('table');
+          if (supported && items.length > threshold) table?.setAttribute('aria-rowcount', String(items.length + 1));
+          else table?.removeAttribute('aria-rowcount');
+        });
       }
     },
     /** @param {unknown[]} nextItems @param {unknown[]} [nextFallbackItems] */

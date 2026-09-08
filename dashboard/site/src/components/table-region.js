@@ -83,7 +83,9 @@ export function renderTableRegion(options) {
 
   const region = h(
     'div',
-    { className: `table-region${regionClassName ? ` ${regionClassName}` : ''}` },
+    {
+      className: `table-region${regionClassName ? ` ${regionClassName}` : ''}${sourceRows && sourceRows.length > VIRTUALIZE_THRESHOLD ? ' table-region-virtualized' : ''}`
+    },
     interactive
       ? h(
         'div',
@@ -118,7 +120,6 @@ export function renderTableRegion(options) {
         {
           className: tableClassName,
           ...(options.tableRole ? { role: options.tableRole } : {}),
-          ...(sourceRows && sourceRows.length > VIRTUALIZE_THRESHOLD ? { 'aria-rowcount': String(sourceRows.length + 1) } : {}),
           ...(tableClassName === 'custom-table' ? { 'data-custom-view-mark': 'table' } : {}),
           ...(tableClassName === 'custom-chart-table' ? { 'data-custom-view-mark': 'chart' } : {})
         },

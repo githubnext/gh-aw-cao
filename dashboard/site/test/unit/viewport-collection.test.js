@@ -6,6 +6,8 @@ import { renderNotificationsInbox } from '../../src/components/notifications-inb
 
 /** @type {TestIntersectionObserver[]} */
 const observers = [];
+/** @type {TestResizeObserver[]} */
+const resizeObservers = [];
 /** @type {FrameRequestCallback[]} */
 const frames = [];
 
@@ -24,6 +26,7 @@ class TestResizeObserver {
   /** @param {ResizeObserverCallback} callback */
   constructor(callback) {
     this.callback = callback;
+    resizeObservers.push(this);
   }
 
   observe() {}
@@ -48,6 +51,7 @@ function flushFrame() {
 afterEach(() => {
   document.body.replaceChildren();
   observers.length = 0;
+  resizeObservers.length = 0;
   frames.length = 0;
   vi.unstubAllGlobals();
 });
@@ -89,6 +93,7 @@ describe('renderViewportCollection', () => {
       tagName: 'tbody',
       colSpan: 1
     });
+
     const table = h('table', null, h('thead', null, h('tr', null, h('th', null, 'Value'))), body);
     document.body.append(table);
     await Promise.resolve();
@@ -97,6 +102,33 @@ describe('renderViewportCollection', () => {
     expect(body.querySelectorAll(':scope > tr')).toHaveLength(42);
     expect(body.querySelector('[data-viewport-index="0"]')?.getAttribute('aria-rowindex')).toBe('2');
     expect(body.querySelectorAll('.viewport-spacer[aria-hidden="true"]')).toHaveLength(2);
+  });
+
+  it('does not steal focus after a focused row is unloaded', async () => {
+    enableObservers();
+    const list = renderViewportCollection({
+      items: Array.from({ length: 1_000 }, (_, index) => index),
+      key: (item) => String(item),
+      renderItem: (item) => h('li', null, h('button', null, `Row ${item}`)),
+      estimatedItemSize: 50
+    });
+    const outside = h('button', null, 'Outside');
+    document.body.append(list, outside);
+    await Promise.resolve();
+
+    /** @type {HTMLButtonElement} */ (list.querySelector('button')).focus();
+    vi.spyOn(list, 'getBoundingClientRect').mockReturnValue(/** @type {DOMRect} */ ({
+      top: -5_000, bottom: 45_000, left: 0, right: 100, width: 100, height: 50_000,
+      x: 0, y: -5_000, toJSON: () => ({})
+    }));
+    window.dispatchEvent(new Event('scroll'));
+    flushFrame();
+    expect(document.activeElement).toBe(list);
+
+    outside.focus();
+    window.dispatchEvent(new Event('scroll'));
+    flushFrame();
+    expect(document.activeElement).toBe(outside);
   });
 
   it('bounds the overview notification DOM for large inboxes', async () => {
