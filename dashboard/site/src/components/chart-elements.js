@@ -33,7 +33,7 @@ const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
 const SWIMLANE_START_X = 25;
 const SWIMLANE_END_X = 117;
-const SWIMLANE_SECTION_WIDTH = 0.8;
+const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
   ['failure', 'Failure'],
@@ -826,26 +826,31 @@ function renderHeatmapChart(points, valueLabel, unit) {
  * @returns {HTMLElement}
  */
 function renderSwimlaneChart(points, timeRange) {
-  /** @type {Array<ChartPointLike & { lane: string, timestamp: number }>} */
-  const plotted = points.flatMap((point) => {
+  const timestamps = new Float64Array(points.length);
+  const laneIndexes = new Int8Array(points.length);
+  laneIndexes.fill(-1);
+  const counts = Object.fromEntries(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, 0]));
+  let plottedCount = 0;
+  let firstObserved = Number.POSITIVE_INFINITY;
+  let lastObserved = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
     const timestamp = Date.parse(String(point.x));
     const lane = swimlaneConclusion(point.category ?? point.color);
-    return Number.isFinite(timestamp) && lane
-      ? [{ ...point, lane, timestamp }]
-      : [];
-  });
-  if (plotted.length === 0) {
+    if (!Number.isFinite(timestamp) || !lane) continue;
+    timestamps[index] = timestamp;
+    laneIndexes[index] = SWIMLANE_DEFINITIONS.findIndex(([candidate]) => candidate === lane);
+    counts[lane] += 1;
+    plottedCount += 1;
+    firstObserved = Math.min(firstObserved, timestamp);
+    lastObserved = Math.max(lastObserved, timestamp);
+  }
+  if (plottedCount === 0) {
     return renderChartWidgetShell(
       'swimlane',
       null,
       renderEmptyMessage('No workflow runs to show.', { role: 'status' })
     );
-  }
-  let firstObserved = Number.POSITIVE_INFINITY;
-  let lastObserved = Number.NEGATIVE_INFINITY;
-  for (const point of plotted) {
-    firstObserved = Math.min(firstObserved, point.timestamp);
-    lastObserved = Math.max(lastObserved, point.timestamp);
   }
   let start = Date.parse(String(timeRange?.start ?? ''));
   let end = Date.parse(String(timeRange?.end ?? ''));
@@ -856,12 +861,10 @@ function renderSwimlaneChart(points, timeRange) {
     end += 43_200_000;
   }
   const span = Math.max(end - start, 1);
-  const counts = Object.fromEntries(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, 0]));
-  for (const point of plotted) counts[point.lane] += 1;
   const successes = counts.success;
   const summary = [
-    `${formatCount(plotted.length)} runs`,
-    `${formatCoveragePercent(plotted.length > 0 ? successes / plotted.length : null, '0.0%')} success`,
+    `${formatCount(plottedCount)} runs`,
+    `${formatCoveragePercent(successes / plottedCount, '0.0%')} success`,
     `${formatCount(counts.failure)} failed`,
     `${formatCount(counts.skipped)} skipped`,
     `${formatCount(counts['action-required'])} action required`
@@ -870,7 +873,7 @@ function renderSwimlaneChart(points, timeRange) {
   /** @param {number} timestamp */
   const xCoordinate = (timestamp) => SWIMLANE_START_X
     + (Math.min(1, Math.max(0, (timestamp - start) / span)) * (SWIMLANE_END_X - SWIMLANE_START_X));
-  const sectionsByLane = buildSwimlaneSections(plotted, xCoordinate);
+  const sectionsByLane = buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate);
 
   return renderChartWidgetShell(
     'swimlane',
@@ -885,7 +888,7 @@ function renderSwimlaneChart(points, timeRange) {
       {
         viewBox: '0 0 120 62',
         role: 'img',
-        'aria-label': `Categorical swimlane timeline with ${plotted.length} workflow runs`
+        'aria-label': `Categorical swimlane timeline with ${plottedCount} workflow runs`
       },
       ...SWIMLANE_DEFINITIONS.flatMap(([lane, label], laneIndex) => {
         const y = 7 + (laneIndex * 10);
@@ -915,24 +918,31 @@ function renderSwimlaneChart(points, timeRange) {
 /**
  * Coalesces observations into a fixed number of visual buckets per lane, then
  * combines neighboring occupied buckets into contiguous sections.
- * @param {Array<ChartPointLike & { lane: string, timestamp: number }>} points
+ * @param {ChartPointLike[]} points
+ * @param {Float64Array} timestamps
+ * @param {Int8Array} laneIndexes
  * @param {(timestamp: number) => number} xCoordinate
  */
-function buildSwimlaneSections(points, xCoordinate) {
-  const binCount = Math.ceil((SWIMLANE_END_X - SWIMLANE_START_X) / SWIMLANE_SECTION_WIDTH);
+function buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate) {
+  const binCount = MAX_SWIMLANE_SECTIONS_PER_LANE;
+  const sectionWidth = (SWIMLANE_END_X - SWIMLANE_START_X) / binCount;
   /** @type {Map<string, Array<{ count: number, first: number, last: number, point: ChartPointLike & { lane: string, timestamp: number } } | null>>} */
   const binsByLane = new Map(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, Array(binCount).fill(null)]));
-  for (const point of points) {
-    const x = xCoordinate(point.timestamp);
-    const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_START_X) / SWIMLANE_SECTION_WIDTH)));
-    const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(point.lane));
+  for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
+    const laneIndex = laneIndexes[pointIndex];
+    if (laneIndex < 0) continue;
+    const timestamp = timestamps[pointIndex];
+    const lane = SWIMLANE_DEFINITIONS[laneIndex][0];
+    const x = xCoordinate(timestamp);
+    const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_START_X) / sectionWidth)));
+    const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(lane));
     const bin = bins[index];
     if (bin) {
       bin.count += 1;
-      bin.first = Math.min(bin.first, point.timestamp);
-      bin.last = Math.max(bin.last, point.timestamp);
+      bin.first = Math.min(bin.first, timestamp);
+      bin.last = Math.max(bin.last, timestamp);
     } else {
-      bins[index] = { count: 1, first: point.timestamp, last: point.timestamp, point };
+      bins[index] = { count: 1, first: timestamp, last: timestamp, point: { ...points[pointIndex], lane, timestamp } };
     }
   }
 
@@ -945,8 +955,8 @@ function buildSwimlaneSections(points, xCoordinate) {
       const bin = bins[index];
       if (!bin) continue;
       const previous = sections.at(-1);
-      const x1 = SWIMLANE_START_X + (index * SWIMLANE_SECTION_WIDTH);
-      const x2 = Math.min(SWIMLANE_END_X, x1 + SWIMLANE_SECTION_WIDTH);
+      const x1 = SWIMLANE_START_X + (index * sectionWidth);
+      const x2 = Math.min(SWIMLANE_END_X, x1 + sectionWidth);
       if (previous && Math.abs(previous.x2 - x1) < 1e-9) {
         previous.x2 = x2;
         previous.count += bin.count;
