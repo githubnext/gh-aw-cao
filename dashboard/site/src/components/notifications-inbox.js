@@ -47,26 +47,27 @@ function writeState(state) {
   }
 }
 
-/** @returns {{ queue: string[], size: number, done: Set<string>, later: Set<string> }} */
+/** @returns {{ queue: string[], size: number, seen: Set<string>, done: Set<string>, later: Set<string> }} */
 function readCatchUpQueueState() {
   try {
     const stored = JSON.parse(globalThis.window?.localStorage.getItem(CATCH_UP_QUEUE_STORAGE_KEY) ?? '{}');
     return {
       queue: Array.isArray(stored.queue) ? stored.queue : [],
       size: Number(stored.size) || 0,
+      seen: new Set(Array.isArray(stored.seen) ? stored.seen : []),
       done: new Set(Array.isArray(stored.done) ? stored.done : []),
       later: new Set(Array.isArray(stored.later) ? stored.later : [])
     };
   } catch {
-    return { queue: [], size: 0, done: new Set(), later: new Set() };
+    return { queue: [], size: 0, seen: new Set(), done: new Set(), later: new Set() };
   }
 }
 
-/** @param {{ queue: string[], size: number, done: Set<string>, later: Set<string> }} state */
+/** @param {{ queue: string[], size: number, seen: Set<string>, done: Set<string>, later: Set<string> }} state */
 function writeCatchUpQueueState(state) {
   try {
     globalThis.window?.localStorage.setItem(CATCH_UP_QUEUE_STORAGE_KEY, JSON.stringify({
-      queue: state.queue, size: state.size, done: [...state.done], later: [...state.later]
+      queue: state.queue, size: state.size, seen: [...state.seen], done: [...state.done], later: [...state.later]
     }));
   } catch {
     // The Catch Up queue remains usable for this page load when storage is unavailable.
@@ -376,9 +377,10 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
   const valueDelta = value.length > 1 ? value[value.length - 1] - value[0] : null;
   const stories = catchUpStories(attentionRows, currentOutcomes, sources.operationalValues, start, end);
   const queueState = readCatchUpQueueState();
-  const { queue, size } = buildCatchUpQueue(stories, queueState);
+  const { queue, size, seen } = buildCatchUpQueue(stories, queueState);
   queueState.queue = queue;
   queueState.size = size;
+  queueState.seen = seen;
   writeCatchUpQueueState(queueState);
   const storiesById = new Map(stories.map((story) => [story.id, story]));
   const queuedStories = /** @type {typeof stories} */ (queue.map((id) => storiesById.get(id)).filter((story) => story !== undefined));
