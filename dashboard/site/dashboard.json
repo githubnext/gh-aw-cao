@@ -5881,98 +5881,60 @@
         "class-name": "data-health-page",
         "views": [
           {
-            "id": "data-health-summary",
+            "id": "data-health-confidence",
             "title": "Overall confidence",
+            "description": "Availability, completeness, and freshness remain independent even when overall confidence changes.",
             "data": {
               "source": "data-health-summary"
             },
-            "mark": "table",
-            "controls": "static",
-            "layout": "full",
-            "description": "Availability, completeness, and freshness remain independent even when overall confidence changes.",
+            "mark": "metric",
+            "layout": "half",
             "encoding": {
-              "columns": [
-                {
-                  "field": "confidence",
-                  "type": "nominal",
-                  "title": "Confidence",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Primary reason"
-                },
-                {
-                  "field": "affected-domains",
-                  "type": "nominal",
-                  "title": "Affected areas"
-                },
-                {
-                  "field": "availability",
-                  "type": "nominal",
-                  "title": "Availability",
-                  "display": "status"
-                },
-                {
-                  "field": "completeness",
-                  "type": "nominal",
-                  "title": "Completeness",
-                  "display": "status"
-                },
-                {
-                  "field": "freshness",
-                  "type": "nominal",
-                  "title": "Freshness",
-                  "display": "status"
-                },
-                {
-                  "field": "scope-coverage",
-                  "type": "nominal",
-                  "title": "Scope coverage"
-                },
-                {
-                  "field": "collector-state",
-                  "type": "nominal",
-                  "title": "Collector state",
-                  "display": "status"
-                },
-                {
-                  "field": "compatibility-gaps",
-                  "type": "quantitative",
-                  "title": "Compatibility gaps"
-                },
-                {
-                  "field": "sources",
-                  "type": "quantitative",
-                  "title": "Sources"
-                },
-                {
-                  "field": "available-sources",
-                  "type": "quantitative",
-                  "title": "Available"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "fields",
-                  "type": "quantitative",
-                  "title": "Fields"
-                },
-                {
-                  "field": "total-size",
-                  "type": "nominal",
-                  "title": "Total size"
-                },
-                {
-                  "field": "next-action",
-                  "type": "nominal",
-                  "title": "Next action"
-                }
-              ]
+              "value": {
+                "field": "confidence"
+              }
+            }
+          },
+          {
+            "id": "data-health-reason",
+            "title": "Primary reason",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "half",
+            "encoding": {
+              "value": {
+                "field": "reason"
+              }
+            }
+          },
+          {
+            "id": "data-health-affected-domains",
+            "title": "Affected areas",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "half",
+            "encoding": {
+              "value": {
+                "field": "affected-domains"
+              }
+            }
+          },
+          {
+            "id": "data-health-next-action",
+            "title": "Next action",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "half",
+            "encoding": {
+              "value": {
+                "field": "next-action"
+              }
             }
           },
           {
