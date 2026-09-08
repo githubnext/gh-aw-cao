@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   changedDashboardPageIds,
   selectAffectedPageIds,
+  sharedDashboardConfigurationChanged,
 } from "../e2e/dashboard-view-selection.mjs";
 
 const dashboard = {
@@ -50,4 +51,23 @@ test("selects only changed and added dashboard pages", () => {
       { id: "changed", title: "Old" },
     ] } },
   ), ["changed", "added"]);
+});
+
+test("detects shared dashboard configuration changes", () => {
+  assert.equal(sharedDashboardConfigurationChanged(
+    { "language-version": "1", dashboard: { pages: [], defaults: { layout: "wide" } } },
+    { "language-version": "1", dashboard: { pages: [], defaults: { layout: "full" } } },
+  ), true);
+  assert.equal(sharedDashboardConfigurationChanged(
+    { "language-version": "1", dashboard: { pages: [{ id: "new" }] } },
+    { "language-version": "1", dashboard: { pages: [{ id: "old" }] } },
+  ), false);
+});
+
+test("selects every page for components with transitive consumers", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard,
+    changedFiles: ["dashboard/site/src/components/agent-marketplace-view.js"],
+    baseRef: "unused",
+  }), ["experiments", "cost"]);
 });

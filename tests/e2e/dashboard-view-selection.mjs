@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { composeDashboardDocuments } from "../../dashboard/report/compose-dashboard-documents.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
@@ -53,10 +53,42 @@ export function changedDashboardPageIds(current, previous) {
     .map((page) => page.id);
 }
 
+export function sharedDashboardConfigurationChanged(current, previous) {
+  if (!current || !previous) return true;
+  const shared = (document) => {
+    const { pages: _pages, navigation: _navigation, ...dashboard } = document.dashboard || {};
+    const { dashboard: _dashboard, ...topLevel } = document;
+    return { ...topLevel, dashboard };
+  };
+  return JSON.stringify(shared(current)) !== JSON.stringify(shared(previous));
+}
+
 function pagesUsingElement(dashboard, element) {
   return dashboard.dashboard.pages
     .filter((page) => JSON.stringify(page).includes(`"element":"${element}"`))
     .map((page) => page.id);
+}
+
+function canScopeComponent(path) {
+  const absolutePath = join(repositoryRoot, path);
+  const source = readFileSync(absolutePath, "utf8");
+  const exports = [
+    ...source.matchAll(/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g),
+  ];
+  if (exports.length !== 1) return false;
+
+  const sourceRoot = join(repositoryRoot, "dashboard/site/src");
+  const candidates = readdirSync(sourceRoot, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+    .map((entry) => join(entry.parentPath, entry.name));
+  const importPattern = /(?:from\s+|import\s*\()\s*["']([^"']+)["']/g;
+  for (const candidate of candidates) {
+    if (candidate === absolutePath) continue;
+    const importsTarget = [...readFileSync(candidate, "utf8").matchAll(importPattern)]
+      .some((match) => resolve(dirname(candidate), match[1]) === absolutePath);
+    if (importsTarget && candidate !== join(sourceRoot, "components/ui-elements.js")) return false;
+  }
+  return true;
 }
 
 export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
@@ -65,16 +97,16 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
 
   for (const path of changedFiles) {
     if (path.endsWith("/dashboard.json") || path === primaryDashboardPath) {
-      for (const pageId of changedDashboardPageIds(
-        readDashboard(path),
-        readDashboard(path, baseRef),
-      )) selected.add(pageId);
+      const current = readDashboard(path);
+      const previous = readDashboard(path, baseRef);
+      if (sharedDashboardConfigurationChanged(current, previous)) return allPageIds;
+      for (const pageId of changedDashboardPageIds(current, previous)) selected.add(pageId);
       continue;
     }
     if (path.startsWith("dashboard/site/src/components/") && path.endsWith(".js")) {
       const element = basename(path, ".js");
       const matchingPages = pagesUsingElement(dashboard, element);
-      if (matchingPages.length > 0) {
+      if (matchingPages.length > 0 && canScopeComponent(path)) {
         for (const pageId of matchingPages) selected.add(pageId);
         continue;
       }
