@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "id": "triage-review-readiness",
+  "task": {
+    "actor": "Repository operator",
+    "subject": "An issue-triage review workflow for the githubnext/gh-aw-cao repository",
+    "intent": "Assess whether the issue-triage review workflow is activating on newly opened issues, producing bounded review outputs, and attaining its intended value of surfacing ready-to-triage issues with accepted evidence.",
+    "activationConditions": [
+      "A repository operator enables a standalone issue-triage review workflow on githubnext/gh-aw-cao.",
+      "A newly opened issue in githubnext/gh-aw-cao creates one stable triage opportunity for the workflow.",
+      "A workflow run associated with that issue is observed in the dashboard horizon."
+    ],
+    "requiredEffects": [
+      "For each eligible issue opportunity, the workflow evaluates the issue and emits at most one safe review output describing whether triage can proceed.",
+      "Accepted repository evidence must remain limited to the issue outcome, any linked finding, and the workflow run provenance for that same issue opportunity.",
+      "The workflow must leave ineligible, duplicate, or already-triaged issues without a new durable output."
+    ],
+    "noopConditions": [
+      "The issue is already labeled as triaged or closed before the workflow evaluates it.",
+      "The issue lacks the minimum issue body or repository context needed for a bounded triage review.",
+      "A prior accepted workflow output already covers the same issue opportunity."
+    ],
+    "successConditions": [
+      "The workflow activates for eligible issue opportunities within the selected horizon.",
+      "Observed outcomes for eligible opportunities are accepted or intentionally no-op with matching evidence strength and run provenance.",
+      "Mature operational-value observations show the direct triage-readiness attainment metric for the same issue opportunity."
+    ],
+    "uncertainties": [
+      "A successful run does not by itself prove the durable issue outcome was accepted.",
+      "Pending or ignored safe outputs do not establish attained triage readiness.",
+      "Missing or interim operational-value evidence must remain distinct from zero attainment."
+    ]
+  },
+  "operationalValue": {
+    "statement": "Operational value is the share of stable new-issue triage opportunities that reach accepted triage-readiness outcomes with mature evidence for the issue-triage review workflow.",
+    "opportunity": "One newly opened issue in githubnext/gh-aw-cao that is eligible for repository triage review.",
+    "opportunityKey": "repository + issue opportunity represented by operational-case",
+    "acceptedEvidence": [
+      "A workflow run for the issue-triage review workflow bound to the issue opportunity.",
+      "A safe-output outcome on the issue recording the triage review disposition.",
+      "An operational-value observation whose operational-case identifies the same issue opportunity and whose accepted-evidence-provenance names the accepted issue evidence."
+    ],
+    "evidenceRepositories": [
+      "githubnext/gh-aw-cao"
+    ],
+    "metric": {
+      "name": "triage-readiness-attainment",
+      "range": "[0,1]",
+      "directness": "direct",
+      "definition": "1 when the issue opportunity reaches an accepted triage-readiness outcome with mature evidence for the same operational case; 0 when the matured evidence shows the issue was not triage-ready or the accepted outcome was rejected, ignored, or absent by cutoff; null when required evidence has not matured."
+    },
+    "maturation": "An opportunity matures when the operational-value observation reaches maturity-status matured after the evidence-cutoff for the same operational case.",
+    "zeroRule": "Assign 0 only when mature evidence for the issue opportunity shows triage readiness was not attained by cutoff.",
+    "missingRule": "Use null when the operational-value observation is absent, unavailable, or not yet matured for the issue opportunity; do not substitute 0.",
+    "baseline": {
+      "mode": "attainment-only",
+      "value": null,
+      "cutoff": null
+    }
+  },
+  "logicalSources": {
+    "workflows": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/issue-triage-review.yml",
+          "workflow-name": "Issue triage review",
+          "workflow-role": "standalone",
+          "workflow-active": "true",
+          "rollout-mode": "review",
+          "observed-at": "2026-09-01T00:00:00Z",
+          "repository-link": {
+            "relation": "repository",
+            "href": "https://github.com/githubnext/gh-aw-cao",
+            "label": "githubnext/gh-aw-cao"
+          },
+          "workflow-link": {
+            "relation": "workflow",
+            "href": "https://github.com/githubnext/gh-aw-cao/actions/workflows/issue-triage-review.yml",
+            "label": "Issue triage review"
+          }
+        }
+      ]
+    }
+  },
+  "dashboard": "triage-review-readiness.dashboard.yml"
+}
