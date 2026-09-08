@@ -10,7 +10,7 @@ import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
 import { workViewComposition } from './work-view-composition.js';
 import { renderWorkViewNavigation } from './work-view-navigation.js';
 import { workRoutePageConfigs } from './work-view-route-config.js';
-import { workViewSectionRenderer } from './work-view-sections.js';
+import { createWorkSectionCompositionRenderer } from './work-project-section.js';
 
 const BOARD_COLUMNS = [
   { title: 'Todo', states: ['todo'], tone: 'todo' },
@@ -18,9 +18,6 @@ const BOARD_COLUMNS = [
   { title: 'Needs review', states: ['needs-review'], tone: 'needs-review' },
   { title: 'Done', states: ['done'], tone: 'done' }
 ];
-
-/** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
-/** @typedef {(items: Array<ReturnType<typeof normalizeWorkItem>>, section: WorkSection) => HTMLElement} WorkSectionRenderer */
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -32,12 +29,13 @@ export function renderWorkProjectView(context) {
   const activeSection = sections[0].key;
   const viewBody = h('div', { className: 'work-project-body' });
   let reapplyFilters = () => renderItems(items);
-  /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
+  /** @type {Record<import('./work-project-section.js').WorkSectionKey, import('./work-project-section.js').WorkSectionRenderer>} */
   const renderers = {
-    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, reapplyFilters),
-    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, reapplyFilters),
-    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, reapplyFilters)
+    board: (filteredItems, section, onUpdate) => renderBoard(filteredItems, section, onUpdate),
+    tasks: (filteredItems, section, onUpdate) => renderTasks(filteredItems, section, onUpdate),
+    roadmap: (filteredItems, section, onUpdate) => renderRoadmap(filteredItems, section, onUpdate)
   };
+  const renderSections = createWorkSectionCompositionRenderer(renderers);
   /** @param {Array<ReturnType<typeof normalizeWorkItem>>} filteredItems */
   const renderItems = (filteredItems) => {
     if (items.length === 0) {
@@ -48,20 +46,7 @@ export function renderWorkProjectView(context) {
       viewBody.replaceChildren(renderEmptyMessage('No work items match the current filters.', { role: 'status' }));
       return;
     }
-    viewBody.replaceChildren(...sections
-      .map((section) => {
-        const rendererName = workViewSectionRenderer(section.key, renderers);
-        const renderer = rendererName ? renderers[rendererName] : null;
-        return typeof renderer === 'function'
-          ? renderer(filteredItems, {
-            id: workSectionId(context.pageId, section.key),
-            className: section.className,
-            landmarkLabel: section.landmarkLabel,
-            title: section.title
-          })
-          : null;
-      })
-      .filter((element) => element instanceof HTMLElement));
+    viewBody.replaceChildren(...renderSections(filteredItems, sections, context.pageId, reapplyFilters));
   };
   const filterBar = renderWorkFilterBar(items, renderItems);
   reapplyFilters = filterBar.apply;
@@ -551,11 +536,6 @@ function renderRoadmap(items, section, onUpdate) {
   );
   renderTimeline();
   return root;
-}
-
-/** @param {string} pageId @param {'board'|'tasks'|'roadmap'} key */
-function workSectionId(pageId, key) {
-  return `${pageId}-${key}`;
 }
 
 /** @param {Record<string, unknown>} row */
