@@ -35,6 +35,53 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('viewport collection loads and unloads rows while scrolling', async ({ page }) => {
+  await page.setContent(`
+    <style>
+      .table-scroll { height: 320px; overflow: auto; }
+      table { border-collapse: collapse; }
+      td { box-sizing: border-box; height: 40px; padding: 0; }
+    </style>
+    <div class="table-scroll">
+      <table><tbody id="rows"></tbody></table>
+    </div>
+    <script type="module">
+      import { renderViewportCollection } from '/src/components/viewport-collection.js';
+      import { h } from '/src/dom.js';
+      const body = renderViewportCollection({
+        items: Array.from({ length: 1000 }, (_, index) => index),
+        key: item => String(item),
+        renderItem: item => h('tr', null, h('td', null, 'Row ' + item)),
+        tagName: 'tbody',
+        colSpan: 1,
+        estimatedItemSize: 40
+      });
+      document.querySelector('#rows').replaceWith(body);
+    </script>
+  `);
+
+  const renderedRows = page.locator('[data-viewport-index]');
+  await expect(page.locator('[data-viewport-index="0"]')).toHaveCount(1);
+  await expect(page.locator('[data-viewport-index="999"]')).toHaveCount(0);
+  expect(await renderedRows.count()).toBeLessThanOrEqual(60);
+
+  await page.locator('.table-scroll').evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+
+  await expect(page.locator('[data-viewport-index="999"]')).toHaveCount(1);
+  await expect(page.locator('[data-viewport-index="0"]')).toHaveCount(0);
+  expect(await renderedRows.count()).toBeLessThanOrEqual(60);
+
+  await page.locator('.table-scroll').evaluate((element) => {
+    element.scrollTop = 0;
+  });
+
+  await expect(page.locator('[data-viewport-index="0"]')).toHaveCount(1);
+  await expect(page.locator('[data-viewport-index="999"]')).toHaveCount(0);
+  expect(await renderedRows.count()).toBeLessThanOrEqual(60);
+});
+
 /** @param {import('@playwright/test').Page} page @param {string} title */
 async function hydrateView(page, title) {
   const placeholder = page.getByRole('region', { name: `Loading ${title}` });
