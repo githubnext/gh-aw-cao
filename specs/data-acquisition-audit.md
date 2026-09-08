@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Audit date:** 2026-09-07 (refreshed again: Pages Health cadence gate)
+**Audit date:** 2026-09-07 (refreshed again: missing SelfCare workers added to inventory)
 
 **Refresh ledger:** See [Data Acquisition Audit History](./data-acquisition-audit-history.md) for compact dated refresh notes.
 
@@ -92,6 +92,10 @@ The former two-request Contents API bootstrap in `shared/control.md` has been re
 | `.github/workflows/self-care-dashboard-performance.md` | Runs Lighthouse/Playwright audits against the built dashboard site; persists only a local round-robin rotation state file (`/tmp/gh-aw/cache-memory/dashboard-performance-rotation.json`, capped at 30 entries) and uploads a run evidence artifact. | No `gh aw logs` calls and no direct GitHub API/REST/GraphQL requests in prefetch or evaluation; no operational-value grader exists yet for this worker, so it adds no new collection or N+1 acquisition path. |
 | `.github/workflows/self-care-glossary.md` (new; SelfCare's tenth worker) | Uses the `pull_requests`, `repos`, and `actions` `gh-proxy` toolsets to find the prior successful `self-care-glossary` run (start time as evidence lower bound, 24-hour default, seven-day cap), then inspects up to 50 merged pull requests (with changed-file lists and diffs) and up to 100 default-branch commits in that window. | Bounded per-run counts (50 PRs, 100 commits) and a cap on catch-up window exist, but there is no persisted watermark artifact beyond the workflow's own run history; each run re-derives its lower bound by querying prior runs rather than reusing a stored cursor. Runs at most once every 24 hours, gated by the orchestrator's own recent-run check below. |
 | `.github/workflows/self-care-pages-health.md` (new; SelfCare's eleventh worker) | Runs a deterministic, no-GitHub-API Playwright collector (`dashboard/site/test/performance/pages-health.mjs`) against the deployed Pages dashboard and evaluates the resulting evidence files. Its `github` toolset (`gh-proxy`, `pull_requests`/`repos`/`actions`) is available to the agent but the prefetch step itself issues no `gh api`, `gh aw logs`, or REST/GraphQL calls; only local browser navigation and Lighthouse runs. | No new GitHub collection path: this worker's cost is entirely local browser/Lighthouse traffic to the already-public Pages site plus, if it opens a pull request, the standard `create_pull_request` safe-output write. The orchestrator's six-hour cadence gate (20 most recent runs) is the only run-history read associated with this worker. |
+| `.github/workflows/actions.yml` (mobile dashboard integration) | On `push`/`pull_request`/schedule, runs Playwright mobile scenarios against the built dashboard (no GitHub API calls in the collector itself), then a `github-script` step reads a paginated `issues.listComments` (up to 100 per page) for the triggering pull request to find and upsert one prior bot comment before creating or updating it. | Single bounded per-event read-then-write comment upsert; only runs on `pull_request` events, so it adds no scheduled or unbounded scan, but each triggering PR event re-lists all its comments rather than caching the found comment ID across pushes to the same PR. |
+| `.github/workflows/self-care-code-improvement.md` and `self-care-dashboard-language-refactor.md` | Each run's `pull_requests`/`repos`/`actions` `gh-proxy` toolset reads the three most recently closed pull requests from the same worker workflow (newest first) as positive/negative reuse signal before selecting a refactor candidate. | Bounded to three PRs per run with no paired grader collection found; each run re-lists closed PRs from scratch rather than caching the previously read set, so repeated dispatch cycles re-fetch overlapping PR history. |
+| `.github/workflows/self-care-accessibility-checker.md` and `self-care-primer-brand-checker.md` | Both declare a `repos`/`actions` `gh-proxy` toolset, but neither's prefetch or agent instructions issue any `gh api`/`gh aw logs` calls; all substantive evidence comes from local Playwright/axe-core (accessibility) or the `primer-brand` MCP server (brand checker) against the already-built local dashboard site. | No material GitHub collection beyond the standard `create_issue`/`create_pull_request` safe-output write; the declared toolset is unused capacity, not an active request path. |
+| `.github/workflows/self-care-docs-build-time-investigator.md` | The worker's own instructions read only `.github/workflows/docs.yml`, `dashboard-build.yml`, and their Actions runs (`actions: read`) for evidence, capped at the latest 20 completed `docs.yml` runs from the last 14 days; the paired grader (`self-care-docs-build-time-investigator-operational-value.sh`) separately calls `gh api repos/{repo}/actions/workflows/docs.yml/runs` with its own before/after evidence window. | The worker and its grader independently query overlapping `docs.yml` run history without a shared snapshot; the worker persists a `repo-memory`-backed suggestion-rotation ledger to avoid repeating a category, but does not cache the raw run list itself between dispatches. |
 
 | `.github/workflows/self-care.md` (orchestrator) | Before dispatching `self-care-glossary`, inspects at most the ten most recent `self-care-glossary` workflow runs (via the `actions` `gh-proxy` toolset) to enforce a 24-hour dispatch cadence. Before dispatching `self-care-pages-health`, inspects at most the 20 most recent `self-care-pages-health` workflow runs through the same toolset to enforce a six-hour cadence. Both checks fail closed (skip dispatch) when run history is unavailable or ambiguous. | Each cadence check is bounded (10 or 20 runs) and only gates one worker's dispatch; these are small, independent run-history reads separate from the shared `cao-activity` snapshot. The glossary worker separately re-derives its own evidence-window lower bound from the most recent successful run, so the same "most recent run" fact can be queried twice per worker per dispatch cycle; `self-care-pages-health` has no equivalent worker-side prior-run lookup, so its cadence check is the only run-history read for that worker. |
 
@@ -130,6 +134,8 @@ The activity snapshot is the shared collection boundary. It persists the bounded
 12. **The `self-care-glossary` worker and its orchestrator cadence check independently query the same run history.** `self-care.md` inspects up to 10 recent `self-care-glossary` runs to enforce a 24-hour dispatch gate, and the dispatched worker separately re-derives its own evidence-window lower bound from the most recent successful run; neither reuses the other's already-fetched run metadata, and the worker additionally fetches up to 50 merged-PR diffs/file lists and up to 100 commits per run with no persisted cursor beyond run history itself. `self-care-pages-health` adds a second, independent cadence check (up to 20 recent runs, six-hour gate) but has no worker-side prior-run lookup of its own, so it does not duplicate a run-history read the way the glossary worker does.
 13. **`activity/logs.mjs`'s new Actions API fallback re-fetches per-workflow run history that `gh aw logs` already attempted.** When the single bounded `gh aw logs` invocation fails, `enrichFromActions`/`runGhApi` issues one `GET .../actions/workflows/{workflow}/runs` request per compiled `.lock.yml` workflow (4-way concurrency) to rebuild the same 30-day run snapshot the failed call was trying to obtain, rather than retrying the single `gh aw logs` call or reusing a partial result from it.
 14. **`records.mjs` now scans remote workflow listings for every enrolled repository on every run.** The new cross-repository workflow discovery (`repositoryWorkflowSource`) re-lists all Actions workflows for each enrolled repository other than the control repository on every dashboard collection, independent of and in addition to the existing per-repository issue/comment/artifact scan in the same function.
+15. **`self-care-docs-build-time-investigator.md` and its grader independently rescan the same `docs.yml` run history.** The worker's own instructions fetch up to the latest 20 completed runs (14-day window) for evidence; its paired operational-value grader separately calls the Actions run-list API with its own before/after window over the same workflow, so a producer run and its later regrade issue at least two independent `docs.yml` run-list requests instead of one shared snapshot.
+16. **`self-care-code-improvement.md` and `self-care-dashboard-language-refactor.md` re-fetch the same worker's PR history each dispatch.** Each worker reads the three most recently closed pull requests from its own workflow as reuse/rejection evidence; there is no persisted cursor, so every run re-lists this small but overlapping PR set from scratch.
 
 ## 6. Rate-limit bottlenecks
 
@@ -149,6 +155,7 @@ The activity snapshot is the shared collection boundary. It persists the bounded
 | P2 | Duplicate glossary run-history lookups | `self-care.md`'s cadence gate and `self-care-glossary.md`'s own evidence-window bootstrap both query recent `self-care-glossary` run history independently within the same dispatch cycle; low absolute cost (bounded to 10 and one prior-run lookup respectively) but avoidable duplication. `self-care-pages-health.md`'s six-hour cadence gate (up to 20 runs) is a second, similarly bounded but non-overlapping run-history read; it has no worker-side counterpart to duplicate. |
 | P1 | New per-workflow Actions API fallback in `activity/logs.mjs` | On any `gh aw logs` failure, one Actions run-list request is issued per compiled `.lock.yml` workflow (4-way concurrency, up to 100 runs each); this scales with workflow count and converts one failed bounded call into many separate list requests in the same run. |
 | P2 | New per-repository remote workflow discovery in `records.mjs` | Every enrolled repository other than the control repository is scanned (up to 10 pages of the Workflows API) on every dashboard collection to power cross-repository marketplace views; bounded per repository but adds a request family that scales with enrolled-repository count and runs alongside the existing issue/comment scan. |
+| P2 | Duplicate `docs.yml` run-history reads | `self-care-docs-build-time-investigator.md` and its operational-value grader each independently query up to 20 (worker) or grader-window-bounded runs of `docs.yml`; low absolute cost but avoidable duplication between producer and evaluator. |
 
 The direct activity client retries 403 and 429 responses only when the advertised delay is at most 30 seconds. `records.mjs` instead stops on a confirmed rate limit and retains the prior snapshot. Dispatch polling and most GitHub Script or shell clients have no common rate-limit response policy.
 
@@ -164,6 +171,63 @@ The direct activity client retries 403 and 429 responses only when the advertise
 8. **Instrument request budgets.** Emit request counts by endpoint family, cache hit/miss, pages read, downloaded bytes, remaining core/search quota, and incomplete reason. Use this evidence before changing concurrency or reserve thresholds.
 9. **Do not merge caches solely by repository.** Cache keys must retain token/installation scope, private-data policy, exact source SHA where relevant, requested time window, and completeness. A cache hit must never widen repository authority or publish private data.
 10. **Fold telemetry probes into existing capacity checks.** `github-telemetry.mjs`'s per-phase `gh api rate_limit` calls duplicate the admission/precompute capacity read; record the already-obtained rate-limit response instead of re-querying it, or reduce probe frequency to once per run. **(Partially addressed:** the ledger is now retained 24h across runs via the activity cache instead of being deleted each run, which fixed the dashboard's quota-history rendering gap, but the per-run probe count is unchanged.)
+
+## API Request Relationships
+
+```mermaid
+flowchart LR
+  subgraph Control
+    control["control.mjs admission<br/>rate_limit, policy, inventory"]
+    budget["applyMonthlyBudget<br/>gh aw logs, up to 1000 runs/workflow"]
+  end
+  subgraph Activity
+    logsmjs["activity/logs.mjs<br/>gh aw logs, 30-day window"]
+    fallback["enrichFromActions<br/>runs API per workflow, 4-way concurrency"]
+    indexmjs["activity/index.mjs<br/>local only"]
+    telemetry["github-telemetry.mjs<br/>rate_limit probes"]
+    cache[("cao-activity Actions cache")]
+  end
+  subgraph Dashboard
+    records["records.mjs<br/>issues/comments/artifacts, per repo"]
+    remotewf["repositoryWorkflowSource<br/>Workflows API per enrolled repo"]
+    dispatch["dispatch-workflow.mjs<br/>5s completion polling"]
+  end
+  subgraph Workers
+    aicaud["ai-credit-auditor<br/>gh aw logs, 2 days"]
+    aicopt["ai-credit-optimizer<br/>gh aw logs, 7 days"]
+    reviewpf["self-care-dashboard-review<br/>artifact+run discovery"]
+    glossary["self-care-glossary<br/>PR diffs + commits"]
+    docsbt["self-care-docs-build-time-investigator<br/>docs.yml runs, 14-day window"]
+    selfcare["self-care.md<br/>cadence gates: glossary, pages-health"]
+    graders["operational-value graders<br/>re-fetch evidence windows"]
+  end
+  subgraph PRAutomation
+    ddg["design-decision-gate.md<br/>pr view/diff/files"]
+    mattpocock["mattpocock-skills-reviewer.md<br/>pr view/diff/comments"]
+    soschef["pr-sous-chef.md<br/>pr list, full clone"]
+    mobileci["actions.yml<br/>listComments upsert"]
+  end
+
+  control -->|capacity check| budget
+  logsmjs -->|snapshot write| cache
+  logsmjs -.->|on failure| fallback
+  fallback -.->|merges onto| cache
+  cache -->|reused by| indexmjs
+  cache -->|reused by| records
+  telemetry -->|appends to| cache
+  records --> remotewf
+  dispatch -->|polls| records
+  aicaud -.->|overlaps window| cache
+  aicopt -.->|overlaps window| cache
+  reviewpf -.->|does not reuse| cache
+  glossary -->|own run-history lookup| selfcare
+  docsbt -.->|independent window vs| graders
+  graders -.->|re-fetches evidence, ignores| cache
+  ddg -.->|independent of| mattpocock
+  mobileci -->|per-PR-event| mobileci
+```
+
+The diagram highlights the shared `cao-activity` cache as the intended reuse boundary and shows which paths (Actions API fallback, remote workflow discovery, per-worker predownloads, and graders) bypass it and independently re-collect overlapping history.
 
 ## 8. Suggested implementation order
 

@@ -35,6 +35,14 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+/** @param {import('@playwright/test').Page} page @param {string} title */
+async function hydrateView(page, title) {
+  const placeholder = page.getByRole('region', { name: `Loading ${title}` });
+  if (await placeholder.count() === 0) return;
+  await placeholder.first().scrollIntoViewIfNeeded().catch(() => {});
+  await expect(placeholder).toHaveCount(0);
+}
+
 test('production pages expose a responsive executive chart', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
@@ -274,6 +282,8 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
   ))).toBeGreaterThanOrEqual(2);
   await expect(readinessPage).toContainText('Not ready');
   await expect(readinessPage).toContainText('3 completed runs observed');
+  await hydrateView(page, 'Priority queue');
+  await readinessPage.locator('summary').filter({ hasText: 'Worker, orchestrator, and no-op evidence' }).click();
   await expect(readinessPage).toContainText('Worker failures');
   await expect(readinessPage).toContainText('Worker warnings');
   await expect(readinessPage).toContainText('No-op reports');
@@ -386,6 +396,7 @@ test('experiments page composes reusable declarative slices with rendered parity
   await expect(experimentsPage.locator('.experiment-filters').first()).toBeVisible();
   await expect(experimentsPage.locator('.experiment-overview')).toHaveCount(1);
   await expect(experimentsPage.locator('.experiment-decision-table')).toHaveCount(1);
+  await hydrateView(page, 'Experiment decisions and evidence');
   await expect(experimentsPage.locator('.experiment-detail')).toHaveCount(1);
   await expect(experimentsPage.getByRole('heading', { name: 'Tool routing v3' })).toBeVisible();
 });
@@ -719,7 +730,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     await page.evaluate((nextPage) => { window.location.hash = `#page-${nextPage}`; }, pageName);
     const activePage = page.locator(`[data-page-id="${pageName}"]`);
     await expect(activePage).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     for (const chart of await activePage.locator('[data-chart-widget]').all()) {
       const box = await chart.boundingBox();
       expect(box?.width).toBeGreaterThan(0);
@@ -848,6 +859,8 @@ test('performance page renders a full heatmap and lays out supporting charts sid
   await expect(pageRegion).toBeVisible();
   await expect(pageRegion.locator('.custom-view').first().locator('[data-chart-widget="histogram"]')).toBeVisible();
   await expect(pageRegion.locator('[data-chart-widget="heatmap"]')).toBeVisible();
+  await hydrateView(page, 'Job time by sandbox runtime and agent engine');
+  await hydrateView(page, 'Job time by model');
   await expect(pageRegion.locator('[data-chart-widget="bar"]')).toHaveCount(2);
   const runtimeCharts = pageRegion.locator('[data-section-id="job-duration"] .custom-view-grid > [data-view-layout="half"]');
   await expect(runtimeCharts).toHaveCount(2);
@@ -2289,11 +2302,13 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   );
   await expect(page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Daily Runs' }) }).locator('.view-source')).toHaveCount(0);
 
+  await hydrateView(page, 'Empty Usage');
   await expect(page.getByRole('heading', { name: 'Empty Usage' })).toBeVisible();
   await expect(page.locator('[data-view-availability="empty"]')).toHaveText('No observations matched the effective context.');
   const emptySection = page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Empty Usage' }) });
   await expect(emptySection).toContainText('Affected source: empty-usage');
 
+  await hydrateView(page, 'Missing Source');
   await expect(page.getByRole('heading', { name: 'Missing Source' })).toBeVisible();
   await expect(page.locator('[data-view-availability="unavailable"]')).toHaveText('This view is unavailable.');
   const unavailableSection = page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Missing Source' }) });

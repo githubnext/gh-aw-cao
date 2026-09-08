@@ -2767,6 +2767,23 @@ async function readJsonLines(filePath) {
   }
 }
 
+export async function writeDashboardLanguageSources(outputPath, sources) {
+  const outputDirectory = path.dirname(outputPath);
+  const splitDirectory = path.join(outputDirectory, "sources");
+  await mkdir(splitDirectory, { recursive: true });
+  await writeFile(outputPath, `${JSON.stringify(sources, null, 2)}\n`);
+  for (const [name, logicalSource] of Object.entries(sources)) {
+    const browserSource = name === "runs"
+      ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
+      : logicalSource;
+    await writeFile(path.join(splitDirectory, `${name}.json`), JSON.stringify(browserSource));
+  }
+  await writeFile(path.join(splitDirectory, "manifest.json"), `${JSON.stringify({
+    version: 1,
+    sources: Object.keys(sources),
+  }, null, 2)}\n`);
+}
+
 async function main() {
   const deployedPath = process.env.REPORT_DEPLOYED_WORKFLOWS;
   const usagePath = process.env.REPORT_AIC_USAGE;
@@ -2787,8 +2804,7 @@ async function main() {
         .concat(readJsonLines(githubTelemetryPath)),
     );
     const sources = buildDashboardLanguageSources({ deployed, usage, operationalValues, report, inventory, controlSettings, githubTelemetry });
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(sources, null, 2)}\n`);
+    await writeDashboardLanguageSources(outputPath, sources);
     log.info`Wrote ${Object.keys(sources).length} dashboard sources to ${outputPath}`;
   } finally {
     log.endGroup();
