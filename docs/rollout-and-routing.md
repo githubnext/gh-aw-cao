@@ -67,27 +67,9 @@ Automatic discovery scans at most `control-plane.inventory.max-scan-repositories
 
 ### Live Authority Check
 
-Discovery, an allowed owner, and credential access do not prove target enrollment. Before promoting an operation to `live`, add the package and assigned control repository to `.github/workflows/cao.json` on the target's default branch. Protect that file with target-owner review. Also verify the approved inventory records the target, operation, approving repository owner, review date, and revocation path.
+The control repository's `.github/workflows/cao.json` is the sole live-activation decision marker. Before promoting an operation to `live`, operators must declare the package mode, worker ceiling, allowed owner or exact repository, and any target-specific mode in that policy. Workers resolve it at the exact workflow SHA, so a target repository cannot widen, narrow, or veto the decision by adding, changing, or removing its own files.
 
-Every live worker reads the target-owned file before agent execution. It fails closed when the file is missing or malformed, the operation is absent, or `authority` does not match the dispatched `central_repo`. Review runs do not require the file because they cannot mutate the target. This prevents a second runtime from beginning a new live run for the same operation, but it does not cancel an already-running workflow in another control repository.
-
-```json
-{
-	"version": 1,
-	"target-authority": {
-		"packages": {
-			"dependabot": { "authority": "acme/central-agentic-ops" },
-			"optimization": { "authority": "acme/central-agentic-ops" }
-		}
-	}
-}
-```
-
-:::caution[Protect the authority file]
-Require target-owner review for changes to `.github/workflows/cao.json`. Credential access and an allowed owner are not substitutes for target consent.
-:::
-
-If an enterprise and organization runtime both select the same pair, keep both in `review` until operators assign one live authority. Do not rely on run timing, workflow concurrency, or repository protections to resolve the conflict. Separate control repositories have independent queues and kill switches.
+If an enterprise and organization runtime both select the same target and operation, keep both in `review` until operators choose one control repository and remove live scope from the other. Do not rely on run timing or workflow concurrency to resolve the conflict. Separate control repositories have independent queues and kill switches.
 
 ## Modes
 

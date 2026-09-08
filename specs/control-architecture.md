@@ -1,6 +1,6 @@
 ---
 title: Central Agentic Ops Control Architecture Specification
-description: Normative architecture for JSON-governed rollout and target authority over gh-aw workflows.
+description: Normative architecture for JSON-governed rollout and central authority over gh-aw workflows.
 version: 1.0.0
 status: Working Draft
 editors:
@@ -16,7 +16,7 @@ editors:
 
 ## Abstract
 
-This specification defines the Central Agentic Ops (CAO) control architecture and its JSON configuration model. CAO governs whether and where an installed GitHub Agentic Workflows (gh-aw) operation may run, including rollout and target authority. gh-aw governs how an authorized workflow executes, including engine limits, generated job topology, authentication, and safe-output execution. This specification defines the cumulative authority model, deterministic resolution lifecycle, conformance requirements, and compliance tests that preserve that boundary.
+This specification defines the Central Agentic Ops (CAO) control architecture and its JSON configuration model. CAO governs whether and where an installed GitHub Agentic Workflows (gh-aw) operation may run, including rollout and live authority. gh-aw governs how an authorized workflow executes, including engine limits, generated job topology, authentication, and safe-output execution. This specification defines the cumulative authority model, deterministic resolution lifecycle, conformance requirements, and compliance tests that preserve that boundary.
 
 ## Status of This Document
 
@@ -49,7 +49,6 @@ This specification covers:
 
 - `.github/workflows/cao.json` as the sole persistent non-secret CAO policy authority;
 - package and worker enablement, repository scope, rollout, output-mode ceilings, and cross-run package admission;
-- target-owned consent for live work;
 - deterministic policy resolution, narrowing, provenance, and revocation; and
 - the authority boundary between CAO and gh-aw.
 
@@ -59,11 +58,10 @@ This specification does not define gh-aw workflow syntax, AI engine behavior, ge
 
 1. One reviewable, version-controlled JSON authority for CAO policy.
 2. Fail-closed authorization before model invocation.
-3. Independent target consent for live work.
-4. Deterministic narrowing to one effective run envelope.
-5. No duplication of gh-aw execution controls in CAO policy.
-6. Auditable policy and target-authority provenance.
-7. No compatibility path for legacy CAO policy variables.
+3. Deterministic narrowing to one effective run envelope.
+4. No duplication of gh-aw execution controls in CAO policy.
+5. Auditable control-policy provenance.
+6. No compatibility path for legacy CAO policy variables.
 
 ### 1.4 Architectural Summary
 
@@ -71,7 +69,6 @@ This specification does not define gh-aw workflow syntax, AI engine behavior, ge
 flowchart LR
     C[Control policy] --> R[CAO resolver]
     D[Dispatch request] --> R
-    T[Target authority] --> R
     R -->|deny or narrow| G[Compiled gh-aw workflow]
     G --> E[Engine and generated jobs]
     G --> A[Authentication]
@@ -79,7 +76,7 @@ flowchart LR
     S --> O[Review repository or live target]
 ```
 
-CAO is an authorization and rollout layer. gh-aw is the execution layer. A run proceeds only through the intersection of both layers and, for live work, target-owned consent.
+CAO is an authorization and rollout layer. gh-aw is the execution layer. A run proceeds only through the intersection of both layers.
 
 ## 2. Conformance
 
@@ -93,7 +90,6 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 2. **Conforming CAO Resolver:** A deterministic implementation satisfying Sections 5 through 7 without granting gh-aw capabilities.
 3. **Conforming gh-aw Integration:** A compiled workflow integration preserving gh-aw ownership of the execution concerns in Section 4.2.
 4. **Conforming Control Repository:** A protected repository using a Conforming CAO Resolver and dispatching only within resolved authority.
-5. **Conforming Target Repository:** A protected repository recording package-specific live authority in the required JSON document.
 
 An implementation is conforming only when it satisfies every MUST and MUST NOT applicable to its claimed class. A partially conforming implementation MAY report individual test results but MUST NOT claim conformance to that class.
 
@@ -103,9 +99,9 @@ An implementation is conforming only when it satisfies every MUST and MUST NOT a
 | --- | --- | --- |
 | 1 | Configuration | Conforming Policy Document |
 | 2 | Controlled Execution | Level 1, CAO Resolver, gh-aw Integration, and Control Repository |
-| 3 | Authorized Live Operation | Level 2 and a Conforming Target Repository for every live target-package pair |
+| 3 | Authorized Live Operation | Level 2 with explicit live scope in control policy |
 
-Review-only operation MAY conform to Level 2 without target-authority declarations. Live operation MUST NOT claim Level 3 unless every live target-package pair satisfies Level 3.
+Review-only operation MAY conform to Level 2. Live operation MUST NOT claim Level 3 unless every live target-package pair is explicitly authorized by control policy.
 
 ## 3. Terminology
 
@@ -117,15 +113,13 @@ Review-only operation MAY conform to Level 2 without target-authority declaratio
 
 **Target repository:** A repository selected for analysis or mutation by one worker run.
 
-**Target authority:** A target-owned declaration naming the one control repository authorized to perform live work for a package.
-
 **Rollout authority:** CAO authority to enable packages and workers and bound repositories, modes, inventory slices, repository counts, rollout percentages, and cross-run admission.
 
 **Execution capability:** A capability declared by gh-aw source, including an engine, per-run limit, tool, network host, permission, generated job, authentication mechanism, or safe-output primitive.
 
 **Credential reach:** The repositories and GitHub API operations accessible through the job-local credential selected and provisioned by gh-aw. CAO may require sufficient reach for an admitted repository but does not select, mint, or propagate the credential.
 
-**Effective envelope:** The immutable, least-permissive result of CAO policy, parent dispatch bounds, one-run narrowing, worker ceilings, credential reach, compiled gh-aw capabilities, and target authority where required.
+**Effective envelope:** The immutable, least-permissive result of CAO policy, parent dispatch bounds, one-run narrowing, worker ceilings, credential reach, and compiled gh-aw capabilities.
 
 ## 4. Architecture and Authority
 
@@ -139,7 +133,7 @@ CAO governs **whether and where** an operation may run. gh-aw governs **how** an
 | Repository scope | Eligible owners, targets, and review destinations | Use of the admitted repository |
 | Output mode | Package and worker review/live ceilings | Declared safe-output behavior for the effective mode |
 | Rollout | Scan, partition, batch, percentage, repository-count, and monthly package admission | Execution of admitted runs |
-| Target authority | Target-owned package consent for live work | No authority to create or bypass consent |
+| Live authority | Package, target, and worker live-mode ceilings | Execution only within the admitted mode and target |
 | Engine limits | No authority | Engine, model, per-run turns, AI Credits, and timeout |
 | Job topology | No authority | Generated jobs, dependencies, and runtime harness |
 | Authentication | Require sufficient reach but store or mint no credentials | Credential selection, job-local token minting, and propagation |
@@ -149,9 +143,9 @@ CAO governs **whether and where** an operation may run. gh-aw governs **how** an
 
 **CAO-ARC-002:** CAO MUST NOT grant or expand an engine, model, per-run turn limit, per-run AI Credit limit, tool, network host, permission, generated job, credential, authentication mechanism, or safe-output primitive beyond the compiled gh-aw workflow.
 
-**CAO-ARC-003:** A gh-aw execution capability MUST NOT be interpreted as CAO rollout authority or target consent.
+**CAO-ARC-003:** A gh-aw execution capability MUST NOT be interpreted as CAO rollout or live authority.
 
-**CAO-ARC-004:** CAO policy, target authority, credential reach, dispatch narrowing, and compiled gh-aw capabilities MUST be cumulative boundaries. No boundary substitutes for another.
+**CAO-ARC-004:** CAO policy, credential reach, dispatch narrowing, and compiled gh-aw capabilities MUST be cumulative boundaries. No boundary substitutes for another.
 
 ### 4.2 gh-aw Execution Ownership
 
@@ -169,14 +163,13 @@ gh-aw source owns engine and model selection, `max-turns`, `max-ai-credits`, tim
 
 | Record | Trust source | Authority granted |
 | --- | --- | --- |
-| Control policy | Exact workflow commit on the protected control default branch | Rollout and repository ceilings |
-| Target authority | Exact commit from the protected target default branch | Consent for one package to perform live work |
+| Control policy | Exact workflow commit on the protected control default branch | Rollout, repository, and live-mode authority |
 | Dispatch request | GitHub Actions event payload | Request-only narrowing for one run |
 | Credentials | GitHub Actions secrets or a run-scoped token | Authentication capability only |
 | gh-aw source | Protected workflow source compiled by gh-aw | Execution capabilities and native limits |
 | Effective envelope | Deterministic resolver output | Derived authorization for one run |
 
-Possession of credentials MUST NOT imply rollout authority. Inclusion in CAO scope MUST NOT imply live target consent.
+Possession of credentials MUST NOT imply rollout authority. Target repository files MUST NOT widen, narrow, or veto control policy.
 
 ### 4.4 Central Execution Topology
 
@@ -246,17 +239,7 @@ The optional `web.favicon` value MUST be an absolute HTTPS URL without credentia
 
 An absent package is disabled. A package's `workers` map declares its worker identities and exact workflow slugs; undeclared workers are disabled. Every worker requires `workflow`, defaults to enabled, may set `enabled: false`, and may set `max-mode` only to narrow the resolved package or exact-target mode. Package, worker, and workflow identifiers use lowercase kebab-case, and workflow identities must be unique within a package.
 
-### 5.4 Target Authority
-
-`target-authority.packages` maps a package identifier to exactly one `authority` repository in `owner/repository` form.
-
-**CAO-TGT-001:** The declaration MUST grant consent only to the named control repository, for the named package, and for live work against the declaring target.
-
-**CAO-TGT-002:** Target authority MUST NOT grant package enablement, repository eligibility, output mode, credential access, workflow permission, or execution capability.
-
-Review mode does not require target authority because it cannot mutate the target repository.
-
-### 5.5 Precedence and Narrowing
+### 5.4 Precedence and Narrowing
 
 Persistent values resolve in this order:
 
@@ -289,8 +272,6 @@ Every operational orchestrator and worker MUST import the shared CAO control com
 
 **CAO-RES-003:** Control policy MUST be fetched at the exact `github.workflow_sha` used by the running workflow.
 
-**CAO-RES-004:** For live workers, target authority MUST be validated from an exact commit resolved from the target's current default branch before model invocation.
-
 ### 6.2 Resolution Sequence
 
 The resolver MUST:
@@ -300,16 +281,15 @@ The resolver MUST:
 3. resolve static package, role, and worker identity;
 4. resolve defaults, enablement, scope, rollout, inventory, mode ceilings, and monthly admission;
 5. intersect dispatch-request narrowing;
-6. validate target authority for a live worker;
-7. verify that the job-local credential supplied by gh-aw can access the admitted repositories and required APIs, without selecting, minting, or storing that credential in CAO policy;
-8. write effective policy and provenance; and
-9. emit native gh-aw `noop` for expected denial or continue through normal gh-aw execution.
+6. verify that the job-local credential supplied by gh-aw can access the admitted repositories and required APIs, without selecting, minting, or storing that credential in CAO policy;
+7. write effective policy and provenance; and
+8. emit native gh-aw `noop` for expected denial or continue through normal gh-aw execution.
 
 ### 6.3 Effective Record
 
 The resolver MUST write exactly one derived record to `/tmp/gh-aw/agent/control-precompute.json`. Every authorized record MUST include authorization status and reason, package, role, worker when applicable, effective mode and routing, control repository, workflow and policy commit SHA, lowercase SHA-256 policy digest, schema version, and resolution time.
 
-An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; monthly budget, month-to-date usage, remaining budget, budget-derived target cap, and any budget error; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, the standard dispatch envelope, and target-authority repository, commit SHA, and digest for live mode.
+An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; monthly budget, month-to-date usage, remaining budget, budget-derived target cap, and any budget error; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, and the standard dispatch envelope.
 
 Consumers MUST treat the record's `candidate_repositories`, `worker_workflows`, `effective_max_repos`, `safe_output_mode`, `safe_output_repo`, and budget fields as authoritative. They MUST NOT reconstruct those values from workflow inputs.
 
@@ -317,17 +297,17 @@ The record MUST NOT be treated as persistent configuration. Environment variable
 
 ### 6.4 Worker Revalidation
 
-A worker MUST treat parent policy data as provenance, not current authority, and independently resolve current policy after dispatch and before model invocation. Its authority is the least permissive intersection of the parent envelope, current CAO policy, worker ceilings, credential reach, compiled gh-aw workflow, and current target authority for live mode.
+A worker MUST treat parent policy data as provenance, not current authority, and independently resolve current policy after dispatch and before model invocation. Its authority is the least permissive intersection of the parent envelope, current CAO policy, worker ceilings, credential reach, and compiled gh-aw workflow.
 
 A newer policy MAY revoke or narrow an outstanding dispatch before worker execution. It MUST NOT widen the dispatched envelope. Continuous policy polling during model or safe-output execution is not required; immediate revocation after worker precomputation requires workflow cancellation, credential revocation, or another external execution control.
 
 ## 7. Failure and Revocation
 
-The resolver MUST fail closed for missing or invalid policy, unknown identities, invalid bounds, widening requests, unauthorized destinations, unavailable required authentication, unreadable enabled-budget evidence, or absent, malformed, inaccessible, or mismatched live target authority.
+The resolver MUST fail closed for missing or invalid policy, unknown identities, invalid bounds, widening requests, unauthorized destinations, unavailable required authentication, or unreadable enabled-budget evidence.
 
 An expected denial MUST write a stable reason to the effective record, emit gh-aw's native `noop`, and perform no model invocation. An integrity failure MUST fail visibly before model execution and MUST NOT print secrets or unnecessary untrusted content.
 
-Operators MAY revoke authority through policy narrowing, target-authority removal, or credential revocation. Workers MUST revalidate current policy so revocation after orchestration can stop pending work. Workflow disablement, run cancellation, and organization Actions policy are emergency execution controls, not alternative CAO policy stores.
+Operators MAY revoke authority through policy narrowing or credential revocation. Workers MUST revalidate current policy so revocation after orchestration can stop pending work. Workflow disablement, run cancellation, and organization Actions policy are emergency execution controls, not alternative CAO policy stores.
 
 ## 8. Compliance Testing
 
@@ -339,12 +319,12 @@ A compliance suite MUST record the implementation revision and claimed level, us
 
 | Test ID | Requirement | Expected result | Level |
 | --- | --- | --- | --- |
-| T-CFG-001 | Validate minimal control and target documents | Accepted | 1 |
+| T-CFG-001 | Validate a minimal control document | Accepted | 1 |
 | T-CFG-002 | Add unknown properties, duplicate keys, expressions, or unknown identifiers | Rejected | 1 |
 | T-CFG-003 | Supply only legacy CAO variables | Ignored as policy and denied | 1 |
 | T-CFG-004 | Put execution fields such as engine, `max-ai-credits`, permissions, or safe outputs in CAO JSON | Rejected | 1 |
 | T-ARC-001 | Use broad credentials against a target outside CAO scope | Denied | 2 |
-| T-ARC-002 | Declare gh-aw capabilities without CAO target authority | No rollout or target authority inferred | 2 |
+| T-ARC-002 | Declare gh-aw capabilities without CAO live policy | No rollout or live authority inferred | 2 |
 | T-ARC-003 | Exceed monthly admission while a per-run gh-aw limit remains available | Admission denied; native limit unchanged | 2 |
 | T-EXE-001 | Inspect an orchestrator dispatch and worker run | Standard envelope present, credentials absent, worker bound to one target | 2 |
 | T-RES-001 | Resolve when workflow SHA differs from latest default branch | Policy at workflow SHA used | 2 |
@@ -358,8 +338,6 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | T-GHA-002 | Request an undeclared safe output | Primitive unavailable regardless of CAO mode | 2 |
 | T-GHA-003 | Resolve review mode for a live-capable workflow | No target mutation | 2 |
 | T-SEC-001 | Compile an operational workflow without the protected environment | Rejected before deployment | 2 |
-| T-TGT-001 | Run live with matching target-owned package authority | Admitted subject to all other boundaries | 3 |
-| T-TGT-002 | Remove, mismatch, or change the authorized package | Denied before model invocation | 3 |
 
 ### 8.3 Compliance Checklist
 
@@ -371,15 +349,15 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | Deterministic resolution | T-RES-001 through T-RES-007 | 2 | Required |
 | gh-aw execution ownership | T-GHA-001 through T-GHA-003 | 2 | Required |
 | Protected execution boundary | T-SEC-001 | 2 | Required |
-| Live target authority | T-TGT-001 through T-TGT-002 | 3 | Required |
+| Live control authority | T-RES-001 through T-RES-007 | 3 | Required |
 
 ## 9. Security and Privacy Considerations
 
-Policy and workflow source MUST be protected on the control repository's default branch. The control repository MUST provide a protected GitHub Actions environment named `central-agentic-ops` whose deployment branch policy admits only that branch. Every operational source workflow MUST declare `environment: central-agentic-ops`, and operational secrets MUST be environment secrets rather than unrestricted repository secrets. gh-aw MUST propagate that environment boundary to generated jobs. Target-authority declarations MUST be protected by the target's default-branch controls.
+Policy and workflow source MUST be protected on the control repository's default branch. The control repository MUST provide a protected GitHub Actions environment named `central-agentic-ops` whose deployment branch policy admits only that branch. Every operational source workflow MUST declare `environment: central-agentic-ops`, and operational secrets MUST be environment secrets rather than unrestricted repository secrets. gh-aw MUST propagate that environment boundary to generated jobs.
 
 Implementations MUST use least-privilege credentials, MUST NOT expose secrets in effective records or logs, and MUST NOT execute fetched policy as code. JSON MUST be parsed with a structured parser; `eval` or equivalent interpretation is prohibited.
 
-Review mode SHOULD be the default. Live execution requires the cumulative intersection of CAO live authorization, worker live capability, sufficient credentials, declared gh-aw safe outputs, and current target consent.
+Review mode SHOULD be the default. Live execution requires the cumulative intersection of CAO live authorization, worker live capability, sufficient credentials, and declared gh-aw safe outputs.
 
 The effective record SHOULD contain only identifiers and provenance required for authorization and audit. It MUST NOT contain prompt content, repository source, credentials, or unrelated personal data. Access and retention SHOULD follow the operator's security and data-retention policies.
 
@@ -410,27 +388,7 @@ The effective record SHOULD contain only identifiers and provenance required for
 }
 ```
 
-#### A.2 Matching Target Authority
-
-The target repository records its own consent:
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json",
-  "version": 1,
-  "target-authority": {
-    "packages": {
-      "optimization": {
-        "authority": "acme/central-agentic-ops"
-      }
-    }
-  }
-}
-```
-
-This declaration cannot start a run, select an engine, grant permissions, mint a token, or enable a safe output.
-
-#### A.3 Non-Conforming Capability Expansion
+#### A.2 Non-Conforming Capability Expansion
 
 The following is invalid because these execution capabilities belong to gh-aw and are absent from the CAO schema:
 

@@ -1905,7 +1905,7 @@ test("workers reject disabled, malformed, or over-ceiling dispatches before exec
   }
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
   assert.match(control, /Evaluate Central Agentic Ops admission/);
-  assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*validateLiveAuthority\(context\)[\s\S]*writeWorkerPrecompute\(context, targetAuthoritySha\)/);
+  assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
   assert.match(precompute, /must be review or live/);
   assert.match(precompute, /central_repo must identify the current control repository/);
   assert.match(precompute, /control_plane_run_url must match correlation_id and central_repo/);

@@ -5,7 +5,7 @@
 - **Catalog source:** A checkout with the root `aw.yml` and top-level package directories is the public CAO catalog. Change package sources and documentation here. Catalog markers alone do not make the repository a control plane.
 - **Control repository:** A repository with installed workflows and `cao.json` under `.github/workflows/` plus package records under `.github/aw/packages/` runs the control plane. Its workflows operate on explicitly enrolled remote repositories; targets receive only declared safe outputs.
 - **Source-managed control repository:** Any repository may run workflows it maintains directly in-tree as a control plane when maintainers explicitly choose that topology and commit `.github/workflows/cao.json` plus the CAO runtime sources. Package records are not required for those directly maintained workflows. When the same repository is also a catalog, this is the supported dogfood topology: apply both catalog and control-repository safety rules, and keep package source, rollout policy, credentials, and target authority as separate records.
-- **Target repository:** A target may contain a `target-authority` declaration in `.github/workflows/cao.json`. That declaration grants one control repository authority for named live packages; it does not make the target a control repository.
+- **Target repository:** A target receives only declared safe outputs. Its files do not grant, narrow, or revoke control-plane authority; live activation is decided by the control repository's policy at the exact workflow SHA.
 
 Apply the guidance for every role that is present. Do not infer a role from the repository name or from catalog files alone.
 
@@ -23,7 +23,7 @@ Apply the guidance for every role that is present. Do not infer a role from the 
 - CAO policy controls whether and where an operation may run. gh-aw controls how an authorized workflow executes. Neither authority substitutes for the other.
 - Orchestrators discover, rank, and dispatch within resolved policy. Workers handle one dispatched target and must not discover more repositories, dispatch more work, or widen the requested mode.
 - `review` is the default mode. Do not broaden scope, rollout, package or worker enablement, or promote an operation to `live` unless the requested policy change explicitly requires it.
-- Live work also requires target-owned authority on the target's protected default branch. Credential reach is not consent.
+- Live work requires explicit scope and mode in the control repository's reviewed policy. Credential reach alone does not widen that policy.
 - GitHub tools exposed to agents are read-only. Repository writes must use safe-output capabilities already declared by the workflow.
 - Keep credentials in Actions secrets. Never place tokens, private keys, or other secrets in policy, workflow inputs, steering files, dispatch envelopes, commits, or chat.
 - Preserve fail-closed behavior. Missing policy, authority, credentials, repository access, or required evidence must fail, skip, no-op, or report incomplete rather than infer broader authority.
