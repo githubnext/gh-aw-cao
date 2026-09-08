@@ -106,7 +106,7 @@ describe('dashboard data operations', () => {
     expect(result['data-health-schema'].rows[0].source).toBe('Dashboard data shapes');
     expect(JSON.parse(String(result['data-health-schema'].rows[0].schema))).toEqual({
       runs: [
-        '// 1 item',
+        expect.stringMatching(/^\/\/ 1 item \(schema sampled from first up to \d+\)$/),
         {
           attempts: 'number',
           organization: 'string',

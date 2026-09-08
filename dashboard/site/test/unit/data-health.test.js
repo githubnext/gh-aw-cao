@@ -236,7 +236,7 @@ describe('data shape preview', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].source).toBe('Dashboard data shapes');
     const schema = JSON.parse(String(rows[0].schema));
-    expect(schema.runs[0]).toBe('// 2 items');
+    expect(schema.runs[0]).toMatch(/^\/\/ 2 items \(schema sampled from first up to \d+\)$/);
     expect(schema.runs[1].attempts).toBe('number | string');
     expect(schema.runs[1].labels).toEqual(['// 0-1 items', 'string']);
     expect(schema.runs[1]['extra?']).toBe('boolean');
@@ -250,7 +250,7 @@ describe('data shape preview', () => {
     sources.runs.rows = [cyclicRow];
     const schema = JSON.parse(String(deriveDataHealthSources(sources)['data-health-schema'].rows[0].schema));
     expect(schema.runs).toEqual([
-      '// 1 item',
+      expect.stringMatching(/^\/\/ 1 item \(schema sampled from first up to \d+\)$/),
       expect.objectContaining({ self: '(circular)' })
     ]);
   });
