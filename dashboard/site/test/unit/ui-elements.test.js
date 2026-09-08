@@ -16,9 +16,13 @@ const metadata = {
 };
 
 describe('UI elements', () => {
-  it('preserves agent marketplace grid tracks when search reduces the results', () => {
-    expect(primerStylesheet()).toContain(
-      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));'
+  it('uses auto-fill to keep agent marketplace card widths stable when results shrink', () => {
+    const styles = primerStylesheet();
+    expect(styles).toContain(
+      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; }'
+    );
+    expect(styles).not.toContain(
+      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fit,'
     );
   });
 
