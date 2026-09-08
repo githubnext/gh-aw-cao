@@ -426,8 +426,7 @@ describe('dashboard document validation', () => {
       data: {
         source: 'detection-observations',
         'order-by': [
-          { field: 'observed-at', direction: 'desc' },
-          { field: 'attention-priority', direction: 'asc' }
+          { field: 'observed-at', direction: 'desc' }
         ]
       }
     });

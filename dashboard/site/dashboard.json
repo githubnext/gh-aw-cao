@@ -3928,10 +3928,6 @@
                 {
                   "field": "observed-at",
                   "direction": "desc"
-                },
-                {
-                  "field": "attention-priority",
-                  "direction": "asc"
                 }
               ]
             },
