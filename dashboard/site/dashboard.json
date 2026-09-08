@@ -334,8 +334,8 @@
             "description": "Hourly minimum remaining capacity for the latest 96 resource and credential intervals, colored by maximum quota.",
             "data": {
               "source": "github-api-rate-limits",
-              "filters": {
-                "is-unhealthy": "true"
+              "time": {
+                "range": "1w"
               },
               "order-by": [
                 {
@@ -377,6 +377,9 @@
             "description": "Current quota buckets ordered from least capacity remaining. The companion table and health inventory preserve absolute remaining and limit values.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true"
               },
@@ -421,6 +424,9 @@
             "description": "Current credential and resource buckets classified critical or warning. The source status below supplies the as-of, freshness, and completeness context.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true",
                 "risk-status": [
@@ -448,6 +454,9 @@
             "description": "Current quota state ordered by risk, runway, and remaining capacity. Unknown means the forecast lacks fresh, complete, or sufficient history.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true"
               },
@@ -570,6 +579,9 @@
             "description": "Current buckets ordered by relative reset time; exact reset timestamps remain available in rate-limit health.",
             "data": {
               "source": "github-api-rate-limits",
+              "time": {
+                "range": "1w"
+              },
               "filters": {
                 "is-current": "true"
               },
@@ -6219,7 +6231,7 @@
           },
           {
             "id": "data-health-domains",
-            "disclosure-label": "Dashboard domain confidence",
+            "title": "Dashboard domain confidence",
             "disclosure": "supplemental",
             "data": {
               "sources": [
