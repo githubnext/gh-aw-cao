@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { isPlainObject, renderSectionHeading } from './ui-primitives.js';
+import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -78,12 +78,12 @@ function valueLabel(value) {
  */
 function renderEntry(name, value, path, segments, onChange, depth = 0) {
   if (isPlainObject(value)) {
-    const initiallyOpen = depth < 2;
     const children = h('div', { className: 'configuration-setting-children' });
-    let rendered = false;
-    const renderChildren = () => {
-      if (rendered) return;
-      children.replaceChildren(
+    return renderLazyDisclosure(
+      'configuration-setting-group',
+      [h('span', null, settingLabel(name)), h('small', null, valueLabel(value))],
+      children,
+      (container) => container.replaceChildren(
         ...Object.entries(value).map(([childName, childValue]) => renderEntry(
           childName,
           childValue,
@@ -92,24 +92,8 @@ function renderEntry(name, value, path, segments, onChange, depth = 0) {
           onChange,
           depth + 1
         ))
-      );
-      rendered = true;
-    };
-    if (initiallyOpen) renderChildren();
-
-    return h('details', {
-      className: 'configuration-setting-group',
-      open: initiallyOpen,
-      onToggle: /** @param {Event} event */ (event) => {
-        if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) renderChildren();
-      }
-    },
-      h('summary', null,
-        h('span', null, settingLabel(name)),
-        h('small', null, valueLabel(value))
       ),
-      h('p', { className: 'configuration-setting-description' }, explanation(path, value)),
-      children
+      { open: depth < 2, eagerContent: h('p', { className: 'configuration-setting-description' }, explanation(path, value)) }
     );
   }
 
