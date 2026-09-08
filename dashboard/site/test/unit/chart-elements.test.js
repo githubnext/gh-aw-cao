@@ -501,6 +501,20 @@ describe('chart element helpers', () => {
     expect(chart.querySelectorAll('svg *').length).toBeLessThan(25);
   });
 
+  it('shares the rendered point budget across line series', () => {
+    const points = Array.from({ length: 20_000 }, (_, index) => ({
+      x: new Date(index * 60_000).toISOString(),
+      y: index % 1_000,
+      color: `series-${index % 10}`
+    }));
+    const chart = renderChartWidget('line', points, listChartSeries(points));
+    const renderedPointCount = [...chart.querySelectorAll('.line-chart-series')]
+      .reduce((total, line) => total + (line.getAttribute('points')?.split(' ').length ?? 0), 0);
+
+    expect(renderedPointCount).toBeLessThanOrEqual(2_000);
+    expect(chart.querySelectorAll('.chart-point')).toHaveLength(0);
+  });
+
   it('renders a concise, evenly sampled timeline axis while preserving exact values', () => {
     const points = Array.from({ length: 9 }, (_, index) => ({
       x: `2026-09-0${index + 1}T0${index}:15:00Z`,

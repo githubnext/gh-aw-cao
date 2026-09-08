@@ -464,6 +464,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const isScatterChart = chartType === 'scatter';
     const isPointChart = isDotChart || isScatterChart;
     const groupedSeries = groupChartSeries(points);
+    const renderedPointLimit = Math.max(2, Math.floor(MAX_RENDERED_LINE_POINTS / Math.max(groupedSeries.length, 1)));
     const hasWindowHighlight = points.some((point) => typeof point.highlighted === 'boolean');
     const showInteractivePoints = points.length <= MAX_INTERACTIVE_LINE_POINTS;
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
@@ -549,9 +550,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const y = 38 - (Math.max(0, toNumber(point.y)) / maximum) * 34;
             return { point, x, y };
           });
-          const renderedCoordinates = sampleLineCoordinates(coordinates, MAX_RENDERED_LINE_POINTS);
+          const renderedCoordinates = sampleLineCoordinates(coordinates, renderedPointLimit);
           const highlightedCoordinates = hasWindowHighlight
-            ? sampleLineCoordinates(coordinates.filter(({ point }) => point.highlighted), MAX_RENDERED_LINE_POINTS)
+            ? sampleLineCoordinates(coordinates.filter(({ point }) => point.highlighted), renderedPointLimit)
             : [];
           return [
             ...(!isPointChart ? [h('polyline', {
