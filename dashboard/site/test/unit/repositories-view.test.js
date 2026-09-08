@@ -144,8 +144,7 @@ describe('repositories view', () => {
           { field: 'status', display: 'status' }
         ],
         href: { field: 'repository-link' }
-      },
-      emptyMessage: undefined
+      }
     });
   });
 
