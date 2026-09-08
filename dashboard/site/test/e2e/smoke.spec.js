@@ -310,7 +310,7 @@ test('GitHub API raw quota table remains operable at desktop and narrow widths',
   const observations = apiPage.locator('[data-view-layout="full-view"]');
   const table = observations.locator('[data-lazy-list]');
   await expect(table).toBeVisible();
-  await expect(apiPage.getByText('core', { exact: true })).toBeVisible();
+  await expect(apiPage.getByText('core', { exact: true }).first()).toBeVisible();
   await expect.poll(async () => {
     const box = await table.boundingBox();
     return box !== null && box.width <= 1200;
