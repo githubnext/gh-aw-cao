@@ -18,14 +18,9 @@ async function removeCachedAgentDirectories(directory) {
     if (error.code === "ENOENT") return;
     throw error;
   }
-  await Promise.all(entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
-    const entryPath = path.join(directory, entry.name);
-    if (entry.name === "agent") {
-      await rm(entryPath, { recursive: true, force: true });
-    } else {
-      await removeCachedAgentDirectories(entryPath);
-    }
-  }));
+  await Promise.all(entries
+    .filter((entry) => entry.isDirectory() && /^run-\d+$/.test(entry.name))
+    .map((entry) => rm(path.join(directory, entry.name, "agent"), { recursive: true, force: true })));
 }
 
 const COLLECT_GH_AW_LOGS_OPERATION = "collect-gh-aw-logs";

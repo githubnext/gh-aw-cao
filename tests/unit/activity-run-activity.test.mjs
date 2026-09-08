@@ -107,12 +107,15 @@ test("runActivity removes cached agent directories before collecting logs", asyn
   const item = await fixture();
   const originalEnv = { ...process.env };
   const cachePath = path.join(item.root, "gh-aw-logs");
-  const agentPath = path.join(cachePath, "owner", "repository", "workflow", "42", "agent");
-  const retainedPath = path.join(cachePath, "owner", "repository", "workflow", "42", "usage", "usage.json");
+  const agentPath = path.join(cachePath, "run-42", "agent");
+  const retainedPath = path.join(cachePath, "run-42", "usage", "usage.json");
+  const unrelatedPath = path.join(cachePath, "agent", "retained.json");
   await mkdir(agentPath, { recursive: true });
   await mkdir(path.dirname(retainedPath), { recursive: true });
+  await mkdir(path.dirname(unrelatedPath), { recursive: true });
   await writeFile(path.join(agentPath, "events.jsonl"), '{"large":"entry"}\n');
   await writeFile(retainedPath, '{"usage":1}\n');
+  await writeFile(unrelatedPath, '{"retained":true}\n');
   await writeFile(item.logsPath, `
     export async function main(actions, args = []) {
       const fs = await import("node:fs/promises");
@@ -135,6 +138,7 @@ test("runActivity removes cached agent directories before collecting logs", asyn
     await runActivity({});
     await assert.rejects(access(agentPath), { code: "ENOENT" });
     assert.equal(await readFile(retainedPath, "utf8"), '{"usage":1}\n');
+    assert.equal(await readFile(unrelatedPath, "utf8"), '{"retained":true}\n');
   } finally {
     for (const key of Object.keys(process.env)) {
       if (!(key in originalEnv)) delete process.env[key];
