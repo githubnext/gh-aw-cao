@@ -486,3 +486,22 @@ describe('overview attention', () => {
     expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Accepted claim');
   });
 });
+
+describe('overview large data', () => {
+  it('derives a high-cardinality inbox within a linear-time budget', () => {
+    const attentionSignals = Array.from({ length: 50_000 }, (_, index) => ({
+      'attention-signal-id': `signal-${index}`,
+      'signal-type': 'runtime-failure',
+      objective: `Investigate failure ${index}`,
+      reason: `Run ${index} failed`
+    }));
+    const startedAt = performance.now();
+
+    const sources = deriveOverviewSources({
+      'attention-signals': source('attention-signals', attentionSignals)
+    });
+
+    expect(sources['attention-signals'].rows).toHaveLength(50_000);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  }, 10_000);
+});

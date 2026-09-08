@@ -9,19 +9,19 @@ describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
     const preview = readFileSync(resolve("index.html"), "utf8");
 
-    expect(preview.indexOf('fetch("./dashboard.json")')).toBeLessThan(preview.indexOf('fetch("./sources.json")'));
+    expect(preview.indexOf('fetch("./dashboard.json")')).toBeLessThan(preview.indexOf("loadDashboardSources(fetch, cacheKey)"));
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json")'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
-    expect(preview).toContain('fetch("./sources.json")');
+    expect(preview).toContain('import { loadDashboardSources } from "./src/source-loader.js"');
+    expect(preview).toContain("loadDashboardSources(fetch, cacheKey)");
     expect(preview).toContain('readCachedSources(window.indexedDB, cacheKey)');
     expect(preview).toContain('renderSources(cachedSources, "cached")');
     expect(preview).toContain("writeCachedSources(window.indexedDB, cacheKey, sources)");
     expect(preview).toContain("dashboard = renderSources(sources)");
     expect(preview).toContain('has("fixtures")');
-    expect(preview).toContain("throw new Error(`Unable to load sources.json:");
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');
     expect(preview).toContain("updateWithViewTransition(document, () => renderSources(renderedSources))");
@@ -196,6 +196,12 @@ describe("live Dashboard Language sources", () => {
         },
       });
       let sources = JSON.parse(readFileSync(output, "utf8"));
+      const sourceManifest = JSON.parse(readFileSync(join(temporaryDirectory, "sources", "manifest.json"), "utf8"));
+      const splitRuns = JSON.parse(readFileSync(join(temporaryDirectory, "sources", "runs.json"), "utf8"));
+
+      expect(sourceManifest).toEqual({ version: 1, sources: Object.keys(sources) });
+      expect(splitRuns.rows).toHaveLength(sources.runs.rows.length);
+      expect(splitRuns.rows.every((/** @type {Record<string, unknown>} */ row) => !("logs-payload" in row))).toBe(true);
 
       expect(sources.workflows.rows[0]).toMatchObject({
         organization: "githubnext",

@@ -7,9 +7,9 @@ import {
 
 test("dashboard tree analysis identifies dominant DOM structures", () => {
   const result = summarizeDomTree([
-    { tag: "main", classes: ["shell"], depth: 1, childElementCount: 2 },
-    { tag: "section", classes: ["panel"], depth: 2, childElementCount: 1 },
-    { tag: "span", classes: ["panel", "label"], depth: 3, childElementCount: 0 },
+    { tag: "main", classes: ["shell"], depth: 1, childElementCount: 2, jsonPath: "$.dashboard" },
+    { tag: "section", classes: ["panel"], depth: 2, childElementCount: 1, jsonPath: "$.dashboard.pages[0]" },
+    { tag: "span", classes: ["panel", "label"], depth: 3, childElementCount: 0, jsonPath: "$.dashboard.pages[0]" },
   ], [
     { tag: "section", viewId: "small", descendantElements: 1 },
     { tag: "main", viewId: "large", descendantElements: 2 },
@@ -19,6 +19,7 @@ test("dashboard tree analysis identifies dominant DOM structures", () => {
   assert.equal(result.depth.maximum, 3);
   assert.deepEqual(result.byTag[0], { name: "main", count: 1 });
   assert.deepEqual(result.byClass[0], { name: "panel", count: 2 });
+  assert.deepEqual(result.byJsonPath[0], { name: "$.dashboard.pages[0]", count: 2 });
   assert.equal(result.topStructures[0].viewId, "large");
 });
 

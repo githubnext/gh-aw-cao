@@ -3,10 +3,23 @@ import { octicon } from '../octicons.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
+import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
 const DAY_MILLISECONDS = 86_400_000;
+const ESTIMATED_NOTIFICATION_HEIGHT = 62;
+const MINIMUM_NOTIFICATION_BATCH = 12;
+const MAXIMUM_NOTIFICATION_BATCH = 40;
+const NOTIFICATION_OVERSCAN = 8;
+
+function notificationBatchSize() {
+  const viewportHeight = Number(globalThis.window?.innerHeight) || 768;
+  return Math.max(
+    MINIMUM_NOTIFICATION_BATCH,
+    Math.min(MAXIMUM_NOTIFICATION_BATCH, Math.ceil(viewportHeight / ESTIMATED_NOTIFICATION_HEIGHT) + NOTIFICATION_OVERSCAN)
+  );
+}
 
 function readState() {
   try {
@@ -99,7 +112,30 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const selected = new Set();
   /** @type {Record<string, unknown>[]} */
   let currentVisible = [];
-  const list = h('div', { className: 'notifications-list' });
+  let render = () => {};
+  let syncSelection = () => {};
+  const lazyList = renderLazyInfiniteList({
+    items: () => currentVisible,
+    batchSize: notificationBatchSize(),
+    renderItems: (renderedRows) => {
+      if (group.value === 'cause') return renderCauseGroups(renderedRows, state, selected, bulkDone, render);
+      const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (new Map());
+      for (const row of renderedRows) {
+        const label = group.value === 'date' ? dateGroup(row) : group.value === 'repository' ? repository(row) : '';
+        const entries = groups.get(label) || [];
+        entries.push(row);
+        groups.set(label, entries);
+      }
+      return [...groups].flatMap(([label, entries]) => {
+        const entriesList = h('ul', { className: 'notifications-group' },
+          ...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)));
+        return label ? [h('h3', { className: 'notifications-group-heading' }, label), entriesList] : [entriesList];
+      });
+    },
+    renderEmpty: () => h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up')),
+    afterRender: () => syncSelection()
+  });
+  const list = lazyList.element;
   const count = h('span', { className: 'notifications-result-count', 'aria-live': 'polite' });
   const search = /** @type {HTMLInputElement} */ (h('input', {
     type: 'search', value: 'is:unread', placeholder: 'Filter notifications',
@@ -119,8 +155,16 @@ export function renderNotificationsInbox(rows, sources = {}) {
     type: 'button', className: 'notifications-icon-button', title: 'Mark selected as done',
     'aria-label': 'Mark selected as done', disabled: true
   }, octicon('check')));
+  syncSelection = () => {
+    for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
+      if (!(checkbox instanceof HTMLInputElement)) continue;
+      const notificationId = checkbox.dataset.notificationId;
+      checkbox.checked = notificationId !== undefined && selected.has(notificationId);
+    }
+  };
 
-  const render = () => {
+  /** @param {boolean} [resetWindow] */
+  render = (resetWindow = true) => {
     let visible = rows.filter((row) => matchesQuery(row, search.value, state));
     visible = [...visible].sort((left, right) => {
       if (sort.value === 'priority') return Number(left.priority || 99) - Number(right.priority || 99);
@@ -129,36 +173,18 @@ export function renderNotificationsInbox(rows, sources = {}) {
     });
     currentVisible = visible;
     count.textContent = `${visible.length} notification${visible.length === 1 ? '' : 's'}`;
-    selected.clear();
-    selectAll.checked = false;
-    bulkDone.disabled = true;
-    if (visible.length === 0) {
-      list.replaceChildren(h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up')));
-      return;
+    if (resetWindow) {
+      selected.clear();
+      selectAll.checked = false;
+      bulkDone.disabled = true;
     }
-    if (group.value === 'cause') {
-      list.replaceChildren(...renderCauseGroups(visible, state, selected, bulkDone, render));
-      return;
-    }
-    const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (new Map());
-    for (const row of visible) {
-      const label = group.value === 'date' ? dateGroup(row) : group.value === 'repository' ? repository(row) : '';
-      const entries = groups.get(label) || [];
-      entries.push(row);
-      groups.set(label, entries);
-    }
-    list.replaceChildren(...[...groups].flatMap(([label, entries]) => {
-      const entriesList = h('ul', { className: 'notifications-group' },
-        ...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)));
-      return label ? [h('h3', { className: 'notifications-group-heading' }, label), entriesList] : [entriesList];
-    }));
+    lazyList.render(resetWindow);
   };
-
   const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
   const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
-  search.addEventListener('input', render);
-  sort.addEventListener('change', render);
-  group.addEventListener('change', render);
+  search.addEventListener('input', () => render());
+  sort.addEventListener('change', () => render());
+  group.addEventListener('change', () => render());
   selectAll.addEventListener('change', () => {
     selected.clear();
     if (selectAll.checked) {

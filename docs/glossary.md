@@ -3,6 +3,10 @@ title: Glossary
 description: Definitions for Central Agentic Ops terminology.
 ---
 
+## Agentic workflow smell
+
+An evidence-backed warning that a workflow may be harder to control, secure, operate, or justify than necessary; a reason to investigate, not proof of a defect. The dashboard classifies each observation as an agent smell, workflow smell, security finding, or control-plane smell based on what the evidence describes, and normalizes all four into unified Home attention signals.
+
 ## Control plane
 
 The repository that hosts CAO workflows and policy. It coordinates work across explicitly enrolled target repositories.

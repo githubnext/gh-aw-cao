@@ -300,8 +300,13 @@ function buildOverviewInboxRows(sources) {
     ...evidenceSignals,
     ...insightSignals
   ]);
-  return rows
-    .filter((row, index, rows) => rows.findIndex((candidate) => candidate['attention-signal-id'] === row['attention-signal-id']) === index);
+  const seenIds = new Set();
+  return rows.filter((row) => {
+    const id = row['attention-signal-id'];
+    if (seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
 }
 
 /**
