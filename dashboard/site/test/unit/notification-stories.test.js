@@ -124,6 +124,49 @@ describe('notification story normalization', () => {
     });
   });
 
+  it('does not infer transitions from events without a strict time order', () => {
+    const events = [{
+      'event-id': 'z-initial',
+      title: 'deployment started',
+      repository: 'octo/widgets',
+      objectType: 'deployment',
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      'event-id': 'a-terminal',
+      title: 'deployment succeeded',
+      repository: 'octo/widgets',
+      objectType: 'deployment',
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z'
+    }];
+
+    expect(normalizeNotificationStories(events)[0]?.title).toBe('deployment succeeded');
+  });
+
+  it('does not replace security finding titles with transition summaries', () => {
+    const events = [{
+      'event-id': 'review-requested',
+      title: 'review requested',
+      repository: 'octo/widgets',
+      objectType: 'security-finding',
+      objectId: 'secret-scanning:7',
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      'event-id': 'review-submitted',
+      title: 'review submitted',
+      repository: 'octo/widgets',
+      objectType: 'security-finding',
+      objectId: 'secret-scanning:7',
+      timestamp: '2026-09-08T02:00:00Z'
+    }];
+
+    expect(normalizeNotificationStories(events)[0]).toMatchObject({
+      title: 'review submitted',
+      contributingRawEventIds: ['review-requested', 'review-submitted']
+    });
+  });
+
   it('keeps story IDs stable across refreshes and does not merge unrelated objects', () => {
     const firstRefresh = [{
       'event-id': 'run-started',

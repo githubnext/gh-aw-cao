@@ -175,10 +175,14 @@ function eventDetail(event) {
 function storyTitle(events, objectType) {
   const latestTitle = eventTitle(events[0]);
   if (objectType === 'security-finding') return latestTitle;
+  const latestTimestamp = eventTimestamp(events[0]);
   const terminal = latestTitle.toLowerCase();
   const transition = TRANSITION_RULES.find((rule) => (
     rule.terminal === terminal
-    && events.slice(1).some((event) => eventTitle(event).toLowerCase() === rule.initial)
+    && events.slice(1).some((event) => (
+      eventTimestamp(event) < latestTimestamp
+      && eventTitle(event).toLowerCase() === rule.initial
+    ))
   ));
   return transition?.title ?? latestTitle;
 }
