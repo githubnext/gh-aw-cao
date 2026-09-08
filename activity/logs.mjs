@@ -112,12 +112,11 @@ function runIdentity(run, repository) {
   };
 }
 
-function runGhJobsApi(repository, runId, page, execute = spawn) {
+function runGhJobsApi(repository, runId, runAttempt, page, execute = spawn) {
   return new Promise((resolve, reject) => {
     const child = execute("gh", [
       "api", "--method", "GET",
-      `repos/${repository}/actions/runs/${runId}/jobs`,
-      "-f", "filter=latest",
+      `repos/${repository}/actions/runs/${runId}/attempts/${runAttempt}/jobs`,
       "-f", "per_page=100",
       "-f", `page=${page}`,
     ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
@@ -154,9 +153,16 @@ function reuseCachedJobs(runs, cachedRuns, repository) {
     if (run.status !== "completed") continue;
     const identity = runIdentity(run, repository);
     const cached = cachedByRun.get(`${identity.repository.toLowerCase()}:${identity.runId}`);
-    if (!cached || cached.identity.runAttempt !== identity.runAttempt || !Array.isArray(cached.run.jobs)) continue;
+    if (
+      !cached
+      || cached.identity.runAttempt !== identity.runAttempt
+      || cached.run.status !== "completed"
+      || cached.run.jobs_complete !== true
+      || !Array.isArray(cached.run.jobs)
+    ) continue;
     run.jobs = cached.run.jobs.map(performanceJobRecord);
     run.jobs_collected = true;
+    run.jobs_complete = true;
     reused += 1;
   }
   return reused;
@@ -180,13 +186,20 @@ async function collectJobDetails(runs, repository, execute) {
       try {
         const jobs = [];
         for (let page = 1; page <= ACTIONS_JOB_PAGE_LIMIT; page += 1) {
-          const pageJobs = await runGhJobsApi(identity.repository, identity.runId, page, execute);
+          const pageJobs = await runGhJobsApi(
+            identity.repository,
+            identity.runId,
+            identity.runAttempt,
+            page,
+            execute,
+          );
           jobs.push(...pageJobs);
           if (pageJobs.length < 100) break;
           if (page === ACTIONS_JOB_PAGE_LIMIT) truncated += 1;
         }
         run.jobs = jobs.map(performanceJobRecord);
         run.jobs_collected = true;
+        run.jobs_complete = jobs.length < ACTIONS_JOB_PAGE_LIMIT * 100;
         observed += 1;
       } catch (error) {
         failed += 1;

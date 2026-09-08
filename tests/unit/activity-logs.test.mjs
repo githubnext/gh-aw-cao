@@ -42,6 +42,7 @@ if (args[0] === "aw") {
    status:"completed"
   }]}));
 } else {
+  fs.writeFileSync(process.env.GH_JOB_ARGS_PATH, JSON.stringify(args));
   process.stdout.write(JSON.stringify({jobs:[{
    id:84,
    name:"agent",
@@ -67,6 +68,7 @@ if (args[0] === "aw") {
         REPORT_GH_AW_LOGS_STATE: item.statePath,
         REPORT_AIC_CACHE: item.outputPath,
         GH_ARGS_PATH: item.argumentsPath,
+        GH_JOB_ARGS_PATH: path.join(item.root, "job-arguments.json"),
         GITHUB_OUTPUT: item.githubOutput,
       },
     });
@@ -91,6 +93,9 @@ if (args[0] === "aw") {
       runnerGroupName: "GitHub Actions",
       labels: ["ubuntu-latest"],
     }]);
+    assert.equal(snapshot.runs[0].jobs_complete, true);
+    const jobArgs = JSON.parse(await readFile(path.join(item.root, "job-arguments.json"), "utf8"));
+    assert.ok(jobArgs.includes("repos/githubnext/gh-aw-cao/actions/runs/42/attempts/1/jobs"));
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, true);
     assert.equal(state.complete, true);
