@@ -3447,6 +3447,7 @@
                 ]
               },
               "mark": "table",
+              "controls": "static",
               "empty-message": "No operation package workflows observed.",
               "encoding": {
                 "href": {
@@ -3510,6 +3511,7 @@
                 ]
               },
               "mark": "table",
+              "controls": "static",
               "empty-message": "No standalone workflows observed.",
               "encoding": {
                 "columns": [
@@ -3588,6 +3590,7 @@
                 "source": "runs"
               },
               "mark": "table",
+              "controls": "static",
               "encoding": {
                 "href": {
                   "field": "run-link",

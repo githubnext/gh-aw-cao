@@ -2438,6 +2438,13 @@ describe('presenter built-in and custom pages', () => {
         }
       }
     ]);
+
+    const workflowsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'workflows');
+    const workflowTables = workflowsPage?.definition.views.filter(
+      (/** @type {{ mark: string }} */ view) => view.mark === 'table'
+    );
+    expect(workflowTables).toHaveLength(3);
+    expect(workflowTables?.every((/** @type {{ controls?: string }} */ view) => view.controls === 'static')).toBe(true);
   });
 
   it('DLS-PAGE-002 DLS-PAGE-006 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 renders built-in sections in authoritative dashboard.json view order grouped by declared source instead of hard-coded section index positions', () => {
