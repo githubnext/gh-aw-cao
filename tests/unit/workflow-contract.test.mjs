@@ -73,7 +73,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 35);
+  assert.equal(operationWorkflows.length, 36);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -524,7 +524,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 35, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 36, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -2273,7 +2273,7 @@ test("SelfCare experimental views worker exhaustively checks editable views acro
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: experimental-views/);
   assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-experimental-views" in:body'/);
   assert.match(source, /browsers: \[chromium, webkit\]/);
-  assert.match(source, /every editable view on the Operations page/);
+  assert.match(source, /Operations page shell, every editable view on that page/);
   assert.match(source, /navigation sections with `experimental: true`/);
   assert.match(source, /Ignore every view with `locked: true`/);
   assert.match(source, /Ignore all views on top-level pages in non-experimental navigation sections/);
@@ -2553,6 +2553,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "self-care-dashboard-language-refactor.lock.yml",
       "self-care-dashboard-review.lock.yml",
       "self-care-docs-build-time-investigator.lock.yml",
+      "self-care-experimental-views.lock.yml",
       "self-care-glossary.lock.yml",
       "self-care-open-source-failures.lock.yml",
       "self-care-pages-health.lock.yml",
@@ -3147,8 +3148,8 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
           "self-care-data-acquisition-audit",
           "self-care-dashboard-language-refactor",
           "self-care-dashboard-review",
-          "self-care-experimental-views",
           "self-care-docs-build-time-investigator",
+          "self-care-experimental-views",
           "self-care-glossary",
           "self-care-open-source-failures",
           "self-care-pages-health",
