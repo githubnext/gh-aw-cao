@@ -817,6 +817,7 @@ test('Work uses focused mobile Board, Table, Execution timeline, and detail inte
   await tablePage.getByRole('link', { name: 'Execution timeline' }).click();
   const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
   await expect(roadmapPage.locator('.work-roadmap-period-heading').first()).toBeVisible();
+  await expect(roadmapPage.locator('.work-roadmap-provenance')).toContainText('not planned commitments');
   await expect(roadmapPage.locator('.work-roadmap-calendar')).toBeHidden();
   expect(await roadmapPage.locator('.work-roadmap-scroll').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await roadmapPage.getByRole('button', { name: 'Show visual timeline' }).click();

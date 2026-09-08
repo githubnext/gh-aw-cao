@@ -1968,7 +1968,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-mobile-hide-repository .work-task-title small, .work-mobile-hide-status .work-task-status-cell, .work-mobile-hide-owner .work-mobile-owner, .work-mobile-hide-label .work-task-labels { display: none; }
   .work-roadmap { overflow: visible; border: 0; background: transparent; }
   .work-roadmap-toolbar { min-height: 52px; border: 1px solid var(--border); border-radius: 8px; }
-  .work-roadmap-provenance { display: none; }
+  .work-roadmap-toolbar > div:first-child { flex-wrap: wrap; }
+  .work-roadmap-provenance { flex-basis: 100%; }
   .work-roadmap-zoom, .work-roadmap-today-button { display: none; }
   .work-roadmap-visual-toggle { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .6875rem; font-weight: 600; }
   .work-roadmap-visual-icon { display: grid; }

@@ -182,7 +182,7 @@ function renderFacetSelect(label, values) {
  */
 function renderBoard(items, section) {
   const orchestratedPackages = orchestratedPackageNames(items);
-  const populatedAttentionColumn = ['review', 'blocked', 'active', 'waiting', 'completed']
+  const populatedAttentionColumn = ['blocked', 'review', 'active', 'waiting', 'completed']
     .find((tone) => items.some((item) => item.state === tone));
   let activeTone = populatedAttentionColumn ?? 'waiting';
   const tabs = h('div', { className: 'work-board-group-tabs', role: 'tablist', 'aria-label': 'Board status' });
