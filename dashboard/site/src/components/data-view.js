@@ -4,12 +4,12 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { formatAggregateValue, formatNumber, formatRelativeTime } from '../view-formatters.js';
+import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js';
 import { formatCount, titleCase } from './count-formatters.js';
 import { renderCellDisplay } from './cell-display.js';
 import { listChartSeries, pieChartEntries, renderChartLegend, renderPieLegend, renderChartWidget } from './chart-elements.js';
 import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js';
-import { createEntityAwareCellRenderer, renderLinkedText } from './linked-text.js';
+import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl } from './ui-primitives.js';
@@ -310,7 +310,6 @@ function renderChartView(context) {
   const description = typeof view.description === 'string' && view.description.length > 0
     ? h('p', { className: 'view-description' }, view.description)
     : null;
-  const showTable = typeof view.table === 'boolean' ? view.table : chartType === 'bar';
   /** @param {ChartPoint[]} renderedPoints */
   const renderVisualization = (renderedPoints) => {
     const chartSeries = listChartSeries(renderedPoints);
@@ -325,28 +324,6 @@ function renderChartView(context) {
       isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
       reference?.field ?? null
     );
-    const table = showTable ? renderTableRegion({
-      tableClassName: 'custom-chart-table',
-      emptyMessage: 'No points available.',
-      colSpan: color ? 3 : 2,
-      headCells: chartType === 'heatmap'
-        ? [x ? fieldTitle(x) : 'X', y ? fieldTitle(y) : 'Y', color ? fieldTitle(color) : 'Value']
-        : [x ? fieldTitle(x) : 'X', y ? fieldTitle(y) : 'Y', ...(color ? [fieldTitle(color)] : [])],
-      bodyRows: renderedPoints.map((point) => h(
-        'tr',
-        { 'data-custom-point-key': point.key },
-        h('td', null, renderLinkedText(point.x, point.link)),
-        ...(chartType === 'heatmap'
-          ? [
-              h('td', null, point.color ?? 'unknown'),
-              h('td', null, color ? formatNumber(point.y, fieldUnit(color, context.units ?? {})) : point.y)
-            ]
-          : [
-              h('td', null, y ? formatNumber(point.y, fieldUnit(y, context.units ?? {})) : point.y),
-              ...(color ? [h('td', null, point.color ?? 'unknown')] : [])
-            ])
-      ))
-    }) : null;
     const chartLegend = color && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)
       : null;
@@ -362,8 +339,7 @@ function renderChartView(context) {
             ))]
           : [chartWidget]),
         ...(chartLegend && chartType === 'scatter' ? [chartLegend] : [])
-      ],
-      table
+      ]
     };
   };
 
@@ -394,16 +370,14 @@ function renderChartView(context) {
       ...renderViewSectionChrome(metadata, contextDetails),
       ...(pending
         ? [/** @type {HTMLElement} */ (visualization)]
-        : chartType === 'pie'
-          ? initial?.chartContent ?? []
-          : [...(initial?.chartContent ?? []), ...(initial?.table ? [initial.table] : [])])
+        : initial?.chartContent ?? [])
     ],
     headingTag
   );
   if (pending) {
     clustering.then((clustered) => {
       const rendered = renderVisualization(clustered);
-      visualization?.replaceWith(...rendered.chartContent, ...(rendered.table ? [rendered.table] : []));
+      visualization?.replaceWith(...rendered.chartContent);
     }).catch(() => {
       visualization?.replaceWith(h(
         'div',
@@ -413,8 +387,7 @@ function renderChartView(context) {
     });
   } else if (chartType === 'pie') {
     section.append(
-      h('div', { className: 'pie-chart-card' }, ...Array.from(section.children)),
-      ...(initial?.table ? [initial.table] : [])
+      h('div', { className: 'pie-chart-card' }, ...Array.from(section.children))
     );
   }
   section.classList.add('chart-view', `chart-view-${chartType}`);

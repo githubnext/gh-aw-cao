@@ -2882,10 +2882,7 @@ describe('presenter built-in and custom pages', () => {
     expect(chartSection?.querySelector('[data-chart-legend="text"]')).toBeNull();
     expect(chartSection?.querySelectorAll('[data-chart-legend="visual"] li')).toHaveLength(2);
     expect(chartLegendLabels.map((item) => item.textContent)).toEqual(['failure', 'success']);
-    expect(chartSection?.querySelectorAll('.custom-chart-table tbody tr')).toHaveLength(2);
-    const chartLink = chartSection?.querySelector('.custom-chart-table tbody a');
-    expect(chartLink?.getAttribute('href')).toBe('https://github.com/github/central-agentic-ops/actions/runs/1001');
-    expect(chartLink?.getAttribute('aria-label')).toBe('Run 1001');
+    expect(chartSection?.querySelector('.custom-chart-table')).toBeNull();
     expect(chartSection?.querySelectorAll('.view-source')).toHaveLength(0);
 
     const emptySection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Empty Usage'));

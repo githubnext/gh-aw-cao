@@ -72,7 +72,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.view-description')).toBeNull();
   });
 
-  it('defaults pie, line, heatmap, histogram, and swimlane data tables to hidden while honoring explicit table visibility', () => {
+  it('renders charts without duplicate data tables', () => {
     const context = /** @type {Parameters<typeof renderDataView>[1]} */ ({
       pageId: 'repositories',
       title: 'AI Credit usage by AW repository',
@@ -190,13 +190,13 @@ describe('data view renderer', () => {
       ...context,
       view: { ...context.view, chart: 'bar' }
     });
-    expect(bar?.querySelector('.custom-chart-table')).not.toBeNull();
+    expect(bar?.querySelector('.custom-chart-table')).toBeNull();
 
     const explicitTable = renderDataView('chart', {
       ...context,
       view: { ...context.view, table: true }
     });
-    expect(explicitTable?.querySelector('.custom-chart-table')).not.toBeNull();
+    expect(explicitTable?.querySelector('.custom-chart-table')).toBeNull();
   });
 
   it('renders the scatter legend after the graph', () => {
@@ -281,7 +281,7 @@ describe('data view renderer', () => {
     await vi.waitFor(() => {
       expect(rendered?.querySelector('.chart-clustering-progress')).toBeNull();
       expect(rendered?.querySelectorAll('.scatter-chart-point')).toHaveLength(400);
-      expect(rendered?.querySelectorAll('.custom-chart-table tbody tr')).toHaveLength(400);
+      expect(rendered?.querySelectorAll('.custom-chart-table tbody tr')).toHaveLength(0);
     });
     vi.unstubAllGlobals();
   });

@@ -2578,6 +2578,7 @@
               "route-field": "workflow-route"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "controls": "static",
             "empty-message": "No runs have been observed for this workflow.",
             "encoding": {
@@ -3177,6 +3178,7 @@
               }
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "controls": "interactive",
             "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
             "encoding": {
@@ -3795,6 +3797,7 @@
               "source": "runtime-episodes"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "layout": "full",
             "empty-message": "No orchestrator runs were observed in the current run window.",
             "encoding": {
@@ -4874,6 +4877,7 @@
               "source": "package-dispatch-state"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "empty-message": "No packages were observed in the current run window.",
             "encoding": {
               "columns": [
@@ -5854,6 +5858,7 @@
               "source": "outcomes"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "controls": "interactive",
             "empty-message": "No durable outputs were retained.",
             "layout": "full",

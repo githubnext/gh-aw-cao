@@ -87,30 +87,31 @@ export function enableLazyViews(root) {
   if (lazyViews.length === 0) return;
 
   const Observer = root.ownerDocument.defaultView?.IntersectionObserver;
-  if (typeof Observer !== 'function') {
-    for (const element of lazyViews) void hydrateLazyView(element, { immediate: true });
-    return;
-  }
-
-  const observer = new Observer((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
-      observer.unobserve(entry.target);
-      if (entry.target instanceof HTMLElement) {
-        void hydrateLazyView(entry.target);
+  const observer = typeof Observer === 'function'
+    ? new Observer((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
+        observer.unobserve(entry.target);
+        if (entry.target instanceof HTMLElement) {
+          void hydrateLazyView(entry.target);
+        }
       }
-    }
-  }, { rootMargin: '320px 0px' });
-  observers.set(root, observer);
+    }, { rootMargin: '320px 0px' })
+    : null;
+  if (observer) observers.set(root, observer);
   for (const element of lazyViews) {
-    observer.observe(element);
+    if (!observer) {
+      void hydrateLazyView(element, { immediate: true });
+      continue;
+    }
     const disclosure = element.closest('details');
-    disclosure?.addEventListener('toggle', () => {
-      if (disclosure.open) {
-        observer.unobserve(element);
-        void hydrateLazyView(element);
-      }
-    }, { once: true });
+    if (disclosure && !disclosure.open) {
+      disclosure.addEventListener('toggle', () => {
+        if (disclosure.open) void hydrateLazyView(element);
+      }, { once: true });
+      continue;
+    }
+    observer.observe(element);
     element.addEventListener('focusin', () => {
       observer.unobserve(element);
       void hydrateLazyView(element);

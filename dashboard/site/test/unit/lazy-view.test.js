@@ -21,6 +21,34 @@ describe('lazy dashboard views', () => {
     expect(document.body.querySelector('.dashboard-lazy-view')).toBeNull();
   });
 
+  it('does not hydrate a closed supplemental view until it is opened', async () => {
+    const observe = vi.fn();
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        constructor() {}
+        observe = observe;
+        unobserve() {}
+        disconnect() {}
+      }
+    });
+    const render = vi.fn(() => document.createElement('article'));
+    const lazyView = renderLazyView({ label: 'Evidence', render });
+    const disclosure = document.createElement('details');
+    disclosure.append(document.createElement('summary'), lazyView);
+    document.body.append(disclosure);
+
+    enableLazyViews(document.body);
+    await Promise.resolve();
+
+    expect(render).not.toHaveBeenCalled();
+    expect(observe).not.toHaveBeenCalled();
+    disclosure.open = true;
+    disclosure.dispatchEvent(new Event('toggle'));
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    expect(disclosure.querySelector('article')).not.toBeNull();
+  });
+
   it('reserves space and hydrates only after entering the viewport', async () => {
     /** @type {IntersectionObserverCallback} */
     let callback = () => {};
