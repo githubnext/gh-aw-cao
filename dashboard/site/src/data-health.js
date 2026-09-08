@@ -47,6 +47,7 @@ const RECONCILIATION_CONTRACTS = Object.freeze([
  */
 export function deriveDataHealthSources(sources) {
   const sourceRows = Object.entries(sources).map(([name, source]) => sourceDiagnostic(name, source));
+  const fieldRows = Object.entries(sources).flatMap(([name, source]) => fieldDiagnostics(name, source));
   const compatibilityRows = compatibilityDiagnostics(sources.workflows);
   const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
   const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));
@@ -74,14 +75,21 @@ export function deriveDataHealthSources(sources) {
       freshness: aggregateAxis(sourceRows, 'freshness'),
       'scope-coverage': repositoryCoverage?.['coverage-percent'] ?? 'Unknown',
       'collector-state': collectorState,
-      'compatibility-gaps': compatibilityRows.length === 0 ? 'Unknown' : compatibilityGaps
+      'compatibility-gaps': compatibilityRows.length === 0 ? 'Unknown' : compatibilityGaps,
+      sources: sourceRows.length,
+      'available-sources': sourceRows.filter((row) => row.availability === 'available').length,
+      rows: sourceRows.reduce((total, row) => total + row.rows, 0),
+      fields: fieldRows.length,
+      'populated-cells': sourceRows.reduce((total, row) => total + row['populated-cells'], 0),
+      'empty-cells': sourceRows.reduce((total, row) => total + row['empty-cells'], 0)
     }], metadata),
     'data-health-domains': healthSource('data-health-domains', domainRows, metadata),
     'data-health-collections': healthSource('data-health-collections', collectionRows, metadata),
     'data-health-compatibility': healthSource('data-health-compatibility', compatibilityRows, metadata),
     'data-health-reconciliation': healthSource('data-health-reconciliation', reconciliationRows, metadata),
     'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata),
-    'data-health-sources': healthSource('data-health-sources', sourceRows, metadata)
+    'data-health-sources': healthSource('data-health-sources', sourceRows, metadata),
+    'data-health-fields': healthSource('data-health-fields', fieldRows, metadata)
   };
 }
 
@@ -125,6 +133,34 @@ function sourceDiagnostic(name, source) {
     freshness,
     reason: confidenceReason({ availability, completeness, freshness })
   };
+}
+
+/** @param {string} name @param {LogicalSourceInput} source */
+function fieldDiagnostics(name, source) {
+  const rows = Array.isArray(source?.rows) ? source.rows : [];
+  const fields = [...new Set(rows.flatMap((row) => Object.keys(row ?? {})))].sort();
+  return fields.map((field) => {
+    const values = rows.map((row) => row?.[field]);
+    const populated = values.filter(hasValue);
+    const types = [...new Set(populated.map(valueType))].sort();
+    return {
+      source: name,
+      field,
+      types: types.length > 0 ? types.join(', ') : 'Unknown',
+      rows: rows.length,
+      populated: populated.length,
+      empty: rows.length - populated.length,
+      coverage: rows.length === 0 ? 'Unknown' : formatPercent(populated.length / rows.length),
+      shape: types.length > 1 ? 'mixed' : types[0] ?? 'unknown'
+    };
+  });
+}
+
+/** @param {unknown} value */
+function valueType(value) {
+  if (Array.isArray(value)) return 'array';
+  if (value === null) return 'null';
+  return typeof value;
 }
 
 /** @param {{ availability?: string, completeness?: string, freshness?: string, compatibility?: string, collectionState?: string }} state */

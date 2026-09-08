@@ -92,6 +92,27 @@ describe('data health confidence', () => {
 });
 
 describe('coverage and collection provenance', () => {
+  it('summarizes available data and reports per-field shape statistics', () => {
+    const sources = completeSources();
+    sources.runs.rows = [
+      { organization: 'acme', repository: 'app', workflow: 'agent', run: '42', attempts: 1 },
+      { organization: 'acme', repository: 'app', workflow: 'agent', run: '43', attempts: '2', conclusion: null }
+    ];
+    const derived = deriveDataHealthSources(sources);
+    const summary = derived['data-health-summary'].rows[0];
+    const attempts = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'attempts');
+    const conclusion = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'conclusion');
+
+    expect(summary).toMatchObject({
+      sources: Object.keys(sources).length,
+      'available-sources': Object.keys(sources).length
+    });
+    expect(summary.rows).toBeGreaterThan(0);
+    expect(summary.fields).toBe(derived['data-health-fields'].rows.length);
+    expect(attempts).toMatchObject({ types: 'number, string', rows: 2, populated: 2, empty: 0, coverage: '100%', shape: 'mixed' });
+    expect(conclusion).toMatchObject({ types: 'Unknown', rows: 2, populated: 0, empty: 2, coverage: '0%', shape: 'unknown' });
+  });
+
   it('calculates authoritative expected-versus-observed coverage', () => {
     const sources = completeSources();
     sources.workflows.metadata['coverage-expected'] = 100;

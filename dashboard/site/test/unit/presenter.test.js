@@ -291,6 +291,7 @@ describe('presenter built-in and custom pages', () => {
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('unavailable');
     expect(sourceView?.querySelector('tbody')?.textContent).not.toContain('overview');
+    expect(page?.textContent).toContain('Field shape');
     rendered.remove();
   });
 
@@ -1096,7 +1097,9 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({ document, sources });
     expect(rendered.querySelectorAll('.site-callout')).toHaveLength(2);
     expect(rendered.querySelector('[data-site-callout="rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
-    expect(rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link')?.getAttribute('href')).toBe('#page-usage');
+    const detailsLink = rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link');
+    expect(detailsLink?.getAttribute('href')).toBe('#page-usage');
+    expect(detailsLink?.textContent).toBe('View usage');
     const dismiss = /** @type {HTMLButtonElement | null} */ (
       rendered.querySelector('[data-site-callout="operator-message"] .site-callout-dismiss')
     );

@@ -142,6 +142,64 @@
               "mark": "element",
               "element": "domain-attention",
               "layout": "full"
+            },
+            {
+              "id": "data-health-fields",
+              "disclosure": "supplemental",
+              "title": "Field shape",
+              "description": "Observed field types and population across every cached source.",
+              "data": {
+                "source": "data-health-fields"
+              },
+              "mark": "table",
+              "controls": "interactive",
+              "empty-message": "No cached fields are available.",
+              "encoding": {
+                "columns": [
+                  {
+                    "field": "source",
+                    "type": "nominal",
+                    "title": "Source"
+                  },
+                  {
+                    "field": "field",
+                    "type": "nominal",
+                    "title": "Field"
+                  },
+                  {
+                    "field": "types",
+                    "type": "nominal",
+                    "title": "Observed types"
+                  },
+                  {
+                    "field": "rows",
+                    "type": "quantitative",
+                    "title": "Rows"
+                  },
+                  {
+                    "field": "populated",
+                    "type": "quantitative",
+                    "title": "Populated"
+                  },
+                  {
+                    "field": "empty",
+                    "type": "quantitative",
+                    "title": "Empty"
+                  },
+                  {
+                    "field": "coverage",
+                    "type": "nominal",
+                    "title": "Coverage"
+                  },
+                  {
+                    "field": "shape",
+                    "type": "nominal",
+                    "title": "Shape",
+                    "display": "status"
+                  }
+                ]
+              },
+              "layout": "full"
             }
           ]
         }
@@ -6181,10 +6239,11 @@
           {
             "id": "source-diagnostics",
             "title": "Source diagnostics",
-            "description": "Secondary cache-shape diagnostics; retained rows do not imply complete live-system coverage.",
+            "description": "Detailed cache population and field-shape diagnostics; retained rows do not imply complete live-system coverage.",
             "layout": "full",
             "views": [
-              "data-health-sources"
+              "data-health-sources",
+              "data-health-fields"
             ]
           },
           {
@@ -6288,6 +6347,26 @@
                   "field": "compatibility-gaps",
                   "type": "quantitative",
                   "title": "Compatibility gaps"
+                },
+                {
+                  "field": "sources",
+                  "type": "quantitative",
+                  "title": "Sources"
+                },
+                {
+                  "field": "available-sources",
+                  "type": "quantitative",
+                  "title": "Available"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "fields",
+                  "type": "quantitative",
+                  "title": "Fields"
                 },
                 {
                   "field": "next-action",
