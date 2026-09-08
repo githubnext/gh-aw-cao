@@ -2954,6 +2954,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(activityLogs, /"--start-date", `-\$\{windowDays\}d`, "--cache-before", `-\$\{windowDays\}d`/);
   assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "15"/);
   assert.match(activityLogs, /"--max-github-api-rate-limit", "-2000", "--max-storage", "1200"/);
+  assert.match(activityLogs, /"--prune-older-runs"/);
   assert.equal((activityLogs.match(/"aw", "logs"/g) || []).length, 1);
   assert.doesNotMatch(aicUsage, /spawn|runGhAw|"aw", "logs"|--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
