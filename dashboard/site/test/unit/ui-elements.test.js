@@ -693,7 +693,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('a')).toHaveLength(1);
   });
 
-  it('renders canonical attention as a complete priority-first action region', () => {
+  it('renders the four Overview attention metrics from complete evidence', () => {
     localStorage.clear();
     const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview',
@@ -836,15 +836,20 @@ describe('UI elements', () => {
     expect(rendered?.getAttribute('aria-label')).toBe('Needs your attention');
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
-    expect(rendered?.textContent).toContain('Failed runs1');
-    expect(rendered?.textContent).toContain('Blocked work1');
-    expect(rendered?.textContent).toContain('Awaiting review1');
-    expect(rendered?.textContent).toContain('Security findings1');
-    expect(rendered?.querySelector('h2')?.textContent).toBe('4 needs your attention');
-    expect(rendered?.querySelector('[href="#page-overview-failed-runs"] .home-attention-detail')?.textContent).toBe('Latest 1h ago');
-    expect(rendered?.querySelector('[href="#page-overview-blocked-work"] .home-attention-detail')?.textContent).toBe('Oldest waiting 2d ago');
-    expect(rendered?.querySelector('[href="#page-overview-awaiting-review"] .home-attention-detail')?.textContent).toBe('Oldest waiting 2h ago');
-    expect(rendered?.querySelector('[href="#page-overview-security-findings"] .home-attention-detail')?.textContent).toBe('Severity unavailable');
+    for (const href of ['failed-runs', 'blocked-work', 'awaiting-review', 'security-findings']) {
+      expect(rendered?.querySelector(`[href="#page-overview-${href}"] strong`)?.textContent).toBe('1');
+    }
+    expect(rendered?.querySelector('h3')?.textContent).toBe('4 items need your attention');
+    expect([...rendered?.querySelectorAll('.home-attention-icon .octicon') ?? []].map((icon) => icon.classList[1])).toEqual([
+      'octicon-x-circle',
+      'octicon-stop',
+      'octicon-person',
+      'octicon-shield'
+    ]);
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(4);
+    expect(rendered?.querySelector('.home-attention-detail')).toBeNull();
     expect(rendered?.querySelector('.notifications-main')).toBeNull();
     expect(rendered?.querySelector('.home-catchup')).toBeNull();
     localStorage.clear();
@@ -904,8 +909,12 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toBe(
       'No failed runs, blocked work, review waits, or security findings were observed from Aug 23, 2026, 12:00 PM UTC to Aug 30, 2026, 12:00 PM UTC.'
     );
-    expect(rendered?.textContent).toContain('Failed runs0');
-    expect(rendered?.querySelector('[href="#page-overview-failed-runs"] .home-attention-detail')?.textContent).toBe('No current failures');
+    expect(rendered?.querySelector('.home-attention-metric strong')?.textContent).toBe('0');
+    expect(rendered?.querySelector('.home-attention-metric[href]')).toBeNull();
+    expect(rendered?.querySelectorAll('.home-attention-metric-empty')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0);
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
   });
 
@@ -928,11 +937,11 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain(
       'failed runs, blocked work and review waits, security findings could not be fully evaluated'
     );
-    expect(rendered?.textContent).toContain('Failed runs—');
-    expect(rendered?.textContent).toContain('Blocked work—');
-    expect(rendered?.textContent).toContain('Awaiting review—');
-    expect(rendered?.textContent).toContain('Security findings—');
-    expect(rendered?.querySelectorAll('.home-attention-detail')[0]?.textContent).toBe('Run evidence unavailable');
+    expect([...rendered?.querySelectorAll('.home-attention-metric strong') ?? []].map((count) => count.textContent)).toEqual(['—', '—', '—', '—']);
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0);
+    expect(rendered?.querySelector('.home-attention-detail')).toBeNull();
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
   });
 
@@ -950,7 +959,9 @@ describe('UI elements', () => {
 
     expect(rendered?.querySelector('.home-attention-empty-incomplete strong')?.textContent).toBe('No attention observed in available evidence');
     expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain('security findings could not be fully evaluated');
-    expect(rendered?.querySelector('[href="#page-overview-security-findings"] .home-attention-detail')?.textContent).toBe('Incomplete evidence');
+    expect(rendered?.querySelector('.home-attention-metric-security-findings strong')?.textContent).toBeUndefined();
+    expect([...rendered?.querySelectorAll('.home-attention-metric') ?? []].at(-1)?.querySelector('strong')?.textContent).toBe('0');
+    expect([...rendered?.querySelectorAll('.home-attention-metric') ?? []].at(-1)?.hasAttribute('href')).toBe(false);
   });
 
   it('renders a blocked readiness verdict with the next unblock action', () => {

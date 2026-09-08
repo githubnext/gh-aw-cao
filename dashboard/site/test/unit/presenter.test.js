@@ -926,8 +926,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
     expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open account menu for The Octocat');
-    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('./assets/avatar-monalisa-octocat.png');
-    expect(rendered.querySelector('.account-menu-avatar-image')?.hasAttribute('referrerpolicy')).toBe(false);
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('referrerpolicy')).toBe('no-referrer');
     expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
     expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
     const systemTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="system"]'));
@@ -1047,7 +1047,8 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector('.home-attention-summary')).not.toBeNull();
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
-    expect(page?.textContent).toContain('Security findings—Security evidence unavailable');
+    expect(page?.querySelector('[href="#page-overview-security-findings"] strong')?.textContent).toBe('—');
+    expect(page?.querySelector('.home-attention-detail')).toBeNull();
     expect(page?.textContent).toContain('No attention observed in available evidence');
     expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();

@@ -17,8 +17,8 @@ run or review evidence.
 | --- | --- | --- |
 | **Failed runs** | Counts canonical `runs` rows whose normalized conclusion is `failure`, `startup-failure`, `stale`, or `timed-out`. | Failed run evidence |
 | **Blocked work** | Counts `work-items` rows whose lifecycle state is `blocked`. | Blocked work evidence |
-| **Awaiting review** | Counts `work-items` rows whose lifecycle state is `review` or `pending-review`. | Review evidence |
-| **Security findings** | Counts all `security-findings` rows and summarizes critical and high severities when classification is present. | Security finding evidence |
+| **Awaiting review** | Counts `work-items` rows whose lifecycle state is `review`. | Review evidence |
+| **Security findings** | Counts all `security-findings` rows. | Security finding evidence |
 
 The selected dashboard horizon filters source rows before Overview calculates these
 counts. Its start timestamp is inclusive and its end timestamp is exclusive.

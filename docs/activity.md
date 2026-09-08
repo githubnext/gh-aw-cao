@@ -176,7 +176,7 @@ blocked rows.
 
 This metric uses the same `work-items`. A work item enters `review` when its
 newest reported outcome is pending and its latest run is not already blocked,
-queued, or in progress. Overview counts `review` and `pending-review` rows.
+queued, or in progress. Overview counts `review` rows.
 
 #### Security findings
 

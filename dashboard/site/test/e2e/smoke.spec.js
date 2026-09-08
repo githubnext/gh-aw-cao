@@ -826,12 +826,50 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
-  await expect(overviewPage.getByRole('heading', { name: '1 needs your attention' })).toBeVisible();
+  await expect(overviewPage.getByRole('heading', { name: '1 item needs your attention' })).toBeVisible();
   await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
-  await expect(overviewPage.locator('[href="#page-overview-failed-runs"]')).toContainText('Failed runs—Run evidence unavailable');
-  await expect(overviewPage.locator('[href="#page-overview-blocked-work"]')).toHaveCount(1);
-  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"]')).toContainText('Awaiting review1');
-  await expect(overviewPage.locator('[href="#page-overview-security-findings"]')).toContainText('Security findings—Security evidence unavailable');
+  await expect(overviewPage.locator('.home-attention-icon .octicon')).toHaveCount(4);
+  const metricGeometry = await overviewPage.locator('.home-attention-metric').evaluateAll((metrics) => metrics.map((metric) => {
+    const metricBox = metric.getBoundingClientRect();
+    const centers = ['.home-attention-icon', 'strong', '.home-attention-label'].map((selector) => {
+      const box = metric.querySelector(selector)?.getBoundingClientRect();
+      return box ? box.left + box.width / 2 : null;
+    });
+    const iconBox = metric.querySelector('.home-attention-icon .octicon')?.getBoundingClientRect();
+    return {
+      center: metricBox.left + metricBox.width / 2,
+      centers,
+      iconSize: iconBox ? [iconBox.width, iconBox.height] : null
+    };
+  }));
+  for (const geometry of metricGeometry) {
+    expect(geometry.iconSize).toEqual([32, 32]);
+    for (const center of geometry.centers) {
+      expect(Math.abs(Number(center) - geometry.center)).toBeLessThan(1);
+    }
+  }
+  const firstMetric = overviewPage.locator('.home-attention-metric').first();
+  const verticalOrder = await firstMetric.locator('strong, .home-attention-label, .home-attention-icon').evaluateAll((elements) => elements.map((element) => element.className || element.tagName.toLowerCase()));
+  expect(verticalOrder).toEqual(['strong', 'home-attention-label', 'home-attention-icon']);
+  const metricRowTops = await overviewPage.locator('.home-attention-metric').evaluateAll((metrics) => metrics.map((metric) => ({
+    icon: metric.querySelector('.home-attention-icon')?.getBoundingClientRect().top,
+    count: metric.querySelector('strong')?.getBoundingClientRect().top,
+    label: metric.querySelector('.home-attention-label')?.getBoundingClientRect().top
+  })));
+  for (const tops of [
+    metricRowTops.map((positions) => positions.icon),
+    metricRowTops.map((positions) => positions.count),
+    metricRowTops.map((positions) => positions.label)
+  ]) {
+    const numericTops = tops.filter((value) => typeof value === 'number');
+    expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
+  }
+  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('[href="#page-overview-blocked-work"]')).toHaveCount(0);
+  await expect(overviewPage.locator('.home-attention-metric-empty').filter({ hasText: 'Blocked work' })).toHaveCount(1);
+  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('1');
+  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('.home-attention-detail')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {

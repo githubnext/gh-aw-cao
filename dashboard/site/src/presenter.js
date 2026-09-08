@@ -692,11 +692,18 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                 'aria-label': viewer ? `Open account menu for ${viewer.name || viewer.login}` : 'Open account menu',
                 title: viewer ? `${viewer.name || viewer.login} (${viewer.login})` : 'Open account menu'
               },
-              h('img', {
-                className: 'account-menu-avatar-image',
-                src: './assets/avatar-monalisa-octocat.png',
-                alt: ''
-              })
+              viewer?.avatarUrl
+                ? h('img', {
+                  className: 'account-menu-avatar-image',
+                  src: viewer.avatarUrl,
+                  alt: '',
+                  referrerPolicy: 'no-referrer'
+                })
+                : h('img', {
+                  className: 'account-menu-avatar-image',
+                  src: './assets/avatar-monalisa-octocat.png',
+                  alt: ''
+                })
             ),
             h(
               'div',

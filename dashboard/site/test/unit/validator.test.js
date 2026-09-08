@@ -79,7 +79,7 @@ describe('dashboard document validation', () => {
     });
     expect(pages['overview-blocked-work'].views[0].encoding.href).toBeUndefined();
     expect(pages['overview-awaiting-review'].views[0]).toMatchObject({
-      data: { source: 'work-items', filters: { 'lifecycle-state': ['review', 'pending-review'] } },
+      data: { source: 'work-items', filters: { 'lifecycle-state': 'review' } },
       encoding: {
         columns: [
           { field: 'waiting-since', type: 'temporal', title: 'Date' },

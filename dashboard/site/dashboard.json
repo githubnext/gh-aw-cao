@@ -7327,10 +7327,7 @@
             "data": {
               "source": "work-items",
               "filters": {
-                "lifecycle-state": [
-                  "review",
-                  "pending-review"
-                ]
+                "lifecycle-state": "review"
               },
               "order-by": [
                 {
