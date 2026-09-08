@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatClockDuration } from '../view-formatters.js';
+import { normalizeNotificationStories } from '../notification-stories.js';
 import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
@@ -491,46 +492,53 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
   if (leadAttention) selectedAttention.push(leadAttention);
   if (agentSmell) selectedAttention.push(agentSmell);
   const attention = selectedAttention.map((row) => ({
-    title: String(row.objective || 'Attention needed'),
-    detail: String(row.reason || 'Review the available evidence.'),
+    ...row,
     timestamp: end - Number(row['age-seconds'] || 0) * 1000,
-    href: findLink(row, 'evidence-link')?.href || '',
-    origin: notificationOrigin(row)
+    deepLink: findLink(row, 'evidence-link')?.href || ''
   }));
   const outcomeStories = outcomes
     .filter((row) => ['pending', 'lifecycle-close'].includes(String(row['outcome-state'])))
-    .map((row) => ({
-      title: String(row['outcome-title'] || row['workflow-name'] || 'Outcome observed'),
-      detail: row['outcome-state'] === 'pending' ? 'A produced outcome is ready for review.' : 'A produced outcome was delivered.',
-      timestamp: observedAt(row),
-      href: findLink(row, 'external-link')?.href || findLink(row, 'evidence-link')?.href || '',
-      origin: { label: 'Work', icon: 'project-roadmap', tone: 'work' }
-    }));
+    .map((row) => {
+      const outcomeId = String(row['safe-output'] || row['outcome-number'] || '');
+      return {
+        ...row,
+        ...(outcomeId ? { 'event-id': `outcome:${outcomeId}` } : {}),
+        classification: String(row['outcome-state']),
+        title: String(row['outcome-title'] || row['workflow-name'] || 'Outcome observed'),
+        detail: row['outcome-state'] === 'pending' ? 'A produced outcome is ready for review.' : 'A produced outcome was delivered.',
+        timestamp: observedAt(row),
+        deepLink: findLink(row, 'external-link')?.href || findLink(row, 'evidence-link')?.href || ''
+      };
+    });
   const latestValue = operationalValues
     .filter((row) => row['maturity-status'] === 'matured' && observedAt(row) >= start && observedAt(row) <= end)
     .sort((left, right) => observedAt(right) - observedAt(left))[0];
   const valueStory = latestValue ? [{
+    ...latestValue,
+    ...(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition']
+      ? { 'event-id': `operational-value:${String(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition'])}` }
+      : {}),
+    classification: 'operational-value',
     title: String(latestValue.workflow || 'Operational value measured'),
     detail: `Matured operational value reached ${Math.round(Number(latestValue['operational-value']) * 100)}%.`,
     timestamp: observedAt(latestValue),
-    href: findLink(latestValue, 'evidence-link')?.href || '',
-    origin: { label: 'Insights', icon: 'graph', tone: 'insights' }
+    deepLink: findLink(latestValue, 'evidence-link')?.href || '',
+    objectType: 'workflow',
+    objectId: String(latestValue.workflow || latestValue['observation-id'] || '')
   }] : [];
-  const seen = new Set();
-  return [...attention, ...outcomeStories, ...valueStory]
-    .filter((story) => Number.isFinite(story.timestamp) && !seen.has(story.title) && seen.add(story.title))
-    .sort((left, right) => right.timestamp - left.timestamp)
+  return normalizeNotificationStories([...attention, ...outcomeStories, ...valueStory])
+    .filter((story) => Number.isFinite(story.timestamp))
     .slice(0, 4);
 }
 
-/** @param {{ title: string, detail: string, timestamp: number, href: string, origin: { label: string, icon: string, tone: string } }} story */
+/** @param {{ classification: string, title: string, detail: string, timestamp: number, deepLink: string }} story */
 function renderCatchUpStory(story) {
   const body = [
-    renderOriginBadge(story.origin),
+    renderOriginBadge(notificationOrigin({ 'signal-type': story.classification })),
     h('span', { className: 'home-story-copy' }, h('strong', null, story.title), h('small', null, story.detail)),
     octicon('chevron-right')
   ];
-  return h(story.href ? 'a' : 'article', { className: 'home-catchup-story', ...(story.href ? { href: story.href } : {}) }, ...body);
+  return h(story.deepLink ? 'a' : 'article', { className: 'home-catchup-story', ...(story.deepLink ? { href: story.deepLink } : {}) }, ...body);
 }
 
 /** @param {Record<string, unknown>} row */
