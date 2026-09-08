@@ -7,9 +7,9 @@ import { createExpandableToggle, formatUtcDateTime, renderCloseButton, renderCou
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
+import { workViewPageCompositions } from './work-view-page-composition.js';
 import { workViewComposition } from './work-view-composition.js';
 import { renderWorkViewNavigation } from './work-view-navigation.js';
-import { workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
@@ -30,6 +30,8 @@ export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
   const sections = workViewComposition(context.elementConfig);
   const activeSection = sections[0].key;
+  const navigationSections = defaultWorkNavigationSections(sections);
+  const navigationItems = workViewPageCompositions(navigationSections);
   const viewBody = h('div', { className: 'work-project-body' });
   let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
@@ -68,12 +70,21 @@ export function renderWorkProjectView(context) {
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
-    renderWorkViewNavigation(workRoutePageConfigs(), activeSection),
+    renderWorkViewNavigation(navigationItems, activeSection),
     filterBar.element,
     viewBody
   );
   renderItems(items);
   return root;
+}
+
+/**
+ * @param {Array<{ key: import('./work-view-primitives.js').WorkViewBody, title: string }>} sections
+ */
+function defaultWorkNavigationSections(sections) {
+  return sections.length === 1
+    ? ['board', 'tasks', 'roadmap'].map((key) => workViewComposition({ body: key })[0])
+    : sections;
 }
 
 /**

@@ -4,6 +4,7 @@ import { renderWorkProjectView } from '../../src/components/work-project-view.js
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
+import { workViewPageCompositions } from '../../src/components/work-view-page-composition.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
 import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
 
@@ -106,6 +107,19 @@ describe('work project view primitives', () => {
       { href: '#page-work', current: null, text: 'Board' },
       { href: '#page-work-tasks', current: 'page', text: 'Tasks' },
       { href: '#page-work-roadmap', current: null, text: 'Roadmap' }
+    ]);
+  });
+
+  it('derives work navigation from rendered section composition', () => {
+    expect(workViewPageCompositions([{ key: 'tasks', title: 'Tasks' }])).toEqual([
+      { key: 'tasks', pageId: 'work-tasks', href: '#page-work-tasks', icon: 'table', title: 'Tasks' }
+    ]);
+    expect(workViewPageCompositions([
+      { key: 'board', title: 'Board' },
+      { key: 'roadmap', title: 'Roadmap' }
+    ])).toEqual([
+      { key: 'board', pageId: 'work', href: '#page-work', icon: 'project-roadmap', title: 'Board' },
+      { key: 'roadmap', pageId: 'work-roadmap', href: '#page-work-roadmap', icon: 'calendar', title: 'Roadmap' }
     ]);
   });
 

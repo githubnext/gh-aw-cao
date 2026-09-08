@@ -506,6 +506,42 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
   });
 
+  it('limits work navigation to declaratively selected sections', () => {
+    const rendered = renderUiElement('work-project-view', {
+      pageId: 'work-custom',
+      title: 'Custom work',
+      sourceNames: ['work-items'],
+      sources: {
+        'work-items': {
+          source: 'work-items',
+          rows: [{
+            'work-item-id': 'github/gh-aw:.github/workflows/dependabot.md',
+            'workflow-name': 'Dependabot release train',
+            scope: 'github/gh-aw',
+            owner: 'dependency-automation',
+            'lifecycle-state': 'active',
+            'started-at': '2026-08-30T09:00:00Z'
+          }],
+          metadata
+        }
+      },
+      elementConfig: {
+        sections: ['tasks', 'roadmap']
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect([...((rendered?.querySelectorAll('.work-project-tabs a')) ?? [])].map((link) => link.getAttribute('href'))).toEqual([
+      '#page-work-tasks',
+      '#page-work-roadmap'
+    ]);
+    expect(rendered?.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered?.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered?.querySelector('.work-roadmap')).not.toBeNull();
+    expect(rendered?.querySelector('.work-board')).toBeNull();
+  });
+
   it('groups packages in Board while keeping every Tasks and Roadmap item visible', () => {
     const rows = [
       {
