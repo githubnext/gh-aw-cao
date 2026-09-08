@@ -142,64 +142,6 @@
               "mark": "element",
               "element": "domain-attention",
               "layout": "full"
-            },
-            {
-              "id": "data-health-fields",
-              "disclosure": "supplemental",
-              "title": "Field shape",
-              "description": "Observed field types and population across every cached source.",
-              "data": {
-                "source": "data-health-fields"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "empty-message": "No cached fields are available.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "source",
-                    "type": "nominal",
-                    "title": "Source"
-                  },
-                  {
-                    "field": "field",
-                    "type": "nominal",
-                    "title": "Field"
-                  },
-                  {
-                    "field": "types",
-                    "type": "nominal",
-                    "title": "Observed types"
-                  },
-                  {
-                    "field": "rows",
-                    "type": "quantitative",
-                    "title": "Rows"
-                  },
-                  {
-                    "field": "populated",
-                    "type": "quantitative",
-                    "title": "Populated"
-                  },
-                  {
-                    "field": "empty",
-                    "type": "quantitative",
-                    "title": "Empty"
-                  },
-                  {
-                    "field": "coverage",
-                    "type": "nominal",
-                    "title": "Coverage"
-                  },
-                  {
-                    "field": "shape",
-                    "type": "nominal",
-                    "title": "Shape",
-                    "display": "status"
-                  }
-                ]
-              },
-              "layout": "full"
             }
           ]
         }
@@ -6676,6 +6618,64 @@
                   "field": "freshness",
                   "type": "nominal",
                   "title": "Freshness",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-fields",
+            "disclosure": "supplemental",
+            "title": "Field shape",
+            "description": "Observed field types and population across every cached source.",
+            "data": {
+              "source": "data-health-fields"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No cached fields are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "field",
+                  "type": "nominal",
+                  "title": "Field"
+                },
+                {
+                  "field": "types",
+                  "type": "nominal",
+                  "title": "Observed types"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "populated",
+                  "type": "quantitative",
+                  "title": "Populated"
+                },
+                {
+                  "field": "empty",
+                  "type": "quantitative",
+                  "title": "Empty"
+                },
+                {
+                  "field": "coverage",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "shape",
+                  "type": "nominal",
+                  "title": "Shape",
                   "display": "status"
                 }
               ]
