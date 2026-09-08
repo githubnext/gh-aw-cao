@@ -1281,13 +1281,13 @@
             "title": "Policy attribution",
             "description": "Observed policy attribution and rule utilization; unavailable attribution remains explicit.",
             "data": {
-              "source": "firewall-observations",
+              "source": "firewall-policy-rules",
               "time": {
                 "range": "30d"
               },
               "order-by": [
                 {
-                  "field": "policy-rule-order",
+                  "field": "rule-order",
                   "direction": "asc"
                 }
               ],
@@ -1301,36 +1301,36 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "policy-rule-action",
+                  "field": "action",
                   "type": "ordinal",
                   "title": "Action",
                   "display": "status"
                 },
                 {
-                  "field": "policy-rule-id",
+                  "field": "rule-id",
                   "type": "nominal",
                   "title": "Rule ID"
                 },
                 {
-                  "field": "policy-rule-order",
+                  "field": "rule-order",
                   "type": "quantitative",
                   "title": "Order"
                 },
                 {
-                  "field": "policy-rule-protocol",
+                  "field": "protocol",
                   "type": "nominal"
                 },
                 {
-                  "field": "policy-domain-pattern",
+                  "field": "domain-pattern",
                   "type": "nominal",
                   "title": "Domain pattern"
                 },
                 {
-                  "field": "policy-rule-description",
+                  "field": "description",
                   "type": "nominal"
                 },
                 {
-                  "field": "request-count",
+                  "field": "hit-count",
                   "type": "quantitative",
                   "title": "Requests"
                 },
