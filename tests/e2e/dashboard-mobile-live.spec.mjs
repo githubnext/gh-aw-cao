@@ -196,7 +196,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     return {
       targets,
       scrollWidth: document.documentElement.scrollWidth,
-      viewportWidth: window.innerWidth,
+      viewportWidth: document.documentElement.clientWidth,
       viewportMeta: document.querySelector('meta[name="viewport"]')?.getAttribute("content") ?? "",
     };
   });
@@ -253,7 +253,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   expect(analysis.dom.totalElements, `Dashboard rendered ${analysis.dom.totalElements} DOM elements`).toBeLessThanOrEqual(maximumDomNodes);
   expect(
     analysis.mobileAccessibility.targets.undersized,
-    `Interactive targets must be at least ${analysis.mobileAccessibility.minimumTargetSize} by ${analysis.mobileAccessibility.minimumTargetSize} CSS pixels`,
+    `Visible interactive targets must be at least ${analysis.mobileAccessibility.minimumTargetSize} by ${analysis.mobileAccessibility.minimumTargetSize} CSS pixels`,
   ).toEqual([]);
   expect(analysis.mobileAccessibility.reflow, "The dashboard must reflow without horizontal page scrolling").toMatchObject({ passes: true });
   expect(analysis.mobileAccessibility.zoom, "The viewport metadata must allow at least 200% zoom").toMatchObject({ passes: true });

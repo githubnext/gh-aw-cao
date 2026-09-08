@@ -170,7 +170,7 @@ jobs:
               marker,
               '## Mobile dashboard analysis',
               '',
-              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | JS heap used | Target size | Reflow | Zoom | Accessible names |',
+              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | JS heap used | Visible target size | Visible reflow | Zoom | Visible accessible names |',
               '| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | --- |',
               ...rows,
               '',
