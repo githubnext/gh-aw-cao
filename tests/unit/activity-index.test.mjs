@@ -51,6 +51,17 @@ graders:
       started_at: "2026-09-06T20:00:01Z",
       updated_at: "2026-09-06T20:01:00Z",
       display_title: "Sample run",
+      jobs: [{
+        jobId: 84,
+        name: "agent",
+        status: "completed",
+        conclusion: "success",
+        startedAt: "2026-09-06T20:00:05Z",
+        completedAt: "2026-09-06T20:00:55Z",
+        runnerName: "GitHub Actions 2",
+        runnerGroupName: "GitHub Actions",
+        labels: ["ubuntu-latest"],
+      }],
     }],
   }));
   await writeFile(statePath, JSON.stringify({
@@ -81,6 +92,17 @@ graders:
     assert.equal(result.workflows[0].runHealth.successful, 1);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runId, 42);
     assert.equal(result.workflows[0].runHealth.runRecords[0].runAttempt, 2);
+    assert.deepEqual(result.workflows[0].runHealth.runRecords[0].jobs, [{
+      jobId: 84,
+      name: "agent",
+      status: "completed",
+      conclusion: "success",
+      startedAt: "2026-09-06T20:00:05Z",
+      completedAt: "2026-09-06T20:00:55Z",
+      runnerName: "GitHub Actions 2",
+      runnerGroupName: "GitHub Actions",
+      labels: ["ubuntu-latest"],
+    }]);
     assert.equal(result.runHealth.usageArtifact.complete, true);
   } finally {
     await rm(root, { recursive: true, force: true });
