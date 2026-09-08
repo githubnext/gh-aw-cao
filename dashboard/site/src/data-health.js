@@ -196,7 +196,7 @@ function formatBytes(bytes) {
   const units = ['KB', 'MB', 'GB', 'TB'];
   const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length);
   const value = bytes / (1024 ** exponent);
-  return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value)} ${units[exponent - 1]}`;
+  return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1, useGrouping: false }).format(value)} ${units[exponent - 1]}`;
 }
 
 /**

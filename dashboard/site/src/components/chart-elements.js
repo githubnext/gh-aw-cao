@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { formatNumber, toNumber } from '../view-formatters.js';
-import { formatCount, pluralSuffix } from './count-formatters.js';
+import { formatCount, formatCoveragePercent, pluralSuffix } from './count-formatters.js';
 import { binHistogramValues } from './histogram.js';
 import { renderSafeLink } from './link-content.js';
 import { renderEmptyMessage, renderLegendList } from './ui-primitives.js';
@@ -218,7 +218,7 @@ export function renderPieLegend(entries, total, links = new Map(), unit = null) 
       return [
         h('span', null, renderSafeLink(label, link)),
         h('strong', null, formatNumber(value, unit)),
-        h('small', null, total > 0 ? `${((value / total) * 100).toFixed(1)}%` : '0%')
+        h('small', null, total > 0 ? formatCoveragePercent(value / total) : '0%')
       ];
     },
     { 'data-chart-legend': 'visual' }
@@ -861,7 +861,7 @@ function renderSwimlaneChart(points, timeRange) {
   const successes = counts.success;
   const summary = [
     `${formatCount(plotted.length)} runs`,
-    `${plotted.length > 0 ? ((successes / plotted.length) * 100).toFixed(1) : '0.0'}% success`,
+    `${formatCoveragePercent(plotted.length > 0 ? successes / plotted.length : null, '0.0%')} success`,
     `${formatCount(counts.failure)} failed`,
     `${formatCount(counts.skipped)} skipped`,
     `${formatCount(counts['action-required'])} action required`
