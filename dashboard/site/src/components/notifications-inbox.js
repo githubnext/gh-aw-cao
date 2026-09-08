@@ -155,6 +155,12 @@ export function renderNotificationsInbox(rows, sources = {}) {
     type: 'button', className: 'notifications-icon-button', title: 'Mark selected as done',
     'aria-label': 'Mark selected as done', disabled: true
   }, octicon('check')));
+  const catchUp = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button', className: 'notifications-catch-up-button'
+  }, octicon('zap'), h('span', null, 'Catch up'), h('small', null, 'Experimental')));
+  const catchUpHost = h('div', { className: 'notifications-catch-up-host', hidden: true });
+  let inbox;
+  let main;
   syncSelection = () => {
     for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
       if (!(checkbox instanceof HTMLInputElement)) continue;
@@ -173,6 +179,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     });
     currentVisible = visible;
     count.textContent = `${visible.length} notification${visible.length === 1 ? '' : 's'}`;
+    catchUp.disabled = !rows.some((row) => !state.read.has(rowId(row)) && !state.done.has(rowId(row)));
     if (resetWindow) {
       selected.clear();
       selectAll.checked = false;
@@ -201,23 +208,149 @@ export function renderNotificationsInbox(rows, sources = {}) {
     writeState(state);
     render();
   });
-  render();
+  catchUp.addEventListener('click', () => {
+    const unreadRows = rows.filter((row) => !state.read.has(rowId(row)) && !state.done.has(rowId(row)));
+    if (unreadRows.length === 0) return;
+    const close = () => {
+      catchUpHost.hidden = true;
+      main.hidden = false;
+      inbox.classList.remove('is-catching-up');
+      catchUp.focus();
+      render();
+    };
+    catchUpHost.replaceChildren(renderNotificationCatchUp(unreadRows, state, () => {
+      writeState(state);
+      render();
+    }, close));
+    catchUpHost.hidden = false;
+    main.hidden = true;
+    inbox.classList.add('is-catching-up');
+    catchUpHost.querySelector('.notification-catch-up-card')?.focus();
+  });
 
-  const main = h('div', { className: 'notifications-main' },
+  main = h('div', { className: 'notifications-main' },
       h('div', { className: 'notifications-toolbar' },
         h('div', { className: 'notifications-state-tabs' }, all, unread),
         h('label', { className: 'notifications-search' }, octicon('search'), search),
         h('label', { className: 'notifications-select' }, h('span', null, 'Sort by:'), sort),
-        h('label', { className: 'notifications-select' }, h('span', null, 'Group by:'), group)),
+        h('label', { className: 'notifications-select' }, h('span', null, 'Group by:'), group),
+        catchUp),
       h('div', { className: 'notifications-selection-bar' },
         h('label', null, selectAll, h('span', null, 'Select all')),
         count,
         bulkDone),
       list);
   const health = renderOperationalPulse(rows, sources);
-  return h('div', { className: `notifications-inbox${rows.length > 0 ? ' has-notifications' : ' is-clear'}` },
+  inbox = h('div', { className: `notifications-inbox${rows.length > 0 ? ' has-notifications' : ' is-clear'}` },
     health,
+    catchUpHost,
     main);
+  render();
+  return inbox;
+}
+
+/**
+ * @param {Record<string, unknown>[]} rows
+ * @param {{ read: Set<string>, saved: Set<string>, done: Set<string> }} state
+ * @param {() => void} onStateChange
+ * @param {() => void} onClose
+ */
+function renderNotificationCatchUp(rows, state, onStateChange, onClose) {
+  let index = 0;
+  const progress = h('span', { className: 'notification-catch-up-progress', 'aria-live': 'polite' });
+  const content = h('div', { className: 'notification-catch-up-content' });
+  const render = () => {
+    progress.textContent = `${Math.min(index + 1, rows.length)} of ${rows.length}`;
+    if (index >= rows.length) {
+      content.replaceChildren(h('div', { className: 'notification-catch-up-complete', role: 'status' },
+        octicon('check-circle'),
+        h('h2', null, 'You’re caught up'),
+        h('p', null, 'Every unread insight in this session has been reviewed.'),
+        h('button', { type: 'button', className: 'notification-catch-up-finish', onClick: onClose }, 'Back to notifications')));
+      return;
+    }
+    content.replaceChildren(renderNotificationCatchUpCard(rows[index], index, rows.length, (action) => {
+      if (action === 'read') {
+        state.read.add(rowId(rows[index]));
+        onStateChange();
+      }
+      index += 1;
+      render();
+      content.querySelector('.notification-catch-up-card')?.focus();
+    }));
+  };
+  render();
+  return h('section', { className: 'notification-catch-up', 'aria-label': 'Unread notification catch-up' },
+    h('header', { className: 'notification-catch-up-header' },
+      h('div', null, h('strong', null, 'Catch up'), h('small', null, 'Experimental')),
+      progress,
+      h('button', { type: 'button', className: 'notifications-icon-button', 'aria-label': 'Close catch-up', onClick: onClose }, octicon('x'))),
+    content);
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {number} index
+ * @param {number} total
+ * @param {(action: 'read'|'unread') => void} onAction
+ */
+function renderNotificationCatchUpCard(row, index, total, onAction) {
+  const link = findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link');
+  const card = h('article', {
+    className: 'notification-catch-up-card',
+    tabindex: 0,
+    'aria-label': `${String(row.objective || 'Notification')}. Swipe right to mark as read or left to leave unread.`,
+    onKeyDown: /** @param {KeyboardEvent} event */ (event) => {
+      if (event.key === 'ArrowRight') onAction('read');
+      if (event.key === 'ArrowLeft') onAction('unread');
+    }
+  },
+  h('div', { className: 'notification-catch-up-card-meta' },
+    renderOriginBadge(notificationOrigin(row)),
+    h('span', null, scopeLabel(row)),
+    h('span', null, age(row))),
+  h('div', { className: 'notification-catch-up-card-body' },
+    h('span', { className: 'notification-catch-up-eyebrow' }, `Unread insight ${index + 1} of ${total}`),
+    h('h2', null, String(row.objective || 'Notification')),
+    h('p', null, String(row.reason || 'No additional detail')),
+    row['expected-actor'] ? h('dl', null, h('div', null, h('dt', null, 'Needs attention from'), h('dd', null, String(row['expected-actor'])))) : null,
+    link ? h('a', { href: link.href }, 'View insight', octicon('arrow-up-right')) : null));
+  let startX = 0;
+  let offset = 0;
+  let tracking = false;
+  const reset = () => {
+    tracking = false;
+    offset = 0;
+    card.style.removeProperty('--catch-up-offset');
+    card.removeAttribute('data-swipe');
+  };
+  card.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    tracking = true;
+    startX = event.clientX;
+    card.setPointerCapture?.(event.pointerId);
+  });
+  card.addEventListener('pointermove', (event) => {
+    if (!tracking) return;
+    offset = Math.max(-180, Math.min(180, event.clientX - startX));
+    card.style.setProperty('--catch-up-offset', `${offset}px`);
+    card.dataset.swipe = offset >= 0 ? 'read' : 'unread';
+  });
+  card.addEventListener('pointerup', () => {
+    if (Math.abs(offset) < 72) {
+      reset();
+      return;
+    }
+    onAction(offset > 0 ? 'read' : 'unread');
+  });
+  card.addEventListener('pointercancel', reset);
+  return h('div', { className: 'notification-catch-up-deck' },
+    h('div', { className: 'notification-catch-up-action notification-catch-up-action-read', 'aria-hidden': 'true' }, octicon('check'), h('span', null, 'Mark as read')),
+    h('div', { className: 'notification-catch-up-action notification-catch-up-action-unread', 'aria-hidden': 'true' }, octicon('clock'), h('span', null, 'Leave unread')),
+    card,
+    h('div', { className: 'notification-catch-up-buttons', 'aria-label': 'Catch-up actions' },
+      h('button', { type: 'button', className: 'notification-catch-up-unread', onClick: () => onAction('unread') }, octicon('arrow-left'), h('span', null, 'Leave unread')),
+      h('button', { type: 'button', className: 'notification-catch-up-read', onClick: () => onAction('read') }, h('span', null, 'Mark as read'), octicon('arrow-right'))));
 }
 
 /** @param {Record<string, unknown>} row */

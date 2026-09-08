@@ -842,6 +842,59 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
   });
 
+  it('offers an experimental swipe-style catch-up for unread insights', () => {
+    localStorage.clear();
+    const rendered = renderUiElement('signal-list', {
+      pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals'],
+      sources: {
+        'attention-signals': {
+          source: 'attention-signals',
+          rows: [
+            {
+              'attention-signal-id': 'catch-up:one', 'signal-type': 'workflow-output',
+              objective: 'Review the first insight', scope: 'github/one',
+              reason: 'A workflow produced an outcome requiring review.',
+              'expected-actor': 'repository-owner', priority: 1, 'age-seconds': 60
+            },
+            {
+              'attention-signal-id': 'catch-up:two', 'signal-type': 'operational-value',
+              objective: 'Review the second insight', scope: 'github/two',
+              reason: 'Operational value changed during the latest interval.',
+              'expected-actor': 'operations-lead', priority: 2, 'age-seconds': 120
+            }
+          ],
+          metadata
+        }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    const launch = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('.notifications-catch-up-button') ?? null);
+    expect(launch?.textContent).toContain('Experimental');
+    launch?.click();
+
+    expect(rendered?.classList.contains('is-catching-up')).toBe(true);
+    expect(rendered?.querySelector('.notifications-main')?.hasAttribute('hidden')).toBe(true);
+    expect(rendered?.querySelector('.notification-catch-up-progress')?.textContent).toBe('1 of 2');
+    expect(rendered?.querySelector('.notification-catch-up-card')?.getAttribute('aria-label')).toContain('Swipe right to mark as read or left to leave unread');
+    expect(rendered?.querySelector('.notification-catch-up-action-read')?.textContent).toContain('Mark as read');
+    expect(rendered?.querySelector('.notification-catch-up-action-unread')?.textContent).toContain('Leave unread');
+
+    /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('.notification-catch-up-unread') ?? null)?.click();
+    expect(rendered?.querySelector('.notification-catch-up-progress')?.textContent).toBe('2 of 2');
+    expect(rendered?.querySelector('.notification-catch-up-card')?.textContent).toContain('Review the second insight');
+
+    rendered?.querySelector('.notification-catch-up-card')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    expect(rendered?.querySelector('.notification-catch-up-complete')?.textContent).toContain('You’re caught up');
+    expect(JSON.parse(localStorage.getItem('central-agentic-ops.dashboard.notifications') || '{}').read).toEqual(['catch-up:two']);
+
+    /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('.notification-catch-up-finish') ?? null)?.click();
+    expect(rendered?.classList.contains('is-catching-up')).toBe(false);
+    expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(1);
+    expect(rendered?.textContent).toContain('Review the first insight');
+    localStorage.clear();
+  });
+
   it('leads a clear Home page with a catch-up briefing', () => {
     localStorage.clear();
     const rendered = renderUiElement('signal-list', {
