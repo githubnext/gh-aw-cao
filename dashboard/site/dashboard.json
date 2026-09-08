@@ -4354,7 +4354,7 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -4405,7 +4405,7 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -4445,7 +4445,7 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -4497,7 +4497,7 @@
             "controls": "interactive",
             "empty-message": "No detection observations require attention in the selected horizon.",
             "layout": "full",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "encoding": {
               "columns": [
                 {
@@ -4579,7 +4579,7 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -4613,7 +4613,7 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -4654,7 +4654,7 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {

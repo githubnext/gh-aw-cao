@@ -359,8 +359,18 @@ describe('dashboard document validation', () => {
       { id: 'detection-verdict-coverage', mark: 'metric', data: { source: 'detection-observations' }, disclosure: 'essential' },
       { id: 'detection-state-trend', mark: 'chart', chart: 'line', data: { source: 'detection-observations' }, disclosure: 'supplemental' },
       { id: 'detection-security-findings', mark: 'chart', chart: 'bar', data: { source: 'security-observations' }, disclosure: 'essential' },
-      { id: 'detection-attention', mark: 'table', controls: 'interactive', data: { source: 'detection-observations' }, disclosure: 'essential' }
+      { id: 'detection-attention', mark: 'table', controls: 'interactive', data: { source: 'detection-observations' }, disclosure: 'supplemental' }
     ]);
+    expect(detection.views.filter(
+      (/** @type {{ mark: string }} */ view) => view.mark === 'chart'
+    ).every(
+      (/** @type {{ table: boolean }} */ view) => view.table === false
+    )).toBe(true);
+    expect(detection.views.filter(
+      (/** @type {{ mark: string }} */ view) => view.mark === 'table'
+    ).every(
+      (/** @type {{ disclosure: string }} */ view) => view.disclosure === 'supplemental'
+    )).toBe(true);
     expect(detection.views.slice(5).map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
       'detection-job-conclusions',
       'detection-job-duration-trend',
