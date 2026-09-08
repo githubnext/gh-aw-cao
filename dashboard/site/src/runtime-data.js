@@ -18,6 +18,9 @@ const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'timed-out'])
  */
 export function deriveRuntimeSources(sources) {
   const model = buildExecutionModel(sources);
+  const runs = sources.runs
+    ? { ...sources.runs, rows: sources.runs.rows.map(withFailureDetail) }
+    : undefined;
   const signals = [];
   const dispatches = deriveDispatches(model);
   const dispatchActivationSummary = deriveDispatchActivationSummary(dispatches);
@@ -108,6 +111,7 @@ export function deriveRuntimeSources(sources) {
   signals.sort((left, right) => left.priority - right.priority || right.count - left.count || left.title.localeCompare(right.title));
   return {
     ...sources,
+    ...(runs ? { runs } : {}),
     'runtime-anomaly-readiness': {
       source: 'runtime-anomaly-readiness',
       rows: [{
@@ -153,6 +157,13 @@ export function deriveRuntimeSources(sources) {
       metadata: combinedMetadata(sources)
     }
   };
+}
+
+/** @param {Row} run */
+function withFailureDetail(run) {
+  if (text(run['failure-detail'])) return run;
+  const detail = text(run['failure-message']) || text(run['failure-step']) || (text(run.run) ? `Run ${text(run.run)}` : '');
+  return detail ? { ...run, 'failure-detail': detail } : run;
 }
 
 /**

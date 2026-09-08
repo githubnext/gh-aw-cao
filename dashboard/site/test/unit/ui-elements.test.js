@@ -302,7 +302,8 @@ describe('UI elements', () => {
           ]
         }
       },
-      contextDetails: [], headingTag: 'h3'
+      contextDetails: [],
+      headingTag: 'h3'
     });
 
     expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
@@ -346,7 +347,8 @@ describe('UI elements', () => {
           { decision: 'PROMOTE' }, { decision: 'INCONCLUSIVE' }
         ])
       },
-      contextDetails: [], headingTag: 'h3'
+      contextDetails: [],
+      headingTag: 'h3'
     });
     if (rendered) enableLazyViews(rendered);
 
@@ -812,7 +814,7 @@ describe('UI elements', () => {
         runs: {
           source: 'runs',
           rows: [
-            { run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'failure' },
+            { run: '1', 'started-at': new Date(Date.now() - 3_600_000).toISOString(), 'run-status': 'completed', 'run-conclusion': 'failure' },
             { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'in_progress', 'run-conclusion': null }
           ],
           metadata
@@ -820,8 +822,8 @@ describe('UI elements', () => {
         'work-items': {
           source: 'work-items',
           rows: [
-            { 'work-item-id': 'blocked', 'lifecycle-state': 'blocked' },
-            { 'work-item-id': 'review', 'lifecycle-state': 'review' }
+            { 'work-item-id': 'blocked', 'lifecycle-state': 'blocked', 'waiting-since': new Date(Date.now() - 172_800_000).toISOString() },
+            { 'work-item-id': 'review', 'lifecycle-state': 'review', 'waiting-since': new Date(Date.now() - 7_200_000).toISOString() }
           ],
           metadata
         }
@@ -834,13 +836,15 @@ describe('UI elements', () => {
     expect(rendered?.getAttribute('aria-label')).toBe('Needs your attention');
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
-    expect(rendered?.textContent).toContain('1Failed runs');
-    expect(rendered?.textContent).toContain('1Blocked work');
-    expect(rendered?.textContent).toContain('1Awaiting review');
-    expect(rendered?.textContent).toContain('1Security findings');
-    expect(rendered?.querySelector('[href="#page-runs"]')).not.toBeNull();
-    expect(rendered?.querySelector('[href="#page-work-tasks"]')).not.toBeNull();
-    expect(rendered?.querySelector('[href="#page-security"]')).not.toBeNull();
+    expect(rendered?.textContent).toContain('Failed runs1');
+    expect(rendered?.textContent).toContain('Blocked work1');
+    expect(rendered?.textContent).toContain('Awaiting review1');
+    expect(rendered?.textContent).toContain('Security findings1');
+    expect(rendered?.querySelector('h2')?.textContent).toBe('4 needs your attention');
+    expect(rendered?.querySelector('[href="#page-overview-failed-runs"] .home-attention-detail')?.textContent).toBe('Latest 1h ago');
+    expect(rendered?.querySelector('[href="#page-overview-blocked-work"] .home-attention-detail')?.textContent).toBe('Oldest waiting 2d ago');
+    expect(rendered?.querySelector('[href="#page-overview-awaiting-review"] .home-attention-detail')?.textContent).toBe('Oldest waiting 2h ago');
+    expect(rendered?.querySelector('[href="#page-overview-security-findings"] .home-attention-detail')?.textContent).toBe('Severity unavailable');
     expect(rendered?.querySelector('.notifications-main')).toBeNull();
     expect(rendered?.querySelector('.home-catchup')).toBeNull();
     localStorage.clear();
@@ -872,7 +876,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
   });
 
-  it('shows zero attention counts when Home has only successful runs', () => {
+  it('shows a positive quiet state when every attention class was evaluated', () => {
     localStorage.clear();
     const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals', 'runs'],
@@ -885,18 +889,27 @@ describe('UI elements', () => {
             { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' }
           ],
           metadata
-        }
+        },
+        'work-items': { source: 'work-items', rows: [], metadata },
+        'security-findings': { source: 'security-findings', rows: [], metadata }
       },
-      contextDetails: [], headingTag: 'h3'
+      contextDetails: [],
+      time: { start: '2026-08-23T12:00:00Z', end: '2026-08-30T12:00:00Z' },
+      headingTag: 'h3'
     });
 
     expect(rendered?.classList.contains('home-attention-summary')).toBe(true);
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
-    expect(rendered?.textContent).toContain('0Failed runs');
+    expect(rendered?.querySelector('.home-attention-empty strong')?.textContent).toBe('Nothing needs your attention');
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toBe(
+      'No failed runs, blocked work, review waits, or security findings were observed from Aug 23, 2026, 12:00 PM UTC to Aug 30, 2026, 12:00 PM UTC.'
+    );
+    expect(rendered?.textContent).toContain('Failed runs0');
+    expect(rendered?.querySelector('[href="#page-overview-failed-runs"] .home-attention-detail')?.textContent).toBe('No current failures');
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
   });
 
-  it('keeps the Home attention summary available when optional evidence is unavailable', () => {
+  it('does not present unavailable attention evidence as zero', () => {
     const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview',
       title: 'Need attention',
@@ -911,11 +924,33 @@ describe('UI elements', () => {
 
     expect(rendered?.classList.contains('home-attention-summary')).toBe(true);
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
-    expect(rendered?.textContent).toContain('—Failed runs');
-    expect(rendered?.textContent).toContain('—Blocked work');
-    expect(rendered?.textContent).toContain('—Awaiting review');
-    expect(rendered?.textContent).toContain('—Security findings');
+    expect(rendered?.querySelector('.home-attention-empty strong')?.textContent).toBe('No attention observed in available evidence');
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain(
+      'failed runs, blocked work and review waits, security findings could not be fully evaluated'
+    );
+    expect(rendered?.textContent).toContain('Failed runs—');
+    expect(rendered?.textContent).toContain('Blocked work—');
+    expect(rendered?.textContent).toContain('Awaiting review—');
+    expect(rendered?.textContent).toContain('Security findings—');
+    expect(rendered?.querySelectorAll('.home-attention-detail')[0]?.textContent).toBe('Run evidence unavailable');
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
+  });
+
+  it('qualifies a quiet state when source evidence is partial', () => {
+    const partialMetadata = { ...metadata, completeness: /** @type {'partial'} */ ('partial') };
+    const rendered = renderUiElement('home-attention-summary', {
+      pageId: 'overview', title: 'Needs attention', sourceNames: ['runs', 'work-items', 'security-findings'],
+      sources: {
+        runs: { source: 'runs', rows: [], metadata },
+        'work-items': { source: 'work-items', rows: [], metadata },
+        'security-findings': { source: 'security-findings', rows: [], metadata: partialMetadata }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.home-attention-empty-incomplete strong')?.textContent).toBe('No attention observed in available evidence');
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain('security findings could not be fully evaluated');
+    expect(rendered?.querySelector('[href="#page-overview-security-findings"] .home-attention-detail')?.textContent).toBe('Incomplete evidence');
   });
 
   it('renders a blocked readiness verdict with the next unblock action', () => {

@@ -12,6 +12,29 @@ const metadata = {
 };
 
 describe('runtime data', () => {
+  it('adds display-ready failure detail to legacy run rows', () => {
+    const sources = deriveRuntimeSources({
+      runs: {
+        source: 'runs',
+        rows: [
+          { run: '1', 'failure-message': 'Target authority missing' },
+          { run: '2', 'failure-step': 'Compile workflows' },
+          { run: '3' },
+          { run: '4', 'failure-detail': 'Producer detail' }
+        ],
+        metadata
+      }
+    });
+
+    expect(sources.runs.rows.map((row) => row['failure-detail'])).toEqual([
+      'Target authority missing',
+      'Compile workflows',
+      'Run 3',
+      'Producer detail'
+    ]);
+    expect(sources.runs.metadata).toBe(metadata);
+  });
+
   it('derives reusable signal-list rows independently from presentation', () => {
     const sources = deriveRuntimeSources({
       workflows: {

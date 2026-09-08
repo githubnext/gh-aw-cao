@@ -35,6 +35,7 @@ import { renderWorkflowRoutePage } from './workflow-route-page.js';
  *   sources: Record<string, import('../presenter.js').LogicalSourceInput>,
  *   contextDetails: string[],
  *   scope?: Record<string, unknown>,
+ *   time?: Record<string, unknown>,
  *   routeParameter?: string,
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
