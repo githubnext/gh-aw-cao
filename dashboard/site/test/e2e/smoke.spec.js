@@ -1440,7 +1440,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
 
 });
 
-test('built-in repositories page fills the viewport with a lazy interactive table', async ({ page }) => {
+test('JSON full-view mode fills the viewport and hides chrome while scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 
@@ -1462,34 +1462,44 @@ test('built-in repositories page fills the viewport with a lazy interactive tabl
       };
       const emptySource = (source) => ({ source, rows: [], metadata });
       const sources = {
-        repositories: {
-          source: 'repositories',
+        inventory: {
+          source: 'inventory',
           rows: Array.from({ length: 60 }, (_, index) => ({
             organization: 'githubnext',
             repository: \`repository-\${index + 1}\`
           })),
           metadata
         },
-        runs: emptySource('runs'),
-        usage: emptySource('usage'),
-        workflows: emptySource('workflows'),
-        outcomes: emptySource('outcomes'),
-        'operational-values': emptySource('operational-values')
+        runs: emptySource('runs')
       };
       const dashboardDocument = {
         languageVersion: '0.1.0',
         dashboard: {
-          id: 'repositories-layout',
-          title: 'Repositories Layout',
-          pages: [
-            {
-              id: 'repositories',
-              kind: 'built-in',
-              page: 'repositories',
-              title: 'Repositories'
-            }
-          ],
-          navigation: [{ label: 'Explore', pages: ['repositories'] }]
+          id: 'full-view-layout',
+          title: 'Full View Layout',
+          pages: [{
+            id: 'inventory',
+            kind: 'custom',
+            title: 'Inventory',
+            description: 'Inventory subtitle',
+            views: [{
+              id: 'inventory-list',
+              title: 'Inventory list',
+              description: 'Inventory view subtitle',
+              data: { source: 'inventory' },
+              mark: 'table',
+              controls: 'interactive',
+              'lazy-list': true,
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'organization', type: 'nominal' },
+                  { field: 'repository', type: 'nominal' }
+                ]
+              }
+            }]
+          }],
+          navigation: [{ label: 'Explore', pages: ['inventory'] }]
         }
       };
 
@@ -1498,12 +1508,24 @@ test('built-in repositories page fills the viewport with a lazy interactive tabl
   `);
 
   const view = page.locator('[data-view-layout="full-view"]');
+  const lazyList = view.locator('[data-lazy-list]');
   await expect(view).toHaveCount(1);
-  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
-  await expect(view.getByRole('searchbox', { name: 'Filter Repositories' })).toBeVisible();
-  const box = await view.boundingBox();
-  expect(box?.height).toBeGreaterThanOrEqual(700);
+  await expect(lazyList).toHaveCount(1);
+  await expect(view.getByRole('searchbox', { name: 'Filter Inventory list' })).toBeVisible();
+  await expect(page.locator('.overview-header .lede')).toBeHidden();
+  await expect(view.getByRole('heading', { name: 'Inventory list' })).toBeHidden();
+  expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+
+  await view.locator('.table-scroll').evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.top-nav')).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeHidden();
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {

@@ -3006,7 +3006,8 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
       && !NON_ADDITIVE_MEASURE_FIELDS.includes(fieldName)
       && aggregate === 'none';
     if (
-      format === 'workflow-relative-path'
+      format !== null
+      && FIELD_FORMAT_VALUES.includes(format)
       && (
         (typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type))
         || (fieldDefinition.type === undefined && !intrinsicallyNominalOrOrdinal)
@@ -3015,6 +3016,13 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
         `${format} format requires a nominal or ordinal field.`,
+        `${path}.format`
+      ));
+    }
+    if (format === 'workflow-run-url' && !path.includes('.columns[')) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'workflow-run-url format may be used only on table columns.',
         `${path}.format`
       ));
     }

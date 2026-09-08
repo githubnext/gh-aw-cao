@@ -29,6 +29,21 @@ describe('table cell display helper', () => {
     expect(renderCellDisplay(undefined, 'plain', toText)).toBe('plain');
     expect(renderCellDisplay(undefined, '.github/workflows/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('daily.md');
     expect(renderCellDisplay(undefined, 'nested/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('nested/daily.md');
+    const workflowRun = /** @type {HTMLAnchorElement} */ (renderCellDisplay(
+      undefined,
+      'https://github.com/githubnext/gh-aw-cao/actions/runs/12345',
+      toText,
+      null,
+      'nominal',
+      'workflow-run-url'
+    ));
+    expect(workflowRun.tagName).toBe('A');
+    expect(workflowRun.href).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/12345');
+    expect(workflowRun.textContent).toContain('12345');
+    expect(workflowRun.target).toBe('_blank');
+    expect(workflowRun.rel).toBe('noopener noreferrer');
+    expect(renderCellDisplay(undefined, 'https://example.com/actions/runs/12345', toText, null, 'nominal', 'workflow-run-url'))
+      .toBe('https://example.com/actions/runs/12345');
     expect(renderCellDisplay('unsupported', null, toText)).toBe('unknown');
     const temporal = /** @type {HTMLElement} */ (renderCellDisplay(undefined, '2026-08-30T07:00:00Z', toText, null, 'temporal'));
     expect(temporal.tagName).toBe('TIME');

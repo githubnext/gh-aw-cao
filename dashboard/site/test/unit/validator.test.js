@@ -4234,6 +4234,9 @@ dashboard:
               - field: workflow
                 type: nominal
                 format: workflow-relative-path
+              - field: repository
+                type: nominal
+                format: workflow-run-url
 `);
 
     expect(result.ok).toBe(true);
