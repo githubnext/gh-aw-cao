@@ -174,11 +174,11 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
   } catch (error) {
     summary.blocker = messageText(error);
   } finally {
-    await preview?.close();
     await writeFile(
       join(outputDirectory, "summary.json"),
       `${JSON.stringify(summary, null, 2)}\n`,
     );
+    await preview?.close();
   }
 
   await testInfo.attach("dashboard-views-summary", {
