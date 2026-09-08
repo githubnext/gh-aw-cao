@@ -11,6 +11,7 @@
         "title": "Dashboard data is partial",
         "description": "Data Health reports a collection gap caused by a GitHub API rate limit.",
         "icon": "alert",
+        "navigation-page": "data-health",
         "visible-when": {
           "source": "data-health-collections",
           "field": "failure-class",

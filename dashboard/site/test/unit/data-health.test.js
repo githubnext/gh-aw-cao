@@ -245,6 +245,15 @@ describe('data shape preview', () => {
     expect(schema.schema).toContain('self: (circular)');
   });
 
+  it('does not treat shared non-cyclic objects as circular in file diagnostics', () => {
+    const sources = completeSources();
+    const shared = { retries: 1 };
+    sources.runs.rows = [{ shared }, { shared }];
+    const expectedSize = new TextEncoder().encode(JSON.stringify(sources.runs)).length;
+    const file = deriveDataHealthSources(sources)['data-health-files'].rows.find((item) => item.source === 'runs');
+    expect(file.size).toBe(expectedSize);
+  });
+
   it('reports an empty-object shape when a source has no cached rows', () => {
     const sources = completeSources();
     sources.runs.rows = [];
@@ -271,5 +280,12 @@ describe('CAO Activity debugging link', () => {
     const summary = deriveDataHealthSources(sources)['data-health-summary'].rows[0];
     expect(summary['external-link']).toBeNull();
   });
-});
 
+  it('normalizes a trailing slash in the GitHub URL base', () => {
+    const summary = deriveDataHealthSources(completeSources(), {
+      githubUrlBase: 'https://github.com/',
+      dashboardRepository: 'acme/app'
+    })['data-health-summary'].rows[0];
+    expect(summary['external-link']?.href).toBe('https://github.com/acme/app/actions/workflows/activity.yml');
+  });
+});

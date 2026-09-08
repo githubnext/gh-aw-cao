@@ -65,7 +65,9 @@ export function deriveDataHealthSources(sources, context = {}) {
   const collectorState = ['failed', 'partial', 'unknown', 'complete']
     .find((state) => collectionRows.some((row) => row.state === state)) ?? 'unknown';
   const compatibilityGaps = compatibilityRows.filter((row) => row.compatibility !== 'compatible').length;
-  const githubUrlBase = typeof context.githubUrlBase === 'string' && context.githubUrlBase.length > 0 ? context.githubUrlBase : null;
+  const githubUrlBase = typeof context.githubUrlBase === 'string' && context.githubUrlBase.length > 0
+    ? context.githubUrlBase.replace(/\/+$/, '')
+    : null;
   const dashboardRepository = typeof context.dashboardRepository === 'string' && context.dashboardRepository.length > 0
     ? context.dashboardRepository
     : null;
@@ -168,11 +170,12 @@ function loadedFileDiagnostic(name, source) {
  * @returns {string}
  */
 function safeStringify(value) {
-  const seen = new Set();
-  return JSON.stringify(value, (_key, candidate) => {
+  const ancestors = [];
+  return JSON.stringify(value, function replacer(_key, candidate) {
+    while (ancestors.length > 0 && ancestors.at(-1) !== this) ancestors.pop();
     if (candidate !== null && typeof candidate === 'object') {
-      if (seen.has(candidate)) return '[Circular]';
-      seen.add(candidate);
+      if (ancestors.includes(candidate)) return '[Circular]';
+      ancestors.push(candidate);
     }
     return candidate;
   });

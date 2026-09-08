@@ -1063,6 +1063,7 @@ describe('presenter built-in and custom pages', () => {
             title: 'Dashboard data is partial',
             description: 'Some data could not be downloaded.',
             icon: 'alert',
+            'navigation-page': 'data-health',
             'visible-when': {
               source: 'coverage-diagnostics',
               field: 'kind',
@@ -1097,8 +1098,11 @@ describe('presenter built-in and custom pages', () => {
     const rendered = renderDashboard({ document, sources });
     expect(rendered.querySelectorAll('.site-callout')).toHaveLength(2);
     expect(rendered.querySelector('[data-site-callout="rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
-    const detailsLink = rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link');
-    expect(detailsLink).toBeNull();
+    const detailsLink = /** @type {HTMLAnchorElement | null} */ (
+      rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link')
+    );
+    expect(detailsLink?.getAttribute('href')).toBe('#page-data-health');
+    expect(detailsLink?.textContent).toBe('View data health');
     const navigationLink = /** @type {HTMLAnchorElement | null} */ (
       rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link')
     );
