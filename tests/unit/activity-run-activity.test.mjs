@@ -108,12 +108,15 @@ test("runActivity removes cached agent directories before collecting logs", asyn
   const originalEnv = { ...process.env };
   const cachePath = path.join(item.root, "gh-aw-logs");
   const agentPath = path.join(cachePath, "run-42", "agent");
+  const agentFilePath = path.join(cachePath, "run-43", "agent");
   const retainedPath = path.join(cachePath, "run-42", "usage", "usage.json");
   const unrelatedPath = path.join(cachePath, "agent", "retained.json");
   await mkdir(agentPath, { recursive: true });
+  await mkdir(path.dirname(agentFilePath), { recursive: true });
   await mkdir(path.dirname(retainedPath), { recursive: true });
   await mkdir(path.dirname(unrelatedPath), { recursive: true });
   await writeFile(path.join(agentPath, "events.jsonl"), '{"large":"entry"}\n');
+  await writeFile(agentFilePath, "not a directory\n");
   await writeFile(retainedPath, '{"usage":1}\n');
   await writeFile(unrelatedPath, '{"retained":true}\n');
   await writeFile(item.logsPath, `
@@ -134,14 +137,18 @@ test("runActivity removes cached agent directories before collecting logs", asyn
     RUNNER_TEMP: item.root,
   });
   delete process.env.DASHBOARD_REPORT_ROOT;
+  const messages = [];
+  const originalConsoleLog = console.log;
+  console.log = (message) => messages.push(message);
   try {
-    const messages = [];
-    await runActivity({ core: { info: (message) => messages.push(message) } });
+    await runActivity({ core: { info: () => { throw new Error("core.info should not be called"); } } });
     await assert.rejects(access(agentPath), { code: "ENOENT" });
+    assert.equal(await readFile(agentFilePath, "utf8"), "not a directory\n");
     assert.equal(await readFile(retainedPath, "utf8"), '{"usage":1}\n');
     assert.equal(await readFile(unrelatedPath, "utf8"), '{"retained":true}\n');
     assert.deepEqual(messages, ["Removed cached agent logs from run-42"]);
   } finally {
+    console.log = originalConsoleLog;
     for (const key of Object.keys(process.env)) {
       if (!(key in originalEnv)) delete process.env[key];
     }

@@ -10,7 +10,7 @@ function importModule(modulePath) {
   return import(pathToFileURL(path.resolve(modulePath)).href);
 }
 
-async function removeCachedAgentDirectories(directory, core) {
+async function removeCachedAgentDirectories(directory) {
   let entries;
   try {
     entries = await readdir(directory, { withFileTypes: true });
@@ -18,19 +18,17 @@ async function removeCachedAgentDirectories(directory, core) {
     if (error.code === "ENOENT") return;
     throw error;
   }
-  await Promise.all(entries
-    .filter((entry) => entry.isDirectory() && /^run-\d+$/.test(entry.name))
-    .map(async (entry) => {
-      const agentDirectory = path.join(directory, entry.name, "agent");
-      const exists = await lstat(agentDirectory).then(() => true, (error) => {
-        if (error.code === "ENOENT") return false;
-        throw error;
-      });
-      if (!exists) return;
-      await rm(agentDirectory, { recursive: true, force: true });
-      if (core?.info) core.info(`Removed cached agent logs from ${entry.name}`);
-      else log.info`Removed cached agent logs from ${entry.name}`;
-    }));
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !/^run-\d+$/.test(entry.name)) continue;
+    const agentDirectory = path.join(directory, entry.name, "agent");
+    const stats = await lstat(agentDirectory).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (!stats?.isDirectory()) continue;
+    await rm(agentDirectory, { recursive: true, force: true });
+    log.info`Removed cached agent logs from ${entry.name}`;
+  }
 }
 
 const COLLECT_GH_AW_LOGS_OPERATION = "collect-gh-aw-logs";
@@ -65,7 +63,6 @@ export async function runActivity(actions = {}) {
 
   await removeCachedAgentDirectories(
     path.resolve(process.env.REPORT_AIC_CACHE || "_activity/gh-aw-logs"),
-    actions.core,
   );
   const collectionOutcome = await logs.main(actions);
 
