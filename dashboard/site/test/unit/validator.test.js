@@ -191,10 +191,12 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
     const security = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'security');
-    expect(security.sections.map((/** @type {{ views: string[] }} */ section) => section.views)).toEqual([
-      ['security-summary', 'security-signals'],
-      ['security-output-ledger']
-    ]);
+    expect(security.sections).toBeUndefined();
+    expect(security.views).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'security-summary', disclosure: 'essential' }),
+      expect.objectContaining({ id: 'security-signals', disclosure: 'supplemental' }),
+      expect.objectContaining({ id: 'security-output-ledger', mark: 'table', disclosure: 'supplemental' })
+    ]));
     expect(security.views).not.toContainEqual(expect.objectContaining({ id: 'security-firewall-decisions' }));
     expect(security.views).not.toContainEqual(expect.objectContaining({ id: 'security-findings-summary' }));
     expect(document.dashboard.navigation.find(

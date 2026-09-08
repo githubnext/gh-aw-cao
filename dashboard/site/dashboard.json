@@ -1798,31 +1798,6 @@
         "icon": "shield",
         "class-name": "security-page",
         "description": "Operational assurance, warning, and telemetry-integrity signals for the configured githubnext/gh-aw-cao repository.",
-        "sections": [
-          {
-            "id": "operational-assurance",
-            "title": "Needs attention",
-            "description": "Execution controls, package integrity, and explicit output warnings.",
-            "layout": "full",
-            "count-source": "security-signals",
-            "count-label": "signals",
-            "views": [
-              "security-summary",
-              "security-signals"
-            ]
-          },
-          {
-            "id": "security-output-evidence",
-            "title": "Retained output evidence",
-            "description": "Durable outputs remain inspectable with warning, severity, lifecycle, and source context.",
-            "layout": "full",
-            "count-source": "findings",
-            "count-label": "records",
-            "views": [
-              "security-output-ledger"
-            ]
-          }
-        ],
         "views": [
           {
             "id": "security-summary",
