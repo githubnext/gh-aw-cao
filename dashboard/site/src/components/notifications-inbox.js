@@ -47,26 +47,27 @@ function writeState(state) {
   }
 }
 
-/** @returns {{ queue: string[], size: number, done: Set<string>, later: Set<string> }} */
+/** @returns {{ queue: string[], size: number, seen: Set<string>, done: Set<string>, later: Set<string> }} */
 function readCatchUpQueueState() {
   try {
     const stored = JSON.parse(globalThis.window?.localStorage.getItem(CATCH_UP_QUEUE_STORAGE_KEY) ?? '{}');
     return {
       queue: Array.isArray(stored.queue) ? stored.queue : [],
       size: Number(stored.size) || 0,
+      seen: new Set(Array.isArray(stored.seen) ? stored.seen : []),
       done: new Set(Array.isArray(stored.done) ? stored.done : []),
       later: new Set(Array.isArray(stored.later) ? stored.later : [])
     };
   } catch {
-    return { queue: [], size: 0, done: new Set(), later: new Set() };
+    return { queue: [], size: 0, seen: new Set(), done: new Set(), later: new Set() };
   }
 }
 
-/** @param {{ queue: string[], size: number, done: Set<string>, later: Set<string> }} state */
+/** @param {{ queue: string[], size: number, seen: Set<string>, done: Set<string>, later: Set<string> }} state */
 function writeCatchUpQueueState(state) {
   try {
     globalThis.window?.localStorage.setItem(CATCH_UP_QUEUE_STORAGE_KEY, JSON.stringify({
-      queue: state.queue, size: state.size, done: [...state.done], later: [...state.later]
+      queue: state.queue, size: state.size, seen: [...state.seen], done: [...state.done], later: [...state.later]
     }));
   } catch {
     // The Catch Up queue remains usable for this page load when storage is unavailable.
@@ -376,9 +377,10 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
   const valueDelta = value.length > 1 ? value[value.length - 1] - value[0] : null;
   const stories = catchUpStories(attentionRows, currentOutcomes, sources.operationalValues, start, end);
   const queueState = readCatchUpQueueState();
-  const { queue, size } = buildCatchUpQueue(stories, queueState);
+  const { queue, size, seen } = buildCatchUpQueue(stories, queueState);
   queueState.queue = queue;
   queueState.size = size;
+  queueState.seen = seen;
   writeCatchUpQueueState(queueState);
   const storiesById = new Map(stories.map((story) => [story.id, story]));
   const queuedStories = /** @type {typeof stories} */ (queue.map((id) => storiesById.get(id)).filter((story) => story !== undefined));
@@ -406,6 +408,17 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
         h('span', null, size > 0 ? `${queuedStories.length} of ${size} remaining` : `${queuedStories.length} highlight${queuedStories.length === 1 ? '' : 's'}`)),
       queuedStories.length > 0
         ? h('div', { className: 'home-story-rail' }, ...queuedStories.slice(0, 4).map((story) => renderCatchUpStory(story, processStory)))
+        : h('p', { className: 'home-catchup-quiet' }, size > 0
+          ? "You're all caught up."
+          : 'No meaningful state changes were observed in this interval.')),
+    h('section', { className: 'home-catchup-mobile', 'aria-labelledby': 'home-catchup-mobile-title' },
+      h('header', null,
+        h('h3', { id: 'home-catchup-mobile-title' }, 'Catch Up'),
+        h('span', { className: 'home-catchup-mobile-progress', 'aria-live': 'polite', tabindex: '-1' }, size > 0
+          ? `${Math.min(size, size - queuedStories.length + 1)} of ${size}`
+          : 'No highlights')),
+      queuedStories.length > 0
+        ? renderMobileCatchUpStory(queuedStories[0], processStory)
         : h('p', { className: 'home-catchup-quiet' }, size > 0
           ? "You're all caught up."
           : 'No meaningful state changes were observed in this interval.')));
@@ -598,6 +611,83 @@ function renderCatchUpStory(story, processStory) {
     h('span', { className: 'home-story-actions' },
       action('Save for later', 'clock', 'later'),
       action('Mark as done', 'check-circle', 'done')));
+}
+
+/**
+ * @param {{ id: string, classification: string, sourceType: string, title: string, detail: string, repository: string, deepLink: string }} story
+ * @param {(storyId: string, bucket: 'done' | 'later') => void} processStory
+ */
+function renderMobileCatchUpStory(story, processStory) {
+  /** @param {string} label @param {string} icon @param {'done' | 'later'} bucket */
+  const action = (label, icon, bucket) => h('button', {
+    type: 'button',
+    className: `home-catchup-mobile-action home-catchup-mobile-${bucket}`,
+    'aria-label': `${label} ${story.title}`,
+    onClick: /** @param {MouseEvent} event */ (event) => {
+      const briefing = event.currentTarget instanceof HTMLElement ? event.currentTarget.closest('.home-catchup') : null;
+      processStory(story.id, bucket);
+      const focusTarget = briefing?.querySelector(`.home-catchup-mobile-${bucket}`)
+        ?? briefing?.querySelector('.home-catchup-mobile-progress');
+      if (focusTarget instanceof HTMLElement) focusTarget.focus();
+    }
+  }, octicon(icon), h('span', null, label));
+  const card = h('article', { className: 'home-catchup-mobile-card' },
+    h(story.deepLink ? 'a' : 'div', {
+      className: 'home-catchup-mobile-link',
+      ...(story.deepLink ? { href: story.deepLink } : {})
+    },
+    h('span', { className: 'home-catchup-mobile-meta' },
+      h('span', { className: 'home-catchup-classification' }, catchUpClassificationLabel(story.classification)),
+      renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType }))),
+    h('strong', null, story.title),
+    h('p', null, story.detail),
+    story.repository ? h('small', null, story.repository) : null),
+    h('span', { className: 'home-catchup-mobile-hint', 'aria-hidden': 'true' }, 'Swipe right for Done · left for Later'),
+    h('span', { className: 'home-catchup-mobile-actions' },
+      action('Later', 'clock', 'later'),
+      action('Done', 'check-circle', 'done')));
+  enableCatchUpSwipe(card, story.id, processStory);
+  return card;
+}
+
+/** @param {HTMLElement} card @param {string} storyId @param {(storyId: string, bucket: 'done' | 'later') => void} processStory */
+function enableCatchUpSwipe(card, storyId, processStory) {
+  /** @type {{ pointerId: number | undefined, x: number, y: number } | null} */
+  let start = null;
+  let suppressClick = false;
+  card.addEventListener('pointerdown', (event) => {
+    const pointer = /** @type {PointerEvent} */ (event);
+    if (pointer.isPrimary === false || pointer.button !== 0) return;
+    start = { pointerId: pointer.pointerId, x: pointer.clientX, y: pointer.clientY };
+    if (pointer.pointerId !== undefined) card.setPointerCapture?.(pointer.pointerId);
+  });
+  card.addEventListener('pointerup', (event) => {
+    const pointer = /** @type {PointerEvent} */ (event);
+    if (!start || (start.pointerId !== undefined && pointer.pointerId !== start.pointerId)) return;
+    const horizontal = pointer.clientX - start.x;
+    const vertical = pointer.clientY - start.y;
+    start = null;
+    if (Math.abs(horizontal) < 48 || Math.abs(horizontal) <= Math.abs(vertical)) return;
+    pointer.preventDefault();
+    suppressClick = true;
+    processStory(storyId, horizontal > 0 ? 'done' : 'later');
+  });
+  card.addEventListener('pointercancel', () => {
+    start = null;
+  });
+  card.addEventListener('click', (event) => {
+    if (!suppressClick) return;
+    suppressClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+}
+
+/** @param {string} classification */
+function catchUpClassificationLabel(classification) {
+  if (classification === 'needs_you') return 'Needs you';
+  if (classification === 'fyi') return 'FYI';
+  return 'Update';
 }
 
 /** @param {Record<string, unknown>} row */

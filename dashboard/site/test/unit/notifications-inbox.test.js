@@ -99,6 +99,7 @@ describe('notifications inbox large data', () => {
   });
 });
 
+
 /** @param {Record<string, unknown>} overrides */
 function attentionRow(overrides = {}) {
   return {
@@ -112,6 +113,35 @@ function attentionRow(overrides = {}) {
     scope: 'githubnext/repository',
     ...overrides
   };
+}
+
+function catchUpRows() {
+  return [
+    attentionRow({
+      'evidence-link': {
+        href: 'https://github.com/githubnext/repository/actions/runs/42',
+        label: 'View run'
+      }
+    }),
+    attentionRow({
+      'attention-signal-id': 'signal-2',
+      'age-seconds': 120,
+      'signal-type': 'agent-smell',
+      objective: 'Review agent configuration',
+      reason: 'Strict mode is disabled',
+      scope: 'githubnext/repository-2',
+      'evidence-link': {
+        href: 'https://github.com/githubnext/repository-2/issues/43',
+        label: 'View issue'
+      }
+    })
+  ];
+}
+
+/** @param {Element} card @param {number} startX @param {number} endX */
+function swipe(card, startX, endX) {
+  card.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: startX, clientY: 10 }));
+  card.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0, clientX: endX, clientY: 12 }));
 }
 
 describe('catch up queue', () => {
@@ -173,5 +203,60 @@ describe('catch up queue', () => {
     expect(stored.done ?? []).toEqual([]);
     expect(stored.later ?? []).toEqual([]);
     expect(rendered.querySelectorAll('.home-catchup-story')).toHaveLength(1);
+  });
+
+  it('renders one mobile card with progress, classification, origin, and the existing deep link', () => {
+    const rendered = renderNotificationsInbox(catchUpRows());
+    document.body.append(rendered);
+
+    expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(1);
+    expect(rendered.querySelectorAll('.home-story-rail .home-catchup-story')).toHaveLength(2);
+    expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('1 of 2');
+    expect(rendered.querySelector('.home-catchup-classification')?.textContent).toBe('Needs you');
+    expect(rendered.querySelector('.home-catchup-mobile .home-origin-work')).not.toBeNull();
+    expect(rendered.querySelector('.home-catchup-mobile-link')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/repository/actions/runs/42');
+    expect(rendered.querySelector('.home-catchup-mobile-later')?.textContent).toContain('Later');
+    expect(rendered.querySelector('.home-catchup-mobile-done')?.textContent).toContain('Done');
+  });
+
+  it('swipes right for Done and left for Later while advancing progress', () => {
+    const rendered = renderNotificationsInbox(catchUpRows());
+    document.body.append(rendered);
+
+    swipe(/** @type {Element} */ (rendered.querySelector('.home-catchup-mobile-card')), 10, 90);
+
+    expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('2 of 2');
+    expect(rendered.querySelector('.home-catchup-mobile-card')?.textContent).toContain('Review agent configuration');
+    let stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.done).toHaveLength(1);
+    expect(stored.later).toHaveLength(0);
+
+    swipe(/** @type {Element} */ (rendered.querySelector('.home-catchup-mobile-card')), 90, 10);
+
+    expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(0);
+    expect(rendered.querySelector('.home-catchup-mobile')?.textContent).toContain("You're all caught up.");
+    stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.done).toHaveLength(1);
+    expect(stored.later).toHaveLength(1);
+  });
+
+  it('provides mobile buttons equivalent to the swipe actions', () => {
+    const rendered = renderNotificationsInbox(catchUpRows());
+    document.body.append(rendered);
+
+    const later = /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-later'));
+    later.focus();
+    later.click();
+    expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('2 of 2');
+    expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-later'));
+
+    const done = /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-done'));
+    done.focus();
+    done.click();
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.later).toHaveLength(1);
+    expect(stored.done).toHaveLength(1);
+    expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-progress'));
   });
 });

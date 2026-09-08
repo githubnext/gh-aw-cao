@@ -342,13 +342,14 @@ export function normalizeNotificationStories(rawEvents) {
  * Stories that disappear from the current data (or that are marked done or
  * later) are dropped from the queue without affecting the recorded size.
  * @param {{ id: string }[]} stories
- * @param {{ queue?: string[], size?: number, done?: Iterable<string>, later?: Iterable<string> }} [previous]
- * @returns {{ queue: string[], size: number }}
+ * @param {{ queue?: string[], size?: number, seen?: Iterable<string>, done?: Iterable<string>, later?: Iterable<string> }} [previous]
+ * @returns {{ queue: string[], size: number, seen: Set<string> }}
  */
 export function buildCatchUpQueue(stories, previous = {}) {
   const done = new Set(previous.done ?? []);
   const later = new Set(previous.later ?? []);
   const priorQueue = Array.isArray(previous.queue) ? previous.queue : [];
+  const seen = new Set([...(previous.seen ?? []), ...priorQueue, ...done, ...later]);
   const available = new Map(stories.map((story) => [story.id, story]));
   const isQueueable = /** @param {string} id */ (id) => available.has(id) && !done.has(id) && !later.has(id);
 
@@ -357,8 +358,8 @@ export function buildCatchUpQueue(stories, previous = {}) {
   const additions = stories.map((story) => story.id).filter((id) => !preservedIds.has(id) && isQueueable(id));
   const queue = [...preserved, ...additions];
 
-  const processedFromPriorQueue = priorQueue.filter((id) => done.has(id) || later.has(id)).length;
-  const size = Math.max(Number(previous.size) || 0, queue.length + processedFromPriorQueue);
+  for (const id of additions) seen.add(id);
+  const size = Math.max(Number(previous.size) || 0, seen.size);
 
-  return { queue, size };
+  return { queue, size, seen };
 }
