@@ -18,6 +18,14 @@ The local-action wrapper uses `@github/local-action` to provide Actions Toolkit 
 npm run activity:local:node -- activity/index.mjs
 ```
 
+To run the complete **Run activity workflow** step locally and write the refreshed cache to `_activity/`, authenticate `gh` and set the control repository:
+
+```console
+GITHUB_REPOSITORY=githubnext/gh-aw-cao npm run activity:run-workflow:local
+```
+
+The command uses `GITHUB_TOKEN` when set, otherwise it reuses `GH_TOKEN`. A token is required for GitHub-backed collection.
+
 The `CAO Activity` workflow runs `run-activity.mjs` as a single `actions/github-script` step. It sequentially imports and invokes the log downloader, GitHub API telemetry recorder, control policy resolver, control-plane inventory extractor, activity indexer, and dashboard collectors, sharing the same Actions singleton across every call.
 
 ## Cache contract
