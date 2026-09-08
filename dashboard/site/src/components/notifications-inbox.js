@@ -824,7 +824,7 @@ function catchUpClassificationLabel(classification) {
 /** @param {Record<string, unknown>} row */
 function notificationOrigin(row) {
   const signal = String(row.sourceType || row['signal-type'] || '').toLowerCase();
-  if (signal.includes('agent') || signal.includes('security') || signal.includes('threat')) return { label: 'Agents', icon: 'copilot', tone: 'agents' };
+  if (signal.includes('agent') || signal.includes('security') || signal.includes('threat')) return { label: 'Operations', icon: 'copilot', tone: 'agents' };
   if (signal.includes('value') || signal.includes('evidence') || signal.includes('budget') || signal.includes('capacity')) return { label: 'Insights', icon: 'graph', tone: 'insights' };
   return { label: 'Work', icon: 'project-roadmap', tone: 'work' };
 }

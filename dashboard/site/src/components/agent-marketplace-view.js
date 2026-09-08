@@ -25,13 +25,13 @@ export function renderAgentMarketplaceView(context) {
   );
   const grid = h('div', { className: 'agent-marketplace-grid', role: 'list' });
   const search = /** @type {HTMLInputElement} */ (h('input', {
-    type: 'search', placeholder: 'Search agents', 'aria-label': 'Search agents', spellcheck: 'false'
+    type: 'search', placeholder: 'Search operations and workflows', 'aria-label': 'Search operations and workflows', spellcheck: 'false'
   }));
-  const owner = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter agents by owner' },
+  const owner = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter operations by owner' },
     h('option', { value: '' }, 'All owners'),
     ...[...new Set(agents.map((agent) => agent.owner))].sort().map((name) => h('option', { value: name }, name))
   ));
-  const status = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter agents by status' },
+  const status = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter operations by status' },
     h('option', { value: 'all' }, 'All statuses'),
     h('option', { value: 'smells' }, `Smells (${agents.filter((agent) => agentSmellReasons(agent).length > 0).length})`),
     h('option', { value: 'disabled' }, `Disabled (${agents.filter((agent) => agent.state === 'disabled').length})`),
@@ -55,7 +55,7 @@ export function renderAgentMarketplaceView(context) {
       && (!query || [agent.name, agent.description, ...agent.members.map((member) => member.name)].join(' ').toLowerCase().includes(query)));
     const sorted = visible.sort(agentComparator(sortOrder));
     grid.replaceChildren(...sorted.map((agent) => renderAgentTile(agent)));
-    count.textContent = `${visible.length} of ${agents.length} agents`;
+    count.textContent = `${visible.length} of ${agents.length} entries`;
     for (const button of facetButtons) {
       if (button.dataset.facet === activeKind) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
@@ -78,10 +78,10 @@ export function renderAgentMarketplaceView(context) {
     facetButtons.push(button);
     return button;
   };
-  const facets = h('nav', { className: 'agent-marketplace-filters', 'aria-label': 'Agent filters' },
-    facetButton('Packages', 'package', 'package', agents.filter((agent) => agent.kind === 'package').length),
-    facetButton('Standalone', 'standalone', 'workflow', agents.filter((agent) => agent.kind === 'standalone').length),
-    facetButton('All agents', 'all', 'apps', agents.length)
+  const facets = h('nav', { className: 'agent-marketplace-filters', 'aria-label': 'Operation catalog filters' },
+    facetButton('Operation packages', 'package', 'package', agents.filter((agent) => agent.kind === 'package').length),
+    facetButton('Standalone workflows', 'standalone', 'workflow', agents.filter((agent) => agent.kind === 'standalone').length),
+    facetButton('All entries', 'all', 'apps', agents.length)
   );
 
   const sort = h(
@@ -91,7 +91,7 @@ export function renderAgentMarketplaceView(context) {
     h(
       'select',
       {
-        'aria-label': 'Sort agents',
+        'aria-label': 'Sort operations',
         onChange: (/** @type {Event} */ event) => {
           sortOrder = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
           render();
@@ -117,7 +117,7 @@ export function renderAgentMarketplaceView(context) {
       sort,
       count),
     facets,
-    agents.length > 0 ? grid : h('p', { role: 'status' }, 'No installed agents are available in the selected scope.')
+    agents.length > 0 ? grid : h('p', { role: 'status' }, 'No operation packages or standalone workflows are available in the selected scope.')
   );
 }
 
@@ -204,7 +204,7 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
         href: repositoryHref,
         label: `View ${agent.name}`,
         'dashboard-href': '#page-agents',
-        'dashboard-label': `View ${agent.name} in Agents`
+        'dashboard-label': `View ${agent.name} in Operations`
       } } : {})
     }];
   });
