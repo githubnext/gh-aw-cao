@@ -31,7 +31,8 @@ describe('notification story normalization', () => {
 
     const expected = [{
       id: 'notification-story:octo%2Fwidgets:pull-request:42',
-      classification: 'status-update',
+      classification: 'update',
+      sourceType: 'status-update',
       title: 'CI recovered',
       detail: 'All required checks passed.',
       repository: 'octo/widgets',
@@ -117,7 +118,7 @@ describe('notification story normalization', () => {
     }];
 
     expect(normalizeNotificationStories(events)[0]).toMatchObject({
-      classification: 'runtime-failure',
+      classification: 'needs_you',
       title: 'CI failed',
       detail: 'The newest run failed.',
       contributingRawEventIds: ['ci-failed', 'ci-passed', 'initial-ci-failed']
@@ -257,5 +258,90 @@ describe('notification story normalization', () => {
     expect(stories.find((story) => story.objectType === 'issue')?.contributingRawEventIds).toEqual(['1', '2']);
     expect(stories.filter((story) => story.objectType === 'security-finding').map((story) => story.objectId))
       .toEqual(['code-scanning:7', 'secret-scanning:7']);
+  });
+
+  it.each([
+    ['mention', { classification: 'mention', title: 'You were mentioned' }, 'needs_you'],
+    ['review request', { 'signal-type': 'review', title: 'Review requested' }, 'needs_you'],
+    ['assignment', { 'event-type': 'assignment', title: 'Issue assigned' }, 'needs_you'],
+    ['unresolved failure', { 'run-conclusion': 'failure', title: 'CI failed' }, 'needs_you'],
+    ['security finding', { objectType: 'security-finding', objectId: '7', title: 'Secret detected' }, 'needs_you'],
+    ['operator action', { 'expected-actor': 'operator', action: 'Approve rollout', title: 'Approval required' }, 'needs_you'],
+    ['resolved update', { classification: 'status-update', title: 'CI recovered' }, 'update'],
+    ['passive information', { classification: 'operational-value', title: 'Value measured' }, 'fyi']
+  ])('classifies %s stories', (_name, event, classification) => {
+    expect(normalizeNotificationStories([{
+      'event-id': 'event-1',
+      repository: 'octo/widgets',
+      objectType: 'issue',
+      objectId: '42',
+      timestamp: '2026-09-08T01:00:00Z',
+      ...event
+    }])[0]?.classification).toBe(classification);
+  });
+
+  it('ranks by classification, consequence, recency, and stable identity', () => {
+    const events = [
+      {
+        'event-id': 'fyi-newest',
+        classification: 'operational-value',
+        title: 'Value measured',
+        repository: 'octo/widgets',
+        objectType: 'workflow-run',
+        objectId: '6',
+        timestamp: '2026-09-08T06:00:00Z'
+      },
+      {
+        'event-id': 'update-newer',
+        classification: 'status-update',
+        title: 'Deployment completed',
+        repository: 'octo/widgets',
+        objectType: 'deployment',
+        objectId: '5',
+        timestamp: '2026-09-08T05:00:00Z'
+      },
+      {
+        'event-id': 'update-older',
+        classification: 'status-update',
+        title: 'Deployment started',
+        repository: 'octo/widgets',
+        objectType: 'deployment',
+        objectId: '4',
+        timestamp: '2026-09-08T04:00:00Z'
+      },
+      {
+        'event-id': 'low-failure',
+        classification: 'runtime-failure',
+        title: 'CI failed',
+        repository: 'octo/widgets',
+        objectType: 'workflow-run',
+        objectId: '3',
+        'consequence-tier': 'low',
+        timestamp: '2026-09-08T03:00:00Z'
+      },
+      {
+        'event-id': 'critical-failure',
+        classification: 'runtime-failure',
+        title: 'Deploy failed',
+        repository: 'octo/widgets',
+        objectType: 'workflow-run',
+        objectId: '2',
+        severity: 'critical',
+        timestamp: '2026-09-08T02:00:00Z'
+      },
+      {
+        'event-id': 'security-finding',
+        title: 'Secret detected',
+        repository: 'octo/widgets',
+        objectType: 'security-finding',
+        objectId: '1',
+        severity: 'critical',
+        timestamp: '2026-09-08T02:00:00Z'
+      }
+    ];
+    const expectedIds = ['1', '2', '3', '5', '4', '6'];
+
+    expect(normalizeNotificationStories(events).map((story) => story.objectId)).toEqual(expectedIds);
+    expect(normalizeNotificationStories([...events].reverse()).map((story) => story.objectId)).toEqual(expectedIds);
   });
 });

@@ -15,15 +15,44 @@ const TRANSITION_RULES = [
   { initial: 'review requested', terminal: 'review submitted', title: 'review completed' }
 ];
 
+const STORY_CLASS_RANK = new Map([
+  ['needs_you', 0],
+  ['update', 1],
+  ['fyi', 2]
+]);
+
+const CONSEQUENCE_RANK = new Map([
+  ['critical', 0],
+  ['high', 1],
+  ['medium', 2],
+  ['moderate', 2],
+  ['warning', 2],
+  ['low', 3],
+  ['informational', 4],
+  ['info', 4]
+]);
+
 /** @param {unknown} value */
 function text(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
 /** @param {unknown} value */
+function normalizedText(value) {
+  return text(value).toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+}
+
+/** @param {unknown} value */
 function identifier(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return text(value);
+}
+
+/** @param {unknown} value */
+function numericPriority(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const priority = Number(value);
+  return Number.isFinite(priority) ? priority : null;
 }
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -154,15 +183,15 @@ function eventObject(event) {
 }
 
 /** @param {Record<string, unknown>} event */
-function eventClassification(event) {
-  return text(event.classification ?? event['signal-type'] ?? event['event-type']
-    ?? event['outcome-state'] ?? event.type) || 'update';
-}
-
-/** @param {Record<string, unknown>} event */
 function eventTitle(event) {
   return text(event.title ?? event.objective ?? event['outcome-title']
     ?? event['finding-summary'] ?? event['workflow-name']) || 'Notification';
+}
+
+/** @param {Record<string, unknown>} event */
+function eventSourceType(event) {
+  return text(event.classification ?? event['signal-type'] ?? event['event-type']
+    ?? event['outcome-state'] ?? event.type);
 }
 
 /** @param {Record<string, unknown>} event */
@@ -196,6 +225,58 @@ function storyTitle(events, objectType) {
 }
 
 /**
+ * @param {Record<string, unknown>} event
+ * @param {string} objectType
+ * @param {string} title
+ * @returns {'needs_you' | 'update' | 'fyi'}
+ */
+function storyClassification(event, objectType, title) {
+  const state = [
+    event.classification,
+    event['signal-type'],
+    event['event-type'],
+    event['outcome-state'],
+    event['run-conclusion'],
+    event['lifecycle-state'],
+    event.type
+  ].map(normalizedText).filter(Boolean).join(' ');
+  const summary = normalizedText(`${eventTitle(event)} ${text(event.action ?? event['next-action'])}`);
+  const actor = normalizedText(event['expected-actor']);
+  const resolved = /\b(?:accepted|closed|completed|passed|recovered|resolved|submitted|succeeded|success)\b/
+    .test(`${state} ${normalizedText(title)}`);
+
+  if (objectType === 'security-finding' || /\bsecurity (?:finding|alert)\b/.test(state)) return 'needs_you';
+  if (resolved) return 'update';
+  if (/\b(?:action required|blocked|failure|failed|pending|timed out)\b/.test(state)
+      || /\b(?:failure|failed|failing|timed out)\b/.test(summary)
+      || /\b(?:mention(?:ed|s)?|review|assign(?:ed|ment|s)?)\b/.test(`${state} ${summary}`)
+      || /\b(?:human|maintainer|operator|owner|reviewer|user)\b/.test(actor)) {
+    return 'needs_you';
+  }
+  if (/\b(?:lifecycle close|status update|update|workflow run)\b/.test(state)
+      || /\b(?:changed|started|updated)\b/.test(summary)) {
+    return 'update';
+  }
+  return 'fyi';
+}
+
+/** @param {Record<string, unknown>[]} events */
+function consequenceRank(events) {
+  const declaredRanks = events.flatMap((event) => [
+    event['consequence-tier'],
+    event.consequence,
+    event.severity,
+    event['finding-severity'],
+    event['smell-severity']
+  ]).map((value) => CONSEQUENCE_RANK.get(normalizedText(value)))
+    .filter((value) => value !== undefined);
+  if (declaredRanks.length > 0) return Math.min(...declaredRanks);
+
+  const priorities = events.map((event) => numericPriority(event.priority)).filter((value) => value !== null);
+  return priorities.length > 0 ? Math.min(...priorities) : Number.MAX_SAFE_INTEGER;
+}
+
+/**
  * Groups raw attention and operational events into stable object-level stories.
  * @param {Record<string, unknown>[]} rawEvents
  */
@@ -223,19 +304,30 @@ export function normalizeNotificationStories(rawEvents) {
     ));
     const latest = events[0];
     const deepLinkEvent = events.find((event) => eventDeepLink(event));
-    const priorities = events.map((event) => Number(event.priority)).filter(Number.isFinite);
+    const priorities = events.map((event) => numericPriority(event.priority)).filter((value) => value !== null);
+    const title = storyTitle(events, group.objectType);
     return {
-      id: `notification-story:${encodeURIComponent(group.repository)}:${encodeURIComponent(group.objectType)}:${encodeURIComponent(group.objectId)}`,
-      classification: eventClassification(latest),
-      title: storyTitle(events, group.objectType),
-      detail: eventDetail(latest),
-      repository: group.repository,
-      objectType: group.objectType,
-      objectId: group.objectId,
-      timestamp: eventTimestamp(latest),
-      deepLink: deepLinkEvent ? eventDeepLink(deepLinkEvent) : '',
-      priority: priorities.length > 0 ? Math.min(...priorities) : null,
-      contributingRawEventIds: [...new Set(events.map(rawEventId))].sort()
+      consequence: consequenceRank(events),
+      story: {
+        id: `notification-story:${encodeURIComponent(group.repository)}:${encodeURIComponent(group.objectType)}:${encodeURIComponent(group.objectId)}`,
+        classification: storyClassification(latest, group.objectType, title),
+        sourceType: eventSourceType(latest),
+        title,
+        detail: eventDetail(latest),
+        repository: group.repository,
+        objectType: group.objectType,
+        objectId: group.objectId,
+        timestamp: eventTimestamp(latest),
+        deepLink: deepLinkEvent ? eventDeepLink(deepLinkEvent) : '',
+        priority: priorities.length > 0 ? Math.min(...priorities) : null,
+        contributingRawEventIds: [...new Set(events.map(rawEventId))].sort()
+      }
     };
-  }).sort((left, right) => right.timestamp - left.timestamp || left.id.localeCompare(right.id));
+  }).sort((left, right) => (
+    (STORY_CLASS_RANK.get(left.story.classification) ?? Number.MAX_SAFE_INTEGER)
+      - (STORY_CLASS_RANK.get(right.story.classification) ?? Number.MAX_SAFE_INTEGER)
+    || left.consequence - right.consequence
+    || right.story.timestamp - left.story.timestamp
+    || left.story.id.localeCompare(right.story.id)
+  )).map(({ story }) => story);
 }
