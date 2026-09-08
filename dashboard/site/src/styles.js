@@ -327,7 +327,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .appearance-options button:last-child { margin-left: -1px; border-radius: 0 6px 6px 0; }
 .appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .appearance-options .octicon { width: 14px; height: 14px; }
-main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 0 24px 40px; }
+main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 24px 40px; }
 .lede { color: var(--muted); }
 .overview-header { min-width: 0; flex: 1; }
 .overview-header h1 { margin: 0; font-size: 1.5rem; line-height: 1.25; }
@@ -1790,7 +1790,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mode-filter-control input { width: auto; }
   .time-window-control > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
-  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 0 14px 28px; }
+  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 16px 14px 28px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
