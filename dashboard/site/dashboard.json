@@ -3916,147 +3916,15 @@
         "title": "Detection",
         "icon": "shield-check",
         "class-name": "detection-page",
-        "description": "Threat-detection verdicts, coverage, degraded inspections, and execution health.",
+        "description": "Detection job results and threat-detection verdicts for each observed workflow run.",
         "views": [
           {
-            "id": "detection-state-distribution",
-            "title": "Detection health",
-            "description": "Usable security verdicts remain distinct from degraded inspections, detector failures, skipped runs, and unavailable evidence.",
-            "data": {
-              "source": "detection-observations"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "detection-state-label",
-                "type": "ordinal",
-                "title": "Detection state"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Runs"
-              },
-              "color": {
-                "field": "detection-state",
-                "type": "nominal",
-                "title": "State"
-              }
-            }
-          },
-          {
-            "id": "detection-verdict-coverage",
-            "title": "Usable verdict coverage",
-            "description": "Percentage of observed detection runs with a structurally valid verdict. Partial or unavailable evidence is shown by the data-quality state.",
-            "data": {
-              "source": "detection-observations"
-            },
-            "mark": "metric",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "value": {
-                "field": "usable-verdict-percent",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Usable verdict coverage",
-                "unit": "percent"
-              }
-            }
-          },
-          {
-            "id": "detection-state-trend",
-            "title": "Detection state trend",
-            "description": "Daily verdict state shows changes in threats, degraded inspections, and unusable results.",
-            "data": {
-              "source": "detection-observations"
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Runs"
-              },
-              "color": {
-                "field": "detection-state",
-                "type": "nominal",
-                "title": "State"
-              }
-            }
-          },
-          {
-            "id": "detection-security-findings",
-            "title": "Security findings",
-            "description": "Actual threat verdicts and inspection warnings are shown separately; zero detected threats does not establish complete coverage.",
-            "data": {
-              "source": "security-observations",
-              "filters": {
-                "security-feature": [
-                  "threat-detection"
-                ],
-                "security-analysis": [
-                  "detail"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "security-signal",
-                "type": "nominal",
-                "title": "Signal"
-              },
-              "y": {
-                "field": "security-count",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Observations"
-              },
-              "color": {
-                "field": "security-status",
-                "type": "nominal",
-                "title": "Result"
-              }
-            }
-          },
-          {
-            "id": "detection-attention",
-            "disclosure-label": "Requires attention",
-            "description": "Threats, detector failures, degraded inspections, skipped detection, and unavailable evidence are ordered by operational urgency.",
+            "id": "detection-results",
+            "title": "Detection results",
+            "description": "Detection job execution and threat-detection verdicts remain joined to their authoritative workflow run.",
             "data": {
               "source": "detection-observations",
-              "filters": {
-                "detection-state": [
-                  "threat",
-                  "tooling-failure",
-                  "degraded",
-                  "unknown",
-                  "skipped"
-                ]
-              },
               "order-by": [
-                {
-                  "field": "attention-priority",
-                  "direction": "asc"
-                },
                 {
                   "field": "observed-at",
                   "direction": "desc"
@@ -4065,36 +3933,22 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No detection observations require attention in the selected horizon.",
-            "layout": "full",
-            "disclosure": "supplemental",
+            "lazy-list": true,
+            "column-summaries": true,
+            "empty-message": "No detection results were observed in the current run window.",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
-                  "field": "attention-priority",
-                  "type": "quantitative",
-                  "title": "Priority"
-                },
-                {
                   "field": "detection-state",
                   "type": "nominal",
-                  "title": "State",
+                  "title": "Threat detection",
                   "display": "status"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
                 },
                 {
                   "field": "detection-signal",
                   "type": "nominal",
-                  "title": "Signal / reason"
+                  "title": "Threat detection result"
                 },
                 {
                   "field": "inspection-warning",
@@ -4102,178 +3956,15 @@
                   "title": "Inspection warning"
                 },
                 {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Investigate this threat-detection observation using the linked GitHub Actions run as authoritative evidence.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "repository",
-                    "workflow",
-                    "run",
-                    "detection-state",
-                    "detection-signal",
-                    "inspection-warning",
-                    "run-link"
-                  ]
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "detection-job-conclusions",
-            "title": "Detection job conclusions",
-            "description": "Current conclusion distribution highlights failed, cancelled, and incomplete threat-detection jobs.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "job-conclusion",
-                "type": "ordinal",
-                "title": "Conclusion"
-              },
-              "y": {
-                "field": "job",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Jobs"
-              }
-            }
-          },
-          {
-            "id": "detection-job-duration-trend",
-            "title": "Detection job duration trend",
-            "description": "Daily mean duration reveals performance regressions in completed threat-detection jobs.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ],
-                "job-status": [
-                  "completed"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "started-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Started"
-              },
-              "y": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean duration",
-                "unit": "human-duration"
-              },
-              "color": {
-                "field": "job-conclusion",
-                "type": "ordinal",
-                "title": "Conclusion"
-              }
-            }
-          },
-          {
-            "id": "detection-job-runner-performance",
-            "title": "Detection time by runner",
-            "description": "Mean duration by runner identifies infrastructure-specific performance differences.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ],
-                "job-status": [
-                  "completed"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "x": {
-                "field": "runner",
-                "type": "nominal",
-                "title": "Runner"
-              },
-              "y": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean duration",
-                "unit": "human-duration"
-              }
-            }
-          },
-          {
-            "id": "detection-job-ledger",
-            "disclosure-label": "Detection job diagnostics",
-            "description": "Recent threat-detection jobs provide status, conclusion, duration, runner, workflow, and run evidence for investigation.",
-            "data": {
-              "source": "job-performance",
-              "filters": {
-                "job": [
-                  "detection"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "started-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No detection jobs were observed in the current run window.",
-            "layout": "full",
-            "disclosure": "supplemental",
-            "encoding": {
-              "columns": [
-                {
                   "field": "job-status",
                   "type": "nominal",
-                  "title": "Status",
+                  "title": "Job status",
                   "display": "status"
                 },
                 {
                   "field": "job-conclusion",
                   "type": "nominal",
-                  "title": "Conclusion",
+                  "title": "Job conclusion",
                   "display": "status"
                 },
                 {
@@ -4288,17 +3979,14 @@
                   "title": "Runner"
                 },
                 {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
                   "field": "workflow",
                   "type": "nominal",
                   "title": "Workflow"
-                },
-                {
-                  "field": "organization",
-                  "type": "nominal"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal"
                 },
                 {
                   "field": "run",
@@ -4306,9 +3994,28 @@
                   "title": "Run"
                 },
                 {
-                  "field": "started-at",
+                  "field": "observed-at",
                   "type": "temporal",
-                  "title": "Started"
+                  "title": "Observed"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Investigate this detection result using the linked GitHub Actions run as authoritative evidence.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Investigate",
+                  "context": [
+                    "repository",
+                    "workflow",
+                    "run",
+                    "detection-state",
+                    "detection-signal",
+                    "inspection-warning",
+                    "job-status",
+                    "job-conclusion",
+                    "run-link"
+                  ]
                 }
               ],
               "href": {
@@ -4316,49 +4023,6 @@
                 "type": "nominal"
               }
             }
-          }
-        ],
-        "sections": [
-          {
-            "id": "detection-health",
-            "title": "Detection health",
-            "description": "Verdict coverage and state are the primary trust signals.",
-            "layout": "full",
-            "views": [
-              "detection-state-distribution",
-              "detection-verdict-coverage",
-              "detection-state-trend"
-            ]
-          },
-          {
-            "id": "security-findings",
-            "title": "Security findings",
-            "description": "Threat categories and detector-authored inspection warnings.",
-            "layout": "full",
-            "views": [
-              "detection-security-findings"
-            ]
-          },
-          {
-            "id": "requires-attention",
-            "title": "Requires attention",
-            "description": "Highest-priority evidence to investigate next.",
-            "layout": "full",
-            "views": [
-              "detection-attention"
-            ]
-          },
-          {
-            "id": "reliability-performance",
-            "title": "Reliability and performance",
-            "description": "Supporting job mechanics and execution diagnostics.",
-            "layout": "full",
-            "views": [
-              "detection-job-conclusions",
-              "detection-job-duration-trend",
-              "detection-job-runner-performance",
-              "detection-job-ledger"
-            ]
           }
         ]
       },
