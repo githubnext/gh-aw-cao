@@ -28,7 +28,8 @@ async function removeCachedAgentDirectories(directory, core) {
       });
       if (!exists) return;
       await rm(agentDirectory, { recursive: true, force: true });
-      core.info(`Removed cached agent logs from ${entry.name}`);
+      if (core?.info) core.info(`Removed cached agent logs from ${entry.name}`);
+      else log.info`Removed cached agent logs from ${entry.name}`;
     }));
 }
 
