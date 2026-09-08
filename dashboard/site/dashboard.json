@@ -5411,7 +5411,7 @@
         "kind": "built-in",
         "page": "engines-models",
         "title": "Engines Models",
-        "icon": "copilot",
+        "icon": "sparkles-fill",
         "definition": {
           "data-state": {
             "availability": true,
