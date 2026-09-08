@@ -127,6 +127,9 @@
           "dashboard-performance": {
             "workflow": "self-care-dashboard-performance"
           },
+          "dashboard-data-schema": {
+            "workflow": "self-care-dashboard-data-schema"
+          },
           "data-acquisition-audit": {
             "workflow": "self-care-data-acquisition-audit"
           },
