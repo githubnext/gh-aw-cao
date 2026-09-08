@@ -180,7 +180,7 @@ body { margin: 0; background: var(--canvas); color: var(--fg); font: .875rem/1.5
 .agent-marketplace-toolbar > select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; }
 .agent-marketplace-sort { display: inline-flex; align-items: center; gap: 6px; }
 .agent-marketplace-sort select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; }
-.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; }
 .agent-marketplace-tile { min-width: 0; position: relative; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); overflow: hidden; transition: border-color 120ms ease, background 120ms ease; }
 .agent-marketplace-tile:hover { border-color: var(--border-strong); background: var(--canvas); }
 .agent-marketplace-summary { min-height: 118px; display: flex; align-items: flex-start; gap: 14px; padding: 20px; cursor: pointer; list-style: none; }
