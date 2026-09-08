@@ -285,7 +285,8 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'data-health');
     const sourceView = [...(page?.querySelectorAll('.custom-view') ?? [])]
       .find((view) => view.querySelector('h4')?.textContent === 'Cached source shape');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
+    expect(page?.querySelector('.view-disclosure')).toBeNull();
     expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
@@ -329,10 +330,11 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'data-health');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
     expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull();
     expect(page?.textContent).toContain('Overall confidence');
     expect(page?.textContent).toContain('insufficient');
+    expect(page?.querySelector('[data-view-id="data-health-summary"] .status-danger')?.textContent).toBe('insufficient');
     expect(page?.textContent).toContain('runs');
     expect(page?.textContent).toContain('unavailable');
     rendered.remove();

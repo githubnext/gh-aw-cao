@@ -6138,23 +6138,22 @@
         "class-name": "data-health-page",
         "sections": [
           {
+            "id": "dashboard-confidence",
+            "title": "Dashboard confidence",
+            "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
+            "layout": "full",
+            "views": [
+              "data-health-summary",
+              "data-health-activity"
+            ]
+          },
+          {
             "id": "loaded-files",
             "title": "Loaded files",
             "description": "Files loaded for this dashboard snapshot and their serialized sizes.",
             "layout": "full",
             "views": [
               "data-health-files"
-            ]
-          },
-          {
-            "id": "dashboard-confidence",
-            "title": "Dashboard confidence",
-            "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
-            "layout": "full",
-            "views": [
-              "data-health-confidence",
-              "data-health-summary",
-              "data-health-activity"
             ]
           },
           {
@@ -6233,74 +6232,8 @@
         ],
         "views": [
           {
-            "id": "data-health-files",
-            "title": "Loaded files",
-            "data": {
-              "source": "data-health-files"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No dashboard files were loaded.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "file",
-                  "type": "nominal",
-                  "title": "File"
-                },
-                {
-                  "field": "size",
-                  "type": "quantitative",
-                  "title": "Size (bytes)"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-confidence",
-            "title": "Overall confidence",
-            "description": "Confidence is derived from critical evidence domains without a numeric health score.",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "confidence",
-                "type": "nominal",
-                "title": "Confidence"
-              },
-              "y": {
-                "field": "confidence",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Dashboard"
-              },
-              "color": {
-                "field": "confidence",
-                "type": "nominal"
-              }
-            }
-          },
-          {
             "id": "data-health-summary",
-            "title": "Data health summary",
-            "disclosure": "supplemental",
+            "title": "Overall confidence",
             "data": {
               "source": "data-health-summary"
             },
@@ -6381,6 +6314,11 @@
                   "title": "Fields"
                 },
                 {
+                  "field": "total-size",
+                  "type": "nominal",
+                  "title": "Total size"
+                },
+                {
                   "field": "next-action",
                   "type": "nominal",
                   "title": "Next action"
@@ -6389,10 +6327,51 @@
             }
           },
           {
+            "id": "data-health-files",
+            "title": "Loaded files",
+            "data": {
+              "source": "data-health-files",
+              "order-by": [
+                {
+                  "field": "size",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No dashboard files were loaded.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "file",
+                  "type": "nominal",
+                  "title": "File"
+                },
+                {
+                  "field": "display-size",
+                  "type": "nominal",
+                  "title": "Size"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
             "id": "data-health-activity",
             "title": "CAO Activity",
             "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-summary"
             },
@@ -6410,7 +6389,6 @@
           },
           {
             "id": "data-health-domains",
-            "disclosure": "supplemental",
             "title": "Dashboard domain confidence",
             "data": {
               "source": "data-health-domains"
@@ -6447,7 +6425,6 @@
           },
           {
             "id": "data-health-coverage",
-            "disclosure": "supplemental",
             "title": "Scope and evidence coverage",
             "data": {
               "source": "data-health-coverage"
@@ -6500,7 +6477,6 @@
           {
             "id": "data-health-collections",
             "title": "Collector state",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-collections"
             },
@@ -6552,7 +6528,6 @@
           {
             "id": "data-health-compatibility",
             "title": "Producer contracts",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-compatibility"
             },
@@ -6599,7 +6574,6 @@
           {
             "id": "data-health-reconciliation",
             "title": "Cross-source reconciliation",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-reconciliation"
             },
@@ -6650,7 +6624,6 @@
           },
           {
             "id": "data-health-sources",
-            "disclosure": "supplemental",
             "title": "Cached source shape",
             "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
             "data": {
@@ -6716,7 +6689,6 @@
           },
           {
             "id": "data-health-fields",
-            "disclosure": "supplemental",
             "title": "Field shape",
             "description": "Observed field types and population across every cached source.",
             "data": {
@@ -6775,7 +6747,6 @@
             "id": "data-health-schema",
             "title": "Data shape preview",
             "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-schema"
             },
@@ -6801,7 +6772,6 @@
           {
             "id": "data-health-provenance",
             "title": "Collection provenance",
-            "disclosure": "supplemental",
             "data": {
               "source": "data-health-collections"
             },

@@ -1070,7 +1070,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-action-details dt { color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .configuration-action-details dd { margin: 0; overflow-wrap: anywhere; font-size: .8125rem; }
 .configuration-actions-empty { margin: 0; padding: 16px; border: 1px dashed var(--border); border-radius: 6px; color: var(--muted); }
-:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section { padding: 0; border: 0; background: transparent; }
+:is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page, .data-health-page) .layout-section { padding: 0; border: 0; background: transparent; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header h3 { margin: 2px 0 0; font-size: 1.25rem; }
 :is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section-header > strong { flex: none; color: var(--muted); font-size: .75rem; }

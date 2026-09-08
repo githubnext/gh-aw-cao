@@ -62,4 +62,13 @@ describe('badge', () => {
     const inactive = renderActiveStateBadge(false);
     expect(inactive.className).toBe('status status-muted');
   });
+
+  it.each([
+    ['trusted', 'status-success'],
+    ['degraded', 'status-attention'],
+    ['insufficient', 'status-danger'],
+    ['unknown', 'status-muted']
+  ])('color-codes data confidence %s as %s', (confidence, expectedClass) => {
+    expect(renderStatusBadge(confidence).className).toBe(`status ${expectedClass}`);
+  });
 });
