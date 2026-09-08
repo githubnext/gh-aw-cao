@@ -2,7 +2,6 @@ const FAILURE_CONCLUSIONS = new Set(["failure", "timed_out", "startup_failure"])
 const API_LIMITED_STEP_PREFIX = "CAO admission blocked: GitHub API limited until ";
 const API_UNAVAILABLE_STEP = "CAO admission blocked: GitHub API capacity unavailable";
 const CAO_FAILURE_MARKER = "[CAO failure] ";
-const MISSING_TARGET_AUTHORITY = "live mode requires .github/workflows/cao.json on the target default branch";
 const ANSI_ESCAPE = /\u001B\[[0-?]*[ -/]*[@-~]/g;
 
 export function isFailedConclusion(value) {
@@ -64,9 +63,6 @@ export function performanceJobRecord(job) {
 
 function normalizeCaoFailureMessage(message) {
   if (!message || message.length > 240 || /[\r\n]/.test(message)) return "";
-  if (message === MISSING_TARGET_AUTHORITY) {
-    return "Target authority missing: add .github/workflows/cao.json to the target default branch for live mode";
-  }
   return `${message[0].toUpperCase()}${message.slice(1)}`;
 }
 
@@ -78,7 +74,5 @@ export function extractCaoFailureMessage(logText) {
       return normalizeCaoFailureMessage(line.slice(marker + CAO_FAILURE_MARKER.length).trim());
     }
   }
-  return log.includes(MISSING_TARGET_AUTHORITY)
-    ? normalizeCaoFailureMessage(MISSING_TARGET_AUTHORITY)
-    : "";
+  return "";
 }

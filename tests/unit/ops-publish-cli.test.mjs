@@ -291,16 +291,15 @@ test("publish rejects invalid source and target state", () => {
   }
 });
 
-test("publish fails closed for missing, malformed, or mismatched authority", () => {
-  for (const [config, message] of [
-    [{ authorityMissing: true }, /GitHub API 404/],
-    [{ authoritySource: "version: [" }, /not valid control policy JSON/],
-    [{ authoritySource: JSON.stringify({ version: 1, "target-authority": { packages: { "aw-doctor": { authority: "acme/other" } } } }) }, /different control repository/],
+test("publish ignores missing, malformed, or mismatched target authority", () => {
+  for (const config of [
+    { authorityMissing: true },
+    { authoritySource: "version: [" },
+    { authoritySource: JSON.stringify({ version: 1, "target-authority": { packages: { "aw-doctor": { authority: "acme/other" } } } }) },
   ]) {
     const result = runCommand("publish", { config });
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, message);
-    assert.equal(result.requests.some(({ method, path }) => method === "POST" && path === "/repos/acme/service/issues"), false);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.requests.some(({ method, path }) => method === "POST" && path === "/repos/acme/service/issues"), true);
   }
 });
 

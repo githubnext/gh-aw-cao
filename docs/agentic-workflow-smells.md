@@ -90,8 +90,8 @@ mission requires.
   limits.
 
 Reduce authority at the workflow boundary. Route writes through declared safe
-outputs, constrain mutable values, and require target-owned authority for live
-work.
+outputs, constrain mutable values, and require explicit control-policy authority
+for live work.
 
 ## Review trust and security
 

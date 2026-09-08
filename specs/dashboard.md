@@ -891,9 +891,9 @@ A semantic visualization is a graphical form whose structure encodes operational
 
 ### 18.1 Authority Boundary
 
-The dashboard communicates and invokes capabilities; it does not create authority. CAO policy determines whether and where an operation may run. gh-aw determines how an authorized workflow executes. Live work additionally requires target-owned authority.
+The dashboard communicates and invokes capabilities; it does not create authority. CAO policy determines whether and where an operation may run. gh-aw determines how an authorized workflow executes. Live work additionally requires explicit live scope in control policy.
 
-- **CAOD-SEC-001:** A dashboard action that dispatches or mutates work **MUST** use the authoritative execution path, which **MUST** enforce the effective CAO resolver result, compiled gh-aw capability, credential reach, dispatch envelope, and target authority applicable at execution time.
+- **CAOD-SEC-001:** A dashboard action that dispatches or mutates work **MUST** use the authoritative execution path, which **MUST** enforce the effective CAO resolver result, compiled gh-aw capability, credential reach, and dispatch envelope applicable at execution time.
 - **CAOD-SEC-002:** The presence of a button, suggested action, credential, workflow capability, or previous successful action **MUST NOT** be interpreted as current authority.
 - **CAOD-SEC-003:** Review mode **SHOULD** be the default for newly exposed write-capable actions.
 - **CAOD-SEC-004:** An authorization failure **MUST** fail closed, identify the failed boundary without exposing a secret, and perform no target mutation.

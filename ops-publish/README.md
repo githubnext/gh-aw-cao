@@ -72,21 +72,6 @@ gh label create "ops:publish-to-target" \
   --description "Publish this reviewed operations issue to its validated target"
 ```
 
-The target must contain matching authority on its default branch:
-
-```json
-{
-  "version": 1,
-  "target-authority": {
-    "packages": {
-      "aw-doctor": {
-        "authority": "acme/central-agentic-ops"
-      }
-    }
-  }
-}
-```
-
 Configure `GH_AW_GITHUB_READ_APP_ID` and `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` for control-run validation, and `GH_AW_GITHUB_WRITE_APP_ID` and `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY` for target publication. The workflow mints separate, repository-scoped installation tokens from the corresponding Apps. For PAT fallback, use dedicated fine-grained secrets: `CENTRAL_AGENTIC_OPS_PUBLISH_CONTROL_TOKEN` with Actions read access only to allowed control repositories, and `CENTRAL_AGENTIC_OPS_PUBLISH_TARGET_TOKEN` with Contents read plus Issues write access only to allowed target repositories. The workflow token handles only the review issue and can read a control run when the add-on and control plane share a repository.
 
 ## Operate

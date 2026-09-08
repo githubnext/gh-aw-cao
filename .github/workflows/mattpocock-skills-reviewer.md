@@ -90,7 +90,7 @@ Review the pull request's changed lines with the smallest relevant set of the in
 4. Apply this repository's contracts while reviewing:
    - `.github/workflows/*.lock.yml` files are generated and must not be reviewed as source;
    - workflow behavior comes from the matching Markdown source;
-   - CAO authority, gh-aw execution authority, credentials, and target consent must remain separate;
+  - CAO authority, gh-aw execution authority, and credentials must remain separate; target files must not alter CAO activation authority;
    - missing policy or evidence must fail closed;
    - changes spanning multiple areas should remain navigable and use existing domain language.
 5. Review changed lines only. Prioritize security, correctness, authority boundaries, tests, then maintainability. Do not comment on formatting or subjective style.

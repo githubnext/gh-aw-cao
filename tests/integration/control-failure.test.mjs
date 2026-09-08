@@ -381,44 +381,33 @@ esac
   }
 });
 
-function runLiveAuthority(authorityContent, overrides = {}, policy = controlPolicy({
+function runLiveWorker(overrides = {}, policy = controlPolicy({
   packagePolicy: { mode: "live" },
   workerPolicy: { "max-mode": "live" },
 })) {
   return runPrecompute({
     REQUESTED_MODE: "live",
     SAFE_OUTPUT_REPO: "acme/target",
-    AUTHORITY_CONTENT: authorityContent,
     ...overrides,
-  }, `
-case "$*" in
-  *repos/acme/target/contents/.github/workflows/cao.json*)
-    [ "$AUTHORITY_MODE" = "missing" ] && exit 1
-    printf '%s' "$AUTHORITY_CONTENT" | base64
-    ;;
-  *repos/acme/target/commits/main*) printf '2222222222222222222222222222222222222222\\n' ;;
-  *repos/acme/target*) printf 'main\\n' ;;
-  *) printf 'true\\n' ;;
-esac
-`, policy);
+  }, undefined, policy);
 }
 
-test("control precompute accepts matching target-owned live authority", () => {
-  const result = runLiveAuthority(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { dependabot: { authority: "acme/control" } } },
-  }));
+test("control precompute authorizes live workers from central policy", () => {
+  const result = runLiveWorker();
 
   assert.equal(result.status, 0, result.stderr);
   const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
   assert.equal(precompute.bundle, "dependabot");
+  assert.deepEqual(precompute.policy_source, {
+    repository: "acme/control",
+    path: ".github/workflows/cao.json",
+    sha: "1111111111111111111111111111111111111111",
+  });
+  assert.equal("target_authority_source" in precompute, false);
 });
 
 test("control precompute resolves live mode from an exact package target", () => {
-  const result = runLiveAuthority(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { dependabot: { authority: "acme/control" } } },
-  }), {}, controlPolicy({
+  const result = runLiveWorker({}, controlPolicy({
     packagePolicy: {
       mode: "review",
       targets: { "acme/target": { mode: "live" } },
@@ -448,15 +437,6 @@ test("control precompute rejects live mode for an unmatched review target", () =
   assert.match(result.stderr, /safe_output_mode exceeds checked-in policy/);
 });
 
-test("control precompute accepts live authority case-insensitively", () => {
-  const result = runLiveAuthority(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { dependabot: { authority: "ACME/CONTROL" } } },
-  }));
-
-  assert.equal(result.status, 0, result.stderr);
-});
-
 for (const targetRepo of ["acme/control", "ACME/CONTROL"]) {
   test(`control precompute accepts control repository self-review for ${targetRepo}`, () => {
     const result = runPrecompute({ TARGET_REPO: targetRepo });
@@ -475,60 +455,15 @@ for (const safeOutputRepo of ["acme/target", "ACME/TARGET"]) {
 }
 
 test("control precompute binds live worker output to the authorized target", () => {
-  const result = runLiveAuthority(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { dependabot: { authority: "acme/control" } } },
-  }), { SAFE_OUTPUT_REPO: "acme/other" });
+  const result = runLiveWorker({ SAFE_OUTPUT_REPO: "acme/other" });
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /live worker safe_output_repo must equal target_repo/);
 });
 
-test("control precompute rejects a different live authority", () => {
-  const result = runLiveAuthority(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { dependabot: { authority: "acme/other-control" } } },
-  }));
+test("control precompute does not fetch target-owned authority", () => {
+  const result = runLiveWorker({}, undefined);
 
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /target assigns live authority for dependabot to a different control repository/);
-});
-
-for (const [name, authorityContent] of [
-  ["empty document", ""],
-  ["non-object document", "[]"],
-  ["wrong version", '{"version":2,"target-authority":{"packages":{}}}'],
-  ["string version", '{"version":"1","target-authority":{"packages":{}}}'],
-  ["missing target authority", '{"version":1,"control-plane":{}}'],
-  ["missing packages", '{"version":1,"target-authority":{}}'],
-  ["non-object packages", '{"version":1,"target-authority":{"packages":[]}}'],
-  ["missing package", '{"version":1,"target-authority":{"packages":{"optimization":{"authority":"acme/control"}}}}'],
-  ["non-object package", '{"version":1,"target-authority":{"packages":{"dependabot":"acme/control"}}}'],
-  ["non-string authority", '{"version":1,"target-authority":{"packages":{"dependabot":{"authority":1}}}}'],
-  ["duplicate key", '{"version":1,"version":1,"target-authority":{"packages":{}}}'],
-]) {
-  test(`control precompute rejects live authority with ${name}`, () => {
-    const result = runLiveAuthority(authorityContent);
-
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /target authority file must declare version 1 and target-authority.packages.dependabot.authority/);
-  });
-}
-
-test("control precompute rejects malformed live authority repository", () => {
-  const result = runLiveAuthority(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { dependabot: { authority: "not-a-repository" } } },
-  }));
-
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /target-authority.packages.dependabot.authority has an invalid value/);
-});
-
-test("control precompute rejects missing target-owned live authority", () => {
-  const result = runLiveAuthority("", { AUTHORITY_MODE: "missing" });
-
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /\[CAO failure\]/);
-  assert.match(result.stderr, /live mode requires \.github\/workflows\/cao\.json on the target default branch/);
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /target-authority/);
 });

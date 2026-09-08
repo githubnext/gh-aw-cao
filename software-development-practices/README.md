@@ -53,7 +53,7 @@ The omitted fields default to an enabled package and workers, `review` mode, one
 - Workers analyze only the dispatched target and cannot discover or dispatch to other repositories.
 - Repository content and metadata are untrusted evidence, never control-plane policy.
 - Workers fetch current official guidance on every run and report inaccessible required sources as incomplete.
-- Review mode routes guidance to the designated review repository; live mode creates it in the selected target only with target-owned authority.
+- Review mode routes guidance to the designated review repository; live mode creates it in the selected target only when control policy explicitly authorizes that target and worker.
 - Findings distinguish observed evidence, gaps, limitations, and human-review questions; they never claim certification, compliance, security, or framework endorsement.
 - Safe outputs contain no secrets, personal data, exploit details, private alerts, or confidential evidence.
 - Operational value is attainment-only: each worker scores `1` when a non-bot human accepts its frozen target-commit guidance issue with a thumbs-up reaction within 30 days, `0` when complete evidence shows no acceptance, and `null` when assignment or evidence is unavailable. The package dashboard keeps this evidence distinct by framework and does not imply causation, certification, security, or conformance.
