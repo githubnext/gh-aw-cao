@@ -1,4 +1,3 @@
-import { h } from '../dom.js';
 import { renderExperimentDetailView } from './experiment-detail-view.js';
 import { renderExperimentSummaryView } from './experiment-summary-view.js';
 import { renderExperimentTableView } from './experiment-table-view.js';
@@ -11,6 +10,7 @@ import {
   renderExperimentFilters,
   syncExperimentDecisionDeepLink
 } from './experiment-decision-surface.js';
+import { renderExperimentEmptyState } from './experiment-view-primitives.js';
 
 /** @typedef {Record<string, any>} Row */
 /** @typedef {{ experiments: Row[], assignments: Row[], graders: Row[], evals: Row[], runById: Map<string, Row>, graderById: Map<string, Row>, evalById: Map<string, Row> }} ExperimentModel */
@@ -33,6 +33,6 @@ export function renderExperimentsEvaluation(context) {
     renderOverview: renderExperimentSummaryView,
     renderTable: renderExperimentTableView,
     renderDetail: renderExperimentDetailView,
-    renderNoMatches: () => h('div', { className: 'experiment-empty', role: 'status' }, h('strong', null, 'No experiments match the selected filters.'), h('p', null, 'Clear one or more filters to restore the decision view.'))
+    renderNoMatches: () => renderExperimentEmptyState(null, 'No experiments match the selected filters.', 'Clear one or more filters to restore the decision view.')
   });
 }
