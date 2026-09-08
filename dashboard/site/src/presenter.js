@@ -1317,6 +1317,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const pageMode = root.querySelector('[data-page-mode]');
   const reportActions = root.querySelector('.report-actions');
   const pageScroller = root.querySelector('main.dashboard-prototype');
+  /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
     const fullView = page?.querySelector('.custom-view[data-view-layout="full-view"]');
     root.classList.toggle('dashboard-full-view', Boolean(fullView));
