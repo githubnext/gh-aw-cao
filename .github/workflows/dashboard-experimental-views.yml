@@ -67,6 +67,7 @@ jobs:
           path: assessment
       - name: Comment with assessment
         if: always()
+        continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -75,8 +76,8 @@ jobs:
             const summaryPath = 'assessment/summary.json'
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-            const escapeCell = (value) =>
-              String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ')
+            const safeIdentifier = (value) =>
+              String(value ?? '').replace(/[^A-Za-z0-9._-]/g, '?').slice(0, 80)
             let body
 
             if ('${{ steps.download.outcome }}' !== 'success' || !fs.existsSync(summaryPath)) {
@@ -95,20 +96,32 @@ jobs:
               const rows = results.map((result) => {
                 const findings = [
                   ...(result.crashed ? ['browser crash'] : []),
-                  ...((result.errors || []).map((error) => `error: ${error}`)),
-                  ...((result.failedRequests || []).map((error) => `request: ${error}`)),
-                  ...((result.missingViews || []).map((view) => `missing view: ${view}`)),
-                  ...((result.missingData || []).map((value) => `missing data: ${value}`)),
+                  ...((result.errors || []).length > 0
+                    ? [`${result.errors.length} browser error(s)`]
+                    : []),
+                  ...((result.failedRequests || []).length > 0
+                    ? [`${result.failedRequests.length} failed request(s)`]
+                    : []),
+                  ...((result.missingViews || []).length > 0
+                    ? [`${result.missingViews.length} missing view(s)`]
+                    : []),
+                  ...((result.missingData || []).length > 0
+                    ? [`${result.missingData.length} missing data source(s)`]
+                    : []),
                   ...(result.domNodes > summary.maximumDomNodes
                     ? [`DOM budget exceeded: ${result.domNodes}/${summary.maximumDomNodes}`]
                     : []),
                 ]
+                const pageId = safeIdentifier(result.pageId)
+                const status = ['passed', 'failed', 'incomplete'].includes(result.status)
+                  ? result.status
+                  : 'unknown'
+                const domNodes = Number.isFinite(result.domNodes) ? result.domNodes : 'unknown'
                 core.info(
-                  `${result.pageId}: ${result.status}; ${result.domNodes ?? 'unknown'} DOM nodes; ` +
+                  `${pageId}: ${status}; ${domNodes} DOM nodes; ` +
                   `${findings.length} finding(s)`
                 )
-                return `| ${escapeCell(result.pageId)} | ${escapeCell(result.status)} | ` +
-                  `${escapeCell(result.domNodes ?? 'unknown')} | ${escapeCell(findings.join('; ') || 'None')} |`
+                return `| ${pageId} | ${status} | ${domNodes} | ${findings.join('; ') || 'None'} |`
               })
               const passed = results.filter((result) => result.status === 'passed').length
               body = [
@@ -117,7 +130,7 @@ jobs:
                 '',
                 `**${passed}/${results.length}** experimental views passed the informational assessment. ` +
                   `The DOM budget is **${summary.maximumDomNodes}** nodes per loaded view.`,
-                summary.blocker ? `\nAssessment blocker: ${escapeCell(summary.blocker)}` : '',
+                summary.blocker ? '\nThe assessment was blocked before every view could be checked.' : '',
                 '',
                 '| View | Result | DOM nodes | Findings |',
                 '|---|---:|---:|---|',

@@ -22,6 +22,16 @@ function messageText(value) {
   return value instanceof Error ? value.message : String(value);
 }
 
+function declaredSourceNames(value, names = new Set()) {
+  if (Array.isArray(value)) {
+    for (const item of value) declaredSourceNames(item, names);
+  } else if (value && typeof value === "object") {
+    if (typeof value.source === "string") names.add(value.source);
+    for (const item of Object.values(value)) declaredSourceNames(item, names);
+  }
+  return names;
+}
+
 test("each experimental dashboard view renders with live data", async ({ browser }, testInfo) => {
   await rm(outputDirectory, { force: true, recursive: true });
   await mkdir(outputDirectory, { recursive: true });
@@ -37,6 +47,7 @@ test("each experimental dashboard view renders with live data", async ({ browser
     results: [],
   };
   let preview;
+  let liveSources;
 
   try {
     if (!sourceUrl) throw new Error("DASHBOARD_DATA_URL is required.");
@@ -49,7 +60,9 @@ test("each experimental dashboard view renders with live data", async ({ browser
           throw new Error(`Unable to download deployed dashboard data: HTTP ${response.status}.`);
         }
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, "sources.json"), await response.text());
+        const sourceText = await response.text();
+        liveSources = JSON.parse(sourceText);
+        await writeFile(join(destination, "sources.json"), sourceText);
       },
       host: "127.0.0.1",
       port: 0,
@@ -82,7 +95,8 @@ test("each experimental dashboard view renders with live data", async ({ browser
         title: pageDefinition.title || pageDefinition.page || pageDefinition.id,
         status: "incomplete",
         domNodes: null,
-        declaredViews: (pageDefinition.views || []).map((view, index) => view.id || `view-${index + 1}`),
+        declaredViews: (pageDefinition.views || pageDefinition.definition?.views || [])
+          .map((view, index) => view.id || `view-${index + 1}`),
         renderedViews: [],
         missingViews: [],
         missingData: [],
@@ -107,7 +121,7 @@ test("each experimental dashboard view renders with live data", async ({ browser
 
         const views = activePage.locator("[data-view-id]");
         for (let index = 0; index < await views.count(); index += 1) {
-          await views.nth(index).scrollIntoViewIfNeeded();
+          await views.nth(index).scrollIntoViewIfNeeded().catch(() => {});
         }
         await expect(activePage.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 30_000 });
 
@@ -117,8 +131,17 @@ test("each experimental dashboard view renders with live data", async ({ browser
         result.missingViews = result.declaredViews.filter(
           (viewId) => !result.renderedViews.includes(viewId),
         );
-        result.missingData = await activePage.locator('[aria-label^="Unable to load "]')
-          .evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label")));
+        const sourceProblems = [...declaredSourceNames(pageDefinition)]
+          .filter((sourceName) =>
+            !Object.hasOwn(liveSources, sourceName)
+            || liveSources[sourceName]?.metadata?.availability === "unavailable"
+          )
+          .map((sourceName) => `${sourceName}: missing or unavailable`);
+        result.missingData = [
+          ...sourceProblems,
+          ...await activePage.locator('[aria-label^="Unable to load "]')
+            .evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label"))),
+        ];
         result.domNodes = await page.locator("*").count();
         result.crashed = crashed;
         result.status = (
