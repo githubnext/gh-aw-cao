@@ -6210,6 +6210,34 @@
         ],
         "views": [
           {
+            "id": "data-health-confidence",
+            "title": "Overall confidence",
+            "description": "Confidence is derived from critical evidence domains without a numeric health score.",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "confidence",
+                "type": "nominal",
+                "title": "Confidence"
+              },
+              "y": {
+                "field": "confidence",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Dashboard"
+              },
+              "color": {
+                "field": "confidence",
+                "type": "nominal"
+              }
+            }
+          },
+          {
             "id": "data-health-files",
             "title": "Loaded files",
             "data": {
@@ -6244,34 +6272,6 @@
               ]
             },
             "layout": "full"
-          },
-          {
-            "id": "data-health-confidence",
-            "title": "Overall confidence",
-            "description": "Confidence is derived from critical evidence domains without a numeric health score.",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "confidence",
-                "type": "nominal",
-                "title": "Confidence"
-              },
-              "y": {
-                "field": "confidence",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Dashboard"
-              },
-              "color": {
-                "field": "confidence",
-                "type": "nominal"
-              }
-            }
           },
           {
             "id": "data-health-summary",
