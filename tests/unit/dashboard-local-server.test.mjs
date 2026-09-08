@@ -154,6 +154,7 @@ test("local dashboard server composes package dashboards and reloads after updat
         rows: [{
           token: syntheticToken,
           note: ["github", "pat", "abcdefghijklmnopqrstuvwxyz123456"].join("_"),
+          detail: "x".repeat(2_048),
         }],
       },
     }));
@@ -203,8 +204,13 @@ test("local dashboard server composes package dashboards and reloads after updat
     const sourcesResponse = await fetch(`${preview.url}/sources.json`);
     assert.deepEqual(await sourcesResponse.json(), {
       repositories: {
-        rows: [{ token: "[REDACTED]", note: "[REDACTED]" }],
+        rows: [{ token: "[REDACTED]", note: "[REDACTED]", detail: "x".repeat(2_048) }],
       },
+    });
+    const splitSourceResponse = await fetch(`${preview.url}/sources/repositories.json`);
+    assert.equal(splitSourceResponse.headers.get("content-encoding"), "gzip");
+    assert.deepEqual(await splitSourceResponse.json(), {
+      rows: [{ token: "[REDACTED]", note: "[REDACTED]", detail: "x".repeat(2_048) }],
     });
 
     test("repository skill discovery includes supported workspace skill directories", async () => {

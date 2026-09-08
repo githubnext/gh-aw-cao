@@ -1854,11 +1854,7 @@ export async function startDashboardServer({
         return;
       }
       if (pathname === "/sources/manifest.json") {
-        response.writeHead(200, {
-          "Cache-Control": "no-store",
-          "Content-Type": contentTypes.get(".json"),
-        });
-        response.end(request.method === "HEAD" ? undefined : sourceManifestContent);
+        sendContent(request, response, contentTypes.get(".json"), sourceManifestContent);
         return;
       }
       const splitSourceMatch = pathname.match(/^\/sources\/([a-z0-9-]+)\.json$/);
@@ -1868,11 +1864,7 @@ export async function startDashboardServer({
           response.writeHead(404).end("Not found\n");
           return;
         }
-        response.writeHead(200, {
-          "Cache-Control": "no-store",
-          "Content-Type": contentTypes.get(".json"),
-        });
-        response.end(request.method === "HEAD" ? undefined : content);
+        sendContent(request, response, contentTypes.get(".json"), content);
         return;
       }
       const candidate = resolve(resolvedSiteRoot, `.${pathname}`);
