@@ -317,6 +317,8 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-view-id="data-health-summary"]')?.previousElementSibling).toBeNull();
     expect(page?.querySelector('.layout-section')).toBeNull();
     expect(page?.querySelectorAll('.view-disclosure[data-disclosure="supplemental"]')).toHaveLength(11);
+    expect(page?.querySelector('[data-view-id="data-health-domains"] table')).toBeNull();
+    expect(page?.querySelector('[data-view-id="data-health-domains"] .data-health-domain-list')).not.toBeNull();
     expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');

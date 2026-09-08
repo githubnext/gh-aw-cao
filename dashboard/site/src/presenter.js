@@ -2154,7 +2154,7 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
   if (!rendered) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag);
   }
-  return ['summary-grid', 'readiness-verdict'].includes(elementName)
+  return ['summary-grid', 'readiness-verdict', 'data-health-domain-list'].includes(elementName)
     ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered;
 }
