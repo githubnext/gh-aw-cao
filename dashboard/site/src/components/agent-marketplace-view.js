@@ -4,6 +4,7 @@ import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { renderIconSpan, formatShortDate, renderFilterSelect, renderSearchInput } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
+import { textValue } from './count-formatters.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
 const STALE_HOURS = 24;
@@ -212,10 +213,10 @@ export function agentSmellNotifications(workflows, assignments, securityObservat
  */
 export function smellObservationNotifications(rows, options) {
   return rows.map((row) => {
-    const observedAt = Date.parse(text(row['observed-at']));
-    const severity = text(row['smell-severity']);
+    const observedAt = Date.parse(textValue(row['observed-at']));
+    const severity = textValue(row['smell-severity']);
     const qualifiedRepository = repositoryOwner(row);
-    const workflow = text(row.workflow);
+    const workflow = textValue(row.workflow);
     const navigationHref = options.signalType === 'workflow-smell' && qualifiedRepository !== 'Unknown owner' && workflow
       ? `#page-workflow-runtime?workflow=${encodeURIComponent(`${qualifiedRepository}:${workflow}`)}`
       : options.navigationHref;
@@ -225,12 +226,12 @@ export function smellObservationNotifications(rows, options) {
       ?? findLink(row, 'repository-link');
     const evidenceHref = evidenceLink?.externalHref ?? evidenceLink?.href;
     return {
-      'attention-signal-id': `${options.signalType}:${text(row['smell-observation-id']) || text(row['smell-id'])}`,
+      'attention-signal-id': `${options.signalType}:${textValue(row['smell-observation-id']) || textValue(row['smell-id'])}`,
       'signal-type': options.signalType,
-      objective: `${options.objectivePrefix}: ${text(row['smell-name']) || text(row['smell-id']) || 'Smell detected'}`,
+      objective: `${options.objectivePrefix}: ${textValue(row['smell-name']) || textValue(row['smell-id']) || 'Smell detected'}`,
       scope: repositoryOwner(row),
-      reason: text(row['smell-summary']) || text(row['smell-evidence']) || 'Review the supporting evidence.',
-      action: text(row['smell-recommendation']) || 'Review and remediate the finding.',
+      reason: textValue(row['smell-summary']) || textValue(row['smell-evidence']) || 'Review the supporting evidence.',
+      action: textValue(row['smell-recommendation']) || 'Review and remediate the finding.',
       'expected-actor': options.expectedActor,
       'age-seconds': Number.isFinite(observedAt) ? Math.max(0, Math.floor((Date.now() - observedAt) / 1000)) : 0,
       'consequence-tier': severity === 'high' ? 'high' : severity === 'low' ? 'low' : 'medium',
@@ -276,7 +277,7 @@ function catalogAgents(workflows, assignmentRows, securityObservations = [], sme
   /** @type {Map<string, Record<string, unknown>[]>} */
   const groups = new Map();
   for (const workflow of workflows) {
-    const packageId = text(workflow.package);
+    const packageId = textValue(workflow.package);
     const packaged = packageId && packageId !== 'standalone';
     const key = packaged ? `package:${repositoryOwner(workflow)}:${packageId}` : `workflow:${workflowKey(workflow)}`;
     const entries = groups.get(key) ?? [];
@@ -284,27 +285,27 @@ function catalogAgents(workflows, assignmentRows, securityObservations = [], sme
     groups.set(key, entries);
   }
   return [...groups].map(([key, members]) => {
-    const primary = members.find((member) => text(member['workflow-role']) === 'orchestrator') ?? members[0];
+    const primary = members.find((member) => textValue(member['workflow-role']) === 'orchestrator') ?? members[0];
     const memberKeys = new Set(members.map(workflowKey));
     const runtime = assignments.filter((assignment) => memberKeys.has(assignment.workItemId.replace(/:run:.+$/, '')));
     const totalRuntimeSeconds = runtime.reduce((total, assignment) => total + assignment.totalRuntimeSeconds, 0);
     const runCount = runtime.reduce((total, assignment) => total + assignment.runCount, 0);
     const observed = runtime.map((assignment) => assignment.observedAt).filter(Boolean).sort().at(-1) ?? '';
     const packageEntry = key.startsWith('package:');
-    const orchestratorCount = members.filter((member) => text(member['workflow-role']) === 'orchestrator').length;
-    const workerCount = members.filter((member) => text(member['workflow-role']) === 'worker').length;
+    const orchestratorCount = members.filter((member) => textValue(member['workflow-role']) === 'orchestrator').length;
+    const workerCount = members.filter((member) => textValue(member['workflow-role']) === 'worker').length;
     const permissions = [...new Set(members.flatMap(workflowPermissions))];
     const states = runtime.map((assignment) => assignment.state);
     const state = states.includes('active') ? 'active'
       : states.includes('blocked') ? 'blocked'
-        : text(primary['workflow-active']) === 'false' ? 'disabled' : 'available';
+        : textValue(primary['workflow-active']) === 'false' ? 'disabled' : 'available';
     return {
       id: key,
-      name: packageEntry ? text(primary['package-name']) || text(primary['workflow-name']) : text(primary['workflow-name']) || text(primary.workflow),
-      icon: text(primary['package-icon']) || (packageEntry ? 'package' : 'workflow'),
-      description: text(primary['agent-description']) || text(primary['package-description']) || text(primary['workflow-description']) || (packageEntry
+      name: packageEntry ? textValue(primary['package-name']) || textValue(primary['workflow-name']) : textValue(primary['workflow-name']) || textValue(primary.workflow),
+      icon: textValue(primary['package-icon']) || (packageEntry ? 'package' : 'workflow'),
+      description: textValue(primary['agent-description']) || textValue(primary['package-description']) || textValue(primary['workflow-description']) || (packageEntry
         ? `${members.length} workflow${members.length === 1 ? '' : 's'} with ${orchestratorCount} orchestrator${orchestratorCount === 1 ? '' : 's'}${workerCount ? ` and ${workerCount} worker${workerCount === 1 ? '' : 's'}` : ''}.`
-        : `${text(primary['workflow-name']) || 'Agent'} automation.`),
+        : `${textValue(primary['workflow-name']) || 'Agent'} automation.`),
       permissions: permissions.join(', ') || 'Not declared',
       state,
       owner: repositoryOwner(primary),
@@ -321,8 +322,8 @@ function catalogAgents(workflows, assignmentRows, securityObservations = [], sme
       workflowKeys: [...memberKeys],
       smellReasons: smellReasons([...memberKeys], securityObservations, smellObservations),
       members: members.map((member) => ({
-        name: text(member['workflow-name']) || text(member.workflow),
-        role: text(member['workflow-role']) || 'standalone'
+        name: textValue(member['workflow-name']) || textValue(member.workflow),
+        role: textValue(member['workflow-role']) || 'standalone'
       }))
     };
   }).filter((agent) => isPresentableAgentName(agent.name));
@@ -340,7 +341,7 @@ function isPresentableAgentName(name) {
 
 /** @param {Record<string, unknown>} workflow */
 function workflowKey(workflow) {
-  return `${text(workflow.organization)}/${text(workflow.repository)}:${text(workflow.workflow)}`.toLowerCase();
+  return `${textValue(workflow.organization)}/${textValue(workflow.repository)}:${textValue(workflow.workflow)}`.toLowerCase();
 }
 
 /** @param {Record<string, unknown>} workflow */
@@ -370,12 +371,12 @@ function normalizeAgent(row) {
   const observed = String(row['last-observed-at'] ?? row['observed-at'] ?? '');
   const ageHours = observed ? (Date.now() - Date.parse(observed)) / 3_600_000 : Number.POSITIVE_INFINITY;
   return {
-    id: text(row['agent-id']) || text(row['agent-name']) || 'unknown-agent',
-    name: text(row['agent-name']) || 'Unknown agent',
-    icon: text(row['agent-icon']) || 'copilot',
-    description: text(row['agent-description']) || 'Agent assignment and runtime telemetry.',
-    permissions: text(row.permissions) || 'Not declared',
-    state: text(row['agent-state']) || 'unknown',
+    id: textValue(row['agent-id']) || textValue(row['agent-name']) || 'unknown-agent',
+    name: textValue(row['agent-name']) || 'Unknown agent',
+    icon: textValue(row['agent-icon']) || 'copilot',
+    description: textValue(row['agent-description']) || 'Agent assignment and runtime telemetry.',
+    permissions: textValue(row.permissions) || 'Not declared',
+    state: textValue(row['agent-state']) || 'unknown',
     owner: repositoryOwner(row),
     repositoryLink: findLink(row, 'repository-link'),
     totalRuntimeSeconds,
@@ -385,8 +386,8 @@ function normalizeAgent(row) {
     slow: Boolean(row['long-running']) || (Number(row['run-count']) > 0 && totalRuntimeSeconds / Number(row['run-count']) >= LONG_RUNNING_SECONDS),
     stale: Boolean(row.stale) || !Number.isFinite(Date.parse(observed)) || ageHours >= STALE_HOURS,
     kind: 'standalone',
-    workItemId: text(row['work-item-id']).toLowerCase(),
-    workflowKeys: [text(row['work-item-id']).replace(/:run:.+$/, '').toLowerCase()].filter(Boolean),
+    workItemId: textValue(row['work-item-id']).toLowerCase(),
+    workflowKeys: [textValue(row['work-item-id']).replace(/:run:.+$/, '').toLowerCase()].filter(Boolean),
     smellReasons: [],
     observedAt: observed,
     members: /** @type {AgentMember[]} */ ([])
@@ -397,10 +398,10 @@ function normalizeAgent(row) {
 function threatReasons(agentWorkflowKeys, observations) {
   const keys = new Set(agentWorkflowKeys.map(threatWorkflowKey));
   return [...new Set(observations
-    .filter((row) => text(row['security-feature']) === 'threat-detection'
-      && text(row['security-status']) === 'detected'
+    .filter((row) => textValue(row['security-feature']) === 'threat-detection'
+      && textValue(row['security-status']) === 'detected'
       && keys.has(threatWorkflowKey(workflowKey(row))))
-    .map((row) => `${text(row['security-signal']) || 'Threat'} detected`))];
+    .map((row) => `${textValue(row['security-signal']) || 'Threat'} detected`))];
 }
 
 /**
@@ -413,8 +414,8 @@ function smellReasons(agentWorkflowKeys, securityObservations, smellObservations
   const structured = smellObservations
     .filter((row) => keys.has(threatWorkflowKey(workflowKey(row))))
     .map((row) => {
-      const name = text(row['smell-name']) || text(row['smell-id']) || 'Agent smell';
-      const summary = text(row['smell-summary']);
+      const name = textValue(row['smell-name']) || textValue(row['smell-id']) || 'Agent smell';
+      const summary = textValue(row['smell-summary']);
       return summary ? `${name}: ${summary}` : name;
     });
   return [...new Set([...structured, ...(smellObservations.length > 0 ? [] : threatReasons(agentWorkflowKeys, securityObservations))])];
@@ -425,7 +426,7 @@ function smellSeverity(agentWorkflowKeys, observations) {
   const keys = new Set(agentWorkflowKeys.map(threatWorkflowKey));
   const severities = observations
     .filter((row) => keys.has(threatWorkflowKey(workflowKey(row))))
-    .map((row) => text(row['smell-severity']));
+    .map((row) => textValue(row['smell-severity']));
   if (severities.includes('high')) return 'high';
   if (severities.includes('medium')) return 'medium';
   if (severities.includes('low')) return 'low';
@@ -447,16 +448,11 @@ function agentComparator(sort) {
       : right.totalRuntimeSeconds - left.totalRuntimeSeconds || left.name.localeCompare(right.name);
 }
 
-/** @param {unknown} value */
-function text(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 /** @param {Record<string, unknown>} row */
 function repositoryOwner(row) {
-  const organization = text(row.organization);
-  const repository = text(row.repository);
+  const organization = textValue(row.organization);
+  const repository = textValue(row.repository);
   if (organization && repository) return `${organization}/${repository}`;
-  const workItemRepository = text(row['work-item-id']).split(':')[0];
+  const workItemRepository = textValue(row['work-item-id']).split(':')[0];
   return organization || repository || (/^[^/\s]+\/[^/\s]+$/.test(workItemRepository) ? workItemRepository : 'Unknown owner');
 }
