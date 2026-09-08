@@ -172,7 +172,10 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     ].join(",");
     const targets = [...document.querySelectorAll(selector)].flatMap((element) => {
       const wrappingLabel = element.closest("label");
-      const hitArea = wrappingLabel?.contains(element) ? wrappingLabel : element;
+      const explicitLabel = (!wrappingLabel && element.id && element.matches("input, select, textarea"))
+        ? document.querySelector(`label[for="${CSS.escape(element.id)}"]`)
+        : null;
+      const hitArea = (wrappingLabel?.contains(element) ? wrappingLabel : explicitLabel) ?? element;
       const style = getComputedStyle(hitArea);
       const rectangle = hitArea.getBoundingClientRect();
       if (
@@ -182,9 +185,11 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
         || rectangle.width === 0
         || rectangle.height === 0
       ) return [];
+      const labelText = hitArea instanceof HTMLLabelElement ? hitArea.textContent : null;
       return [{
         tag: element.tagName.toLowerCase(),
         name: element.getAttribute("aria-label")
+          || labelText?.replace(/\s+/g, " ").trim()
           || element.textContent?.replace(/\s+/g, " ").trim()
           || element.getAttribute("title")
           || element.getAttribute("name")
