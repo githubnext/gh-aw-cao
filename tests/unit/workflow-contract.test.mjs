@@ -2968,7 +2968,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
-  assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?version: v0\.88\.7/);
+  assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?version: v0\.88\.8/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
   assert.match(deployedWorkflows, /usageArtifactGaps/);
