@@ -661,7 +661,7 @@ dashboard:
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
 
     const packagesView = packagesPage.definition.views[0];
-    const workflowsView = workflowsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packaged-workflows');
+    const workflowsView = workflowsPage.definition.views[0];
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
     for (const view of [packagesView, workflowsView, runsView]) {
       expect(view).toMatchObject({
@@ -675,6 +675,9 @@ dashboard:
     expect(packagesView.data.source).toBe('package-inventory');
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs');
+    expect(packagesPage.definition.views).toHaveLength(1);
+    expect(workflowsPage.definition.views).toHaveLength(1);
+    expect(runsPage.definition.views).toHaveLength(1);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -2388,15 +2391,7 @@ dashboard:
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "workflows".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "runs".'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "usage".'
+            message: 'built-in page "packages" requires declarative definitions for source "package-inventory".'
           })
         ])
       );
