@@ -374,7 +374,7 @@ describe('UI elements', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTableRoadmap');
+    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
     expect(rendered?.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-tasks')).toBeNull();

@@ -64,6 +64,8 @@ resources:
     destination: .github/aw/dashboard/site/src/horizon.js
   - source: site/src/loading-progress.js
     destination: .github/aw/dashboard/site/src/loading-progress.js
+  - source: site/src/notification-stories.js
+    destination: .github/aw/dashboard/site/src/notification-stories.js
   - source: site/src/octicon-names.json
     destination: .github/aw/dashboard/site/src/octicon-names.json
   - source: site/src/octicons.js
@@ -228,8 +230,12 @@ resources:
     destination: .github/aw/dashboard/site/src/components/work-project-view.js
   - source: site/src/components/work-view-composition.js
     destination: .github/aw/dashboard/site/src/components/work-view-composition.js
+  - source: site/src/components/work-view-navigation.js
+    destination: .github/aw/dashboard/site/src/components/work-view-navigation.js
   - source: site/src/components/work-view-primitives.js
     destination: .github/aw/dashboard/site/src/components/work-view-primitives.js
+  - source: site/src/components/work-view-route-config.js
+    destination: .github/aw/dashboard/site/src/components/work-view-route-config.js
   - source: site/src/components/work-view-sections.js
     destination: .github/aw/dashboard/site/src/components/work-view-sections.js
   - source: site/src/components/workflow-badges.js

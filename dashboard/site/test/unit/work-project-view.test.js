@@ -4,6 +4,8 @@ import { renderWorkProjectView } from '../../src/components/work-project-view.js
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
+import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
+import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
 
 const item = {
   name: 'Dependabot release train',
@@ -76,6 +78,37 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('.work-roadmap-end')?.getAttribute('style')).toContain('--work-stop: 100.00%');
   });
 
+  it('derives reusable work route navigation from declarative body selection', () => {
+    expect(workRoutePageConfigForBody('board')).toMatchObject({
+      key: 'board',
+      pageId: 'work',
+      href: '#page-work',
+      title: 'Board'
+    });
+    expect(workRoutePageConfigForBody('tasks')).toMatchObject({
+      key: 'tasks',
+      pageId: 'work-tasks',
+      href: '#page-work-tasks',
+      title: 'Tasks'
+    });
+    expect(workRoutePageConfigForBody('roadmap')).toMatchObject({
+      key: 'roadmap',
+      pageId: 'work-roadmap',
+      href: '#page-work-roadmap',
+      title: 'Roadmap'
+    });
+    const rendered = renderWorkViewNavigation(workRoutePageConfigs(), 'tasks');
+    expect([...rendered.querySelectorAll('a')].map((link) => ({
+      href: link.getAttribute('href'),
+      current: link.getAttribute('aria-current'),
+      text: link.textContent
+    }))).toEqual([
+      { href: '#page-work', current: null, text: 'Board' },
+      { href: '#page-work-tasks', current: 'page', text: 'Tasks' },
+      { href: '#page-work-roadmap', current: null, text: 'Roadmap' }
+    ]);
+  });
+
   it('renders a compact custom Table with configurable sorting and mobile field selection', () => {
     const rows = [
       { 'work-item-id': 'alpha', name: 'Alpha task', owner: 'Zed', scope: 'github/alpha', 'lifecycle-state': 'waiting', 'started-at': '2026-08-29T09:00:00Z' },
@@ -109,6 +142,29 @@ describe('work project view primitives', () => {
 
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Sort by owned by"]')).click();
     expect([...rendered.querySelectorAll('.work-task-row .work-task-title strong')].map((title) => title.textContent)).toEqual(['Beta task', 'Alpha task']);
+  });
+
+  it('highlights the first rendered section when declarative sections override body', () => {
+    const rendered = renderWorkProjectView(/** @type {any} */ ({
+      pageId: 'work-custom',
+      title: 'Custom work',
+      sources: {
+        'work-items': {
+          rows: [
+            { 'work-item-id': 'task', name: 'Section-driven task', 'lifecycle-state': 'active' }
+          ]
+        }
+      },
+      elementConfig: {
+        body: 'roadmap',
+        sections: ['tasks']
+      }
+    }));
+
+    expect(rendered.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBeNull();
+    expect(rendered.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered.querySelector('.work-roadmap')).toBeNull();
   });
 
   it('presents telemetry states as todo, in progress, needs review, and done', () => {
@@ -147,7 +203,7 @@ describe('work project view primitives', () => {
     }));
     const tabs = [...rendered.querySelectorAll('.work-board-group-tab')];
 
-    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('BoardTableRoadmap');
+    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
     expect(tabs.map((tab) => tab.textContent)).toEqual(['Todo1', 'In progress0', 'Needs review1', 'Done0']);
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
     expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Needs review');

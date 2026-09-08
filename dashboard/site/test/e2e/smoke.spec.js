@@ -649,7 +649,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await workFilters.getByRole('button', { name: 'Clear work filters' }).click();
   await expect(workPage.locator('.work-card')).toHaveCount(2);
 
-  await workPage.getByRole('link', { name: 'Table' }).click();
+  await workPage.getByRole('link', { name: 'Tasks' }).click();
   await expect(page).toHaveURL(/#page-work-tasks$/);
   const tasksPage = page.locator('[data-page-id="work-tasks"]');
   await expect(tasksPage.locator('.work-tasks')).toBeVisible();
@@ -794,7 +794,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   expect(detailBox?.height).toBeCloseTo(844, 0);
   await boardPage.getByRole('button', { name: 'Close Prepare rollout details' }).click();
 
-  await boardPage.getByRole('link', { name: 'Table' }).click();
+  await boardPage.getByRole('link', { name: 'Tasks' }).click();
   const tablePage = page.locator('[data-page-id="work-tasks"]');
   await expect(tablePage.locator('.work-task-table-header')).toBeHidden();
   await expect(tablePage.locator('.work-task-row').first()).toBeVisible();
