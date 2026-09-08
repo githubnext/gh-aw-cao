@@ -358,9 +358,8 @@ export function buildCatchUpQueue(stories, previous = {}) {
   const additions = stories.map((story) => story.id).filter((id) => !preservedIds.has(id) && isQueueable(id));
   const queue = [...preserved, ...additions];
 
-  const newlySeen = additions.filter((id) => !seen.has(id));
-  const size = Math.max(Number(previous.size) || 0, seen.size) + newlySeen.length;
   for (const id of additions) seen.add(id);
+  const size = Math.max(Number(previous.size) || 0, seen.size);
 
   return { queue, size, seen };
 }

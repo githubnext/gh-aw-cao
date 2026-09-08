@@ -403,6 +403,15 @@ describe('catch up queue construction', () => {
     expect(size).toBe(3);
   });
 
+  it('does not double-count a returning story while migrating legacy state', () => {
+    const previous = { queue: [], size: 3, done: ['story-a'], later: ['story-b'] };
+
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous);
+
+    expect(queue).toEqual(['story-c']);
+    expect(size).toBe(3);
+  });
+
   it('drops queued stories that disappear from the current data without shrinking the recorded size', () => {
     const previous = { queue: ['story-a', 'story-b', 'story-c'], size: 3, done: [], later: [] };
 
