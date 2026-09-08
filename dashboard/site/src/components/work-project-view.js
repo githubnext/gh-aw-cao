@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { textValue, titleCase } from './count-formatters.js';
-import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderMobileSheetHeader, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -98,14 +98,9 @@ function renderWorkFilterBar(items, onChange) {
     type: 'button',
     className: 'work-filter-mobile-toggle'
   }, renderIconSpan('work-filter-mobile-icon', 'filter', { ariaHidden: true }), 'Filters'));
-  const closeMobileFilters = renderCloseButton({
-    className: 'work-mobile-sheet-close',
-    label: 'Close work filters',
-    onClick: () => closeMobileSheet()
-  });
   const facets = h('div', { className: 'work-filter-facets' },
     h('div', { className: 'work-filter-sheet-panel' },
-      h('header', { className: 'work-mobile-sheet-header' }, h('strong', null, 'Filter work'), closeMobileFilters),
+      renderMobileSheetHeader('Filter work', 'Close work filters', () => closeMobileSheet()),
       state, repository, owner, packageName
     )
   );
@@ -306,14 +301,7 @@ function renderTasks(items, section, onUpdate) {
   ];
   const settingsSheet = h('div', { className: 'work-task-settings-sheet' },
     h('div', { className: 'work-task-settings-panel' },
-      h('header', { className: 'work-mobile-sheet-header' },
-        h('strong', null, 'Table settings'),
-        renderCloseButton({
-          className: 'work-mobile-sheet-close',
-          label: 'Close Table settings',
-          onClick: () => closeSettings()
-        })
-      ),
+      renderMobileSheetHeader('Table settings', 'Close Table settings', () => closeSettings()),
       h('fieldset', { className: 'work-mobile-field-settings' },
         h('legend', null, 'Fields shown'),
         ...fieldOptions.map(({ value, label, checked }) => h('label', null,

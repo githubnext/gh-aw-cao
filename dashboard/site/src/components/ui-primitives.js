@@ -454,6 +454,23 @@ export function renderCloseButton({ className, label, onClick }) {
 }
 
 /**
+ * Renders the shared `<header class="work-mobile-sheet-header"><strong>{title}</strong>{close}</header>`
+ * pattern used by the work-project mobile filter sheet and mobile
+ * table-settings sheet, which both pair a bold title with a
+ * {@link renderCloseButton} that dismisses the sheet.
+ * @param {string} title
+ * @param {string} closeLabel
+ * @param {() => void} onClose
+ * @returns {HTMLElement}
+ */
+export function renderMobileSheetHeader(title, closeLabel, onClose) {
+  return h('header', { className: 'work-mobile-sheet-header' },
+    h('strong', null, title),
+    renderCloseButton({ className: 'work-mobile-sheet-close', label: closeLabel, onClick: onClose })
+  );
+}
+
+/**
  * Creates a `<dialog>` element with open/close helpers that fall back to the
  * `open` attribute on runtimes without `HTMLDialogElement.showModal`/`close`
  * support. Shared by the table intent-action prompt preview and the
