@@ -6589,33 +6589,6 @@
             "layout": "full"
           },
           {
-            "id": "data-health-schema",
-            "disclosure-label": "Data shape preview",
-            "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-schema"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No cached sources are available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "schema",
-                  "type": "nominal",
-                  "title": "Inferred shape"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
             "id": "data-health-provenance",
             "disclosure-label": "Collection provenance",
             "disclosure": "supplemental",
