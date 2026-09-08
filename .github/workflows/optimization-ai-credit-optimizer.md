@@ -157,7 +157,7 @@ steps:
       rm -f "$RAW_LOGS"
 
       BEFORE_COUNT=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)
-      if [[ "$TARGET_REPO" != "github/gh-aw-cao" ]]; then
+      if [[ "$TARGET_REPO" != "githubnext/gh-aw-cao" ]]; then
         jq '
             (.runs // [])
             | map(select(
@@ -236,7 +236,7 @@ steps:
         echo "ℹ️ No previous optimization history found."
       fi
 
-source: github/gh-aw-cao/.github/workflows/optimization-ai-credit-optimizer.md@main
+source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-optimizer.md@main
 ---
 
 {{#runtime-import? .github/cao/optimization.md}}
