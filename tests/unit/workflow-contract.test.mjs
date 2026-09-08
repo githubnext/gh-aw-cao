@@ -40,8 +40,8 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
 
   for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
-    assert.match(source, /github\/gh-aw-actions\/setup-cli@[0-9a-f]{40} # v0\.88\.6/);
-    assert.match(source, /version: v0\.88\.6/);
+    assert.match(source, /github\/gh-aw-actions\/setup-cli@[0-9a-f]{40} # v0\.88\.7/);
+    assert.match(source, /version: v0\.88\.7/);
   }
 });
 
@@ -2967,7 +2967,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
-  assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?version: v0\.88\.6/);
+  assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?version: v0\.88\.7/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
   assert.match(deployedWorkflows, /usageArtifactGaps/);
