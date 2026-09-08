@@ -29,7 +29,7 @@ async function writeOutcome(outcome) {
 
 function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn) {
   return new Promise((resolve, reject) => {
-    const child = execute("gh", [
+    const args = [
       "aw", "logs", "--json", "--audit",
       "--output", outputDirectory, "--summary-file", "",
       "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
@@ -37,7 +37,9 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
       "--count", String(runLimit), "--timeout", "15",
       "--max-github-api-rate-limit", "-2000", "--max-storage", "1200",
       ...targets,
-    ], { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    ];
+    log.info`Calling gh aw logs with arguments: ${JSON.stringify(args.slice(2))}`;
+    const child = execute("gh", args, { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];
     let outputBytes = 0;
@@ -175,7 +177,6 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       .map((entry) => `${repository}/.github/workflows/${entry.name}`)
       .sort();
     const workflowLabel = targets.length === 1 ? "workflow" : "workflows";
-    log.info`Calling gh aw logs --json --audit for ${targets.length} control-repository ${workflowLabel}`;
     const { output: raw, stderr } = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
     if (stderr) log.info`${stderr}`;
     const snapshot = JSON.parse(raw);
