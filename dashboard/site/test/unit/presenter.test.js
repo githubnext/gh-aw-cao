@@ -2374,53 +2374,12 @@ describe('presenter built-in and custom pages', () => {
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
       {
-        id: 'repositories-run-health',
-        mark: 'chart',
-        chart: 'line',
-        data: { source: 'runs' }
-      },
-      {
-        id: 'repository-scope',
-        title: 'Repository scope',
-        data: { sources: ['repository-summary', 'repositories', 'runs', 'usage', 'operational-values'] },
-        mark: 'element',
-        element: 'context-summary'
-      },
-      {
-        id: 'repository-discovery-coverage',
-        data: { sources: ['repository-coverage'] },
-        mark: 'element',
-        element: 'summary-grid'
-      },
-      {
-        id: 'repositories-by-aic',
-        title: 'AI Credit usage by AW repository',
-        description: 'Read-only usage reported by AW runs, deduplicated by workflow run.',
-        data: {
-          source: 'usage',
-          'order-by': [{ field: 'total-aic', direction: 'desc' }]
-        },
-        mark: 'chart',
-        chart: 'pie',
-        encoding: {
-          x: { field: 'repository', type: 'nominal', title: 'Repository' },
-          y: {
-            field: 'aic',
-            type: 'quantitative',
-            aggregate: 'sum',
-            as: 'total-aic',
-            title: 'Total AIC',
-            unit: 'aic'
-          },
-          href: { field: 'repository-link', type: 'nominal' }
-        }
-      },
-      {
         id: 'repositories-activity',
-        'disclosure-label': 'Activity by repository',
+        title: 'Activity by repository',
         description: 'Repository-local execution health and all attributed package or local-workflow outcomes.',
         data: { source: 'repository-activity' },
         mark: 'table',
+        layout: 'full',
         controls: 'static',
         'empty-message': 'No repositories discovered.',
         encoding: {

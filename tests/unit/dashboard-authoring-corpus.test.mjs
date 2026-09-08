@@ -55,6 +55,11 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.mark === "table"
         && summary.id === "data-health-summary"
         && summary.encoding?.columns?.some((column) => column.field === "confidence" && column.display === "status");
+      const isRepositoriesActivity = page.id === "repositories"
+        && views.length === 1
+        && summary.id === "repositories-activity"
+        && summary.mark === "table"
+        && summary.layout === "full";
       const isAttentionFirstHome = page.id === "home"
         && page["class-name"] === "dashboard-next-home-page"
         && summary.id === "home-attention"
@@ -88,6 +93,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isWorkProjectView
           || isInsightsOverview
           || isDataHealthConfidenceSummary
+          || isRepositoriesActivity
           || isCatchUpHome
           || isAttentionFirstHome,
         `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`

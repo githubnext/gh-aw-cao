@@ -119,21 +119,13 @@ describe('repositories view', () => {
     ]));
   });
 
-  it('derives the configured scope and renders it through the reusable context summary', () => {
+  it('derives the configured scope and renders activity as the only full view', () => {
     const viewContext = context();
     const scope = /** @type {HTMLElement} */ (renderUiElement('context-summary', viewContext));
     const repositoriesPage = dashboard.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'repositories'
     );
-    const summary = repositoriesPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repository-scope'
-    );
-    const usage = repositoriesPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repositories-by-aic'
-    );
-    const activity = repositoriesPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repositories-activity'
-    );
+    const [activity] = repositoriesPage.definition.views;
 
     expect(scope.textContent).toContain('Repository scope · 3 configured');
     expect(scope.textContent).toContain('Complete 24-hour Actions run window');
@@ -143,26 +135,13 @@ describe('repositories view', () => {
       '#page-repository-detail?repository=octo%2Ffailing',
       '#page-repository-detail?repository=octo%2Fquiet'
     ]);
-    expect(summary).toMatchObject({
-      data: {
-        sources: ['repository-summary', 'repositories', 'runs', 'usage', 'operational-values']
-      },
-      mark: 'element',
-      element: 'context-summary'
-    });
-    expect(usage).toMatchObject({
-      data: { source: 'usage' },
-      mark: 'chart',
-      chart: 'pie',
-      encoding: {
-        x: { field: 'repository' },
-        y: { field: 'aic', aggregate: 'sum', as: 'total-aic', unit: 'aic' },
-        href: { field: 'repository-link' }
-      }
-    });
+    expect(repositoriesPage.definition.views).toHaveLength(1);
     expect(activity).toMatchObject({
+      id: 'repositories-activity',
+      title: 'Activity by repository',
       data: { source: 'repository-activity' },
       mark: 'table',
+      layout: 'full',
       controls: 'static',
       encoding: {
         columns: [
@@ -178,6 +157,8 @@ describe('repositories view', () => {
         href: { field: 'repository-link' }
       }
     });
+    expect(activity).not.toHaveProperty('disclosure');
+    expect(activity).not.toHaveProperty('disclosure-label');
   });
 
   it('keeps unavailable run and usage evidence explicit', () => {
