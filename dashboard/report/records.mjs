@@ -345,9 +345,15 @@ async function collectDashboardRecordsImpl({
     return response.text();
   }
 
+  const reportRepositoryNames = [...new Set([
+    repository,
+    ...(deployedInventory.workflows || []).map((workflow) => workflow.repository),
+    ...(deployedInventory.allowedRepositories || []),
+    ...allowedRepositories,
+  ].filter(Boolean))].sort();
   const remoteWorkflowRepositories = [...allowedRepositories]
     .filter((repositoryName) => repositoryName !== repository.toLowerCase());
-  const remoteRepositoryStates = await mapWithConcurrency(remoteWorkflowRepositories, 4, async (repositoryName) => {
+  const repositoryStates = await mapWithConcurrency(reportRepositoryNames, 4, async (repositoryName) => {
     try {
       const metadata = await github(`/repos/${repositoryName}`);
       const visibility = ["public", "private", "internal"].includes(metadata.visibility)
@@ -368,13 +374,15 @@ async function collectDashboardRecordsImpl({
       return { repository: repositoryName, complete: false, visibility: "unknown", reason: error.message };
     }
   });
-  const remoteRepositoryStateByName = new Map(
-    remoteRepositoryStates.map((state) => [state.repository, state]),
+  const repositoryStateByName = new Map(
+    repositoryStates.map((state) => [state.repository.toLowerCase(), state]),
   );
+  const controlRepositoryState = repositoryStateByName.get(repository.toLowerCase());
+  if (!controlRepositoryState?.complete) {
+    throw new Error(controlRepositoryState?.reason || "Control repository visibility is unavailable");
+  }
   const hasPrivateData = deployedInventory.includePrivate === true
-    || (deployedInventory.workflows || []).some((workflow) => workflow.visibility === "private")
-    || (deployedInventory.bundles || []).some((bundle) => bundle.visibility === "private")
-    || remoteRepositoryStates.some((state) => state.visibility === "private" || state.visibility === "internal");
+    || repositoryStates.some((state) => state.visibility === "private" || state.visibility === "internal");
   if (hasPrivateData) {
     const pages = await github(`/repos/${owner}/${repo}/pages`, pagesToken);
     if (pages.public !== false) {
@@ -413,7 +421,7 @@ async function collectDashboardRecordsImpl({
   );
 
   async function repositoryWorkflowSource(repositoryName, latestVersion) {
-    const repositoryState = remoteRepositoryStateByName.get(repositoryName);
+    const repositoryState = repositoryStateByName.get(repositoryName.toLowerCase());
     if (!repositoryState?.complete) {
       return {
         repository: repositoryName,
@@ -495,7 +503,7 @@ async function collectDashboardRecordsImpl({
 
   async function repositoryReportSources(repositoryName) {
     const required = repositoryName.toLowerCase() === repository.toLowerCase();
-    const repositoryState = remoteRepositoryStateByName.get(repositoryName.toLowerCase());
+    const repositoryState = repositoryStateByName.get(repositoryName.toLowerCase());
     if (!required && !repositoryState?.complete) {
       return { repository: repositoryName, issues: [], comments: [], artifacts: [] };
     }
@@ -553,12 +561,6 @@ async function collectDashboardRecordsImpl({
     };
   }
 
-  const reportRepositoryNames = [...new Set([
-    repository,
-    ...(deployedInventory.workflows || []).map((workflow) => workflow.repository),
-    ...(deployedInventory.allowedRepositories || []),
-    ...allowedRepositories,
-  ].filter(Boolean))].sort();
   const [reportSources, latestRelease] = await Promise.all([
     mapWithConcurrency(reportRepositoryNames, 4, repositoryReportSources),
     remoteWorkflowRepositories.length > 0
@@ -674,6 +676,8 @@ export async function collectDashboardRecords(options) {
     log.warning`${error.message}`;
     const canRetain = options.previousSnapshot?.containsPrivateData === false;
     const retained = canRetain ? options.previousSnapshot.records : null;
+    const retainedRemoteWorkflows = canRetain && Array.isArray(options.previousSnapshot?.remoteWorkflows)
+      ? options.previousSnapshot.remoteWorkflows : [];
     const snapshotGeneratedAt = options.previousSnapshot?.generatedAt || "";
     const snapshotAge = snapshotGeneratedAt
       ? Math.floor((Date.parse(generatedAt) - Date.parse(snapshotGeneratedAt)) / 1000)
@@ -700,8 +704,7 @@ export async function collectDashboardRecords(options) {
       repository: options.repository,
       inventory: options.inventory,
       records: Array.isArray(retained) ? retained : [],
-      remoteWorkflows: canRetain && Array.isArray(options.previousSnapshot?.remoteWorkflows)
-        ? options.previousSnapshot.remoteWorkflows : [],
+      remoteWorkflows: retainedRemoteWorkflows,
       workflowDiscovery: retainedWorkflowDiscovery,
       error: error.message,
       errorStatus: error.status,
@@ -709,7 +712,7 @@ export async function collectDashboardRecords(options) {
       rateLimitResetAt: error.resetAt,
       snapshotGeneratedAt,
       snapshotAgeSeconds,
-      stale: Array.isArray(retained) && retained.length > 0,
+      stale: (Array.isArray(retained) && retained.length > 0) || retainedRemoteWorkflows.length > 0,
       partial: true,
       containsPrivateData: false,
     };

@@ -13,6 +13,11 @@ const inventory = {
   }],
   standalone: [],
 };
+const publicRepositoryMetadata = {
+  private: false,
+  visibility: "public",
+  default_branch: "main",
+};
 
 test("dashboard records retain durable-output target and run attribution", async () => {
   const issue = {
@@ -29,7 +34,8 @@ test("dashboard records retain durable-output target and run attribution", async
   const fetchImpl = async (input) => {
     const url = new URL(input);
     let value;
-    if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
+    if (url.pathname === "/repos/acme/control" || url.pathname === "/repos/acme/service") value = publicRepositoryMetadata;
+    else if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
     else if (url.pathname === "/repos/acme/control/issues") value = [issue];
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
@@ -100,7 +106,8 @@ test("dashboard records attribute issues from the gh-aw workflow XML marker", as
   const fetchImpl = async (input) => {
     const url = new URL(input);
     let value;
-    if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
+    if (url.pathname === "/repos/acme/control") value = publicRepositoryMetadata;
+    else if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
     else if (url.pathname === "/repos/acme/control/issues") value = [issue];
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
@@ -170,7 +177,8 @@ test("dashboard records retain report model and agent metadata when available", 
   const fetchImpl = async (input) => {
     const url = new URL(input);
     let value;
-    if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
+    if (url.pathname === "/repos/acme/control" || url.pathname === "/repos/acme/service") value = publicRepositoryMetadata;
+    else if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
     else if (url.pathname === "/repos/acme/control/issues") value = [issue];
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
@@ -240,6 +248,9 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   let lockDownloads = 0;
   const fetchImpl = async (input) => {
     const url = new URL(input);
+    if (url.pathname === "/repos/acme/control") {
+      return new Response(JSON.stringify(publicRepositoryMetadata), { status: 200 });
+    }
     if (url.pathname === "/repos/acme/service") {
       return new Response(JSON.stringify({
         private: false,
@@ -379,6 +390,9 @@ test("dashboard records refuse non-public remote workflow metadata on public Pag
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     fetchImpl: async (input) => {
       const url = new URL(input);
+      if (url.pathname === "/repos/acme/control") {
+        return new Response(JSON.stringify(publicRepositoryMetadata), { status: 200 });
+      }
       if (url.pathname === `/repos/acme/${visibility}`) {
         return new Response(JSON.stringify({
           private: visibility === "private",
@@ -406,6 +420,9 @@ test("dashboard records skip remote data when repository visibility is unavailab
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     fetchImpl: async (input) => {
       const url = new URL(input);
+      if (url.pathname === "/repos/acme/control") {
+        return new Response(JSON.stringify(publicRepositoryMetadata), { status: 200 });
+      }
       if (url.pathname === "/repos/acme/private") {
         return new Response(JSON.stringify({ message: "Unavailable" }), { status: 503 });
       }
