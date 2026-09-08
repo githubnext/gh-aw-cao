@@ -75,11 +75,11 @@ describe('UI elements', () => {
     expect(notifications[0]?.priority).toBe(priority);
   });
 
-  it('renders structured smell observations on matching agents', () => {
+  it('renders structured smell observations on matching operations', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',
-      title: 'Agents',
-      description: 'Marketplace-style agent catalog.',
+      title: 'Operations',
+      description: 'Operation package and standalone workflow catalog.',
       sourceNames: ['workflows', 'agent-smells'],
       sources: {
         workflows: {
@@ -109,14 +109,14 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.agent-badge-smell')?.getAttribute('title'))
       .toContain('Agent by default: Deterministic automation would be simpler.');
     expect(rendered?.querySelector('.agent-icon-smell')).toBeNull();
-    expect(rendered?.querySelector('[aria-label="Filter agents by status"]')?.textContent).toContain('Smells (1)');
+    expect(rendered?.querySelector('[aria-label="Filter operations by status"]')?.textContent).toContain('Smells (1)');
   });
 
   it('renders marketplace agent tiles with details, health badges, and sorting', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',
-      title: 'Agents',
-      description: 'Marketplace-style agent catalog.',
+      title: 'Operations',
+      description: 'Operation package and standalone workflow catalog.',
       sourceNames: ['agent-assignments'],
       sources: {
         'agent-assignments': {
@@ -157,7 +157,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2);
     expect(rendered?.querySelector('.agent-marketplace-tile')?.textContent).toContain('Slow');
     expect(rendered?.querySelector('[data-facet="smells"]')).toBeNull();
-    const statusFilter = rendered?.querySelector('[aria-label="Filter agents by status"]');
+    const statusFilter = rendered?.querySelector('[aria-label="Filter operations by status"]');
     expect(statusFilter?.textContent).toBe('All statusesSmells (0)Disabled (0)Slow (1)Stale (2)');
     if (statusFilter instanceof HTMLSelectElement) {
       statusFilter.value = 'slow';
@@ -172,7 +172,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('[aria-label^="Agent smells:"]')).toBeNull();
     expect(rendered?.textContent).toContain('Runs release automation.');
     expect(rendered?.querySelector('[aria-label="View Zeta Agent"]')?.getAttribute('href')).toContain('#page-workflow-runtime?workflow=');
-    const select = rendered?.querySelector('[aria-label="Sort agents"]');
+    const select = rendered?.querySelector('[aria-label="Sort operations"]');
     expect(select).not.toBeNull();
     if (select instanceof HTMLSelectElement) {
       select.value = 'name';
@@ -181,10 +181,10 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Alpha Agent');
   });
 
-  it('populates the agent marketplace from package and standalone workflow inventory', () => {
+  it('populates the operation catalog from package and standalone workflow inventory', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
       pageId: 'agents',
-      title: 'Agents',
+      title: 'Operations',
       sourceNames: ['agent-assignments', 'workflows'],
       sources: {
         'agent-assignments': { source: 'agent-assignments', rows: [], metadata },
@@ -221,10 +221,10 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('[aria-label="Featured"]')).toBeNull();
     expect(rendered?.textContent).not.toContain('available');
     expect(rendered?.querySelector('[aria-label="Agent status legend"]')).toBeNull();
-    expect(rendered?.querySelector('[aria-label="Filter agents by owner"]')?.textContent).toContain('githubnext/gh-aw-cao');
-    const agentFilters = rendered?.querySelector('[aria-label="Agent filters"]');
+    expect(rendered?.querySelector('[aria-label="Filter operations by owner"]')?.textContent).toContain('githubnext/gh-aw-cao');
+    const agentFilters = rendered?.querySelector('[aria-label="Operation catalog filters"]');
     expect(agentFilters).not.toBeNull();
-    expect(agentFilters?.textContent ?? '').toBe('Packages1Standalone1All agents2');
+    expect(agentFilters?.textContent ?? '').toBe('Operation packages1Standalone workflows1All entries2');
     expect(rendered?.querySelector('.agent-marketplace-owner')?.textContent).toBe('githubnext/gh-aw-cao');
     expect(rendered?.querySelector('[aria-label="View AW Doctor"]')?.getAttribute('href')).toBe('#page-package-detail?package=aw-doctor');
     const packageFacet = rendered?.querySelector('[data-facet="package"]');
@@ -239,7 +239,7 @@ describe('UI elements', () => {
 
   it('shows descriptions on card faces and filters path-like agent names', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
-      pageId: 'agents', title: 'Agents', description: 'Agent inventory.',
+      pageId: 'agents', title: 'Operations', description: 'Operation inventory.',
       sourceNames: ['agent-assignments'],
       sources: {
         'agent-assignments': {
@@ -259,7 +259,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
     expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Review assistant');
     expect(rendered?.querySelector('.agent-marketplace-summary .agent-marketplace-description')?.textContent).toBe('Reviews changes before merge.');
-    expect(rendered?.querySelector('.agent-marketplace-count')?.textContent).toBe('1 of 1 agents');
+    expect(rendered?.querySelector('.agent-marketplace-count')?.textContent).toBe('1 of 1 entries');
     expect(rendered?.textContent).not.toContain('/tmp/review-agent.md');
     expect(rendered?.textContent).not.toContain('.github/workflows/review.md');
     expect(rendered?.textContent).not.toContain('[aw] Failure Investigator');
@@ -803,7 +803,7 @@ describe('UI elements', () => {
     expect(rendered?.textContent).toContain('Package inventory incomplete');
     expect(rendered?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
     expect(rendered?.querySelector('.home-catchup-stories .home-origin-agents')).not.toBeNull();
-    expect(rendered?.textContent).toContain('Agents');
+    expect(rendered?.textContent).toContain('Operations');
     expect(rendered?.textContent).toContain('Work');
 
     const dependabotNotification = [...(rendered?.querySelectorAll('.notification-item') ?? [])]

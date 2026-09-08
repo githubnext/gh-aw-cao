@@ -43,7 +43,7 @@ async function hydrateView(page, title) {
   await expect(placeholder).toHaveCount(0);
 }
 
-test('mobile Catch Up completes with persistent Done, Later, Open, and Notifications routing', async ({ page }) => {
+test('mobile Catch Up completes with persistent acknowledgement, Later, Open, and Notifications routing', async ({ page }) => {
   /** @type {string[]} */
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -109,7 +109,7 @@ test('mobile Catch Up completes with persistent Done, Later, Open, and Notificat
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}').later))
     .toHaveLength(1);
   await expect(firstCard).toContainText('Review mobile agent');
-  await firstCard.getByRole('button', { name: 'Done Review mobile agent', exact: true })
+  await firstCard.getByRole('button', { name: 'Acknowledge Review mobile agent', exact: true })
     .evaluate((button) => {
       if (button instanceof HTMLElement) button.click();
     });
