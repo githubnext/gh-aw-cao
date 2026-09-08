@@ -1,6 +1,14 @@
 const RUN_SUMMARY_FIELDS = new Set(['run', 'run-link']);
 const RUN_SUMMARY_LABELS = new Set(['run', 'run link', 'workflow run', 'workflow runs']);
 const SUMMARY_TYPES = new Set(['boolean', 'nominal', 'ordinal', 'quantitative', 'temporal']);
+const MAX_AUTOMATIC_HISTOGRAM_BINS = 12;
+
+/** @param {number} sampleSize */
+function histogramBinCountForSampleSize(sampleSize) {
+  return sampleSize > 0
+    ? Math.min(sampleSize, Math.ceil(Math.log2(sampleSize) + 1), MAX_AUTOMATIC_HISTOGRAM_BINS)
+    : 0;
+}
 
 /**
  * @typedef {{ field?: string, label: string, type?: string, display?: string, values: unknown[] }} TableSummaryColumn
@@ -103,8 +111,11 @@ function shouldRenderCountSummary(column) {
  * @returns {number}
  */
 export function automaticHistogramBinCount(values) {
-  const sampleSize = values.filter(Number.isFinite).length;
-  return sampleSize > 0 ? Math.min(sampleSize, Math.ceil(Math.log2(sampleSize) + 1)) : 0;
+  let sampleSize = 0;
+  for (const value of values) {
+    if (Number.isFinite(value)) sampleSize += 1;
+  }
+  return histogramBinCountForSampleSize(sampleSize);
 }
 
 /**
@@ -112,24 +123,31 @@ export function automaticHistogramBinCount(values) {
  * @param {number} [binCount]
  * @returns {HistogramBin[]}
  */
-export function binHistogramValues(values, binCount = automaticHistogramBinCount(values)) {
-  const finiteValues = values.filter(Number.isFinite);
-  if (finiteValues.length === 0) return [];
-
-  const minimum = Math.min(...finiteValues);
-  const maximum = Math.max(...finiteValues);
+export function binHistogramValues(values, binCount) {
+  let sampleSize = 0;
+  let minimum = Infinity;
+  let maximum = -Infinity;
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
+    sampleSize += 1;
+    minimum = Math.min(minimum, value);
+    maximum = Math.max(maximum, value);
+  }
+  if (sampleSize === 0) return [];
   if (minimum === maximum) {
-    return [{ lower: minimum, upper: maximum, count: finiteValues.length }];
+    return [{ lower: minimum, upper: maximum, count: sampleSize }];
   }
 
-  const count = Math.max(1, Math.min(Math.floor(binCount), finiteValues.length));
+  const automaticBinCount = histogramBinCountForSampleSize(sampleSize);
+  const count = Math.max(1, Math.min(Math.floor(binCount ?? automaticBinCount), sampleSize));
   const step = (maximum - minimum) / count;
   const bins = Array.from({ length: count }, (_, index) => ({
     lower: minimum + (index * step),
     upper: minimum + ((index + 1) * step),
     count: 0
   }));
-  for (const value of finiteValues) {
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
     const index = Math.min(Math.floor((value - minimum) / step), count - 1);
     bins[index].count += 1;
   }

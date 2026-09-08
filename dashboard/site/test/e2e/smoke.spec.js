@@ -1017,6 +1017,26 @@ test('performance page renders a full heatmap and lays out supporting charts sid
   expect(Math.max(...chartLayout.widgetHeights) - Math.min(...chartLayout.widgetHeights)).toBeLessThan(1);
 });
 
+test('histogram keeps a low constant DOM size for 100,000 observations', async ({ page }) => {
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderChartWidget } from ${JSON.stringify('http://dashboard.test/src/components/chart-elements.js')};
+      const points = Array.from({ length: 100_000 }, (_, index) => ({
+        x: String(index),
+        y: index,
+        color: null
+      }));
+      document.querySelector('#root').append(renderChartWidget('histogram', points, []));
+    </script>
+  `);
+
+  const histogram = page.locator('[data-chart-widget="histogram"]');
+  await expect(histogram).toBeVisible();
+  await expect(histogram.locator('.histogram-chart-bar')).toHaveCount(12);
+  expect(await histogram.locator('*').count()).toBeLessThan(100);
+});
+
 test('DLS-DOC-014 horizon details are available in the expanded window picker', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setContent(`
