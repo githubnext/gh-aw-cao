@@ -91,7 +91,7 @@ export function enableLazyViews(root) {
     ? new Observer((entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
-        observer.unobserve(entry.target);
+        observer?.unobserve(entry.target);
         if (entry.target instanceof HTMLElement) {
           void hydrateLazyView(entry.target);
         }

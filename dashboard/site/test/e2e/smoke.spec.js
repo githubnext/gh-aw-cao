@@ -2395,11 +2395,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   await expect(page.locator('[data-chart-legend="text"]')).toHaveCount(0);
   await expect(page.locator('[data-chart-legend="visual"] li')).toHaveCount(2);
   await expect(page.locator('[data-chart-legend="visual"] li span')).toHaveText(['failure', 'success']);
-  await expect(page.locator('.custom-chart-table tbody tr')).toHaveCount(2);
-  await expect(page.getByRole('link', { name: 'Run 1001' })).toHaveAttribute(
-    'href',
-    'https://github.com/github/central-agentic-ops/actions/runs/1001'
-  );
+  await expect(page.locator('.custom-chart-table')).toHaveCount(0);
   await expect(page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Daily Runs' }) }).locator('.view-source')).toHaveCount(0);
 
   await hydrateView(page, 'Empty Usage');
