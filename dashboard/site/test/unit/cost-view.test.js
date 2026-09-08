@@ -59,9 +59,15 @@ describe('Cost and efficiency dashboard view', () => {
         id: 'measured-usage',
         'count-source': 'cost-signals',
         'count-label': 'boundaries',
-        views: ['cost-usage-trend', 'cost-per-run-distribution', 'cost-summary', 'cost-signals']
+        views: ['cost-summary', 'cost-usage-trend', 'cost-per-run-distribution', 'cost-signals']
       })
     ]));
+    expect(dashboardPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'cost-usage-trend'
+    )?.layout).toBe('half');
+    expect(dashboardPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'cost-per-run-distribution'
+    )?.layout).toBe('half');
     expect(dashboardPage.views).not.toContainEqual(expect.objectContaining({ element: 'metric-signal-summary' }));
     expect(primerStylesheet()).toContain(
       ':is(.readiness-page, .runtime-page, .security-page, .firewall-page, .value-page, .cost-page, .github-api-page) .layout-section { padding: 0; border: 0; background: transparent; }'
@@ -109,6 +115,43 @@ describe('Cost and efficiency dashboard view', () => {
     expect(boundary?.querySelector('h3')?.textContent).toBe('Budget and anomaly verdicts unavailable');
     expect(boundary?.textContent).toContain('qualified historical baseline');
     expect(boundary?.getAttribute('data-section-id')).toBe('evaluation-boundary');
+  });
+
+  it('keeps the usage summary bound to every distinct run after filtering', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        usage: {
+          source: 'usage',
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.md', run: '101', invocation: 'usage-1', aic: 3.5, 'rollout-mode': 'review' },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.md', run: '101', invocation: 'usage-2', aic: 1.5, 'rollout-mode': 'review' },
+            { organization: 'octo-org', repository: 'service', workflow: '.github/workflows/review.md', run: '202', invocation: 'usage-3', aic: 4, 'rollout-mode': 'live' }
+          ],
+          metadata
+        }
+      }
+    });
+
+    const page = await activateCostPage(rendered);
+    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Measured AIC9');
+    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Measured runs2');
+
+    const filterInput = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('[aria-label="Current filters"]')
+    );
+    expect(filterInput).not.toBeNull();
+    if (filterInput) {
+      filterInput.value = 'repository:gh-aw-cao';
+      filterInput.dispatchEvent(new Event('input'));
+    }
+
+    await vi.waitFor(() => {
+      const filteredSummary = rendered.querySelector('[data-page-id="cost"] .summary-grid');
+      expect(filteredSummary?.textContent).toContain('Measured AIC5');
+      expect(filteredSummary?.textContent).toContain('Measured runs1');
+    });
+    window.localStorage.clear();
   });
 
   it('does not report a telemetry coverage boundary for a complete usage source', async () => {

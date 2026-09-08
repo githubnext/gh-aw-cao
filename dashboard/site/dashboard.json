@@ -935,9 +935,9 @@
             "count-source": "cost-signals",
             "count-label": "boundaries",
             "views": [
+              "cost-summary",
               "cost-usage-trend",
               "cost-per-run-distribution",
-              "cost-summary",
               "cost-signals"
             ]
           },
@@ -971,7 +971,7 @@
             },
             "mark": "chart",
             "chart": "line",
-            "layout": "full",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "observed-at",
@@ -996,7 +996,7 @@
             },
             "mark": "chart",
             "chart": "histogram",
-            "layout": "full",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run",

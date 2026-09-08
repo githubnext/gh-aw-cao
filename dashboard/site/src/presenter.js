@@ -1111,7 +1111,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
           : filteredSources;
         const effectiveSources = page.id === 'readiness'
           ? deriveOverviewSources(pageFilteredSources, { readinessWindow: timeWindow })
-          : pageFilteredSources;
+          : page.id === 'cost'
+            ? deriveOverviewSources(pageFilteredSources)
+            : pageFilteredSources;
         void renderCustomPageAsync(
           page,
           title,
