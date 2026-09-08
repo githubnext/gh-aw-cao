@@ -1416,11 +1416,11 @@ function validateView(view, viewNode, path, viewIds, errors) {
   validateStringField(view['disclosure-label'], `${path}.disclosure-label`, false, errors);
   if (
     view['disclosure-label'] !== undefined
-    && (view.disclosure !== 'supplemental' || view.mark !== 'table')
+    && view.disclosure !== 'supplemental'
   ) {
     errors.push(createError(
       ERROR_CODES.invalidProgressiveDisclosureConfiguration,
-      'disclosure-label is allowed only on supplemental tables.',
+      'disclosure-label is allowed only on supplemental views.',
       `${path}.disclosure-label`
     ));
   }
