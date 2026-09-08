@@ -43,6 +43,94 @@ async function hydrateView(page, title) {
   await expect(placeholder).toHaveCount(0);
 }
 
+test('mobile Catch Up completes with persistent Done, Later, Open, and Notifications routing', async ({ page }) => {
+  /** @type {string[]} */
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderNotificationsInbox } from ${JSON.stringify('http://dashboard.test/src/components/notifications-inbox.js')};
+      const rows = [
+        {
+          'attention-signal-id': 'later-story',
+          'age-seconds': 60,
+          'consequence-tier': 'high',
+          'expected-actor': 'operator',
+          'signal-type': 'runtime-failure',
+          objective: 'Investigate mobile failure',
+          reason: 'The mobile workflow failed.',
+          scope: 'githubnext/mobile',
+          'evidence-link': {
+            href: 'https://github.com/githubnext/mobile/actions/runs/42',
+            label: 'View run'
+          }
+        },
+        {
+          'attention-signal-id': 'done-story',
+          'age-seconds': 120,
+          'consequence-tier': 'high',
+          'expected-actor': 'operator',
+          'signal-type': 'agent-smell',
+          objective: 'Review mobile agent',
+          reason: 'Strict mode is disabled.',
+          scope: 'githubnext/mobile-agent',
+          'evidence-link': {
+            href: 'https://github.com/githubnext/mobile-agent/issues/43',
+            label: 'View issue'
+          }
+        }
+      ];
+      window.catchUpRows = rows;
+      window.renderCatchUp = () => {
+        document.querySelector('#root').replaceChildren(renderNotificationsInbox(rows));
+      };
+      window.renderCatchUp();
+    </script>
+  `);
+
+  const firstCard = page.locator('.home-catchup-mobile-card');
+  await expect(firstCard).toContainText('Investigate mobile failure');
+  await expect(firstCard.locator('.home-catchup-mobile-link'))
+    .toHaveAttribute('href', 'https://github.com/githubnext/mobile/actions/runs/42');
+  const beforeOpen = await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue'));
+  await firstCard.locator('.home-catchup-mobile-link').evaluate((link) => {
+    link.addEventListener('click', (event) => event.preventDefault(), { once: true });
+    if (link instanceof HTMLElement) link.click();
+  });
+  expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue'))).toBe(beforeOpen);
+
+  await firstCard.getByRole('button', { name: 'Later Investigate mobile failure', exact: true })
+    .evaluate((button) => {
+      if (button instanceof HTMLElement) button.click();
+    });
+  expect(pageErrors).toEqual([]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}').later))
+    .toHaveLength(1);
+  await expect(firstCard).toContainText('Review mobile agent');
+  await firstCard.getByRole('button', { name: 'Done Review mobile agent', exact: true })
+    .evaluate((button) => {
+      if (button instanceof HTMLElement) button.click();
+    });
+  await expect(page.locator('.home-catchup-mobile')).toContainText('✓ You are caught up');
+
+  await page.locator('.home-catchup-mobile').getByRole('link', { name: 'View Later in Notifications' }).click();
+  await expect(page.getByRole('searchbox', { name: 'Filter notifications' })).toHaveValue('is:later');
+  await expect(page.locator('.notification-item')).toHaveCount(1);
+  await expect(page.locator('.notification-item')).toContainText('Investigate mobile failure');
+  await expect(page.locator('.notifications-main')).not.toContainText('Review mobile agent');
+
+  await page.evaluate(() => {
+    /** @type {{ renderCatchUp: () => void }} */ (/** @type {unknown} */ (window)).renderCatchUp();
+  });
+  await expect(page.locator('.home-catchup-mobile')).toContainText('✓ You are caught up');
+  await page.getByRole('button', { name: 'Later', exact: true }).click();
+  await expect(page.locator('.notification-item')).toHaveCount(1);
+  await expect(page.locator('.notification-content'))
+    .toHaveAttribute('href', 'https://github.com/githubnext/mobile/actions/runs/42');
+});
+
 test('production pages expose a responsive executive chart', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
