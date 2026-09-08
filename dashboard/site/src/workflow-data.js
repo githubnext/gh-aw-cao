@@ -35,6 +35,14 @@ export function deriveWorkflowSources(sources) {
     .sort(compareStandaloneWorkflows);
   const packages = new Set(packaged.map((row) => text(row.package)));
   const metadata = sources.workflows?.metadata ?? unavailableMetadata();
+  const workflowInventory = [...packaged, ...standalone]
+    .map((row) => ({
+      ...row,
+      'package-name': text(row['package-name']) || 'Repository-owned',
+      'workflow-role': text(row['workflow-role']) || 'standalone'
+    }))
+    .sort((left, right) => text(left.repository).localeCompare(text(right.repository))
+      || text(left.workflow).localeCompare(text(right.workflow)));
 
   return {
     ...sources,
@@ -50,6 +58,16 @@ export function deriveWorkflowSources(sources) {
     'packaged-workflows': {
       source: 'packaged-workflows',
       rows: packaged,
+      metadata
+    },
+    'package-inventory': {
+      source: 'package-inventory',
+      rows: summarizePackageInventory(packaged),
+      metadata
+    },
+    'workflow-inventory': {
+      source: 'workflow-inventory',
+      rows: workflowInventory,
       metadata
     },
     'standalone-workflows': {
@@ -97,6 +115,39 @@ export function deriveWorkflowSources(sources) {
       metadata: sources.runs?.metadata ?? unavailableMetadata()
     }
   };
+}
+
+/** @param {Row[]} workflows */
+function summarizePackageInventory(workflows) {
+  /** @type {Map<string, Row[]>} */
+  const grouped = new Map();
+  for (const workflow of workflows) {
+    const packageId = text(workflow.package);
+    if (!packageId) continue;
+    const rows = grouped.get(packageId) ?? [];
+    rows.push(workflow);
+    grouped.set(packageId, rows);
+  }
+  return [...grouped].map(([packageId, rows]) => {
+    const values = (field) => [...new Set(rows.map((row) => text(row[field])).filter(Boolean))].sort();
+    const total = (field) => rows.reduce((sum, row) => {
+      const value = Number(row[field]);
+      return Number.isFinite(value) ? sum + value : sum;
+    }, 0);
+    const repositories = values('repository');
+    return {
+      package: packageId,
+      'package-name': text(rows[0]?.['package-name']) || titleCase(packageId),
+      workflows: rows.length,
+      repositories: repositories.length,
+      roles: values('workflow-role').join(', '),
+      modes: values('rollout-mode').join(', '),
+      registration: values('workflow-active').join(', '),
+      runs: total('runs'),
+      aic: total('aic'),
+      ...(rows[0]?.['package-link'] ? { 'package-link': rows[0]['package-link'] } : {})
+    };
+  }).sort((left, right) => text(left['package-name']).localeCompare(text(right['package-name'])));
 }
 
 /** @param {Row} row @returns {Row | null} */

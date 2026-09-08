@@ -654,24 +654,27 @@ dashboard:
     expect(accepted.ok).toBe(true);
   });
 
-  it('defines the packages page through a reusable package activity shell element', () => {
+  it('defines packages, workflows, and runs as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
+    const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
+    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
 
-    expect(packagesPage.definition.views).toEqual([
-      expect.objectContaining({
-        id: 'packages-by-aic',
-        mark: 'chart'
-      }),
-      expect.objectContaining({
-        id: 'packages-activity-shell',
-        mark: 'element',
-        element: 'package-activity-shell',
-        data: {
-          sources: ['workflows', 'usage', 'runs', 'outcomes', 'findings']
-        }
-      })
-    ]);
+    const packagesView = packagesPage.definition.views[0];
+    const workflowsView = workflowsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'packaged-workflows');
+    const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
+    for (const view of [packagesView, workflowsView, runsView]) {
+      expect(view).toMatchObject({
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        'column-summaries': true,
+        layout: 'full-view'
+      });
+    }
+    expect(packagesView.data.source).toBe('package-inventory');
+    expect(workflowsView.data.source).toBe('workflow-inventory');
+    expect(runsView.data.source).toBe('runs');
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

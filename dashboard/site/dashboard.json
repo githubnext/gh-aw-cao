@@ -2743,48 +2743,67 @@
           },
           "views": [
             {
-              "id": "packages-by-aic",
-              "title": "AI Credit usage by package",
-              "description": "Measured AI Credit allocation highlights where managed-package activity is concentrated.",
+              "id": "packages-inventory",
+              "title": "Packages",
+              "description": "Centrally managed package inventory and observed execution totals.",
               "data": {
-                "source": "packaged-workflows"
+                "source": "package-inventory"
               },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
+              "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No packages discovered.",
               "encoding": {
-                "x": {
-                  "field": "package-name",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
                 "href": {
                   "field": "package-link",
                   "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "packages-activity-shell",
-              "title": "Package activity",
-              "data": {
-                "sources": [
-                  "workflows",
-                  "usage",
-                  "runs",
-                  "outcomes",
-                  "findings"
+                },
+                "columns": [
+                  {
+                    "field": "package-name",
+                    "type": "nominal",
+                    "title": "Package"
+                  },
+                  {
+                    "field": "workflows",
+                    "type": "quantitative",
+                    "title": "Workflows"
+                  },
+                  {
+                    "field": "repositories",
+                    "type": "quantitative",
+                    "title": "Control repositories"
+                  },
+                  {
+                    "field": "roles",
+                    "type": "nominal",
+                    "title": "Roles"
+                  },
+                  {
+                    "field": "modes",
+                    "type": "nominal",
+                    "title": "Modes"
+                  },
+                  {
+                    "field": "registration",
+                    "type": "nominal",
+                    "title": "Registration"
+                  },
+                  {
+                    "field": "runs",
+                    "type": "quantitative",
+                    "title": "Runs"
+                  },
+                  {
+                    "field": "aic",
+                    "type": "quantitative",
+                    "title": "AIC",
+                    "unit": "aic"
+                  }
                 ]
-              },
-              "mark": "element",
-              "element": "package-activity-shell"
+              }
             }
           ]
         }
@@ -3269,35 +3288,8 @@
           "sections": [
             {
               "id": "workflow-inventory",
-              "title": "Workflow inventory",
-              "layout": "full",
               "views": [
-                "workflows-run-health",
-                "workflow-topology-summary",
-                "packaged-workflows",
-                "standalone-workflows"
-              ],
-              "description": "Starts with registered workflows and their evidence state; source tables remain available for deeper inspection."
-            },
-            {
-              "id": "workflow-aic",
-              "title": "AIC",
-              "description": "Observed AI Credit allocation highlights the workflows with the highest measured usage.",
-              "layout": "full",
-              "views": [
-                "workflow-aic-usage"
-              ]
-            },
-            {
-              "id": "workflow-evidence-sources",
-              "title": "Evidence sources",
-              "layout": "full",
-              "views": [
-                "workflows-runs-source",
-                "workflows-outcomes-source",
-                "workflows-usage-source",
-                "workflows-findings-source",
-                "workflows-operational-values-source"
+                "packaged-workflows"
               ]
             }
           ],
@@ -3345,19 +3337,23 @@
             },
             {
               "id": "packaged-workflows",
-              "title": "Operation package workflows",
-              "description": "Orchestrators and workers declared by centrally managed operation packages.",
+              "title": "Workflows",
+              "description": "Central package and repository-owned workflow inventory with observed execution totals.",
               "data": {
-                "source": "packaged-workflows",
+                "source": "workflow-inventory",
                 "order-by": [
                   {
-                    "field": "package-name",
+                    "field": "repository",
                     "direction": "asc"
                   }
                 ]
               },
               "mark": "table",
-              "empty-message": "No operation package workflows observed.",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No workflows observed.",
               "encoding": {
                 "href": {
                   "field": "package-link",
@@ -3402,6 +3398,11 @@
                     "type": "quantitative",
                     "title": "AIC",
                     "unit": "aic"
+                  },
+                  {
+                    "field": "runs",
+                    "type": "quantitative",
+                    "title": "Runs"
                   }
                 ]
               }
@@ -3922,6 +3923,14 @@
             "completeness": true,
             "freshness": true
           },
+          "sections": [
+            {
+              "id": "runs-inventory",
+              "views": [
+                "runs-runs-source"
+              ]
+            }
+          ],
           "views": [
             {
               "id": "runs-health-trend",
@@ -3955,11 +3964,17 @@
             },
             {
               "id": "runs-runs-source",
-              "disclosure": "supplemental",
+              "title": "Runs",
+              "description": "Observed workflow runs across the configured repository scope.",
               "data": {
                 "source": "runs"
               },
               "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "column-summaries": true,
+              "layout": "full-view",
+              "empty-message": "No runs observed.",
               "encoding": {
                 "href": {
                   "field": "run-link",
