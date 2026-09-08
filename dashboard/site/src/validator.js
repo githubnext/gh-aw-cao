@@ -1481,7 +1481,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
         `${path}.lazy-list`
       ));
     }
-    if (view.mark !== 'table' || view.controls === 'static') {
+    if (view.mark !== 'table' || (view['lazy-list'] === true && view.controls === 'static')) {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
         'lazy-list is allowed only on interactive table views.',
