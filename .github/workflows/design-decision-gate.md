@@ -3,21 +3,11 @@ private: true
 name: Design Decision Gate
 description: Checks significant CAO pull requests for a complete architecture decision record and drafts one when the decision is inferable.
 on:
-  pull_request:
-    types: [opened, reopened, synchronize, labeled, ready_for_review]
-    paths:
-      - ".github/cao/**"
-      - ".github/workflows/**"
-      - "activity/**"
-      - "dashboard/**"
-      - "scripts/**"
-      - "tests/**"
-      - "package.json"
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: Pull request number to check
-        required: true
+  slash_command:
+    strategy: centralized
+    name: design-gate
+    events: [pull_request_comment, pull_request_review_comment]
+  reaction: none
 permissions:
   contents: read
   pull-requests: read
@@ -26,7 +16,7 @@ strict: true
 max-ai-credits: 500
 timeout-minutes: 20
 concurrency:
-  group: "${{ github.workflow }}-${{ github.event.pull_request.number || inputs.pr_number || github.run_id }}"
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || fromJSON(github.event.inputs.aw_context || '{}').item_number || github.run_id }}"
   cancel-in-progress: true
   job-discriminator: "${{ github.run_id }}"
 tools:
@@ -50,7 +40,7 @@ steps:
   - name: Prefetch decision gate context
     env:
       GH_TOKEN: ${{ github.token }}
-      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || fromJSON(github.event.inputs.aw_context || '{}').item_number }}
       REPOSITORY: ${{ github.repository }}
     run: |
       set -euo pipefail
