@@ -521,6 +521,7 @@ function renderCaughtUp(laterCount, showNotifications) {
   const label = laterCount > 0 ? 'View Later in Notifications' : 'Back to Notifications';
   return h('p', { className: 'home-catchup-quiet' },
     h('strong', null, '✓ You are caught up'),
+    ' ',
     h('a', {
       href: '#page-overview',
       onClick: /** @param {MouseEvent} event */ (event) => {
