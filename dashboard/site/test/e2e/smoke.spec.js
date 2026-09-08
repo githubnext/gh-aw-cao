@@ -285,7 +285,8 @@ test('GitHub API rate-limit dashboard remains operable at desktop and narrow wid
     const box = await capacityChart.boundingBox();
     return box !== null && box.x >= 0 && box.x + box.width <= 390;
   }).toBe(true);
-  await expect(apiPage.locator('details[data-disclosure="supplemental"]')).toHaveCount(5);
+  await expect(apiPage.locator('details[data-disclosure="supplemental"]')).toHaveCount(6);
+  await expect(apiPage.locator('details[data-disclosure="supplemental"]').filter({ hasText: 'Rate-limit health' })).toHaveCount(1);
 });
 
 test('control-plane readiness surfaces blocking regressions', async ({ page }) => {
