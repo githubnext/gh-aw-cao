@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -372,5 +372,21 @@ describe('ui primitives', () => {
 
     expect(status.textContent).toBe('Copy unavailable.');
     expect(button.hasAttribute('data-copy-state')).toBe(false);
+  });
+
+  it('renders a filter select with a placeholder option and sorted, de-duplicated values', () => {
+    const select = renderFilterSelect('Filter operations by owner', 'All owners', ['bravo', 'Bravo', 'alpha', 'bravo']);
+
+    expect(select.getAttribute('aria-label')).toBe('Filter operations by owner');
+    const options = [...select.querySelectorAll('option')];
+    expect(options.map((option) => option.value)).toEqual(['', 'Bravo', 'alpha', 'bravo']);
+    expect(options.map((option) => option.textContent)).toEqual(['All owners', 'Bravo', 'alpha', 'bravo']);
+  });
+
+  it('renders a filter select with a caller-provided sort comparator', () => {
+    const select = renderFilterSelect('Filter by owner', 'Owner', ['bravo', 'Bravo', 'alpha'],
+      (left, right) => left.localeCompare(right));
+
+    expect([...select.options].map((option) => option.value)).toEqual(['', 'alpha', 'bravo', 'Bravo']);
   });
 });
