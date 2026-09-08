@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
+import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderCountHeader, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -191,21 +191,13 @@ function renderBoard(items, section, onUpdate) {
         'aria-label': `${column.title} work`,
         dataset: { mobileActive: String(column.tone === activeTone) }
       },
-      h(
-        'header',
-        null,
-        h('h4', null, column.title),
-        renderCountBadge(columnItems.length, `${columnItems.length} work items`)
-      ),
+      renderCountHeader(h('h4', null, column.title), columnItems.length, 'work items'),
       h(
         'div',
         { className: 'work-board-cards' },
         ...groupWorkItems(columnItems, orchestratedPackages).map((group) => group.grouped
           ? h('section', { className: 'work-card-stack', 'aria-label': `${group.label} work` },
-            h('header', null,
-              h('strong', null, group.label),
-              renderCountBadge(group.items.length, `${group.items.length} work items`)
-            ),
+            renderCountHeader(h('strong', null, group.label), group.items.length, 'work items'),
             decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate),
             ...(group.items.length > 1
               ? [h('details', { className: 'work-card-workers' },

@@ -305,6 +305,19 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders the shared `<header>{heading}<count-badge/></header>` pattern used
+ * by the work board's column and grouped-card-stack headers, which both pair
+ * a heading element with a `renderCountBadge` labeled `"{count} {noun}"`.
+ * @param {Node} heading
+ * @param {number} count
+ * @param {string} noun
+ * @returns {HTMLElement}
+ */
+export function renderCountHeader(heading, count, noun) {
+  return h('header', null, heading, renderCountBadge(count, `${count} ${noun}`));
+}
+
+/**
  * Renders the shared "`<select>` filter with a placeholder option followed by
  * the sorted, de-duplicated set of values" pattern used by the operations
  * marketplace owner filter and the work-project facet filters.
