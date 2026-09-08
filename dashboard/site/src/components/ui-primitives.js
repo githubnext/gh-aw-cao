@@ -305,6 +305,22 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders the shared "`<select>` filter with a placeholder option followed by
+ * the sorted, de-duplicated set of values" pattern used by the operations
+ * marketplace owner filter and the work-project facet filters.
+ * @param {string} ariaLabel
+ * @param {string} placeholderLabel
+ * @param {string[]} values
+ * @returns {HTMLSelectElement}
+ */
+export function renderFilterSelect(ariaLabel, placeholderLabel, values) {
+  return /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': ariaLabel },
+    h('option', { value: '' }, placeholderLabel),
+    ...[...new Set(values)].sort((left, right) => left.localeCompare(right)).map((value) => h('option', { value }, value))
+  ));
+}
+
+/**
  * Renders the shared `<details><summary>label</summary>...body</details>`
  * disclosure pattern used by evidence menus, raw-policy panels, and
  * value-report evidence sections to hide secondary content behind a toggle.
