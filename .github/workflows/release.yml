@@ -85,8 +85,13 @@ jobs:
               const match = versionPattern.exec(name);
               return match ? [[Number(match[1]), Number(match[2]), Number(match[3])]] : [];
             };
-            const releaseTags = releases.map((release) => release.tag_name);
-            const versionNames = new Set([...releaseTags, ...tags.map(({ name }) => name)]);
+            const prereleaseTags = releases
+              .filter((release) => release.prerelease)
+              .map((release) => release.tag_name);
+            const releaseTags = releases
+              .filter((release) => !release.prerelease)
+              .map((release) => release.tag_name);
+            const versionNames = new Set([...releaseTags, ...prereleaseTags, ...tags.map(({ name }) => name)]);
             const versions = [...versionNames].flatMap(toVersion);
             versions.sort((left, right) => compareVersions(right, left));
             if (versions.length === 0) {
