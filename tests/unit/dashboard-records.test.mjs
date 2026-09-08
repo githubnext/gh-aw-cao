@@ -29,7 +29,8 @@ test("dashboard records retain durable-output target and run attribution", async
   const fetchImpl = async (input) => {
     const url = new URL(input);
     let value;
-    if (url.pathname === "/repos/acme/control/issues") value = [issue];
+    if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
+    else if (url.pathname === "/repos/acme/control/issues") value = [issue];
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
@@ -99,7 +100,8 @@ test("dashboard records attribute issues from the gh-aw workflow XML marker", as
   const fetchImpl = async (input) => {
     const url = new URL(input);
     let value;
-    if (url.pathname === "/repos/acme/control/issues") value = [issue];
+    if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
+    else if (url.pathname === "/repos/acme/control/issues") value = [issue];
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
@@ -168,7 +170,8 @@ test("dashboard records retain report model and agent metadata when available", 
   const fetchImpl = async (input) => {
     const url = new URL(input);
     let value;
-    if (url.pathname === "/repos/acme/control/issues") value = [issue];
+    if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
+    else if (url.pathname === "/repos/acme/control/issues") value = [issue];
     else if (url.pathname.endsWith("/issues")) value = [];
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
@@ -227,14 +230,27 @@ test("dashboard records cannot widen checked-in repository policy", async () => 
 });
 
 test("dashboard records discover gh-aw workflows in allowed repositories", async () => {
+  const lockSource = [
+    '# gh-aw-metadata: {"compiler_version":"v0.88.7","strict":true}',
+    '# gh-aw-manifest: {"version":1,"actions":[]}',
+  ].join("\n");
   const fetchImpl = async (input) => {
     const url = new URL(input);
+    if (url.pathname === "/repos/github/gh-aw/releases/latest") {
+      return new Response(JSON.stringify({ tag_name: "v0.89.0" }), { status: 200 });
+    }
     if (url.pathname === "/repos/acme/service/actions/workflows") {
       return new Response(JSON.stringify({
         workflows: [
           { name: "Remote agent", path: ".github/workflows/remote-agent.lock.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/remote-agent.lock.yml" },
           { name: "CI", path: ".github/workflows/ci.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/ci.yml" },
         ],
+      }), { status: 200 });
+    }
+    if (url.pathname === "/repos/acme/service/contents/.github/workflows/remote-agent.lock.yml") {
+      return new Response(JSON.stringify({
+        encoding: "base64",
+        content: Buffer.from(lockSource).toString("base64"),
       }), { status: 200 });
     }
     if (url.pathname.endsWith("/issues") || url.pathname.endsWith("/issues/comments")) {
@@ -261,11 +277,21 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     path: workflow.path,
     name: workflow.name,
     role: workflow.role,
+    ghAwVersion: workflow.ghAwVersion,
+    currentGhAwVersion: workflow.currentGhAwVersion,
+    updateState: workflow.updateState,
+    ghAwMetadata: workflow.ghAwMetadata,
+    ghAwManifest: workflow.ghAwManifest,
   })), [{
     repository: "acme/service",
     path: ".github/workflows/remote-agent.lock.yml",
     name: "Remote agent",
     role: "standalone",
+    ghAwVersion: "v0.88.7",
+    currentGhAwVersion: "v0.89.0",
+    updateState: "update-available",
+    ghAwMetadata: { compiler_version: "v0.88.7", strict: true },
+    ghAwManifest: { version: 1, actions: [] },
   }]);
   assert.deepEqual(output.workflowDiscovery, {
     complete: true,

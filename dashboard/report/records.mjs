@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { normalizeVersion, updateState } from "../../activity/version.mjs";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
@@ -44,6 +45,35 @@ function safeUrl(value) {
   } catch {
     return "";
   }
+}
+
+function repositoryContentPath(repositoryName, filePath) {
+  const encodedPath = String(filePath)
+    .replace(/^\/+/, "")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  return `/repos/${repositoryName}/contents/${encodedPath}`;
+}
+
+function ghAwPayloads(lockSource) {
+  const payloads = { ghAwMetadata: null, ghAwManifest: null };
+  const fields = {
+    "# gh-aw-metadata: ": "ghAwMetadata",
+    "# gh-aw-manifest: ": "ghAwManifest",
+  };
+  for (const line of lockSource.split(/\r?\n/)) {
+    const entry = Object.entries(fields).find(([prefix]) => line.startsWith(prefix));
+    if (!entry) continue;
+    const [prefix, field] = entry;
+    try {
+      const value = JSON.parse(line.slice(prefix.length));
+      if (value && typeof value === "object" && !Array.isArray(value)) payloads[field] = value;
+    } catch {
+      // Malformed generated metadata remains unavailable.
+    }
+  }
+  return payloads;
 }
 
 function plainText(markdown = "") {
@@ -322,15 +352,21 @@ async function collectDashboardRecordsImpl({
     return workflows;
   }
 
-  async function repositoryWorkflowSource(repositoryName) {
+  async function repositoryWorkflowSource(repositoryName, latestVersion) {
     try {
       const workflows = await githubWorkflowPages(repositoryName);
+      const agenticWorkflows = workflows.filter((workflow) => String(workflow.path || "").endsWith(".lock.yml"));
       return {
         repository: repositoryName,
         complete: true,
-        workflows: workflows
-          .filter((workflow) => String(workflow.path || "").endsWith(".lock.yml"))
-          .map((workflow) => ({
+        workflows: await mapWithConcurrency(agenticWorkflows, 8, async (workflow) => {
+          const lock = await githubOptional(repositoryContentPath(repositoryName, workflow.path), {});
+          const lockSource = lock.encoding === "base64" && typeof lock.content === "string"
+            ? Buffer.from(lock.content.replaceAll("\n", ""), "base64").toString("utf8")
+            : "";
+          const payloads = ghAwPayloads(lockSource);
+          const ghAwVersion = normalizeVersion(payloads.ghAwMetadata?.compiler_version);
+          return {
             repository: repositoryName,
             path: workflow.path,
             name: workflow.name || workflow.path.split("/").at(-1)?.replace(/\.lock\.yml$/, "") || "Unknown workflow",
@@ -341,9 +377,12 @@ async function collectDashboardRecordsImpl({
             role: "standalone",
             runHealth: { runRecords: [] },
             sourceAvailable: false,
-            ghAwMetadata: null,
-            ghAwManifest: null,
-          })),
+            ghAwVersion,
+            currentGhAwVersion: latestVersion,
+            updateState: updateState(ghAwVersion, latestVersion),
+            ...payloads,
+          };
+        }),
       };
     } catch (error) {
       if (error instanceof GitHubRateLimitError) throw error;
@@ -416,10 +455,18 @@ async function collectDashboardRecordsImpl({
   ].filter(Boolean))].sort();
   const remoteWorkflowRepositories = [...allowedRepositories]
     .filter((repositoryName) => repositoryName !== repository.toLowerCase());
-  const [reportSources, remoteWorkflowSources] = await Promise.all([
+  const [reportSources, latestRelease] = await Promise.all([
     mapWithConcurrency(reportRepositoryNames, 4, repositoryReportSources),
-    mapWithConcurrency(remoteWorkflowRepositories, 4, repositoryWorkflowSource),
+    remoteWorkflowRepositories.length > 0
+      ? githubOptional("/repos/github/gh-aw/releases/latest", {})
+      : null,
   ]);
+  const latestVersion = normalizeVersion(latestRelease?.tag_name);
+  const remoteWorkflowSources = await mapWithConcurrency(
+    remoteWorkflowRepositories,
+    4,
+    (repositoryName) => repositoryWorkflowSource(repositoryName, latestVersion),
+  );
   const remoteWorkflows = remoteWorkflowSources.flatMap((source) => source.workflows);
   const workflowDiscovery = {
     complete: remoteWorkflowSources.every((source) => source.complete),

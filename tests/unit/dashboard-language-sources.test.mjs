@@ -1550,6 +1550,9 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
         name: "Remote agent",
         role: "standalone",
         state: "active",
+        ghAwVersion: "v0.88.7",
+        currentGhAwVersion: "v0.89.0",
+        updateState: "update-available",
         runHealth: { runRecords: [] },
       }],
     },
@@ -1559,14 +1562,26 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
     owner: `${row.organization}/${row.repository}`,
     workflow: row.workflow,
     name: row["workflow-name"],
+    version: row["gh-aw-version"],
+    currentVersion: row["gh-aw-current-version"],
+    versionLabel: row["gh-aw-version-label"],
+    updateState: row["gh-aw-update-state"],
   })), [{
     owner: "acme/control",
     workflow: ".github/workflows/local.md",
     name: "Local agent",
+    version: "unknown",
+    currentVersion: "unknown",
+    versionLabel: "unknown",
+    updateState: "unknown",
   }, {
     owner: "acme/service",
     workflow: ".github/workflows/remote.md",
     name: "Remote agent",
+    version: "v0.88.7",
+    currentVersion: "v0.89.0",
+    versionLabel: "v0.88.7",
+    updateState: "update-available",
   }]);
   assert.equal(sources.workflows.metadata.completeness, "complete");
 });
