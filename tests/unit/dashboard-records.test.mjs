@@ -234,8 +234,12 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     '# gh-aw-metadata: {"compiler_version":"v0.88.7","strict":true}',
     '# gh-aw-manifest: {"version":1,"actions":[]}',
   ].join("\n");
+  let lockDownloads = 0;
   const fetchImpl = async (input) => {
     const url = new URL(input);
+    if (url.pathname === "/repos/acme/service") {
+      return new Response(JSON.stringify({ private: false }), { status: 200 });
+    }
     if (url.pathname === "/repos/github/gh-aw/releases/latest") {
       return new Response(JSON.stringify({ tag_name: "v0.89.0" }), { status: 200 });
     }
@@ -247,11 +251,16 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
         ],
       }), { status: 200 });
     }
-    if (url.pathname === "/repos/acme/service/contents/.github/workflows/remote-agent.lock.yml") {
-      return new Response(JSON.stringify({
-        encoding: "base64",
-        content: Buffer.from(lockSource).toString("base64"),
-      }), { status: 200 });
+    if (url.pathname === "/repos/acme/service/contents/.github/workflows") {
+      return new Response(JSON.stringify([{
+        path: ".github/workflows/remote-agent.lock.yml",
+        sha: "abc123",
+        download_url: "https://raw.githubusercontent.com/acme/service/main/.github/workflows/remote-agent.lock.yml",
+      }]), { status: 200 });
+    }
+    if (url.hostname === "raw.githubusercontent.com") {
+      lockDownloads += 1;
+      return new Response(lockSource, { status: 200 });
     }
     if (url.pathname.endsWith("/issues") || url.pathname.endsWith("/issues/comments")) {
       return new Response("[]", { status: 200 });
@@ -282,6 +291,8 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     updateState: workflow.updateState,
     ghAwMetadata: workflow.ghAwMetadata,
     ghAwManifest: workflow.ghAwManifest,
+    lockSha: workflow.lockSha,
+    visibility: workflow.visibility,
   })), [{
     repository: "acme/service",
     path: ".github/workflows/remote-agent.lock.yml",
@@ -292,6 +303,8 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     updateState: "update-available",
     ghAwMetadata: { compiler_version: "v0.88.7", strict: true },
     ghAwManifest: { version: 1, actions: [] },
+    lockSha: "abc123",
+    visibility: "public",
   }]);
   assert.deepEqual(output.workflowDiscovery, {
     complete: true,
@@ -300,6 +313,38 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     workflowsObserved: 1,
     failures: [],
   });
+  const cachedOutput = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    previousSnapshot: output,
+    fetchImpl,
+    generatedAt: "2026-09-07T13:00:00Z",
+  });
+  assert.equal(lockDownloads, 1);
+  assert.equal(cachedOutput.remoteWorkflows[0].ghAwVersion, "v0.88.7");
+});
+
+test("dashboard records refuse private remote workflow metadata on public Pages", async () => {
+  await assert.rejects(() => collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/private"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      if (url.pathname === "/repos/acme/private") {
+        return new Response(JSON.stringify({ private: true }), { status: 200 });
+      }
+      if (url.pathname === "/repos/acme/control/pages") {
+        return new Response(JSON.stringify({ public: true }), { status: 200 });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  }), /Refusing to publish private repository data/);
 });
 
 test("dashboard records stop on a GitHub rate limit and return a renderable error", async () => {
