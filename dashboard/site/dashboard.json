@@ -6143,8 +6143,7 @@
             "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
             "layout": "full",
             "views": [
-              "data-health-summary",
-              "data-health-activity"
+              "data-health-summary"
             ]
           },
           {
@@ -6154,6 +6153,15 @@
             "layout": "full",
             "views": [
               "data-health-files"
+            ]
+          },
+          {
+            "id": "collector-workflow",
+            "title": "Collector workflow",
+            "description": "Collector state and access to the CAO Activity workflow run history.",
+            "layout": "full",
+            "views": [
+              "data-health-activity"
             ]
           },
           {
@@ -6329,14 +6337,9 @@
           {
             "id": "data-health-files",
             "title": "Loaded files",
+            "disclosure": "supplemental",
             "data": {
-              "source": "data-health-files",
-              "order-by": [
-                {
-                  "field": "size",
-                  "direction": "desc"
-                }
-              ]
+              "source": "data-health-files"
             },
             "mark": "table",
             "controls": "static",
@@ -6389,6 +6392,7 @@
           },
           {
             "id": "data-health-domains",
+            "disclosure": "supplemental",
             "title": "Dashboard domain confidence",
             "data": {
               "source": "data-health-domains"
@@ -6425,6 +6429,7 @@
           },
           {
             "id": "data-health-coverage",
+            "disclosure": "supplemental",
             "title": "Scope and evidence coverage",
             "data": {
               "source": "data-health-coverage"
@@ -6477,6 +6482,7 @@
           {
             "id": "data-health-collections",
             "title": "Collector state",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-collections"
             },
@@ -6528,6 +6534,7 @@
           {
             "id": "data-health-compatibility",
             "title": "Producer contracts",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-compatibility"
             },
@@ -6574,6 +6581,7 @@
           {
             "id": "data-health-reconciliation",
             "title": "Cross-source reconciliation",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-reconciliation"
             },
@@ -6624,6 +6632,7 @@
           },
           {
             "id": "data-health-sources",
+            "disclosure": "supplemental",
             "title": "Cached source shape",
             "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
             "data": {
@@ -6689,6 +6698,7 @@
           },
           {
             "id": "data-health-fields",
+            "disclosure": "supplemental",
             "title": "Field shape",
             "description": "Observed field types and population across every cached source.",
             "data": {
@@ -6747,6 +6757,7 @@
             "id": "data-health-schema",
             "title": "Data shape preview",
             "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-schema"
             },
@@ -6772,6 +6783,7 @@
           {
             "id": "data-health-provenance",
             "title": "Collection provenance",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-collections"
             },

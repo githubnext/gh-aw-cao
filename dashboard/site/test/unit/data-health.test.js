@@ -115,8 +115,8 @@ describe('coverage and collection provenance', () => {
     expect(runsFile).toMatchObject({ file: 'runs.json', rows: 2, status: 'available' });
     expect(runsFile?.size).toBeGreaterThan(0);
     expect(runsFile?.['display-size']).toMatch(/^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/);
-    expect(derived['data-health-files'].rows.map((row) => row.size))
-      .toEqual(derived['data-health-files'].rows.map((row) => row.size).toSorted((left, right) => right - left));
+    const fileSizes = /** @type {number[]} */ (derived['data-health-files'].rows.map((row) => row.size));
+    expect(fileSizes).toEqual(fileSizes.toSorted((left, right) => right - left));
     expect(summary['total-size']).toMatch(/^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/);
   });
 
