@@ -277,6 +277,46 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
+  it('binds deployed workflow versions, update state, and source paths in Updates', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        workflows: {
+          source: 'workflows',
+          rows: [{
+            organization: 'acme',
+            repository: 'service',
+            workflow: '.github/workflows/remote-agent.md',
+            'workflow-name': 'Remote agent',
+            'gh-aw-version': 'v0.88.7',
+            'gh-aw-current-version': 'v0.89.0',
+            'gh-aw-version-label': 'v0.88.7',
+            'gh-aw-update-state': 'update-available'
+          }],
+          metadata: {
+            'source-id': 'deployed-workflows-fixture',
+            'source-kind': 'github',
+            'as-of': '2026-09-08T17:24:49.713Z',
+            'retrieved-at': '2026-09-08T17:24:49.713Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'updates');
+    expect(page?.querySelector('[data-chart-widget="pie"]')?.textContent).toContain('v0.88.7');
+    const inventory = page?.querySelector('[data-view-id="workflow-updates"]');
+    expect(inventory?.textContent).toContain('v0.89.0');
+    expect(inventory?.textContent).toContain('update-available');
+    expect(inventory?.querySelector('tbody a')?.getAttribute('href')).toBe(
+      '#page-workflow-runtime?workflow=acme%2Fservice%3A.github%2Fworkflows%2Fremote-agent.md'
+    );
+    rendered.remove();
+  });
+
   it('renders cached source health without mixing in presentation-only sources', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
