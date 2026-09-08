@@ -57,8 +57,7 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.mark === "table"
         && summary.id === "data-health-summary"
         && summary.encoding?.columns?.some((column) => column.field === "confidence" && column.display === "status");
-      const isInventoryFullTable = ["repositories", "packages", "workflows", "runs", "experiments", "mcps"].includes(page.id)
-        && views.length === 1
+      const isFullViewTable = views.length === 1
         && summary.mark === "table"
         && summary.controls === "interactive"
         && summary["lazy-list"] === true
@@ -100,7 +99,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isWorkProjectView
           || isInsightsOverview
           || isDataHealthConfidenceSummary
-          || isInventoryFullTable
+          || isFullViewTable
           || isOverviewDrillDown
           || isCatchUpHome
           || isAttentionFirstHome,
