@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { enableLazyViews } from '../../src/components/lazy-view.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { agentSmellNotifications } from '../../src/components/agent-marketplace-view.js';
+import { primerStylesheet } from '../../src/styles.js';
 
 const metadata = {
   'source-id': 'signal-fixture',
@@ -15,6 +16,16 @@ const metadata = {
 };
 
 describe('UI elements', () => {
+  it('uses auto-fill to keep agent marketplace card widths stable when results shrink', () => {
+    const styles = primerStylesheet();
+    expect(styles).toContain(
+      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; }'
+    );
+    expect(styles).not.toContain(
+      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fit,'
+    );
+  });
+
   it('does not classify blocked assignment state as an agent smell', () => {
     const notifications = agentSmellNotifications([], [{
       'agent-id': 'review-agent', 'agent-name': 'Review agent', 'agent-state': 'blocked',
