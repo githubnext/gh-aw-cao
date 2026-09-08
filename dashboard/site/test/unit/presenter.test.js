@@ -531,7 +531,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders JSON-declared package and standalone workflow inventory with a topology summary', () => {
+  it('renders the full workflow inventory as one filterable table', () => {
     const document = {
       languageVersion: '0.1.0',
       dashboard: {
@@ -604,20 +604,18 @@ describe('presenter built-in and custom pages', () => {
 
     const page = rendered.querySelector('[data-page-name="workflows"]');
     expect(globalThis.document.title).toBe('Workflows · Workflow Topology');
-    expect(page?.querySelector('.summary-grid')?.textContent).toBe('Packages1Package workflows2Standalone workflows1');
     expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred');
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
-    expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('dependabot.yml');
-    expect(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.textContent).toContain('release-train-updater.yml');
-    expect(page?.querySelector('section[aria-label="Repository-owned workflows"]')?.textContent).toContain('ci.yml');
-    expect(page?.querySelector('#workflows-workflow-aic-layout-heading')?.textContent).toBe('AIC');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    const packagedRows = [...(page?.querySelector('#workflows-operation-package-workflows-heading')?.parentElement?.parentElement?.querySelectorAll('tbody tr') ?? [])];
-    const standaloneRows = [...(page?.querySelector('section[aria-label="Repository-owned workflows"]')?.querySelectorAll('tbody tr') ?? [])];
-    expect(packagedRows.find((row) => row.textContent?.includes('dependabot.yml'))?.lastElementChild?.textContent).toBe('30');
-    expect(standaloneRows.find((row) => row.textContent?.includes('ci.yml'))?.lastElementChild?.textContent).toBe('5');
+    expect(page?.querySelectorAll('.view')).toHaveLength(1);
+    expect(page?.querySelector('[data-chart-widget]')).toBeNull();
+    const workflowTable = page?.querySelector('#workflows-workflow-information-heading')?.parentElement?.parentElement;
+    expect(workflowTable?.textContent).toContain('dependabot.yml');
+    expect(workflowTable?.textContent).toContain('release-train-updater.yml');
+    expect(workflowTable?.textContent).toContain('ci.yml');
+    expect(workflowTable?.querySelector('input[type="search"]')).not.toBeNull();
+    expect(workflowTable?.querySelectorAll('tbody tr')).toHaveLength(3);
     expect(page?.querySelector('.mode-review')).not.toBeNull();
     expect(page?.querySelector('.mode-live')).not.toBeNull();
     expect(page?.querySelector('.status-success')).not.toBeNull();

@@ -3362,61 +3362,82 @@
               "title": "Workflow inventory",
               "layout": "full",
               "views": [
-                "workflows-run-health",
-                "workflow-topology-summary",
-                "packaged-workflows",
-                "standalone-workflows"
+                "workflow-information"
               ],
-              "description": "Starts with registered workflows and their evidence state; source tables remain available for deeper inspection."
-            },
-            {
-              "id": "workflow-aic",
-              "title": "AIC",
-              "description": "Observed AI Credit allocation highlights the workflows with the highest measured usage.",
-              "layout": "full",
-              "views": [
-                "workflow-aic-usage"
-              ]
-            },
-            {
-              "id": "workflow-evidence-sources",
-              "title": "Evidence sources",
-              "layout": "full",
-              "views": [
-                "workflows-runs-source",
-                "workflows-outcomes-source",
-                "workflows-usage-source",
-                "workflows-findings-source",
-                "workflows-operational-values-source"
-              ]
+              "description": "Filter the complete workflow inventory by workflow, repository, package, role, mode, registration, or compiler version."
             }
           ],
           "views": [
             {
-              "id": "workflows-run-health",
-              "title": "Workflow run health trend",
-              "description": "Daily conclusions show whether authored workflows are operating reliably.",
+              "id": "workflow-information",
+              "title": "Workflow information",
+              "description": "All agentic workflows discovered in the configured scope.",
               "data": {
-                "source": "runs"
+                "source": "workflows",
+                "order-by": [
+                  {
+                    "field": "repository",
+                    "direction": "asc"
+                  },
+                  {
+                    "field": "workflow",
+                    "direction": "asc"
+                  }
+                ]
               },
-              "mark": "chart",
-              "chart": "line",
+              "mark": "table",
+              "controls": "interactive",
+              "empty-message": "No agentic workflows observed.",
               "layout": "full",
               "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                },
-                "color": {
-                  "field": "run-conclusion",
+                "href": {
+                  "field": "workflow-link",
                   "type": "nominal"
-                }
+                },
+                "columns": [
+                  {
+                    "field": "workflow-name",
+                    "type": "nominal",
+                    "title": "Name"
+                  },
+                  {
+                    "field": "workflow",
+                    "type": "nominal",
+                    "title": "Workflow"
+                  },
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository"
+                  },
+                  {
+                    "field": "package-name",
+                    "type": "nominal",
+                    "title": "Package"
+                  },
+                  {
+                    "field": "workflow-role",
+                    "type": "nominal",
+                    "title": "Role"
+                  },
+                  {
+                    "field": "rollout-mode",
+                    "type": "nominal",
+                    "title": "Mode",
+                    "display": "mode"
+                  },
+                  {
+                    "field": "workflow-active",
+                    "type": "nominal",
+                    "title": "Registration",
+                    "display": "active-state"
+                  },
+                  {
+                    "field": "gh-aw-version",
+                    "type": "nominal",
+                    "title": "gh-aw version"
+                  }
+                ]
               }
             },
             {
