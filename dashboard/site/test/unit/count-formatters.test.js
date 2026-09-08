@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { clampPercent, computeObservationCoverage, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, countBy, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -88,5 +88,13 @@ describe('count formatters', () => {
     expect(formatRoundedPercent(null)).toBe('—');
     expect(formatRoundedPercent(null, 'n/a')).toBe('n/a');
     expect(formatRoundedPercent(Number.NaN)).toBe('—');
+  });
+
+  it('tallies rows into a Map keyed by a derived label', () => {
+    const rows = [{ readiness: 'ready' }, { readiness: 'blocked' }, { readiness: 'ready' }];
+    const counts = countBy(rows, (row) => row.readiness);
+    expect(counts.get('ready')).toBe(2);
+    expect(counts.get('blocked')).toBe(1);
+    expect(countBy([], (row) => row.readiness).size).toBe(0);
   });
 });
