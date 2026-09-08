@@ -235,12 +235,20 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     '# gh-aw-manifest: {"version":1,"actions":[]}',
   ].join("\n");
   let lockSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const commitSha = "cccccccccccccccccccccccccccccccccccccccc";
   let failNextDownload = false;
   let lockDownloads = 0;
   const fetchImpl = async (input) => {
     const url = new URL(input);
     if (url.pathname === "/repos/acme/service") {
-      return new Response(JSON.stringify({ private: false }), { status: 200 });
+      return new Response(JSON.stringify({
+        private: false,
+        visibility: "public",
+        default_branch: "main",
+      }), { status: 200 });
+    }
+    if (url.pathname === "/repos/acme/service/commits/main") {
+      return new Response(JSON.stringify({ sha: commitSha }), { status: 200 });
     }
     if (url.pathname === "/repos/github/gh-aw/releases/latest") {
       return new Response(JSON.stringify({ tag_name: "v0.89.0" }), { status: 200 });
@@ -261,7 +269,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     }
     if (url.hostname === "raw.githubusercontent.com") {
       lockDownloads += 1;
-      assert.equal(url.pathname, `/acme/service/${lockSha}/.github/workflows/remote-agent.lock.yml`);
+      assert.equal(url.pathname, `/acme/service/${commitSha}/.github/workflows/remote-agent.lock.yml`);
       if (failNextDownload) {
         failNextDownload = false;
         return new Response("unavailable", { status: 503 });
@@ -362,24 +370,30 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   assert.equal(retriedRefresh.remoteWorkflows[0].ghAwVersion, "v0.88.7");
 });
 
-test("dashboard records refuse private remote workflow metadata on public Pages", async () => {
-  await assert.rejects(() => collectDashboardRecords({
+test("dashboard records refuse non-public remote workflow metadata on public Pages", async () => {
+  const collectForVisibility = (visibility) => collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/private"] },
+    controlSettings: { allowed_repositories: [`acme/${visibility}`] },
     inventory,
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     fetchImpl: async (input) => {
       const url = new URL(input);
-      if (url.pathname === "/repos/acme/private") {
-        return new Response(JSON.stringify({ private: true }), { status: 200 });
+      if (url.pathname === `/repos/acme/${visibility}`) {
+        return new Response(JSON.stringify({
+          private: visibility === "private",
+          visibility,
+          default_branch: "main",
+        }), { status: 200 });
       }
       if (url.pathname === "/repos/acme/control/pages") {
         return new Response(JSON.stringify({ public: true }), { status: 200 });
       }
       throw new Error(`Unexpected request: ${url}`);
     },
-  }), /Refusing to publish private repository data/);
+  });
+  await assert.rejects(() => collectForVisibility("private"), /Refusing to publish non-public repository data/);
+  await assert.rejects(() => collectForVisibility("internal"), /Refusing to publish non-public repository data/);
 });
 
 test("dashboard records skip remote data when repository visibility is unavailable", async () => {
@@ -474,12 +488,20 @@ test("dashboard records retain only confirmed-public snapshots when a refresh is
   const publicSnapshot = {
     generatedAt: "2026-09-02T23:00:00Z",
     records: [{ id: "retained-record" }],
+    workflowDiscovery: {
+      complete: true,
+      repositoriesExpected: 1,
+      repositoriesObserved: 1,
+      workflowsObserved: 1,
+      failures: [],
+    },
     containsPrivateData: false,
   };
   const retained = await refresh(publicSnapshot);
   assert.deepEqual(retained.records, publicSnapshot.records);
   assert.equal(retained.stale, true);
   assert.equal(retained.snapshotAgeSeconds, 3600);
+  assert.equal(retained.workflowDiscovery.complete, false);
 
   const privateSnapshot = {
     ...publicSnapshot,

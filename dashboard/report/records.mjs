@@ -350,10 +350,17 @@ async function collectDashboardRecordsImpl({
   const remoteRepositoryStates = await mapWithConcurrency(remoteWorkflowRepositories, 4, async (repositoryName) => {
     try {
       const metadata = await github(`/repos/${repositoryName}`);
+      const visibility = ["public", "private", "internal"].includes(metadata.visibility)
+        ? metadata.visibility
+        : metadata.private === true ? "private" : metadata.private === false ? "public" : "unknown";
       return {
         repository: repositoryName,
-        complete: true,
-        visibility: metadata.private === true ? "private" : "public",
+        complete: visibility !== "unknown" && Boolean(metadata.default_branch),
+        visibility,
+        defaultBranch: metadata.default_branch || "",
+        ...(visibility === "unknown" || !metadata.default_branch
+          ? { reason: "Repository visibility or default branch is unavailable" }
+          : {}),
       };
     } catch (error) {
       if (error instanceof GitHubRateLimitError) throw error;
@@ -367,11 +374,11 @@ async function collectDashboardRecordsImpl({
   const hasPrivateData = deployedInventory.includePrivate === true
     || (deployedInventory.workflows || []).some((workflow) => workflow.visibility === "private")
     || (deployedInventory.bundles || []).some((bundle) => bundle.visibility === "private")
-    || remoteRepositoryStates.some((state) => state.visibility === "private");
+    || remoteRepositoryStates.some((state) => state.visibility === "private" || state.visibility === "internal");
   if (hasPrivateData) {
     const pages = await github(`/repos/${owner}/${repo}/pages`, pagesToken);
     if (pages.public !== false) {
-      throw new Error(`Refusing to publish private repository data because GitHub Pages for ${repository} is not private`);
+      throw new Error(`Refusing to publish non-public repository data because GitHub Pages for ${repository} is public`);
     }
   }
 
@@ -416,9 +423,16 @@ async function collectDashboardRecordsImpl({
       };
     }
     try {
+      const revision = await github(
+        `/repos/${repositoryName}/commits/${encodeURIComponent(repositoryState.defaultBranch)}`,
+      );
+      const commitSha = String(revision.sha || "");
+      if (!/^[0-9a-f]{40,64}$/i.test(commitSha)) {
+        throw new Error(`Expected a default-branch commit from ${repositoryName}`);
+      }
       const [workflows, workflowFiles] = await Promise.all([
         githubWorkflowPages(repositoryName),
-        github(repositoryContentPath(repositoryName, ".github/workflows")),
+        github(`${repositoryContentPath(repositoryName, ".github/workflows")}?ref=${commitSha}`),
       ]);
       if (!Array.isArray(workflowFiles)) {
         throw new Error(`Expected workflow files from ${repositoryName}`);
@@ -441,7 +455,7 @@ async function collectDashboardRecordsImpl({
               ghAwManifest: previous.ghAwManifest || null,
             }
             : { ghAwMetadata: null, ghAwManifest: null };
-          const downloadUrl = rawWorkflowUrl(repositoryName, lockFile?.sha, workflow.path);
+          const downloadUrl = rawWorkflowUrl(repositoryName, commitSha, workflow.path);
           if (!metadataAvailable && downloadUrl) {
             try {
               payloads = ghAwPayloads(await githubDownload(downloadUrl));
@@ -665,6 +679,22 @@ export async function collectDashboardRecords(options) {
       ? Math.floor((Date.parse(generatedAt) - Date.parse(snapshotGeneratedAt)) / 1000)
       : null;
     const snapshotAgeSeconds = Number.isFinite(snapshotAge) ? Math.max(0, snapshotAge) : null;
+    const retainedWorkflowDiscovery = canRetain && options.previousSnapshot?.workflowDiscovery
+      ? {
+        ...options.previousSnapshot.workflowDiscovery,
+        complete: false,
+        failures: [
+          ...(options.previousSnapshot.workflowDiscovery.failures || []),
+          { repository: "", reason: error.message },
+        ],
+      }
+      : {
+        complete: false,
+        repositoriesExpected: 0,
+        repositoriesObserved: 0,
+        workflowsObserved: 0,
+        failures: [{ repository: "", reason: error.message }],
+      };
     return {
       generatedAt,
       repository: options.repository,
@@ -672,14 +702,7 @@ export async function collectDashboardRecords(options) {
       records: Array.isArray(retained) ? retained : [],
       remoteWorkflows: canRetain && Array.isArray(options.previousSnapshot?.remoteWorkflows)
         ? options.previousSnapshot.remoteWorkflows : [],
-      workflowDiscovery: canRetain && options.previousSnapshot?.workflowDiscovery
-        ? options.previousSnapshot.workflowDiscovery : {
-        complete: false,
-        repositoriesExpected: 0,
-        repositoriesObserved: 0,
-        workflowsObserved: 0,
-        failures: [{ repository: "", reason: error.message }],
-      },
+      workflowDiscovery: retainedWorkflowDiscovery,
       error: error.message,
       errorStatus: error.status,
       errorEndpoint: error.pathname,

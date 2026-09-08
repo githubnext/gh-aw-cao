@@ -1935,6 +1935,21 @@ test("dashboard source bridge exposes rate-limit details for retained records", 
     report: {
       generatedAt: "2026-09-03T00:00:00Z",
       records: [{ repository: "githubnext/service", updatedAt: "2026-09-02T23:00:00Z" }],
+      remoteWorkflows: [{
+        repository: "githubnext/service",
+        path: ".github/workflows/remote.lock.yml",
+        name: "Remote agent",
+        role: "standalone",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+      workflowDiscovery: {
+        complete: false,
+        repositoriesExpected: 1,
+        repositoriesObserved: 1,
+        workflowsObserved: 1,
+        failures: [{ repository: "", reason: "GitHub API rate limit exceeded" }],
+      },
       error: "GitHub API rate limit exceeded",
       errorStatus: 403,
       errorEndpoint: "/repos/githubnext/service/issues",
@@ -1963,6 +1978,9 @@ test("dashboard source bridge exposes rate-limit details for retained records", 
   ]);
   assert.equal(sources.outcomes.metadata.completeness, "partial");
   assert.equal(sources.outcomes.metadata.freshness, "stale");
+  assert.equal(sources.workflows.metadata.completeness, "partial");
+  assert.equal(sources.workflows.metadata.freshness, "stale");
+  assert.equal(sources.workflows.metadata["fallback-source-as-of"], "2026-09-02T23:00:00Z");
 });
 
 test("dashboard source bridge derives admission gates from resolved control policy", () => {
