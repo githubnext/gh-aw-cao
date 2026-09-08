@@ -27,6 +27,8 @@ describe('table cell display helper', () => {
     expect(renderCellDisplay(undefined, null, toText, null, 'quantitative')).toBe('—');
     expect(/** @type {HTMLElement} */ (renderCellDisplay('digest', '1234567890abcdef', toText)).textContent).toBe('1234567890ab');
     expect(renderCellDisplay(undefined, 'plain', toText)).toBe('plain');
+    expect(renderCellDisplay(undefined, '.github/workflows/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('daily.md');
+    expect(renderCellDisplay(undefined, 'nested/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('nested/daily.md');
     expect(renderCellDisplay('unsupported', null, toText)).toBe('unknown');
     const temporal = /** @type {HTMLElement} */ (renderCellDisplay(undefined, '2026-08-30T07:00:00Z', toText, null, 'temporal'));
     expect(temporal.tagName).toBe('TIME');

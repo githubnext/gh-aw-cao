@@ -11,7 +11,7 @@ import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
-import { toNumber, stringOrFallback } from './view-formatters.js';
+import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
@@ -2421,10 +2421,10 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
   if (!aggregate || aggregate === 'none') {
     return rows.map((row, rowIndex) => ({
       key: `${pageId}-${title}-${rowIndex}`,
-      x: x ? toText(row[x.field]) : 'unknown',
+      x: x ? formatString(row[x.field], x.format) : 'unknown',
       y: y ? toNumber(row[y.field]) : 0,
-      category: y ? toText(row[y.field]) : 'unknown',
-      color: color ? toText(row[color.field]) : null,
+      category: y ? formatString(row[y.field], y.format) : 'unknown',
+      color: color ? formatString(row[color.field], color.format) : null,
       highlighted: typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
       link: hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null,
       source: row
@@ -2434,8 +2434,8 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
   /** @type {Map<string, { x: string, color: string | null, values: unknown[], links: Array<{ href: string, label: string }>, source: Record<string, unknown> }>} */
   const groups = new Map();
   for (const row of rows) {
-    const xValue = x ? toText(row[x.field]) : 'unknown';
-    const colorValue = color ? toText(row[color.field]) : null;
+    const xValue = x ? formatString(row[x.field], x.format) : 'unknown';
+    const colorValue = color ? formatString(row[color.field], color.format) : null;
     const key = JSON.stringify([xValue, colorValue]);
     const group = groups.get(key) ?? { x: xValue, color: colorValue, values: [], links: [], source: row };
     group.values.push(y ? row[y.field] : null);

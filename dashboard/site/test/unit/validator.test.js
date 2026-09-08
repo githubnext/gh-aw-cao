@@ -4113,6 +4113,61 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
+  it('DLS-VIEW-008 accepts workflow-relative-path formatting on nominal fields', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: formatted-workflow-path
+  title: Formatted workflow path
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: workflows
+          data:
+            source: workflows
+          mark: table
+          encoding:
+            columns:
+              - field: workflow
+                type: nominal
+                format: workflow-relative-path
+`);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('DLS-VIEW-008 rejects unknown field formats and workflow path formatting on quantitative fields', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: invalid-formatted-workflow-path
+  title: Invalid formatted workflow path
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: workflows
+          data:
+            source: workflows
+          mark: table
+          encoding:
+            columns:
+              - field: workflow
+                type: nominal
+                format: short-path
+              - field: workflow
+                type: quantitative
+                format: workflow-relative-path
+`);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].encoding.columns[0].format' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' })
+      ]));
+    }
+  });
+
   it('DLS-UNIT-004 rejects unknown formats and invalid duration unit definitions', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:

@@ -2213,6 +2213,7 @@
               "x": {
                 "field": "workflow",
                 "type": "nominal",
+                "format": "workflow-relative-path",
                 "title": "Workflow"
               },
               "y": {
@@ -3467,6 +3468,7 @@
                   {
                     "field": "workflow",
                     "type": "nominal",
+                    "format": "workflow-relative-path",
                     "title": "Workflow"
                   },
                   {
@@ -3516,6 +3518,7 @@
                   {
                     "field": "workflow",
                     "type": "nominal",
+                    "format": "workflow-relative-path",
                     "title": "Workflow"
                   },
                   {
@@ -3565,6 +3568,7 @@
                 "x": {
                   "field": "workflow",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Workflow"
                 },
                 "y": {

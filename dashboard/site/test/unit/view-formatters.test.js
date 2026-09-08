@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatNumber, formatPercent, formatRelativeTime, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
+import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatNumber, formatPercent, formatRelativeTime, formatString, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
 
 /**
  * @param {unknown} value
@@ -10,6 +10,13 @@ function toText(value) {
 }
 
 describe('view formatter helpers', () => {
+  it('formats workflow-relative paths without changing other strings', () => {
+    expect(formatString('.github/workflows/daily.md', 'workflow-relative-path')).toBe('daily.md');
+    expect(formatString('.github/workflows/nested/daily.md', 'workflow-relative-path')).toBe('nested/daily.md');
+    expect(formatString('daily.md', 'workflow-relative-path')).toBe('daily.md');
+    expect(formatString(null, 'workflow-relative-path')).toBe('unknown');
+  });
+
   it('DLS-VIEW-013 formats aggregate metric values for count, distinct-count, sum, mean, min, max, and default field access', () => {
     const rows = [
       { aic: 12, repository: 'repo-a', score: 1.5 },

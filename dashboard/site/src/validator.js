@@ -23,6 +23,7 @@ import {
   EVAL_RESULT_VALUES,
   FIELD_DEFINITION_KEYS,
   FIELD_DISPLAY_VALUES,
+  FIELD_FORMAT_VALUES,
   FIELD_TYPE_VALUES,
   FILTER_DIMENSION_VALUES,
   DETECTION_STATE_VALUES,
@@ -2910,6 +2911,24 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
         'display must use one canonical field display value.',
         `${path}.display`
+      ));
+    }
+  }
+
+  if (fieldDefinition.format !== undefined) {
+    validateStringField(fieldDefinition.format, `${path}.format`, true, errors);
+    if (typeof fieldDefinition.format === 'string' && !FIELD_FORMAT_VALUES.includes(fieldDefinition.format)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'format must use one canonical field format value.',
+        `${path}.format`
+      ));
+    }
+    if (!['nominal', 'ordinal'].includes(fieldDefinition.type)) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'workflow-relative-path format requires a nominal or ordinal field.',
+        `${path}.format`
       ));
     }
   }
