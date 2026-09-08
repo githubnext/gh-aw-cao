@@ -20,7 +20,7 @@
     "jsdom": "^26.1.0",
     "lighthouse": "^13.4.1",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4",
+    "vitest": "^5.0.0",
     "yaml": "^2.9.0"
   }
 }
