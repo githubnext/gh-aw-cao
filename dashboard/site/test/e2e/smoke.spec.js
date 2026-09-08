@@ -750,6 +750,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
+  await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
