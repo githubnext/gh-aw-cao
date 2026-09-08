@@ -26,11 +26,11 @@ export function renderStatusBadge(status) {
   const normalized = text.toLowerCase();
   let statusClass = 'status-muted';
 
-  if (['success', 'completed', 'active', 'true', 'fresh', 'available', 'complete', 'accepted', 'healthy', 'matured', 'closed', 'merged', 'resolved', 'no failures observed', 'outcomes observed'].includes(normalized)) {
+  if (['success', 'completed', 'active', 'true', 'fresh', 'available', 'complete', 'accepted', 'healthy', 'trusted', 'matured', 'closed', 'merged', 'resolved', 'no failures observed', 'outcomes observed'].includes(normalized)) {
     statusClass = 'status-success';
-  } else if (['in-progress', 'running', 'pending', 'review', 'partial', 'stale', 'attention', 'warning', 'action-required', 'interim', 'open', 'published', 'approval required', 'disabled workflows'].includes(normalized)) {
+  } else if (['in-progress', 'running', 'pending', 'review', 'partial', 'stale', 'degraded', 'attention', 'warning', 'action-required', 'interim', 'open', 'published', 'approval required', 'disabled workflows'].includes(normalized)) {
     statusClass = 'status-attention';
-  } else if (['failure', 'failed', 'rejected', 'danger', 'unavailable', 'critical', 'timed-out', 'startup-failure', 'needs attention'].includes(normalized)) {
+  } else if (['failure', 'failed', 'rejected', 'danger', 'unavailable', 'insufficient', 'critical', 'timed-out', 'startup-failure', 'needs attention'].includes(normalized)) {
     statusClass = 'status-danger';
   }
 

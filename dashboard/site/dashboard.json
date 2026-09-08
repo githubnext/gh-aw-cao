@@ -6143,9 +6143,7 @@
             "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
             "layout": "full",
             "views": [
-              "data-health-confidence",
-              "data-health-summary",
-              "data-health-activity"
+              "data-health-summary"
             ]
           },
           {
@@ -6155,6 +6153,15 @@
             "layout": "full",
             "views": [
               "data-health-files"
+            ]
+          },
+          {
+            "id": "collector-workflow",
+            "title": "Collector workflow",
+            "description": "Collector state and access to the CAO Activity workflow run history.",
+            "layout": "full",
+            "views": [
+              "data-health-activity"
             ]
           },
           {
@@ -6233,38 +6240,8 @@
         ],
         "views": [
           {
-            "id": "data-health-confidence",
-            "title": "Overall confidence",
-            "description": "Confidence is derived from critical evidence domains without a numeric health score.",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "table": false,
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "confidence",
-                "type": "nominal",
-                "title": "Confidence"
-              },
-              "y": {
-                "field": "confidence",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Dashboard"
-              },
-              "color": {
-                "field": "confidence",
-                "type": "nominal"
-              }
-            }
-          },
-          {
             "id": "data-health-summary",
-            "title": "Data health summary",
-            "disclosure": "supplemental",
+            "title": "Overall confidence",
             "data": {
               "source": "data-health-summary"
             },
@@ -6345,6 +6322,11 @@
                   "title": "Fields"
                 },
                 {
+                  "field": "total-size",
+                  "type": "nominal",
+                  "title": "Total size"
+                },
+                {
                   "field": "next-action",
                   "type": "nominal",
                   "title": "Next action"
@@ -6353,28 +6335,9 @@
             }
           },
           {
-            "id": "data-health-activity",
-            "title": "CAO Activity",
-            "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "metric",
-            "layout": "third",
-            "encoding": {
-              "value": {
-                "field": "collector-state"
-              },
-              "href": {
-                "field": "external-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
             "id": "data-health-files",
             "title": "Loaded files",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-files"
             },
@@ -6389,9 +6352,9 @@
                   "title": "File"
                 },
                 {
-                  "field": "size",
-                  "type": "quantitative",
-                  "title": "Size (bytes)"
+                  "field": "display-size",
+                  "type": "nominal",
+                  "title": "Size"
                 },
                 {
                   "field": "rows",
@@ -6407,6 +6370,25 @@
               ]
             },
             "layout": "full"
+          },
+          {
+            "id": "data-health-activity",
+            "title": "CAO Activity",
+            "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "third",
+            "encoding": {
+              "value": {
+                "field": "collector-state"
+              },
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              }
+            }
           },
           {
             "id": "data-health-domains",
