@@ -194,6 +194,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/route-composition.js
   - source: site/src/components/route-body-composition.js
     destination: .github/aw/dashboard/site/src/components/route-body-composition.js
+  - source: site/src/components/route-body-config.js
+    destination: .github/aw/dashboard/site/src/components/route-body-config.js
   - source: site/src/components/route-body-specification.js
     destination: .github/aw/dashboard/site/src/components/route-body-specification.js
   - source: site/src/components/route-tab-set.js
