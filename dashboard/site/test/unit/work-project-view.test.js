@@ -95,7 +95,7 @@ describe('work project view primitives', () => {
       key: 'roadmap',
       pageId: 'work-roadmap',
       href: '#page-work-roadmap',
-      title: 'Roadmap'
+      title: 'Execution timeline'
     });
     const rendered = renderWorkViewNavigation(workRoutePageConfigs(), 'tasks');
     expect([...rendered.querySelectorAll('a')].map((link) => ({
@@ -105,7 +105,7 @@ describe('work project view primitives', () => {
     }))).toEqual([
       { href: '#page-work', current: null, text: 'Board' },
       { href: '#page-work-tasks', current: 'page', text: 'Tasks' },
-      { href: '#page-work-roadmap', current: null, text: 'Roadmap' }
+      { href: '#page-work-roadmap', current: null, text: 'Execution timeline' }
     ]);
   });
 
@@ -167,10 +167,11 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('.work-roadmap')).toBeNull();
   });
 
-  it('presents telemetry states as todo, in progress, needs review, and done', () => {
+  it('presents observed work states without recasting them as planning states', () => {
     const rows = [
       { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
       { 'work-item-id': 'progress', name: 'Running item', 'lifecycle-state': 'active' },
+      { 'work-item-id': 'review', name: 'Review item', 'lifecycle-state': 'review' },
       { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' },
       { 'work-item-id': 'done', name: 'Completed item', 'lifecycle-state': 'completed' }
     ];
@@ -182,19 +183,17 @@ describe('work project view primitives', () => {
     const columns = [...rendered.querySelectorAll('.work-board-column')];
 
     expect(columns.map((column) => column.querySelector('h4')?.textContent)).toEqual([
-      'Todo', 'In progress', 'Needs review', 'Done'
+      'Waiting', 'Active', 'In review', 'Blocked', 'Complete'
     ]);
     expect(columns.map((column) => column.querySelector('.work-card')?.getAttribute('data-work-state'))).toEqual([
-      'todo', 'in-progress', 'needs-review', 'done'
+      'waiting', 'active', 'review', 'blocked', 'completed'
     ]);
-    expect(rendered.textContent).not.toContain('Waiting');
-    expect(rendered.textContent).not.toContain('Active');
   });
 
-  it('provides a one-group mobile Board with tap-based moves and full-screen details', () => {
+  it('provides a read-only mobile Board with observed state, trust, and full-screen details', () => {
     const rows = [
       { 'work-item-id': 'todo', name: 'Queued item', owner: 'operations', package: 'core', 'lifecycle-state': 'waiting' },
-      { 'work-item-id': 'review', name: 'Blocked item', owner: 'security', package: 'review', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision' }
+      { 'work-item-id': 'review', name: 'Blocked item', owner: 'security', package: 'review', 'lifecycle-state': 'blocked', reason: 'Approval required', 'waiting-on': 'reviewer decision', 'trust-state': 'pending' }
     ];
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work',
@@ -203,19 +202,15 @@ describe('work project view primitives', () => {
     }));
     const tabs = [...rendered.querySelectorAll('.work-board-group-tab')];
 
-    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Todo1', 'In progress0', 'Needs review1', 'Done0']);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
-    expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Needs review');
+    expect(rendered.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksExecution timeline');
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Waiting1', 'Active0', 'In review0', 'Blocked1', 'Complete0']);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'false', 'true', 'false']);
+    expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Blocked');
 
     /** @type {HTMLButtonElement} */ (tabs[0]).click();
-    expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Todo');
-
-    const queuedCard = [...rendered.querySelectorAll('.work-card')].find((card) => card.textContent?.includes('Queued item'));
-    const move = /** @type {HTMLSelectElement} */ (queuedCard?.querySelector('[aria-label="Move Queued item to"]'));
-    move.value = 'in-progress';
-    move.dispatchEvent(new Event('change'));
-    expect(rendered.querySelector('.work-board-in-progress')?.textContent).toContain('Queued item');
+    expect(rendered.querySelector('.work-board-column[data-mobile-active="true"] h4')?.textContent).toBe('Waiting');
+    expect(rendered.querySelector('[aria-label^="Move "]')).toBeNull();
+    expect(rendered.querySelector('.work-mobile-quick-update')).toBeNull();
 
     const blockedCard = [...rendered.querySelectorAll('.work-card')].find((card) => card.textContent?.includes('Blocked item'));
     if (!(blockedCard instanceof HTMLElement)) throw new Error('blocked card did not render');
@@ -224,37 +219,17 @@ describe('work project view primitives', () => {
     expect(detail?.hasAttribute('open')).toBe(true);
     expect(detail?.textContent).toContain('Approval required');
     expect(detail?.textContent).toContain('reviewer decision');
+    expect(detail?.textContent).toContain('Trust statePending');
   });
 
-  it('reapplies active filters after a mobile quick update', () => {
-    const rows = [
-      { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
-      { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' }
-    ];
-    const rendered = renderWorkProjectView(/** @type {any} */ ({
-      pageId: 'work',
-      title: 'Work',
-      sources: { 'work-items': { rows } }
-    }));
-    const stateFilter = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Filter by state"]'));
-    stateFilter.value = 'Needs Review';
-    stateFilter.dispatchEvent(new Event('change'));
-
-    const move = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Move Blocked item to"]'));
-    move.value = 'todo';
-    move.dispatchEvent(new Event('change'));
-
-    expect(rendered.textContent).toContain('No work items match the current filters.');
-  });
-
-  it('defaults Roadmap to a period-grouped mobile timeline with an explicit visual mode', () => {
+  it('defaults Execution timeline to period-grouped observed history with an explicit visual mode', () => {
     const rows = [
       { 'work-item-id': 'august', name: 'August item', 'lifecycle-state': 'active', 'started-at': '2026-08-30T09:00:00Z' },
       { 'work-item-id': 'september', name: 'September item', 'lifecycle-state': 'completed', 'started-at': '2026-09-02T09:00:00Z', 'ended-at': '2026-09-03T09:00:00Z' }
     ];
     const rendered = renderWorkProjectView(/** @type {any} */ ({
       pageId: 'work-roadmap',
-      title: 'Roadmap',
+      title: 'Execution timeline',
       sources: { 'work-items': { rows } },
       elementConfig: { body: 'roadmap' }
     }));
@@ -262,6 +237,7 @@ describe('work project view primitives', () => {
     expect([...rendered.querySelectorAll('.work-roadmap-period-heading')].map((heading) => heading.textContent)).toEqual([
       'August 2026', 'September 2026'
     ]);
+    expect(rendered.querySelector('.work-roadmap-provenance')?.textContent).toContain('not planned commitments');
     expect(rendered.querySelectorAll('.work-roadmap-mobile-meta')).toHaveLength(2);
     const visualToggle = /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Show visual timeline"]'));
     visualToggle.click();

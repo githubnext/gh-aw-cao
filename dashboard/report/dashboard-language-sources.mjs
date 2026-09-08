@@ -2015,6 +2015,8 @@ function workItemRows(workflows, runs, outcomes) {
           || (index === 0 ? workflowOutcomes[0] : undefined)
         : workflowOutcomes[0];
       const lifecycleState = workItemLifecycle(run, matchedOutcome);
+      const verificationState = outcomeVerificationState(matchedOutcome?.["outcome-state"]);
+      const rolloutMode = run?.["rollout-mode"] || workflow["rollout-mode"] || "unknown";
       return {
         "work-item-id": key,
         name: run
@@ -2032,6 +2034,7 @@ function workItemRows(workflows, runs, outcomes) {
         domain: workflow["package-name"] || "standalone",
         "work-type": workflow["workflow-role"] || "unknown",
         "lifecycle-state": lifecycleState,
+        "work-state": lifecycleState,
         phase: run?.["run-status"] || "unknown",
         reason: run?.["admission-reason"] || run?.["failure-message"]
           || (lifecycleState === "review" ? "Produced outcome awaits review or user consent" : "No blocking condition observed"),
@@ -2047,7 +2050,11 @@ function workItemRows(workflows, runs, outcomes) {
         "waiting-since": run?.["resource-reset-at"] || run?.["started-at"] || matchedOutcome?.["observed-at"] || "",
         owner: workflow["package-name"] || workflow.organization,
         "consequence-tier": workItemConsequenceTier(workflow["workflow-role"]),
-        "verification-state": outcomeVerificationState(matchedOutcome?.["outcome-state"]),
+        "verification-state": verificationState,
+        "trust-state": verificationState,
+        "rollout-mode": rolloutMode,
+        "authority-state": rolloutMode === "review" ? "proposal-only" : rolloutMode === "live" ? "target-authority-required" : "unknown",
+        "interval-provenance": run ? "observed" : "inferred",
         "outcome-state": matchedOutcome?.["outcome-state"] || "pending",
         "started-at": run?.["started-at"] || "",
         "ended-at": run?.["ended-at"] || "",
@@ -2067,16 +2074,30 @@ function attentionSignalRows(workItems, generatedAt) {
       const since = Date.parse(item["waiting-since"]);
       const ageSeconds = Number.isFinite(since) ? Math.max(0, Math.round((now - since) / 1000)) : 0;
       return {
-        "attention-signal-id": `${item["work-item-id"]}:${item["lifecycle-state"]}`,
+        "attention-signal-id": [
+          item["work-item-id"],
+          item["lifecycle-state"],
+          item.run || item["observed-at"],
+          item.reason,
+          item["verification-state"],
+        ].join(":"),
         "signal-type": item["lifecycle-state"],
         "work-item-id": item["work-item-id"],
+        "work-state": item["work-state"],
         objective: item.objective,
         scope: item.scope,
         reason: item.reason,
         action: item["next-action"],
+        "required-action": item["next-action"],
         "expected-actor": item["next-actor"],
+        dependency: item["waiting-on"],
         "age-seconds": ageSeconds,
         "consequence-tier": item["consequence-tier"],
+        "verification-state": item["verification-state"],
+        "trust-state": item["trust-state"],
+        "operational-state": "unresolved",
+        "rollout-mode": item["rollout-mode"],
+        "authority-state": item["authority-state"],
         priority: item["lifecycle-state"] === "blocked" ? (item["consequence-tier"] === "high" ? 0 : 1)
           : item["lifecycle-state"] === "review" ? 1 : 2,
         "observed-at": item["observed-at"],

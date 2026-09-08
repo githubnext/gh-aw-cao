@@ -666,7 +666,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(tasksPage.locator('.work-board, .work-roadmap')).toHaveCount(0);
   await expect(cleanNavigation.filter({ hasText: 'Work' })).toHaveAttribute('aria-current', 'page');
 
-  await tasksPage.getByRole('link', { name: 'Roadmap' }).click();
+  await tasksPage.getByRole('link', { name: 'Execution timeline' }).click();
   await expect(page).toHaveURL(/#page-work-roadmap$/);
   const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
   await expect(roadmapPage.locator('.work-roadmap')).toBeVisible();
@@ -748,7 +748,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   }
 });
 
-test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', async ({ page }) => {
+test('Work uses focused mobile Board, Table, Execution timeline, and detail interactions', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 390, height: 844 });
@@ -788,8 +788,10 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   await expect(boardPage.locator('.work-board-group-tabs')).toBeVisible();
   await expect(boardPage.locator('.work-board-column[data-mobile-active="true"]')).toHaveCount(1);
   await expect(boardPage.locator('.work-board-column[data-mobile-active="false"]').first()).toBeHidden();
-  await boardPage.getByRole('tab', { name: /Todo/ }).click();
+  await boardPage.getByRole('tab', { name: /Waiting/ }).click();
   await expect(boardPage.locator('.work-board-column[data-mobile-active="true"]')).toContainText('Prepare rollout');
+  await expect(boardPage.locator('[aria-label^="Move "]')).toHaveCount(0);
+  await expect(boardPage.locator('.work-mobile-quick-update')).toHaveCount(0);
   await expect(boardPage.locator('.work-board-column[data-mobile-active="true"] .work-board-cards')).toHaveCSS('overflow-y', 'visible');
 
   await boardPage.getByRole('button', { name: 'Filters', exact: true }).click();
@@ -812,7 +814,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   await expect(tablePage.locator('.work-task-settings-sheet')).toBeVisible();
   await tablePage.getByRole('button', { name: 'Close Table settings' }).click();
 
-  await tablePage.getByRole('link', { name: 'Roadmap' }).click();
+  await tablePage.getByRole('link', { name: 'Execution timeline' }).click();
   const roadmapPage = page.locator('[data-page-id="work-roadmap"]');
   await expect(roadmapPage.locator('.work-roadmap-period-heading').first()).toBeVisible();
   await expect(roadmapPage.locator('.work-roadmap-calendar')).toBeHidden();

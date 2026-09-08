@@ -1244,6 +1244,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .notifications-selection-bar { min-height: 42px; display: flex; align-items: center; gap: 14px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px 6px 0 0; background: var(--canvas-subtle); font-size: .75rem; }
 .notifications-selection-bar label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .notifications-result-count { margin-left: auto; color: var(--muted); }
+.notifications-local-state-note { margin: 0; padding: 7px 10px; border: 1px solid var(--border); border-top: 0; border-bottom: 0; background: var(--attention-muted); color: var(--fg); font-size: .6875rem; }
 .notifications-list { min-width: 0; }
 .notifications-load-boundary { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--border); border-top: 0; background: var(--canvas-subtle); color: var(--muted); font-size: .75rem; }
 .notifications-load-boundary button { min-height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
@@ -1277,6 +1278,10 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .notification-content strong, .notification-content small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notification-content strong { font-size: .8125rem; }
 .notification-content small { color: var(--muted); font-size: .75rem; }
+.notification-supervision-details { display: flex; flex-wrap: wrap; gap: 3px 12px; margin: 4px 0 0; color: var(--muted); font-size: .6875rem; }
+.notification-supervision-details div { display: flex; gap: 4px; }
+.notification-supervision-details dt { font-weight: 600; }
+.notification-supervision-details dd { margin: 0; }
 .notification-meta { display: grid; justify-items: end; color: var(--fg); font-size: .6875rem; font-weight: 600; text-align: right; }
 .notification-meta small { color: var(--muted); font-weight: 400; }
 .notification-actions { display: flex; gap: 4px; opacity: .35; }
@@ -1364,7 +1369,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-filter-clear-icon { display: grid; }
 .work-filter-clear-icon .octicon { width: 14px; height: 14px; }
 .work-project-body { min-width: 0; }
-.work-board { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 12px; align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
+.work-board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr)); gap: 12px; align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
 .work-board-column { min-width: 180px; height: clamp(480px, calc(100vh - 270px), 760px); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-subtle); }
 .work-board-column > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .work-board-column h4, .work-project-section-heading h4 { margin: 0; font-size: .875rem; }
@@ -1419,7 +1424,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-roadmap-toolbar { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .work-roadmap-toolbar > div { min-width: 0; display: flex; align-items: center; gap: 7px; margin-right: auto; }
 .work-roadmap-toolbar strong { font-size: .75rem; }
-.work-roadmap-toolbar > div > span:last-child { padding: 1px 6px; border-radius: 999px; background: var(--neutral-muted); color: var(--muted); font-size: .625rem; }
+.work-roadmap-count { padding: 1px 6px; border-radius: 999px; background: var(--neutral-muted); color: var(--muted); font-size: .625rem; }
 .work-roadmap-toolbar-icon { display: grid; color: var(--muted); }
 .work-roadmap-zoom { position: relative; z-index: 20; }
 .work-roadmap-zoom summary { min-height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font-size: .6875rem; font-weight: 600; cursor: pointer; list-style: none; }
@@ -1462,7 +1467,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-task-icon { width: 18px; height: 18px; display: grid; place-items: center; flex: 0 0 18px; color: var(--success); }
 .work-task-icon .octicon { width: 13px; height: 13px; }
 .work-task-type { color: var(--muted); text-transform: capitalize; }
+.work-task-status-cell { flex-direction: column; align-items: flex-start; gap: 3px; }
 .work-task-status-cell .work-state { min-height: 18px; flex: none; padding: 1px 6px; font-size: .625rem; }
+.work-trust-state { color: var(--muted); font-size: .625rem; white-space: nowrap; }
 .work-task-labels { gap: 4px; }
 .work-task-labels .work-card-label { min-height: 18px; }
 .work-task-owner a, .work-task-repository { min-width: 0; display: flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
@@ -1470,10 +1477,12 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-task-repository-icon { width: 14px; height: 14px; display: grid; flex: 0 0 14px; color: var(--muted); }
 .work-task-repository-icon .octicon { width: 14px; height: 14px; }
 .work-state { display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 2px 8px; border-radius: 999px; background: var(--neutral-muted); color: var(--fg); font-size: .6875rem; font-weight: 700; text-transform: capitalize; }
-.work-state-todo, .work-roadmap-bar.work-state-todo { background: var(--neutral-muted); color: var(--muted); }
-.work-state-in-progress, .work-roadmap-bar.work-state-in-progress { background: var(--success-muted); color: var(--success); }
-.work-state-needs-review, .work-roadmap-bar.work-state-needs-review { background: var(--attention-muted); color: var(--attention); }
-.work-state-done, .work-roadmap-bar.work-state-done { background: var(--accent-muted); color: var(--accent); }
+.work-state-waiting, .work-state-unknown, .work-roadmap-bar:is(.work-state-waiting, .work-state-unknown) { background: var(--neutral-muted); color: var(--muted); }
+.work-state-active, .work-roadmap-bar.work-state-active { background: var(--success-muted); color: var(--success); }
+.work-state-review, .work-roadmap-bar.work-state-review { background: var(--attention-muted); color: var(--attention); }
+.work-state-blocked, .work-roadmap-bar.work-state-blocked { background: var(--danger-muted); color: var(--danger); }
+.work-state-completed, .work-roadmap-bar.work-state-completed { background: var(--accent-muted); color: var(--accent); }
+.work-roadmap-provenance { color: var(--muted); font-size: .625rem; font-weight: 400; }
 .work-roadmap-scroll { max-height: max(420px, calc(100vh - 280px)); overflow: auto; background: var(--canvas); }
 .work-roadmap-timeline { min-width: calc(320px + var(--roadmap-grid-width)); display: grid; position: relative; }
 .work-roadmap-calendar, .work-roadmap-lane { display: grid; grid-template-columns: 320px var(--roadmap-grid-width); }
@@ -1895,7 +1904,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-filter-count { min-width: 0; }
   .work-filter-clear { width: 44px; height: 44px; }
   .work-board { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; overflow: visible; padding: 0; }
-  .work-board-group-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 8px; background: var(--canvas-subtle); }
+  .work-board-group-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 8px; background: var(--canvas-subtle); }
   .work-board-group-tab { min-width: 0; min-height: 44px; display: grid; place-items: center; gap: 0; padding: 4px 2px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: .65rem; font-weight: 600; }
   .work-board-group-tab .count-badge { padding: 0; background: transparent; font-size: .625rem; }
   .work-board-group-tab[aria-selected="true"] { background: var(--canvas); color: var(--fg); box-shadow: 0 0 0 1px var(--border); }
@@ -1959,6 +1968,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-mobile-hide-repository .work-task-title small, .work-mobile-hide-status .work-task-status-cell, .work-mobile-hide-owner .work-mobile-owner, .work-mobile-hide-label .work-task-labels { display: none; }
   .work-roadmap { overflow: visible; border: 0; background: transparent; }
   .work-roadmap-toolbar { min-height: 52px; border: 1px solid var(--border); border-radius: 8px; }
+  .work-roadmap-provenance { display: none; }
   .work-roadmap-zoom, .work-roadmap-today-button { display: none; }
   .work-roadmap-visual-toggle { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .6875rem; font-weight: 600; }
   .work-roadmap-visual-icon { display: grid; }

@@ -7071,13 +7071,13 @@
         "navigation-label": "Settings",
         "icon": "gear",
         "class-name": "configuration-page",
-        "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
+        "description": "Review authoritative .github/workflows/cao.json policy and prepare a local draft for a validated, reviewable repository change.",
         "views": [
           {
             "id": "configuration-policy",
             "locked": true,
             "title": "Policy",
-            "description": "Change policy values, then copy the updated JSON for review and commit.",
+            "description": "Understand effective review/live and target authority boundaries, then draft locally. Nothing changes until validated JSON is reviewed and committed.",
             "data": {
               "sources": [
                 "configuration-policy"
@@ -7193,7 +7193,7 @@
         "navigation-label": "Home",
         "icon": "home",
         "class-name": "dashboard-overview-page",
-        "description": "A concise briefing of progress, work in motion, and decisions waiting for you.",
+        "description": "Tactical attention: what requires human judgment now and what materially changed.",
         "views": [
           {
             "id": "overview-attention",
@@ -7227,13 +7227,13 @@
         "title": "Work",
         "icon": "project-roadmap",
         "class-name": "dashboard-next-work-page",
-        "description": "Plan and track delegated work by lifecycle state.",
+        "description": "Observe delegated work by lifecycle and trust state. This view does not edit authoritative work.",
         "views": [
           {
             "id": "work-project-board",
             "locked": true,
             "title": "Board",
-            "description": "Delegated work grouped by its current lifecycle state.",
+            "description": "Flow and work-in-progress scanning grouped by observed lifecycle state.",
             "data": {
               "sources": [
                 "work-items"
@@ -7254,7 +7254,7 @@
         "title": "Work",
         "icon": "table",
         "class-name": "dashboard-next-work-page",
-        "description": "Scan delegated work as a compact, configurable record list.",
+        "description": "Sort, filter, and compare observed delegated work as a compact record list.",
         "route": {
           "navigation-page": "work"
         },
@@ -7263,7 +7263,7 @@
             "id": "work-project-tasks",
             "locked": true,
             "title": "Table",
-            "description": "A structured record list with owners, repositories, lifecycle state, and runtime windows.",
+            "description": "Dense comparison of owners, repositories, observed work state, trust state, and runtime windows.",
             "data": {
               "sources": [
                 "work-items"
@@ -7284,7 +7284,7 @@
         "title": "Work",
         "icon": "project-roadmap",
         "class-name": "dashboard-next-work-page",
-        "description": "See delegated work across a shared operational timeline.",
+        "description": "See observed or inferred execution history across a shared timeline.",
         "route": {
           "navigation-page": "work"
         },
@@ -7292,8 +7292,8 @@
           {
             "id": "work-project-roadmap",
             "locked": true,
-            "title": "Roadmap",
-            "description": "Start dates, durations, owners, and completion points aligned on one calendar.",
+            "title": "Execution timeline",
+            "description": "Observed or inferred starts, durations, owners, and completion points. These intervals are execution evidence, not planned commitments.",
             "data": {
               "sources": [
                 "work-items"
@@ -7396,7 +7396,7 @@
         ]
       },
       {
-        "label": "Insights",
+        "label": "Analysis",
         "experimental": true,
         "pages": [
           "experiments",

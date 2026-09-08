@@ -16,6 +16,7 @@ import { renderDlRow, renderIconSpan } from './ui-primitives.js';
  *   stoppedLabel: string,
  *   durationLabel: string,
  *   state: string,
+ *   verificationState?: string,
  *   packageName: string,
  *   workType: string
  * }} item
@@ -45,6 +46,7 @@ export function renderWorkItemCard(item) {
     ),
     h('dl', null,
       renderDlRow('Owner', item.owner),
+      renderDlRow('Trust state', item.verificationState || 'unknown'),
       renderDlRow(item.timeLabel, item.startedLabel),
       ...(item.timeLabel === 'Observed' ? [] : [
         renderDlRow('Stopped', item.stoppedLabel),

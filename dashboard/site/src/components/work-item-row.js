@@ -18,6 +18,7 @@ import { renderIconSpan } from './ui-primitives.js';
  *   stoppedLabel: string,
  *   state: string,
  *   stateLabel: string,
+ *   verificationState?: string,
  *   packageName: string,
  *   workType: string
  * }} item
@@ -35,7 +36,9 @@ export function renderWorkItemRow(item) {
         h('small', null, item.repository)
       )
     ),
-    h('span', { className: 'work-task-status-cell' }, h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel)),
+    h('span', { className: 'work-task-status-cell' },
+      h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel),
+      h('small', { className: 'work-trust-state' }, `Trust: ${item.verificationState || 'unknown'}`)),
     h('span', { className: 'work-task-type' }, item.workType === 'unknown' ? '—' : item.workType),
     h('span', { className: 'work-task-labels' }, item.packageName
       ? h('span', { className: 'work-card-label work-card-label-package' }, item.packageName)

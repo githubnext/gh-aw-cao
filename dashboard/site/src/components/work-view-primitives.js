@@ -23,7 +23,7 @@ const WORK_VIEW_CONFIG = createElementCompositionConfig(WORK_VIEW_BODY_VALUES, /
 const WORK_VIEW_COMPOSITIONS = /** @type {Readonly<Record<WorkViewBody, WorkViewComposition>>} */ ({
   board: { key: 'board', className: 'work-board', title: 'Board', landmarkLabel: 'Board' },
   tasks: { key: 'tasks', className: 'work-tasks', title: 'Tasks', landmarkLabel: 'Tasks' },
-  roadmap: { key: 'roadmap', className: 'work-roadmap', title: 'Roadmap', landmarkLabel: 'Roadmap' }
+  roadmap: { key: 'roadmap', className: 'work-roadmap', title: 'Execution timeline', landmarkLabel: 'Execution timeline' }
 });
 
 /**

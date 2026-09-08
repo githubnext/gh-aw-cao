@@ -325,11 +325,11 @@ describe('UI elements', () => {
     }
   });
 
-  it('renders the routed Work roadmap as a Projects-style timeline', () => {
+  it('renders the routed Work execution timeline with interval provenance', () => {
     const rendered = renderUiElement('work-project-view', {
       pageId: 'work-roadmap',
-      title: 'Roadmap',
-      description: 'GitHub Projects-style work planning view.',
+      title: 'Execution timeline',
+      description: 'Observed and inferred execution history.',
       sourceNames: ['work-items'],
       sources: {
         'work-items': {
@@ -374,12 +374,13 @@ describe('UI elements', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
+    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksExecution timeline');
     expect(rendered?.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-tasks')).toBeNull();
     expect(rendered?.querySelector('.work-avatar .octicon-dependabot')).not.toBeNull();
     expect(rendered?.querySelector('.work-roadmap-scroll')).not.toBeNull();
+    expect(rendered?.querySelector('.work-roadmap-provenance')?.textContent).toContain('not planned commitments');
     expect(rendered?.querySelector('.work-roadmap-calendar')).not.toBeNull();
     expect(rendered?.querySelectorAll('.work-roadmap-ticks time').length).toBeGreaterThan(1);
     expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2);
@@ -402,7 +403,7 @@ describe('UI elements', () => {
     const stateFilter = filterBar?.querySelector('[aria-label="Filter by state"]');
     expect(filterBar?.querySelector('[aria-label="Filter by package"]')?.textContent).toContain('dependabot');
     if (!(stateFilter instanceof HTMLSelectElement)) throw new Error('state filter did not render');
-    stateFilter.value = 'Needs Review';
+    stateFilter.value = 'Review';
     stateFilter.dispatchEvent(new Event('change'));
     expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(1);
     expect(rendered?.querySelector('.work-roadmap-lane')?.textContent).toContain('Review security posture');
@@ -455,7 +456,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
   });
 
-  it('groups packages in Board while keeping every Tasks and Roadmap item visible', () => {
+  it('groups packages in Board while keeping every Table and Execution timeline item visible', () => {
     const rows = [
       {
         'work-item-id': 'daily-ops:orchestrator',
@@ -508,7 +509,7 @@ describe('UI elements', () => {
   it('renders inferred Work timestamps as point observations instead of running intervals', () => {
     const rendered = renderUiElement('work-project-view', {
       pageId: 'work-roadmap',
-      title: 'Roadmap',
+      title: 'Execution timeline',
       sourceNames: ['work-items'],
       sources: {
         'work-items': {
@@ -784,11 +785,13 @@ describe('UI elements', () => {
     expect(/** @type {HTMLInputElement | null} */ (rendered?.querySelector('.notifications-search input'))?.value).toBe('is:unread');
     expect(rendered?.querySelector('[aria-label="Sort notifications"]')).not.toBeNull();
     expect(rendered?.querySelector('[aria-label="Group notifications"]')).not.toBeNull();
-    expect(/** @type {HTMLSelectElement | null} */ (rendered?.querySelector('[aria-label="Group notifications"]'))?.value).toBe('cause');
+    expect(/** @type {HTMLSelectElement | null} */ (rendered?.querySelector('[aria-label="Group notifications"]'))?.value).toBe('responsibility');
+    expect(rendered?.textContent).toContain('Needs you');
     expect(rendered?.querySelector('.notifications-sidebar')).toBeNull();
     expect(rendered?.textContent).toContain('Upgrade agentic workflow dependencies');
     expect(rendered?.textContent).toContain('github/mona-tools');
-    expect(rendered?.textContent).toContain('repository-owner2h 30m ago');
+    expect(rendered?.textContent).toContain('Expected actorrepository-owner');
+    expect(rendered?.textContent).toContain('unresolved · 2h 30m ago');
     expect(rendered?.textContent).toContain('Agent smell: Upgrade agent');
     expect(rendered?.textContent).toContain('Partially reducible');
     expect(rendered?.textContent).toContain('Strict mode disabled');
@@ -839,6 +842,10 @@ describe('UI elements', () => {
       },
       contextDetails: [], headingTag: 'h3'
     });
+    const grouping = /** @type {HTMLSelectElement | null} */ (rendered?.querySelector('[aria-label="Group notifications"]') ?? null);
+    if (!grouping) throw new Error('notification grouping did not render');
+    grouping.value = 'cause';
+    grouping.dispatchEvent(new Event('change'));
 
     expect(rendered?.querySelectorAll('.notifications-cause-cluster')).toHaveLength(1);
     expect(rendered?.querySelector('.notifications-cause-summary')?.textContent).toContain('2 occurrences across 2 repositories');

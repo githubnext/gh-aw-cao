@@ -45,6 +45,9 @@ describe('Configuration dashboard view', () => {
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
     expect(page.views).toHaveLength(1);
     expect(page.views[0].id).toBe('configuration-policy');
+    expect(page.description).toContain('authoritative');
+    expect(page.description).toContain('local draft');
+    expect(page.views[0].description).toContain('Nothing changes until');
   });
 
   it('renders cao.json entries as editable settings', () => {
@@ -59,6 +62,7 @@ describe('Configuration dashboard view', () => {
     expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('input[type="number"]'))?.value).toBe('1');
     expect(rendered.querySelector('select')?.value).toBe('review');
     expect(rendered.textContent).toContain('Sets the inherited execution mode.');
+    expect(rendered.textContent).toContain('Edits stay in this browser.');
     expect(rendered.textContent).not.toContain('Suggested changes');
     expect(rendered.textContent).not.toContain('Raw JSON');
   });

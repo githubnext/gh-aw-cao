@@ -88,13 +88,13 @@ describe('notifications inbox large data', () => {
       firstCheckbox.checked = true;
       firstCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    const bulkDone = rendered.querySelector('[aria-label="Mark selected as done"]');
+    const bulkDone = rendered.querySelector('[aria-label="Acknowledge selected locally"]');
     expect(bulkDone?.hasAttribute('disabled')).toBe(false);
 
     const loadMoreButton = rendered.querySelector('[data-notifications-load-boundary] button');
     if (loadMoreButton instanceof HTMLButtonElement) loadMoreButton.click();
 
-    const refreshedBulkDone = rendered.querySelector('[aria-label="Mark selected as done"]');
+    const refreshedBulkDone = rendered.querySelector('[aria-label="Acknowledge selected locally"]');
     expect(refreshedBulkDone?.hasAttribute('disabled')).toBe(false);
   });
 });
@@ -150,22 +150,22 @@ describe('catch up queue', () => {
     window.localStorage.clear();
   });
 
-  it('renders a queue of unprocessed stories with Done and Later actions', () => {
+  it('renders a queue of unprocessed stories with local acknowledgement and Later actions', () => {
     const rendered = renderNotificationsInbox([attentionRow()]);
     document.body.append(rendered);
 
     const stories = rendered.querySelectorAll('.home-catchup-story');
     expect(stories).toHaveLength(1);
-    expect(rendered.querySelector('[aria-label^="Mark as done"]')).not.toBeNull();
+    expect(rendered.querySelector('[aria-label^="Acknowledge locally"]')).not.toBeNull();
     expect(rendered.querySelector('[aria-label^="Save for later"]')).not.toBeNull();
   });
 
-  it('removes a story from the queue once marked done and it does not return after a refresh', () => {
+  it('removes a story from the queue once acknowledged and it does not return without a condition change', () => {
     const rows = [attentionRow()];
     const rendered = renderNotificationsInbox(rows);
     document.body.append(rendered);
 
-    const doneButton = rendered.querySelector('[aria-label^="Mark as done"]');
+    const doneButton = rendered.querySelector('[aria-label^="Acknowledge locally"]');
     expect(doneButton instanceof HTMLButtonElement).toBe(true);
     /** @type {HTMLButtonElement} */ (doneButton).click();
 
@@ -217,10 +217,10 @@ describe('catch up queue', () => {
     expect(rendered.querySelector('.home-catchup-mobile-link')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/repository/actions/runs/42');
     expect(rendered.querySelector('.home-catchup-mobile-later')?.textContent).toContain('Later');
-    expect(rendered.querySelector('.home-catchup-mobile-done')?.textContent).toContain('Done');
+    expect(rendered.querySelector('.home-catchup-mobile-done')?.textContent).toContain('Acknowledge');
   });
 
-  it('swipes right for Done and left for Later while advancing progress', () => {
+  it('swipes right to acknowledge and left for Later while advancing progress', () => {
     const rendered = renderNotificationsInbox(catchUpRows());
     document.body.append(rendered);
 
@@ -239,6 +239,36 @@ describe('catch up queue', () => {
     stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
     expect(stored.done).toHaveLength(1);
     expect(stored.later).toHaveLength(1);
+  });
+
+  it('separates human decisions from automated watching and exposes supervision context', () => {
+    const rendered = renderNotificationsInbox([
+      attentionRow({
+        action: 'Review the produced outcome',
+        dependency: 'reviewer decision',
+        'verification-state': 'pending',
+        'operational-state': 'unresolved'
+      }),
+      attentionRow({
+        'attention-signal-id': 'signal-automated',
+        'expected-actor': 'scheduler',
+        objective: 'Await scheduled run',
+        action: 'Await the next scheduled run',
+        'consequence-tier': 'low'
+      })
+    ]);
+    document.body.append(rendered);
+
+    expect([...rendered.querySelectorAll('.notifications-group-heading')].map((heading) => heading.textContent))
+      .toEqual(['Needs you', 'Watching']);
+    const human = rendered.querySelector('[data-responsibility="human"]');
+    expect(human?.getAttribute('data-operational-state')).toBe('unresolved');
+    expect(human?.textContent).toContain('Required actionReview the produced outcome');
+    expect(human?.textContent).toContain('Expected actoroperator');
+    expect(human?.textContent).toContain('Consequencehigh');
+    expect(human?.textContent).toContain('Dependencyreviewer decision');
+    expect(human?.textContent).toContain('Trust statepending');
+    expect(rendered.querySelector('.notifications-local-state-note')?.textContent).toContain('does not approve, remediate, or resolve');
   });
 
   it('provides mobile buttons equivalent to the swipe actions', () => {

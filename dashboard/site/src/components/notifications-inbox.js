@@ -147,6 +147,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     items: () => currentVisible,
     batchSize: notificationBatchSize(),
     renderItems: (renderedRows) => {
+      if (group.value === 'responsibility') return renderResponsibilityGroups(renderedRows, state, selected, bulkDone, render);
       if (group.value === 'cause') return renderCauseGroups(renderedRows, state, selected, bulkDone, render);
       const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (new Map());
       for (const row of renderedRows) {
@@ -175,14 +176,15 @@ export function renderNotificationsInbox(rows, sources = {}) {
     h('option', { value: 'oldest' }, 'Oldest to newest'),
     h('option', { value: 'priority' }, 'Highest priority')));
   const group = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Group notifications' },
+    h('option', { value: 'responsibility' }, 'Required actor'),
     h('option', { value: 'cause' }, 'Cause'),
     h('option', { value: 'date' }, 'Date'),
     h('option', { value: 'repository' }, 'Repository'),
     h('option', { value: 'none' }, 'No grouping')));
   const selectAll = /** @type {HTMLInputElement} */ (h('input', { type: 'checkbox', 'aria-label': 'Select all notifications' }));
   const bulkDone = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button', className: 'notifications-icon-button', title: 'Mark selected as done',
-    'aria-label': 'Mark selected as done', disabled: true
+    type: 'button', className: 'notifications-icon-button', title: 'Acknowledge selected locally',
+    'aria-label': 'Acknowledge selected locally', disabled: true
   }, octicon('check')));
   syncSelection = () => {
     for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
@@ -242,6 +244,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
         h('label', null, selectAll, h('span', null, 'Select all')),
         count,
         bulkDone),
+      h('p', { className: 'notifications-local-state-note' }, 'Inbox actions are personal browser state. Acknowledging an item does not approve, remediate, or resolve the underlying work.'),
       list);
   const health = renderOperationalPulse(rows, sources);
   return h('div', { className: `notifications-inbox${rows.length > 0 ? ' has-notifications' : ' is-clear'}` },
@@ -264,6 +267,32 @@ function causeKey(row) {
 function isHighPriority(row) {
   const consequence = String(row['consequence-tier'] || '').toLowerCase();
   return consequence === 'critical' || consequence === 'high';
+}
+
+/** @param {Record<string, unknown>} row */
+function requiresHuman(row) {
+  const actor = String(row['expected-actor'] || '').toLowerCase();
+  return actor !== 'agent' && actor !== 'scheduler';
+}
+
+/**
+ * @param {Record<string, unknown>[]} rows
+ * @param {{ read: Set<string>, saved: Set<string>, done: Set<string> }} state
+ * @param {Set<string>} selected
+ * @param {HTMLButtonElement} bulkDone
+ * @param {() => void} render
+ */
+function renderResponsibilityGroups(rows, state, selected, bulkDone, render) {
+  return [
+    ['Needs you', rows.filter(requiresHuman)],
+    ['Watching', rows.filter((row) => !requiresHuman(row))]
+  ].flatMap(([label, entries]) => entries.length > 0
+    ? [
+        h('h3', { className: 'notifications-group-heading' }, label),
+        h('ul', { className: 'notifications-group', 'aria-label': `${label} attention items` },
+          ...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)))
+      ]
+    : []);
 }
 
 /**
@@ -610,7 +639,7 @@ function renderCatchUpStory(story, processStory) {
     h(story.deepLink ? 'a' : 'span', { className: 'home-story-link', ...(story.deepLink ? { href: story.deepLink } : {}) }, ...link),
     h('span', { className: 'home-story-actions' },
       action('Save for later', 'clock', 'later'),
-      action('Mark as done', 'check-circle', 'done')));
+      action('Acknowledge locally', 'check-circle', 'done')));
 }
 
 /**
@@ -642,10 +671,10 @@ function renderMobileCatchUpStory(story, processStory) {
     h('strong', null, story.title),
     h('p', null, story.detail),
     story.repository ? h('small', null, story.repository) : null),
-    h('span', { className: 'home-catchup-mobile-hint', 'aria-hidden': 'true' }, 'Swipe right for Done · left for Later'),
+    h('span', { className: 'home-catchup-mobile-hint', 'aria-hidden': 'true' }, 'Swipe right to acknowledge · left for Later'),
     h('span', { className: 'home-catchup-mobile-actions' },
       action('Later', 'clock', 'later'),
-      action('Done', 'check-circle', 'done')));
+      action('Acknowledge', 'check-circle', 'done')));
   enableCatchUpSwipe(card, story.id, processStory);
   return card;
 }
@@ -686,7 +715,7 @@ function enableCatchUpSwipe(card, storyId, processStory) {
 /** @param {string} classification */
 function catchUpClassificationLabel(classification) {
   if (classification === 'needs_you') return 'Needs you';
-  if (classification === 'fyi') return 'FYI';
+  if (classification === 'fyi') return 'Watching';
   return 'Update';
 }
 
@@ -713,7 +742,20 @@ function renderNotification(row, state, selected, bulkDone, render) {
     type: 'button', className: `notifications-icon-button${active ? ' active' : ''}`,
     title: label, 'aria-label': label, 'aria-pressed': String(active), onClick: () => { change(); writeState(state); render(); }
   }, octicon(icon));
-  return h('li', { className: `canonical-attention-item notification-item${unread ? ' unread' : ''}` },
+  const operationalState = String(row['operational-state'] || 'unresolved');
+  const attentionState = state.done.has(id) ? 'acknowledged' : unread ? 'unread' : 'read';
+  const verificationState = String(row['trust-state'] || row['verification-state'] || (link ? 'evidence available' : 'unverified'));
+  const details = [
+    ['Required action', row['required-action'] || row.action || 'Investigate'],
+    ['Expected actor', row['expected-actor'] || 'Unknown'],
+    ['Consequence', row['consequence-tier'] || 'Unknown'],
+    ['Dependency', row.dependency || 'None reported'],
+    ['Trust state', verificationState]
+  ];
+  return h('li', {
+    className: `canonical-attention-item notification-item${unread ? ' unread' : ''}`,
+    dataset: { attentionState, operationalState, responsibility: requiresHuman(row) ? 'human' : 'automated' }
+  },
     h('span', { className: 'notification-unread-dot', 'aria-label': unread ? 'Unread' : 'Read' }),
     h('input', {
       type: 'checkbox', dataset: { notificationId: id },
@@ -727,10 +769,14 @@ function renderNotification(row, state, selected, bulkDone, render) {
     h(link ? 'a' : 'div', { className: 'notification-content', ...(link ? { href: link.href, onClick: () => { state.read.add(id); writeState(state); } } : {}) },
       h('span', { className: 'notification-repository' }, scopeLabel(row)),
       h('strong', null, String(row.objective || 'Notification')),
-      h('small', null, String(row.reason || 'No additional detail'))),
-    h('span', { className: 'notification-meta' }, String(row['expected-actor'] || ''), h('small', null, age(row))),
+      h('small', null, String(row.reason || 'No additional detail')),
+      h('dl', { className: 'notification-supervision-details' },
+        ...details.map(([label, value]) => h('div', null, h('dt', null, label), h('dd', null, String(value)))))),
+    h('span', { className: 'notification-meta' },
+      h('span', null, requiresHuman(row) ? 'Needs you' : 'Watching'),
+      h('small', null, `${operationalState} · ${age(row)}`)),
     h('span', { className: 'notification-actions' },
       action(unread ? 'Mark as read' : 'Mark as unread', unread ? 'check' : 'read', !unread, () => unread ? state.read.add(id) : state.read.delete(id)),
       action(state.saved.has(id) ? 'Unsave' : 'Save', 'bookmark', state.saved.has(id), () => state.saved.has(id) ? state.saved.delete(id) : state.saved.add(id)),
-      action(state.done.has(id) ? 'Move to inbox' : 'Mark as done', state.done.has(id) ? 'inbox' : 'check-circle', state.done.has(id), () => state.done.has(id) ? state.done.delete(id) : state.done.add(id))));
+      action(state.done.has(id) ? 'Remove local acknowledgement' : 'Acknowledge locally (does not resolve work)', state.done.has(id) ? 'inbox' : 'check-circle', state.done.has(id), () => state.done.has(id) ? state.done.delete(id) : state.done.add(id))));
 }

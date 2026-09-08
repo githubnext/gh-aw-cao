@@ -13,10 +13,11 @@ import { workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
-  { title: 'Todo', states: ['todo'], tone: 'todo' },
-  { title: 'In progress', states: ['in-progress'], tone: 'in-progress' },
-  { title: 'Needs review', states: ['needs-review'], tone: 'needs-review' },
-  { title: 'Done', states: ['done'], tone: 'done' }
+  { title: 'Waiting', states: ['waiting', 'unknown'], tone: 'waiting' },
+  { title: 'Active', states: ['active'], tone: 'active' },
+  { title: 'In review', states: ['review'], tone: 'review' },
+  { title: 'Blocked', states: ['blocked'], tone: 'blocked' },
+  { title: 'Complete', states: ['completed'], tone: 'completed' }
 ];
 
 /** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
@@ -34,9 +35,9 @@ export function renderWorkProjectView(context) {
   let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
   const renderers = {
-    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, reapplyFilters),
-    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, reapplyFilters),
-    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, reapplyFilters)
+    renderBoard,
+    renderTasks,
+    renderRoadmap
   };
   /** @param {Array<ReturnType<typeof normalizeWorkItem>>} filteredItems */
   const renderItems = (filteredItems) => {
@@ -180,14 +181,12 @@ function renderFacetSelect(label, values) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
- * @param {() => void} onUpdate
  */
-function renderBoard(items, section, onUpdate) {
+function renderBoard(items, section) {
   const orchestratedPackages = orchestratedPackageNames(items);
-  const choices = workItemChoices(items);
-  const populatedAttentionColumn = ['needs-review', 'in-progress', 'todo', 'done']
+  const populatedAttentionColumn = ['review', 'blocked', 'active', 'waiting', 'completed']
     .find((tone) => items.some((item) => item.state === tone));
-  let activeTone = populatedAttentionColumn ?? 'todo';
+  let activeTone = populatedAttentionColumn ?? 'waiting';
   const tabs = h('div', { className: 'work-board-group-tabs', role: 'tablist', 'aria-label': 'Board status' });
   const columns = BOARD_COLUMNS.map((column) => {
     const columnItems = items.filter((item) => column.states.includes(item.state));
@@ -213,7 +212,7 @@ function renderBoard(items, section, onUpdate) {
               h('strong', null, group.label),
               renderCountBadge(group.items.length, `${group.items.length} work items`)
             ),
-            decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate),
+            decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0]),
             ...(group.items.length > 1
               ? [h('details', { className: 'work-card-workers' },
                 h('summary', null,
@@ -221,11 +220,11 @@ function renderBoard(items, section, onUpdate) {
                   h('span', null, `${group.items.length - 1} worker${group.items.length === 2 ? '' : 's'}`),
                   h('small', null, 'Show cards')
                 ),
-                h('div', { className: 'work-card-worker-list' }, ...group.items.slice(1).map((item) => decorateMobileWorkItem(renderWorkItemCard(item), item, choices, onUpdate)))
+                h('div', { className: 'work-card-worker-list' }, ...group.items.slice(1).map((item) => decorateMobileWorkItem(renderWorkItemCard(item), item)))
               )]
               : [])
           )
-          : decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0], choices, onUpdate))
+          : decorateMobileWorkItem(renderWorkItemCard(group.items[0]), group.items[0]))
       )
     );
   });
@@ -259,11 +258,9 @@ function renderBoard(items, section, onUpdate) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
- * @param {() => void} onUpdate
  */
-function renderTasks(items, section, onUpdate) {
+function renderTasks(items, section) {
   const list = h('div', { className: 'work-task-list work-mobile-hide-repository work-mobile-hide-dates', role: 'list' });
-  const choices = workItemChoices(items);
   const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort tasks by' },
     h('option', { value: 'started' }, 'Start date'),
     h('option', { value: 'name' }, 'Title'),
@@ -274,7 +271,7 @@ function renderTasks(items, section, onUpdate) {
   let descending = true;
   const renderRows = () => {
     const sorted = items.toSorted((left, right) => compareWorkItems(left, right, sort.value) * (descending ? -1 : 1));
-    list.replaceChildren(...sorted.map((item) => decorateMobileWorkItem(renderWorkItemRow(item), item, choices, onUpdate, 'table')));
+    list.replaceChildren(...sorted.map((item) => decorateMobileWorkItem(renderWorkItemRow(item), item, 'table')));
   };
   sort.addEventListener('change', renderRows);
   direction.addEventListener('click', () => {
@@ -391,11 +388,9 @@ function compareWorkItems(left, right, field) {
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
- * @param {() => void} onUpdate
  */
-function renderRoadmap(items, section, onUpdate) {
+function renderRoadmap(items, section) {
   const body = h('div', { className: 'work-roadmap-body' });
-  const choices = workItemChoices(items);
   const zoomLevels = ['day', 'week', 'month', 'quarter', 'year'];
   let range = 'year';
   let periodOffset = 0;
@@ -404,7 +399,7 @@ function renderRoadmap(items, section, onUpdate) {
   const zoomLabel = h('span', { className: 'work-roadmap-zoom-label' }, 'Year');
   const zoomMenu = h('div', { className: 'work-roadmap-zoom-menu', role: 'menu', 'aria-label': 'Zoom level' });
   const zoom = h('details', { className: 'work-roadmap-zoom' },
-    h('summary', { 'aria-label': 'Roadmap zoom level' },
+    h('summary', { 'aria-label': 'Execution timeline zoom level' },
       renderIconSpan('work-roadmap-zoom-icon', 'zoom-in', { ariaHidden: true }),
       zoomLabel
     ),
@@ -473,7 +468,7 @@ function renderRoadmap(items, section, onUpdate) {
         },
         h('div', { className: 'work-roadmap-calendar' },
           h('div', { className: 'work-roadmap-corner' }, 'Title'),
-          h('div', { className: 'work-roadmap-calendar-grid', 'aria-label': 'Roadmap calendar' },
+          h('div', { className: 'work-roadmap-calendar-grid', 'aria-label': 'Execution timeline calendar' },
             h('div', { className: 'work-roadmap-quarters' },
               ...contextBands.map((band) => h('span', {
                 style: `--period-start: ${band.start.toFixed(2)}%; --period-width: ${band.width.toFixed(2)}%;`
@@ -492,7 +487,7 @@ function renderRoadmap(items, section, onUpdate) {
             )
           )
         ),
-        ...renderRoadmapItems(items, extents, Math.max(1, ticks.length), choices, onUpdate),
+        ...renderRoadmapItems(items, extents, Math.max(1, ticks.length)),
         todayOffset >= 0 && todayOffset <= 100
           ? h('span', {
             className: 'work-roadmap-today',
@@ -541,7 +536,11 @@ function renderRoadmap(items, section, onUpdate) {
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
     h('div', { className: 'work-roadmap-toolbar' },
-      h('div', null, renderIconSpan('work-roadmap-toolbar-icon', 'project-roadmap', { ariaHidden: true }), h('strong', null, section.title), h('span', null, `${items.length} items`)),
+      h('div', null,
+        renderIconSpan('work-roadmap-toolbar-icon', 'project-roadmap', { ariaHidden: true }),
+        h('strong', null, section.title),
+        h('span', { className: 'work-roadmap-count' }, `${items.length} items`),
+        h('small', { className: 'work-roadmap-provenance' }, 'Observed or inferred intervals · not planned commitments')),
       visualToggle,
       mobilePeriodControls,
       zoom,
@@ -599,28 +598,22 @@ function normalizeWorkItem(row) {
     nextAction: text(row['next-action']),
     waitingOn: text(row['waiting-on']),
     consequenceTier: text(row['consequence-tier']),
-    verificationState: text(row['verification-state']),
+    verificationState: text(row['trust-state']) || text(row['verification-state']) || 'unknown',
+    rolloutMode: text(row['rollout-mode']) || 'unknown',
+    authorityState: text(row['authority-state']) || 'unknown',
     outcomeState: text(row['outcome-state'])
-  };
-}
-
-/** @param {Array<ReturnType<typeof normalizeWorkItem>>} items */
-function workItemChoices(items) {
-  return {
-    owners: [...new Set(items.map((item) => item.owner).filter(Boolean))].sort(),
-    labels: [...new Set(items.map((item) => item.packageName).filter(Boolean))].sort()
   };
 }
 
 /**
  * @param {HTMLElement} element
  * @param {ReturnType<typeof normalizeWorkItem>} item
- * @param {{ owners: string[], labels: string[] }} choices
- * @param {() => void} onUpdate
  * @param {'board'|'table'|'roadmap'} [variant]
  */
-function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'board') {
+function decorateMobileWorkItem(element, item, variant = 'board') {
   element.setAttribute('data-work-id', item.id);
+  element.setAttribute('data-work-state', item.state);
+  element.setAttribute('data-trust-state', item.verificationState);
   if (variant === 'table') {
     element.append(h('span', { className: 'work-mobile-owner' }, item.owner));
   }
@@ -631,18 +624,6 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
       ...(item.waitingOn ? [h('span', null, `Waiting on ${item.waitingOn}`)] : [])
     ));
   }
-  const move = /** @type {HTMLSelectElement} */ (h('select', {
-    'aria-label': `Move ${item.name} to`,
-    onchange: (/** @type {Event} */ event) => {
-      const state = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
-      if (!state) return;
-      item.state = state;
-      item.stateLabel = titleCase(state);
-      onUpdate();
-    }
-  },
-  h('option', { value: '' }, 'Move to…'),
-  ...BOARD_COLUMNS.map((column) => h('option', { value: column.tone }, column.title))));
   const dialog = /** @type {HTMLDialogElement} */ (h('dialog', {
     className: 'work-mobile-detail',
     'aria-label': `${item.name} details`
@@ -650,20 +631,6 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
   const closeDetail = () => {
     if (typeof dialog.close === 'function' && dialog.open) dialog.close();
     else dialog.removeAttribute('open');
-  };
-  /** @param {string} label @param {string} value @param {string[]} values @param {'owner'|'packageName'} property */
-  const updateSelect = (label, value, values, property) => {
-    const optionValues = [...new Set([value, ...values])];
-    return h('label', { className: 'work-mobile-detail-control' },
-      h('span', null, label),
-      h('select', {
-        'aria-label': `${label} for ${item.name}`,
-        onchange: (/** @type {Event} */ event) => {
-          item[property] = /** @type {HTMLSelectElement} */ (event.currentTarget).value;
-          onUpdate();
-        }
-      }, ...optionValues.map((option) => h('option', { value: option, selected: option === value }, option || 'None')))
-    );
   };
   dialog.append(
     h('header', null,
@@ -682,12 +649,9 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
         ...(item.waitingOn ? [mobileDetailRow('Waiting on', item.waitingOn)] : []),
         ...(item.nextAction ? [mobileDetailRow('Next action', item.nextAction)] : []),
         ...(item.consequenceTier ? [mobileDetailRow('Priority', item.consequenceTier)] : []),
-        ...(item.verificationState ? [mobileDetailRow('Verification', item.verificationState)] : [])
-      ),
-      h('section', { className: 'work-mobile-quick-update', 'aria-label': `Quick update ${item.name}` },
-        h('h3', null, 'Quick update'),
-        updateSelect('Owner', item.owner, choices.owners, 'owner'),
-        updateSelect('Label', item.packageName, choices.labels, 'packageName')
+        mobileDetailRow('Trust state', titleCase(item.verificationState)),
+        mobileDetailRow('Rollout mode', titleCase(item.rolloutMode)),
+        mobileDetailRow('Authority', titleCase(item.authorityState))
       )
     )
   );
@@ -700,7 +664,7 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
       else dialog.setAttribute('open', '');
     }
   }, 'Details', renderIconSpan('work-mobile-details-icon', 'chevron-right', { ariaHidden: true }));
-  element.append(h('footer', { className: 'work-mobile-item-actions' }, move, detailsButton), dialog);
+  element.append(h('footer', { className: 'work-mobile-item-actions' }, detailsButton), dialog);
   return element;
 }
 
@@ -713,10 +677,8 @@ function mobileDetailRow(label, value) {
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ start: number, duration: number }} extents
  * @param {number} divisions
- * @param {{ owners: string[], labels: string[] }} choices
- * @param {() => void} onUpdate
  */
-function renderRoadmapItems(items, extents, divisions, choices, onUpdate) {
+function renderRoadmapItems(items, extents, divisions) {
   const rendered = [];
   let period = '';
   const sorted = items.toSorted((left, right) => left.startTime - right.startTime);
@@ -726,7 +688,7 @@ function renderRoadmapItems(items, extents, divisions, choices, onUpdate) {
       period = itemPeriod;
       rendered.push(h('h4', { className: 'work-roadmap-period-heading' }, period));
     }
-    rendered.push(decorateMobileWorkItem(renderWorkItemTimelineLane(item, extents, index, divisions), item, choices, onUpdate, 'roadmap'));
+    rendered.push(decorateMobileWorkItem(renderWorkItemTimelineLane(item, extents, index, divisions), item, 'roadmap'));
   }
   return rendered;
 }
@@ -891,10 +853,12 @@ function roadmapRangeSize(range) {
 /** @param {string} state */
 function normalizeState(state) {
   const normalized = state.toLowerCase();
-  if (['active', 'in-progress', 'in_progress', 'running'].includes(normalized)) return 'in-progress';
-  if (['blocked', 'review', 'needs-review', 'needs_review', 'action-required'].includes(normalized)) return 'needs-review';
-  if (['completed', 'cancelled', 'success', 'failure', 'done'].includes(normalized)) return 'done';
-  return 'todo';
+  if (['active', 'in-progress', 'in_progress', 'running'].includes(normalized)) return 'active';
+  if (['review', 'needs-review', 'needs_review', 'action-required'].includes(normalized)) return 'review';
+  if (['blocked', 'failure', 'failed', 'timed-out'].includes(normalized)) return 'blocked';
+  if (['completed', 'cancelled', 'success', 'done'].includes(normalized)) return 'completed';
+  if (['waiting', 'queued', 'pending', 'todo', 'planned'].includes(normalized)) return 'waiting';
+  return 'unknown';
 }
 
 /** @param {string} state */

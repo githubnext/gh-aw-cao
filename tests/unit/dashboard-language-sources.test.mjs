@@ -365,8 +365,12 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(dependabot["started-at"], "2026-09-05T09:00:00Z");
   assert.equal(dependabot["ended-at"], "");
   assert.equal(dependabot["lifecycle-state"], "blocked");
+  assert.equal(dependabot["work-state"], "blocked");
   assert.equal(dependabot.reason, "package-disabled");
   assert.equal(dependabot["consequence-tier"], "high");
+  assert.equal(dependabot["trust-state"], dependabot["verification-state"]);
+  assert.equal(dependabot["interval-provenance"], "observed");
+  assert.ok(["proposal-only", "target-authority-required", "unknown"].includes(dependabot["authority-state"]));
   assert.equal(worker["lifecycle-state"], "completed");
   assert.equal(worker["verification-state"], "accepted");
   assert.equal(worker["safe-output-kind"], "issue");
@@ -380,6 +384,10 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.deepEqual(sources["attention-signals"].rows.map((row) => row["work-item-id"]), [dependabotKey, reviewerKey]);
   assert.equal(sources["attention-signals"].rows[0]["signal-type"], "blocked");
   assert.equal(sources["attention-signals"].rows[1]["signal-type"], "review");
+  assert.equal(sources["attention-signals"].rows[0]["operational-state"], "unresolved");
+  assert.equal(sources["attention-signals"].rows[0]["required-action"], dependabot["next-action"]);
+  assert.equal(sources["attention-signals"].rows[0]["trust-state"], dependabot["trust-state"]);
+  assert.match(sources["attention-signals"].rows[0]["attention-signal-id"], /package-disabled/);
 
   assert.equal(sources["agent-assignments"].metadata.availability, "available");
   const assignments = new Map(sources["agent-assignments"].rows.map((row) => [row["work-item-id"], row]));
