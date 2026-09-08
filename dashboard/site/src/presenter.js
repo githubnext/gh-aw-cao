@@ -1773,7 +1773,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
  * @returns {HTMLElement | null}
  */
 function renderFirewallDataWarning(pageId, sources) {
-  if (pageId !== 'firewall' || sources['firewall-observations']?.metadata?.availability === 'available') {
+  if (pageId !== 'firewall' || sources['firewall-observations']?.metadata?.availability !== 'unavailable') {
     return null;
   }
   return h(

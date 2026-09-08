@@ -277,6 +277,31 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
+  it('does not warn that firewall data is corrupted when firewall observations are legitimately empty', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'firewall-observations': {
+          source: 'firewall-observations',
+          rows: [],
+          metadata: {
+            'source-id': 'firewall-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-05T11:00:00Z',
+            'retrieved-at': '2026-09-05T11:05:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'firewall');
+    expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
+    rendered.remove();
+  });
+
   it('renders cached source health without mixing in presentation-only sources', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
