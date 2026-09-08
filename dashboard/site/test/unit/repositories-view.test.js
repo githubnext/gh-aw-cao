@@ -119,51 +119,19 @@ describe('repositories view', () => {
     ]));
   });
 
-  it('derives the configured scope and renders it through the reusable context summary', () => {
-    const viewContext = context();
-    const scope = /** @type {HTMLElement} */ (renderUiElement('context-summary', viewContext));
+  it('configures one full-width repository table with interactive filters', () => {
     const repositoriesPage = dashboard.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'repositories'
     );
-    const summary = repositoriesPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repository-scope'
-    );
-    const usage = repositoriesPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repositories-by-aic'
-    );
-    const activity = repositoriesPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repositories-activity'
-    );
 
-    expect(scope.textContent).toContain('Repository scope · 3 configured');
-    expect(scope.textContent).toContain('Complete 24-hour Actions run window');
-    expect(scope.textContent).toContain('5 artifacts · partial');
-    expect([...scope.querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual([
-      '#page-repository-detail?repository=octo%2Factive',
-      '#page-repository-detail?repository=octo%2Ffailing',
-      '#page-repository-detail?repository=octo%2Fquiet'
-    ]);
-    expect(summary).toMatchObject({
-      data: {
-        sources: ['repository-summary', 'repositories', 'runs', 'usage', 'operational-values']
-      },
-      mark: 'element',
-      element: 'context-summary'
-    });
-    expect(usage).toMatchObject({
-      data: { source: 'usage' },
-      mark: 'chart',
-      chart: 'pie',
-      encoding: {
-        x: { field: 'repository' },
-        y: { field: 'aic', aggregate: 'sum', as: 'total-aic', unit: 'aic' },
-        href: { field: 'repository-link' }
-      }
-    });
-    expect(activity).toMatchObject({
+    expect(repositoriesPage.definition.views).toHaveLength(1);
+    expect(repositoriesPage.definition.views[0]).toMatchObject({
+      id: 'repositories-activity',
+      title: 'Repositories',
       data: { source: 'repository-activity' },
       mark: 'table',
-      controls: 'static',
+      controls: 'interactive',
+      layout: 'full',
       encoding: {
         columns: [
           { field: 'repository' },
@@ -176,7 +144,8 @@ describe('repositories view', () => {
           { field: 'status', display: 'status' }
         ],
         href: { field: 'repository-link' }
-      }
+      },
+      emptyMessage: undefined
     });
   });
 
