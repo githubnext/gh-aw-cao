@@ -25,6 +25,7 @@ export async function buildDashboardSite({
     cp(new URL("index.html", siteRoot), join(destinationPath, "index.html")),
     cp(new URL("favicon.svg", siteRoot), join(destinationPath, "favicon.svg")),
     cp(new URL("dashboard.json", siteRoot), join(destinationPath, "dashboard.json")),
+    cp(new URL("assets", siteRoot), join(destinationPath, "assets"), { recursive: true }),
     cp(new URL("src", siteRoot), join(destinationPath, "src"), { recursive: true }),
   ]);
 

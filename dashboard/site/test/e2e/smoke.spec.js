@@ -747,9 +747,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Operations', 'Insights']);
+  await expect(cleanNavigation).toHaveText(['Overview']);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
-  await expect(cleanNavigation.last().locator('.octicon-graph')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
@@ -773,7 +772,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(experimental.getByRole('link', { name: 'Operational health' })).toBeHidden();
   await experimental.locator('summary').click();
   await expect(experimental.getByRole('link', { name: 'Operational health' })).toBeVisible();
-  await cleanNavigation.filter({ hasText: 'Work' }).click();
+  await experimental.getByRole('link', { name: 'Work', exact: true }).click();
   await expect(page).toHaveURL(/#page-work$/);
 
   const workPage = page.locator('[data-page-id="work"]');
@@ -792,7 +791,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   const tasksPage = page.locator('[data-page-id="work-tasks"]');
   await expect(tasksPage.locator('.work-tasks')).toBeVisible();
   await expect(tasksPage.locator('.work-board, .work-roadmap')).toHaveCount(0);
-  await expect(cleanNavigation.filter({ hasText: 'Work' })).toHaveAttribute('aria-current', 'page');
+  await expect(experimental.getByRole('link', { name: 'Work', exact: true })).toHaveAttribute('aria-current', 'page');
 
   await tasksPage.getByRole('link', { name: 'Roadmap' }).click();
   await expect(page).toHaveURL(/#page-work-roadmap$/);
@@ -824,26 +823,87 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   expect(roadmapGeometry?.scrollsInternally).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
-  await cleanNavigation.filter({ hasText: 'Home' }).click();
+  await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
-  await expect(overviewPage.getByRole('searchbox', { name: 'Filter notifications' })).toHaveValue('is:unread');
-  await expect(overviewPage.getByRole('columnheader')).toHaveCount(0);
-  await expect(overviewPage.locator('.canonical-attention-item')).toHaveCount(3);
-  await expect(overviewPage).toContainText('Upgrade agentic workflow dependencies');
-  await expect(overviewPage).toContainText('Update the Dependabot release train');
-  await expect(overviewPage).toContainText('Three required validations passed.');
-  await expect(overviewPage.locator('a[href="https://example.com/evidence/release-train"]')).not.toHaveCount(0);
+  await expect(overviewPage.getByRole('heading', { name: '1 item needs your attention' })).toBeVisible();
+  await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
+  await expect(overviewPage.locator('.home-attention-icon .octicon')).toHaveCount(4);
+  const metricGeometry = await overviewPage.locator('.home-attention-metric').evaluateAll((metrics) => metrics.map((metric) => {
+    const metricBox = metric.getBoundingClientRect();
+    const centers = ['.home-attention-icon', 'strong', '.home-attention-label'].map((selector) => {
+      const box = metric.querySelector(selector)?.getBoundingClientRect();
+      return box ? box.left + box.width / 2 : null;
+    });
+    const iconBox = metric.querySelector('.home-attention-icon .octicon')?.getBoundingClientRect();
+    return {
+      center: metricBox.left + metricBox.width / 2,
+      centers,
+      iconSize: iconBox ? [iconBox.width, iconBox.height] : null
+    };
+  }));
+  for (const geometry of metricGeometry) {
+    expect(geometry.iconSize).toEqual([32, 32]);
+    for (const center of geometry.centers) {
+      expect(Math.abs(Number(center) - geometry.center)).toBeLessThan(1);
+    }
+  }
+  const firstMetric = overviewPage.locator('.home-attention-metric').first();
+  const verticalOrder = await firstMetric.locator('strong, .home-attention-label, .home-attention-icon').evaluateAll((elements) => elements.map((element) => element.className || element.tagName.toLowerCase()));
+  expect(verticalOrder).toEqual(['strong', 'home-attention-label', 'home-attention-icon']);
+  const metricRowTops = await overviewPage.locator('.home-attention-metric').evaluateAll((metrics) => metrics.map((metric) => ({
+    icon: metric.querySelector('.home-attention-icon')?.getBoundingClientRect().top,
+    count: metric.querySelector('strong')?.getBoundingClientRect().top,
+    label: metric.querySelector('.home-attention-label')?.getBoundingClientRect().top
+  })));
+  for (const tops of [
+    metricRowTops.map((positions) => positions.icon),
+    metricRowTops.map((positions) => positions.count),
+    metricRowTops.map((positions) => positions.label)
+  ]) {
+    const numericTops = tops.filter((value) => typeof value === 'number');
+    expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
+  }
+  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('[href="#page-overview-blocked-work"]')).toHaveCount(0);
+  await expect(overviewPage.locator('.home-attention-metric-empty').filter({ hasText: 'Blocked work' })).toHaveCount(1);
+  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('1');
+  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('.home-attention-detail')).toHaveCount(0);
+  await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return { width, height };
+  });
+
+  await overviewPage.locator('[href="#page-overview-awaiting-review"]').click();
+  const reviewPage = page.locator('[data-page-id="overview-awaiting-review"]');
+  await expect(reviewPage).toBeVisible();
+  expect(await page.locator('.top-nav > .shell').evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return { width, height };
+  })).toEqual(shellSize);
+  await expect(reviewPage.locator('.custom-view')).toHaveCount(1);
+  await expect(reviewPage.locator('.table-summary-row')).toHaveCount(0);
+  await expect(reviewPage.locator('tbody tr')).toHaveCount(1);
+  await expect(reviewPage.locator('tbody a[href="https://example.com/evidence/release-train"]')).toBeVisible();
+  await expect(page.locator('[data-breadcrumb-dashboard]')).toHaveText('Overview');
+  await cleanNavigation.filter({ hasText: 'Overview' }).click();
+  await expect(overviewPage).toBeVisible();
 
   for (const { label, pageId } of [
     { label: 'Work', pageId: 'work' },
     { label: 'Operations', pageId: 'agents' },
     { label: 'Insights', pageId: 'insights' }
   ]) {
-    await cleanNavigation.filter({ hasText: label }).click();
+    await experimental.getByRole('link', { name: label, exact: true }).click();
     await expect(page.getByRole('heading', { name: label, exact: true, level: 1 })).toBeVisible();
     expect(await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height)).toBe(headerHeight);
+    expect(await page.locator('.top-nav > .shell').evaluate((element) => {
+      const { width, height } = element.getBoundingClientRect();
+      return { width, height };
+    })).toEqual(shellSize);
     expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
     if (['work', 'agents'].includes(pageId)) {
       await expect(page.locator(`[data-page-id="${pageId}"] .table-summary-row`)).toHaveCount(0);
@@ -854,19 +914,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  const notificationFilters = overviewPage.locator('.notifications-advanced-filters');
-  const notificationFilterToggle = overviewPage.getByRole('button', { name: 'Filters' });
-  await expect(notificationFilterToggle).toBeVisible();
-  await expect(notificationFilterToggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(notificationFilters).toBeHidden();
-  await notificationFilterToggle.click();
-  await expect(notificationFilterToggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(notificationFilters).toBeVisible();
+  await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(overviewPage.locator('.canonical-attention-item').first()).toBeInViewport();
+  await expect(overviewPage.locator('.home-attention-metric').first()).toBeInViewport();
   await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);

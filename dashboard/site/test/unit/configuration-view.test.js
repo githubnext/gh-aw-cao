@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
@@ -117,9 +117,7 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
   });
 
-  it('preserves typed values when editing non-string arrays', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+  it('preserves typed values when editing non-string arrays', () => {
     const rendered = renderConfigurationView(context({
       document: { values: [1, true, { mode: 'review' }] },
       raw: '',
@@ -131,17 +129,11 @@ describe('Configuration dashboard view', () => {
     if (!(values instanceof HTMLTextAreaElement)) throw new Error('typed array editor did not render');
     values.value = '[2, false, {"mode":"live"}]';
     values.dispatchEvent(new Event('input'));
-    const copyButton = rendered.querySelector('.configuration-copy-button');
-    if (!(copyButton instanceof HTMLButtonElement)) throw new Error('copy button did not render');
-    copyButton.click();
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-
-    expect(JSON.parse(writeText.mock.calls[0][0]).values).toEqual([2, false, { mode: 'live' }]);
+    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
+    expect(values.value).toBe('[2, false, {"mode":"live"}]');
   });
 
-  it('copies edited JSON and can discard local changes', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+  it('can discard local changes without offering JSON copy', () => {
     const rendered = renderConfigurationView(context({
       document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
       raw: '',
@@ -153,11 +145,7 @@ describe('Configuration dashboard view', () => {
     if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
     input.value = '12';
     input.dispatchEvent(new Event('input'));
-    const copyButton = rendered.querySelector('.configuration-copy-button');
-    if (!(copyButton instanceof HTMLButtonElement)) throw new Error('copy button did not render');
-    copyButton.click();
-    await vi.waitFor(() => expect(rendered.querySelector('.configuration-copy-status')?.textContent).toBe('Copied.'));
-    expect(JSON.parse(writeText.mock.calls[0][0])['control-plane'].defaults['max-repositories']).toBe(12);
+    expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
 
     const resetButton = rendered.querySelector('.configuration-reset-button');
     if (!(resetButton instanceof HTMLButtonElement)) throw new Error('reset button did not render');

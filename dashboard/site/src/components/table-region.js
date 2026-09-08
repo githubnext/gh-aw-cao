@@ -74,7 +74,7 @@ export function renderTableRegion(options) {
           type: 'search',
           placeholder: filterPlaceholder,
           'data-table-filter': ''
-        })),
+        }), { visuallyHiddenLabel: true }),
         ...facets.map((facet) => renderLabeledControl(
           facet.label,
           h(
