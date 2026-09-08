@@ -331,3 +331,34 @@ export function normalizeNotificationStories(rawEvents) {
     || left.story.id.localeCompare(right.story.id)
   )).map(({ story }) => story);
 }
+
+/**
+ * Builds a persistent Catch Up queue from the current stories and any prior
+ * queue session. The queue only contains unprocessed stories: ids already
+ * marked `done` or `later` are dropped and never return after a refresh.
+ * Previously queued ids keep their position so a session that picks up new
+ * events (for example after a data refresh) appends newly discovered stories
+ * to the end instead of reordering or resetting progress already made.
+ * Stories that disappear from the current data (or that are marked done or
+ * later) are dropped from the queue without affecting the recorded size.
+ * @param {{ id: string }[]} stories
+ * @param {{ queue?: string[], size?: number, done?: Iterable<string>, later?: Iterable<string> }} [previous]
+ * @returns {{ queue: string[], size: number }}
+ */
+export function buildCatchUpQueue(stories, previous = {}) {
+  const done = new Set(previous.done ?? []);
+  const later = new Set(previous.later ?? []);
+  const priorQueue = Array.isArray(previous.queue) ? previous.queue : [];
+  const available = new Map(stories.map((story) => [story.id, story]));
+  const isQueueable = (id) => available.has(id) && !done.has(id) && !later.has(id);
+
+  const preserved = priorQueue.filter(isQueueable);
+  const preservedIds = new Set(preserved);
+  const additions = stories.map((story) => story.id).filter((id) => !preservedIds.has(id) && isQueueable(id));
+  const queue = [...preserved, ...additions];
+
+  const processedFromPriorQueue = priorQueue.filter((id) => done.has(id) || later.has(id)).length;
+  const size = Math.max(Number(previous.size) || 0, queue.length + processedFromPriorQueue);
+
+  return { queue, size };
+}
