@@ -108,54 +108,12 @@ dashboard:
             data:
               source: workflows
             mark: table
+            controls: interactive
             encoding:
               columns:
                 - field: workflow
                 - field: workflow-active
                 - field: rollout-mode
-          - id: workflow-runs
-            disclosure: supplemental
-            data:
-              source: runs
-            mark: table
-            encoding:
-              columns:
-                - field: run
-                - field: run-conclusion
-          - id: workflow-outcomes
-            disclosure: supplemental
-            data:
-              source: outcomes
-            mark: table
-            encoding:
-              columns:
-                - field: outcome-state
-          - id: workflow-usage
-            data:
-              source: usage
-            mark: metric
-            encoding:
-              value:
-                field: aic
-                type: quantitative
-                aggregate: sum
-          - id: workflow-findings
-            data:
-              source: findings
-            mark: metric
-            encoding:
-              value:
-                field: finding
-                type: quantitative
-                aggregate: count
-          - id: workflow-value
-            disclosure: supplemental
-            data:
-              source: operational-values
-            mark: table
-            encoding:
-              columns:
-                - field: operational-value
     - id: usage-by-repository
       kind: custom
       title: Usage by Repository

@@ -205,7 +205,7 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
   repositories: ['repositories', 'runs', 'usage', 'operational-values'],
   packages: ['workflows', 'runs', 'outcomes', 'usage'],
-  workflows: ['workflows', 'runs', 'outcomes', 'usage', 'findings', 'operational-values'],
+  workflows: ['workflows'],
   runs: ['runs'],
   experiments: ['experiments', 'experiment-assignments', 'grader-observations', 'eval-observations', 'outcomes', 'usage', 'operational-values'],
   graders: ['graders', 'grader-observations'],
