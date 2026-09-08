@@ -1,6 +1,6 @@
 name: UK AI Advisory
 description: UK AI Advisory, a non-binding UK AI open-code operational resilience review across centrally selected repositories.
-min-version: v0.88.6
+min-version: v0.88.7
 experimental: true
 includes:
   - .github/workflows/shared/control.md

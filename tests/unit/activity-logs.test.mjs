@@ -56,6 +56,7 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
       "--artifacts",
       "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
     ]);
+    assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).available, true);
