@@ -240,7 +240,7 @@ describe('dashboard document validation', () => {
     ]));
   });
 
-  it('defines an evidence-aware firewall operations page', () => {
+  it('defines firewall as one full-view lazy domain table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
     const security = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'security');
@@ -255,100 +255,32 @@ describe('dashboard document validation', () => {
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('firewall');
-    expect(firewall.description).toBe('Network enforcement, policy decisions, destination drift, and evidence for agent egress.');
-    expect(firewall.sections.map((/** @type {{ title: string, views: string[] }} */ section) => ({
-      title: section.title,
-      views: section.views
-    }))).toEqual([
-      { title: 'Enforcement posture', views: ['security-firewall-decisions'] },
-      { title: 'Requires review', views: ['firewall-requires-review'] },
-      { title: 'Network drift', views: ['firewall-network-drift'] },
-      { title: 'Policy effectiveness', views: ['firewall-policy-rules'] },
-      { title: 'Domain activity', views: ['security-firewall-domains'] },
-      { title: 'Traffic diagnostics', views: ['security-firewall-trend'] },
-      { title: 'Evidence and coverage', views: ['firewall-evidence-coverage'] }
-    ]);
-    const [posture, review, drift, policy, domains, trend, evidence] = firewall.views;
-    expect(posture).toMatchObject({
-      id: 'security-firewall-decisions',
-      mark: 'chart',
-      chart: 'pie',
-      disclosure: 'essential',
-      data: { source: 'firewall-observations', time: { range: '30d' } }
-    });
-    expect(review).toMatchObject({
-      id: 'firewall-requires-review',
-      mark: 'table',
-      controls: 'interactive',
-      disclosure: 'essential',
-      data: {
-        source: 'firewall-observations',
-        time: { range: '30d' },
-        filters: {
-          'review-state': expect.arrayContaining(['enforcement-disabled', 'evidence-missing', 'newly-allowed', 'decision-changed'])
-        },
-        limit: 25
-      }
-    });
-    expect(review.encoding.actions[0]).toMatchObject({
-      presentation: 'copy-prompt',
-      label: 'Investigate',
-      context: expect.arrayContaining(['repository', 'workflow', 'run', 'domain', 'port', 'current-decision', 'policy-rule-id', 'request-count', 'drift-state', 'evidence-link'])
-    });
-    expect(drift).toMatchObject({
-      id: 'firewall-network-drift',
-      mark: 'chart',
-      chart: 'pie',
-      data: { source: 'firewall-observations' }
-    });
-    expect(policy).toMatchObject({
-      id: 'firewall-policy-rules',
-      mark: 'table',
-      disclosure: 'supplemental',
-      data: {
-        source: 'firewall-policy-rules',
-        limit: 25,
-        'order-by': [{ field: 'rule-order', direction: 'asc' }]
-      }
-    });
-    expect(policy.encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'action' }),
-      expect.objectContaining({ field: 'rule-id' }),
-      expect.objectContaining({ field: 'rule-order' }),
-      expect.objectContaining({ field: 'protocol' }),
-      expect.objectContaining({ field: 'domain-pattern' }),
-      expect.objectContaining({ field: 'description' }),
-      expect.objectContaining({ field: 'hit-count', title: 'Requests' })
-    ]));
+    expect(firewall.sections).toBeUndefined();
+    expect(firewall.views).toHaveLength(1);
+    const [domains] = firewall.views;
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',
       controls: 'interactive',
-      disclosure: 'supplemental',
-      data: { source: 'firewall-observations', time: { range: '30d' }, limit: 25 }
+      'lazy-list': true,
+      'column-summaries': true,
+      layout: 'full-view',
+      data: {
+        source: 'firewall-observations',
+        time: { range: '30d' },
+        filters: { decision: ['allowed', 'denied'] },
+        'order-by': [{ field: 'requests', direction: 'desc' }]
+      }
     });
-    expect(domains.encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'domain' }),
-      expect.objectContaining({ field: 'decision-label' }),
-      expect.objectContaining({ field: 'request-count', title: 'Requests' }),
-      expect.objectContaining({ field: 'policy-rule-id', title: 'Policy rule' }),
-      expect.objectContaining({ field: 'drift-label', title: 'Change' }),
-      expect.objectContaining({ field: 'run' })
-    ]));
-    expect(domains.encoding.href).toEqual({ field: 'evidence-link', type: 'nominal' });
-    expect(trend).toMatchObject({
-      id: 'security-firewall-trend',
-      mark: 'chart',
-      chart: 'line',
-      disclosure: 'supplemental',
-      data: { source: 'firewall-observations', time: { range: '30d' } }
-    });
-    expect(evidence).toMatchObject({
-      id: 'firewall-evidence-coverage',
-      mark: 'table',
-      disclosure: 'supplemental',
-      data: { source: 'firewall-observations', time: { range: '30d' }, limit: 25 }
-    });
+    expect(domains.encoding.columns).toEqual([
+      { field: 'domain', type: 'nominal' },
+      { field: 'request-count', type: 'quantitative', aggregate: 'sum', as: 'requests', title: 'Requests' },
+      { field: 'run', type: 'nominal', aggregate: 'distinct-count', as: 'runs', title: 'Runs' },
+      { field: 'repository', type: 'nominal', aggregate: 'distinct-count', as: 'repositories', title: 'Repositories' },
+      { field: 'workflow', type: 'nominal', aggregate: 'distinct-count', as: 'workflows', title: 'Workflows' },
+      { field: 'decision', type: 'nominal', aggregate: 'distinct-count', as: 'decisions', title: 'Policy decisions' },
+      { field: 'policy-rule-id', type: 'nominal', aggregate: 'distinct-count', as: 'policy-rules', title: 'Policy rules' }
+    ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
     expect(serialized).not.toContain('blocked = failure');
     expect(serialized).not.toContain('allowed = safe');
