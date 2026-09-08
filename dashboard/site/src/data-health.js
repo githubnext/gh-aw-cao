@@ -108,6 +108,27 @@ export function deriveDataHealthSources(sources, context = {}) {
   };
 }
 
+/**
+ * Derives the diagnostics required before the Data Health page is opened.
+ * Detailed source inspection is deferred to the data worker.
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @returns {Record<string, LogicalSourceInput>}
+ */
+export function deriveDataHealthCalloutSources(sources) {
+  const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
+  const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));
+  const metadata = combineSourceMetadata(Object.values(sources));
+  return {
+    'data-health-collections': healthSource(
+      'data-health-collections',
+      collectionDiagnostics(sources),
+      metadata
+    ),
+    'data-health-reconciliation': healthSource('data-health-reconciliation', reconciliationRows, metadata),
+    'data-health-coverage': healthSource('data-health-coverage', coverageRows, metadata)
+  };
+}
+
 
 /** @param {string} name @param {Array<Record<string, unknown>>} rows @param {SourceMetadata} metadata */
 function healthSource(name, rows, metadata) {

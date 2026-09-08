@@ -79,6 +79,32 @@ describe('dashboard data operations', () => {
     }]);
   });
 
+  it('derives detailed data health through the worker request boundary', () => {
+    const sources = {
+      runs: {
+        source: 'runs',
+        rows: [{ organization: 'acme', repository: 'app', run: '42', attempts: 1 }],
+        metadata: {
+          'source-id': 'runs',
+          'source-kind': 'fixture',
+          'as-of': '2026-09-08T00:00:00Z',
+          'retrieved-at': '2026-09-08T00:00:00Z',
+          completeness: 'complete',
+          freshness: 'fresh',
+          availability: 'available'
+        }
+      }
+    };
+    const result = /** @type {any} */ (processDataRequest({
+      operation: 'derive-data-health',
+      sources,
+      context: { githubUrlBase: 'https://github.com', dashboardRepository: 'acme/app' }
+    }));
+
+    expect(result['data-health-files'].rows).toMatchObject([{ file: 'runs.json', rows: 1 }]);
+    expect(result['data-health-schema'].rows).toMatchObject([{ source: 'runs', schema: '{ attempts: number, organization: string, repository: string, run: string }' }]);
+  });
+
   it('clusters 100,000 scatter points to a bounded worker result while preserving series', () => {
     const start = Date.parse('2026-09-01T00:00:00Z');
     const points = Array.from({ length: 100_000 }, (_, index) => ({

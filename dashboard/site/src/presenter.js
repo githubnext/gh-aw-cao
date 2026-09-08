@@ -18,12 +18,12 @@ import { renderDataView } from './components/data-view.js';
 import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
-import { processRows } from './data-processor.js';
+import { processDataHealthSources, processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
-import { deriveDataHealthSources } from './data-health.js';
+import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 
 /**
@@ -158,7 +158,7 @@ export function renderDashboard(input) {
     ),
     pages
   );
-  const dataHealthSources = deriveDataHealthSources(rawSources, { githubUrlBase, dashboardRepository });
+  const dataHealthSources = deriveDataHealthCalloutSources(rawSources);
   const sources = {
     ...derivedSources,
     ...Object.fromEntries(
@@ -203,11 +203,29 @@ export function renderDashboard(input) {
       const pageIndex = pages.findIndex((candidate) => candidate.id === pageId);
       const page = pages[pageIndex];
       if (!page) return null;
-      const renderedPage = renderPage(page, sources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
-      void annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex).catch((error) => {
-        root.dataset.domProvenanceError = String(error?.message ?? error);
+      /** @param {Record<string, LogicalSourceInput>} pageSources */
+      const render = (pageSources) => renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      /** @param {Record<string, LogicalSourceInput>} resolved */
+      const withDataHealth = (resolved) => ({
+        ...derivedSources,
+        ...Object.fromEntries(Object.entries(resolved).filter(([name]) => name.startsWith('data-health-')))
       });
-      return renderedPage;
+      const dataHealth = pageId === 'data-health'
+        ? processDataHealthSources(rawSources, { githubUrlBase, dashboardRepository })
+        : null;
+      const renderedPage = dataHealth instanceof Promise
+        ? dataHealth.then((resolved) => render(withDataHealth(resolved)))
+        : dataHealth
+          ? render(withDataHealth(dataHealth))
+          : render(sources);
+      /** @param {HTMLElement} rendered */
+      const annotate = (rendered) => {
+        void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
+          root.dataset.domProvenanceError = String(error?.message ?? error);
+        });
+        return rendered;
+      };
+      return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage);
     },
     sidebar.dataset.defaultPageId
 
@@ -1265,7 +1283,7 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
  * Shows a single dashboard page and keeps sidebar state synchronized with the URL hash.
  * @param {HTMLElement} root
  * @param {string} dashboardTitle
- * @param {(pageId: string) => HTMLElement | null} [renderPageById]
+ * @param {(pageId: string) => HTMLElement | Promise<HTMLElement> | null} [renderPageById]
  * @param {string} [defaultPageId]
  */
 export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '') {
@@ -1441,20 +1459,31 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         if (revision !== activationRevision || activePageId !== pageId) return;
         const currentPage = pages[pageIndex];
         if (!currentPage?.hasAttribute('data-page-pending')) return;
-        const renderedPage = renderPageById?.(pageId);
-        if (!renderedPage) return;
-        const detailsState = pageState.get(pageId)?.details ?? [];
-        [...renderedPage.querySelectorAll('details')].forEach((details, index) => {
-          if (detailsState[index] !== undefined) details.open = detailsState[index];
-        });
-        renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? '';
-        currentPage.replaceWith(renderedPage);
-        pages[pageIndex] = renderedPage;
-        enableLazyViews(renderedPage);
-        placeDashboardHorizon(renderedPage);
-        if (deferPopulation) {
-          dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
-          restoreScroll(renderedPage);
+        const rendered = renderPageById?.(pageId);
+        if (!rendered) return;
+        /** @param {HTMLElement} renderedPage */
+        const replacePage = (renderedPage) => {
+          if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
+          const detailsState = pageState.get(pageId)?.details ?? [];
+          [...renderedPage.querySelectorAll('details')].forEach((details, index) => {
+            if (detailsState[index] !== undefined) details.open = detailsState[index];
+          });
+          renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? '';
+          currentPage.replaceWith(renderedPage);
+          pages[pageIndex] = renderedPage;
+          enableLazyViews(renderedPage);
+          placeDashboardHorizon(renderedPage);
+          if (deferPopulation) {
+            dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue);
+            restoreScroll(renderedPage);
+          }
+        };
+        if (rendered instanceof Promise) {
+          pendingPage.replaceChildren(renderPageSkeleton());
+          pendingPage.setAttribute('aria-busy', 'true');
+          void rendered.then(replacePage);
+        } else {
+          replacePage(rendered);
         }
       };
       if (deferPopulation) {
