@@ -9,6 +9,12 @@ const LINK_FIELDS = [
   'repository-link'
 ];
 
+const TRANSITION_RULES = [
+  { initial: 'ci failed', terminal: 'ci passed', title: 'CI recovered' },
+  { initial: 'deployment started', terminal: 'deployment succeeded', title: 'deployment completed' },
+  { initial: 'review requested', terminal: 'review submitted', title: 'review completed' }
+];
+
 /** @param {unknown} value */
 function text(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -165,6 +171,18 @@ function eventDetail(event) {
     ?? event['smell-summary']) || 'No additional detail';
 }
 
+/** @param {Record<string, unknown>[]} events @param {string} objectType */
+function storyTitle(events, objectType) {
+  const latestTitle = eventTitle(events[0]);
+  if (objectType === 'security-finding') return latestTitle;
+  const terminal = latestTitle.toLowerCase();
+  const transition = TRANSITION_RULES.find((rule) => (
+    rule.terminal === terminal
+    && events.slice(1).some((event) => eventTitle(event).toLowerCase() === rule.initial)
+  ));
+  return transition?.title ?? latestTitle;
+}
+
 /**
  * Groups raw attention and operational events into stable object-level stories.
  * @param {Record<string, unknown>[]} rawEvents
@@ -197,7 +215,7 @@ export function normalizeNotificationStories(rawEvents) {
     return {
       id: `notification-story:${encodeURIComponent(group.repository)}:${encodeURIComponent(group.objectType)}:${encodeURIComponent(group.objectId)}`,
       classification: eventClassification(latest),
-      title: eventTitle(latest),
+      title: storyTitle(events, group.objectType),
       detail: eventDetail(latest),
       repository: group.repository,
       objectType: group.objectType,
