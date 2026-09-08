@@ -21,7 +21,10 @@ function formatDomAnalysis(dom) {
   const formatFrequencies = (values) => values.slice(0, 5).map(({ name, count }) => `${name} (${count})`).join(", ") || "none";
   const formatStructures = dom.topStructures
     .slice(0, 5)
-    .map(({ tag, id, descendantElements }) => `${tag}${id ? `#${id}` : ""} (${descendantElements} descendants)`)
+    .map(({ tag, id, jsonPath, jsView, descendantElements }) => {
+      const provenance = jsonPath ? ` [${jsonPath}${jsView ? ` -> ${jsView}` : ""}]` : "";
+      return `${tag}${id ? `#${id}` : ""}${provenance} (${descendantElements} descendants)`;
+    })
     .join(", ") || "none";
 
   return [
@@ -31,6 +34,7 @@ function formatDomAnalysis(dom) {
     `  Child elements: ${formatDistribution(dom.childElements)}`,
     `  Tags: ${formatFrequencies(dom.byTag)}`,
     `  Classes: ${formatFrequencies(dom.byClass)}`,
+    `  JSON sources: ${formatFrequencies(dom.byJsonPath)}`,
     `  Largest structures: ${formatStructures}`,
   ].join("\n");
 }
@@ -58,6 +62,7 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
   const pageErrors = [];
   let crashed = false;
   let sourcesResponse;
+  let sourceManifestResponse;
   const memoryMb = optionalNumber("MOBILE_MEMORY_MB");
   const network = {
     downloadKbps: optionalNumber("MOBILE_NETWORK_DOWNLOAD_KBPS"),
@@ -89,18 +94,27 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     pageErrors.push(error.message);
   });
   page.on("response", (response) => {
-    if (new URL(response.url()).pathname.endsWith("/sources.json")) {
+    const pathname = new URL(response.url()).pathname;
+    if (pathname.endsWith("/sources.json")) {
       sourcesResponse = response;
+    } else if (pathname.endsWith("/sources/manifest.json")) {
+      sourceManifestResponse = response;
     }
   });
 
-  await page.goto(`${preview.url}/`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${preview.url}/?debug=1`, { waitUntil: "domcontentloaded" });
   const dashboard = page.locator(".dashboard-root");
   await expect(dashboard).toBeVisible();
   await expect(dashboard).not.toHaveAttribute("aria-busy", "true", { timeout: 120_000 });
+  // DOM provenance annotation (`data-json-path`/`data-js-view`) is lazily
+  // loaded and applied asynchronously; wait for it so the DOM analysis below
+  // can attribute node counts to their owning JSON view.
+  await expect(dashboard).toHaveAttribute("data-json-path", "$.dashboard", { timeout: 30_000 });
 
-  expect(sourcesResponse, "The dashboard must request its latest downloaded sources").toBeDefined();
-  expect(sourcesResponse?.ok(), `sources.json returned ${sourcesResponse?.status()}`).toBe(true);
+  const sourceIndexResponse = sourceManifestResponse;
+  expect(sourceIndexResponse, "The dashboard must request the split source manifest").toBeDefined();
+  expect(sourceIndexResponse?.ok(), `Dashboard source manifest returned ${sourceIndexResponse?.status()}`).toBe(true);
+  expect(sourcesResponse, "The dashboard must avoid fetching the monolithic sources.json when the manifest is available").toBeUndefined();
   expect(crashed, "The mobile browser page crashed while rendering the dashboard").toBe(false);
   expect(pageErrors, "The dashboard emitted browser errors").toEqual([]);
 
@@ -119,6 +133,8 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
         classes: [...element.classList],
         depth,
         childElementCount: element.childElementCount,
+        jsonPath: element.getAttribute("data-json-path"),
+        jsView: element.getAttribute("data-js-view"),
       };
     });
     const structures = [...document.querySelectorAll(
@@ -130,6 +146,8 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
       pageId: element.getAttribute("data-page-id"),
       sectionId: element.getAttribute("data-section-id"),
       viewId: element.getAttribute("data-view-id"),
+      jsonPath: element.getAttribute("data-json-path"),
+      jsView: element.getAttribute("data-js-view"),
       descendantElements: element.getElementsByTagName("*").length,
     }));
     return { nodes, structures };

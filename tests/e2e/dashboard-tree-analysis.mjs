@@ -37,12 +37,23 @@ function frequencies(values, limit = 30) {
 }
 
 export function summarizeDomTree(nodes, structures) {
+  const pathCounts = new Map();
+  for (const { jsonPath } of nodes) {
+    if (!jsonPath) continue;
+    pathCounts.set(jsonPath, (pathCounts.get(jsonPath) ?? 0) + 1);
+  }
+  const byJsonPath = [...pathCounts]
+    .map(([name, count]) => ({ name, count }))
+    .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name))
+    .slice(0, 30);
+
   return {
     totalElements: nodes.length,
     depth: distribution(nodes.map(({ depth }) => depth)),
     childElements: distribution(nodes.map(({ childElementCount }) => childElementCount)),
     byTag: frequencies(nodes.map(({ tag }) => tag)),
     byClass: frequencies(nodes.flatMap(({ classes }) => classes)),
+    byJsonPath,
     topStructures: [...structures]
       .sort((left, right) => right.descendantElements - left.descendantElements)
       .slice(0, 30),

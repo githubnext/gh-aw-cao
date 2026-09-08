@@ -1,4 +1,5 @@
 {
+  "strict": true,
   "auto_upgrade": {
     "options": ["--pre-releases"]
   },

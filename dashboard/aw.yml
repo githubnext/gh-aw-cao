@@ -1,6 +1,6 @@
 name: CAO Dashboard
 description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages. Requires the activity package.
-min-version: v0.88.4
+min-version: v0.88.6
 experimental: true
 includes:
   - source: dashboard.yml
@@ -56,6 +56,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
+  - source: site/src/dom-provenance.js
+    destination: .github/aw/dashboard/site/src/dom-provenance.js
   - source: site/src/debounce.js
     destination: .github/aw/dashboard/site/src/debounce.js
   - source: site/src/horizon.js
@@ -86,6 +88,8 @@ resources:
     destination: .github/aw/dashboard/site/src/specification.js
   - source: site/src/source-cache.js
     destination: .github/aw/dashboard/site/src/source-cache.js
+  - source: site/src/source-loader.js
+    destination: .github/aw/dashboard/site/src/source-loader.js
   - source: site/src/styles.js
     destination: .github/aw/dashboard/site/src/styles.js
   - source: site/src/table-summary-data.js
@@ -150,6 +154,10 @@ resources:
     destination: .github/aw/dashboard/site/src/components/histogram.js
   - source: site/src/components/link-content.js
     destination: .github/aw/dashboard/site/src/components/link-content.js
+  - source: site/src/components/lazy-infinite-list.js
+    destination: .github/aw/dashboard/site/src/components/lazy-infinite-list.js
+  - source: site/src/components/lazy-view.js
+    destination: .github/aw/dashboard/site/src/components/lazy-view.js
   - source: site/src/components/insights-overview.js
     destination: .github/aw/dashboard/site/src/components/insights-overview.js
   - source: site/src/components/linked-text.js
