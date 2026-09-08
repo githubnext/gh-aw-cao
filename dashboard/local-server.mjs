@@ -33,10 +33,27 @@ import {
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { bundleDashboardFiles } from "./report/bundle-dashboards.mjs";
+import { schemaDiagnostic } from "./site/src/schema-diagnostics.js";
+import { SOURCE_FIELDS } from "./site/src/specification.js";
 import { validateDashboardDocument } from "./site/src/validator.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
+
+function executeFileWithInput(file, arguments_, input, options) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = execFile(file, arguments_, { ...options, encoding: "utf8" }, (error, stdout, stderr) => {
+      if (error) {
+        error.stdout = stdout;
+        error.stderr = stderr;
+        rejectPromise(error);
+        return;
+      }
+      resolvePromise({ stdout, stderr });
+    });
+    child.stdin?.end(input);
+  });
+}
 const defaultCatalogRoot = basename(resolve(scriptDirectory, "..", "..")) === ".github"
   ? null
   : resolve(scriptDirectory, "..");
@@ -370,6 +387,47 @@ export function diagnoseDashboardPageBindings(page, sources) {
       };
     }),
   };
+}
+
+function dashboardSourceSchema(name, source) {
+  const rows = Array.isArray(source?.rows) ? source.rows : [];
+  return {
+    source: name,
+    rows: rows.length,
+    metadata: source?.metadata ?? {},
+    declaredFields: SOURCE_FIELDS[name] ?? [],
+    pseudoSchema: schemaDiagnostic(name, source).schema,
+  };
+}
+
+export function jqDashboardDataQueryRejection(query) {
+  if (typeof query !== "string" || query.trim().length === 0) return "jq query is required";
+  if (query.length > 4000) return "jq query is too long";
+  if (/(?:^|[^A-Za-z0-9_])(?:env|include|import|module|input|inputs)\b|\$ENV\b/.test(query)) {
+    return "jq query may not access the environment, modules, or additional inputs";
+  }
+  return null;
+}
+
+export async function queryDashboardSourceWithJq(source, query) {
+  const rejection = jqDashboardDataQueryRejection(query);
+  if (rejection) throw new Error(rejection);
+  const jqInput = JSON.stringify(
+    source,
+    (_key, value) => typeof value === "string" ? value.toWellFormed() : value,
+  );
+  try {
+    const result = await executeFileWithInput(
+      "jq",
+      ["--compact-output", "--monochrome-output", query],
+      jqInput,
+      { timeout: 30_000, maxBuffer: 1_000_000 },
+    );
+    return result.stdout.trim();
+  } catch (error) {
+    const detail = error?.stderr || error?.message || String(error);
+    throw new Error(`jq query failed: ${truncatedLogText(detail, 2000)}`);
+  }
 }
 
 const copilotReadOnlyShellCommands = new Set([
@@ -709,6 +767,8 @@ async function startCopilotRuntime({
   workingDirectory,
   copilotExecutable,
   inspectDashboardBindings = async () => ({ page: null, views: [] }),
+  readDashboardDataSchema = async () => ({ sources: [] }),
+  queryDashboardData = async () => "",
 }) {
   console.log("Loading Copilot SDK runtime.", { workingDirectory });
   let sdk;
@@ -864,6 +924,52 @@ async function startCopilotRuntime({
               diagnostics: redactedLogValue(diagnostics),
             });
             return diagnostics;
+          },
+        }),
+        defineTool("read_dashboard_data_schema", {
+          description: "Read declared fields, row counts, metadata, and the existing inferred pseudo-JSON schema for dashboard data sources. Omit source to list all sources.",
+          parameters: {
+            type: "object",
+            properties: {
+              source: {
+                type: "string",
+                description: "Optional logical source name to inspect in detail.",
+              },
+            },
+            additionalProperties: false,
+          },
+          skipPermission: true,
+          defer: "never",
+          handler: async ({ source }) => {
+            const schema = await readDashboardDataSchema(source);
+            console.log("Read dashboard data schema for Copilot.", {
+              source: source ?? null,
+              schema: redactedLogValue(schema),
+            });
+            return schema;
+          },
+        }),
+        defineTool("jq_dashboard_data", {
+          description: "Run a read-only jq expression against one redacted logical dashboard source object containing source, metadata, and rows.",
+          parameters: {
+            type: "object",
+            properties: {
+              source: stringParameter("Logical dashboard source name."),
+              query: stringParameter("jq expression evaluated against the selected logical source object."),
+            },
+            required: ["source", "query"],
+            additionalProperties: false,
+          },
+          skipPermission: true,
+          defer: "never",
+          handler: async ({ source, query }) => {
+            const result = await queryDashboardData(source, query);
+            console.log("Queried dashboard data with jq for Copilot.", {
+              source,
+              query: truncatedLogText(query, 500),
+              output: truncatedLogText(result, 1000),
+            });
+            return result;
           },
         }),
         defineTool("validate_current_dashboard_view", {
@@ -1109,6 +1215,8 @@ async function startCopilotRuntime({
             "custom:read_dashboard_language_reference",
             "custom:read_current_dashboard_view",
             "custom:inspect_current_dashboard_bindings",
+            "custom:read_dashboard_data_schema",
+            "custom:jq_dashboard_data",
             "custom:validate_current_dashboard_view",
             "custom:validate_dashboard_json",
             "custom:save_current_dashboard_view",
@@ -1237,7 +1345,7 @@ The original dashboard source most likely defining this view is ${JSON.stringify
 The complete set of editable original dashboard sources is:
 ${editableDashboardPaths.map((path) => `- ${path}`).join("\n")}
 
-Built-in views come from the site's dashboard.json. Package views come from their package dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level package directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and inspect_current_dashboard_bindings to inspect the selected page and its live data. Use validate_current_dashboard_view before saving. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
+Built-in views come from the site's dashboard.json. Package views come from their package dashboard.json source (for an installed control repository, under .github/aw/dashboards; for this catalog, in the matching top-level package directory). Only JSON dashboard changes are supported. You may inspect files in the workspace, search with grep, and use common safe shell commands to understand existing data, conventions, and related dashboards. Read, write, and shell access are available in the workspace and under ${JSON.stringify(tmpdir())}; use the temporary directory only for disposable intermediate files. Modify application state only through the selected dashboard.json. Use read_dashboard_language_reference when language vocabulary is needed, then use read_current_dashboard_view and inspect_current_dashboard_bindings to inspect the selected page and its live data. Use read_dashboard_data_schema to discover source fields and jq_dashboard_data for focused queries against one source. Use validate_current_dashboard_view before saving. Prefer save_current_dashboard_view for the final write, then run validate_dashboard_json. Do not finish until validate_dashboard_json returns ok: true.
 
 JavaScript, HTML, CSS, and all other application files are outside this session's scope. Do not propose or attempt changes to them because they require a full application reload; make the requested improvement only through the selected dashboard.json page.
 
@@ -1497,6 +1605,7 @@ export async function startDashboardServer({
   let sourceManifestContent;
   let viewerContent;
   const splitSourceContent = new Map();
+  const sourceSchemaSummaries = new Map();
   try {
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
     sourcesContent = redactJsonSecrets(
@@ -1508,6 +1617,12 @@ export async function startDashboardServer({
         ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
         : logicalSource;
       splitSourceContent.set(name, JSON.stringify(browserSource));
+      sourceSchemaSummaries.set(name, {
+        source: name,
+        rows: Array.isArray(browserSource.rows) ? browserSource.rows.length : 0,
+        availability: browserSource.metadata?.availability ?? "unknown",
+        declaredFields: SOURCE_FIELDS[name] ?? [],
+      });
     }
     sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
     viewerContent = JSON.stringify(normalizeLocalViewer(await loadViewer(ghExecutable).catch(() => null)));
@@ -1967,6 +2082,19 @@ export async function startDashboardServer({
             return content === undefined ? [] : [[name, JSON.parse(content)]];
           }));
           return diagnoseDashboardPageBindings(page, sources);
+        },
+        readDashboardDataSchema: async (sourceName) => {
+          if (sourceName === undefined) {
+            return { sources: [...sourceSchemaSummaries.values()] };
+          }
+          const content = splitSourceContent.get(sourceName);
+          if (content === undefined) throw new Error(`Unknown dashboard source: ${sourceName}`);
+          return dashboardSourceSchema(sourceName, JSON.parse(content));
+        },
+        queryDashboardData: async (sourceName, query) => {
+          const content = splitSourceContent.get(sourceName);
+          if (content === undefined) throw new Error(`Unknown dashboard source: ${sourceName}`);
+          return queryDashboardSourceWithJq(JSON.parse(content), query);
         },
       });
     }

@@ -54,6 +54,8 @@ resources:
     destination: .github/aw/dashboard/site/src/compliance.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
+  - source: site/src/schema-diagnostics.js
+    destination: .github/aw/dashboard/site/src/schema-diagnostics.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
   - source: site/src/dom-provenance.js

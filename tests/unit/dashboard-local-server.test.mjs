@@ -8,6 +8,8 @@ import test from "node:test";
 import {
   diagnoseDashboardPageBindings,
   isWithinCopilotFileRoots,
+  jqDashboardDataQueryRejection,
+  queryDashboardSourceWithJq,
   shellPermissionRejection,
   startDashboardServer,
 } from "../../dashboard/local-server.mjs";
@@ -151,6 +153,29 @@ test("dashboard binding diagnostics report filter mismatches and field populatio
         },
       ],
     }],
+  });
+});
+
+test("dashboard jq policy permits data queries and blocks environment access", () => {
+  assert.equal(jqDashboardDataQueryRejection(".rows | map(.repository) | unique"), null);
+  assert.equal(jqDashboardDataQueryRejection(".rows[] | select(.count > 0)"), null);
+  assert.match(jqDashboardDataQueryRejection("env.GITHUB_TOKEN"), /environment/);
+  assert.match(jqDashboardDataQueryRejection("$ENV.GITHUB_TOKEN"), /environment/);
+  assert.match(jqDashboardDataQueryRejection("include \"secrets\"; ."), /modules/);
+});
+
+test("dashboard jq queries run against only the selected source object", async () => {
+  const result = await queryDashboardSourceWithJq({
+    source: "repositories",
+    metadata: { availability: "available" },
+    rows: [
+      { repository: "alpha", count: 1 },
+      { repository: "beta", count: 3 },
+    ],
+  }, "{source, repositories: [.rows[] | select(.count > 1) | .repository]}");
+  assert.deepEqual(JSON.parse(result), {
+    source: "repositories",
+    repositories: ["beta"],
   });
 });
 
