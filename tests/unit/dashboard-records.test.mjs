@@ -239,8 +239,8 @@ test("dashboard records cannot widen checked-in repository policy", async () => 
 
 test("dashboard records discover gh-aw workflows in allowed repositories", async () => {
   const lockSource = [
-    '# gh-aw-metadata: {"compiler_version":"v0.88.7","strict":true}',
-    '# gh-aw-manifest: {"version":1,"actions":[]}',
+    '# gh-aw-metadata: {"schema_version":"v4","strict":true}',
+    '# gh-aw-manifest: {"version":1,"actions":[{"repo":"github/gh-aw-actions/setup","version":"v0.88.7"}]}',
   ].join("\n");
   let lockSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   const commitSha = "cccccccccccccccccccccccccccccccccccccccc";
@@ -335,8 +335,8 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     ghAwVersion: "v0.88.7",
     currentGhAwVersion: "v0.89.0",
     updateState: "update-available",
-    ghAwMetadata: { compiler_version: "v0.88.7", strict: true },
-    ghAwManifest: { version: 1, actions: [] },
+    ghAwMetadata: { schema_version: "v4", strict: true },
+    ghAwManifest: { version: 1, actions: [{ repo: "github/gh-aw-actions/setup", version: "v0.88.7" }] },
     lockSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     lockMetadataAvailable: true,
     visibility: "public",

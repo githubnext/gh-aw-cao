@@ -161,7 +161,6 @@ describe('dashboard document validation', () => {
       'workflow',
       'repository',
       'gh-aw-version',
-      'gh-aw-current-version',
       'gh-aw-update-state'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { normalizeVersion, updateState } from "../../activity/version.mjs";
+import { normalizeVersion, resolveGhAwVersion, updateState } from "../../activity/version.mjs";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
@@ -487,7 +487,7 @@ async function collectDashboardRecordsImpl({
               log.warning`${error.message}; generated metadata is unavailable for ${repositoryName}/${workflow.path}`;
             }
           }
-          const ghAwVersion = normalizeVersion(payloads.ghAwMetadata?.compiler_version);
+          const ghAwVersion = resolveGhAwVersion(payloads.ghAwMetadata, payloads.ghAwManifest);
           return {
             repository: repositoryName,
             visibility: repositoryState.visibility,

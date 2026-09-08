@@ -6871,11 +6871,6 @@
                   "title": "Installed version"
                 },
                 {
-                  "field": "gh-aw-current-version",
-                  "type": "nominal",
-                  "title": "Current version"
-                },
-                {
                   "field": "gh-aw-update-state",
                   "type": "nominal",
                   "title": "Update state",

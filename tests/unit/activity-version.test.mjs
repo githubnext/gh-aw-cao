@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareVersions, normalizeVersion, updateState } from "../../activity/version.mjs";
+import {
+  compareVersions,
+  normalizeVersion,
+  resolveGhAwVersion,
+  updateState,
+} from "../../activity/version.mjs";
 
 test("gh-aw versions normalize optional prefixes and build metadata", () => {
   assert.equal(normalizeVersion("0.88.2"), "v0.88.2");
@@ -8,6 +13,22 @@ test("gh-aw versions normalize optional prefixes and build metadata", () => {
   assert.equal(normalizeVersion("v0.89.0-rc.1"), "v0.89.0-rc.1");
   assert.equal(normalizeVersion("v0.89"), null);
   assert.equal(normalizeVersion("release-0.89.0"), null);
+});
+
+test("gh-aw version resolution falls back to setup action manifests", () => {
+  assert.equal(resolveGhAwVersion(
+    { compiler_version: "v0.88.7" },
+    { actions: [{ repo: "github/gh-aw-actions/setup", version: "v0.90.0" }] },
+  ), "v0.88.7");
+  assert.equal(resolveGhAwVersion(
+    { schema_version: "v4" },
+    { actions: [{ repo: "github/gh-aw-actions/setup", version: "v0.90.0" }] },
+  ), "v0.90.0");
+  assert.equal(resolveGhAwVersion(
+    null,
+    { actions: [{ repo: "github/gh-aw-actions/setup-cli", version: "0.89.2" }] },
+  ), "v0.89.2");
+  assert.equal(resolveGhAwVersion(null, { actions: [] }), null);
 });
 
 test("gh-aw version comparison follows semantic-version precedence", () => {

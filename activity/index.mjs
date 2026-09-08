@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 import { performanceJobRecord } from "./failure-evidence.mjs";
-import { normalizeVersion } from "./version.mjs";
+import { resolveGhAwVersion } from "./version.mjs";
 
 const EMPTY_RUN_HEALTH = {
   runs: 0,
@@ -245,7 +245,7 @@ export async function main(actions = {}) {
     const workflows = localInventory.workflows.map((workflow) => {
       const source = sourceByWorkflow.get(workflow.id) || "";
       const { ghAwMetadata, ghAwManifest } = parseMetadata(lockByWorkflow.get(workflow.id) || "");
-      const ghAwVersion = normalizeVersion(ghAwMetadata?.compiler_version);
+      const ghAwVersion = resolveGhAwVersion(ghAwMetadata, ghAwManifest);
       return {
         repository,
         visibility: "unknown",

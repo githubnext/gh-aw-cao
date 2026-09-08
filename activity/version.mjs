@@ -17,6 +17,21 @@ export function normalizeVersion(value) {
   return parseVersion(value)?.normalized || null;
 }
 
+export function resolveGhAwVersion(metadata, manifest) {
+  const compilerVersion = normalizeVersion(metadata?.compiler_version);
+  if (compilerVersion) return compilerVersion;
+  const setupActions = [
+    "github/gh-aw-actions/setup",
+    "github/gh-aw-actions/setup-cli",
+  ];
+  for (const repository of setupActions) {
+    const action = manifest?.actions?.find((candidate) => candidate?.repo === repository);
+    const version = normalizeVersion(action?.version);
+    if (version) return version;
+  }
+  return null;
+}
+
 export function compareVersions(left, right) {
   const parsedLeft = parseVersion(left);
   const parsedRight = parseVersion(right);
