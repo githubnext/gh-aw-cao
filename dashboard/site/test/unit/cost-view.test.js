@@ -98,7 +98,7 @@ describe('Cost and efficiency dashboard view', () => {
     expect(page?.querySelector('.pie-chart-total-value')?.textContent).toBe('9');
     const pieChartView = page?.querySelector('.chart-view-pie');
     const pieChartCard = pieChartView?.querySelector('.pie-chart-card');
-    const repositoryTable = pieChartView?.querySelector('.custom-chart-table');
+    const repositoryTable = pieChartView?.querySelector('.table-region');
     expect(pieChartCard).not.toBeNull();
     expect(repositoryTable).toBeNull();
     expect(page?.querySelectorAll('.signal-list-region')).toHaveLength(1);
