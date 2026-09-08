@@ -136,6 +136,9 @@
           "dashboard-review": {
             "workflow": "self-care-dashboard-review"
           },
+          "experimental-views": {
+            "workflow": "self-care-experimental-views"
+          },
           "docs-build-time-investigator": {
             "workflow": "self-care-docs-build-time-investigator"
           },

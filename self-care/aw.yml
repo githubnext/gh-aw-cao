@@ -1,10 +1,11 @@
 name: SelfCare
-description: Repository-local live checks for dashboard quality, accessibility, production Pages health, Lighthouse performance, build performance, component reuse, declarative view reuse, glossary freshness, acquisition efficiency, public-project run failures, and Primer brand alignment in Central Agentic Ops.
+description: Repository-local live checks for dashboard quality, accessibility, experimental-view correctness, production Pages health, Lighthouse performance, build performance, component reuse, declarative view reuse, glossary freshness, acquisition efficiency, public-project run failures, and Primer brand alignment in Central Agentic Ops.
 min-version: v0.88.6
 experimental: true
 includes:
   - .github/workflows/self-care-data-acquisition-audit.md
   - .github/workflows/self-care-dashboard-performance.md
+  - .github/workflows/self-care-experimental-views.md
   - .github/workflows/self-care-dashboard-language-refactor.md
   - .github/workflows/self-care-docs-build-time-investigator.md
   - .github/workflows/self-care-glossary.md

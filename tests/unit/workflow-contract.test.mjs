@@ -436,7 +436,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 11, workers: 11 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 12, workers: 12 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
     "aw-failures-investigator.md": { credits: 500, timeout: 30 },
@@ -460,6 +460,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care-data-acquisition-audit.md": { credits: 300, timeout: 20 },
     "self-care-dashboard-language-refactor.md": { credits: 400, timeout: 30 },
     "self-care-dashboard-review.md": { credits: 400, timeout: 30 },
+    "self-care-experimental-views.md": { credits: 600, timeout: 120 },
     "self-care-docs-build-time-investigator.md": { credits: 400, timeout: 30 },
     "self-care-glossary.md": { credits: 400, timeout: 30 },
     "self-care-open-source-failures.md": { credits: 500, timeout: 30 },
@@ -1040,6 +1041,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
     "self-care-data-acquisition-audit",
     "self-care-dashboard-language-refactor",
     "self-care-dashboard-review",
+    "self-care-experimental-views",
     "self-care-docs-build-time-investigator",
     "self-care-glossary",
     "self-care-open-source-failures",
@@ -1389,6 +1391,7 @@ test("live workers require target-owned package authority before agent execution
     ["self-care-data-acquisition-audit.md", "self-care"],
     ["self-care-dashboard-language-refactor.md", "self-care"],
     ["self-care-dashboard-review.md", "self-care"],
+    ["self-care-experimental-views.md", "self-care"],
     ["self-care-docs-build-time-investigator.md", "self-care"],
     ["self-care-glossary.md", "self-care"],
     ["self-care-open-source-failures.md", "self-care"],
@@ -1457,6 +1460,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["self-care-data-acquisition-audit.md", "self-care"],
     ["self-care-dashboard-language-refactor.md", "self-care"],
     ["self-care-dashboard-review.md", "self-care"],
+    ["self-care-experimental-views.md", "self-care"],
     ["self-care-docs-build-time-investigator.md", "self-care"],
     ["self-care-glossary.md", "self-care"],
     ["self-care-open-source-failures.md", "self-care"],
@@ -1591,6 +1595,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["self-care-data-acquisition-audit.md", "self-care", "data-acquisition-audit"],
     ["self-care-dashboard-language-refactor.md", "self-care", "dashboard-language-refactor"],
     ["self-care-dashboard-review.md", "self-care", "dashboard-review"],
+    ["self-care-experimental-views.md", "self-care", "experimental-views"],
     ["self-care-docs-build-time-investigator.md", "self-care", "docs-build-time-investigator"],
     ["self-care-glossary.md", "self-care", "glossary"],
     ["self-care-open-source-failures.md", "self-care", "open-source-failures"],
@@ -2259,6 +2264,27 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
     .every((view) => view.data.filters.workflow.includes(".github/workflows/self-care-dashboard-performance.md")));
   assert.doesNotMatch(source, /^evals:/m);
   assert.doesNotMatch(source, /^graders:/m);
+});
+
+test("SelfCare experimental views worker exhaustively checks editable views across browsers and source shapes", () => {
+  const source = workflow("self-care-experimental-views.md");
+
+  assert.match(source, /^name: "SelfCare \/ Experimental Views"$/m);
+  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: experimental-views/);
+  assert.match(source, /skip-if-match: 'is:pr is:open "gh-aw-workflow-id: self-care-experimental-views" in:body'/);
+  assert.match(source, /browsers: \[chromium, webkit\]/);
+  assert.match(source, /every editable view on the Operations page/);
+  assert.match(source, /navigation sections with `experimental: true`/);
+  assert.match(source, /Ignore every view with `locked: true`/);
+  assert.match(source, /Ignore all views on top-level pages in non-experimental navigation sections/);
+  assert.match(source, /schema-valid empty, single-row, representative multi-row, missing-optional-field, and high-cardinality inputs/);
+  assert.match(source, /document\.querySelectorAll\('\*'\)\.length/);
+  assert.match(source, /`disclosure: supplemental`/);
+  assert.match(source, /cap the initially rendered records/);
+  assert.match(source, /accessible lazy\/virtualized list/);
+  assert.match(source, /create-pull-request:/);
+  assert.match(source, /draft: true/);
+  assert.match(source, /Call `create_pull_request` exactly once/);
 });
 
 test("SelfCare Pages health worker audits every deployed view on three profiles", () => {
@@ -3121,6 +3147,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
           "self-care-data-acquisition-audit",
           "self-care-dashboard-language-refactor",
           "self-care-dashboard-review",
+          "self-care-experimental-views",
           "self-care-docs-build-time-investigator",
           "self-care-glossary",
           "self-care-open-source-failures",
