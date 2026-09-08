@@ -93,6 +93,9 @@ const SVG_TAGS = new Set([
   'title'
 ]);
 
+const FORM_CONTROL_TAGS = new Set(['input', 'select', 'textarea']);
+let generatedFormControlId = 0;
+
 /**
  * @param {string} name
  * @param {Record<string, unknown> | null | undefined} [props]
@@ -104,6 +107,9 @@ export function h(name, props, ...children) {
     ? /** @type {HTMLElement} */ (/** @type {unknown} */ (document.createElementNS('http://www.w3.org/2000/svg', name)))
     : document.createElement(name);
   applyProps(element, props ?? {});
+  if (FORM_CONTROL_TAGS.has(name) && !element.hasAttribute('id') && !element.hasAttribute('name')) {
+    element.id = `cao-field-${++generatedFormControlId}`;
+  }
   appendChildren(element, flattenChildren(children));
   return element;
 }
