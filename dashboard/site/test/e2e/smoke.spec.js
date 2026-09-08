@@ -519,12 +519,11 @@ test('experiments page composes reusable declarative slices with rendered parity
 
   const experimentsPage = page.locator('[data-page-id="experiments"]');
   await expect(experimentsPage).toBeVisible();
-  await expect(experimentsPage.locator('.experiment-filters').first()).toBeVisible();
-  await expect(experimentsPage.locator('.experiment-overview')).toHaveCount(1);
-  await expect(experimentsPage.locator('.experiment-decision-table')).toHaveCount(1);
-  await hydrateView(page, 'Experiment decisions and evidence');
-  await expect(experimentsPage.locator('.experiment-detail')).toHaveCount(1);
-  await expect(experimentsPage.getByRole('heading', { name: 'Tool routing v3' })).toBeVisible();
+  const experimentsView = experimentsPage.locator('[data-view-layout="full-view"]');
+  await expect(experimentsView).toHaveCount(1);
+  await expect(experimentsView.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(experimentsView.getByRole('searchbox', { name: 'Filter Experiments' })).toBeVisible();
+  await expect(experimentsView.getByRole('cell', { name: 'routing-v3' })).toBeVisible();
 });
 
 test('desktop navigation sections collapse and expand around the current view', async ({ page }) => {

@@ -1010,24 +1010,18 @@ dashboard:
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines experiments composition through a reusable experiments-evaluation element', () => {
+  it('defines experiments as a full-view interactive lazy-list table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
 
-    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-overview')).toMatchObject({
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: { body: 'overview' }
-    });
-    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-table')).toMatchObject({
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: { body: 'table' }
-    });
-    expect(experimentsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'experiments-evaluation')).toMatchObject({
-      mark: 'element',
-      element: 'experiments-evaluation',
-      config: { sections: ['detail'] }
+    expect(experimentsPage.definition.views).toHaveLength(1);
+    expect(experimentsPage.definition.views[0]).toMatchObject({
+      id: 'experiments-list',
+      data: { source: 'experiments' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

@@ -4859,108 +4859,73 @@
           },
           "views": [
             {
-              "id": "experiment-decision-summary",
-              "title": "Experiment decision summary",
-              "description": "Counts experiment decisions for the current filters without treating workflow execution success as experiment success.",
+              "id": "experiments-list",
+              "title": "Experiments",
+              "description": "Experiment readiness, evidence, and decisions without treating workflow execution success as experiment success.",
               "data": {
                 "source": "experiments"
               },
               "mark": "table",
-              "layout": "full",
+              "controls": "interactive",
+              "lazy-list": true,
+              "layout": "full-view",
+              "empty-message": "No experiments configured.",
               "encoding": {
                 "columns": [
                   {
-                    "field": "decision",
-                    "type": "nominal",
-                    "title": "Decision"
-                  },
-                  {
                     "field": "experiment",
                     "type": "nominal",
-                    "aggregate": "distinct-count",
-                    "as": "experiments",
-                    "title": "Experiments"
+                    "title": "Experiment"
+                  },
+                  {
+                    "field": "workflow",
+                    "type": "nominal",
+                    "title": "Workflow / agent"
+                  },
+                  {
+                    "field": "control-variant",
+                    "type": "nominal",
+                    "title": "Control"
+                  },
+                  {
+                    "field": "candidate-variant",
+                    "type": "nominal",
+                    "title": "Candidate"
+                  },
+                  {
+                    "field": "primary-metric",
+                    "type": "nominal",
+                    "title": "Primary metric"
                   },
                   {
                     "field": "normalized-effect",
                     "type": "quantitative",
-                    "aggregate": "mean",
-                    "as": "mean-normalized-effect",
-                    "title": "Mean normalized effect"
+                    "title": "Normalized effect"
+                  },
+                  {
+                    "field": "evidence-strength",
+                    "type": "ordinal",
+                    "title": "Evidence"
+                  },
+                  {
+                    "field": "readiness",
+                    "type": "ordinal",
+                    "title": "Readiness",
+                    "display": "status"
+                  },
+                  {
+                    "field": "decision",
+                    "type": "ordinal",
+                    "title": "Decision",
+                    "display": "status"
+                  },
+                  {
+                    "field": "last-observation",
+                    "type": "temporal",
+                    "title": "Last observation"
                   }
                 ]
               }
-            },
-            {
-              "id": "experiments-overview",
-              "title": "Experiment readiness overview",
-              "description": "Summarizes readiness, evidence coverage, and decision pressure for the current filters.",
-              "data": {
-                "sources": [
-                  "experiments",
-                  "experiment-assignments",
-                  "graders",
-                  "grader-observations",
-                  "evals",
-                  "eval-observations",
-                  "runs"
-                ]
-              },
-              "mark": "element",
-              "element": "experiments-evaluation",
-              "config": {
-                "body": "overview"
-              },
-              "layout": "full"
-            },
-            {
-              "id": "experiments-table",
-              "title": "Experiment decision table",
-              "description": "Ranks experiments by readiness and guardrail regressions for the current filters.",
-              "data": {
-                "sources": [
-                  "experiments",
-                  "experiment-assignments",
-                  "graders",
-                  "grader-observations",
-                  "evals",
-                  "eval-observations",
-                  "runs"
-                ]
-              },
-              "mark": "element",
-              "element": "experiments-evaluation",
-              "config": {
-                "body": "table"
-              },
-              "layout": "full"
-            },
-            {
-              "id": "experiments-evaluation",
-              "title": "Experiment decisions and evidence",
-              "description": "Controlled comparisons retain distinct experiment, observation, grader or eval, run, and evidence semantics.",
-              "data": {
-                "sources": [
-                  "experiments",
-                  "experiment-assignments",
-                  "graders",
-                  "grader-observations",
-                  "evals",
-                  "eval-observations",
-                  "runs",
-                  "outcomes",
-                  "usage",
-                  "operational-values"
-                ]
-              },
-              "mark": "element",
-              "element": "experiments-evaluation",
-              "config": {
-                "sections": [
-                  "detail"
-                ]
-              },
-              "layout": "full"
             }
           ]
         }

@@ -57,7 +57,7 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.mark === "table"
         && summary.id === "data-health-summary"
         && summary.encoding?.columns?.some((column) => column.field === "confidence" && column.display === "status");
-      const isRepositoriesFullTable = page.id === "repositories"
+      const isPrescribedFullTable = ["repositories", "experiments"].includes(page.id)
         && views.length === 1
         && summary.mark === "table"
         && summary.controls === "interactive"
@@ -100,7 +100,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isWorkProjectView
           || isInsightsOverview
           || isDataHealthConfidenceSummary
-          || isRepositoriesFullTable
+          || isPrescribedFullTable
           || isOverviewDrillDown
           || isCatchUpHome
           || isAttentionFirstHome,
