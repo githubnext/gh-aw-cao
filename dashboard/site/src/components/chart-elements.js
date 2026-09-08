@@ -464,6 +464,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
     const isScatterChart = chartType === 'scatter';
     const isPointChart = isDotChart || isScatterChart;
     const groupedSeries = groupChartSeries(points);
+    const renderedPointLimit = Math.max(2, Math.floor(MAX_RENDERED_LINE_POINTS / Math.max(groupedSeries.length, 1)));
     const hasWindowHighlight = points.some((point) => typeof point.highlighted === 'boolean');
     const showInteractivePoints = points.length <= MAX_INTERACTIVE_LINE_POINTS;
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
@@ -549,9 +550,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
             const y = 38 - (Math.max(0, toNumber(point.y)) / maximum) * 34;
             return { point, x, y };
           });
-          const renderedCoordinates = sampleLineCoordinates(coordinates, MAX_RENDERED_LINE_POINTS);
+          const renderedCoordinates = sampleLineCoordinates(coordinates, renderedPointLimit);
           const highlightedCoordinates = hasWindowHighlight
-            ? sampleLineCoordinates(coordinates.filter(({ point }) => point.highlighted), MAX_RENDERED_LINE_POINTS)
+            ? sampleLineCoordinates(coordinates.filter(({ point }) => point.highlighted), renderedPointLimit)
             : [];
           return [
             ...(!isPointChart ? [h('polyline', {
@@ -712,10 +713,15 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
  */
 function sampleLineCoordinates(coordinates, limit) {
   if (coordinates.length <= limit) return coordinates;
-  const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
+  if (limit <= 2) return [coordinates[0], coordinates[coordinates.length - 1]];
+  // Budget for interior points, excluding the mandatory first/last endpoints.
+  const interiorBudget = limit - 2;
+  const bucketCount = Math.max(1, Math.floor(interiorBudget / 2));
   const bucketSize = (coordinates.length - 2) / bucketCount;
   const sampled = [coordinates[0]];
+  let interiorCount = 0;
   for (let bucket = 0; bucket < bucketCount; bucket += 1) {
+    if (interiorCount >= interiorBudget) break;
     const start = 1 + Math.floor(bucket * bucketSize);
     const end = Math.min(coordinates.length - 1, 1 + Math.floor((bucket + 1) * bucketSize));
     let minimumIndex = start;
@@ -725,7 +731,13 @@ function sampleLineCoordinates(coordinates, limit) {
       if (coordinates[index].y > coordinates[maximumIndex].y) maximumIndex = index;
     }
     sampled.push(coordinates[Math.min(minimumIndex, maximumIndex)]);
-    if (minimumIndex !== maximumIndex) sampled.push(coordinates[Math.max(minimumIndex, maximumIndex)]);
+    interiorCount += 1;
+    // Only add the second extremum if the interior budget still allows it, so
+    // very small limits (e.g. 3) can't push the total output above `limit`.
+    if (minimumIndex !== maximumIndex && interiorCount < interiorBudget) {
+      sampled.push(coordinates[Math.max(minimumIndex, maximumIndex)]);
+      interiorCount += 1;
+    }
   }
   sampled.push(coordinates[coordinates.length - 1]);
   return sampled;
