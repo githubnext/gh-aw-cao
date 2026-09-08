@@ -769,8 +769,11 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.doesNotMatch(mattReviewer, /\|\s*head -n 3000/);
   assert.match(mattReviewer, /fromJSON\(github\.event\.inputs\.aw_context \|\| '\{\}'\)\.item_number/);
   assert.match(mattReviewer, /reaction: none/);
+  assert.match(mattReviewer, /slash_command:\n\s+strategy: centralized\n\s+name: matt/);
+  assert.doesNotMatch(mattReviewer, /\n\s+pull_request:/);
 
-  assert.match(decisionGate, /types: \[opened, reopened, synchronize, labeled, ready_for_review\]/);
+  assert.match(decisionGate, /slash_command:\n\s+strategy: centralized\n\s+name: design-gate/);
+  assert.doesNotMatch(decisionGate, /\n\s+(?:pull_request|workflow_dispatch):/);
   assert.match(decisionGate, /allowed-files:\n\s+- "adr\/\*\*"/);
   for (const section of ["Context", "Decision", "Alternatives Considered", "Consequences"]) {
     assert.match(decisionGate, new RegExp(`\`${section}\``));
