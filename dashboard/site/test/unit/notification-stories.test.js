@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeNotificationStories } from '../../src/notification-stories.js';
+import { buildCatchUpQueue, normalizeNotificationStories } from '../../src/notification-stories.js';
 
 const pullRequestLink = {
   relation: 'pull-request',
@@ -343,5 +343,54 @@ describe('notification story normalization', () => {
 
     expect(normalizeNotificationStories(events).map((story) => story.objectId)).toEqual(expectedIds);
     expect(normalizeNotificationStories([...events].reverse()).map((story) => story.objectId)).toEqual(expectedIds);
+  });
+});
+
+describe('catch up queue construction', () => {
+  const storyA = { id: 'story-a' };
+  const storyB = { id: 'story-b' };
+  const storyC = { id: 'story-c' };
+
+  it('queues every story on the first construction and captures the initial size', () => {
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC]);
+
+    expect(queue).toEqual(['story-a', 'story-b', 'story-c']);
+    expect(size).toBe(3);
+  });
+
+  it('excludes stories already marked done or later, and they do not return after a refresh', () => {
+    const previous = { queue: ['story-a', 'story-b', 'story-c'], size: 3, done: ['story-a'], later: ['story-b'] };
+
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous);
+
+    expect(queue).toEqual(['story-c']);
+    expect(size).toBe(3);
+  });
+
+  it('preserves the position of previously queued stories and appends newly discovered ones', () => {
+    const previous = { queue: ['story-b', 'story-a'], size: 2, done: [], later: [] };
+
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous);
+
+    expect(queue).toEqual(['story-b', 'story-a', 'story-c']);
+    expect(size).toBe(3);
+  });
+
+  it('does not reset progress when new events arrive alongside already-processed stories', () => {
+    const previous = { queue: ['story-a', 'story-b'], size: 2, done: ['story-a'], later: [] };
+
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous);
+
+    expect(queue).toEqual(['story-b', 'story-c']);
+    expect(size).toBe(3);
+  });
+
+  it('drops queued stories that disappear from the current data without shrinking the recorded size', () => {
+    const previous = { queue: ['story-a', 'story-b', 'story-c'], size: 3, done: [], later: [] };
+
+    const { queue, size } = buildCatchUpQueue([storyA, storyC], previous);
+
+    expect(queue).toEqual(['story-a', 'story-c']);
+    expect(size).toBe(3);
   });
 });

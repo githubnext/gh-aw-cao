@@ -381,7 +381,7 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
   queueState.size = size;
   writeCatchUpQueueState(queueState);
   const storiesById = new Map(stories.map((story) => [story.id, story]));
-  const queuedStories = queue.map((id) => storiesById.get(id)).filter(Boolean);
+  const queuedStories = /** @type {typeof stories} */ (queue.map((id) => storiesById.get(id)).filter((story) => story !== undefined));
   /** @param {string} storyId @param {'done' | 'later'} bucket */
   const processStory = (storyId, bucket) => {
     queueState[bucket].add(storyId);

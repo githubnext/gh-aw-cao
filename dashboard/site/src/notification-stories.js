@@ -350,7 +350,7 @@ export function buildCatchUpQueue(stories, previous = {}) {
   const later = new Set(previous.later ?? []);
   const priorQueue = Array.isArray(previous.queue) ? previous.queue : [];
   const available = new Map(stories.map((story) => [story.id, story]));
-  const isQueueable = (id) => available.has(id) && !done.has(id) && !later.has(id);
+  const isQueueable = /** @param {string} id */ (id) => available.has(id) && !done.has(id) && !later.has(id);
 
   const preserved = priorQueue.filter(isQueueable);
   const preservedIds = new Set(preserved);
