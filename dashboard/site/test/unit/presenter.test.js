@@ -775,6 +775,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('./assets/avatar-monalisa-octocat.png');
   });
 
   it('DLS-DOC-012 DLS-SAFE-011 renders a labeled GitHub repository link resolved against a custom github-url-base', () => {
@@ -918,7 +919,7 @@ describe('presenter built-in and custom pages', () => {
     expect(labels).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
-      'Home', 'Work', 'Operations', 'Insights'
+      'Overview'
     ]);
     expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
@@ -953,7 +954,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[0]);
     expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[0]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
-      'Home',
+      'Overview',
       'Work',
       'Operations',
       'Insights',
@@ -991,7 +992,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-page-id="organizations"]')?.classList.contains('organizations-page')).toBe(false);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Home');
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Overview');
 
     /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'))?.click();
 
@@ -1004,7 +1005,7 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('preserves threat evidence when Notifications derives agent smells', async () => {
+  it('does not turn agent smells into Home notifications', async () => {
     window.history.replaceState(null, '', '/#page-agents');
     const metadata = /** @type {const} */ ({
       'source-id': 'notification-agent-smell-fixture',
@@ -1044,11 +1045,12 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    const smell = [...page?.querySelectorAll('.notification-item') ?? []]
-      .find((item) => item.textContent?.includes('Agent smell: Review agent'));
-    expect(smell?.textContent).toContain('Malicious patch detected');
-    expect(smell?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
-    expect(smell?.querySelector('.notification-content')?.getAttribute('href')).toBe('#page-agents');
+    expect(page?.querySelector('.home-attention-summary')).not.toBeNull();
+    expect(page?.querySelector('.notifications-inbox')).toBeNull();
+    expect(page?.querySelector('[href="#page-overview-security-findings"] strong')?.textContent).toBe('—');
+    expect(page?.querySelector('.home-attention-detail')).toBeNull();
+    expect(page?.textContent).toContain('No attention observed in available evidence');
+    expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();
   });
 
@@ -1224,7 +1226,7 @@ describe('presenter built-in and custom pages', () => {
       expect(toggle?.getAttribute('aria-label')).toBe('Collapse navigation');
       expect(toggle?.getAttribute('aria-expanded')).toBe('true');
       expect(toggle?.querySelector('.octicon-sidebar-expand')).not.toBeNull();
-      expect(overviewLink?.getAttribute('title')).toBe('Home');
+      expect(overviewLink?.getAttribute('title')).toBe('Overview');
 
       toggle?.click();
 
@@ -1276,7 +1278,7 @@ describe('presenter built-in and custom pages', () => {
     expect(menu?.querySelector('summary')?.getAttribute('aria-label')).toBe('Select view');
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
-      'Home',
+      'Overview',
       'Work',
       'Operations',
       'Insights',

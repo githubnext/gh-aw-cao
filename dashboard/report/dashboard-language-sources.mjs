@@ -714,6 +714,7 @@ function runRows(deployed, usage) {
         ...(run.failureJob ? { "failure-job": run.failureJob } : {}),
         ...(run.failureMessage ? { "failure-message": run.failureMessage } : {}),
         ...(run.failureStep ? { "failure-step": run.failureStep } : {}),
+        "failure-detail": firstText(run.failureMessage, run.failureStep) || `Run ${run.runId}`,
         ...(run.resource ? { resource: run.resource } : {}),
         ...(run.resourceResetAt ? { "resource-reset-at": run.resourceResetAt } : {}),
         ...(Number.isFinite(run.resourceWaitHours) ? { "resource-wait-hours": run.resourceWaitHours } : {}),

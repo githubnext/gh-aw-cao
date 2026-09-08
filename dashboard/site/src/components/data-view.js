@@ -158,6 +158,10 @@ function renderTableView(context) {
         ? renderCellValue(column, row[outputField], row)
         : column.field === RUN_FIELD
           ? renderWorkflowRunLink(row, toText(row[outputField]))
+          : column.display === 'run-link'
+            ? renderWorkflowRunLink(row, toText(row[outputField]))
+          : column.display === 'evidence-link'
+            ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
           : column.display === 'outcome-link'
             ? renderOutcomeLink(row, toText(row[outputField]))
             : renderCellValue(column, row[outputField], row);

@@ -66,14 +66,28 @@ export const VIEW_ELEMENT_VALUES = [
   'experiments-evaluation',
   'work-project-view',
   'agent-marketplace-view',
-  'insights-overview'
+  'insights-overview',
+  'home-attention-summary'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_LAYOUT_VALUES = ['full', 'half', 'third'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
 export const MAX_ESSENTIAL_VIEWS_PER_PAGE = 4;
-export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set(['overview', 'agent', 'agents', 'work', 'work-tasks', 'work-roadmap', 'evidence', 'insights']);
+export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
+  'overview',
+  'overview-failed-runs',
+  'overview-blocked-work',
+  'overview-awaiting-review',
+  'overview-security-findings',
+  'agent',
+  'agents',
+  'work',
+  'work-tasks',
+  'work-roadmap',
+  'evidence',
+  'insights'
+]);
 export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'reference', 'href', 'actions'];
 export const TABLE_ACTION_KEYS = ['intent', 'presentation', 'icon', 'label', 'context', 'when'];
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt'];
@@ -81,7 +95,7 @@ export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals'];
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field'];
 export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'unit'];
 export const FIELD_TYPE_VALUES = ['nominal', 'ordinal', 'quantitative', 'temporal'];
-export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link'];
+export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link', 'run-link', 'evidence-link'];
 export const AGGREGATE_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max', 'none'];
 export const TIME_UNIT_VALUES = ['hour', 'day', 'week', 'month'];
 export const LINK_RELATION_VALUES = [
@@ -149,6 +163,7 @@ export const FILTER_DIMENSION_VALUES = [
   'attribution-status',
   'run-status',
   'run-conclusion',
+  'lifecycle-state',
   'job',
   'job-status',
   'outcome-category',
@@ -387,7 +402,7 @@ export const SOURCE_FIELDS = {
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
   repositories: ['organization', 'repository', 'repository-name', 'rollout-mode', 'observed-at', 'organization-link', 'repository-link'],
   workflows: ['organization', 'repository', 'package', 'package-name', 'package-icon', 'workflow', 'workflow-name', 'workflow-role', 'workflow-active', 'admission-status', 'admission-reason', 'gh-aw-version', 'gh-aw-current-version', 'gh-aw-version-label', 'gh-aw-update-state', 'gh-aw-metadata', 'gh-aw-manifest', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance', 'package-worker-count', 'package-inventory-warnings', 'inventory-ready', 'observed-at', 'organization-link', 'repository-link', 'workflow-link'],
-  runs: ['organization', 'repository', 'workflow', 'run', 'run-title', 'event', 'started-at', 'ended-at', 'run-status', 'run-conclusion', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
+  runs: ['organization', 'repository', 'workflow', 'run', 'run-title', 'event', 'started-at', 'ended-at', 'run-status', 'run-conclusion', 'admission-status', 'admission-reason', 'failure-job', 'failure-message', 'failure-step', 'failure-detail', 'resource', 'resource-reset-at', 'resource-wait-hours', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'data', 'logs-payload', 'organization-link', 'repository-link', 'workflow-link', 'run-link'],
   admissions: ['organization', 'repository', 'workflow', 'run', 'observed-at', 'package', 'workflow-role', 'worker', 'target-repository', 'admission-status', 'admission-reason', 'failed-check', 'github-api-status', 'github-api-remaining', 'github-api-required', 'github-api-reset-at', 'runner-disk-status', 'runner-disk-available-mb', 'runner-disk-required-mb', 'run-link'],
   'admission-checks': ['organization', 'repository', 'workflow', 'run', 'observed-at', 'package', 'workflow-role', 'worker', 'target-repository', 'admission-status', 'admission-reason', 'failed-check', 'check', 'check-order', 'check-status', 'github-api-status', 'github-api-remaining', 'github-api-required', 'github-api-reset-at', 'runner-disk-status', 'runner-disk-available-mb', 'runner-disk-required-mb', 'run-link'],
   'run-performance': ['organization', 'repository', 'workflow', 'run', 'started-at', 'run-conclusion', 'rollout-mode', 'run-duration-seconds', 'sandbox-runtime', 'engine', 'model', 'run-link'],

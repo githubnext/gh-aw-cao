@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { isPlainObject, renderSectionHeading, createCopyControl } from './ui-primitives.js';
+import { isPlainObject, renderSectionHeading } from './ui-primitives.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -230,12 +230,6 @@ function renderSettingsEditor(policyDocument) {
   const renderSettings = () => settings.replaceChildren(
     ...Object.entries(draft).map(([name, value]) => renderEntry(name, value, name, [name], updateValue))
   );
-  const { button: copyButton, status: copyStatus, reset: resetCopy } = createCopyControl({
-    getContent: () => `${JSON.stringify(draft, null, 2)}\n`,
-    label: 'Copy updated JSON',
-    buttonClassName: 'configuration-copy-button',
-    statusClassName: 'configuration-copy-status'
-  });
   const resetButton = h('button', {
     type: 'button',
     className: 'configuration-reset-button',
@@ -243,7 +237,6 @@ function renderSettingsEditor(policyDocument) {
       draft = cloneDocument(original);
       renderSettings();
       updateStatus();
-      resetCopy();
     }
   }, 'Discard changes');
   renderSettings();
@@ -255,11 +248,11 @@ function renderSettingsEditor(policyDocument) {
         h('strong', null, '.github/workflows/cao.json'),
         status
       ),
-      h('div', { className: 'configuration-editor-actions' }, resetButton, copyButton, copyStatus)
+      h('div', { className: 'configuration-editor-actions' }, resetButton)
     ),
     settings,
     h('p', { className: 'configuration-save-note' },
-      'Edits stay in this browser. Copy the updated JSON and commit it to apply the policy.'
+      'Edits stay in this browser and do not change the policy.'
     )
   );
 }

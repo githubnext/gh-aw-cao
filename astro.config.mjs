@@ -1,6 +1,7 @@
 import { defineConfig } from "astro/config";
 import { unified } from "@astrojs/markdown-remark";
 import starlight from "@astrojs/starlight";
+import mermaid from "astro-mermaid";
 import starlightGitHubAlerts from "starlight-github-alerts";
 import rewriteDocsLinks from "./docs/rewrite-docs-links.mjs";
 
@@ -14,6 +15,7 @@ export default defineConfig({
     }),
   },
   integrations: [
+    mermaid(),
     starlight({
       title: "Central Agentic Ops",
       description: "Enterprise control planes for GitHub Agentic Workflows.",
@@ -122,6 +124,8 @@ export default defineConfig({
           items: [
             { label: "Configuration", link: "/configuration/" },
             { label: "Control plane overview", link: "/architecture/" },
+            { label: "Dashboard Overview", link: "/dashboard-overview/" },
+            { label: "CAO Activity", link: "/activity/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },
             { label: "Agentic workflow smells", link: "/agentic-workflow-smells/" },

@@ -42,6 +42,11 @@ Any repository may explicitly operate as a source-managed control plane for work
 
 The orchestrator owns rollout and selection. Workers enforce the dispatched control envelope without escalating mode, discovering additional repositories, or duplicating credentials.
 
+CAO Activity separately collects bounded workflow and run evidence into one
+shared snapshot for dashboards and reports. It is supporting infrastructure,
+not an execution or authority layer. See [CAO Activity](activity.md) for the
+collection flow and data-quality behavior.
+
 ## Core Safety Properties
 
 - review mode is the default;
@@ -65,3 +70,4 @@ Central Agentic Ops governs participating catalog workflows. Use GitHub rulesets
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Package-specific authority, worker enforcement, eligibility, and worker ceilings |
 | [Rollout and Routing](rollout-and-routing.md) | Review-to-live promotion; review destinations; authority checks; and rollback |
+| [CAO Activity](activity.md) | Shared evidence collection, snapshots, fallback behavior, and dashboard inputs |
