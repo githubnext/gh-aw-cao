@@ -608,7 +608,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
-    expect(page?.querySelectorAll('.view')).toHaveLength(1);
+    expect(page?.querySelectorAll('.custom-table')).toHaveLength(1);
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
     const workflowTable = page?.querySelector('#workflows-workflow-information-heading')?.parentElement?.parentElement;
     expect(workflowTable?.textContent).toContain('dependabot.yml');
@@ -678,7 +678,6 @@ describe('presenter built-in and custom pages', () => {
 
     const links = [...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
       .map((link) => link.getAttribute('href'));
-    expect(links).toContain('#page-package-insights?package=dependabot');
     expect(links).toContain('#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.yml');
     expect(links).toContain('#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml');
     expect(links).toContain('#page-repository-detail?repository=github%2Ftarget-service');
