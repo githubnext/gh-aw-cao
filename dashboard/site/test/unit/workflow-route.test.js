@@ -4,6 +4,7 @@ import { parseWorkflowRoute, workflowRouteValue } from '../../src/components/wor
 import { selectConfigBody } from '../../src/components/route-body-composition.js';
 import { createRouteBodyConfig } from '../../src/components/route-body-config.js';
 import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES } from '../../src/components/route-body-specification.js';
+import { workflowRoutePageConfigForBody } from '../../src/components/workflow-route-page-config.js';
 
 describe('workflow-route helpers', () => {
   it('formats and parses valid workflow routes', () => {
@@ -39,6 +40,25 @@ describe('workflow-route helpers', () => {
 
   it('keeps workflow-route-page body values aligned with workflow-route values', () => {
     expect(WORKFLOW_ROUTE_PAGE_BODY_VALUES).toEqual(WORKFLOW_ROUTE_BODY_VALUES);
+  });
+
+  it('derives workflow-route-page navigation from canonical body values', () => {
+    expect(workflowRoutePageConfigForBody('insights')).toEqual({
+      body: 'insights',
+      pageId: 'workflow-runtime'
+    });
+    expect(workflowRoutePageConfigForBody('reports')).toEqual({
+      body: 'reports',
+      pageId: 'workflow-detail'
+    });
+    expect(workflowRoutePageConfigForBody('runs')).toEqual({
+      body: 'runs',
+      pageId: 'workflow-runs'
+    });
+    expect(workflowRoutePageConfigForBody('invalid')).toEqual({
+      body: 'reports',
+      pageId: 'workflow-detail'
+    });
   });
 
   it('reuses canonical route body selection helpers across declarative route elements', () => {

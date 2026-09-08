@@ -11,9 +11,10 @@ import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js'
  * @returns {HTMLElement}
  */
 export function renderWorkflowRouteView(context) {
-  const body = workflowRouteBody(context.elementConfig?.body);
+  const routePage = workflowRoutePageConfigForBody(context.elementConfig?.body);
+  const body = workflowRouteBody(routePage.body);
   return renderWorkflowRouteShell(context, {
     ...workflowRouteComposition(body),
-    currentTab: workflowRoutePageConfigForBody(body).pageId
+    currentTab: routePage.pageId
   });
 }

@@ -2,50 +2,36 @@
  * Shared declarative workflow route page configuration.
  */
 
-import { selectNamedComposition } from './route-composition.js';
+import { createElementCompositionConfig, selectElementComposition } from './view-element-composition.js';
+import { WORKFLOW_ROUTE_PAGE_BODY_VALUES } from './route-body-specification.js';
 
-/**
- * @typedef {'workflow-runtime'|'workflow-detail'|'workflow-runs'} WorkflowRoutePageId
- */
+/** @typedef {'insights'|'reports'|'runs'} WorkflowRoutePageBody */
 
 /**
  * @typedef {{
- *   body: 'insights'|'reports'|'runs',
+ *   body: WorkflowRoutePageBody,
  *   pageId: 'workflow-runtime'|'workflow-detail'|'workflow-runs'
  * }} WorkflowRoutePageConfig
  */
 
-const WORKFLOW_ROUTE_PAGE_CONFIGS = /** @type {Readonly<Record<WorkflowRoutePageId, WorkflowRoutePageConfig>>} */ ({
-  'workflow-runtime': {
+const WORKFLOW_ROUTE_PAGE_CONFIG = createElementCompositionConfig(
+  /** @type {readonly WorkflowRoutePageBody[]} */ (WORKFLOW_ROUTE_PAGE_BODY_VALUES),
+  /** @type {WorkflowRoutePageBody} */ ('reports')
+);
+
+const WORKFLOW_ROUTE_PAGE_CONFIGS = /** @type {Readonly<Record<WorkflowRoutePageBody, WorkflowRoutePageConfig>>} */ ({
+  insights: {
     body: 'insights',
     pageId: 'workflow-runtime'
   },
-  'workflow-detail': {
+  reports: {
     body: 'reports',
     pageId: 'workflow-detail'
   },
-  'workflow-runs': {
+  runs: {
     body: 'runs',
     pageId: 'workflow-runs'
   }
-});
-
-/**
- * @param {unknown} pageId
- * @returns {WorkflowRoutePageConfig}
- */
-export function workflowRoutePageConfig(pageId) {
-  return selectNamedComposition(
-    WORKFLOW_ROUTE_PAGE_CONFIGS,
-    pageId,
-    'workflow-detail'
-  );
-}
-
-const WORKFLOW_ROUTE_PAGE_ID_BY_BODY = /** @type {Readonly<Record<'insights'|'reports'|'runs', WorkflowRoutePageId>>} */ ({
-  insights: 'workflow-runtime',
-  reports: 'workflow-detail',
-  runs: 'workflow-runs'
 });
 
 /**
@@ -53,11 +39,5 @@ const WORKFLOW_ROUTE_PAGE_ID_BY_BODY = /** @type {Readonly<Record<'insights'|'re
  * @returns {WorkflowRoutePageConfig}
  */
 export function workflowRoutePageConfigForBody(body) {
-  return selectNamedComposition(
-    WORKFLOW_ROUTE_PAGE_CONFIGS,
-    typeof body === 'string' && Object.hasOwn(WORKFLOW_ROUTE_PAGE_ID_BY_BODY, body)
-      ? WORKFLOW_ROUTE_PAGE_ID_BY_BODY[/** @type {'insights'|'reports'|'runs'} */ (body)]
-      : 'workflow-detail',
-    'workflow-detail'
-  );
+  return selectElementComposition(WORKFLOW_ROUTE_PAGE_CONFIGS, WORKFLOW_ROUTE_PAGE_CONFIG, body);
 }

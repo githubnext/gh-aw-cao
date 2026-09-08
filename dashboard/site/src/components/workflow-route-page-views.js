@@ -18,6 +18,7 @@ import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js'
  * }} options
  */
 export function createWorkflowRoutePageView(options) {
+  const routePage = workflowRoutePageConfigForBody(options.body);
   return {
     id: options.id,
     title: options.title,
@@ -26,7 +27,7 @@ export function createWorkflowRoutePageView(options) {
     },
     mark: 'element',
     element: 'workflow-route-page',
-    config: { body: workflowRoutePageConfigForBody(options.body).body },
+    config: { body: routePage.body },
     ...(options.layout ? { layout: options.layout } : {})
   };
 }
