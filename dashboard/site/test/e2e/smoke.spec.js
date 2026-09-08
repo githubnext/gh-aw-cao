@@ -227,7 +227,7 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
   expect(widePlotBox?.width).toBeGreaterThan((wideChartBox?.width ?? 0) * 0.95);
 });
 
-test('GitHub API rate-limit dashboard remains operable at desktop and narrow widths', async ({ page }) => {
+test('GitHub API raw quota table remains operable at desktop and narrow widths', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -307,23 +307,23 @@ test('GitHub API rate-limit dashboard remains operable at desktop and narrow wid
   await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
   await page.locator('[data-nav-page-id="github-api"]').click();
   const apiPage = page.locator('[data-page-id="github-api"]');
-  const capacity = apiPage.locator('[aria-labelledby="github-api-remaining-capacity-heading"]');
-  const capacityChart = capacity.locator('[data-chart-widget="bar"]');
-  await expect(capacityChart).toBeVisible();
-  await expect(apiPage.getByText('critical', { exact: true }).first()).toBeVisible();
+  const observations = apiPage.locator('[data-view-layout="full-view"]');
+  const table = observations.locator('[data-lazy-list]');
+  await expect(table).toBeVisible();
+  await expect(apiPage.getByText('core', { exact: true }).first()).toBeVisible();
   await expect.poll(async () => {
-    const box = await capacityChart.boundingBox();
+    const box = await table.boundingBox();
     return box !== null && box.width <= 1200;
   }).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(capacityChart).toBeVisible();
+  await expect(table).toBeVisible();
   await expect.poll(async () => {
-    const box = await capacityChart.boundingBox();
+    const box = await table.boundingBox();
     return box !== null && box.x >= 0 && box.x + box.width <= 390;
   }).toBe(true);
-  await expect(apiPage.locator('details[data-disclosure="supplemental"]')).toHaveCount(6);
-  await expect(apiPage.locator('details[data-disclosure="supplemental"]').filter({ hasText: 'Rate-limit health' })).toHaveCount(1);
+  await expect(apiPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
 test('control-plane readiness surfaces blocking regressions', async ({ page }) => {
