@@ -1464,15 +1464,14 @@ describe('presenter built-in and custom pages', () => {
     const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'security');
     expect(dashboardPage).toMatchObject({ kind: 'custom' });
     expect(dashboardPage).not.toHaveProperty('page');
-    expect(dashboardPage.sections).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        id: 'operational-assurance',
-        'count-source': 'security-signals',
-        'count-label': 'signals'
-      })
-    ]));
+    expect(dashboardPage).not.toHaveProperty('sections');
     expect(rendered.querySelector('[data-nav-page-id="security"] .octicon-shield')).not.toBeNull();
-    expect(page?.querySelector('.layout-section-header > strong')?.textContent).toBe('4 signals');
+    expect(page?.querySelectorAll('.layout-section')).toHaveLength(0);
+    expect([...(page?.querySelectorAll('details[data-disclosure="supplemental"] > summary') ?? [])]
+      .map((summary) => summary.textContent)).toEqual([
+      expect.stringContaining('Assurance signals'),
+      expect.stringContaining('Output assurance records')
+    ]);
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
     expect(page?.textContent).not.toContain('Security findings summary');
     expect(page?.querySelector('.summary-grid')?.textContent).toContain('Approval gates2');
