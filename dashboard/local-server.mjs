@@ -347,12 +347,19 @@ function bindingValueCounts(rows, field) {
     .map(([value, count]) => ({ value, count }));
 }
 
+function dashboardViewSourceNames(view) {
+  if (Array.isArray(view?.data?.sources)) {
+    return view.data.sources.filter((source) => typeof source === "string");
+  }
+  return typeof view?.data?.source === "string" ? [view.data.source] : [];
+}
+
 export function diagnoseDashboardPageBindings(page, sources) {
   const views = Array.isArray(page?.views) ? page.views : [];
   return {
     page: typeof page?.id === "string" ? page.id : null,
     views: views.map((view) => {
-      const sourceName = typeof view?.data?.source === "string" ? view.data.source : null;
+      const sourceName = dashboardViewSourceNames(view)[0] ?? null;
       const source = sourceName ? sources[sourceName] : null;
       const rows = Array.isArray(source?.rows) ? source.rows : [];
       const filters = view?.data?.filters && typeof view.data.filters === "object"
@@ -482,7 +489,7 @@ function hasUnquotedShellRedirection(command) {
 }
 
 function commandWithoutSafeNullRedirections(command) {
-  return command.replace(/(^|[\s;|&])(?:[012])?>\/dev\/null(?=$|[\s;|&])/g, "$1");
+  return command.replace(/(^|[\s;|&])(?:[012]\s*)?>\s*\/dev\/null(?=$|[\s;|&])/g, "$1");
 }
 
 function shellCommandDetails(permission) {
@@ -935,7 +942,7 @@ async function startCopilotRuntime({
           },
         }),
         defineTool("read_dashboard_data_schema", {
-          description: "Read declared fields, row counts, metadata, and the existing inferred pseudo-JSON schema for dashboard data sources. Omit source to list all sources.",
+          description: "Read the inferred pseudo-JSON schema and metadata for one dashboard data source. Omit source to list source summaries.",
           parameters: {
             type: "object",
             properties: {
@@ -2081,10 +2088,7 @@ export async function startDashboardServer({
           const pageIndex = dashboardPageIndex(document, view);
           if (pageIndex < 0) throw new Error("The selected dashboard view no longer exists.");
           const page = document.dashboard.pages[pageIndex];
-          const sourceNames = [...new Set(page.views.flatMap((pageView) => {
-            const name = pageView?.data?.source;
-            return typeof name === "string" ? [name] : [];
-          }))];
+          const sourceNames = [...new Set(page.views.flatMap(dashboardViewSourceNames))];
           const sources = Object.fromEntries(sourceNames.flatMap((name) => {
             const content = splitSourceContent.get(name);
             return content === undefined ? [] : [[name, JSON.parse(content)]];

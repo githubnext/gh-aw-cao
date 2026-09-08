@@ -674,8 +674,8 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
         ? `${workflow.ghAwVersion}${workflow.ghAwVersion === (workflow.currentGhAwVersion || deployed.latestGhAwVersion) ? " (current)" : ""}`
         : "unknown",
       "gh-aw-update-state": workflow.updateState || "unknown",
-      "gh-aw-metadata": parseWorkflowJson(workflow.ghAwMetadata, "gh-aw-metadata", workflow),
-      "gh-aw-manifest": parseWorkflowJson(workflow.ghAwManifest, "gh-aw-manifest", workflow),
+      "gh-aw-metadata": parseWorkflowJson(workflow.ghAwMetadata),
+      "gh-aw-manifest": parseWorkflowJson(workflow.ghAwManifest),
       "rollout-mode": details?.packageTargets?.find(
         (target) => target.repository.toLowerCase() === workflowRepository,
       )?.mode || details?.configuredMode || recentMode,
@@ -684,14 +684,13 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
   });
 }
 
-function parseWorkflowJson(value, field, workflow) {
+function parseWorkflowJson(value) {
   if (value == null || value === "") return null;
   if (typeof value !== "string") return value;
   try {
     return JSON.parse(value);
-  } catch (error) {
-    const identity = `${workflow.repository || "unknown-repository"}:${workflow.path || "unknown-workflow"}`;
-    throw new Error(`Invalid ${field} JSON for ${identity}: ${error.message}`);
+  } catch {
+    return value;
   }
 }
 

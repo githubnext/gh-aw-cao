@@ -37,7 +37,7 @@ export function schemaDiagnosticValue(source) {
     .slice(0, MAX_SCHEMA_SAMPLE_ROWS)
     .map((row) => inferShape(row, new Set()));
   return [
-    `// ${arrayItemCount(rows.length, rows.length)}`,
+    `// ${arrayItemCount(rows.length, rows.length)} (schema sampled from first up to ${MAX_SCHEMA_SAMPLE_ROWS})`,
     shapeValue(mergeShapes(rowShapes))
   ];
 }

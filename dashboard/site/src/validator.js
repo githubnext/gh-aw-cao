@@ -1697,7 +1697,9 @@ function validateView(view, viewNode, path, viewIds, errors) {
         }
         const sourceNames = isPlainObject(view.data) && Array.isArray(view.data.sources)
           ? view.data.sources
-          : [];
+          : isPlainObject(view.data) && typeof view.data.source === 'string'
+            ? [view.data.source]
+            : [];
         if (sourceNames.length !== 1) {
           errors.push(createError(
             ERROR_CODES.missingOrInvalidRequiredField,
