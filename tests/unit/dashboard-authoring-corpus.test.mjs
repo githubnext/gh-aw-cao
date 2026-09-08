@@ -51,10 +51,18 @@ test("every production dashboard page starts with an executive summary or prescr
       const isInsightsOverview = page.id === "insights"
         && summary.mark === "element"
         && summary.element === "insights-overview";
+      const isOverviewDrillDown = page.route?.["navigation-page"] === "overview"
+        && summary.mark === "table";
       const isDataHealthConfidenceSummary = page.id === "data-health"
         && summary.mark === "table"
         && summary.id === "data-health-summary"
         && summary.encoding?.columns?.some((column) => column.field === "confidence" && column.display === "status");
+      const isRepositoriesFullTable = page.id === "repositories"
+        && views.length === 1
+        && summary.mark === "table"
+        && summary.controls === "interactive"
+        && summary["lazy-list"] === true
+        && summary.layout === "full-view";
       const isAttentionFirstHome = page.id === "home"
         && page["class-name"] === "dashboard-next-home-page"
         && summary.id === "home-attention"
@@ -65,8 +73,12 @@ test("every production dashboard page starts with an executive summary or prescr
         && page["class-name"] === "dashboard-overview-page"
         && summary.id === "overview-attention"
         && summary.mark === "element"
-        && summary.element === "signal-list"
-        && summary.data?.sources?.includes("attention-signals");
+        && (summary.element === "signal-list" || summary.element === "home-attention-summary")
+        && (summary.data?.sources?.includes("attention-signals")
+          || (summary.element === "home-attention-summary"
+            && summary.data?.sources?.includes("runs")
+            && summary.data?.sources?.includes("work-items")
+            && summary.data?.sources?.includes("security-findings")));
       if (isAttentionFirstHome) {
         assert.deepEqual(
           views.map((view) => view.id),
@@ -88,6 +100,8 @@ test("every production dashboard page starts with an executive summary or prescr
           || isWorkProjectView
           || isInsightsOverview
           || isDataHealthConfidenceSummary
+          || isRepositoriesFullTable
+          || isOverviewDrillDown
           || isCatchUpHome
           || isAttentionFirstHome,
         `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`

@@ -107,6 +107,8 @@ describe('renderTableRegion', () => {
 
     const input = /** @type {HTMLInputElement} */ (rendered.querySelector('[data-table-filter]'));
     const rows = [...rendered.querySelectorAll('tbody tr')];
+    expect(input.closest('label')?.textContent).toBe('Filter recent runs');
+    expect(input.closest('label')?.querySelector('span')?.classList.contains('sr-only')).toBe(true);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 2 of 2 results');
 
     input.value = 'failure';
@@ -257,6 +259,32 @@ describe('renderTableRegion', () => {
     expect(visible).toHaveLength(25);
     expect(visible[0]?.textContent).toBe('30');
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 30 results');
+  });
+
+  it('reveals lazy-list table rows in bounded batches', () => {
+    const rows = Array.from({ length: 60 }, (_, index) => h(
+      'tr',
+      null,
+      h('td', null, String(index + 1))
+    ));
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No repositories available.',
+      colSpan: 1,
+      headCells: ['Repository'],
+      bodyRows: rows,
+      filterLabel: 'Filter repositories',
+      lazyList: true
+    });
+
+    const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
+    expect(rendered.hasAttribute('data-lazy-list')).toBe(true);
+    expect(more.textContent).toBe('Load more rows');
+    expect(rows.filter((row) => !row.hidden)).toHaveLength(25);
+
+    more.click();
+    expect(rows.filter((row) => !row.hidden)).toHaveLength(50);
+    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 50 of 60 results');
   });
 
   it('defers table summary computation to the data worker', async () => {

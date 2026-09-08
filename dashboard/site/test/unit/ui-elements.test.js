@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { enableLazyViews } from '../../src/components/lazy-view.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { agentSmellNotifications } from '../../src/components/agent-marketplace-view.js';
+import { renderNotificationsInbox } from '../../src/components/notifications-inbox.js';
 import { primerStylesheet } from '../../src/styles.js';
 
 const metadata = {
@@ -333,7 +334,8 @@ describe('UI elements', () => {
           ]
         }
       },
-      contextDetails: [], headingTag: 'h3'
+      contextDetails: [],
+      headingTag: 'h3'
     });
 
     expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1);
@@ -377,7 +379,8 @@ describe('UI elements', () => {
           { decision: 'PROMOTE' }, { decision: 'INCONCLUSIVE' }
         ])
       },
-      contextDetails: [], headingTag: 'h3'
+      contextDetails: [],
+      headingTag: 'h3'
     });
     if (rendered) enableLazyViews(rendered);
 
@@ -722,13 +725,13 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('a')).toHaveLength(1);
   });
 
-  it('renders canonical attention as a complete priority-first action region', () => {
+  it('renders the four Overview attention metrics from complete evidence', () => {
     localStorage.clear();
-    const rendered = renderUiElement('signal-list', {
+    const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview',
       title: 'Need attention',
       description: 'Unresolved conditions that require an authorized person to act or investigate.',
-      sourceNames: ['attention-signals', 'workflows', 'agent-assignments', 'agent-smells', 'workflow-smells', 'security-findings', 'control-plane-smells', 'security-observations', 'runs'],
+      sourceNames: ['attention-signals', 'workflows', 'agent-assignments', 'agent-smells', 'workflow-smells', 'security-findings', 'control-plane-smells', 'security-observations', 'runs', 'work-items'],
       sources: {
         'attention-signals': {
           source: 'attention-signals',
@@ -843,8 +846,16 @@ describe('UI elements', () => {
         runs: {
           source: 'runs',
           rows: [
-            { run: '1', 'started-at': '2026-08-29T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' },
+            { run: '1', 'started-at': new Date(Date.now() - 3_600_000).toISOString(), 'run-status': 'completed', 'run-conclusion': 'failure' },
             { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'in_progress', 'run-conclusion': null }
+          ],
+          metadata
+        },
+        'work-items': {
+          source: 'work-items',
+          rows: [
+            { 'work-item-id': 'blocked', 'lifecycle-state': 'blocked', 'waiting-since': new Date(Date.now() - 172_800_000).toISOString() },
+            { 'work-item-id': 'review', 'lifecycle-state': 'review', 'waiting-since': new Date(Date.now() - 7_200_000).toISOString() }
           ],
           metadata
         }
@@ -853,53 +864,26 @@ describe('UI elements', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered?.classList.contains('notifications-inbox')).toBe(true);
-    expect(rendered?.firstElementChild?.classList.contains('notifications-health')).toBe(true);
-    expect(rendered?.querySelector('.home-catchup')?.getAttribute('aria-label')).toBe('Catch-up briefing');
-    expect(rendered?.textContent).not.toContain('Your catch-up');
-    expect(rendered?.textContent).not.toContain("Here's what changed while you were away");
-    expect(rendered?.lastElementChild?.classList.contains('notifications-main')).toBe(true);
+    expect(rendered?.classList.contains('home-attention-summary')).toBe(true);
+    expect(rendered?.getAttribute('aria-label')).toBe('Needs your attention');
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
-    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(6);
-    expect(/** @type {HTMLInputElement | null} */ (rendered?.querySelector('.notifications-search input'))?.value).toBe('is:unread');
-    expect(rendered?.querySelector('[aria-label="Sort notifications"]')).not.toBeNull();
-    expect(rendered?.querySelector('[aria-label="Group notifications"]')).not.toBeNull();
-    expect(/** @type {HTMLSelectElement | null} */ (rendered?.querySelector('[aria-label="Group notifications"]'))?.value).toBe('cause');
-    const notificationFilterToggle = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('.notifications-filter-toggle'));
-    expect(notificationFilterToggle?.getAttribute('aria-expanded')).toBe('false');
-    expect(rendered?.querySelector('.notifications-advanced-filters')?.classList.contains('is-expanded')).toBe(false);
-    notificationFilterToggle?.click();
-    expect(notificationFilterToggle?.getAttribute('aria-expanded')).toBe('true');
-    expect(rendered?.querySelector('.notifications-advanced-filters')?.classList.contains('is-expanded')).toBe(true);
-    expect(rendered?.querySelector('.notifications-sidebar')).toBeNull();
-    expect(rendered?.textContent).toContain('Upgrade agentic workflow dependencies');
-    expect(rendered?.textContent).toContain('github/mona-tools');
-    expect(rendered?.textContent).toContain('repository-owner2h 30m ago');
-    expect(rendered?.textContent).toContain('Agent smell: Upgrade agent');
-    expect(rendered?.textContent).toContain('Partially reducible');
-    expect(rendered?.textContent).toContain('Strict mode disabled');
-    const workflowSmell = [...(rendered?.querySelectorAll('.notification-item') ?? [])]
-      .find((item) => item.textContent?.includes('Strict mode disabled'));
-    expect(workflowSmell?.querySelector('[href^="#page-workflow-runtime"]')?.getAttribute('href'))
-      .toBe('#page-workflow-runtime?workflow=github%2Fmona-tools%3A.github%2Fworkflows%2Fupgrade.md');
-    expect(rendered?.textContent).toContain('Prompt injection detected');
-    expect(rendered?.textContent).toContain('Package inventory incomplete');
-    expect(rendered?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
-    expect(rendered?.querySelector('.home-catchup-stories .home-origin-agents')).not.toBeNull();
-    expect(rendered?.textContent).toContain('Operations');
-    expect(rendered?.textContent).toContain('Work');
-
-    const dependabotNotification = [...(rendered?.querySelectorAll('.notification-item') ?? [])]
-      .find((item) => item.textContent?.includes('Update the Dependabot release train'));
-    const save = /** @type {HTMLButtonElement | null} */ (dependabotNotification?.querySelector('[aria-label="Save"]') ?? null);
-    save?.click();
-    const notificationSearch = /** @type {HTMLInputElement | null} */ (rendered?.querySelector('.notifications-search input'));
-    if (notificationSearch) {
-      notificationSearch.value = 'is:saved';
-      notificationSearch.dispatchEvent(new Event('input'));
+    expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
+    for (const href of ['failed-runs', 'blocked-work', 'awaiting-review', 'security-findings']) {
+      expect(rendered?.querySelector(`[href="#page-overview-${href}"] strong`)?.textContent).toBe('1');
     }
-    expect(rendered?.querySelectorAll('.canonical-attention-item')).toHaveLength(1);
-    expect(rendered?.textContent).toContain('Update the Dependabot release train');
+    expect(rendered?.querySelector('h3')?.textContent).toBe('4 items need your attention');
+    expect([...rendered?.querySelectorAll('.home-attention-icon .octicon') ?? []].map((icon) => icon.classList[1])).toEqual([
+      'octicon-x-circle',
+      'octicon-stop',
+      'octicon-person',
+      'octicon-shield'
+    ]);
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(4);
+    expect(rendered?.querySelector('.home-attention-detail')).toBeNull();
+    expect(rendered?.querySelector('.notifications-main')).toBeNull();
+    expect(rendered?.querySelector('.home-catchup')).toBeNull();
     localStorage.clear();
   });
 
@@ -911,20 +895,10 @@ describe('UI elements', () => {
       reason: 'Workflow completed with no safe outputs', 'consequence-tier': 'medium', priority: 3,
       'age-seconds': 60
     });
-    const rendered = renderUiElement('signal-list', {
-      pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals'],
-      sources: {
-        'attention-signals': {
-          source: 'attention-signals',
-          rows: [
-            repeated('repeat:1', 'github/one'), repeated('repeat:2', 'github/two'),
-            { 'attention-signal-id': 'unique', 'signal-type': 'authority-gate', objective: 'Confirm authority', scope: 'github/three', reason: 'Authority missing', 'consequence-tier': 'medium', priority: 2, 'age-seconds': 30 }
-          ],
-          metadata
-        }
-      },
-      contextDetails: [], headingTag: 'h3'
-    });
+    const rendered = renderNotificationsInbox([
+      repeated('repeat:1', 'github/one'), repeated('repeat:2', 'github/two'),
+      { 'attention-signal-id': 'unique', 'signal-type': 'authority-gate', objective: 'Confirm authority', scope: 'github/three', reason: 'Authority missing', 'consequence-tier': 'medium', priority: 2, 'age-seconds': 30 }
+    ]);
 
     expect(rendered?.querySelectorAll('.notifications-cause-cluster')).toHaveLength(1);
     expect(rendered?.querySelector('.notifications-cause-summary')?.textContent).toContain('2 occurrences across 2 repositories');
@@ -939,9 +913,9 @@ describe('UI elements', () => {
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(3);
   });
 
-  it('leads a clear Home page with a catch-up briefing', () => {
+  it('shows a positive quiet state when every attention class was evaluated', () => {
     localStorage.clear();
-    const rendered = renderUiElement('signal-list', {
+    const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview', title: 'Notifications', sourceNames: ['attention-signals', 'runs'],
       sources: {
         'attention-signals': { source: 'attention-signals', rows: [], metadata },
@@ -952,21 +926,32 @@ describe('UI elements', () => {
             { run: '2', 'started-at': '2026-08-30T10:00:00Z', 'run-status': 'completed', 'run-conclusion': 'success' }
           ],
           metadata
-        }
+        },
+        'work-items': { source: 'work-items', rows: [], metadata },
+        'security-findings': { source: 'security-findings', rows: [], metadata }
       },
-      contextDetails: [], headingTag: 'h3'
+      contextDetails: [],
+      time: { start: '2026-08-23T12:00:00Z', end: '2026-08-30T12:00:00Z' },
+      headingTag: 'h3'
     });
 
-    expect(rendered?.firstElementChild?.classList.contains('notifications-health')).toBe(true);
-    expect(rendered?.querySelector('#notifications-health-title')).toBeNull();
-    expect(rendered?.querySelector('[aria-label="Catch-up interval"]')).not.toBeNull();
-    expect(rendered?.querySelector('.home-momentum-chart')?.getAttribute('aria-label')).toContain('0 delivered outcomes');
-    expect(rendered?.querySelector('.home-origin-work')).not.toBeNull();
-    expect(rendered?.lastElementChild?.classList.contains('notifications-main')).toBe(true);
+    expect(rendered?.classList.contains('home-attention-summary')).toBe(true);
+    expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
+    expect(rendered?.querySelector('.home-attention-empty strong')?.textContent).toBe('Nothing needs your attention');
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toBe(
+      'No failed runs, blocked work, review waits, or security findings were observed from Aug 23, 2026, 12:00 PM UTC to Aug 30, 2026, 12:00 PM UTC.'
+    );
+    expect(rendered?.querySelector('.home-attention-metric strong')?.textContent).toBe('0');
+    expect(rendered?.querySelector('.home-attention-metric[href]')).toBeNull();
+    expect(rendered?.querySelectorAll('.home-attention-metric-empty')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0);
+    expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
   });
 
-  it('keeps the clear inbox available when catch-up evidence is unavailable', () => {
-    const rendered = renderUiElement('signal-list', {
+  it('does not present unavailable attention evidence as zero', () => {
+    const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview',
       title: 'Need attention',
       description: 'Unresolved conditions that require an authorized person to act or investigate.',
@@ -978,12 +963,37 @@ describe('UI elements', () => {
       headingTag: 'h3'
     });
 
-    expect(rendered?.classList.contains('notifications-inbox')).toBe(true);
-    expect(rendered?.classList.contains('is-clear')).toBe(true);
-    expect(rendered?.firstElementChild?.classList.contains('notifications-health')).toBe(true);
-    expect(rendered?.querySelector('#notifications-health-title')).toBeNull();
-    expect(rendered?.textContent).toContain('No meaningful state changes were observed');
-    expect(rendered?.querySelector('.notifications-empty')?.textContent).toBe('All caught up');
+    expect(rendered?.classList.contains('home-attention-summary')).toBe(true);
+    expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
+    expect(rendered?.querySelector('.home-attention-empty strong')?.textContent).toBe('No attention observed in available evidence');
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain(
+      'failed runs, blocked work and review waits, security findings could not be fully evaluated'
+    );
+    expect([...rendered?.querySelectorAll('.home-attention-metric strong') ?? []].map((count) => count.textContent)).toEqual(['—', '—', '—', '—']);
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0);
+    expect(rendered?.querySelector('.home-attention-detail')).toBeNull();
+    expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
+  });
+
+  it('qualifies a quiet state when source evidence is partial', () => {
+    const partialMetadata = { ...metadata, completeness: /** @type {'partial'} */ ('partial') };
+    const rendered = renderUiElement('home-attention-summary', {
+      pageId: 'overview', title: 'Needs attention', sourceNames: ['runs', 'work-items', 'security-findings'],
+      sources: {
+        runs: { source: 'runs', rows: [], metadata },
+        'work-items': { source: 'work-items', rows: [], metadata },
+        'security-findings': { source: 'security-findings', rows: [], metadata: partialMetadata }
+      },
+      contextDetails: [], headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.home-attention-empty-incomplete strong')?.textContent).toBe('No attention observed in available evidence');
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain('security findings could not be fully evaluated');
+    expect(rendered?.querySelector('.home-attention-metric-security-findings strong')?.textContent).toBeUndefined();
+    expect([...rendered?.querySelectorAll('.home-attention-metric') ?? []].at(-1)?.querySelector('strong')?.textContent).toBe('0');
+    expect([...rendered?.querySelectorAll('.home-attention-metric') ?? []].at(-1)?.hasAttribute('href')).toBe(false);
   });
 
   it('renders a blocked readiness verdict with the next unblock action', () => {

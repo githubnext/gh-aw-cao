@@ -116,6 +116,28 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.querySelector('.table-summary-cell')?.textContent).toBe('');
   });
 
+  it('leaves the summary empty for run-linked text columns', () => {
+    const rendered = renderSummaries([{
+      label: 'Error',
+      type: 'nominal',
+      display: 'run-link',
+      values: ['Target authority missing', 'Process failed']
+    }]);
+
+    expect(rendered.querySelector('.table-summary-cell')?.textContent).toBe('');
+  });
+
+  it('leaves the summary empty for evidence-linked text columns', () => {
+    const rendered = renderSummaries([{
+      label: 'Work',
+      type: 'nominal',
+      display: 'evidence-link',
+      values: ['Review dependency update', 'Review release evidence']
+    }]);
+
+    expect(rendered.querySelector('.table-summary-cell')?.textContent).toBe('');
+  });
+
   it('summarizes run-like columns and object values by item count', () => {
     const rendered = renderSummaries([
       {

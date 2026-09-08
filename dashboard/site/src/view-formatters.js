@@ -58,6 +58,20 @@ export function stringOrFallback(value, fallback) {
 }
 
 /**
+ * Applies a declarative presentation-only format to a string value.
+ * @param {unknown} value
+ * @param {unknown} format
+ * @param {string} fallback
+ * @returns {string}
+ */
+export function formatString(value, format, fallback = 'unknown') {
+  const text = stringOrFallback(value, fallback);
+  if (format !== 'workflow-relative-path' || !text.startsWith('.github/workflows/')) return text;
+  const formatted = text.slice('.github/workflows/'.length);
+  return formatted || fallback;
+}
+
+/**
  * Formats a millisecond duration using cascading clock units (seconds, then
  * minutes, then hours, optionally rolling over into days). Shared by
  * run-duration renderers that differ only in whether a days tier applies.

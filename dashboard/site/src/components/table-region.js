@@ -31,6 +31,7 @@ const DEFAULT_PAGE_SIZE = 25;
  *   filterId?: string,
  *   filterPlaceholder?: string,
  *   filterFields?: TableFilterField[],
+ *   lazyList?: boolean,
  *   pageSize?: number,
  *   resultNoun?: string,
  *   resultNounPlural?: string,
@@ -53,6 +54,7 @@ export function renderTableRegion(options) {
     filterId,
     filterPlaceholder = 'Filter rows',
     filterFields = [],
+    lazyList = false,
     pageSize = DEFAULT_PAGE_SIZE,
     resultNoun,
     resultNounPlural
@@ -65,7 +67,10 @@ export function renderTableRegion(options) {
 
   const region = h(
     'div',
-    { className: `table-region${regionClassName ? ` ${regionClassName}` : ''}` },
+    {
+      className: `table-region${regionClassName ? ` ${regionClassName}` : ''}`,
+      ...(lazyList ? { 'data-lazy-list': '' } : {})
+    },
     interactive
       ? h(
         'div',
@@ -74,7 +79,7 @@ export function renderTableRegion(options) {
           type: 'search',
           placeholder: filterPlaceholder,
           'data-table-filter': ''
-        })),
+        }), { visuallyHiddenLabel: true }),
         ...facets.map((facet) => renderLabeledControl(
           facet.label,
           h(
@@ -136,16 +141,22 @@ export function renderTableRegion(options) {
       )
     ),
     interactive
-      ? h('button', { className: 'table-filter-more', type: 'button', 'data-table-more': '' }, 'Show all rows')
+      ? h('button', { className: 'table-filter-more', type: 'button', 'data-table-more': '' }, lazyList ? 'Load more rows' : 'Show all rows')
       : null
   );
+
+  if (lazyList) {
+    const scroll = region.querySelector('.table-scroll');
+    const more = region.querySelector('[data-table-more]');
+    if (scroll && more) scroll.append(more);
+  }
 
   if (hasRows && sortable) {
     enableTableSort(region);
   }
 
   if (interactive) {
-    enableTableFilter(region, { filterId, pageSize, resultNoun, resultNounPlural });
+    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural });
   }
   return region;
 }
@@ -213,7 +224,7 @@ function cellText(row, columnIndex) {
  */
 /**
  * @param {HTMLElement} region
- * @param {{ filterId?: string, pageSize: number, resultNoun?: string, resultNounPlural?: string }} options
+ * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string }} options
  */
 function enableTableFilter(region, options) {
   const input = region.querySelector('[data-table-filter]');
@@ -299,12 +310,20 @@ function enableTableFilter(region, options) {
      apply(true);
    });
   }
-  more.addEventListener('click', () => {
-   limit = Number.POSITIVE_INFINITY;
+  const loadMore = () => {
+   limit = options.lazyList ? limit + options.pageSize : Number.POSITIVE_INFINITY;
    apply();
-  });
+  };
+  more.addEventListener('click', loadMore);
   region.addEventListener('table-sorted', () => apply());
   apply();
+  const Observer = region.ownerDocument.defaultView?.IntersectionObserver;
+  if (options.lazyList && typeof Observer === 'function') {
+   const observer = new Observer((entries) => {
+     if (entries.some((entry) => entry.isIntersecting) && !more.hidden) loadMore();
+   }, { root: region.querySelector('.table-scroll'), rootMargin: '200px 0px' });
+   observer.observe(more);
+  }
 }
 
 /**

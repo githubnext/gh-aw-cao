@@ -40,6 +40,8 @@ resources:
     destination: .github/aw/dashboard/site/index.html
   - source: site/favicon.svg
     destination: .github/aw/dashboard/site/favicon.svg
+  - source: site/assets/avatar-monalisa-octocat.png
+    destination: .github/aw/dashboard/site/assets/avatar-monalisa-octocat.png
   - source: site/dashboard.json
     destination: .github/aw/dashboard/site/dashboard.json
   - source: site/src/data-operations.js
@@ -158,6 +160,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/experiments-view-shell.js
   - source: site/src/components/histogram.js
     destination: .github/aw/dashboard/site/src/components/histogram.js
+  - source: site/src/components/home-attention-summary.js
+    destination: .github/aw/dashboard/site/src/components/home-attention-summary.js
   - source: site/src/components/link-content.js
     destination: .github/aw/dashboard/site/src/components/link-content.js
   - source: site/src/components/lazy-infinite-list.js

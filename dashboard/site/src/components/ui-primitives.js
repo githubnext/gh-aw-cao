@@ -481,7 +481,7 @@ export function createExpandableToggle(toggle, panel, { expandedClass, onExpand 
  * table region toolbars.
  * @param {string} label
  * @param {Node} control
- * @param {{ className?: string, prefix?: Node }} [options]
+ * @param {{ className?: string, prefix?: Node, visuallyHiddenLabel?: boolean }} [options]
  * @returns {HTMLLabelElement}
  */
 export function renderLabeledControl(label, control, options = {}) {
@@ -489,7 +489,7 @@ export function renderLabeledControl(label, control, options = {}) {
     'label',
     options.className ? { className: options.className } : null,
     options.prefix,
-    h('span', null, label),
+    h('span', options.visuallyHiddenLabel ? { className: 'sr-only' } : null, label),
     control
   ));
 }

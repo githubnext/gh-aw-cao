@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
-import { titleCase } from './count-formatters.js';
+import { textValue, titleCase } from './count-formatters.js';
 import { createExpandableToggle, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
@@ -550,29 +550,29 @@ function workSectionId(pageId, key) {
 
 /** @param {Record<string, unknown>} row */
 function normalizeWorkItem(row) {
-  const started = text(row['started-at']) || text(row['observed-at']);
-  const stopped = text(row['ended-at']) || text(row['stopped-at']);
+  const started = textValue(row['started-at']) || textValue(row['observed-at']);
+  const stopped = textValue(row['ended-at']) || textValue(row['stopped-at']);
   const startTime = validTime(started) ?? Date.now();
-  const lifecycleState = text(row['lifecycle-state']);
+  const lifecycleState = textValue(row['lifecycle-state']);
   const state = normalizeState(lifecycleState);
-  const inferred = text(row['reason-evidence-class']) === 'inferred';
+  const inferred = textValue(row['reason-evidence-class']) === 'inferred';
   const pointInTime = inferred || (!stopped && state !== 'in-progress');
   const stopTime = pointInTime ? startTime : validTime(stopped) ?? Math.max(startTime, Date.now());
-  const owner = text(row.owner) || text(row.organization) || 'Unassigned';
-  const workType = text(row['work-type']) || text(row['workflow-role']) || 'unknown';
-  const packageName = text(row.package)
-    || text(row['package-name'])
+  const owner = textValue(row.owner) || textValue(row.organization) || 'Unassigned';
+  const workType = textValue(row['work-type']) || textValue(row['workflow-role']) || 'unknown';
+  const packageName = textValue(row.package)
+    || textValue(row['package-name'])
     || (workType === 'orchestrator' || workType === 'worker' ? owner : '');
   return {
-    id: text(row['work-item-id']) || text(row.workflow) || text(row.objective),
-    name: text(row.name) || text(row['workflow-name']) || text(row.objective) || 'Unknown workflow',
-    icon: text(row['workflow-icon']) || text(row['package-icon']) || 'workflow',
-    repository: text(row.scope) || [text(row.organization), text(row.repository)].filter(Boolean).join('/') || 'Repository unavailable',
+    id: textValue(row['work-item-id']) || textValue(row.workflow) || textValue(row.objective),
+    name: textValue(row.name) || textValue(row['workflow-name']) || textValue(row.objective) || 'Unknown workflow',
+    icon: textValue(row['workflow-icon']) || textValue(row['package-icon']) || 'workflow',
+    repository: textValue(row.scope) || [textValue(row.organization), textValue(row.repository)].filter(Boolean).join('/') || 'Repository unavailable',
     owner,
     packageName,
     workType,
-    safeOutputKind: text(row['safe-output-kind']) || 'workflow-output',
-    actor: text(row['next-actor']) || actorForLifecycle(lifecycleState),
+    safeOutputKind: textValue(row['safe-output-kind']) || 'workflow-output',
+    actor: textValue(row['next-actor']) || actorForLifecycle(lifecycleState),
     state,
     stateLabel: titleCase(state),
     started,
@@ -585,12 +585,12 @@ function normalizeWorkItem(row) {
     evidenceLink: findLink(row, 'evidence-link') || findLink(row, 'run-link'),
     repositoryLink: findLink(row, 'repository-link'),
     durationLabel: Number.isFinite(stopTime - startTime) ? formatClockDuration(Math.max(0, (stopTime - startTime) / 1000)) : '',
-    reason: text(row.reason),
-    nextAction: text(row['next-action']),
-    waitingOn: text(row['waiting-on']),
-    consequenceTier: text(row['consequence-tier']),
-    verificationState: text(row['verification-state']),
-    outcomeState: text(row['outcome-state'])
+    reason: textValue(row.reason),
+    nextAction: textValue(row['next-action']),
+    waitingOn: textValue(row['waiting-on']),
+    consequenceTier: textValue(row['consequence-tier']),
+    verificationState: textValue(row['verification-state']),
+    outcomeState: textValue(row['outcome-state'])
   };
 }
 
@@ -941,11 +941,6 @@ function roleOrder(role) {
  * @param {{ start: number, duration: number }} extents
  * @param {number} divisions
  */
-/** @param {unknown} value */
-function text(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 /** @param {string} value */
 function validTime(value) {
   const parsed = Date.parse(value);
