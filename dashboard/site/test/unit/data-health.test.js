@@ -232,12 +232,15 @@ describe('data shape preview', () => {
       { organization: 'acme', repository: 'app', run: '42', attempts: 1, labels: ['flaky'], meta: { retries: 1 } },
       { organization: 'acme', repository: 'app', run: '43', attempts: '2', labels: [], extra: true }
     ];
-    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
-    expect(schema.source).toBe('runs');
-    expect(schema.schema).toContain('attempts: number | string');
-    expect(schema.schema).toContain('labels: string[]');
-    expect(schema.schema).toContain('extra?: boolean');
-    expect(schema.schema).toContain('meta?: { retries: number }');
+    const rows = deriveDataHealthSources(sources)['data-health-schema'].rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].source).toBe('Dashboard data shapes');
+    const schema = JSON.parse(String(rows[0].schema));
+    expect(schema.runs[0]).toBe('// 2 items');
+    expect(schema.runs[1].attempts).toBe('number | string');
+    expect(schema.runs[1].labels).toEqual(['// 0-1 items', 'string']);
+    expect(schema.runs[1]['extra?']).toBe('boolean');
+    expect(schema.runs[1]['meta?']).toEqual({ retries: 'number' });
   });
 
   it('detects and breaks reference cycles instead of recursing without bound', () => {
@@ -245,8 +248,11 @@ describe('data shape preview', () => {
     const cyclicRow = /** @type {Record<string, any>} */ ({ organization: 'acme', repository: 'app' });
     cyclicRow.self = cyclicRow;
     sources.runs.rows = [cyclicRow];
-    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
-    expect(schema.schema).toContain('self: (circular)');
+    const schema = JSON.parse(String(deriveDataHealthSources(sources)['data-health-schema'].rows[0].schema));
+    expect(schema.runs).toEqual([
+      '// 1 item',
+      expect.objectContaining({ self: '(circular)' })
+    ]);
   });
 
   it('does not treat shared non-cyclic objects as circular in file diagnostics', () => {
@@ -261,8 +267,8 @@ describe('data shape preview', () => {
   it('reports an empty-object shape when a source has no cached rows', () => {
     const sources = completeSources();
     sources.runs.rows = [];
-    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
-    expect(schema.schema).toBe('{}');
+    const schema = JSON.parse(String(deriveDataHealthSources(sources)['data-health-schema'].rows[0].schema));
+    expect(schema.runs).toEqual(['// 0 items']);
   });
 });
 

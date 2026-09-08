@@ -102,7 +102,19 @@ describe('dashboard data operations', () => {
     }));
 
     expect(result['data-health-files'].rows).toMatchObject([{ file: 'runs.json', rows: 1 }]);
-    expect(result['data-health-schema'].rows).toMatchObject([{ source: 'runs', schema: '{ attempts: number, organization: string, repository: string, run: string }' }]);
+    expect(result['data-health-schema'].rows).toHaveLength(1);
+    expect(result['data-health-schema'].rows[0].source).toBe('Dashboard data shapes');
+    expect(JSON.parse(String(result['data-health-schema'].rows[0].schema))).toEqual({
+      runs: [
+        '// 1 item',
+        {
+          attempts: 'number',
+          organization: 'string',
+          repository: 'string',
+          run: 'string'
+        }
+      ]
+    });
     expect(result).not.toHaveProperty('runs');
   });
 

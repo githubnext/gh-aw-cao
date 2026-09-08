@@ -2,7 +2,7 @@
  * Deterministic evidence-confidence diagnostics for the dashboard.
  */
 
-import { schemaDiagnostic } from './schema-diagnostics.js';
+import { schemaDiagnosticValue } from './schema-diagnostics.js';
 
 /**
  * @typedef {import('./presenter.js').LogicalSourceInput} LogicalSourceInput
@@ -55,7 +55,15 @@ export function deriveDataHealthSources(sources, context = {}) {
     .map(([name, source]) => loadedFileDiagnostic(name, source))
     .sort((left, right) => right.size - left.size || left.file.localeCompare(right.file));
   const totalSize = fileRows.reduce((total, row) => total + row.size, 0);
-  const schemaRows = Object.entries(sources).map(([name, source]) => schemaDiagnostic(name, source));
+  const schemaDocument = Object.fromEntries(
+    Object.entries(sources)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, source]) => [name, schemaDiagnosticValue(source)])
+  );
+  const schemaRows = [{
+    source: 'Dashboard data shapes',
+    schema: JSON.stringify(schemaDocument)
+  }];
   const compatibilityRows = compatibilityDiagnostics(sources.workflows);
   const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
   const coverageRows = COVERAGE_CONTRACTS.map((contract) => coverageDiagnostic(contract, sources, reconciliationRows));

@@ -5977,8 +5977,8 @@
           {
             "id": "data-health-schema",
             "disclosure-label": "Data shape preview",
-            "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
-            "intent": "Preview each logical source's inferred JSON shape as readable code.",
+            "description": "One two-space formatted JSON document containing recursive shape inference for every source; reference cycles are rendered as (circular).",
+            "intent": "Preview all logical source shapes in one consistently formatted JSON code region.",
             "disclosure": "supplemental",
             "data": {
               "sources": [

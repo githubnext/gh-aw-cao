@@ -8,7 +8,7 @@ const MAX_SCHEMA_PROPERTIES = 12;
 
 /**
  * @typedef {{ kind: 'primitive', type: string }
- *   | { kind: 'array', element: Shape }
+ *   | { kind: 'array', element: Shape, minItems: number, maxItems: number }
  *   | { kind: 'object', properties: Record<string, { shape: Shape, optional: boolean }> }
  *   | { kind: 'union', options: Shape[] }
  *   | { kind: 'circular' }} Shape
@@ -24,6 +24,22 @@ export function schemaDiagnostic(name, source) {
   if (rows.length === 0) return { source: name, schema: '{}' };
   const rowShapes = rows.map((row) => inferShape(row, new Set()));
   return { source: name, schema: formatShape(mergeShapes(rowShapes), 0) };
+}
+
+/**
+ * @param {{ rows?: Array<Record<string, unknown>> }} source
+ * @returns {unknown}
+ */
+export function schemaDiagnosticValue(source) {
+  const rows = Array.isArray(source?.rows) ? source.rows : [];
+  if (rows.length === 0) return ['// 0 items'];
+  const rowShapes = rows
+    .slice(0, MAX_SCHEMA_SAMPLE_ROWS)
+    .map((row) => inferShape(row, new Set()));
+  return [
+    `// ${arrayItemCount(rows.length, rows.length)}`,
+    shapeValue(mergeShapes(rowShapes))
+  ];
 }
 
 /**
@@ -43,7 +59,9 @@ function inferShape(value, openContainers, depth = 0) {
         kind: 'array',
         element: elementShapes.length > 0
           ? mergeShapes(elementShapes)
-          : { kind: 'primitive', type: 'unknown' }
+          : { kind: 'primitive', type: 'unknown' },
+        minItems: value.length,
+        maxItems: value.length
       };
     } finally {
       openContainers.delete(value);
@@ -82,8 +100,13 @@ function mergeShapes(shapes) {
     return { kind: 'primitive', type: (knownTypes.length > 0 ? knownTypes : types).join(' | ') };
   }
   if (kinds.size === 1 && kinds.has('array')) {
-    const elementShapes = /** @type {Array<{ element: Shape }>} */ (shapes).map((shape) => shape.element);
-    return { kind: 'array', element: mergeShapes(elementShapes) };
+    const arrayShapes = /** @type {Array<{ element: Shape, minItems: number, maxItems: number }>} */ (shapes);
+    return {
+      kind: 'array',
+      element: mergeShapes(arrayShapes.map((shape) => shape.element)),
+      minItems: Math.min(...arrayShapes.map((shape) => shape.minItems)),
+      maxItems: Math.max(...arrayShapes.map((shape) => shape.maxItems))
+    };
   }
   if (kinds.size === 1 && kinds.has('object')) {
     const objectShapes = /** @type {Array<{ properties: Record<string, { shape: Shape, optional: boolean }>}>} */ (shapes);
@@ -128,6 +151,39 @@ function formatShape(shape, depth) {
   });
   if (keys.length > visibleKeys.length) fields.push(`… +${keys.length - visibleKeys.length} more`);
   return `{ ${fields.join(', ')} }`;
+}
+
+/**
+ * @param {Shape} shape
+ * @returns {unknown}
+ */
+function shapeValue(shape) {
+  if (shape.kind === 'circular') return '(circular)';
+  if (shape.kind === 'primitive') return shape.type;
+  if (shape.kind === 'union') return shape.options.map((option) => formatShape(option, 0)).join(' | ');
+  if (shape.kind === 'array') {
+    return [`// ${arrayItemCount(shape.minItems, shape.maxItems)}`, shapeValue(shape.element)];
+  }
+
+  const keys = Object.keys(shape.properties).sort();
+  const visibleKeys = keys.slice(0, MAX_SCHEMA_PROPERTIES);
+  /** @type {Record<string, unknown>} */
+  const value = {};
+  for (const key of visibleKeys) {
+    const property = shape.properties[key];
+    value[`${key}${property.optional ? '?' : ''}`] = shapeValue(property.shape);
+  }
+  if (keys.length > visibleKeys.length) value['...'] = `+${keys.length - visibleKeys.length} more properties`;
+  return value;
+}
+
+/**
+ * @param {number} minItems
+ * @param {number} maxItems
+ */
+function arrayItemCount(minItems, maxItems) {
+  if (minItems === maxItems) return `${minItems} ${minItems === 1 ? 'item' : 'items'}`;
+  return `${minItems}-${maxItems} items`;
 }
 
 /** @param {unknown} value */

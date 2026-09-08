@@ -30,7 +30,7 @@ export function renderCodeRegion(context) {
         ? String(row[labelField])
         : `Code preview ${index + 1}`;
       const headingId = `${context.pageId}-${slugify(context.viewId ?? 'code-region', 'code-region')}-${index}-label`;
-      const content = row[codeField] == null ? '' : String(row[codeField]);
+      const content = formatCode(row[codeField], language);
       return h(
         'article',
         { className: 'code-region' },
@@ -58,4 +58,20 @@ function stringConfig(value) {
 /** @param {unknown} value */
 function codeLanguage(value) {
   return typeof value === 'string' && /^[a-z][a-z0-9-]*$/.test(value) ? value : 'text';
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} language
+ * @returns {string}
+ */
+function formatCode(value, language) {
+  if (value == null) return '';
+  if (language !== 'json') return String(value);
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return String(value);
+  }
 }
