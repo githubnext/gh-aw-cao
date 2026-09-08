@@ -513,9 +513,10 @@ function enableThemeToggle(root) {
   if (toggles.length === 0) return;
   const view = root.ownerDocument.defaultView;
 
-  /** @param {'light'|'dark'} theme */
+  /** @param {'system'|'light'|'dark'} theme */
   const setTheme = (theme) => {
-    root.dataset.theme = theme;
+    if (theme === 'system') delete root.dataset.theme;
+    else root.dataset.theme = theme;
     for (const toggle of toggles) {
       if (!(toggle instanceof HTMLButtonElement)) continue;
       const selected = toggle.dataset.themeValue === theme;
@@ -523,11 +524,11 @@ function enableThemeToggle(root) {
     }
   };
 
-  /** @type {'light'|'dark'} */
-  let theme = view?.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  /** @type {'system'|'light'|'dark'} */
+  let theme = 'system';
   try {
     const savedTheme = view?.localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme;
+    if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme;
   } catch {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
@@ -536,7 +537,7 @@ function enableThemeToggle(root) {
   for (const toggle of toggles) {
     toggle.addEventListener('click', () => {
       const theme = toggle instanceof HTMLElement ? toggle.dataset.themeValue : undefined;
-      if (theme !== 'light' && theme !== 'dark') return;
+      if (theme !== 'system' && theme !== 'light' && theme !== 'dark') return;
       setTheme(theme);
       try {
         view?.localStorage.setItem(THEME_STORAGE_KEY, theme);
@@ -717,6 +718,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                 h(
                   'div',
                   { className: 'appearance-options' },
+                  h('button', { type: 'button', dataset: { themeValue: 'system' }, 'aria-pressed': 'false' }, octicon('device-desktop'), h('span', null, 'System')),
                   h('button', { type: 'button', dataset: { themeValue: 'light' }, 'aria-pressed': 'false' }, octicon('sun'), h('span', null, 'Light')),
                   h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
