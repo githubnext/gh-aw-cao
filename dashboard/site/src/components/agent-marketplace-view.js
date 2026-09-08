@@ -316,7 +316,7 @@ function catalogAgents(workflows, assignmentRows, securityObservations = [], sme
       totalRuntimeSeconds,
       runCount,
       observedAt: observed,
-      lastObserved: observed ? new Date(observed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+      lastObserved: formatLastObserved(observed),
       featured: packageEntry && primary['inventory-ready'] === true && Number(primary['package-rollout-percent']) === 100,
       slow: runCount > 0 && totalRuntimeSeconds / runCount >= LONG_RUNNING_SECONDS,
       stale: runtime.length > 0 && runtime.every((assignment) => assignment.stale),
@@ -357,6 +357,18 @@ function workflowPermissions(workflow) {
     : [];
 }
 
+/**
+ * Formats an ISO observed-at timestamp as a short `en-US` date (e.g. `Aug
+ * 30, 2026`), or an empty string when there is no observation. Shared by
+ * the package/workflow rollup and the standalone-agent normalizer, which
+ * both derive a human-readable `lastObserved` label from a raw timestamp.
+ * @param {string} observed
+ * @returns {string}
+ */
+function formatLastObserved(observed) {
+  return observed ? new Date(observed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+}
+
 /** @param {Record<string, unknown>} row @returns {AgentCatalogEntry} */
 function normalizeAgent(row) {
   const runtime = Number(row['total-runtime-seconds'] ?? row['total-run-time-seconds']);
@@ -374,7 +386,7 @@ function normalizeAgent(row) {
     repositoryLink: findLink(row, 'repository-link'),
     totalRuntimeSeconds,
     runCount: Number(row['run-count']) || 0,
-    lastObserved: observed ? new Date(observed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+    lastObserved: formatLastObserved(observed),
     featured: Boolean(row.featured),
     slow: Boolean(row['long-running']) || (Number(row['run-count']) > 0 && totalRuntimeSeconds / Number(row['run-count']) >= LONG_RUNNING_SECONDS),
     stale: Boolean(row.stale) || !Number.isFinite(Date.parse(observed)) || ageHours >= STALE_HOURS,
