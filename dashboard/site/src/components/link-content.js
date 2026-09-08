@@ -79,6 +79,20 @@ function safeLinkAnchorAttrs(link, external) {
 }
 
 /**
+ * Builds the attribute set for a plain external anchor (`target="_blank"`,
+ * `rel="noopener noreferrer"`) for callers that already hold a raw href/label
+ * pair rather than a resolved {@link SafeLink}. Shares the same
+ * target/rel/aria-label wiring as every other safe-link anchor in this
+ * module.
+ * @param {string} href
+ * @param {string} label
+ * @returns {{ href: string, target: string | undefined, rel: string | undefined, 'aria-label': string }}
+ */
+export function externalAnchorAttrs(href, label) {
+  return safeLinkAnchorAttrs({ href, label }, true);
+}
+
+/**
  * @param {SafeLink} link
  * @returns {HTMLElement}
  */

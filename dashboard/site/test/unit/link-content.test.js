@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { findFirstLink, findLink, renderExternalLink, renderExternalLinkOrFallback, renderLinkedValue, renderOutcomeLink, renderSafeLink, renderWorkflowRunLink, resolveTitleLink } from '../../src/components/link-content.js';
+import { externalAnchorAttrs, findFirstLink, findLink, renderExternalLink, renderExternalLinkOrFallback, renderLinkedValue, renderOutcomeLink, renderSafeLink, renderWorkflowRunLink, resolveTitleLink } from '../../src/components/link-content.js';
 
 describe('link content helpers', () => {
   it('renderSafeLink renders a plain-text fallback and an internal or external anchor', () => {
@@ -82,8 +82,18 @@ describe('link content helpers', () => {
     expect(plainValue).toBe('Summary');
   });
 
-  it('renders workflow run labels as safe external links with a plain-text fallback', () => {
-    const linked = /** @type {HTMLElement} */ (renderWorkflowRunLink({
+  it('builds shared external anchor attributes for raw href/label pairs', () => {
+    const attrs = externalAnchorAttrs('https://github.com/octo-org/platform', 'View source');
+
+    expect(attrs).toEqual({
+      href: 'https://github.com/octo-org/platform',
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      'aria-label': 'View source'
+    });
+  });
+
+  it('renders workflow run labels as safe external links with a plain-text fallback', () => {    const linked = /** @type {HTMLElement} */ (renderWorkflowRunLink({
       'run-link': {
         href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
         label: 'Run 42'
