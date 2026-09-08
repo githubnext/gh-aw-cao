@@ -57,6 +57,45 @@ describe('lazy dashboard views', () => {
     expect(document.body.querySelector('article')).not.toBeNull();
   });
 
+  it('hydrates a view skipped by a scroll jump even without an observer intersection', async () => {
+    /** @type {IntersectionObserverInit | undefined} */
+    let observerOptions;
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: class {
+        /** @param {IntersectionObserverCallback} _callback @param {IntersectionObserverInit} options */
+        constructor(_callback, options) {
+          observerOptions = options;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    });
+    const scroller = document.createElement('main');
+    scroller.className = 'dashboard-prototype';
+    vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(/** @type {DOMRect} */ ({ bottom: 600 }));
+    const root = document.createElement('section');
+    const render = vi.fn(() => document.createElement('article'));
+    const lazyView = renderLazyView({ label: 'Skipped chart', render });
+    const lazyRect = vi.spyOn(lazyView, 'getBoundingClientRect');
+    lazyRect.mockReturnValue(/** @type {DOMRect} */ ({ top: 1000 }));
+    root.append(lazyView);
+    scroller.append(root);
+    document.body.append(scroller);
+
+    enableLazyViews(root);
+    expect(observerOptions?.root).toBe(scroller);
+    expect(observerOptions?.rootMargin).toBe('320px 0px');
+    expect(render).not.toHaveBeenCalled();
+
+    lazyRect.mockReturnValue(/** @type {DOMRect} */ ({ top: -300 }));
+    scroller.dispatchEvent(new Event('scroll'));
+
+    await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    expect(root.querySelector('article')).not.toBeNull();
+  });
+
   it('waits for an active view transition before hydrating', async () => {
     /** @type {IntersectionObserverCallback} */
     let callback = () => {};
