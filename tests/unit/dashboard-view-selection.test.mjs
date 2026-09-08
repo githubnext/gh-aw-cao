@@ -71,3 +71,18 @@ test("selects every page for components with transitive consumers", () => {
     baseRef: "unused",
   }), ["experiments", "cost"]);
 });
+
+test("selects every page when a referenced component was deleted", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard: {
+      dashboard: {
+        pages: [
+          { id: "deleted-consumer", views: [{ element: "deleted-component" }] },
+          { id: "other", views: [] },
+        ],
+      },
+    },
+    changedFiles: ["dashboard/site/src/components/deleted-component.js"],
+    baseRef: "unused",
+  }), ["deleted-consumer", "other"]);
+});

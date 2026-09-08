@@ -71,7 +71,12 @@ function pagesUsingElement(dashboard, element) {
 
 function canScopeComponent(path) {
   const absolutePath = join(repositoryRoot, path);
-  const source = readFileSync(absolutePath, "utf8");
+  let source;
+  try {
+    source = readFileSync(absolutePath, "utf8");
+  } catch {
+    return false;
+  }
   const exports = [
     ...source.matchAll(/\bexport\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/g),
   ];
