@@ -103,6 +103,7 @@ describe('dashboard data operations', () => {
 
     expect(result['data-health-files'].rows).toMatchObject([{ file: 'runs.json', rows: 1 }]);
     expect(result['data-health-schema'].rows).toMatchObject([{ source: 'runs', schema: '{ attempts: number, organization: string, repository: string, run: string }' }]);
+    expect(result).not.toHaveProperty('runs');
   });
 
   it('clusters 100,000 scatter points to a bounded worker result while preserving series', () => {

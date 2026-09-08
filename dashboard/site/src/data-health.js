@@ -76,7 +76,6 @@ export function deriveDataHealthSources(sources, context = {}) {
     : null;
 
   return {
-    ...sources,
     'data-health-summary': healthSource('data-health-summary', [{
       confidence: confidence.state,
       reason: confidence.reason,

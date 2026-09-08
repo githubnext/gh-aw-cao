@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard, enableDashboardKeyboardNavigation } from '../../src/presenter.js';
+import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation } from '../../src/presenter.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 
@@ -3186,6 +3186,46 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLDetailsElement | null} */ (rehydratedFirst.querySelector('details'))?.open).toBe(true);
     expect(pageScroller.scrollTop).toBe(320);
     rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/');
+  });
+
+  it('replaces a failed asynchronous page render with an accessible error message', async () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <a data-nav-page-id="first" href="#page-first">First</a>
+      <a data-nav-page-id="second" href="#page-second">Second</a>
+      <main class="dashboard-prototype">
+        <section class="dashboard-page" id="page-first" data-page-id="first" data-page-pending></section>
+        <section class="dashboard-page" id="page-second" data-page-id="second" data-page-pending></section>
+      </main>
+    `;
+    document.body.append(root);
+    /** @param {string} pageId */
+    const renderPage = (pageId) => {
+      if (pageId === 'second') return Promise.reject(new Error('Page rendering failed.'));
+      const page = document.createElement('section');
+      page.className = 'dashboard-page';
+      page.id = `page-${pageId}`;
+      page.dataset.pageId = pageId;
+      return page;
+    };
+    try {
+      enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first');
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-first')?.hasAttribute('data-page-pending')).toBe(false);
+      });
+
+      /** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click();
+
+      await vi.waitFor(() => {
+        expect(root.querySelector('#page-second .empty')?.textContent).toBe('Unable to load this page.');
+      });
+      const page = /** @type {HTMLElement} */ (root.querySelector('#page-second'));
+      expect(page.getAttribute('aria-busy')).toBeNull();
+      expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert');
+    } finally {
+      root.remove();
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it('opens coverage diagnostics as an Overview subpage with canonical breadcrumbs', async () => {

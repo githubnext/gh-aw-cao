@@ -1481,7 +1481,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
         if (rendered instanceof Promise) {
           pendingPage.replaceChildren(renderPageSkeleton());
           pendingPage.setAttribute('aria-busy', 'true');
-          void rendered.then(replacePage);
+          void rendered.then(replacePage).catch(() => {
+            if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return;
+            currentPage.replaceChildren(renderEmptyMessage('Unable to load this page.', { role: 'alert' }));
+            currentPage.removeAttribute('aria-busy');
+          });
         } else {
           replacePage(rendered);
         }
