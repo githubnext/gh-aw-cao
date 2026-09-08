@@ -3,7 +3,14 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderIconSpan } from './ui-primitives.js';
+import {
+  createSheetToggle,
+  formatUtcDateTime,
+  renderCloseButton,
+  renderCountBadge,
+  renderEmptyMessage,
+  renderIconSpan
+} from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -115,16 +122,14 @@ function renderWorkFilterBar(items, onChange) {
       state, repository, owner, packageName
     )
   );
-  const closeMobileSheet = () => {
-    facets.classList.remove('is-open');
-    mobileFilterToggle.setAttribute('aria-expanded', 'false');
-    mobileFilterToggle.focus();
-  };
+  const mobileFilterSheet = createSheetToggle(mobileFilterToggle, facets, { onOpen: () => state.focus() });
+  const closeMobileSheet = () => mobileFilterSheet.close();
   mobileFilterToggle.addEventListener('click', () => {
-    const open = !facets.classList.contains('is-open');
-    facets.classList.toggle('is-open', open);
-    mobileFilterToggle.setAttribute('aria-expanded', String(open));
-    if (open) state.focus();
+    if (mobileFilterSheet.isOpen()) {
+      closeMobileSheet();
+    } else {
+      mobileFilterSheet.open();
+    }
   });
   const controls = [search, state, repository, owner, packageName];
   const apply = () => {
@@ -345,17 +350,12 @@ function renderTasks(items, section, onUpdate) {
     type: 'button',
     className: 'work-task-settings-toggle',
     'aria-expanded': 'false',
-    onclick: () => {
-      settingsSheet.classList.add('is-open');
-      settingsToggle.setAttribute('aria-expanded', 'true');
-      settingsSheet.querySelector('input')?.focus();
-    }
+    onclick: () => settingsSheetToggle.open()
   }, renderIconSpan('work-task-settings-icon', 'filter', { ariaHidden: true }), 'Fields & sort'));
-  const closeSettings = () => {
-    settingsSheet.classList.remove('is-open');
-    settingsToggle.setAttribute('aria-expanded', 'false');
-    settingsToggle.focus();
-  };
+  const settingsSheetToggle = createSheetToggle(settingsToggle, settingsSheet, {
+    onOpen: () => settingsSheet.querySelector('input')?.focus()
+  });
+  const closeSettings = () => settingsSheetToggle.close();
   renderRows();
   return h(
     'section',

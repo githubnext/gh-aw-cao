@@ -407,6 +407,35 @@ export function renderCloseButton({ className, label, onClick }) {
 }
 
 /**
+ * Creates a controller for a toggleable mobile sheet: a button that opens an
+ * overlay panel, tracked via the `aria-expanded` attribute on the toggle and
+ * the `is-open` class on the sheet element. Closing restores focus to the
+ * toggle. Shared by the work view's mobile filter sheet and settings sheet.
+ * @param {HTMLElement} toggle
+ * @param {HTMLElement} sheet
+ * @param {{ onOpen?: () => void }} [options]
+ * @returns {{ open: () => void, close: () => void, isOpen: () => boolean }}
+ */
+export function createSheetToggle(toggle, sheet, options = {}) {
+  const { onOpen } = options;
+  const setOpen = (/** @type {boolean} */ open) => {
+    sheet.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  return {
+    open: () => {
+      setOpen(true);
+      onOpen?.();
+    },
+    close: () => {
+      setOpen(false);
+      toggle.focus();
+    },
+    isOpen: () => sheet.classList.contains('is-open')
+  };
+}
+
+/**
  * Renders the shared `<label><span>{label}</span>{control}</label>` pattern
  * used to associate a visible text label with a form control (search
  * inputs, facet selects, time-window inputs) across the filter bar and

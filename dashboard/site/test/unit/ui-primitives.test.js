@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, createSheetToggle, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -227,6 +227,32 @@ describe('ui primitives', () => {
     expect(rendered.getAttribute('title')).toBe('Dismiss Notice');
     expect(rendered.getAttribute('aria-label')).toBe('Dismiss Notice');
     expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-x');
+  });
+
+  it('creates a sheet toggle controller that syncs aria-expanded, the open class, and focus restoration', () => {
+    const toggle = /** @type {HTMLButtonElement} */ (document.createElement('button'));
+    const input = document.createElement('input');
+    const sheet = document.createElement('div');
+    sheet.append(input);
+    document.body.append(toggle, sheet);
+    const onOpen = vi.fn();
+
+    const controller = createSheetToggle(toggle, sheet, { onOpen });
+
+    expect(controller.isOpen()).toBe(false);
+    controller.open();
+    expect(sheet.classList.contains('is-open')).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(controller.isOpen()).toBe(true);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    controller.close();
+    expect(sheet.classList.contains('is-open')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+
+    toggle.remove();
+    sheet.remove();
   });
 
   it('renders the shared identity link with an icon, label element, and optional class name', () => {
