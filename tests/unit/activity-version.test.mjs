@@ -28,6 +28,7 @@ test("gh-aw version resolution falls back to setup action manifests", () => {
     null,
     { actions: [{ repo: "github/gh-aw-actions/setup-cli", version: "0.89.2" }] },
   ), "v0.89.2");
+  assert.equal(resolveGhAwVersion(null, null, { version: "0.88.4" }), "v0.88.4");
   assert.equal(resolveGhAwVersion(null, { actions: [] }), null);
 });
 

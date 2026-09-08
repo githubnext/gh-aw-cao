@@ -1558,6 +1558,38 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
     },
   });
 
+  test("dashboard source bridge resolves workflow versions from run data", () => {
+    const workflowPath = ".github/workflows/local.lock.yml";
+    const sources = buildDashboardLanguageSources({
+      deployed: {
+        generatedAt: "2026-09-07T12:00:00Z",
+        discovery: { complete: true },
+        runHealth: { available: true, complete: true },
+        workflows: [{
+          repository: "acme/control",
+          path: workflowPath,
+          name: "Local agent",
+          state: "active",
+          runHealth: { runRecords: [] },
+        }],
+      },
+      usage: {
+        available: true,
+        complete: true,
+        runs: [],
+        securityRuns: [{
+          repository: "acme/control",
+          workflowPath,
+          ghAwVersion: "0.88.7",
+        }],
+      },
+      operationalValues: { records: [] },
+      report: { generatedAt: "2026-09-07T12:00:00Z", records: [] },
+    });
+
+    assert.equal(sources.workflows.rows[0]["gh-aw-version"], "v0.88.7");
+  });
+
   assert.deepEqual(sources.workflows.rows.map((row) => ({
     owner: `${row.organization}/${row.repository}`,
     workflow: row.workflow,

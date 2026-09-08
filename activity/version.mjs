@@ -17,7 +17,7 @@ export function normalizeVersion(value) {
   return parseVersion(value)?.normalized || null;
 }
 
-export function resolveGhAwVersion(metadata, manifest) {
+export function resolveGhAwVersion(metadata, manifest, runInfo) {
   const compilerVersion = normalizeVersion(metadata?.compiler_version);
   if (compilerVersion) return compilerVersion;
   const setupActions = [
@@ -29,7 +29,7 @@ export function resolveGhAwVersion(metadata, manifest) {
     const version = normalizeVersion(action?.version);
     if (version) return version;
   }
-  return null;
+  return normalizeVersion(runInfo?.version);
 }
 
 export function compareVersions(left, right) {

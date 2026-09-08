@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { normalizeVersion } from "../../activity/version.mjs";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -2434,10 +2435,22 @@ function configurationData(controlSettings) {
 
 export function buildDashboardLanguageSources({ deployed, usage, operationalValues, report, inventory = {}, controlSettings = {}, githubTelemetry = [] }) {
   const generatedAt = report.generatedAt || deployed.generatedAt || new Date().toISOString();
+  const runVersionByWorkflow = new Map();
+  for (const run of [...(usage.runs || []), ...(usage.securityRuns || [])]) {
+    const version = normalizeVersion(run.ghAwVersion);
+    const key = `${String(run.repository).toLowerCase()}:${String(run.workflowPath).toLowerCase()}`;
+    if (version && !runVersionByWorkflow.has(key)) runVersionByWorkflow.set(key, version);
+  }
   const workflowsByIdentity = new Map([
     ...(deployed.workflows || []),
     ...(report.remoteWorkflows || []),
-  ].map((workflow) => [`${String(workflow.repository).toLowerCase()}:${String(workflow.path).toLowerCase()}`, workflow]));
+  ].map((workflow) => {
+    const key = `${String(workflow.repository).toLowerCase()}:${String(workflow.path).toLowerCase()}`;
+    return [key, workflow.ghAwVersion ? workflow : {
+      ...workflow,
+      ghAwVersion: runVersionByWorkflow.get(key) || null,
+    }];
+  }));
   const workflowInventoryComplete = deployed.discovery?.complete === true
     && report.workflowDiscovery?.complete !== false;
   const localWorkflowCollection = (deployed.collections || []).find((collection) => collection.operation === "workflow-discovery");

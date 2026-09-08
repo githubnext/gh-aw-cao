@@ -45,6 +45,7 @@ async function readBounded(file) {
 
 function emptySecurityTelemetry() {
   return {
+    ghAwVersion: null,
     agenticAssessments: [],
     accessControl: { available: false, fileDenials: {}, toolDenials: {}, guardPolicy: null },
     firewall: {
@@ -301,6 +302,15 @@ export async function readRunSecurityTelemetry(outputDirectory, runId) {
   const telemetry = emptySecurityTelemetry();
   const runRoot = path.join(outputDirectory, `run-${runId}`);
   const files = await securityFiles(runRoot);
+  const infoFile = files.find((file) => path.basename(file) === "aw_info.json");
+  if (infoFile) {
+    const content = await readBounded(infoFile);
+    if (content !== null) try {
+      telemetry.ghAwVersion = firstText(JSON.parse(content).version) || null;
+    } catch {
+      // Missing or malformed optional telemetry is represented as unavailable.
+    }
+  }
   const auditFile = files.find((file) => path.basename(file) === "audit.json");
   if (auditFile) {
     const content = await readBounded(auditFile);
@@ -573,6 +583,7 @@ export async function collectAicUsage() {
           tokenUsage: tokenUsage(run),
           experiments: run.experiments ?? null,
           graders: run.graders ?? null,
+          ghAwVersion: firstText(run.aw_info?.version, run.awInfo?.version, run.version) || null,
         };
         if (Number.isFinite(aic) || common.tokenUsage) runs.set(`${repository}:${runId}`, {
           ...common,
@@ -602,6 +613,7 @@ export async function collectAicUsage() {
         if (security.firewall.firewallEvidenceSource !== "none") {
           security.firewall.firewallEvidenceFreshness = collectionAvailable ? "fresh" : "stale";
         }
+        common.ghAwVersion = security.ghAwVersion || common.ghAwVersion;
         securityRuns.set(`${repository}:${runId}`, {
           ...common,
           logsPayload: run,

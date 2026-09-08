@@ -309,7 +309,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'updates');
     expect(page?.querySelector('[data-chart-widget="pie"]')?.textContent).toContain('v0.88.7');
     const inventory = page?.querySelector('[data-view-id="workflow-updates"]');
-    expect(inventory?.textContent).toContain('v0.89.0');
+    expect(inventory?.textContent).not.toContain('v0.89.0');
     expect(inventory?.textContent).toContain('update-available');
     expect(inventory?.querySelector('tbody a')?.getAttribute('href')).toBe(
       '#page-workflow-runtime?workflow=acme%2Fservice%3A.github%2Fworkflows%2Fremote-agent.md'

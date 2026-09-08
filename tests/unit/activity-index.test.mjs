@@ -22,7 +22,7 @@ graders:
   operational-value:
 ---
 `);
-  await writeFile(path.join(workflowDirectory, "sample.lock.yml"), '# gh-aw-metadata: {"compiler_version":"v0.88.4"}\n');
+  await writeFile(path.join(workflowDirectory, "sample.lock.yml"), "name: Sample\n");
   await writeFile(inventoryPath, JSON.stringify({
     schemaVersion: 1,
     manifests: [],
@@ -51,6 +51,7 @@ graders:
       started_at: "2026-09-06T20:00:01Z",
       updated_at: "2026-09-06T20:01:00Z",
       display_title: "Sample run",
+      aw_info: { version: "v0.88.4" },
       jobs: [{
         jobId: 84,
         name: "agent",

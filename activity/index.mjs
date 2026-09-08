@@ -76,6 +76,7 @@ function runRecord(run, repository) {
     event: firstValue(run.event, run.trigger, null),
     conclusion,
     status,
+    ghAwVersion: resolveGhAwVersion(null, null, run.aw_info || run.awInfo || run),
     createdAt: firstValue(run.created_at, run.started_at, null),
     startedAt: firstValue(run.started_at, run.created_at, null),
     updatedAt: firstValue(run.updated_at, run.completed_at, null),
@@ -245,7 +246,11 @@ export async function main(actions = {}) {
     const workflows = localInventory.workflows.map((workflow) => {
       const source = sourceByWorkflow.get(workflow.id) || "";
       const { ghAwMetadata, ghAwManifest } = parseMetadata(lockByWorkflow.get(workflow.id) || "");
-      const ghAwVersion = resolveGhAwVersion(ghAwMetadata, ghAwManifest);
+      const runHealth = summarizeRuns(runsByWorkflow.get(workflow.id));
+      const runVersion = runHealth.runRecords.find((run) => run.ghAwVersion);
+      const ghAwVersion = resolveGhAwVersion(ghAwMetadata, ghAwManifest, {
+        version: runVersion?.ghAwVersion,
+      });
       return {
         repository,
         visibility: "unknown",
@@ -257,7 +262,7 @@ export async function main(actions = {}) {
         htmlUrl: `https://github.com/${repository}/blob/${process.env.GITHUB_SHA || "main"}/${workflow.sourcePath}`,
         createdAt: null,
         updatedAt: null,
-        runHealth: summarizeRuns(runsByWorkflow.get(workflow.id)),
+        runHealth,
         operationalValue: declaresOperationalValue(source),
         role: workflow.role,
         workers: workflow.workers || [],
