@@ -267,6 +267,29 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(page?.textContent).not.toContain('No quota observations are available');
   });
 
+  it('excludes observations older than the resolved source horizon', async () => {
+    const { page } = await renderApiPage({
+      source: 'github-api-rate-limits',
+      metadata: {
+        ...metadata,
+        'as-of': '2026-09-04T13:00:00Z',
+        'retrieved-at': '2026-09-04T13:00:00Z'
+      },
+      rows: [
+        rateLimitRow({
+          'observation-id': 'within-horizon',
+          'observed-at': '2026-09-04T12:00:00Z'
+        }),
+        rateLimitRow({
+          'observation-id': 'before-horizon',
+          'observed-at': '2026-08-28T12:59:59Z'
+        })
+      ]
+    });
+
+    expect(page?.querySelectorAll('.scatter-chart-point')).toHaveLength(1);
+  });
+
   it('keeps raw quota and collector/cache diagnostics supplemental and distinct', async () => {
     const { page } = await renderApiPage();
     const supplemental = [...(page?.querySelectorAll('details[data-disclosure="supplemental"]') ?? [])];

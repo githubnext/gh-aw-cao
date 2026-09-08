@@ -2582,8 +2582,14 @@ function resolveViewTime(time, dashboardTime) {
   if (!isPlainObject(dashboardTime) || typeof dashboardTime.end !== 'string') return time;
   const evaluatedAt = Date.parse(dashboardTime.end);
   if (!Number.isFinite(evaluatedAt)) return time;
+  let hours;
+  try {
+    hours = dashboardHorizonHours(time.range);
+  } catch {
+    return time;
+  }
   return {
-    start: new Date(evaluatedAt - dashboardHorizonHours(time.range) * 3_600_000).toISOString(),
+    start: new Date(evaluatedAt - hours * 3_600_000).toISOString(),
     end: dashboardTime.end
   };
 }
