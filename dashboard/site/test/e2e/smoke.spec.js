@@ -621,10 +621,20 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Agents', 'Insights', 'Settings']);
+  await expect(cleanNavigation).toHaveText(['Home', 'Work', 'Agents', 'Insights']);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
-  await expect(cleanNavigation.last().locator('.octicon-gear')).toBeVisible();
-  await expect(page.locator('.theme-toggle')).toHaveCSS('border-top-width', '0px');
+  await expect(cleanNavigation.last().locator('.octicon-graph')).toBeVisible();
+  const accountMenu = page.locator('.account-menu');
+  await accountMenu.locator('summary').click();
+  await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
+  await accountMenu.getByRole('button', { name: 'Light' }).click();
+  await expect(page.locator('.dashboard-root')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('central-agentic-ops.dashboard.theme'))).toBe('light');
+  await accountMenu.getByRole('link', { name: 'Settings' }).click();
+  await expect(page).toHaveURL(/#page-configuration$/);
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true, level: 1 })).toBeVisible();
+  await expect(accountMenu).not.toHaveAttribute('open', '');
   const headerHeight = await page.locator('.overview-header').evaluate((element) => element.getBoundingClientRect().height);
   const description = page.locator('.overview-header .lede');
   expect(await description.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
@@ -701,8 +711,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   for (const { label, pageId } of [
     { label: 'Work', pageId: 'work' },
     { label: 'Agents', pageId: 'agents' },
-    { label: 'Insights', pageId: 'insights' },
-    { label: 'Settings', pageId: 'configuration' }
+    { label: 'Insights', pageId: 'insights' }
   ]) {
     await cleanNavigation.filter({ hasText: label }).click();
     await expect(page.getByRole('heading', { name: label, exact: true, level: 1 })).toBeVisible();
