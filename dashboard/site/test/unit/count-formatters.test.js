@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { clampPercent, computeObservationCoverage, formatCount, formatCountNoun, formatCoveragePercent, pluralSuffix, slugify, text, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -71,5 +71,14 @@ describe('count formatters', () => {
     expect(formatCoveragePercent(0.12345)).toBe('12.3%');
     expect(formatCoveragePercent(null)).toBe('—');
     expect(formatCoveragePercent(null, 'n/a')).toBe('n/a');
+  });
+
+  it('formats ratios as whole-number percentages, with a placeholder for null/non-finite', () => {
+    expect(formatRoundedPercent(0.9)).toBe('90%');
+    expect(formatRoundedPercent(0.125)).toBe('13%');
+    expect(formatRoundedPercent(0)).toBe('0%');
+    expect(formatRoundedPercent(null)).toBe('—');
+    expect(formatRoundedPercent(null, 'n/a')).toBe('n/a');
+    expect(formatRoundedPercent(Number.NaN)).toBe('—');
   });
 });

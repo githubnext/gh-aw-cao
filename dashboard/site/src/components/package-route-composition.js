@@ -4,8 +4,7 @@
 
 import { h } from '../dom.js';
 import { titleCase } from './count-formatters.js';
-import { selectNamedComposition } from './route-composition.js';
-import { selectConfigBody } from './route-body-composition.js';
+import { createRouteBodyConfig } from './route-body-config.js';
 import { PACKAGE_ROUTE_BODY_VALUES, PACKAGE_ROUTE_VARIANT_VALUES } from './route-body-specification.js';
 import { renderPackageReadme } from './package-readme.js';
 import { renderWorkflowValueReport } from './workflow-runtime.js';
@@ -73,23 +72,17 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
   }
 };
 
-export const PACKAGE_ROUTE_BODY_CONFIG = {
-  values: /** @type {readonly PackageRouteBody[]} */ (PACKAGE_ROUTE_BODY_VALUES),
-  fallback: /** @type {PackageRouteBody} */ ('workflows')
-};
+export const PACKAGE_ROUTE_BODY_CONFIG = createRouteBodyConfig(
+  /** @type {readonly PackageRouteBody[]} */ (PACKAGE_ROUTE_BODY_VALUES),
+  /** @type {PackageRouteBody} */ ('workflows')
+);
 
 /**
  * @param {unknown} body
  * @returns {PackageRouteComposition}
  */
 export function packageRouteComposition(body) {
-  return /** @type {PackageRouteComposition} */ (
-    selectNamedComposition(
-      PACKAGE_ROUTE_COMPOSITIONS,
-      selectConfigBody(PACKAGE_ROUTE_BODY_CONFIG, body),
-      PACKAGE_ROUTE_BODY_CONFIG.fallback
-    )
-  );
+  return /** @type {PackageRouteComposition} */ (PACKAGE_ROUTE_BODY_CONFIG.composition(PACKAGE_ROUTE_COMPOSITIONS, body));
 }
 
 /**
@@ -97,7 +90,7 @@ export function packageRouteComposition(body) {
  * @returns {PackageRouteBody}
  */
 export function packageRouteVariant(body) {
-  return selectConfigBody(PACKAGE_ROUTE_BODY_CONFIG, body);
+  return PACKAGE_ROUTE_BODY_CONFIG.body(body);
 }
 
 /**
