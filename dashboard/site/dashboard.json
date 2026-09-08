@@ -333,12 +333,19 @@
           {
             "id": "github-api-remaining-trend",
             "title": "Quota history",
-            "description": "Individual remaining-capacity observations over the selected UTC time range, colored by resource, credential, and maximum quota.",
+            "description": "Hourly minimum remaining capacity for the latest 96 resource and credential intervals, colored by maximum quota.",
             "data": {
               "source": "github-api-rate-limits",
               "filters": {
                 "is-unhealthy": "true"
-              }
+              },
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 96
             },
             "mark": "chart",
             "chart": "scatter",
@@ -350,11 +357,13 @@
               "x": {
                 "field": "observed-at",
                 "type": "temporal",
+                "time-unit": "hour",
                 "title": "Observed (UTC)"
               },
               "y": {
                 "field": "remaining-percent",
                 "type": "quantitative",
+                "aggregate": "min",
                 "title": "Remaining capacity",
                 "unit": "percent"
               },
@@ -383,11 +392,12 @@
                   "field": "bucket",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 24
             },
             "mark": "chart",
             "chart": "bar",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -421,7 +431,8 @@
                   "critical",
                   "warning"
                 ]
-              }
+              },
+              "limit": 1
             },
             "mark": "metric",
             "layout": "third",
@@ -465,12 +476,13 @@
                   "field": "credential",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 24
             },
             "mark": "table",
             "controls": "interactive",
             "layout": "full",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
             "encoding": {
               "columns": [
@@ -553,7 +565,8 @@
                   "type": "temporal",
                   "title": "Last observed (UTC)"
                 }
-              ]
+              ],
+              "limit": 24
             }
           },
           {
@@ -578,7 +591,7 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": true,
+            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -603,7 +616,7 @@
           {
             "id": "github-api-operation-consumption",
             "title": "Consumption by operation",
-            "description": "Requests consumed only for reliably paired before/after checkpoints sharing one execution, credential, resource, and reset window.",
+            "description": "Top operation, credential, and resource groups by total requests consumed across reliably paired checkpoints.",
             "data": {
               "source": "github-api-rate-limits",
               "filters": {
@@ -612,11 +625,11 @@
               },
               "order-by": [
                 {
-                  "field": "operation-consumed",
+                  "field": "sum-operation-consumed",
                   "direction": "desc"
                 },
                 {
-                  "field": "operation-execution-id",
+                  "field": "operation",
                   "direction": "asc"
                 },
                 {
@@ -627,7 +640,8 @@
                   "field": "credential",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 20
             },
             "mark": "table",
             "controls": "interactive",
@@ -654,19 +668,12 @@
                 {
                   "field": "operation-consumed",
                   "type": "quantitative",
+                  "aggregate": "sum",
+                  "as": "sum-operation-consumed",
                   "title": "Requests consumed"
-                },
-                {
-                  "field": "operation-execution-id",
-                  "type": "nominal",
-                  "title": "Execution"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed (UTC)"
                 }
-              ]
+              ],
+              "limit": 25
             }
           },
           {
@@ -773,19 +780,20 @@
           {
             "id": "github-api-collector-health",
             "title": "Collector and cache health",
-            "description": "Collection completeness, retrieval failures, and activity-cache state are operational diagnostics, not GitHub quota health.",
+            "description": "Top collector checkpoint groups summarize collection outcomes and peak cache state without expanding every retrieval.",
             "data": {
               "source": "github-api-collector-health",
               "order-by": [
                 {
-                  "field": "observed-at",
+                  "field": "count-checkpoints",
                   "direction": "desc"
                 },
                 {
-                  "field": "operation-execution-id",
+                  "field": "operation",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 20
             },
             "mark": "table",
             "controls": "interactive",
@@ -794,11 +802,6 @@
             "empty-message": "Collector and cache observations are unavailable for the selected time range.",
             "encoding": {
               "columns": [
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Last retrieval (UTC)"
-                },
                 {
                   "field": "operation",
                   "type": "nominal",
@@ -821,8 +824,10 @@
                 },
                 {
                   "field": "operation-execution-id",
-                  "type": "nominal",
-                  "title": "Execution"
+                  "type": "quantitative",
+                  "aggregate": "count",
+                  "as": "count-checkpoints",
+                  "title": "Checkpoints"
                 },
                 {
                   "field": "cache-hydrated",
@@ -832,44 +837,40 @@
                 {
                   "field": "cache-entries",
                   "type": "quantitative",
-                  "title": "Cache entries"
+                  "aggregate": "max",
+                  "as": "max-cache-entries",
+                  "title": "Peak cache entries"
                 },
                 {
                   "field": "cache-folders",
                   "type": "quantitative",
-                  "title": "Top-level folders"
-                },
-                {
-                  "field": "rate-limit-error",
-                  "type": "nominal",
-                  "title": "Retrieval error"
+                  "aggregate": "max",
+                  "as": "max-cache-folders",
+                  "title": "Peak top-level folders"
                 }
               ]
             }
           },
           {
             "id": "github-api-call-stacks",
-            "title": "Collection call stacks",
-            "description": "JavaScript stack frames captured when rate-limit telemetry is collected identify the source locations that initiated each observation.",
+            "title": "Frequent collection call sites",
+            "description": "The most frequent stack frames are grouped across collection executions instead of expanding every captured call stack.",
             "data": {
               "source": "github-api-call-stacks",
               "order-by": [
                 {
-                  "field": "observed-at",
+                  "field": "distinct-executions",
                   "direction": "desc"
                 },
                 {
-                  "field": "operation-execution-id",
+                  "field": "stack-frame",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 20
             },
             "mark": "table",
-            "tree": {
-              "id-field": "stack-frame-id",
-              "parent-field": "stack-parent-id"
-            },
-            "controls": "static",
+            "controls": "interactive",
             "column-summaries": false,
             "layout": "full",
             "disclosure": "supplemental",
@@ -887,24 +888,16 @@
                   "title": "Operation"
                 },
                 {
-                  "field": "phase",
-                  "type": "nominal",
-                  "title": "Phase"
-                },
-                {
                   "field": "credential",
                   "type": "nominal",
                   "title": "Credential"
                 },
                 {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed (UTC)"
-                },
-                {
                   "field": "operation-execution-id",
-                  "type": "nominal",
-                  "title": "Execution"
+                  "type": "quantitative",
+                  "aggregate": "distinct-count",
+                  "as": "distinct-executions",
+                  "title": "Executions"
                 }
               ]
             }
