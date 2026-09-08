@@ -1902,6 +1902,9 @@ function outcomeRows(records, workflowRoleFor = () => "unknown") {
     "outcome-summary": record.summary || "",
     "outcome-body-html": record.bodyHtml || "",
     "outcome-category": record.kind || "unknown",
+    "safe-output-kind": record.kind === "issue"
+      ? "create-issue"
+      : record.kind === "pull-request" ? "create-pull-request" : record.kind || "unknown",
     "outcome-status": record.state || "unknown",
     "outcome-state": record.state === "closed"
       ? "lifecycle-close"

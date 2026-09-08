@@ -327,7 +327,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .appearance-options button:last-child { margin-left: -1px; border-radius: 0 6px 6px 0; }
 .appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .appearance-options .octicon { width: 14px; height: 14px; }
-main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 0 24px 40px; }
+main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 24px 40px; }
 .lede { color: var(--muted); }
 .overview-header { min-width: 0; flex: 1; }
 .overview-header h1 { margin: 0; font-size: 1.5rem; line-height: 1.25; }
@@ -1081,6 +1081,14 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .summary-grid > div { min-width: 0; padding: 13px 15px; background: var(--canvas-subtle); }
 .summary-grid dt { color: var(--muted); font-size: .6875rem; font-weight: 600; text-transform: uppercase; }
 .summary-grid dd { margin: 2px 0 0; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.data-health-domain-list { margin: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; }
+.data-health-domain-list > div { display: grid; grid-template-columns: minmax(10rem, .4fr) minmax(0, 1fr); gap: 24px; padding: 14px 16px; }
+.data-health-domain-list > div + div { border-top: 1px solid var(--border); }
+.data-health-domain-list dt { font-weight: 600; }
+.data-health-domain-list dd { min-width: 0; margin: 0; }
+.data-health-domain-value { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.data-health-domain-reason { flex: 1 1 24rem; }
+.data-health-domain-action { flex: 1 1 100%; color: var(--muted); font-size: .75rem; }
 .readiness-verdict { display: grid; overflow: hidden; border: 1px solid var(--border); border-left-width: 4px; border-radius: 6px; background: var(--canvas-subtle); }
 .readiness-verdict-blocked { border-left-color: var(--danger); }
 .readiness-verdict-ready { border-left-color: var(--success); }
@@ -1790,7 +1798,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mode-filter-control input { width: auto; }
   .time-window-control > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
-  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 0 14px 28px; }
+  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 16px 14px 28px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
@@ -1800,6 +1808,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .context-summary { grid-template-columns: 1fr; }
   .context-summary > div { border-top: 1px solid var(--border); border-left: 0; }
   .context-summary > div:first-child { border-top: 0; }
+  .data-health-domain-list > div { grid-template-columns: 1fr; gap: 8px; }
   .repository-health .section-heading { align-items: flex-start; flex-direction: column; }
   .outcome-view { grid-template-columns: 1fr; }
   .outcome-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }

@@ -140,7 +140,7 @@
           },
           {
             "id": "aw-doctor-outcomes",
-            "title": "Upgrade, compiler-security, and failure-triage issues",
+            "disclosure-label": "Upgrade, compiler-security, and failure-triage issues",
             "description": "Retained maintenance outputs identify actionable upgrades, compiler-security findings, or investigated failures; clean repositories may correctly produce no output.",
             "disclosure": "supplemental",
             "data": {
@@ -185,7 +185,7 @@
           },
           {
             "id": "aw-doctor-attainment",
-            "title": "Maintenance attainment evidence",
+            "disclosure-label": "Maintenance attainment evidence",
             "description": "Failure-recovery and compiler-security observations preserve maturity and evidence cutoffs; unavailable or incomplete evidence is not scored as zero.",
             "disclosure": "supplemental",
             "data": {

@@ -3,8 +3,6 @@ private: true
 name: Matt Pocock Skills Reviewer
 description: Reviews ready pull requests with pinned Matt Pocock engineering skills and repository-specific change context.
 on:
-  pull_request:
-    types: [ready_for_review]
   slash_command:
     strategy: centralized
     name: matt

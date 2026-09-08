@@ -1032,6 +1032,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     );
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-layout', layout);
@@ -1153,6 +1154,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       'data-route-navigation-page': routeNavigationPage
     },
     filterBar,
+    renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
@@ -1681,6 +1683,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
         ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
         : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
@@ -1759,9 +1762,37 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       'data-route-navigation-page': routeNavigationPage
     },
     ...(filterBar ? [filterBar] : []),
+    renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
+  );
+}
+
+/**
+ * @param {string} pageId
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @returns {HTMLElement | null}
+ */
+function renderFirewallDataWarning(pageId, sources) {
+  if (pageId !== 'firewall' || sources['firewall-observations']?.metadata?.availability === 'available') {
+    return null;
+  }
+  return h(
+    'aside',
+    { className: 'dashboard-callout firewall-data-warning', role: 'alert', 'data-firewall-data-warning': '' },
+    h(
+      'div',
+      { className: 'dashboard-callout-heading' },
+      octicon('alert'),
+      h(
+        'div',
+        null,
+        h('span', { className: 'scope-kicker' }, 'Data warning'),
+        h('h3', null, 'Firewall data is corrupted')
+      )
+    ),
+    h('p', null, 'Firewall evidence is unavailable. Refresh the dashboard data before relying on this view.')
   );
 }
 
@@ -2019,7 +2050,9 @@ function renderRouteScopedDataView(pageId, view, index, sources, units, headingT
           }
         }
       : sources;
-    root.replaceChildren(renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag));
+    const rendered = renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag);
+    suppressSupplementalTableHeading(rendered, view, index);
+    root.replaceChildren(rendered);
   };
   root.addEventListener('dashboard-route-change', (event) => {
     if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) return;
@@ -2054,6 +2087,14 @@ function renderSwimlaneRouteState(pageId, title, stateTitle, detail, headingTag)
  */
 function getViewTitle(view, index) {
   if (isPlainObject(view)) {
+    if (
+      view.disclosure === 'supplemental'
+      && typeof view['disclosure-label'] === 'string'
+      && view['disclosure-label'].length > 0
+    ) {
+      return view['disclosure-label'];
+    }
+
     if (typeof view.title === 'string' && view.title.length > 0) {
       return view.title;
     }
@@ -2062,6 +2103,20 @@ function getViewTitle(view, index) {
     }
   }
   return `View ${index + 1}`;
+}
+
+/**
+ * @param {HTMLElement} rendered
+ * @param {unknown} view
+ * @param {number} index
+ */
+function suppressSupplementalTableHeading(rendered, view, index) {
+  if (!isPlainObject(view) || view.mark !== 'table' || view.disclosure !== 'supplemental') return;
+  const section = rendered.matches('.page-section') ? rendered : rendered.querySelector('.page-section');
+  if (!(section instanceof HTMLElement)) return;
+  section.querySelector(':scope > h3, :scope > h4')?.remove();
+  section.removeAttribute('aria-labelledby');
+  section.setAttribute('aria-label', getViewTitle(view, index));
 }
 
 /**
@@ -2125,7 +2180,7 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
   if (!rendered) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag);
   }
-  return ['summary-grid', 'readiness-verdict'].includes(elementName)
+  return ['summary-grid', 'readiness-verdict', 'data-health-domain-list'].includes(elementName)
     ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered;
 }

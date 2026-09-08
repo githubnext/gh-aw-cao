@@ -769,8 +769,11 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.doesNotMatch(mattReviewer, /\|\s*head -n 3000/);
   assert.match(mattReviewer, /fromJSON\(github\.event\.inputs\.aw_context \|\| '\{\}'\)\.item_number/);
   assert.match(mattReviewer, /reaction: none/);
+  assert.match(mattReviewer, /slash_command:\n\s+strategy: centralized\n\s+name: matt/);
+  assert.doesNotMatch(mattReviewer, /\n\s+pull_request:/);
 
-  assert.match(decisionGate, /types: \[opened, reopened, synchronize, labeled, ready_for_review\]/);
+  assert.match(decisionGate, /slash_command:\n\s+strategy: centralized\n\s+name: design-gate/);
+  assert.doesNotMatch(decisionGate, /\n\s+(?:pull_request|workflow_dispatch):/);
   assert.match(decisionGate, /allowed-files:\n\s+- "adr\/\*\*"/);
   for (const section of ["Context", "Decision", "Alternatives Considered", "Consequences"]) {
     assert.match(decisionGate, new RegExp(`\`${section}\``));
@@ -2290,6 +2293,7 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
 
 test("SelfCare experimental views worker exhaustively checks editable views across browsers and source shapes", () => {
   const source = workflow("self-care-experimental-views.md");
+  const orchestrator = workflow("self-care.md");
 
   assert.match(source, /^name: "SelfCare \/ Experimental Views"$/m);
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: experimental-views/);
@@ -2307,6 +2311,8 @@ test("SelfCare experimental views worker exhaustively checks editable views acro
   assert.match(source, /create-pull-request:/);
   assert.match(source, /draft: true/);
   assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(orchestrator, /dispatch `self-care-experimental-views` before inspecting run history or dispatching any other worker/);
+  assert.match(orchestrator, /Do this on every selected repository run; this worker is not cadence-limited/);
 });
 
 test("SelfCare Pages health worker audits every deployed view on three profiles", () => {
