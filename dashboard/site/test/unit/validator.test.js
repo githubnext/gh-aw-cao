@@ -1491,6 +1491,17 @@ dashboard:
     );
     expect(validateDashboardDocument(accepted).ok).toBe(true);
 
+    const emptyLabel = validateDashboardDocument(accepted.replace(
+      'disclosure-label: Supporting table',
+      'disclosure-label: ""'
+    ));
+    expect(emptyLabel.ok).toBe(false);
+    if (!emptyLabel.ok) {
+      expect(emptyLabel.errors).toContainEqual(expect.objectContaining({
+        path: '$.dashboard.pages[0].views[1].disclosure-label'
+      }));
+    }
+
     const titledSupplemental = accepted.replace(
       '          disclosure-label: Supporting table\n',
       '          disclosure-label: Supporting table\n          title: Supporting table\n'

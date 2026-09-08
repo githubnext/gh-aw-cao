@@ -2021,7 +2021,9 @@ function renderRouteScopedDataView(pageId, view, index, sources, units, headingT
           }
         }
       : sources;
-    root.replaceChildren(renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag));
+    const rendered = renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag);
+    suppressSupplementalTableHeading(rendered, view, index);
+    root.replaceChildren(rendered);
   };
   root.addEventListener('dashboard-route-change', (event) => {
     if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) return;

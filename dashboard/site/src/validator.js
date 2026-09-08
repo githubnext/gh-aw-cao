@@ -1413,7 +1413,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   validateOptionalStringField(view.title, `${path}.title`, errors);
-  validateOptionalStringField(view['disclosure-label'], `${path}.disclosure-label`, errors);
+  validateStringField(view['disclosure-label'], `${path}.disclosure-label`, false, errors);
   if (
     view['disclosure-label'] !== undefined
     && (view.disclosure !== 'supplemental' || view.mark !== 'table')
