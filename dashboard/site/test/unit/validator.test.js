@@ -253,11 +253,20 @@ describe('dashboard document validation', () => {
       mark: 'table',
       disclosure: 'supplemental',
       data: {
-        source: 'firewall-observations',
+        source: 'firewall-policy-rules',
         limit: 25,
-        'order-by': [{ field: 'policy-rule-order', direction: 'asc' }]
+        'order-by': [{ field: 'rule-order', direction: 'asc' }]
       }
     });
+    expect(policy.encoding.columns).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'action' }),
+      expect.objectContaining({ field: 'rule-id' }),
+      expect.objectContaining({ field: 'rule-order' }),
+      expect.objectContaining({ field: 'protocol' }),
+      expect.objectContaining({ field: 'domain-pattern' }),
+      expect.objectContaining({ field: 'description' }),
+      expect.objectContaining({ field: 'hit-count', title: 'Requests' })
+    ]));
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',

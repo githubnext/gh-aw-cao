@@ -246,6 +246,34 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('Allowed');
     expect(text).toContain('Denied');
     expect(text).not.toContain('firewall failure');
+    expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
+    rendered.remove();
+  });
+
+  it('warns that firewall data is corrupted when firewall observations are unavailable', async () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'firewall-observations': {
+          source: 'firewall-observations',
+          rows: [],
+          metadata: {
+            'source-id': 'firewall-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-05T11:00:00Z',
+            'retrieved-at': '2026-09-05T11:05:00Z',
+            completeness: 'unknown',
+            freshness: 'unknown',
+            availability: 'unavailable'
+          }
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'firewall');
+    const warning = page?.querySelector('[data-firewall-data-warning]');
+    expect(warning?.getAttribute('role')).toBe('alert');
+    expect(warning?.textContent).toContain('Firewall data is corrupted');
     rendered.remove();
   });
 
