@@ -310,6 +310,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu > summary::-webkit-details-marker { display: none; }
 .account-menu-avatar { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--accent-muted); color: var(--accent); cursor: pointer; }
 .account-menu-avatar:hover, .account-menu[open] .account-menu-avatar { box-shadow: 0 0 0 2px var(--accent-muted); }
+.account-menu-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .account-menu-avatar .octicon { width: 16px; height: 16px; }
 .account-menu-avatar-image { width: 100%; height: 100%; display: block; border-radius: inherit; object-fit: cover; }
 .account-menu-popover { width: 220px; display: grid; gap: 8px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
