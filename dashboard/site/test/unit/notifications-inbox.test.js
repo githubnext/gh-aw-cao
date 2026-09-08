@@ -245,12 +245,18 @@ describe('catch up queue', () => {
     const rendered = renderNotificationsInbox(catchUpRows());
     document.body.append(rendered);
 
-    /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-later')).click();
+    const later = /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-later'));
+    later.focus();
+    later.click();
     expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('2 of 2');
+    expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-later'));
 
-    /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-done')).click();
+    const done = /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-done'));
+    done.focus();
+    done.click();
     const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
     expect(stored.later).toHaveLength(1);
     expect(stored.done).toHaveLength(1);
+    expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-progress'));
   });
 });

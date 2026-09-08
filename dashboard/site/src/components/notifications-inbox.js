@@ -412,7 +412,7 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
     h('section', { className: 'home-catchup-mobile', 'aria-labelledby': 'home-catchup-mobile-title' },
       h('header', null,
         h('h3', { id: 'home-catchup-mobile-title' }, 'Catch Up'),
-        h('span', { 'aria-live': 'polite' }, size > 0
+        h('span', { className: 'home-catchup-mobile-progress', 'aria-live': 'polite', tabindex: '-1' }, size > 0
           ? `${Math.min(size, size - queuedStories.length + 1)} of ${size}`
           : 'No highlights')),
       queuedStories.length > 0
@@ -621,7 +621,13 @@ function renderMobileCatchUpStory(story, processStory) {
     type: 'button',
     className: `home-catchup-mobile-action home-catchup-mobile-${bucket}`,
     'aria-label': `${label} ${story.title}`,
-    onClick: () => processStory(story.id, bucket)
+    onClick: /** @param {MouseEvent} event */ (event) => {
+      const briefing = event.currentTarget instanceof HTMLElement ? event.currentTarget.closest('.home-catchup') : null;
+      processStory(story.id, bucket);
+      const focusTarget = briefing?.querySelector(`.home-catchup-mobile-${bucket}`)
+        ?? briefing?.querySelector('.home-catchup-mobile-progress');
+      if (focusTarget instanceof HTMLElement) focusTarget.focus();
+    }
   }, octicon(icon), h('span', null, label));
   const card = h('article', { className: 'home-catchup-mobile-card' },
     h(story.deepLink ? 'a' : 'div', {
