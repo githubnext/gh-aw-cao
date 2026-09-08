@@ -226,6 +226,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/work-item-row.js
   - source: site/src/components/work-item-timeline-lane.js
     destination: .github/aw/dashboard/site/src/components/work-item-timeline-lane.js
+  - source: site/src/components/work-project-shell.js
+    destination: .github/aw/dashboard/site/src/components/work-project-shell.js
   - source: site/src/components/work-project-view.js
     destination: .github/aw/dashboard/site/src/components/work-project-view.js
   - source: site/src/components/work-view-composition.js

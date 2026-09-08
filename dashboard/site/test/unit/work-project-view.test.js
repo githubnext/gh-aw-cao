@@ -4,10 +4,12 @@ import { renderWorkProjectView } from '../../src/components/work-project-view.js
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
+import { renderWorkProjectShell } from '../../src/components/work-project-shell.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
 import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
 
 const item = {
+  id: 'dependabot-release-train',
   name: 'Dependabot release train',
   icon: 'dependabot',
   repository: 'github/gh-aw',
@@ -25,6 +27,13 @@ const item = {
   stopTime: Date.parse('2026-08-30T09:30:00Z'),
   safeOutputKind: 'pull-request',
   actor: 'reviewer',
+  pointInTime: false,
+  reason: '',
+  nextAction: '',
+  waitingOn: '',
+  consequenceTier: '',
+  verificationState: '',
+  outcomeState: '',
   evidenceLink: {
     relation: 'evidence',
     href: 'https://example.com/evidence/dependabot',
@@ -107,6 +116,43 @@ describe('work project view primitives', () => {
       { href: '#page-work-tasks', current: 'page', text: 'Tasks' },
       { href: '#page-work-roadmap', current: null, text: 'Roadmap' }
     ]);
+  });
+
+  it('renders declarative work shell composition independently of the work page id', () => {
+    const rendered = renderWorkProjectShell({
+      items: [item],
+      elementConfig: { sections: ['tasks', 'roadmap'] },
+      renderers: {
+        renderBoard: () => document.createElement('div'),
+        renderTasks: (_items, section) => {
+          const element = document.createElement('section');
+          element.className = section.className;
+          element.id = section.id;
+          element.setAttribute('aria-label', section.landmarkLabel);
+          element.textContent = section.title;
+          return element;
+        },
+        renderRoadmap: (_items, section) => {
+          const element = document.createElement('section');
+          element.className = section.className;
+          element.id = section.id;
+          element.setAttribute('aria-label', section.landmarkLabel);
+          element.textContent = section.title;
+          return element;
+        }
+      },
+      renderFilterBar: (items, onChange) => {
+        const element = document.createElement('div');
+        queueMicrotask(() => onChange(items));
+        return { element, apply: () => onChange(items) };
+      },
+      emptyItemsMessage: 'No items',
+      emptyFilteredMessage: 'No filtered items'
+    });
+
+    expect(rendered.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
+    expect(rendered.querySelector('#work-project-tasks')?.textContent).toBe('Tasks');
+    expect(rendered.querySelector('#work-project-roadmap')?.textContent).toBe('Roadmap');
   });
 
   it('renders a compact custom Table with configurable sorting and mobile field selection', () => {

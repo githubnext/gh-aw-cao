@@ -3,14 +3,11 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderIconSpan } from './ui-primitives.js';
+import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderIconSpan } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
-import { workViewComposition } from './work-view-composition.js';
-import { renderWorkViewNavigation } from './work-view-navigation.js';
-import { workRoutePageConfigs } from './work-view-route-config.js';
-import { workViewSectionRenderer } from './work-view-sections.js';
+import { renderWorkProjectShell } from './work-project-shell.js';
 
 const BOARD_COLUMNS = [
   { title: 'Todo', states: ['todo'], tone: 'todo' },
@@ -21,6 +18,7 @@ const BOARD_COLUMNS = [
 
 /** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
 /** @typedef {(items: Array<ReturnType<typeof normalizeWorkItem>>, section: WorkSection) => HTMLElement} WorkSectionRenderer */
+/** @typedef {ReturnType<typeof normalizeWorkItem>} NormalizedWorkItem */
 
 /**
  * @param {import('./ui-elements.js').ElementRenderContext} context
@@ -28,52 +26,18 @@ const BOARD_COLUMNS = [
  */
 export function renderWorkProjectView(context) {
   const items = rowsFor(context.sources, 'work-items').map(normalizeWorkItem);
-  const sections = workViewComposition(context.elementConfig);
-  const activeSection = sections[0].key;
-  const viewBody = h('div', { className: 'work-project-body' });
-  let reapplyFilters = () => renderItems(items);
-  /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
-  const renderers = {
-    renderBoard: (filteredItems, section) => renderBoard(filteredItems, section, reapplyFilters),
-    renderTasks: (filteredItems, section) => renderTasks(filteredItems, section, reapplyFilters),
-    renderRoadmap: (filteredItems, section) => renderRoadmap(filteredItems, section, reapplyFilters)
-  };
-  /** @param {Array<ReturnType<typeof normalizeWorkItem>>} filteredItems */
-  const renderItems = (filteredItems) => {
-    if (items.length === 0) {
-      viewBody.replaceChildren(renderEmptyMessage('No work-item telemetry is available in the selected scope.', { role: 'status' }));
-      return;
-    }
-    if (filteredItems.length === 0) {
-      viewBody.replaceChildren(renderEmptyMessage('No work items match the current filters.', { role: 'status' }));
-      return;
-    }
-    viewBody.replaceChildren(...sections
-      .map((section) => {
-        const rendererName = workViewSectionRenderer(section.key, renderers);
-        const renderer = rendererName ? renderers[rendererName] : null;
-        return typeof renderer === 'function'
-          ? renderer(filteredItems, {
-            id: workSectionId(context.pageId, section.key),
-            className: section.className,
-            landmarkLabel: section.landmarkLabel,
-            title: section.title
-          })
-          : null;
-      })
-      .filter((element) => element instanceof HTMLElement));
-  };
-  const filterBar = renderWorkFilterBar(items, renderItems);
-  reapplyFilters = filterBar.apply;
-  const root = h(
-    'section',
-    { className: 'work-project-view', 'aria-label': 'Work' },
-    renderWorkViewNavigation(workRoutePageConfigs(), activeSection),
-    filterBar.element,
-    viewBody
-  );
-  renderItems(items);
-  return root;
+  return renderWorkProjectShell({
+    items,
+    elementConfig: context.elementConfig,
+    renderers: /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */ ({
+      renderBoard,
+      renderTasks,
+      renderRoadmap
+    }),
+    renderFilterBar: renderWorkFilterBar,
+    emptyItemsMessage: 'No work-item telemetry is available in the selected scope.',
+    emptyFilteredMessage: 'No work items match the current filters.'
+  });
 }
 
 /**
@@ -551,11 +515,6 @@ function renderRoadmap(items, section, onUpdate) {
   );
   renderTimeline();
   return root;
-}
-
-/** @param {string} pageId @param {'board'|'tasks'|'roadmap'} key */
-function workSectionId(pageId, key) {
-  return `${pageId}-${key}`;
 }
 
 /** @param {Record<string, unknown>} row */
