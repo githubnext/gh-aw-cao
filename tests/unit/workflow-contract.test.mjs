@@ -2290,6 +2290,7 @@ test("SelfCare dashboard performance worker selects one highest-ROI small win", 
 
 test("SelfCare experimental views worker exhaustively checks editable views across browsers and source shapes", () => {
   const source = workflow("self-care-experimental-views.md");
+  const orchestrator = workflow("self-care.md");
 
   assert.match(source, /^name: "SelfCare \/ Experimental Views"$/m);
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: experimental-views/);
@@ -2307,6 +2308,8 @@ test("SelfCare experimental views worker exhaustively checks editable views acro
   assert.match(source, /create-pull-request:/);
   assert.match(source, /draft: true/);
   assert.match(source, /Call `create_pull_request` exactly once/);
+  assert.match(orchestrator, /dispatch `self-care-experimental-views` before inspecting run history or dispatching any other worker/);
+  assert.match(orchestrator, /Do this on every selected repository run; this worker is not cadence-limited/);
 });
 
 test("SelfCare Pages health worker audits every deployed view on three profiles", () => {
