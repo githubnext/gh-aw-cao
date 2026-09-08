@@ -883,7 +883,9 @@ test("release increments the semantic version, creates its tag, and prepares a c
   assert.match(version, /const releaseTags = releases\.map\(\(release\) => release\.tag_name\)/);
   assert.match(version, /const versionNames = new Set\(\[\.\.\.releaseTags, \.\.\.tags\.map/);
   assert.match(version, /const versions = \[\.\.\.versionNames\]\.flatMap\(toVersion\)/);
-  assert.match(version, /No stable semantic version releases or tags found/);
+  assert.match(version, /const identifier = String\.raw/);
+  assert.match(version, /\(\?:-\$\{identifier\}\(\?:\\\.\$\{identifier\}\)\*\)\?/);
+  assert.match(version, /No semantic version releases or tags found/);
   assert.match(version, /const latest = versions\[0\] \|\| \[0, 0, 0\]/);
   assert.match(version, /if \(bump === 'major'\)/);
   assert.match(version, /else if \(bump === 'minor'\)/);

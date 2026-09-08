@@ -78,7 +78,10 @@ jobs:
               }),
             ]);
             const toVersion = (name) => {
-              const match = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(name);
+              const identifier = String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`;
+              const match = new RegExp(
+                String.raw`^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-${identifier}(?:\.${identifier})*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`,
+              ).exec(name);
               return match ? [[Number(match[1]), Number(match[2]), Number(match[3])]] : [];
             };
             const releaseTags = releases.map((release) => release.tag_name);
@@ -86,7 +89,7 @@ jobs:
             const versions = [...versionNames].flatMap(toVersion);
             versions.sort((left, right) => compareVersions(right, left));
             if (versions.length === 0) {
-              core.warning('No stable semantic version releases or tags found; using v0.0.0 as the bump baseline.');
+              core.warning('No semantic version releases or tags found; using v0.0.0 as the bump baseline.');
             }
             const latest = versions[0] || [0, 0, 0];
             const next = [...latest];
