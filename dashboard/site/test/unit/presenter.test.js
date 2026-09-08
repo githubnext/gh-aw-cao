@@ -1055,7 +1055,8 @@ describe('presenter built-in and custom pages', () => {
             id: 'operator-message',
             title: 'Operator message',
             description: 'A message for every dashboard user.',
-            icon: 'megaphone'
+            icon: 'megaphone',
+            'navigation-page': 'usage'
           },
           {
             id: 'rate-limit-message',
@@ -1098,6 +1099,11 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-site-callout="rate-limit-message"]')?.textContent).toContain('Dashboard data is partial');
     const detailsLink = rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link');
     expect(detailsLink).toBeNull();
+    const navigationLink = /** @type {HTMLAnchorElement | null} */ (
+      rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link')
+    );
+    expect(navigationLink?.getAttribute('href')).toBe('#page-usage');
+    expect(navigationLink?.textContent).toBe('View usage');
     const dismiss = /** @type {HTMLButtonElement | null} */ (
       rendered.querySelector('[data-site-callout="operator-message"] .site-callout-dismiss')
     );
