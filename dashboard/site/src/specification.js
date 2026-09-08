@@ -44,6 +44,7 @@ export const VIEW_ELEMENT_VALUES = [
   'summary-grid',
   'readiness-verdict',
   'context-summary',
+  'data-health-domain-list',
   'anomaly-readiness',
   'signal-list',
   'package-activity',

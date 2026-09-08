@@ -6222,36 +6222,12 @@
             "disclosure": "supplemental",
             "title": "Dashboard domain confidence",
             "data": {
-              "source": "data-health-domains"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No dashboard domain contracts are available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "domain",
-                  "type": "nominal",
-                  "title": "Dashboard area"
-                },
-                {
-                  "field": "confidence",
-                  "type": "nominal",
-                  "title": "Confidence",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                },
-                {
-                  "field": "next-action",
-                  "type": "nominal",
-                  "title": "Next action"
-                }
+              "sources": [
+                "data-health-domains"
               ]
             },
+            "mark": "element",
+            "element": "data-health-domain-list",
             "layout": "full"
           },
           {

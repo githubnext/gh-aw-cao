@@ -16,6 +16,35 @@ const metadata = {
 };
 
 describe('UI elements', () => {
+  it('renders data-health domain confidence as key/value pairs without a table', () => {
+    const rendered = renderUiElement('data-health-domain-list', {
+      pageId: 'data-health',
+      title: 'Dashboard domain confidence',
+      sourceNames: ['data-health-domains'],
+      sources: {
+        'data-health-domains': {
+          source: 'data-health-domains',
+          metadata,
+          rows: [{
+            domain: 'inventory',
+            confidence: 'degraded',
+            reason: 'Known bounded gap.',
+            'next-action': 'Refresh inventory.'
+          }]
+        }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.tagName).toBe('DL');
+    expect(rendered?.querySelector('table')).toBeNull();
+    expect(rendered?.querySelector('dt')?.textContent).toBe('inventory');
+    expect(rendered?.querySelector('dd')?.textContent).toContain('degraded');
+    expect(rendered?.querySelector('dd')?.textContent).toContain('Known bounded gap.');
+    expect(rendered?.querySelector('dd')?.textContent).toContain('Refresh inventory.');
+  });
+
   it('uses auto-fill to keep agent marketplace card widths stable when results shrink', () => {
     const styles = primerStylesheet();
     expect(styles).toContain(

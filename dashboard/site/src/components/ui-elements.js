@@ -22,7 +22,7 @@ import { renderWorkProjectView } from './work-project-view.js';
 import { agentSmellNotifications, renderAgentMarketplaceView, smellObservationNotifications } from './agent-marketplace-view.js';
 import { renderNotificationsInbox } from './notifications-inbox.js';
 import { renderInsightsOverview } from './insights-overview.js';
-import { modeBadgeClassName } from './badge.js';
+import { modeBadgeClassName, renderStatusBadge } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
@@ -51,6 +51,7 @@ const ELEMENT_RENDERERS = new Map([
   ['summary-grid', renderSummaryGridElement],
   ['readiness-verdict', renderReadinessVerdictElement],
   ['context-summary', renderContextSummaryElement],
+  ['data-health-domain-list', renderDataHealthDomainListElement],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
   ['package-activity', ({ sources, pageId }) => renderPackagesView(sources, pageId)],
@@ -436,6 +437,25 @@ function renderSummaryGridElement(context) {
     value: stringValue(row.value)
   }));
   return renderDefinitionList('summary-grid', rows);
+}
+
+/** @param {ElementRenderContext} context */
+function renderDataHealthDomainListElement(context) {
+  const rows = rowsFor(context, context.sourceNames[0]);
+  return h(
+    'dl',
+    { className: 'data-health-domain-list' },
+    ...rows.map((row) => renderDlRow(
+      stringValue(row.domain),
+      h(
+        'div',
+        { className: 'data-health-domain-value' },
+        renderStatusBadge(row.confidence),
+        h('span', { className: 'data-health-domain-reason' }, stringValue(row.reason)),
+        h('span', { className: 'data-health-domain-action' }, stringValue(row['next-action']))
+      )
+    ))
+  );
 }
 
 /** @param {ElementRenderContext} context */
