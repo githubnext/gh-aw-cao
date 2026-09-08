@@ -843,6 +843,8 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Home', 'Work', 'Operations', 'Insights'
     ]);
+    expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
+    expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
     expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open account menu for The Octocat');
