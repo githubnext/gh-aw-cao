@@ -40,7 +40,6 @@ dashboard:
               outcome-category: issue
           mark: chart
           chart: pie
-          table: false
           layout: full
           disclosure: essential
           encoding:
@@ -60,7 +59,6 @@ dashboard:
             source: runs
           mark: chart
           chart: line
-          table: false
           layout: half
           disclosure: essential
           encoding:
@@ -129,7 +127,6 @@ dashboard:
               operational-value-definition: triage-readiness-attainment
           mark: chart
           chart: line
-          table: false
           layout: half
           disclosure: essential
           encoding:

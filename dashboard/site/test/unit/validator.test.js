@@ -310,20 +310,16 @@ describe('dashboard document validation', () => {
           data: { source: 'mcp-servers' }
         },
         {
-          id: 'mcp-response-size-distribution',
-          mark: 'chart',
-          chart: 'histogram',
-          data: { source: 'mcp-calls' }
-        },
-        {
           id: 'mcp-server-inventory',
           mark: 'table',
+          disclosure: 'supplemental',
           controls: 'interactive',
-          data: { source: 'mcp-servers' }
+          data: { source: 'mcp-servers', limit: 25 }
         }
       ]
     });
-    expect(mcps.views[2].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+    expect(mcps.views).toHaveLength(2);
+    expect(mcps.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-server',
       'mcp-server-version',
       'mcp-protocol-version',

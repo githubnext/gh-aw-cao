@@ -1693,31 +1693,6 @@
             }
           },
           {
-            "id": "mcp-response-size-distribution",
-            "title": "Response payload size distribution",
-            "description": "Automatically binned MCP response sizes surface unusually large tool payloads that may increase latency and AI Credit consumption.",
-            "data": {
-              "source": "mcp-calls"
-            },
-            "mark": "chart",
-            "chart": "histogram",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "mcp-observation",
-                "type": "nominal",
-                "title": "MCP call"
-              },
-              "y": {
-                "field": "response-bytes",
-                "type": "quantitative",
-                "aggregate": "none",
-                "title": "Response bytes"
-              }
-            }
-          },
-          {
             "id": "mcp-server-inventory",
             "disclosure": "supplemental",
             "title": "Observed MCP servers",
@@ -1733,7 +1708,8 @@
                   "field": "max-response-bytes",
                   "direction": "desc"
                 }
-              ]
+              ],
+              "limit": 25
             },
             "mark": "table",
             "controls": "interactive",
