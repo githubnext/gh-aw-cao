@@ -360,7 +360,7 @@ describe('dashboard document validation', () => {
     expect(detection.views.filter(
       (/** @type {{ mark: string }} */ view) => view.mark === 'chart'
     ).every(
-      (/** @type {{ table: boolean }} */ view) => view.table === false
+      (/** @type {{ mark: string }} */ view) => !Object.hasOwn(view, 'table')
     )).toBe(true);
     expect(detection.views.filter(
       (/** @type {{ mark: string }} */ view) => view.mark === 'table'

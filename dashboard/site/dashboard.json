@@ -4313,7 +4313,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -4364,7 +4363,6 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -4404,7 +4402,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -4538,7 +4535,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -4572,7 +4568,6 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -4613,7 +4608,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
