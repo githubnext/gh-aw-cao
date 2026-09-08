@@ -714,10 +714,14 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
 function sampleLineCoordinates(coordinates, limit) {
   if (coordinates.length <= limit) return coordinates;
   if (limit <= 2) return [coordinates[0], coordinates[coordinates.length - 1]];
-  const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
+  // Budget for interior points, excluding the mandatory first/last endpoints.
+  const interiorBudget = limit - 2;
+  const bucketCount = Math.max(1, Math.floor(interiorBudget / 2));
   const bucketSize = (coordinates.length - 2) / bucketCount;
   const sampled = [coordinates[0]];
+  let interiorCount = 0;
   for (let bucket = 0; bucket < bucketCount; bucket += 1) {
+    if (interiorCount >= interiorBudget) break;
     const start = 1 + Math.floor(bucket * bucketSize);
     const end = Math.min(coordinates.length - 1, 1 + Math.floor((bucket + 1) * bucketSize));
     let minimumIndex = start;
@@ -727,7 +731,13 @@ function sampleLineCoordinates(coordinates, limit) {
       if (coordinates[index].y > coordinates[maximumIndex].y) maximumIndex = index;
     }
     sampled.push(coordinates[Math.min(minimumIndex, maximumIndex)]);
-    if (minimumIndex !== maximumIndex) sampled.push(coordinates[Math.max(minimumIndex, maximumIndex)]);
+    interiorCount += 1;
+    // Only add the second extremum if the interior budget still allows it, so
+    // very small limits (e.g. 3) can't push the total output above `limit`.
+    if (minimumIndex !== maximumIndex && interiorCount < interiorBudget) {
+      sampled.push(coordinates[Math.max(minimumIndex, maximumIndex)]);
+      interiorCount += 1;
+    }
   }
   sampled.push(coordinates[coordinates.length - 1]);
   return sampled;
