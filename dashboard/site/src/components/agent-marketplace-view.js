@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderIconSpan } from './ui-primitives.js';
+import { renderIconSpan, formatShortDate } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -359,14 +359,12 @@ function workflowPermissions(workflow) {
 
 /**
  * Formats an ISO observed-at timestamp as a short `en-US` date (e.g. `Aug
- * 30, 2026`), or an empty string when there is no observation. Shared by
- * the package/workflow rollup and the standalone-agent normalizer, which
- * both derive a human-readable `lastObserved` label from a raw timestamp.
+ * 30, 2026`), or an empty string when there is no observation.
  * @param {string} observed
  * @returns {string}
  */
 function formatLastObserved(observed) {
-  return observed ? new Date(observed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  return observed ? formatShortDate(observed, 'en-US') : '';
 }
 
 /** @param {Record<string, unknown>} row @returns {AgentCatalogEntry} */

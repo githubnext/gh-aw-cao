@@ -169,6 +169,21 @@ export function completenessCaveat(completeness, subject) {
 }
 
 /**
+ * Formats a `Date`, timestamp, or parseable date string as a short local
+ * date (e.g. `Aug 30, 2026`), with no time-of-day or time-zone
+ * normalization. Shared by the agent marketplace's last-observed label and
+ * the experiments table's observation date column, which both derive a
+ * compact date label from a raw timestamp or ISO string.
+ * @param {Date | number | string} input
+ * @param {string | undefined} [locale]
+ * @returns {string}
+ */
+export function formatShortDate(input, locale = undefined) {
+  const date = input instanceof Date ? input : new Date(input);
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
  * Formats a `Date` or millisecond timestamp as a medium-date, short-time,
  * UTC string (e.g. `Aug 30, 2026, 10:00 AM`). Callers are responsible for
  * validating their input; invalid input renders `Invalid Date`.

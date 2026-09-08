@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -105,6 +105,14 @@ describe('ui primitives', () => {
   it('formats a Date or millisecond timestamp as medium-date-only UTC text', () => {
     expect(formatMediumUtcDate(new Date('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026');
     expect(formatMediumUtcDate(Date.parse('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026');
+  });
+
+  it('formats a Date, timestamp, or date string as a short local date', () => {
+    const localDate = new Date(2026, 7, 30, 10);
+    expect(formatShortDate(localDate, 'en-US')).toBe('Aug 30, 2026');
+    expect(formatShortDate(localDate.getTime(), 'en-US')).toBe('Aug 30, 2026');
+    expect(formatShortDate('2026-08-30T10:00:00', 'en-US')).toBe('Aug 30, 2026');
+    expect(formatShortDate(localDate)).toBe(localDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }));
   });
 
   it('computes whole-hour coverage windows and rejects invalid or non-increasing bounds', () => {
