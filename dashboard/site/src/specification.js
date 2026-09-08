@@ -223,7 +223,7 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   packages: ['package-inventory'],
   workflows: ['workflow-inventory'],
   runs: ['runs'],
-  experiments: ['experiments', 'experiment-assignments', 'grader-observations', 'eval-observations', 'outcomes', 'usage', 'operational-values'],
+  experiments: ['experiments'],
   graders: ['graders', 'grader-observations'],
   evals: ['evals', 'eval-observations'],
   usage: ['usage'],
@@ -261,13 +261,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']
   },
   experiments: {
-    experiments: ['experiment'],
-    'experiment-assignments': ['run', 'variant'],
-    'grader-observations': ['grader'],
-    'eval-observations': ['eval'],
-    outcomes: ['outcome-state'],
-    usage: ['aic'],
-    'operational-values': ['operational-value']
+    experiments: ['experiment']
   },
   graders: {
     graders: ['grader'],
