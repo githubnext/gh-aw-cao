@@ -121,102 +121,29 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines the Preview issue attribution views', () => {
+  it('defines every editable experimental page as one full-view lazy table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
-    const preview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'preview');
+    const experimentalIds = new Set(document.dashboard.navigation
+      .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
+      .flatMap((/** @type {{ pages: string[] }} */ section) => section.pages));
 
-    expect(preview).toMatchObject({
-      kind: 'custom',
-      title: 'Preview',
-      views: [
-        {
-          id: 'preview-issues-by-package',
-          mark: 'chart',
-          chart: 'pie',
-          data: {
-            source: 'outcomes',
-            filters: { 'outcome-category': ['issue'] }
-          }
-        },
-        {
-          id: 'preview-issue-ledger',
-          mark: 'table',
-          data: {
-            source: 'outcomes',
-            filters: {
-              'outcome-category': ['issue'],
-              'workflow-role': ['worker']
-            }
-          }
-        }
-      ]
-    });
-
-    expect(preview.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
-      'package',
-      'workflow-name',
-      'outcome-title',
-      'outcome-status',
-      'repository',
-      'observed-at'
-    ]);
-  });
-
-  it('defines the control-plane Admission page from structured admission sources', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const admission = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'admission');
-
-    expect(admission.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
-      'admission-decision-distribution',
-      'admission-decision-trend',
-      'admission-failed-gates',
-      'admission-decision-ledger'
-    ]);
-    expect(admission.views[0]).toMatchObject({
-      mark: 'chart',
-      chart: 'pie',
-      data: { source: 'admissions' }
-    });
-    expect(admission.views[2]).toMatchObject({
-      data: {
-        source: 'admission-checks',
-        filters: { 'check-status': ['failed'] }
-      }
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
-
-  it('defines workflow update inventory and version distribution views', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const updates = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'updates');
-    expect(updates).toMatchObject({
-      kind: 'custom',
-      views: [
-        {
-          id: 'workflow-versions',
-          mark: 'chart',
-          chart: 'pie',
-          data: { source: 'workflows' },
-          encoding: {
-            x: { field: 'gh-aw-version-label' },
-            y: { field: 'workflow', aggregate: 'count' }
-          }
-        },
-        {
-          id: 'workflow-updates',
-          mark: 'table',
-          data: { source: 'workflows' }
-        }
-      ]
-    });
-
-    expect(updates.views[1].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
-      'workflow',
-      'repository',
-      'gh-aw-version',
-      'gh-aw-current-version',
-      'gh-aw-update-state'
-    ]);
+    for (const page of document.dashboard.pages.filter(
+      (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
+    )) {
+      const definition = page.definition ?? page;
+      const editableViews = (definition.views ?? []).filter(
+        (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
+      );
+      if (editableViews.length === 0) continue;
+      expect(definition.sections, page.id).toBeUndefined();
+      expect(editableViews, page.id).toHaveLength(1);
+      expect(editableViews[0], page.id).toMatchObject({
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
+      });
+    }
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -243,15 +170,6 @@ describe('dashboard document validation', () => {
   it('defines firewall as one full-view lazy domain table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
-    const security = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'security');
-    expect(security.sections).toBeUndefined();
-    expect(security.views).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'security-summary', disclosure: 'essential' }),
-      expect.objectContaining({ id: 'security-signals', disclosure: 'supplemental' }),
-      expect.objectContaining({ id: 'security-output-ledger', mark: 'table', disclosure: 'supplemental' })
-    ]));
-    expect(security.views).not.toContainEqual(expect.objectContaining({ id: 'security-firewall-decisions' }));
-    expect(security.views).not.toContainEqual(expect.objectContaining({ id: 'security-findings-summary' }));
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('firewall');
@@ -370,31 +288,23 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines safe-output diagnostics and performance in Explore', () => {
+  it('defines safe-output diagnostics as one full-view lazy table in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs');
 
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('safe-outputs');
-    expect(safeOutputs.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual([
-      'safe-output-distribution',
-      'safe-output-trend',
-      'safe-output-workflow-performance',
-      'safe-output-diagnostics'
-    ]);
+    expect(safeOutputs.views).toHaveLength(1);
     expect(safeOutputs.views[0]).toMatchObject({
-      mark: 'chart',
-      chart: 'pie',
-      title: 'Safe-output types',
-      data: { source: 'outcomes' },
-      encoding: {
-        x: { field: 'safe-output-kind' },
-        y: { field: 'safe-output', aggregate: 'count' },
-        color: { field: 'safe-output-kind' }
-      }
+      id: 'safe-output-diagnostics',
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view',
+      data: { source: 'safe-output-performance' }
     });
-    expect(safeOutputs.views[3].encoding.columns).toEqual(expect.arrayContaining([
+    expect(safeOutputs.views[0].encoding.columns).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: 'safe-output-kind', title: 'Signal' }),
       expect.objectContaining({ field: 'safe-output-status', display: 'status' }),
       expect.objectContaining({ field: 'safe-output-count', title: 'Items' }),
@@ -943,7 +853,17 @@ dashboard:
   it('DLS-VIEW-005 accepts automatically binned histograms and rejects ambiguous histogram channels', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
-    const histogram = costPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'cost-per-run-distribution');
+    const histogram = {
+      id: 'cost-per-run-distribution',
+      data: { source: 'usage' },
+      mark: 'chart',
+      chart: 'histogram',
+      encoding: {
+        x: { field: 'run', type: 'nominal' },
+        y: { field: 'aic', type: 'quantitative', aggregate: 'sum' }
+      }
+    };
+    costPage.views.push(histogram);
 
     expect(histogram).toMatchObject({
       chart: 'histogram',
@@ -961,7 +881,7 @@ dashboard:
     if (!rejected.ok) {
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E010',
-        path: '$.dashboard.pages[3].views[1].encoding.color'
+        path: expect.stringContaining('.encoding.color')
       }));
     }
   });
@@ -969,7 +889,18 @@ dashboard:
   it('DLS-VIEW-005 accepts bounded heatmaps and rejects invalid axes, values, and limits', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance');
-    const heatmap = performance.views.find((/** @type {{ id: string }} */ view) => view.id === 'job-duration-by-job-runner');
+    const heatmap = {
+      id: 'job-duration-by-job-runner',
+      data: { source: 'job-performance', limit: 100 },
+      mark: 'chart',
+      chart: 'heatmap',
+      encoding: {
+        x: { field: 'job', type: 'nominal' },
+        y: { field: 'runner', type: 'nominal' },
+        color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
+      }
+    };
+    performance.views.push(heatmap);
 
     expect(heatmap).toMatchObject({
       chart: 'heatmap',
@@ -980,10 +911,6 @@ dashboard:
         color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
       }
     });
-    expect(performance.sections.map((/** @type {{ id: string }} */ section) => section.id)).toEqual([
-      'workflow-duration',
-      'job-duration'
-    ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
 
     heatmap.data.limit = 101;
@@ -1063,7 +990,14 @@ dashboard:
   it('validates source-free JSON callouts with canonical icons', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
-    const callout = costPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'cost-evaluation-boundary');
+    const callout = {
+      id: 'cost-evaluation-boundary',
+      title: 'Budget and anomaly verdicts unavailable',
+      description: 'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
+      mark: 'callout',
+      callout: { label: 'Evaluation boundary', icon: 'meter' }
+    };
+    costPage.views.push(callout);
     expect(callout).toMatchObject({
       mark: 'callout',
       callout: { label: 'Evaluation boundary', icon: 'meter' }
@@ -1073,9 +1007,14 @@ dashboard:
       (/** @type {{ id: string }} */ page) => page.id === 'operational-value'
     );
     expect(valuePage).toBeDefined();
-    const valueCallout = valuePage.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'experiment-evidence-boundary'
-    );
+    const valueCallout = {
+      id: 'experiment-evidence-boundary',
+      title: 'Experiment comparisons unavailable',
+      description: 'Experiment evidence cannot be established from partial AI Credit telemetry.',
+      mark: 'callout',
+      callout: { label: 'Experiment evidence boundary', icon: 'beaker' }
+    };
+    valuePage.views.push(valueCallout);
     expect(valueCallout).toBeDefined();
     expect(valueCallout.description).toContain('partial AI Credit telemetry');
     expect(callout.data).toBeUndefined();
@@ -1088,7 +1027,7 @@ dashboard:
     if (!rejected.ok) {
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E005',
-        path: '$.dashboard.pages[3].views[5].callout.icon'
+        path: expect.stringContaining('.callout.icon')
       }));
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E003',
