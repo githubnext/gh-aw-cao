@@ -74,6 +74,7 @@ function rateLimitRow(overrides = {}) {
  *   rows: Array<Record<string, unknown>>
  * }} [rateLimitSource]
  * @param {Array<Record<string, unknown>>} [stackRows]
+ * @param {Array<Record<string, unknown>>} [collectorRows]
  */
 async function renderApiPage(rateLimitSource = {
   source: 'github-api-rate-limits',
@@ -137,7 +138,19 @@ async function renderApiPage(rateLimitSource = {
     'stack-depth': 1,
     'stack-frame': 'at recordGithubTelemetry (activity/github-telemetry.mjs:100:16)'
   }
-]) {
+], collectorRows = [{
+  'observed-at': '2026-09-04T12:00:00Z',
+  'operation-execution-id': 'run-1',
+  phase: 'after',
+  operation: 'refresh-activity',
+  outcome: 'success',
+  credential: 'reader',
+  'cache-hydrated': true,
+  'cache-bytes': 1_024,
+  'cache-entries': 7,
+  'cache-folders': 1,
+  'rate-limit-error': ''
+}]) {
   const rendered = renderDashboard({
     document: dashboard,
     sources: {
@@ -145,19 +158,7 @@ async function renderApiPage(rateLimitSource = {
       'github-api-collector-health': {
         source: 'github-api-collector-health',
         metadata,
-        rows: [{
-          'observed-at': '2026-09-04T12:00:00Z',
-          'operation-execution-id': 'run-1',
-          phase: 'after',
-          operation: 'refresh-activity',
-          outcome: 'success',
-          credential: 'reader',
-          'cache-hydrated': true,
-          'cache-bytes': 1_024,
-          'cache-entries': 7,
-          'cache-folders': 1,
-          'rate-limit-error': ''
-        }]
+        rows: collectorRows
       },
       'github-api-call-stacks': {
         source: 'github-api-call-stacks',
@@ -276,6 +277,44 @@ describe('GitHub API rate-limit dashboard', () => {
 
     expect(rows).toHaveLength(2);
     expect(repeated?.textContent).toContain('2');
+  });
+
+  it('keeps high-cardinality source data within the live DOM budget', async () => {
+    const rows = Array.from({ length: 1_000 }, (_, index) => rateLimitRow({
+      'observation-id': `run-${index}:after:reader:resource-${index}`,
+      'operation-execution-id': `run-${index}`,
+      'observed-at': new Date(Date.parse('2026-09-04T12:00:00Z') - index * 60_000).toISOString(),
+      operation: `operation-${index}`,
+      resource: `resource-${index}`,
+      bucket: `resource-${index} · reader`,
+      'maximum-lane': `resource-${index} · reader · max 5000`,
+      'risk-status': 'warning',
+      'risk-order': 1,
+      'remaining-percent': 20,
+      'attribution-status': 'available'
+    }));
+    const stackRows = rows.map((row, index) => ({
+      'operation-execution-id': row['operation-execution-id'],
+      operation: row.operation,
+      credential: row.credential,
+      'stack-frame': `at call${index} (activity/source-${index}.mjs:1:1)`
+    }));
+    const collectorRows = rows.map((row, index) => ({
+      'operation-execution-id': row['operation-execution-id'],
+      operation: row.operation,
+      outcome: 'success',
+      credential: row.credential,
+      'cache-hydrated': true,
+      'cache-entries': index,
+      'cache-folders': 1
+    }));
+    const { page } = await renderApiPage({
+      source: 'github-api-rate-limits',
+      metadata,
+      rows
+    }, stackRows, collectorRows);
+
+    expect(page?.querySelectorAll('*').length).toBeLessThan(6_000);
   });
 
   it('exposes stale, partial, unavailable, and empty source states without fabricated quota values', async () => {
