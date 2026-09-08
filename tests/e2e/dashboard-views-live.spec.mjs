@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import {
+  effectiveDashboardSources,
+  missingDashboardSources,
+} from "./dashboard-view-sources.mjs";
 
 const outputDirectory = resolve(
   process.env.DASHBOARD_VIEWS_OUTPUT_DIR || "test-results/dashboard-views",
@@ -17,16 +21,6 @@ function selectedPages(dashboard) {
 
 function messageText(value) {
   return value instanceof Error ? value.message : String(value);
-}
-
-function declaredSourceNames(value, names = new Set()) {
-  if (Array.isArray(value)) {
-    for (const item of value) declaredSourceNames(item, names);
-  } else if (value && typeof value === "object") {
-    if (typeof value.source === "string") names.add(value.source);
-    for (const item of Object.values(value)) declaredSourceNames(item, names);
-  }
-  return names;
 }
 
 test("each selected dashboard view renders with live data", async ({ browser }, testInfo) => {
@@ -68,6 +62,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
       throw new Error(`Unable to load composed dashboard.json: HTTP ${dashboardResponse.status}.`);
     }
     const dashboard = await dashboardResponse.json();
+    const effectiveSources = effectiveDashboardSources(liveSources);
     const pages = selectedPages(dashboard);
     summary.selectedPageIds = pages.map((page) => page.id);
     if (pages.length === 0) throw new Error("No selected page IDs exist in the composed dashboard.");
@@ -141,12 +136,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         result.missingViews = result.declaredViews.filter(
           (viewId) => !result.renderedViews.includes(viewId),
         );
-        const sourceProblems = [...declaredSourceNames(pageDefinition)]
-          .filter((sourceName) =>
-            !Object.hasOwn(liveSources, sourceName)
-            || liveSources[sourceName]?.metadata?.availability === "unavailable"
-          )
-          .map((sourceName) => `${sourceName}: missing or unavailable`);
+        const sourceProblems = missingDashboardSources(pageDefinition, effectiveSources);
         result.missingData = [
           ...sourceProblems,
           ...await activePage.locator('[aria-label^="Unable to load "]')
