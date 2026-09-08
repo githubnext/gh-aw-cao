@@ -56,6 +56,16 @@ function repositoryContentPath(repositoryName, filePath) {
   return `/repos/${repositoryName}/contents/${encodedPath}`;
 }
 
+function rawWorkflowUrl(repositoryName, sha, filePath) {
+  if (!/^[0-9a-f]{40,64}$/i.test(String(sha))) return "";
+  const encodedPath = String(filePath)
+    .replace(/^\/+/, "")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  return `https://raw.githubusercontent.com/${repositoryName}/${sha}/${encodedPath}`;
+}
+
 function ghAwPayloads(lockSource) {
   const payloads = { ghAwMetadata: null, ghAwManifest: null };
   const fields = {
@@ -423,15 +433,19 @@ async function collectDashboardRecordsImpl({
           const previous = previousRemoteWorkflowByIdentity.get(
             `${repositoryName.toLowerCase()}:${String(workflow.path).toLowerCase()}`,
           );
-          let payloads = previous?.lockSha && previous.lockSha === lockFile?.sha
+          let metadataAvailable = previous?.lockMetadataAvailable === true
+            && previous.lockSha === lockFile?.sha;
+          let payloads = metadataAvailable
             ? {
               ghAwMetadata: previous.ghAwMetadata || null,
               ghAwManifest: previous.ghAwManifest || null,
             }
             : { ghAwMetadata: null, ghAwManifest: null };
-          if (previous?.lockSha !== lockFile?.sha && lockFile?.download_url) {
+          const downloadUrl = rawWorkflowUrl(repositoryName, lockFile?.sha, workflow.path);
+          if (!metadataAvailable && downloadUrl) {
             try {
-              payloads = ghAwPayloads(await githubDownload(lockFile.download_url));
+              payloads = ghAwPayloads(await githubDownload(downloadUrl));
+              metadataAvailable = true;
             } catch (error) {
               log.warning`${error.message}; generated metadata is unavailable for ${repositoryName}/${workflow.path}`;
             }
@@ -452,7 +466,8 @@ async function collectDashboardRecordsImpl({
             ghAwVersion,
             currentGhAwVersion: latestVersion,
             updateState: updateState(ghAwVersion, latestVersion),
-            lockSha: lockFile?.sha || null,
+            lockSha: metadataAvailable ? lockFile?.sha : null,
+            lockMetadataAvailable: metadataAvailable,
             ...payloads,
           };
         }),
@@ -466,6 +481,10 @@ async function collectDashboardRecordsImpl({
 
   async function repositoryReportSources(repositoryName) {
     const required = repositoryName.toLowerCase() === repository.toLowerCase();
+    const repositoryState = remoteRepositoryStateByName.get(repositoryName.toLowerCase());
+    if (!required && !repositoryState?.complete) {
+      return { repository: repositoryName, issues: [], comments: [], artifacts: [] };
+    }
     const optional = async (loader, fallback) => {
       try {
         return await loader();
@@ -621,7 +640,15 @@ async function collectDashboardRecordsImpl({
   const scopedRecords = allowedRepositories.size === 0
     ? records
     : records.filter((record) => allowedRepositories.has(record.repository.toLowerCase()));
-  return { generatedAt, repository, inventory, records: scopedRecords, remoteWorkflows, workflowDiscovery };
+  return {
+    generatedAt,
+    repository,
+    inventory,
+    records: scopedRecords,
+    remoteWorkflows,
+    workflowDiscovery,
+    containsPrivateData: hasPrivateData,
+  };
 }
 
 export async function collectDashboardRecords(options) {
@@ -631,7 +658,8 @@ export async function collectDashboardRecords(options) {
   } catch (error) {
     if (!(error instanceof GitHubRateLimitError)) throw error;
     log.warning`${error.message}`;
-    const retained = options.previousSnapshot?.records;
+    const canRetain = options.previousSnapshot?.containsPrivateData === false;
+    const retained = canRetain ? options.previousSnapshot.records : null;
     const snapshotGeneratedAt = options.previousSnapshot?.generatedAt || "";
     const snapshotAge = snapshotGeneratedAt
       ? Math.floor((Date.parse(generatedAt) - Date.parse(snapshotGeneratedAt)) / 1000)
@@ -642,8 +670,10 @@ export async function collectDashboardRecords(options) {
       repository: options.repository,
       inventory: options.inventory,
       records: Array.isArray(retained) ? retained : [],
-      remoteWorkflows: Array.isArray(options.previousSnapshot?.remoteWorkflows) ? options.previousSnapshot.remoteWorkflows : [],
-      workflowDiscovery: options.previousSnapshot?.workflowDiscovery || {
+      remoteWorkflows: canRetain && Array.isArray(options.previousSnapshot?.remoteWorkflows)
+        ? options.previousSnapshot.remoteWorkflows : [],
+      workflowDiscovery: canRetain && options.previousSnapshot?.workflowDiscovery
+        ? options.previousSnapshot.workflowDiscovery : {
         complete: false,
         repositoriesExpected: 0,
         repositoriesObserved: 0,
@@ -658,6 +688,7 @@ export async function collectDashboardRecords(options) {
       snapshotAgeSeconds,
       stale: Array.isArray(retained) && retained.length > 0,
       partial: true,
+      containsPrivateData: false,
     };
   }
 }

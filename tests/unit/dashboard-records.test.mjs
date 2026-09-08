@@ -234,6 +234,8 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     '# gh-aw-metadata: {"compiler_version":"v0.88.7","strict":true}',
     '# gh-aw-manifest: {"version":1,"actions":[]}',
   ].join("\n");
+  let lockSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  let failNextDownload = false;
   let lockDownloads = 0;
   const fetchImpl = async (input) => {
     const url = new URL(input);
@@ -254,12 +256,16 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     if (url.pathname === "/repos/acme/service/contents/.github/workflows") {
       return new Response(JSON.stringify([{
         path: ".github/workflows/remote-agent.lock.yml",
-        sha: "abc123",
-        download_url: "https://raw.githubusercontent.com/acme/service/main/.github/workflows/remote-agent.lock.yml",
+        sha: lockSha,
       }]), { status: 200 });
     }
     if (url.hostname === "raw.githubusercontent.com") {
       lockDownloads += 1;
+      assert.equal(url.pathname, `/acme/service/${lockSha}/.github/workflows/remote-agent.lock.yml`);
+      if (failNextDownload) {
+        failNextDownload = false;
+        return new Response("unavailable", { status: 503 });
+      }
       return new Response(lockSource, { status: 200 });
     }
     if (url.pathname.endsWith("/issues") || url.pathname.endsWith("/issues/comments")) {
@@ -292,6 +298,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     ghAwMetadata: workflow.ghAwMetadata,
     ghAwManifest: workflow.ghAwManifest,
     lockSha: workflow.lockSha,
+    lockMetadataAvailable: workflow.lockMetadataAvailable,
     visibility: workflow.visibility,
   })), [{
     repository: "acme/service",
@@ -303,7 +310,8 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     updateState: "update-available",
     ghAwMetadata: { compiler_version: "v0.88.7", strict: true },
     ghAwManifest: { version: 1, actions: [] },
-    lockSha: "abc123",
+    lockSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    lockMetadataAvailable: true,
     visibility: "public",
   }]);
   assert.deepEqual(output.workflowDiscovery, {
@@ -325,6 +333,33 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   });
   assert.equal(lockDownloads, 1);
   assert.equal(cachedOutput.remoteWorkflows[0].ghAwVersion, "v0.88.7");
+  lockSha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  failNextDownload = true;
+  const failedRefresh = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    previousSnapshot: cachedOutput,
+    fetchImpl,
+    generatedAt: "2026-09-07T14:00:00Z",
+  });
+  assert.equal(failedRefresh.remoteWorkflows[0].lockMetadataAvailable, false);
+  assert.equal(failedRefresh.remoteWorkflows[0].lockSha, null);
+  const retriedRefresh = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    previousSnapshot: failedRefresh,
+    fetchImpl,
+    generatedAt: "2026-09-07T15:00:00Z",
+  });
+  assert.equal(lockDownloads, 3);
+  assert.equal(retriedRefresh.remoteWorkflows[0].lockSha, lockSha);
+  assert.equal(retriedRefresh.remoteWorkflows[0].ghAwVersion, "v0.88.7");
 });
 
 test("dashboard records refuse private remote workflow metadata on public Pages", async () => {
@@ -345,6 +380,36 @@ test("dashboard records refuse private remote workflow metadata on public Pages"
       throw new Error(`Unexpected request: ${url}`);
     },
   }), /Refusing to publish private repository data/);
+});
+
+test("dashboard records skip remote data when repository visibility is unavailable", async () => {
+  let privateDataRequested = false;
+  const output = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/private"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      if (url.pathname === "/repos/acme/private") {
+        return new Response(JSON.stringify({ message: "Unavailable" }), { status: 503 });
+      }
+      if (url.pathname === "/repos/github/gh-aw/releases/latest") {
+        return new Response(JSON.stringify({ tag_name: "v0.89.0" }), { status: 200 });
+      }
+      if (url.pathname.startsWith("/repos/acme/private/")) privateDataRequested = true;
+      if (url.pathname.startsWith("/repos/acme/control/")) {
+        return url.pathname.endsWith("/actions/artifacts")
+          ? new Response(JSON.stringify({ artifacts: [] }), { status: 200 })
+          : new Response("[]", { status: 200 });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+  assert.equal(privateDataRequested, false);
+  assert.deepEqual(output.records, []);
+  assert.equal(output.workflowDiscovery.complete, false);
 });
 
 test("dashboard records stop on a GitHub rate limit and return a renderable error", async () => {
@@ -372,35 +437,6 @@ test("dashboard records stop on a GitHub rate limit and return a renderable erro
           },
         });
 
-        test("dashboard records retain the prior snapshot when a refresh is rate limited", async () => {
-          const previousSnapshot = {
-            generatedAt: "2026-09-02T23:00:00Z",
-            records: [{ id: "retained-record" }],
-          };
-          const output = await collectDashboardRecords({
-            repository: "acme/control",
-            token: "test-token",
-            controlSettings: { allowed_repositories: ["acme/service"] },
-            inventory,
-            deployedInventory: { workflows: [{ repository: "acme/service" }] },
-            previousSnapshot,
-            generatedAt: "2026-09-03T00:00:00Z",
-            fetchImpl: async () => new Response(JSON.stringify({ message: "API rate limit exceeded" }), {
-              status: 403,
-              headers: {
-                "x-ratelimit-remaining": "0",
-                "x-ratelimit-reset": "1788397200",
-              },
-            }),
-          });
-
-          assert.deepEqual(output.records, previousSnapshot.records);
-          assert.equal(output.stale, true);
-          assert.equal(output.partial, true);
-          assert.equal(output.errorEndpoint, "/repos/acme/control/issues?state=all&sort=updated&direction=desc&per_page=100&page=1");
-          assert.equal(output.rateLimitResetAt, "2026-09-03T01:00:00.000Z");
-          assert.equal(output.snapshotAgeSeconds, 3600);
-        });
       },
       generatedAt: "2026-09-02T23:00:00Z",
     });
@@ -416,4 +452,40 @@ test("dashboard records stop on a GitHub rate limit and return a renderable erro
   } finally {
     console.log = originalLog;
   }
+});
+
+test("dashboard records retain only confirmed-public snapshots when a refresh is rate limited", async () => {
+  const refresh = (previousSnapshot) => collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/service" }] },
+    previousSnapshot,
+    generatedAt: "2026-09-03T00:00:00Z",
+    fetchImpl: async () => new Response(JSON.stringify({ message: "API rate limit exceeded" }), {
+      status: 403,
+      headers: {
+        "x-ratelimit-remaining": "0",
+        "x-ratelimit-reset": "1788397200",
+      },
+    }),
+  });
+  const publicSnapshot = {
+    generatedAt: "2026-09-02T23:00:00Z",
+    records: [{ id: "retained-record" }],
+    containsPrivateData: false,
+  };
+  const retained = await refresh(publicSnapshot);
+  assert.deepEqual(retained.records, publicSnapshot.records);
+  assert.equal(retained.stale, true);
+  assert.equal(retained.snapshotAgeSeconds, 3600);
+
+  const privateSnapshot = {
+    ...publicSnapshot,
+    containsPrivateData: true,
+  };
+  const rejected = await refresh(privateSnapshot);
+  assert.deepEqual(rejected.records, []);
+  assert.equal(rejected.stale, false);
 });
