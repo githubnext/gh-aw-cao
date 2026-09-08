@@ -772,7 +772,8 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
-    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('./assets/avatar-monalisa-octocat.png');
+    expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
+    expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
   });
 
   it('DLS-DOC-012 DLS-SAFE-011 renders a labeled GitHub repository link resolved against a custom github-url-base', () => {

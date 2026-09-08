@@ -699,11 +699,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   alt: '',
                   referrerPolicy: 'no-referrer'
                 })
-                : h('img', {
-                  className: 'account-menu-avatar-image',
-                  src: './assets/avatar-monalisa-octocat.png',
-                  alt: ''
-                })
+                : octicon('gear')
             ),
             h(
               'div',
