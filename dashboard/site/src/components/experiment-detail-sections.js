@@ -5,7 +5,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
-import { computeObservationCoverage, formatCoveragePercent } from './count-formatters.js';
+import { computeObservationCoverage, countBy, formatCoveragePercent } from './count-formatters.js';
 import { renderExperimentEffect, renderExperimentSection, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
 import { renderDisclosure } from './ui-primitives.js';
 
@@ -274,15 +274,5 @@ export function renderExperimentDetailSection(section, context) {
   if (section === 'observation-quality') return renderObservationQualitySection(context.experiment ?? {});
   if (section === 'run-evidence') return renderRunEvidenceSection(context.model ?? { runById: new Map() }, context.experiment ?? {});
   throw new Error(`Unknown experiment detail section: "${section}". Expected one of: metric-comparison, eval-outcomes, grader-diagnostics, observation-quality, run-evidence`);
-}
-
-/** @param {Array<Record<string, any>>} rows @param {(row: Record<string, any>) => string} key @returns {Map<string, number>} */
-function countBy(rows, key) {
-  const counts = new Map();
-  for (const row of rows) {
-    const value = key(row);
-    counts.set(value, (counts.get(value) ?? 0) + 1);
-  }
-  return counts;
 }
 
