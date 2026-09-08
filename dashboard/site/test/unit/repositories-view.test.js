@@ -131,7 +131,8 @@ describe('repositories view', () => {
       data: { source: 'repository-activity' },
       mark: 'table',
       controls: 'interactive',
-      layout: 'full',
+      'lazy-list': true,
+      layout: 'full-view',
       encoding: {
         columns: [
           { field: 'repository' },

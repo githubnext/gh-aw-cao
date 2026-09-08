@@ -4547,6 +4547,61 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
+  it('DLS-VIEW-006 accepts a full-view interactive table with lazy-list rendering', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: full-view-table
+  title: Full View Table
+  pages:
+    - id: repositories
+      kind: custom
+      views:
+        - id: repository-table
+          data:
+            source: repository-activity
+          mark: table
+          controls: interactive
+          lazy-list: true
+          layout: full-view
+          encoding:
+            columns:
+              - field: repository
+                type: nominal
+`);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects lazy-list rendering on a static table', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: invalid-lazy-table
+  title: Invalid Lazy Table
+  pages:
+    - id: repositories
+      kind: custom
+      views:
+        - id: repository-table
+          data:
+            source: repository-activity
+          mark: table
+          controls: static
+          lazy-list: true
+          encoding:
+            columns:
+              - field: repository
+                type: nominal
+`);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.pages[0].views[0].lazy-list'
+      }));
+    }
+  });
+
   it('DLS-VIEW-005 accepts temporal dot charts with quantitative references', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:

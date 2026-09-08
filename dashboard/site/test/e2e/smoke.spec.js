@@ -1440,7 +1440,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
 
 });
 
-test('built-in repositories page keeps repository scope above the run metadata', async ({ page }) => {
+test('built-in repositories page fills the viewport with a lazy interactive table', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 
@@ -1464,7 +1464,10 @@ test('built-in repositories page keeps repository scope above the run metadata',
       const sources = {
         repositories: {
           source: 'repositories',
-          rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+          rows: Array.from({ length: 60 }, (_, index) => ({
+            organization: 'githubnext',
+            repository: \`repository-\${index + 1}\`
+          })),
           metadata
         },
         runs: emptySource('runs'),
@@ -1494,18 +1497,13 @@ test('built-in repositories page keeps repository scope above the run metadata',
     </script>
   `);
 
-  const cells = page.locator('.context-summary > div');
-  await expect(cells).toHaveCount(3);
-  const boxes = await cells.evaluateAll((elements) => elements.map((element) => {
-    const { x, y, width } = element.getBoundingClientRect();
-    return { x, y, width };
-  }));
-
-  expect(boxes[1].y).toBeGreaterThan(boxes[0].y);
-  expect(boxes[2].y).toBe(boxes[1].y);
-  expect(boxes[2].x).toBeGreaterThan(boxes[1].x);
-  expect(boxes[0].x).toBeCloseTo(boxes[1].x, 0);
-  expect(boxes[0].x + boxes[0].width).toBeCloseTo(boxes[2].x + boxes[2].width, 0);
+  const view = page.locator('[data-view-layout="full-view"]');
+  await expect(view).toHaveCount(1);
+  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(view.getByRole('searchbox', { name: 'Filter Repositories' })).toBeVisible();
+  const box = await view.boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(700);
+  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {

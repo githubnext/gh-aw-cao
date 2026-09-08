@@ -2382,7 +2382,8 @@ describe('presenter built-in and custom pages', () => {
         data: { source: 'repository-activity' },
         mark: 'table',
         controls: 'interactive',
-        layout: 'full',
+        'lazy-list': true,
+        layout: 'full-view',
         'empty-message': 'No repositories discovered.',
         encoding: {
           columns: [

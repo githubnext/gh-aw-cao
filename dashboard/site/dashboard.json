@@ -2032,7 +2032,8 @@
               },
               "mark": "table",
               "controls": "interactive",
-              "layout": "full",
+              "lazy-list": true,
+              "layout": "full-view",
               "empty-message": "No repositories discovered.",
               "encoding": {
                 "columns": [

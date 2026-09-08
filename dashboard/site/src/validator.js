@@ -1473,6 +1473,23 @@ function validateView(view, viewNode, path, viewIds, errors) {
     }
   }
 
+  if (view['lazy-list'] !== undefined) {
+    if (typeof view['lazy-list'] !== 'boolean') {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'lazy-list must be a boolean.',
+        `${path}.lazy-list`
+      ));
+    }
+    if (view.mark !== 'table' || view.controls === 'static') {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'lazy-list is allowed only on interactive table views.',
+        `${path}.lazy-list`
+      ));
+    }
+  }
+
   if (view['column-summaries'] !== undefined) {
     if (typeof view['column-summaries'] !== 'boolean') {
       errors.push(createError(
