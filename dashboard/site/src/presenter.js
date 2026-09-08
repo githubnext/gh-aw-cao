@@ -1032,6 +1032,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     );
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-layout', layout);
@@ -1682,6 +1683,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
         ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
         : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      suppressSupplementalTableHeading(rendered, view, index);
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view');
         rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
@@ -2048,7 +2050,9 @@ function renderRouteScopedDataView(pageId, view, index, sources, units, headingT
           }
         }
       : sources;
-    root.replaceChildren(renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag));
+    const rendered = renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag);
+    suppressSupplementalTableHeading(rendered, view, index);
+    root.replaceChildren(rendered);
   };
   root.addEventListener('dashboard-route-change', (event) => {
     if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) return;
@@ -2083,6 +2087,14 @@ function renderSwimlaneRouteState(pageId, title, stateTitle, detail, headingTag)
  */
 function getViewTitle(view, index) {
   if (isPlainObject(view)) {
+    if (
+      view.disclosure === 'supplemental'
+      && typeof view['disclosure-label'] === 'string'
+      && view['disclosure-label'].length > 0
+    ) {
+      return view['disclosure-label'];
+    }
+
     if (typeof view.title === 'string' && view.title.length > 0) {
       return view.title;
     }
@@ -2091,6 +2103,20 @@ function getViewTitle(view, index) {
     }
   }
   return `View ${index + 1}`;
+}
+
+/**
+ * @param {HTMLElement} rendered
+ * @param {unknown} view
+ * @param {number} index
+ */
+function suppressSupplementalTableHeading(rendered, view, index) {
+  if (!isPlainObject(view) || view.mark !== 'table' || view.disclosure !== 'supplemental') return;
+  const section = rendered.matches('.page-section') ? rendered : rendered.querySelector('.page-section');
+  if (!(section instanceof HTMLElement)) return;
+  section.querySelector(':scope > h3, :scope > h4')?.remove();
+  section.removeAttribute('aria-labelledby');
+  section.setAttribute('aria-label', getViewTitle(view, index));
 }
 
 /**

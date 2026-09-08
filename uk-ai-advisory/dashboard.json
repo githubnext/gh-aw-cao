@@ -92,7 +92,7 @@
           },
           {
             "id": "advisory-attainment",
-            "title": "Human acceptance evidence",
+            "disclosure-label": "Human acceptance evidence",
             "description": "Attainment records explicit non-bot acceptance of a frozen report after the 30-day maturation window.",
             "disclosure": "supplemental",
             "data": {

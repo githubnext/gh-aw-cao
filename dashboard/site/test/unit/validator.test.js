@@ -1497,9 +1497,33 @@ dashboard:
 
     const accepted = source.replace(
       '        - id: supporting-table\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n'
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n'
     );
     expect(validateDashboardDocument(accepted).ok).toBe(true);
+
+    const emptyLabel = validateDashboardDocument(accepted.replace(
+      'disclosure-label: Supporting table',
+      'disclosure-label: ""'
+    ));
+    expect(emptyLabel.ok).toBe(false);
+    if (!emptyLabel.ok) {
+      expect(emptyLabel.errors).toContainEqual(expect.objectContaining({
+        path: '$.dashboard.pages[0].views[1].disclosure-label'
+      }));
+    }
+
+    const titledSupplemental = accepted.replace(
+      '          disclosure-label: Supporting table\n',
+      '          disclosure-label: Supporting table\n          title: Supporting table\n'
+    );
+    const titledResult = validateDashboardDocument(titledSupplemental);
+    expect(titledResult.ok).toBe(false);
+    if (!titledResult.ok) {
+      expect(titledResult.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E013',
+        path: '$.dashboard.pages[0].views[1].title'
+      }));
+    }
 
     const locked = source.replace(
       '        - id: supporting-table\n',

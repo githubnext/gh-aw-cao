@@ -1413,6 +1413,17 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   validateOptionalStringField(view.title, `${path}.title`, errors);
+  validateStringField(view['disclosure-label'], `${path}.disclosure-label`, false, errors);
+  if (
+    view['disclosure-label'] !== undefined
+    && (view.disclosure !== 'supplemental' || view.mark !== 'table')
+  ) {
+    errors.push(createError(
+      ERROR_CODES.invalidProgressiveDisclosureConfiguration,
+      'disclosure-label is allowed only on supplemental tables.',
+      `${path}.disclosure-label`
+    ));
+  }
   validateOptionalStringField(view.description, `${path}.description`, errors);
   if (view.locked !== undefined && typeof view.locked !== 'boolean') {
     errors.push(createError(
@@ -1951,6 +1962,17 @@ function validateProgressiveDisclosure(views, path, errors) {
   for (const [index, view] of views.entries()) {
     if (isPlainObject(view)) {
       validateDisclosureValue(view.disclosure, `${path}[${index}].disclosure`, errors);
+      if (
+        view.disclosure === 'supplemental'
+        && view.mark === 'table'
+        && Object.hasOwn(view, 'title')
+      ) {
+        errors.push(createError(
+          ERROR_CODES.invalidProgressiveDisclosureConfiguration,
+          'A supplemental table uses its derived view name as the disclosure label and must not declare a title.',
+          `${path}[${index}].title`
+        ));
+      }
     }
   }
 
