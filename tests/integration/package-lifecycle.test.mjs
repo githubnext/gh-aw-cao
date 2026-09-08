@@ -98,6 +98,7 @@ const selfCareExpectedFiles = [
   ".github/workflows/self-care-data-acquisition-audit.md",
   ".github/workflows/self-care-dashboard-language-refactor.md",
   ".github/workflows/self-care-dashboard-review.md",
+  ".github/workflows/self-care-experimental-views.md",
   ".github/workflows/self-care-docs-build-time-investigator.md",
   ".github/workflows/self-care-glossary.md",
   ".github/workflows/self-care-open-source-failures.md",

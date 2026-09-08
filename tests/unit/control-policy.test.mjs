@@ -147,6 +147,10 @@ test("checked-in control policy selects seven repositories with live Dependabot 
     "self-care-dashboard-performance",
   );
   assert.equal(
+    policy["control-plane"].packages["self-care"].workers["experimental-views"].workflow,
+    "self-care-experimental-views",
+  );
+  assert.equal(
     policy["control-plane"].packages["self-care"].workers["pages-health"].workflow,
     "self-care-pages-health",
   );
