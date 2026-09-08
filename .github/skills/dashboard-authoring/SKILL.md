@@ -22,6 +22,12 @@ Create one dashboard that helps an operator decide whether a specific agentic wo
    - Avoid nested chart boxes. Do not add a section solely to frame a chart; use sections only when their heading or grouping adds operator context.
 5. Pass the intent and operational-value contract to `generate-dashboard-ir` with the provided Dashboard Language specification and validator.
 
+## Graphical patterns
+
+### Flat supplemental diagnostics
+
+When a diagnostic page has one essential summary table and several supporting tables, render the summary first and make each supporting table a sibling `supplemental` disclosure. Omit layout sections so a table is not nested inside both a section and a disclosure.
+
 ## Package file convention
 
 - Store an operation package's production Dashboard Language document at `<package>/dashboard.json`.

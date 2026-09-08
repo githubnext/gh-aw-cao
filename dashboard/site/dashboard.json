@@ -6064,108 +6064,6 @@
         "description": "Whether dashboard evidence is sufficiently complete, current, compatible, and consistent to represent the live agentic system.",
         "icon": "pulse",
         "class-name": "data-health-page",
-        "sections": [
-          {
-            "id": "dashboard-confidence",
-            "title": "Dashboard confidence",
-            "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
-            "layout": "full",
-            "views": [
-              "data-health-summary"
-            ]
-          },
-          {
-            "id": "loaded-files",
-            "title": "Loaded files",
-            "description": "Files loaded for this dashboard snapshot and their serialized sizes.",
-            "layout": "full",
-            "views": [
-              "data-health-files"
-            ]
-          },
-          {
-            "id": "collector-workflow",
-            "title": "Collector workflow",
-            "description": "Collector state and access to the CAO Activity workflow run history.",
-            "layout": "full",
-            "views": [
-              "data-health-activity"
-            ]
-          },
-          {
-            "id": "what-can-i-trust",
-            "title": "What can I trust?",
-            "description": "Independent confidence by operator-facing dashboard domain.",
-            "layout": "full",
-            "views": [
-              "data-health-domains"
-            ]
-          },
-          {
-            "id": "live-system-coverage",
-            "title": "Live-system coverage",
-            "description": "Expected-versus-observed evidence with percentages only where an authoritative denominator exists.",
-            "layout": "full",
-            "views": [
-              "data-health-coverage"
-            ]
-          },
-          {
-            "id": "collection-integrity",
-            "title": "Collection integrity",
-            "description": "Collector completion, failures, evidence horizons, and stale fallback provenance.",
-            "layout": "full",
-            "views": [
-              "data-health-collections"
-            ]
-          },
-          {
-            "id": "producer-compatibility",
-            "title": "Producer compatibility",
-            "description": "Version-aware telemetry compatibility and expected versus unexpected missing fields.",
-            "layout": "full",
-            "views": [
-              "data-health-compatibility"
-            ]
-          },
-          {
-            "id": "consistency-and-reconciliation",
-            "title": "Consistency and reconciliation",
-            "description": "Stable-identifier reconciliation between authoritative evidence domains.",
-            "layout": "full",
-            "views": [
-              "data-health-reconciliation"
-            ]
-          },
-          {
-            "id": "source-diagnostics",
-            "title": "Source diagnostics",
-            "description": "Detailed cache population and field-shape diagnostics; retained rows do not imply complete live-system coverage.",
-            "layout": "full",
-            "views": [
-              "data-health-sources",
-              "data-health-fields"
-            ]
-          },
-          {
-            "id": "data-shape-preview",
-            "title": "Data shape preview",
-            "description": "Recursive schema inference for each cached source, sampled from loaded rows with cycles detected and broken.",
-            "layout": "full",
-            "views": [
-              "data-health-schema"
-            ]
-          },
-          {
-            "id": "provenance-and-technical-details",
-            "title": "Provenance and technical details",
-            "description": "Technical timestamps, source identity, fallback age, and collection provenance.",
-            "layout": "full",
-            "views": [
-              "data-health-provenance"
-            ]
-          }
-        ],
         "views": [
           {
             "id": "data-health-summary",
@@ -6302,6 +6200,7 @@
           {
             "id": "data-health-activity",
             "title": "CAO Activity",
+            "disclosure": "supplemental",
             "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
             "data": {
               "source": "data-health-summary"

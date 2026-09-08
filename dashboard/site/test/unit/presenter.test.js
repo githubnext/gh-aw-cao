@@ -284,9 +284,11 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'data-health');
     const sourceView = [...(page?.querySelectorAll('.custom-view') ?? [])]
-      .find((view) => view.querySelector('h4')?.textContent === 'Cached source shape');
+      .find((view) => view.querySelector('h3')?.textContent === 'Cached source shape');
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
     expect(page?.querySelector('[data-view-id="data-health-summary"]')?.previousElementSibling).toBeNull();
+    expect(page?.querySelector('.layout-section')).toBeNull();
+    expect(page?.querySelectorAll('.view-disclosure[data-disclosure="supplemental"]')).toHaveLength(11);
     expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
