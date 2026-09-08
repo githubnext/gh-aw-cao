@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
+import { performanceJobRecord } from "./failure-evidence.mjs";
 import { normalizeVersion } from "./version.mjs";
 
 const EMPTY_RUN_HEALTH = {
@@ -82,6 +83,7 @@ function runRecord(run, repository) {
     ...(run.failure_job ? { failureJob: String(run.failure_job) } : {}),
     ...(run.failure_step ? { failureStep: String(run.failure_step) } : {}),
     ...(run.failure_message ? { failureMessage: String(run.failure_message) } : {}),
+    ...(Array.isArray(run.jobs) ? { jobs: run.jobs.map(performanceJobRecord) } : {}),
   };
 }
 
