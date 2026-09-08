@@ -73,7 +73,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 36);
+  assert.equal(operationWorkflows.length, 37);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -436,7 +436,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "eu-cra-compliance.md": { credits: 200, timeout: 15, dispatchMax: 48, workers: 6 },
     "eu-cra-compliance-package-maintainer.md": { credits: 200, timeout: 20 },
     "optimization.md": { credits: 250, timeout: 15, dispatchMax: 20, workers: 4 },
-    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 12, workers: 12 },
+    "self-care.md": { credits: 200, timeout: 15, dispatchMax: 13, workers: 13 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
     "aw-failures-investigator.md": { credits: 500, timeout: 30 },
@@ -456,6 +456,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "software-development-practices-nist-ssdf.md": { credits: 400, timeout: 30 },
     "self-care-accessibility-checker.md": { credits: 400, timeout: 30 },
     "self-care-code-improvement.md": { credits: 400, timeout: 30 },
+    "self-care-dashboard-data-schema.md": { credits: 100, timeout: 15 },
     "self-care-dashboard-performance.md": { credits: 400, timeout: 30 },
     "self-care-data-acquisition-audit.md": { credits: 300, timeout: 20 },
     "self-care-dashboard-language-refactor.md": { credits: 400, timeout: 30 },
@@ -524,7 +525,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 36, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 37, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -1040,6 +1041,7 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
   const workflowIds = [
     "self-care-accessibility-checker",
     "self-care-code-improvement",
+    "self-care-dashboard-data-schema",
     "self-care-dashboard-performance",
     "self-care-data-acquisition-audit",
     "self-care-dashboard-language-refactor",
@@ -1390,6 +1392,7 @@ test("live workers require target-owned package authority before agent execution
     ["self-care.md", "self-care"],
     ["self-care-accessibility-checker.md", "self-care"],
     ["self-care-code-improvement.md", "self-care"],
+    ["self-care-dashboard-data-schema.md", "self-care"],
     ["self-care-dashboard-performance.md", "self-care"],
     ["self-care-data-acquisition-audit.md", "self-care"],
     ["self-care-dashboard-language-refactor.md", "self-care"],
@@ -1459,6 +1462,7 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["self-care.md", "self-care"],
     ["self-care-accessibility-checker.md", "self-care"],
     ["self-care-code-improvement.md", "self-care"],
+    ["self-care-dashboard-data-schema.md", "self-care"],
     ["self-care-dashboard-performance.md", "self-care"],
     ["self-care-data-acquisition-audit.md", "self-care"],
     ["self-care-dashboard-language-refactor.md", "self-care"],
@@ -1594,6 +1598,7 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["software-development-practices-nist-ssdf.md", "software-development-practices", "nist-ssdf"],
     ["self-care-accessibility-checker.md", "self-care", "accessibility-checker"],
     ["self-care-code-improvement.md", "self-care", "code-improvement"],
+    ["self-care-dashboard-data-schema.md", "self-care", "dashboard-data-schema"],
     ["self-care-dashboard-performance.md", "self-care", "dashboard-performance"],
     ["self-care-data-acquisition-audit.md", "self-care", "data-acquisition-audit"],
     ["self-care-dashboard-language-refactor.md", "self-care", "dashboard-language-refactor"],
@@ -1968,14 +1973,28 @@ test("SelfCare data acquisition audit refreshes its specification", () => {
   assert.match(compiled, /specs\/data-acquisition-audit\.md/);
 });
 
+test("SelfCare dashboard data schema worker tracks every deployed source with Data Health inference", () => {
+  const source = workflow("self-care-dashboard-data-schema.md");
+
+  assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-data-schema/);
+  assert.match(source, /safe_output_mode` is `live`/);
+  assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources/);
+  assert.match(source, /deriveDataHealthSources/);
+  assert.match(source, /manifest\.sources\.sort\(\)/);
+  assert.match(source, /allowed-files:\n\s+- "specs\/dashboard-data\.md"/);
+  assert.match(source, /if-no-changes: ignore/);
+  assert.match(source, /labels: \[self-care, self-care:dashboard-data-schema\]/);
+  assert.doesNotMatch(source, /npm (?:install|ci)|npx /);
+});
+
 test("SelfCare runs every 20 minutes", () => {
   const source = workflow("self-care.md");
   const compiled = workflow("self-care.lock.yml");
 
   assert.match(source, /schedule: every 20 minutes/);
   assert.match(source, /engine: copilot\nmodel: copilot\/gpt-5\.4/);
-  assert.match(source, /self-care-glossary.*no run of that workflow is in progress or started during the preceding 24 hours/);
-  assert.match(source, /at most the ten most recent glossary workflow runs/);
+  assert.match(source, /self-care-dashboard-data-schema` and `self-care-glossary`.*preceding 24 hours/);
+  assert.match(source, /ten most recent runs of each workflow/);
   assert.match(source, /self-care-pages-health.*no run of that workflow is queued, in progress, or started during the preceding six hours/);
   assert.match(source, /at most the 20 most recent Pages Health workflow runs/);
   assert.match(compiled, /cron: "[0-5]?\d\/20 \* \* \* \*"  # Friendly format: every 20 minutes \(scattered\)/);
@@ -2551,6 +2570,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "optimization.lock.yml",
       "self-care-accessibility-checker.lock.yml",
       "self-care-code-improvement.lock.yml",
+      "self-care-dashboard-data-schema.lock.yml",
       "self-care-dashboard-performance.lock.yml",
       "self-care-data-acquisition-audit.lock.yml",
       "self-care-dashboard-language-refactor.lock.yml",
@@ -2667,6 +2687,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["optimization-ai-credit-optimizer.lock.yml", ["optimization", "ai-credit-optimizer"]],
       ["self-care-accessibility-checker.lock.yml", ["self-care", "accessibility-checker"]],
       ["self-care-code-improvement.lock.yml", ["self-care", "code-improvement"]],
+      ["self-care-dashboard-data-schema.lock.yml", ["self-care", "dashboard-data-schema"]],
       ["self-care-dashboard-performance.lock.yml", ["self-care", "dashboard-performance"]],
       ["self-care-data-acquisition-audit.lock.yml", ["self-care", "data-acquisition-audit"]],
       ["self-care-dashboard-language-refactor.lock.yml", ["self-care", "dashboard-language-refactor"]],
@@ -3148,6 +3169,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
         workers: [
           "self-care-accessibility-checker",
           "self-care-code-improvement",
+          "self-care-dashboard-data-schema",
           "self-care-dashboard-performance",
           "self-care-data-acquisition-audit",
           "self-care-dashboard-language-refactor",

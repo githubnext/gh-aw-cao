@@ -14,6 +14,7 @@ describe('histogram', () => {
     expect(automaticHistogramBinCount([])).toBe(0);
     expect(automaticHistogramBinCount([1, 2, 3, 4])).toBe(3);
     expect(automaticHistogramBinCount([1, Number.NaN, 2])).toBe(2);
+    expect(automaticHistogramBinCount(Array.from({ length: 100_000 }, (_, index) => index))).toBe(18);
   });
 
   it('renders a compact accessible SVG', () => {
