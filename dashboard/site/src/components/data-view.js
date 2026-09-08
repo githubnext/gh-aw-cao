@@ -131,7 +131,8 @@ function renderTableView(context) {
       value,
       toText,
       fieldUnit(column, units),
-      typeof column === 'string' ? undefined : column.type
+      typeof column === 'string' ? undefined : column.type,
+      typeof column === 'string' ? undefined : column.format
     ),
     toText
   );

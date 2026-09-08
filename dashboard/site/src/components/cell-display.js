@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { renderActiveStateBadge, renderGraderStatusBadge, renderModeBadge, renderStatusBadge } from './badge.js';
-import { formatNumber, stringOrFallback } from '../view-formatters.js';
+import { formatNumber, formatString, stringOrFallback } from '../view-formatters.js';
 import { formatUtcDateTime, renderDigest } from './ui-primitives.js';
 
 /**
@@ -13,9 +13,10 @@ import { formatUtcDateTime, renderDigest } from './ui-primitives.js';
  * @param {(value: unknown) => string} toText
  * @param {{ name: string, symbol: string, significant: number } | null} [unit]
  * @param {unknown} [type]
+ * @param {unknown} [format]
  * @returns {string | HTMLElement}
  */
-export function renderCellDisplay(display, value, toText, unit = null, type) {
+export function renderCellDisplay(display, value, toText, unit = null, type, format) {
   if (display === 'mode') return renderModeBadge(value);
   if (display === 'active-state') return renderActiveStateBadge(value);
   if (display === 'status') return renderStatusBadge(value);
@@ -27,6 +28,7 @@ export function renderCellDisplay(display, value, toText, unit = null, type) {
     return h('time', { dateTime: value }, formatUtcDateTime(value));
   }
   if (unit && typeof value === 'number' && Number.isFinite(value)) return formatNumber(value, unit);
+  if (format !== undefined) return formatString(value, format);
   return toText(value);
 }
 

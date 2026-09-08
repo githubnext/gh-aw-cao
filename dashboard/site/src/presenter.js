@@ -11,7 +11,7 @@ import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
-import { toNumber, stringOrFallback } from './view-formatters.js';
+import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
@@ -2428,10 +2428,10 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
   if (!aggregate || aggregate === 'none') {
     return rows.map((row, rowIndex) => ({
       key: `${pageId}-${title}-${rowIndex}`,
-      x: x ? toText(row[x.field]) : 'unknown',
+      x: x ? formatString(row[x.field], x.format) : 'unknown',
       y: y ? toNumber(row[y.field]) : 0,
-      category: y ? toText(row[y.field]) : 'unknown',
-      color: color ? toText(row[color.field]) : null,
+      category: y ? formatString(row[y.field], y.format) : 'unknown',
+      color: color ? formatString(row[color.field], color.format) : null,
       highlighted: typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
       link: hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null,
       source: row
@@ -2441,9 +2441,11 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
   /** @type {Map<string, { x: string, color: string | null, values: unknown[], links: Array<{ href: string, label: string }>, source: Record<string, unknown> }>} */
   const groups = new Map();
   for (const row of rows) {
-    const xValue = x ? toText(row[x.field]) : 'unknown';
-    const colorValue = color ? toText(row[color.field]) : null;
-    const key = JSON.stringify([xValue, colorValue]);
+    const rawXValue = x ? toText(row[x.field]) : 'unknown';
+    const rawColorValue = color ? toText(row[color.field]) : null;
+    const xValue = x ? formatString(row[x.field], x.format) : 'unknown';
+    const colorValue = color ? formatString(row[color.field], color.format) : null;
+    const key = JSON.stringify([rawXValue, rawColorValue]);
     const group = groups.get(key) ?? { x: xValue, color: colorValue, values: [], links: [], source: row };
     group.values.push(y ? row[y.field] : null);
     const link = hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null;
@@ -2504,8 +2506,16 @@ function prepareChartPoints(points, x, y, color, dataConfig) {
       );
       if (comparison !== 0) return item.direction === 'desc' ? -comparison : comparison;
     }
-    const xComparison = left.x.localeCompare(right.x);
-    return xComparison !== 0 ? xComparison : String(left.color ?? '').localeCompare(String(right.color ?? ''));
+    const xComparison = compareTableValues(
+      chartPointOutputValue(left, x?.field, x, y, color),
+      chartPointOutputValue(right, x?.field, x, y, color)
+    );
+    return xComparison !== 0
+      ? xComparison
+      : compareTableValues(
+        chartPointOutputValue(left, color?.field, x, y, color),
+        chartPointOutputValue(right, color?.field, x, y, color)
+      );
   });
   const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0
     ? dataConfig.limit
@@ -2514,20 +2524,21 @@ function prepareChartPoints(points, x, y, color, dataConfig) {
 }
 
 /**
- * @param {{ x: string, y: number, color: string | null }} point
- * @param {string} field
+ * @param {{ x: string, y: number, color: string | null, source?: Record<string, unknown> }} point
+ * @param {string | undefined} field
  * @param {Record<string, any> | null} x
  * @param {Record<string, any> | null} y
  * @param {Record<string, any> | null} color
- * @returns {string | number | null}
+ * @returns {unknown}
  */
 function chartPointOutputValue(point, field, x, y, color) {
-  if (field === x?.field || field === x?.as) return point.x;
+  if (typeof field !== 'string') return null;
+  if (field === x?.field || field === x?.as) return point.source?.[x.field] ?? point.x;
   const yOutput = typeof y?.as === 'string'
     ? y.as
     : typeof y?.aggregate === 'string' ? `${y.aggregate}-${y.field}` : y?.field;
   if (field === y?.field || field === yOutput) return point.y;
-  if (field === color?.field || field === color?.as) return point.color;
+  if (field === color?.field || field === color?.as) return point.source?.[color.field] ?? point.color;
   return null;
 }
 
