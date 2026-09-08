@@ -1024,9 +1024,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     const isRouteView = Boolean(
       routeParameter
       && isPlainObject(view)
-      && isPlainObject(view.data)
-      && typeof view.data['route-field'] === 'string'
-      && view.mark !== 'element'
+      && (
+        view.mark === 'element'
+        || typeof view.element === 'string'
+        || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')
+      )
     );
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
@@ -1688,9 +1690,11 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
     const isRouteView = Boolean(
       routeParameter
       && isPlainObject(view)
-      && isPlainObject(view.data)
-      && typeof view.data['route-field'] === 'string'
-      && view.mark !== 'element'
+      && (
+        view.mark === 'element'
+        || typeof view.element === 'string'
+        || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')
+      )
     );
     const rendered = index === 0
       || isRouteView
