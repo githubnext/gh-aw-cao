@@ -1,4 +1,4 @@
-name: Dashboard experimental views
+name: Dashboard views
 
 on:
   pull_request:
@@ -10,11 +10,13 @@ permissions:
 
 jobs:
   assess:
-    name: Assess experimental views
+    name: Assess dashboard views
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
@@ -28,24 +30,38 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('package-lock.json') }}-chromium
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Assess experimental views
+      - name: Select affected pull request views
+        id: selection
+        if: github.event_name == 'pull_request'
+        run: >-
+          node tests/e2e/dashboard-view-selection.mjs
+          "${{ github.event.pull_request.base.sha }}"
+          "${{ github.event.pull_request.head.sha }}"
+          >> "$GITHUB_OUTPUT"
+      - name: Assess dashboard views
         id: assessment
         continue-on-error: true
         env:
           DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
-          EXPERIMENTAL_VIEWS_OUTPUT_DIR: test-results/experimental-views
-        run: npm run test:e2e:experimental-views
+          DASHBOARD_VIEWS_OUTPUT_DIR: test-results/dashboard-views
+          EVENT_NAME: ${{ github.event_name }}
+          SELECTED_PAGE_IDS: ${{ steps.selection.outputs.page-ids }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            export DASHBOARD_PAGE_IDS="$SELECTED_PAGE_IDS"
+          fi
+          npm run test:e2e:dashboard-views
       - name: Upload assessment
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dashboard-experimental-views
-          path: test-results/experimental-views/summary.json
+          name: dashboard-views
+          path: test-results/dashboard-views/summary.json
           if-no-files-found: warn
           retention-days: 14
 
   comment:
-    name: Report experimental view assessment
+    name: Report dashboard view assessment
     if: >-
       always() &&
       github.event_name == 'pull_request' &&
@@ -63,7 +79,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: dashboard-experimental-views
+          name: dashboard-views
           path: assessment
       - name: Comment with assessment
         if: always()
@@ -72,7 +88,7 @@ jobs:
         with:
           script: |
             const fs = require('fs')
-            const marker = '<!-- dashboard-experimental-views -->'
+            const marker = '<!-- dashboard-views -->'
             const summaryPath = 'assessment/summary.json'
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
@@ -81,10 +97,10 @@ jobs:
             let body
 
             if ('${{ steps.download.outcome }}' !== 'success' || !fs.existsSync(summaryPath)) {
-              core.info(`Experimental view assessment summary is unavailable at ${summaryPath}.`)
+              core.info(`Dashboard view assessment summary is unavailable at ${summaryPath}.`)
               body = [
                 marker,
-                '### Experimental dashboard view assessment',
+                '### Dashboard view assessment',
                 '',
                 'The informational assessment did not produce a summary.',
                 '',
@@ -126,9 +142,11 @@ jobs:
               const passed = results.filter((result) => result.status === 'passed').length
               body = [
                 marker,
-                '### Experimental dashboard view assessment',
+                '### Dashboard view assessment',
                 '',
-                `**${passed}/${results.length}** experimental views passed the informational assessment. ` +
+                results.length === 0
+                  ? 'No dashboard views were potentially impacted by this pull request.'
+                  : `**${passed}/${results.length}** selected views passed the informational assessment. ` +
                   `The DOM budget is **${summary.maximumDomNodes}** nodes per loaded view.`,
                 summary.blocker ? '\nThe assessment was blocked before every view could be checked.' : '',
                 '',

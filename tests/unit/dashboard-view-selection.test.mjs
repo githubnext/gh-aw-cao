@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  changedDashboardPageIds,
+  selectAffectedPageIds,
+} from "../e2e/dashboard-view-selection.mjs";
+
+const dashboard = {
+  dashboard: {
+    pages: [
+      { id: "experiments", views: [{ element: "experiments-evaluation" }] },
+      { id: "cost", views: [{ element: "summary-grid" }] },
+    ],
+  },
+};
+
+test("selects the page that uses a changed component", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard,
+    changedFiles: ["dashboard/site/src/components/experiments-evaluation.js"],
+    baseRef: "unused",
+  }), ["experiments"]);
+});
+
+test("selects every page for shared renderer changes", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard,
+    changedFiles: ["dashboard/site/src/presenter.js"],
+    baseRef: "unused",
+  }), ["experiments", "cost"]);
+});
+
+test("selects no pages for unrelated changes", () => {
+  assert.deepEqual(selectAffectedPageIds({
+    dashboard,
+    changedFiles: ["docs/index.md"],
+    baseRef: "unused",
+  }), []);
+});
+
+test("selects only changed and added dashboard pages", () => {
+  assert.deepEqual(changedDashboardPageIds(
+    { dashboard: { pages: [
+      { id: "unchanged", title: "Same" },
+      { id: "changed", title: "New" },
+      { id: "added", title: "Added" },
+    ] } },
+    { dashboard: { pages: [
+      { id: "unchanged", title: "Same" },
+      { id: "changed", title: "Old" },
+    ] } },
+  ), ["changed", "added"]);
+});

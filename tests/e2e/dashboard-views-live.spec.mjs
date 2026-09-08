@@ -3,18 +3,15 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 
-const dashboardPath = resolve("dashboard/site/dashboard.json");
 const outputDirectory = resolve(
-  process.env.EXPERIMENTAL_VIEWS_OUTPUT_DIR || "test-results/experimental-views",
+  process.env.DASHBOARD_VIEWS_OUTPUT_DIR || "test-results/dashboard-views",
 );
 const maximumDomNodes = 6_000;
 
-function experimentalPages(dashboard) {
-  const pageIds = new Set(
-    (dashboard.dashboard.navigation || [])
-      .filter((section) => section.experimental === true)
-      .flatMap((section) => section.pages || []),
-  );
+function selectedPages(dashboard) {
+  const selected = process.env.DASHBOARD_PAGE_IDS;
+  if (selected === undefined) return dashboard.dashboard.pages;
+  const pageIds = new Set(selected.split(",").filter(Boolean));
   return dashboard.dashboard.pages.filter((page) => pageIds.has(page.id));
 }
 
@@ -32,26 +29,25 @@ function declaredSourceNames(value, names = new Set()) {
   return names;
 }
 
-test("each experimental dashboard view renders with live data", async ({ browser }, testInfo) => {
+test("each selected dashboard view renders with live data", async ({ browser }, testInfo) => {
   await rm(outputDirectory, { force: true, recursive: true });
   await mkdir(outputDirectory, { recursive: true });
 
   const sourceUrl = process.env.DASHBOARD_DATA_URL;
-  const dashboard = JSON.parse(await readFile(dashboardPath, "utf8"));
-  const pages = experimentalPages(dashboard);
   const summary = {
     generatedAt: new Date().toISOString(),
     sourceUrl: sourceUrl || null,
     maximumDomNodes,
-    experimentalPageIds: pages.map((page) => page.id),
+    selectionMode: process.env.DASHBOARD_PAGE_IDS === undefined ? "all" : "affected",
+    selectedPageIds: [],
     results: [],
   };
   let preview;
   let liveSources;
 
   try {
+    if (process.env.DASHBOARD_PAGE_IDS === "") return;
     if (!sourceUrl) throw new Error("DASHBOARD_DATA_URL is required.");
-    if (pages.length === 0) throw new Error("dashboard.json does not declare experimental pages.");
 
     preview = await startDashboardServer({
       downloadData: async (destination) => {
@@ -67,6 +63,14 @@ test("each experimental dashboard view renders with live data", async ({ browser
       host: "127.0.0.1",
       port: 0,
     });
+    const dashboardResponse = await fetch(`${preview.url}/dashboard.json`);
+    if (!dashboardResponse.ok) {
+      throw new Error(`Unable to load composed dashboard.json: HTTP ${dashboardResponse.status}.`);
+    }
+    const dashboard = await dashboardResponse.json();
+    const pages = selectedPages(dashboard);
+    summary.selectedPageIds = pages.map((page) => page.id);
+    if (pages.length === 0) throw new Error("No selected page IDs exist in the composed dashboard.");
 
     for (const pageDefinition of pages) {
       const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -123,7 +127,13 @@ test("each experimental dashboard view renders with live data", async ({ browser
         for (let index = 0; index < await views.count(); index += 1) {
           await views.nth(index).scrollIntoViewIfNeeded().catch(() => {});
         }
-        await expect(activePage.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 30_000 });
+        const busyViews = activePage.locator('[aria-busy="true"]');
+        const hydrationDeadline = Date.now() + 30_000;
+        while (await busyViews.count() > 0 && Date.now() < hydrationDeadline) {
+          await busyViews.first().scrollIntoViewIfNeeded().catch(() => {});
+          await page.waitForTimeout(100);
+        }
+        await expect(busyViews).toHaveCount(0);
 
         result.renderedViews = (await views.evaluateAll((elements) =>
           elements.map((element) => element.getAttribute("data-view-id")).filter(Boolean)
@@ -171,13 +181,13 @@ test("each experimental dashboard view renders with live data", async ({ browser
     );
   }
 
-  await testInfo.attach("experimental-views-summary", {
+  await testInfo.attach("dashboard-views-summary", {
     path: join(outputDirectory, "summary.json"),
     contentType: "application/json",
   });
-  expect(summary.blocker, "The experimental view assessment was blocked").toBeUndefined();
+  expect(summary.blocker, "The dashboard view assessment was blocked").toBeUndefined();
   expect(
     summary.results.filter((result) => result.status !== "passed"),
-    "Every experimental dashboard view must render within its DOM budget without crashes or missing data",
+    "Every selected dashboard view must render within its DOM budget without crashes or missing data",
   ).toEqual([]);
 });

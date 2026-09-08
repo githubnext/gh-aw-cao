@@ -5,8 +5,8 @@ const chromiumExecutable = existsSync("/usr/bin/chromium") ? "/usr/bin/chromium"
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: ["**/dashboard-experimental-live.spec.mjs"],
-  outputDir: "test-results/playwright-experimental-views",
+  testMatch: ["**/dashboard-views-live.spec.mjs"],
+  outputDir: "test-results/playwright-dashboard-views",
   timeout: 180_000,
   workers: 1,
   preserveOutput: "always",
