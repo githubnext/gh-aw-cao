@@ -1046,7 +1046,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector('.home-attention-summary')).not.toBeNull();
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
-    expect(page?.textContent).toContain('0Security findings');
+    expect(page?.textContent).toContain('—Security findings');
     expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();
   });

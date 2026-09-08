@@ -911,10 +911,10 @@ describe('UI elements', () => {
 
     expect(rendered?.classList.contains('home-attention-summary')).toBe(true);
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
-    expect(rendered?.textContent).toContain('0Failed runs');
-    expect(rendered?.textContent).toContain('0Blocked work');
-    expect(rendered?.textContent).toContain('0Awaiting review');
-    expect(rendered?.textContent).toContain('0Security findings');
+    expect(rendered?.textContent).toContain('—Failed runs');
+    expect(rendered?.textContent).toContain('—Blocked work');
+    expect(rendered?.textContent).toContain('—Awaiting review');
+    expect(rendered?.textContent).toContain('—Security findings');
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull();
   });
 
