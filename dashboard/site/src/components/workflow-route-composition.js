@@ -2,8 +2,7 @@
  * Workflow route composition registry shared by declarative route views.
  */
 
-import { selectNamedComposition } from './route-composition.js';
-import { selectConfigBody } from './route-body-composition.js';
+import { createRouteBodyConfig } from './route-body-config.js';
 import { WORKFLOW_ROUTE_BODY_VALUES } from './route-body-specification.js';
 import { WORKFLOW_ROUTE_BODY_RENDERERS } from './workflow-route-bodies.js';
 
@@ -75,17 +74,17 @@ const WORKFLOW_ROUTE_BODY_COMPOSITIONS = /** @type {Readonly<Record<WorkflowRout
   }
 });
 
-const WORKFLOW_ROUTE_BODY_CONFIG = {
-  values: /** @type {readonly WorkflowRouteBody[]} */ (WORKFLOW_ROUTE_BODY_VALUES),
-  fallback: /** @type {WorkflowRouteBody} */ ('reports')
-};
+const WORKFLOW_ROUTE_BODY_CONFIG = createRouteBodyConfig(
+  /** @type {readonly WorkflowRouteBody[]} */ (WORKFLOW_ROUTE_BODY_VALUES),
+  /** @type {WorkflowRouteBody} */ ('reports')
+);
 
 /**
  * @param {unknown} body
  * @returns {WorkflowRouteBody}
  */
 export function workflowRouteBody(body) {
-  return selectConfigBody(WORKFLOW_ROUTE_BODY_CONFIG, body);
+  return WORKFLOW_ROUTE_BODY_CONFIG.body(body);
 }
 
 /**
@@ -93,11 +92,5 @@ export function workflowRouteBody(body) {
  * @returns {WorkflowRouteBodyComposition}
  */
 export function workflowRouteComposition(body) {
-  return /** @type {WorkflowRouteBodyComposition} */ (
-    selectNamedComposition(
-      WORKFLOW_ROUTE_BODY_COMPOSITIONS,
-      workflowRouteBody(body),
-      WORKFLOW_ROUTE_BODY_CONFIG.fallback
-    )
-  );
+  return /** @type {WorkflowRouteBodyComposition} */ (WORKFLOW_ROUTE_BODY_CONFIG.composition(WORKFLOW_ROUTE_BODY_COMPOSITIONS, body));
 }
