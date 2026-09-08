@@ -3527,11 +3527,11 @@ dashboard:
     }
   });
 
-  it('DLS-VIEW-032 validates the chart table option', () => {
-    const valid = validateDashboardDocument(`language-version: "0.1.0"
+  it('DLS-VIEW-032 rejects chart data tables', () => {
+    const invalid = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
-  id: valid-chart-table
-  title: Valid Chart Table
+  id: invalid-chart-table
+  title: Invalid Chart Table
   pages:
     - id: custom-page
       kind: custom
@@ -3541,7 +3541,7 @@ dashboard:
             source: usage
           mark: chart
           chart: pie
-          table: false
+          table: true
           encoding:
             x:
               field: repository
@@ -3549,31 +3549,12 @@ dashboard:
               field: aic
               aggregate: sum
 `);
-    const invalid = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: invalid-chart-table
-  title: Invalid Chart Table
-  pages:
-    - id: custom-page
-      kind: custom
-      views:
-        - id: metric-view
-          data:
-            source: usage
-          mark: metric
-          table: hidden
-          encoding:
-            value:
-              field: aic
-              aggregate: sum
-`);
 
-    expect(valid.ok).toBe(true);
     expect(invalid.ok).toBe(false);
     if (!invalid.ok) {
       expect(invalid.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].table' })
+          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.pages[0].views[0].table' })
         ])
       );
     }

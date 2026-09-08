@@ -83,6 +83,7 @@ const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data
 const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
 const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
+const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 
 /**
  * @param {Document} document
@@ -1023,9 +1024,11 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     const isRouteView = Boolean(
       routeParameter
       && isPlainObject(view)
-      && isPlainObject(view.data)
-      && typeof view.data['route-field'] === 'string'
-      && view.mark !== 'element'
+      && (
+        view.mark === 'element'
+        || typeof view.element === 'string'
+        || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')
+      )
     );
     const render = () => {
       const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
@@ -1122,6 +1125,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
             if (detailsState[index] !== undefined) details.open = detailsState[index];
           });
           root.replaceChildren(...replacement.children);
+          enableLazyViews(root);
           dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');
         }).catch(() => {});
       };
@@ -1671,11 +1675,40 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
   const renderedViews = await Promise.all(views.map(async (view, index) => {
     const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : '';
     const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3';
-    const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
-      ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
-      : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
     const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full';
     const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential';
+    const render = async () => {
+      const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
+        ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
+        : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
+      if (disclosure === 'essential') {
+        rendered.classList.add('custom-view');
+        rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
+        rendered.setAttribute('data-view-layout', layout);
+      }
+      rendered.setAttribute('data-disclosure', disclosure);
+      return rendered;
+    };
+    const isRouteView = Boolean(
+      routeParameter
+      && isPlainObject(view)
+      && (
+        view.mark === 'element'
+        || typeof view.element === 'string'
+        || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')
+      )
+    );
+    const rendered = index === 0
+      || isRouteView
+      || (isPlainObject(view) && (view.locked === true || view.mark === 'callout'))
+      || TOP_LEVEL_VIEW_PAGE_IDS.has(page.id)
+      ? await render()
+      : renderLazyView({
+        label: getViewTitle(view, index),
+        headingLevel: headingTag,
+        minHeight: layout === 'half' || layout === 'third' ? 180 : 280,
+        render
+      });
     rendered.classList.add('custom-view');
     rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
     rendered.setAttribute('data-view-layout', layout);

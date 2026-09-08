@@ -1,0 +1,145 @@
+language-version: "0.1.0"
+dashboard:
+  id: triage-review-readiness
+  title: Issue triage review readiness
+  defaults:
+    scope:
+      repositories:
+        - githubnext/gh-aw-cao
+      workflows:
+        - .github/workflows/issue-triage-review.yml
+    time:
+      range: 30d
+  units:
+    percent:
+      name: Percent
+      symbol: "%"
+      significant: 0.1
+  pages:
+    - id: triage-review-readiness
+      kind: custom
+      title: Issue triage review readiness
+      description: Shows whether the issue-triage review workflow activates on new issues, produces accepted triage outcomes, and attains mature triage-readiness value.
+      sections:
+        - id: triage-summary
+          title: Triage summary
+          description: Executive summary of recent issue-triage review execution, outcomes, and attainment for this workflow.
+          layout: full
+          views:
+            - triage-outcome-disposition
+            - triage-activation-trend
+            - triage-ready-issues
+            - triage-attainment-trend
+      views:
+        - id: triage-outcome-disposition
+          title: Outcome disposition
+          description: Current distribution of safe-output outcome states for issue-triage review runs in the selected horizon.
+          data:
+            source: outcomes
+            filters:
+              outcome-category: issue
+          mark: chart
+          chart: pie
+          table: false
+          layout: full
+          disclosure: essential
+          encoding:
+            x:
+              field: outcome-state
+              type: ordinal
+              title: Outcome state
+            y:
+              field: safe-output
+              type: quantitative
+              aggregate: count
+              title: Outcomes
+        - id: triage-activation-trend
+          title: Activation trend
+          description: Daily workflow runs show whether the issue-triage review workflow is activating on issue opportunities.
+          data:
+            source: runs
+          mark: chart
+          chart: line
+          table: false
+          layout: half
+          disclosure: essential
+          encoding:
+            x:
+              field: started-at
+              type: temporal
+              time-unit: day
+              title: Started
+            y:
+              field: run
+              type: quantitative
+              aggregate: distinct-count
+              title: Runs
+        - id: triage-ready-issues
+          title: Ready-to-triage issue queue
+          description: Accepted issue outputs ordered by latest observation so an operator can inspect the current ready queue.
+          data:
+            source: outcomes
+            filters:
+              outcome-category: issue
+              outcome-state: accepted
+            order-by:
+              - field: observed-at
+                direction: desc
+              - field: outcome-number
+                direction: asc
+            limit: 20
+          mark: table
+          controls: interactive
+          layout: full
+          disclosure: essential
+          empty-message: No accepted ready-to-triage issue outcomes match the selected horizon.
+          encoding:
+            href:
+              field: issue-link
+              type: nominal
+            columns:
+              - field: outcome-title
+                type: nominal
+                title: Issue
+                display: outcome-link
+              - field: outcome-number
+                type: quantitative
+                title: Number
+              - field: outcome-state
+                type: ordinal
+                title: State
+                display: status
+              - field: evidence-strength
+                type: ordinal
+                title: Evidence
+                display: status
+              - field: run-conclusion
+                type: ordinal
+                title: Run conclusion
+                display: status
+              - field: observed-at
+                type: temporal
+                title: Observed
+        - id: triage-attainment-trend
+          title: Triage-readiness attainment
+          description: Operational-value observations show direct triage-readiness attainment for issue opportunities over time; mature evidence remains the intended interpretation contract.
+          data:
+            source: operational-values
+            filters:
+              operational-value-definition: triage-readiness-attainment
+          mark: chart
+          chart: line
+          table: false
+          layout: half
+          disclosure: essential
+          encoding:
+            x:
+              field: observed-at
+              type: temporal
+              time-unit: day
+              title: Observed
+            y:
+              field: operational-value
+              type: quantitative
+              aggregate: mean
+              title: Mean attainment

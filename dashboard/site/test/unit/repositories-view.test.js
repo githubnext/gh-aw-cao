@@ -154,7 +154,6 @@ describe('repositories view', () => {
       data: { source: 'usage' },
       mark: 'chart',
       chart: 'pie',
-      table: false,
       encoding: {
         x: { field: 'repository' },
         y: { field: 'aic', aggregate: 'sum', as: 'total-aic', unit: 'aic' },

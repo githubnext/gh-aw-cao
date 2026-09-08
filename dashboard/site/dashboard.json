@@ -99,7 +99,6 @@
               },
               "mark": "chart",
               "chart": "swimlane",
-              "table": false,
               "layout": "full",
               "encoding": {
                 "x": {
@@ -199,7 +198,6 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": false,
             "layout": "full",
             "encoding": {
               "x": {
@@ -349,7 +347,6 @@
             },
             "mark": "chart",
             "chart": "scatter",
-            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "empty-message": "No quota observations are available for the selected time range.",
@@ -397,7 +394,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -591,7 +587,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -1101,7 +1096,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": true,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -1266,7 +1260,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": true,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -1475,7 +1468,6 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": true,
             "layout": "full",
             "disclosure": "supplemental",
             "encoding": {
@@ -1684,7 +1676,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": true,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -1710,7 +1701,6 @@
             },
             "mark": "chart",
             "chart": "histogram",
-            "table": false,
             "layout": "full",
             "disclosure": "essential",
             "encoding": {
@@ -2142,7 +2132,6 @@
               },
               "mark": "chart",
               "chart": "pie",
-              "table": false,
               "encoding": {
                 "x": {
                   "field": "repository",
@@ -2578,6 +2567,7 @@
               "route-field": "workflow-route"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "controls": "static",
             "empty-message": "No runs have been observed for this workflow.",
             "encoding": {
@@ -3144,7 +3134,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "encoding": {
               "x": {
                 "field": "status-detail",
@@ -3177,6 +3166,7 @@
               }
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "controls": "interactive",
             "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
             "encoding": {
@@ -3795,6 +3785,7 @@
               "source": "runtime-episodes"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "layout": "full",
             "empty-message": "No orchestrator runs were observed in the current run window.",
             "encoding": {
@@ -3918,7 +3909,6 @@
             },
             "mark": "chart",
             "chart": "histogram",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -3945,7 +3935,6 @@
             },
             "mark": "chart",
             "chart": "heatmap",
-            "table": false,
             "layout": "full",
             "encoding": {
               "x": {
@@ -3976,7 +3965,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -4007,7 +3995,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -4072,7 +4059,6 @@
               },
               "mark": "chart",
               "chart": "line",
-              "table": false,
               "layout": "full",
               "encoding": {
                 "x": {
@@ -4179,7 +4165,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "full",
             "encoding": {
               "x": {
@@ -4212,7 +4197,6 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": false,
             "layout": "full",
             "encoding": {
               "x": {
@@ -4243,7 +4227,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "full",
             "encoding": {
               "x": {
@@ -4812,7 +4795,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -4837,7 +4819,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -4874,6 +4855,7 @@
               "source": "package-dispatch-state"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "empty-message": "No packages were observed in the current run window.",
             "encoding": {
               "columns": [
@@ -5854,6 +5836,7 @@
               "source": "outcomes"
             },
             "mark": "table",
+            "disclosure": "supplemental",
             "controls": "interactive",
             "empty-message": "No durable outputs were retained.",
             "layout": "full",
@@ -7009,7 +6992,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "encoding": {
               "x": {
                 "field": "gh-aw-version-label",
@@ -7089,7 +7071,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -7114,7 +7095,6 @@
             },
             "mark": "chart",
             "chart": "line",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -7150,7 +7130,6 @@
             },
             "mark": "chart",
             "chart": "bar",
-            "table": false,
             "layout": "half",
             "encoding": {
               "x": {
@@ -7287,7 +7266,6 @@
             },
             "mark": "chart",
             "chart": "pie",
-            "table": false,
             "layout": "full",
             "encoding": {
               "x": {
