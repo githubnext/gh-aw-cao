@@ -227,6 +227,26 @@ describe('notification story normalization', () => {
     expect(events).toEqual(snapshot);
   });
 
+  it('does not merge matching local object IDs from different non-repository scopes', () => {
+    const stories = normalizeNotificationStories([{
+      'event-id': 'production-deploy',
+      title: 'Production deployment',
+      scope: 'production',
+      objectType: 'deployment',
+      objectId: '42'
+    }, {
+      'event-id': 'staging-deploy',
+      title: 'Staging deployment',
+      scope: 'staging',
+      objectType: 'deployment',
+      objectId: '42'
+    }]);
+
+    expect(stories).toHaveLength(2);
+    expect(stories.map((story) => story.title).sort()).toEqual(['Production deployment', 'Staging deployment']);
+    expect(new Set(stories.map((story) => story.id)).size).toBe(2);
+  });
+
   it('canonicalizes numeric IDs and keeps security alert namespaces separate', () => {
     const stories = normalizeNotificationStories([{
       id: 1,

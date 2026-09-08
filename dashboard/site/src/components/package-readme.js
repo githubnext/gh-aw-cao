@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { findLink } from './link-content.js';
+import { externalAnchorAttrs, findLink } from './link-content.js';
 
 /** @param {{ packageId: string, packageName: string, workflows: Array<Record<string, unknown>> }} args */
 export function renderPackageReadme({ packageId, packageName, workflows }) {
@@ -49,7 +49,7 @@ export function renderPackageReadme({ packageId, packageName, workflows }) {
 
 /** @param {string} href @param {string} label @param {string} icon */
 function resourceLink(href, label, icon) {
-  return h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, octicon(icon), h('span', null, label));
+  return h('a', externalAnchorAttrs(href, label), octicon(icon), h('span', null, label));
 }
 
 /** @param {string} markdown @param {Record<string, unknown>} source */
@@ -127,7 +127,7 @@ function renderInline(text, source) {
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (!link) return document.createTextNode(part);
     const href = readmeHref(link[2], source);
-    return href ? h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, link[1]) : document.createTextNode(link[1]);
+    return href ? h('a', externalAnchorAttrs(href, link[1]), link[1]) : document.createTextNode(link[1]);
   });
 }
 

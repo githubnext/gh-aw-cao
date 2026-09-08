@@ -75,7 +75,7 @@
         "id": "operations",
         "kind": "built-in",
         "page": "overview",
-        "title": "Operations",
+        "title": "Operational health",
         "icon": "server",
         "class-name": "overview-page",
         "description": "Current operational attention across runtime, controls, value, episodes, cost, and evidence.",
@@ -7311,16 +7311,17 @@
       {
         "id": "agents",
         "kind": "custom",
-        "title": "Agents",
+        "title": "Operations",
+        "navigation-label": "Operations",
         "icon": "copilot",
         "class-name": "dashboard-next-agents-page",
-        "description": "Browse agent capabilities and runtime health in a Marketplace-style catalog.",
+        "description": "Browse operation packages, standalone workflows, and their runtime health.",
         "views": [
           {
             "id": "agents-marketplace",
             "locked": true,
-            "title": "Agents",
-            "description": "Agent name, icon, description, permissions, runtime, and freshness.",
+            "title": "Operations",
+            "description": "Operation package or standalone workflow name, description, permissions, runtime, and freshness.",
             "data": {
               "sources": [
                 "agent-assignments",

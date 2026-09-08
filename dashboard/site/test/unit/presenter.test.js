@@ -841,7 +841,7 @@ describe('presenter built-in and custom pages', () => {
     expect(labels).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
-      'Home', 'Work', 'Agents', 'Insights'
+      'Home', 'Work', 'Operations', 'Insights'
     ]);
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
@@ -869,9 +869,9 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Home',
       'Work',
-      'Agents',
-      'Insights',
       'Operations',
+      'Insights',
+      'Operational health',
       'Runtime',
       'Performance',
       'Security',
@@ -1182,9 +1182,9 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Home',
       'Work',
-      'Agents',
-      'Insights',
       'Operations',
+      'Insights',
+      'Operational health',
       'Runtime',
       'Performance',
       'Security',
@@ -3220,7 +3220,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
       'Drill-down into the canonical Data Health coverage and collection evidence.'
     );
-    expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Operations');
+    expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Operational health');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Coverage diagnostics');
     expect(rendered.querySelector('[data-nav-page-id="operations"]')?.getAttribute('aria-current')).toBe('page');
