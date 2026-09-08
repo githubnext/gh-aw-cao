@@ -1680,59 +1680,34 @@
         "description": "Diagnose MCP reliability, response payload sizes, and observed server versions across agentic workflow runs.",
         "views": [
           {
-            "id": "mcp-status-distribution",
-            "title": "MCP success, failure, and missing rate",
-            "description": "Observed MCP server health by workflow run distinguishes successful activity, reported failures, and missing telemetry.",
+            "id": "mcp-tool-inventory",
+            "title": "MCP tools",
+            "description": "Individual MCP tool calls, response payload sizes, and available server versions remain attributable to workflow runs.",
             "data": {
-              "source": "mcp-servers"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "disclosure": "essential",
-            "encoding": {
-              "x": {
-                "field": "mcp-status",
-                "type": "ordinal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "mcp-server-observation",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Server observations"
-              }
-            }
-          },
-          {
-            "id": "mcp-server-inventory",
-            "disclosure-label": "Observed MCP servers",
-            "disclosure": "supplemental",
-            "description": "Server identity, available version metadata, call volume, failures, and response payload totals remain attributable to workflow runs.",
-            "data": {
-              "source": "mcp-servers",
+              "source": "mcp-calls",
               "order-by": [
                 {
-                  "field": "failed-calls",
-                  "direction": "desc"
-                },
-                {
-                  "field": "max-response-bytes",
+                  "field": "observed-at",
                   "direction": "desc"
                 }
-              ],
-              "limit": 25
+              ]
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No MCP server activity was observed.",
-            "layout": "full",
+            "lazy-list": true,
+            "empty-message": "No MCP tool activity was observed.",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
                   "field": "mcp-server",
                   "type": "nominal",
                   "title": "MCP server"
+                },
+                {
+                  "field": "mcp-tool",
+                  "type": "nominal",
+                  "title": "MCP tool"
                 },
                 {
                   "field": "mcp-server-version",
@@ -1756,24 +1731,9 @@
                   "display": "status"
                 },
                 {
-                  "field": "tool-calls",
-                  "type": "quantitative",
-                  "title": "Calls"
-                },
-                {
-                  "field": "failed-calls",
-                  "type": "quantitative",
-                  "title": "Failures"
-                },
-                {
-                  "field": "total-response-bytes",
+                  "field": "response-bytes",
                   "type": "quantitative",
                   "title": "Response bytes"
-                },
-                {
-                  "field": "max-response-bytes",
-                  "type": "quantitative",
-                  "title": "Largest response"
                 },
                 {
                   "field": "repository",
