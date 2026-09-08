@@ -156,6 +156,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/experiments-view-shell.js
   - source: site/src/components/histogram.js
     destination: .github/aw/dashboard/site/src/components/histogram.js
+  - source: site/src/components/home-attention-summary.js
+    destination: .github/aw/dashboard/site/src/components/home-attention-summary.js
   - source: site/src/components/link-content.js
     destination: .github/aw/dashboard/site/src/components/link-content.js
   - source: site/src/components/lazy-infinite-list.js
