@@ -1,6 +1,7 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
+import { deriveDataHealthSources } from './data-health.js';
 
 /** @type {Worker | null} */
 let worker = null;
@@ -42,6 +43,19 @@ export function processScatterPoints(points, limit) {
   return processRequest(
     { operation: 'cluster-scatter-points', data: points, limit },
     () => clusterScatterPoints(points, limit)
+  );
+}
+
+/**
+ * Computes detailed data-health diagnostics in a Web Worker when supported.
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} context
+ * @returns {Record<string, import('./presenter.js').LogicalSourceInput>|Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
+ */
+export function processDataHealthSources(sources, context) {
+  return processRequest(
+    { operation: 'derive-data-health', sources, context },
+    () => deriveDataHealthSources(sources, context)
   );
 }
 

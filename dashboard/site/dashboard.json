@@ -9,7 +9,7 @@
       {
         "id": "partial-data-rate-limit",
         "title": "Dashboard data is partial",
-        "description": "Data Health reports a collection gap caused by a GitHub API rate limit. Open Data health for the affected source and evidence horizon.",
+        "description": "Data Health reports a collection gap caused by a GitHub API rate limit.",
         "icon": "alert",
         "navigation-page": "data-health",
         "visible-when": {
@@ -6138,13 +6138,23 @@
         "class-name": "data-health-page",
         "sections": [
           {
+            "id": "loaded-files",
+            "title": "Loaded files",
+            "description": "Files loaded for this dashboard snapshot and their serialized sizes.",
+            "layout": "full",
+            "views": [
+              "data-health-files"
+            ]
+          },
+          {
             "id": "dashboard-confidence",
             "title": "Dashboard confidence",
             "description": "Overall confidence, the primary reason, affected dashboard areas, and the next investigation step.",
             "layout": "full",
             "views": [
               "data-health-confidence",
-              "data-health-summary"
+              "data-health-summary",
+              "data-health-activity"
             ]
           },
           {
@@ -6195,10 +6205,20 @@
           {
             "id": "source-diagnostics",
             "title": "Source diagnostics",
-            "description": "Secondary cache-shape diagnostics; retained rows do not imply complete live-system coverage.",
+            "description": "Detailed cache population and field-shape diagnostics; retained rows do not imply complete live-system coverage.",
             "layout": "full",
             "views": [
-              "data-health-sources"
+              "data-health-sources",
+              "data-health-fields"
+            ]
+          },
+          {
+            "id": "data-shape-preview",
+            "title": "Data shape preview",
+            "description": "Recursive schema inference for each cached source, sampled from loaded rows with cycles detected and broken.",
+            "layout": "full",
+            "views": [
+              "data-health-schema"
             ]
           },
           {
@@ -6212,6 +6232,42 @@
           }
         ],
         "views": [
+          {
+            "id": "data-health-files",
+            "title": "Loaded files",
+            "data": {
+              "source": "data-health-files"
+            },
+            "mark": "table",
+            "controls": "static",
+            "empty-message": "No dashboard files were loaded.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "file",
+                  "type": "nominal",
+                  "title": "File"
+                },
+                {
+                  "field": "size",
+                  "type": "quantitative",
+                  "title": "Size (bytes)"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          },
           {
             "id": "data-health-confidence",
             "title": "Overall confidence",
@@ -6244,6 +6300,7 @@
           {
             "id": "data-health-summary",
             "title": "Data health summary",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-summary"
             },
@@ -6304,11 +6361,51 @@
                   "title": "Compatibility gaps"
                 },
                 {
+                  "field": "sources",
+                  "type": "quantitative",
+                  "title": "Sources"
+                },
+                {
+                  "field": "available-sources",
+                  "type": "quantitative",
+                  "title": "Available"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "fields",
+                  "type": "quantitative",
+                  "title": "Fields"
+                },
+                {
                   "field": "next-action",
                   "type": "nominal",
                   "title": "Next action"
                 }
               ]
+            }
+          },
+          {
+            "id": "data-health-activity",
+            "title": "CAO Activity",
+            "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "third",
+            "encoding": {
+              "value": {
+                "field": "collector-state"
+              },
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              }
             }
           },
           {
@@ -6612,6 +6709,90 @@
                   "type": "nominal",
                   "title": "Freshness",
                   "display": "status"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-fields",
+            "disclosure": "supplemental",
+            "title": "Field shape",
+            "description": "Observed field types and population across every cached source.",
+            "data": {
+              "source": "data-health-fields"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No cached fields are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "field",
+                  "type": "nominal",
+                  "title": "Field"
+                },
+                {
+                  "field": "types",
+                  "type": "nominal",
+                  "title": "Observed types"
+                },
+                {
+                  "field": "rows",
+                  "type": "quantitative",
+                  "title": "Rows"
+                },
+                {
+                  "field": "populated",
+                  "type": "quantitative",
+                  "title": "Populated"
+                },
+                {
+                  "field": "empty",
+                  "type": "quantitative",
+                  "title": "Empty"
+                },
+                {
+                  "field": "coverage",
+                  "type": "nominal",
+                  "title": "Coverage"
+                },
+                {
+                  "field": "shape",
+                  "type": "nominal",
+                  "title": "Shape"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-schema",
+            "title": "Data shape preview",
+            "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-schema"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No cached sources are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "schema",
+                  "type": "nominal",
+                  "title": "Inferred shape"
                 }
               ]
             },

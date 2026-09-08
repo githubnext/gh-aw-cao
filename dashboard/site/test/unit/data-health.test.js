@@ -92,6 +92,30 @@ describe('data health confidence', () => {
 });
 
 describe('coverage and collection provenance', () => {
+  it('summarizes available data and reports per-field shape statistics', () => {
+    const sources = completeSources();
+    sources.runs.rows = [
+      { organization: 'acme', repository: 'app', workflow: 'agent', run: '42', attempts: 1 },
+      { organization: 'acme', repository: 'app', workflow: 'agent', run: '43', attempts: '2', conclusion: null }
+    ];
+    const derived = deriveDataHealthSources(sources);
+    const summary = derived['data-health-summary'].rows[0];
+    const attempts = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'attempts');
+    const conclusion = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'conclusion');
+    const runsFile = derived['data-health-files'].rows.find((item) => item.source === 'runs');
+
+    expect(summary).toMatchObject({
+      sources: Object.keys(sources).length,
+      'available-sources': Object.keys(sources).length
+    });
+    expect(summary.rows).toBeGreaterThan(0);
+    expect(summary.fields).toBe(derived['data-health-fields'].rows.length);
+    expect(attempts).toMatchObject({ types: 'number, string', rows: 2, populated: 2, empty: 0, coverage: '100%', shape: 'mixed' });
+    expect(conclusion).toMatchObject({ types: 'Unknown', rows: 2, populated: 0, empty: 2, coverage: '0%', shape: 'unknown' });
+    expect(runsFile).toMatchObject({ file: 'runs.json', rows: 2, status: 'available' });
+    expect(runsFile?.size).toBeGreaterThan(0);
+  });
+
   it('calculates authoritative expected-versus-observed coverage', () => {
     const sources = completeSources();
     sources.workflows.metadata['coverage-expected'] = 100;
@@ -194,5 +218,77 @@ describe('producer compatibility and reconciliation', () => {
     sources.runs.metadata.completeness = 'unknown';
     row = deriveDataHealthSources(sources)['data-health-reconciliation'].rows.find((item) => item.relationship === 'Runs → usage');
     expect(row).toMatchObject({ expected: 'Unknown', coverage: 'Unknown', state: 'unknown' });
+  });
+});
+
+describe('data shape preview', () => {
+  it('infers a recursive schema merged across sampled rows, marking optional and mixed-type fields', () => {
+    const sources = completeSources();
+    sources.runs.rows = [
+      { organization: 'acme', repository: 'app', run: '42', attempts: 1, labels: ['flaky'], meta: { retries: 1 } },
+      { organization: 'acme', repository: 'app', run: '43', attempts: '2', labels: [], extra: true }
+    ];
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
+    expect(schema.source).toBe('runs');
+    expect(schema.schema).toContain('attempts: number | string');
+    expect(schema.schema).toContain('labels: string[]');
+    expect(schema.schema).toContain('extra?: boolean');
+    expect(schema.schema).toContain('meta?: { retries: number }');
+  });
+
+  it('detects and breaks reference cycles instead of recursing without bound', () => {
+    const sources = completeSources();
+    const cyclicRow = /** @type {Record<string, any>} */ ({ organization: 'acme', repository: 'app' });
+    cyclicRow.self = cyclicRow;
+    sources.runs.rows = [cyclicRow];
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
+    expect(schema.schema).toContain('self: (circular)');
+  });
+
+  it('does not treat shared non-cyclic objects as circular in file diagnostics', () => {
+    const sources = completeSources();
+    const shared = { retries: 1 };
+    sources.runs.rows = [{ shared }, { shared }];
+    const expectedSize = new TextEncoder().encode(JSON.stringify(sources.runs)).length;
+    const file = deriveDataHealthSources(sources)['data-health-files'].rows.find((item) => item.source === 'runs');
+    expect(file?.size).toBe(expectedSize);
+  });
+
+  it('reports an empty-object shape when a source has no cached rows', () => {
+    const sources = completeSources();
+    sources.runs.rows = [];
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
+    expect(schema.schema).toBe('{}');
+  });
+});
+
+describe('CAO Activity debugging link', () => {
+  it('links the data health summary to the CAO Activity workflow when repository context is known', () => {
+    const sources = completeSources();
+    const summary = deriveDataHealthSources(sources, {
+      githubUrlBase: 'https://github.com',
+      dashboardRepository: 'acme/app'
+    })['data-health-summary'].rows[0];
+    expect(summary['external-link']).toEqual({
+      href: 'https://github.com/acme/app/actions/workflows/activity.yml',
+      label: 'CAO Activity'
+    });
+  });
+
+  it('omits the activity link when repository context is unavailable', () => {
+    const sources = completeSources();
+    const summary = deriveDataHealthSources(sources)['data-health-summary'].rows[0];
+    expect(summary['external-link']).toBeNull();
+  });
+
+  it('normalizes a trailing slash in the GitHub URL base', () => {
+    const summary = deriveDataHealthSources(completeSources(), {
+      githubUrlBase: 'https://github.com/',
+      dashboardRepository: 'acme/app'
+    })['data-health-summary'].rows[0];
+    expect(summary['external-link']).toEqual({
+      href: 'https://github.com/acme/app/actions/workflows/activity.yml',
+      label: 'CAO Activity'
+    });
   });
 });

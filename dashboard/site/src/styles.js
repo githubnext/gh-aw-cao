@@ -268,8 +268,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .site-callout-icon { display: grid; place-items: center; padding-top: 2px; color: var(--attention); }
 .site-callout-content { min-width: 0; display: grid; gap: 2px; }
 .site-callout-content > span { color: var(--muted); }
-.site-callout-link { min-width: 0; color: inherit; text-decoration: none; }
-.site-callout-link:hover strong { text-decoration: underline; }
+.site-callout-link { display: inline-block; width: fit-content; color: var(--accent); font-weight: 600; text-decoration: none; }
+.site-callout-link:hover { text-decoration: underline; }
 .site-callout-dismiss { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .site-callout-dismiss:hover { background: var(--neutral-muted); color: var(--fg); }
 .dashboard-horizon { max-width: none; flex: none; display: flex; align-items: center; padding-right: 6px; border-right: 1px solid var(--border); color: var(--muted); font-size: .75rem; font-weight: 600; }

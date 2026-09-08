@@ -44,11 +44,15 @@ export function renderSiteCallout(callout) {
     'span',
     { className: 'site-callout-content' },
     h('strong', { id: headingId }, callout.title),
-    h('span', { id: descriptionId }, callout.description)
+    h('span', { id: descriptionId }, callout.description),
+    callout['navigation-page']
+      ? h(
+          'a',
+          { href: `#page-${callout['navigation-page']}`, className: 'site-callout-link' },
+          `View ${callout['navigation-page'].replaceAll('-', ' ')}`
+        )
+      : null
   );
-  const linkedContent = callout['navigation-page']
-    ? h('a', { href: `#page-${callout['navigation-page']}`, className: 'site-callout-link' }, content)
-    : content;
   const element = h(
     'aside',
     {
@@ -59,7 +63,7 @@ export function renderSiteCallout(callout) {
       'data-site-callout': callout.id
     },
     renderIconSpan('site-callout-icon', typeof callout.icon === 'string' ? callout.icon : 'info'),
-    linkedContent,
+    content,
     renderCloseButton({
       className: 'site-callout-dismiss',
       label: `Dismiss ${callout.title}`,

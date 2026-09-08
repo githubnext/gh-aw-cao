@@ -1,9 +1,10 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
+import { deriveDataHealthSources } from './data-health.js';
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, context?: unknown }} request
  * @returns {unknown}
  */
 export function processDataRequest(request) {
@@ -22,6 +23,18 @@ export function processDataRequest(request) {
       throw new TypeError('Scatter clustering requests require a positive integer limit.');
     }
     return clusterScatterPoints(request.data, limit);
+  }
+  if (request?.operation === 'derive-data-health') {
+    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
+      throw new TypeError('Data health requests require a sources object.');
+    }
+    if (request.context !== undefined && (!request.context || typeof request.context !== 'object' || Array.isArray(request.context))) {
+      throw new TypeError('Data health requests require an object context.');
+    }
+    return deriveDataHealthSources(
+      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
+      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
+    );
   }
   if (!Array.isArray(request?.data) || !Array.isArray(request?.operators)) {
     throw new TypeError('Data worker requests require data and operators arrays.');
