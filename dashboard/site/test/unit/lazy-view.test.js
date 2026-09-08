@@ -23,12 +23,13 @@ describe('lazy dashboard views', () => {
 
   it('does not hydrate a closed supplemental view until it is opened', async () => {
     const observe = vi.fn();
+    const unobserve = vi.fn();
     Object.defineProperty(window, 'IntersectionObserver', {
       configurable: true,
       value: class {
         constructor() {}
         observe = observe;
-        unobserve() {}
+        unobserve = unobserve;
         disconnect() {}
       }
     });
@@ -42,10 +43,11 @@ describe('lazy dashboard views', () => {
     await Promise.resolve();
 
     expect(render).not.toHaveBeenCalled();
-    expect(observe).not.toHaveBeenCalled();
+    expect(observe).toHaveBeenCalledWith(lazyView);
     disclosure.open = true;
     disclosure.dispatchEvent(new Event('toggle'));
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+    expect(unobserve).toHaveBeenCalledWith(lazyView);
     expect(disclosure.querySelector('article')).not.toBeNull();
   });
 
