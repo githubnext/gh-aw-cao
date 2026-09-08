@@ -960,6 +960,19 @@
         ],
         "views": [
           {
+            "id": "cost-summary",
+            "title": "Usage summary",
+            "description": "Answers how much measured AI Credit usage is retained for the current decision window.",
+            "data": {
+              "sources": [
+                "cost-summary"
+              ]
+            },
+            "mark": "element",
+            "element": "summary-grid",
+            "layout": "full"
+          },
+          {
             "id": "cost-usage-trend",
             "title": "AI Credit usage trend",
             "description": "Daily AI Credit allocation shows whether measured agent consumption is rising or falling.",
@@ -1011,19 +1024,6 @@
                 "unit": "aic"
               }
             }
-          },
-          {
-            "id": "cost-summary",
-            "title": "Usage summary",
-            "description": "Answers how much measured AI Credit usage is retained for the current decision window.",
-            "data": {
-              "sources": [
-                "cost-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "summary-grid",
-            "layout": "full"
           },
           {
             "id": "cost-signals",

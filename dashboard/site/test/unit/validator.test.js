@@ -995,7 +995,7 @@ dashboard:
     if (!rejected.ok) {
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E010',
-        path: '$.dashboard.pages[3].views[1].encoding.color'
+        path: '$.dashboard.pages[3].views[2].encoding.color'
       }));
     }
   });
