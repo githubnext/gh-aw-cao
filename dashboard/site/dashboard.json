@@ -3350,8 +3350,9 @@
               "title": "Workflow inventory",
               "layout": "full",
               "views": [
-                "workflows-run-health",
-                "workflow-topology-summary",
+                "workflow-package-count",
+                "workflow-packaged-count",
+                "workflow-standalone-count",
                 "packaged-workflows",
                 "standalone-workflows"
               ],
@@ -3371,6 +3372,7 @@
               "title": "Evidence sources",
               "layout": "full",
               "views": [
+                "workflows-workflows-source",
                 "workflows-runs-source",
                 "workflows-outcomes-source",
                 "workflows-usage-source",
@@ -3381,45 +3383,60 @@
           ],
           "views": [
             {
-              "id": "workflows-run-health",
-              "title": "Workflow run health trend",
-              "description": "Daily conclusions show whether authored workflows are operating reliably.",
+              "id": "workflow-package-count",
+              "title": "Packages",
+              "description": "Declared workflow relationships describe expected structure; they do not assert that a dispatch occurred.",
+              "intent": "Show how many distinct operation packages declare workflows.",
               "data": {
-                "source": "runs"
+                "source": "packaged-workflows"
               },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
+              "mark": "metric",
+              "layout": "third",
               "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
+                "value": {
+                  "field": "package-name",
+                  "type": "nominal",
+                  "aggregate": "distinct-count"
                 }
               }
             },
             {
-              "id": "workflow-topology-summary",
-              "title": "Definition summary",
-              "description": "Declared workflow relationships describe expected structure; they do not assert that a dispatch occurred.",
+              "id": "workflow-packaged-count",
+              "title": "Package workflows",
+              "description": "Orchestrators and workers declared by centrally managed operation packages.",
+              "intent": "Show how many workflows are declared by operation packages.",
               "data": {
-                "sources": [
-                  "workflow-topology-summary",
-                  "workflows"
-                ]
+                "source": "packaged-workflows"
               },
-              "mark": "element",
-              "element": "summary-grid",
-              "disclosure": "supplemental"
+              "mark": "metric",
+              "layout": "third",
+              "encoding": {
+                "value": {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "aggregate": "count"
+                }
+              }
+            },
+            {
+              "id": "workflow-standalone-count",
+              "disclosure": "supplemental",
+              "disclosure-label": "Standalone workflow count",
+              "title": "Standalone workflows",
+              "description": "Standalone workflows run in their owning repositories and are not part of a central operation package.",
+              "intent": "Show how many workflows are repository-owned rather than package-declared.",
+              "data": {
+                "source": "standalone-workflows"
+              },
+              "mark": "metric",
+              "layout": "third",
+              "encoding": {
+                "value": {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "aggregate": "count"
+                }
+              }
             },
             {
               "id": "packaged-workflows",
@@ -3567,6 +3584,36 @@
                   "field": "workflow-link",
                   "type": "nominal"
                 }
+              }
+            },
+            {
+              "id": "workflows-workflows-source",
+              "disclosure": "supplemental",
+              "data": {
+                "source": "workflows"
+              },
+              "mark": "table",
+              "encoding": {
+                "href": {
+                  "field": "workflow-link",
+                  "type": "nominal"
+                },
+                "columns": [
+                  {
+                    "field": "workflow",
+                    "type": "nominal"
+                  },
+                  {
+                    "field": "rollout-mode",
+                    "type": "nominal",
+                    "display": "mode"
+                  },
+                  {
+                    "field": "workflow-active",
+                    "type": "nominal",
+                    "display": "active-state"
+                  }
+                ]
               }
             },
             {
