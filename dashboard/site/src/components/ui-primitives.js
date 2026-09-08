@@ -599,6 +599,28 @@ export function createCopyControl(options) {
 }
 
 /**
+ * Observes a "load more" boundary element and invokes `onLoadMore` once it
+ * intersects the viewport (or its configured root). Shared by the lazy
+ * infinite list and table region components, which both otherwise duplicate
+ * an `entries.some((entry) => entry.isIntersecting)` observer callback.
+ * Returns `null` (observing nothing) when no `IntersectionObserver`
+ * constructor is available, e.g. in a non-browser environment.
+ * @param {typeof IntersectionObserver | undefined} observerCtor
+ * @param {Element} boundaryElement
+ * @param {() => void} onLoadMore
+ * @param {IntersectionObserverInit} [observerOptions]
+ * @returns {IntersectionObserver | null}
+ */
+export function observeLoadMoreBoundary(observerCtor, boundaryElement, onLoadMore, observerOptions) {
+  if (typeof observerCtor !== 'function') return null;
+  const observer = new observerCtor((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+  }, observerOptions);
+  observer.observe(boundaryElement);
+  return observer;
+}
+
+/**
  * Checks whether a value is a URL string using the https protocol with no embedded
  * credentials, the safety bar every dashboard link and href renderer applies before
  * trusting externally-sourced link data.
