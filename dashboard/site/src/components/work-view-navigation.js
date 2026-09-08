@@ -3,7 +3,8 @@ import { renderIconSpan } from './ui-primitives.js';
 
 /**
  * @typedef {{
- *   key: string,
+ *   body?: string,
+ *   key?: string,
  *   title: string,
  *   icon: string,
  *   href: string
@@ -12,10 +13,10 @@ import { renderIconSpan } from './ui-primitives.js';
 
 /**
  * @param {WorkNavigationItem[]} items
- * @param {string} activeKey
+ * @param {string} activeBody
  * @returns {HTMLElement}
  */
-export function renderWorkViewNavigation(items, activeKey) {
+export function renderWorkViewNavigation(items, activeBody) {
   return h(
     'nav',
     { className: 'work-project-tabs', 'aria-label': 'Work views' },
@@ -23,7 +24,7 @@ export function renderWorkViewNavigation(items, activeKey) {
       'a',
       {
         href: item.href,
-        'aria-current': item.key === activeKey ? 'page' : undefined
+        'aria-current': (item.body ?? item.key) === activeBody ? 'page' : undefined
       },
       renderIconSpan('work-project-tab-icon', item.icon, { ariaHidden: true }),
       item.title

@@ -5,7 +5,7 @@ import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
 import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
-import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
+import { defaultWorkViewPageConfigs, workViewPageConfigForBody, workViewPageConfigs } from '../../src/components/work-view-page-config.js';
 
 const item = {
   name: 'Dependabot release train',
@@ -79,25 +79,27 @@ describe('work project view primitives', () => {
   });
 
   it('derives reusable work route navigation from declarative body selection', () => {
-    expect(workRoutePageConfigForBody('board')).toMatchObject({
-      key: 'board',
+    expect(workViewPageConfigForBody('board')).toMatchObject({
+      body: 'board',
       pageId: 'work',
       href: '#page-work',
       title: 'Board'
     });
-    expect(workRoutePageConfigForBody('tasks')).toMatchObject({
-      key: 'tasks',
+    expect(workViewPageConfigForBody('tasks')).toMatchObject({
+      body: 'tasks',
       pageId: 'work-tasks',
       href: '#page-work-tasks',
       title: 'Tasks'
     });
-    expect(workRoutePageConfigForBody('roadmap')).toMatchObject({
-      key: 'roadmap',
+    expect(workViewPageConfigForBody('roadmap')).toMatchObject({
+      body: 'roadmap',
       pageId: 'work-roadmap',
       href: '#page-work-roadmap',
       title: 'Roadmap'
     });
-    const rendered = renderWorkViewNavigation(workRoutePageConfigs(), 'tasks');
+    expect(defaultWorkViewPageConfigs().map((item) => item.body)).toEqual(['board', 'tasks', 'roadmap']);
+    expect(workViewPageConfigs({ sections: ['tasks', 'roadmap'] }).map((item) => item.pageId)).toEqual(['work-tasks', 'work-roadmap', 'work']);
+    const rendered = renderWorkViewNavigation(defaultWorkViewPageConfigs(), 'tasks');
     expect([...rendered.querySelectorAll('a')].map((link) => ({
       href: link.getAttribute('href'),
       current: link.getAttribute('aria-current'),
@@ -163,6 +165,7 @@ describe('work project view primitives', () => {
 
     expect(rendered.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBeNull();
+    expect(rendered.querySelector('[href="#page-work"]')?.getAttribute('aria-current')).toBeNull();
     expect(rendered.querySelector('.work-tasks')).not.toBeNull();
     expect(rendered.querySelector('.work-roadmap')).toBeNull();
   });
