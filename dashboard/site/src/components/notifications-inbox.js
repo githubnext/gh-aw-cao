@@ -283,10 +283,11 @@ function requiresHuman(row) {
  * @param {() => void} render
  */
 function renderResponsibilityGroups(rows, state, selected, bulkDone, render) {
-  return [
+  const groups = /** @type {Array<[string, Record<string, unknown>[]]>} */ ([
     ['Needs you', rows.filter(requiresHuman)],
     ['Watching', rows.filter((row) => !requiresHuman(row))]
-  ].flatMap(([label, entries]) => entries.length > 0
+  ]);
+  return groups.flatMap(([label, entries]) => entries.length > 0
     ? [
         h('h3', { className: 'notifications-group-heading' }, label),
         h('ul', { className: 'notifications-group', 'aria-label': `${label} attention items` },

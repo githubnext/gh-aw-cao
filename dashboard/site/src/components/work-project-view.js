@@ -32,7 +32,6 @@ export function renderWorkProjectView(context) {
   const sections = workViewComposition(context.elementConfig);
   const activeSection = sections[0].key;
   const viewBody = h('div', { className: 'work-project-body' });
-  let reapplyFilters = () => renderItems(items);
   /** @type {Record<'renderBoard'|'renderTasks'|'renderRoadmap', WorkSectionRenderer>} */
   const renderers = {
     renderBoard,
@@ -65,7 +64,6 @@ export function renderWorkProjectView(context) {
       .filter((element) => element instanceof HTMLElement));
   };
   const filterBar = renderWorkFilterBar(items, renderItems);
-  reapplyFilters = filterBar.apply;
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
@@ -565,7 +563,7 @@ function normalizeWorkItem(row) {
   const lifecycleState = text(row['lifecycle-state']);
   const state = normalizeState(lifecycleState);
   const inferred = text(row['reason-evidence-class']) === 'inferred';
-  const pointInTime = inferred || (!stopped && state !== 'in-progress');
+  const pointInTime = inferred || (!stopped && state !== 'active');
   const stopTime = pointInTime ? startTime : validTime(stopped) ?? Math.max(startTime, Date.now());
   const owner = text(row.owner) || text(row.organization) || 'Unassigned';
   const workType = text(row['work-type']) || text(row['workflow-role']) || 'unknown';
@@ -587,7 +585,7 @@ function normalizeWorkItem(row) {
     started,
     timeLabel: inferred ? 'Observed' : 'Started',
     startedLabel: started ? formatUtcDateTime(started) : inferred ? 'Observation unavailable' : 'Start unavailable',
-    stoppedLabel: stopped ? formatUtcDateTime(stopped) : state === 'in-progress' ? 'Still running' : 'End unavailable',
+    stoppedLabel: stopped ? formatUtcDateTime(stopped) : state === 'active' ? 'Still running' : 'End unavailable',
     startTime,
     stopTime,
     pointInTime,
