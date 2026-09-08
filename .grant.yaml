@@ -1,0 +1,11 @@
+version: 1
+description: Minimal grant policy for repository-scoped compiler and security validation.
+grant:
+  allowed-owners:
+    - githubnext
+  allowed-repos:
+    - githubnext/gh-aw-cao
+  permissions:
+    metadata: read
+    contents: read
+    actions: read
