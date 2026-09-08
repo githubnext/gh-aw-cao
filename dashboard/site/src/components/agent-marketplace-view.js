@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderIconSpan, formatShortDate } from './ui-primitives.js';
+import { renderIconSpan, formatShortDate, renderFilterSelect } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -27,10 +27,8 @@ export function renderAgentMarketplaceView(context) {
   const search = /** @type {HTMLInputElement} */ (h('input', {
     type: 'search', placeholder: 'Search operations and workflows', 'aria-label': 'Search operations and workflows', spellcheck: 'false'
   }));
-  const owner = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter operations by owner' },
-    h('option', { value: '' }, 'All owners'),
-    ...[...new Set(agents.map((agent) => agent.owner))].sort().map((name) => h('option', { value: name }, name))
-  ));
+  const owner = renderFilterSelect('Filter operations by owner', 'All owners',
+    agents.map((agent) => agent.owner));
   const status = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter operations by status' },
     h('option', { value: 'all' }, 'All statuses'),
     h('option', { value: 'smells' }, `Smells (${agents.filter((agent) => agentSmellReasons(agent).length > 0).length})`),
