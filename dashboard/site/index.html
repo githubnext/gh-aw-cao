@@ -154,11 +154,6 @@
           dashboard.classList.add("dashboard-loading");
           dashboard.setAttribute("aria-busy", "true");
 
-          const status = document.createElement("p");
-          status.className = "source-loading-status";
-          status.setAttribute("role", "status");
-          status.textContent = "Loading dashboard data…";
-
           const skeleton = document.createElement("div");
           skeleton.className = "dashboard-loading-skeleton";
           skeleton.setAttribute("aria-hidden", "true");
@@ -167,7 +162,7 @@
             block.className = className;
             skeleton.append(block);
           }
-          dashboard.querySelector(".report-body")?.prepend(status, skeleton);
+          dashboard.querySelector(".report-body")?.prepend(skeleton);
         } else if (state === "cached") {
           dashboard.classList.add("dashboard-refreshing");
           dashboard.setAttribute("aria-busy", "true");
