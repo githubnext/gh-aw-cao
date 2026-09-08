@@ -20,6 +20,7 @@ describe('notifications inbox large data', () => {
   afterEach(() => {
     document.body.replaceChildren();
     vi.unstubAllGlobals();
+    window.localStorage.clear();
   });
 
   it('keeps initial notification DOM proportional to the viewport', () => {
@@ -95,5 +96,82 @@ describe('notifications inbox large data', () => {
 
     const refreshedBulkDone = rendered.querySelector('[aria-label="Mark selected as done"]');
     expect(refreshedBulkDone?.hasAttribute('disabled')).toBe(false);
+  });
+});
+
+/** @param {Record<string, unknown>} overrides */
+function attentionRow(overrides = {}) {
+  return {
+    'attention-signal-id': 'signal-1',
+    'age-seconds': 60,
+    'consequence-tier': 'high',
+    'expected-actor': 'operator',
+    'signal-type': 'runtime-failure',
+    objective: 'Investigate failure',
+    reason: 'Run failed',
+    scope: 'githubnext/repository',
+    ...overrides
+  };
+}
+
+describe('catch up queue', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+    window.localStorage.clear();
+  });
+
+  it('renders a queue of unprocessed stories with Done and Later actions', () => {
+    const rendered = renderNotificationsInbox([attentionRow()]);
+    document.body.append(rendered);
+
+    const stories = rendered.querySelectorAll('.home-catchup-story');
+    expect(stories).toHaveLength(1);
+    expect(rendered.querySelector('[aria-label^="Mark as done"]')).not.toBeNull();
+    expect(rendered.querySelector('[aria-label^="Save for later"]')).not.toBeNull();
+  });
+
+  it('removes a story from the queue once marked done and it does not return after a refresh', () => {
+    const rows = [attentionRow()];
+    const rendered = renderNotificationsInbox(rows);
+    document.body.append(rendered);
+
+    const doneButton = rendered.querySelector('[aria-label^="Mark as done"]');
+    expect(doneButton instanceof HTMLButtonElement).toBe(true);
+    /** @type {HTMLButtonElement} */ (doneButton).click();
+
+    expect(rendered.querySelectorAll('.home-catchup-story')).toHaveLength(0);
+
+    // Simulate a refresh: re-render from the same source rows and confirm the
+    // done story stays out of the queue because its state was persisted.
+    document.body.replaceChildren();
+    const refreshed = renderNotificationsInbox(rows);
+    document.body.append(refreshed);
+    expect(refreshed.querySelectorAll('.home-catchup-story')).toHaveLength(0);
+  });
+
+  it('moves a story out of the active queue when saved for later without deleting it permanently', () => {
+    const rows = [attentionRow()];
+    const rendered = renderNotificationsInbox(rows);
+    document.body.append(rendered);
+
+    const laterButton = rendered.querySelector('[aria-label^="Save for later"]');
+    expect(laterButton instanceof HTMLButtonElement).toBe(true);
+    /** @type {HTMLButtonElement} */ (laterButton).click();
+
+    expect(rendered.querySelectorAll('.home-catchup-story')).toHaveLength(0);
+
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.later).toHaveLength(1);
+    expect(stored.done).toEqual([]);
+  });
+
+  it('does not mark a story done or later just by rendering it (opening does not silently process it)', () => {
+    const rendered = renderNotificationsInbox([attentionRow()]);
+    document.body.append(rendered);
+
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.done ?? []).toEqual([]);
+    expect(stored.later ?? []).toEqual([]);
+    expect(rendered.querySelectorAll('.home-catchup-story')).toHaveLength(1);
   });
 });

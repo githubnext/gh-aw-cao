@@ -1,13 +1,14 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatClockDuration } from '../view-formatters.js';
-import { normalizeNotificationStories } from '../notification-stories.js';
+import { buildCatchUpQueue, normalizeNotificationStories } from '../notification-stories.js';
 import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
+const CATCH_UP_QUEUE_STORAGE_KEY = 'central-agentic-ops.dashboard.catch-up-queue';
 const DAY_MILLISECONDS = 86_400_000;
 const ESTIMATED_NOTIFICATION_HEIGHT = 62;
 const MINIMUM_NOTIFICATION_BATCH = 12;
@@ -43,6 +44,32 @@ function writeState(state) {
     }));
   } catch {
     // Controls remain usable for this page load when storage is unavailable.
+  }
+}
+
+/** @returns {{ queue: string[], size: number, done: Set<string>, later: Set<string> }} */
+function readCatchUpQueueState() {
+  try {
+    const stored = JSON.parse(globalThis.window?.localStorage.getItem(CATCH_UP_QUEUE_STORAGE_KEY) ?? '{}');
+    return {
+      queue: Array.isArray(stored.queue) ? stored.queue : [],
+      size: Number(stored.size) || 0,
+      done: new Set(Array.isArray(stored.done) ? stored.done : []),
+      later: new Set(Array.isArray(stored.later) ? stored.later : [])
+    };
+  } catch {
+    return { queue: [], size: 0, done: new Set(), later: new Set() };
+  }
+}
+
+/** @param {{ queue: string[], size: number, done: Set<string>, later: Set<string> }} state */
+function writeCatchUpQueueState(state) {
+  try {
+    globalThis.window?.localStorage.setItem(CATCH_UP_QUEUE_STORAGE_KEY, JSON.stringify({
+      queue: state.queue, size: state.size, done: [...state.done], later: [...state.later]
+    }));
+  } catch {
+    // The Catch Up queue remains usable for this page load when storage is unavailable.
   }
 }
 
@@ -311,7 +338,7 @@ function renderOperationalPulse(attentionRows, sources) {
     const start = range.value === 'since' && lastCatchUp
       ? lastCatchUp
       : end - (Number.parseInt(range.value, 10) || 7) * DAY_MILLISECONDS;
-    content.replaceChildren(renderCatchUpContent(attentionRows, { runs, workItems, outcomes, operationalValues, evidenceRecords }, start, end));
+    content.replaceChildren(renderCatchUpContent(attentionRows, { runs, workItems, outcomes, operationalValues, evidenceRecords }, start, end, () => render()));
   };
   range.addEventListener('change', render);
   markCaughtUp.addEventListener('click', () => {
@@ -331,8 +358,9 @@ function renderOperationalPulse(attentionRows, sources) {
  * @param {{ runs: Record<string, unknown>[], workItems: Record<string, unknown>[], outcomes: Record<string, unknown>[], operationalValues: Record<string, unknown>[], evidenceRecords: Record<string, unknown>[] }} sources
  * @param {number} start
  * @param {number} end
+ * @param {() => void} redraw
  */
-function renderCatchUpContent(attentionRows, sources, start, end) {
+function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
   const currentOutcomes = within(sources.outcomes, start, end);
   const previousOutcomes = within(sources.outcomes, start - (end - start), start);
   const delivered = currentOutcomes.filter((row) => row['outcome-state'] === 'lifecycle-close').length;
@@ -347,6 +375,20 @@ function renderCatchUpContent(attentionRows, sources, start, end) {
   const value = valueSeries(sources.operationalValues, start, end);
   const valueDelta = value.length > 1 ? value[value.length - 1] - value[0] : null;
   const stories = catchUpStories(attentionRows, currentOutcomes, sources.operationalValues, start, end);
+  const queueState = readCatchUpQueueState();
+  const { queue, size } = buildCatchUpQueue(stories, queueState);
+  queueState.queue = queue;
+  queueState.size = size;
+  writeCatchUpQueueState(queueState);
+  const storiesById = new Map(stories.map((story) => [story.id, story]));
+  const queuedStories = /** @type {typeof stories} */ (queue.map((id) => storiesById.get(id)).filter((story) => story !== undefined));
+  /** @param {string} storyId @param {'done' | 'later'} bucket */
+  const processStory = (storyId, bucket) => {
+    queueState[bucket].add(storyId);
+    queueState.queue = queueState.queue.filter((id) => id !== storyId);
+    writeCatchUpQueueState(queueState);
+    redraw();
+  };
   return h('div', null,
     h('dl', { className: 'home-catchup-metrics', 'aria-label': 'Catch-up summary' },
       catchUpMetric(String(delivered), 'outcomes delivered', 'success'),
@@ -361,10 +403,12 @@ function renderCatchUpContent(attentionRows, sources, start, end) {
     h('section', { className: 'home-catchup-stories', 'aria-labelledby': 'home-catchup-stories-title' },
       h('header', null,
         h('h3', { id: 'home-catchup-stories-title' }, 'What changed'),
-        h('span', null, `${stories.length} highlight${stories.length === 1 ? '' : 's'}`)),
-      stories.length > 0
-        ? h('div', { className: 'home-story-rail' }, ...stories.map(renderCatchUpStory))
-        : h('p', { className: 'home-catchup-quiet' }, 'No meaningful state changes were observed in this interval.')));
+        h('span', null, size > 0 ? `${queuedStories.length} of ${size} remaining` : `${queuedStories.length} highlight${queuedStories.length === 1 ? '' : 's'}`)),
+      queuedStories.length > 0
+        ? h('div', { className: 'home-story-rail' }, ...queuedStories.slice(0, 4).map((story) => renderCatchUpStory(story, processStory)))
+        : h('p', { className: 'home-catchup-quiet' }, size > 0
+          ? "You're all caught up."
+          : 'No meaningful state changes were observed in this interval.')));
 }
 
 /** @param {Record<string, unknown>[]} rows @param {number} start @param {number} end */
@@ -527,18 +571,33 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
     objectId: String(latestValue.workflow || latestValue['observation-id'] || '')
   }] : [];
   return normalizeNotificationStories([...attention, ...outcomeStories, ...valueStory])
-    .filter((story) => Number.isFinite(story.timestamp))
-    .slice(0, 4);
+    .filter((story) => Number.isFinite(story.timestamp));
 }
 
-/** @param {{ classification: string, sourceType: string, title: string, detail: string, timestamp: number, deepLink: string }} story */
-function renderCatchUpStory(story) {
-  const body = [
+/**
+ * @param {{ id: string, classification: string, sourceType: string, title: string, detail: string, timestamp: number, deepLink: string }} story
+ * @param {(storyId: string, bucket: 'done' | 'later') => void} processStory
+ */
+function renderCatchUpStory(story, processStory) {
+  /** @param {string} label @param {string} icon @param {'done' | 'later'} bucket */
+  const action = (label, icon, bucket) => h('button', {
+    type: 'button', className: 'notifications-icon-button', title: label, 'aria-label': `${label} ${story.title}`,
+    onClick: /** @param {MouseEvent} event */ (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      processStory(story.id, bucket);
+    }
+  }, octicon(icon));
+  const link = [
     renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType })),
     h('span', { className: 'home-story-copy' }, h('strong', null, story.title), h('small', null, story.detail)),
     octicon('chevron-right')
   ];
-  return h(story.deepLink ? 'a' : 'article', { className: 'home-catchup-story', ...(story.deepLink ? { href: story.deepLink } : {}) }, ...body);
+  return h('article', { className: 'home-catchup-story' },
+    h(story.deepLink ? 'a' : 'span', { className: 'home-story-link', ...(story.deepLink ? { href: story.deepLink } : {}) }, ...link),
+    h('span', { className: 'home-story-actions' },
+      action('Save for later', 'clock', 'later'),
+      action('Mark as done', 'check-circle', 'done')));
 }
 
 /** @param {Record<string, unknown>} row */
