@@ -4219,8 +4219,8 @@
         "views": [
           {
             "id": "detection-state-distribution",
-            "title": "Detection health",
-            "description": "Usable security verdicts remain distinct from degraded inspections, detector failures, skipped runs, and unavailable evidence.",
+            "title": "Types of threats detected",
+            "description": "Prompt injection, secret leak, and malicious patch verdicts are shown alongside degraded inspections, detector failures, skipped runs, and unavailable evidence.",
             "data": {
               "source": "detection-observations"
             },
@@ -4230,9 +4230,9 @@
             "disclosure": "essential",
             "encoding": {
               "x": {
-                "field": "detection-state-label",
+                "field": "detection-signal",
                 "type": "ordinal",
-                "title": "Detection state"
+                "title": "Threat type"
               },
               "y": {
                 "field": "run",
@@ -4241,9 +4241,9 @@
                 "title": "Runs"
               },
               "color": {
-                "field": "detection-state-label",
+                "field": "detection-signal",
                 "type": "ordinal",
-                "title": "Detection state"
+                "title": "Threat type"
               }
             }
           },
