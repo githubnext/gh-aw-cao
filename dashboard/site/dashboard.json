@@ -4119,7 +4119,7 @@
             "layout": "full",
             "encoding": {
               "x": {
-                "field": "outcome-category",
+                "field": "safe-output-kind",
                 "type": "nominal",
                 "title": "Type"
               },
@@ -4130,7 +4130,7 @@
                 "title": "Safe outputs"
               },
               "color": {
-                "field": "outcome-category",
+                "field": "safe-output-kind",
                 "type": "nominal",
                 "title": "Type"
               }

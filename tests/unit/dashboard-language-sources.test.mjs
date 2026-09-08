@@ -375,6 +375,9 @@ test("dashboard source bridge derives work-oriented sources from run, admission,
   assert.equal(reviewer["safe-output-kind"], "pull-request");
   assert.equal(reviewer.reason, "Produced outcome awaits review or user consent");
   assert.equal(reviewer["waiting-on"], "reviewer decision");
+  const outcomes = new Map(sources.outcomes.rows.map((row) => [row["safe-output"], row]));
+  assert.equal(outcomes.get("worker-outcome")["safe-output-kind"], "create-issue");
+  assert.equal(outcomes.get("reviewer-outcome")["safe-output-kind"], "create-pull-request");
 
   assert.equal(sources["attention-signals"].metadata.availability, "available");
   assert.deepEqual(sources["attention-signals"].rows.map((row) => row["work-item-id"]), [dependabotKey, reviewerKey]);

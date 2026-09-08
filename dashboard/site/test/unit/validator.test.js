@@ -414,9 +414,9 @@ describe('dashboard document validation', () => {
       title: 'Safe-output types',
       data: { source: 'outcomes' },
       encoding: {
-        x: { field: 'outcome-category' },
+        x: { field: 'safe-output-kind' },
         y: { field: 'safe-output', aggregate: 'count' },
-        color: { field: 'outcome-category' }
+        color: { field: 'safe-output-kind' }
       }
     });
     expect(safeOutputs.views[3].encoding.columns).toEqual(expect.arrayContaining([
