@@ -1570,6 +1570,10 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
           path: workflowPath,
           name: "Local agent",
           state: "active",
+          ghAwMetadata: {
+            agent_id: "copilot",
+            agent_model: "copilot/gpt-5.4",
+          },
           runHealth: { runRecords: [] },
         }],
       },
@@ -1588,6 +1592,10 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
     });
 
     assert.equal(sources.workflows.rows[0]["gh-aw-version"], "v0.88.7");
+    assert.deepEqual(sources.workflows.rows[0]["gh-aw-metadata"], {
+      agent_id: "copilot",
+      agent_model: "copilot/gpt-5.4",
+    });
   });
 
   assert.deepEqual(sources.workflows.rows.map((row) => ({
