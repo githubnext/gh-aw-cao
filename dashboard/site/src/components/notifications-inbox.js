@@ -159,7 +159,9 @@ export function renderNotificationsInbox(rows, sources = {}) {
     type: 'button', className: 'notifications-catch-up-button'
   }, octicon('zap'), h('span', null, 'Catch up'), h('small', null, 'Experimental')));
   const catchUpHost = h('div', { className: 'notifications-catch-up-host', hidden: true });
+  /** @type {HTMLElement} */
   let inbox;
+  /** @type {HTMLElement} */
   let main;
   syncSelection = () => {
     for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
@@ -225,7 +227,8 @@ export function renderNotificationsInbox(rows, sources = {}) {
     catchUpHost.hidden = false;
     main.hidden = true;
     inbox.classList.add('is-catching-up');
-    catchUpHost.querySelector('.notification-catch-up-card')?.focus();
+    const card = catchUpHost.querySelector('.notification-catch-up-card');
+    if (card instanceof HTMLElement) card.focus();
   });
 
   main = h('div', { className: 'notifications-main' },
@@ -276,7 +279,8 @@ function renderNotificationCatchUp(rows, state, onStateChange, onClose) {
       }
       index += 1;
       render();
-      content.querySelector('.notification-catch-up-card')?.focus();
+      const nextCard = content.querySelector('.notification-catch-up-card');
+      if (nextCard instanceof HTMLElement) nextCard.focus();
     }));
   };
   render();
