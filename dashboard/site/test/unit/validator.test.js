@@ -420,11 +420,12 @@ describe('dashboard document validation', () => {
     expect(safeOutputs.views[0]).toMatchObject({
       mark: 'chart',
       chart: 'pie',
-      data: { source: 'safe-output-performance' },
+      title: 'Safe-output types',
+      data: { source: 'outcomes' },
       encoding: {
-        x: { field: 'safe-output-label' },
-        y: { field: 'safe-output-count', aggregate: 'sum' },
-        color: { field: 'safe-output-status' }
+        x: { field: 'safe-output-kind' },
+        y: { field: 'safe-output', aggregate: 'count' },
+        color: { field: 'safe-output-kind' }
       }
     });
     expect(safeOutputs.views[3].encoding.columns).toEqual(expect.arrayContaining([

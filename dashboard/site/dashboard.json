@@ -4109,30 +4109,30 @@
         "views": [
           {
             "id": "safe-output-distribution",
-            "title": "Safe-output disposition",
-            "description": "Distribution of delivered outputs and explicit no-op or incomplete execution signals.",
+            "title": "Safe-output types",
+            "description": "Distribution of retained safe outputs by output type.",
             "data": {
-              "source": "safe-output-performance"
+              "source": "outcomes"
             },
             "mark": "chart",
             "chart": "pie",
             "layout": "full",
             "encoding": {
               "x": {
-                "field": "safe-output-label",
+                "field": "safe-output-kind",
                 "type": "nominal",
-                "title": "Disposition"
+                "title": "Type"
               },
               "y": {
-                "field": "safe-output-count",
+                "field": "safe-output",
                 "type": "quantitative",
-                "aggregate": "sum",
+                "aggregate": "count",
                 "title": "Safe outputs"
               },
               "color": {
-                "field": "safe-output-status",
+                "field": "safe-output-kind",
                 "type": "nominal",
-                "title": "Status"
+                "title": "Type"
               }
             }
           },
