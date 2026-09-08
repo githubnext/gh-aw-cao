@@ -5,6 +5,7 @@ import { buildCatchUpQueue, normalizeNotificationStories } from '../notification
 import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
+import { formatRoundedPercent } from './count-formatters.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -477,7 +478,7 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw, showNo
   const running = activeWork || activeRuns;
   const currentEvidence = within(sources.evidenceRecords, start, end);
   const acceptedEvidence = currentEvidence.filter((row) => row['verification-state'] === 'accepted').length;
-  const evidencePercent = currentEvidence.length > 0 ? Math.round((acceptedEvidence / currentEvidence.length) * 100) : null;
+  const evidencePercent = currentEvidence.length > 0 ? acceptedEvidence / currentEvidence.length : null;
   const value = valueSeries(sources.operationalValues, start, end);
   const valueDelta = value.length > 1 ? value[value.length - 1] - value[0] : null;
   const stories = catchUpStories(attentionRows, currentOutcomes, sources.operationalValues, start, end);
@@ -501,7 +502,7 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw, showNo
       catchUpMetric(String(delivered), 'outcomes delivered', 'success'),
       catchUpMetric(String(pending), 'awaiting review', pending > 0 ? 'attention' : 'neutral'),
       catchUpMetric(String(running), 'running now', running > 0 ? 'accent' : 'neutral'),
-      catchUpMetric(evidencePercent === null ? '—' : `${evidencePercent}%`, 'evidence accepted', 'neutral')),
+      catchUpMetric(formatRoundedPercent(evidencePercent), 'evidence accepted', 'neutral')),
     h('div', { className: 'home-catchup-charts' },
       renderOutcomeMomentum(currentOutcomes, start, end, delivered, previousDelivered),
       h('div', { className: 'home-catchup-side-charts' },
@@ -710,7 +711,7 @@ function operationalValueStoryEvents(operationalValues) {
       : {}),
     classification: 'operational-value',
     title: String(row.workflow || 'Operational value measured'),
-    detail: `Matured operational value reached ${Math.round(Number(row['operational-value']) * 100)}%.`,
+    detail: `Matured operational value reached ${formatRoundedPercent(Number(row['operational-value']))}.`,
     timestamp: observedAt(row),
     deepLink: findLink(row, 'evidence-link')?.href || '',
     objectType: 'workflow',
