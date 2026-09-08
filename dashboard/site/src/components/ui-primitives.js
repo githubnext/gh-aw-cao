@@ -322,6 +322,21 @@ export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareF
 }
 
 /**
+ * Renders the shared `type="search"` filter/search input pattern used by the
+ * agent marketplace, work-project, and notifications-inbox toolbars, which
+ * all pair an identical placeholder and `aria-label` with a disabled
+ * spellcheck.
+ * @param {string} label
+ * @param {string} [value]
+ * @returns {HTMLInputElement}
+ */
+export function renderSearchInput(label, value = '') {
+  return /** @type {HTMLInputElement} */ (h('input', {
+    type: 'search', value, placeholder: label, 'aria-label': label, spellcheck: 'false'
+  }));
+}
+
+/**
  * Renders the shared `<details><summary>label</summary>...body</details>`
  * disclosure pattern used by evidence menus, raw-policy panels, and
  * value-report evidence sections to hide secondary content behind a toggle.

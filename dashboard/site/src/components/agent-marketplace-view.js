@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderIconSpan, formatShortDate, renderFilterSelect } from './ui-primitives.js';
+import { renderIconSpan, formatShortDate, renderFilterSelect, renderSearchInput } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 
 const LONG_RUNNING_SECONDS = 30 * 60;
@@ -24,9 +24,7 @@ export function renderAgentMarketplaceView(context) {
     rowsFor(context.sources, 'agent-smells')
   );
   const grid = h('div', { className: 'agent-marketplace-grid', role: 'list' });
-  const search = /** @type {HTMLInputElement} */ (h('input', {
-    type: 'search', placeholder: 'Search operations and workflows', 'aria-label': 'Search operations and workflows', spellcheck: 'false'
-  }));
+  const search = renderSearchInput('Search operations and workflows');
   const owner = renderFilterSelect('Filter operations by owner', 'All owners',
     agents.map((agent) => agent.owner));
   const status = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter operations by status' },

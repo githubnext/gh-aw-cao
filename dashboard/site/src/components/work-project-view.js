@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { titleCase } from './count-formatters.js';
-import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan } from './ui-primitives.js';
+import { formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -82,12 +82,7 @@ export function renderWorkProjectView(context) {
  * @returns {{ element: HTMLElement, apply: () => void }}
  */
 function renderWorkFilterBar(items, onChange) {
-  const search = /** @type {HTMLInputElement} */ (h('input', {
-    type: 'search',
-    placeholder: 'Filter work items',
-    'aria-label': 'Filter work items',
-    spellcheck: 'false'
-  }));
+  const search = renderSearchInput('Filter work items');
   const state = renderFacetSelect('State', items.map((item) => item.stateLabel));
   const repository = renderFacetSelect('Repository', items.map((item) => item.repository));
   const owner = renderFacetSelect('Workflow owner', items.map((item) => item.owner));
