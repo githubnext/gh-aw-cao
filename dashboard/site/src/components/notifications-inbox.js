@@ -571,8 +571,7 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
     objectId: String(latestValue.workflow || latestValue['observation-id'] || '')
   }] : [];
   return normalizeNotificationStories([...attention, ...outcomeStories, ...valueStory])
-    .filter((story) => Number.isFinite(story.timestamp))
-    .slice(0, 4);
+    .filter((story) => Number.isFinite(story.timestamp));
 }
 
 /**
@@ -589,15 +588,16 @@ function renderCatchUpStory(story, processStory) {
       processStory(story.id, bucket);
     }
   }, octicon(icon));
-  const body = [
+  const link = [
     renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType })),
     h('span', { className: 'home-story-copy' }, h('strong', null, story.title), h('small', null, story.detail)),
-    h('span', { className: 'home-story-actions' },
-      action('Save for later', 'clock', 'later'),
-      action('Mark as done', 'check-circle', 'done')),
     octicon('chevron-right')
   ];
-  return h(story.deepLink ? 'a' : 'article', { className: 'home-catchup-story', ...(story.deepLink ? { href: story.deepLink } : {}) }, ...body);
+  return h('article', { className: 'home-catchup-story' },
+    h(story.deepLink ? 'a' : 'span', { className: 'home-story-link', ...(story.deepLink ? { href: story.deepLink } : {}) }, ...link),
+    h('span', { className: 'home-story-actions' },
+      action('Save for later', 'clock', 'later'),
+      action('Mark as done', 'check-circle', 'done')));
 }
 
 /** @param {Record<string, unknown>} row */

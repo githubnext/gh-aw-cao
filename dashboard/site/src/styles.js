@@ -1197,12 +1197,13 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .home-catchup-stories h3 { margin: 0; font-size: .875rem; }
 .home-catchup-stories > header span { color: var(--muted); font-size: .6875rem; }
 .home-story-rail { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border-muted); }
-.home-catchup-story { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) 14px; align-items: center; gap: 10px; padding: 12px 4px; color: var(--fg); text-decoration: none; }
+.home-catchup-story { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 12px 4px; color: var(--fg); }
 .home-catchup-story:nth-child(odd) { padding-right: 16px; }
 .home-catchup-story:nth-child(even) { padding-left: 16px; border-left: 1px solid var(--border-muted); }
 .home-catchup-story:nth-child(n + 3) { border-top: 1px solid var(--border-muted); }
 .home-catchup-story:hover .home-story-copy strong { color: var(--accent); }
-.home-catchup-story > .octicon { width: 12px; height: 12px; color: var(--muted); }
+.home-catchup-story .octicon { width: 12px; height: 12px; color: var(--muted); }
+.home-story-link { min-width: 0; flex: 1 1 auto; display: grid; grid-template-columns: auto minmax(0, 1fr) 14px; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
 .home-story-copy { min-width: 0; display: grid; }
 .home-story-copy strong, .home-story-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-story-copy strong { font-size: .75rem; }
