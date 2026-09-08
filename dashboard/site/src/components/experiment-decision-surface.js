@@ -13,9 +13,9 @@ import {
   metricSummaries,
   normalizeEffect,
   numericObservation,
+  renderExperimentEmptyState,
   safeExperimentLink
 } from './experiment-view-primitives.js';
-import { octicon } from '../octicons.js';
 
 /** @typedef {Record<string, any>} Row */
 /** @typedef {Row} ExperimentSummary */
@@ -410,13 +410,11 @@ export function syncExperimentDecisionDeepLink(filters, selectedExperiment, page
 export function renderExperimentDecisionEmptyState(sources) {
   const experimentSource = sources.experiments;
   const unavailable = experimentSource?.metadata?.availability === 'unavailable';
-  return h(
-    'div',
-    { className: 'experiment-empty', role: 'status' },
-    octicon(unavailable ? 'alert' : 'beaker'),
-    h('strong', null, unavailable ? 'Experiment source unavailable' : 'No experiments configured'),
-    h('p', null, unavailable
+  return renderExperimentEmptyState(
+    unavailable ? 'alert' : 'beaker',
+    unavailable ? 'Experiment source unavailable' : 'No experiments configured',
+    unavailable
       ? 'Experiment definitions could not be accessed. No decision can be calculated.'
-      : 'Configure an experiment and retain assignments before evaluating candidate outcomes.')
+      : 'Configure an experiment and retain assignments before evaluating candidate outcomes.'
   );
 }

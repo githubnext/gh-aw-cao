@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { octicon } from '../octicons.js';
 import { isSafeHttpsUrl, formatShortDate } from './ui-primitives.js';
 
 const UNKNOWN = '—';
@@ -28,6 +29,25 @@ export function renderExperimentSection({ id, title, description, className, emp
     { className: `experiment-section${className ? ` ${className}` : ''}`, 'aria-labelledby': id },
     renderExperimentSectionHeading(id, title, description),
     emptyState ?? renderContent()
+  );
+}
+
+/**
+ * Renders the shared `experiment-empty` status panel used by the
+ * experiments decision surface and its "no matches" fallback: an optional
+ * icon, a bold headline, and an optional descriptive paragraph.
+ * @param {string | null} icon
+ * @param {string} headline
+ * @param {string} [description]
+ * @returns {HTMLElement}
+ */
+export function renderExperimentEmptyState(icon, headline, description) {
+  return h(
+    'div',
+    { className: 'experiment-empty', role: 'status' },
+    icon ? octicon(icon) : null,
+    h('strong', null, headline),
+    description ? h('p', null, description) : null
   );
 }
 
