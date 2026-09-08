@@ -72,7 +72,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.view-description')).toBeNull();
   });
 
-  it('defaults pie, line, heatmap, histogram, and swimlane data tables to hidden while honoring explicit table visibility', () => {
+  it('renders charts without duplicate data tables', () => {
     const context = /** @type {Parameters<typeof renderDataView>[1]} */ ({
       pageId: 'repositories',
       title: 'AI Credit usage by AW repository',
@@ -104,7 +104,7 @@ describe('data view renderer', () => {
 
     expect(rendered?.querySelector('.pie-chart-widget')).not.toBeNull();
     expect(rendered?.querySelector('.chart-legend-pie')).not.toBeNull();
-    expect(rendered?.querySelector('.custom-chart-table')).toBeNull();
+    expect(rendered?.querySelector('.table-region')).toBeNull();
 
     const line = renderDataView('chart', {
       ...context,
@@ -117,14 +117,14 @@ describe('data view renderer', () => {
         }
       }
     });
-    expect(line?.querySelector('.custom-chart-table')).toBeNull();
+    expect(line?.querySelector('.table-region')).toBeNull();
 
     const histogram = renderDataView('chart', {
       ...context,
       view: { ...context.view, chart: 'histogram' }
     });
     expect(histogram?.querySelector('.histogram-chart-widget')).not.toBeNull();
-    expect(histogram?.querySelector('.custom-chart-table')).toBeNull();
+    expect(histogram?.querySelector('.table-region')).toBeNull();
 
     const heatmapBuild = vi.fn(() => [{
       key: 'build-ubuntu',
@@ -160,7 +160,7 @@ describe('data view renderer', () => {
       null
     );
     expect(heatmap?.querySelector('.heatmap-chart-widget')).not.toBeNull();
-    expect(heatmap?.querySelector('.custom-chart-table')).toBeNull();
+    expect(heatmap?.querySelector('.table-region')).toBeNull();
 
     const swimlane = renderDataView('chart', {
       ...context,
@@ -184,19 +184,13 @@ describe('data view renderer', () => {
       }]
     });
     expect(swimlane?.querySelector('.swimlane-chart-widget')).not.toBeNull();
-    expect(swimlane?.querySelector('.custom-chart-table')).toBeNull();
+    expect(swimlane?.querySelector('.table-region')).toBeNull();
 
     const bar = renderDataView('chart', {
       ...context,
       view: { ...context.view, chart: 'bar' }
     });
-    expect(bar?.querySelector('.custom-chart-table')).not.toBeNull();
-
-    const explicitTable = renderDataView('chart', {
-      ...context,
-      view: { ...context.view, table: true }
-    });
-    expect(explicitTable?.querySelector('.custom-chart-table')).not.toBeNull();
+    expect(bar?.querySelector('.table-region')).toBeNull();
   });
 
   it('renders the scatter legend after the graph', () => {
@@ -258,7 +252,6 @@ describe('data view renderer', () => {
       view: {
         mark: 'chart',
         chart: 'scatter',
-        table: true,
         encoding: {
           x: { field: 'observed-at', type: 'temporal' },
           y: { field: 'remaining-percent', type: 'quantitative' },
@@ -281,7 +274,7 @@ describe('data view renderer', () => {
     await vi.waitFor(() => {
       expect(rendered?.querySelector('.chart-clustering-progress')).toBeNull();
       expect(rendered?.querySelectorAll('.scatter-chart-point')).toHaveLength(400);
-      expect(rendered?.querySelectorAll('.custom-chart-table tbody tr')).toHaveLength(400);
+      expect(rendered?.querySelector('.table-region')).toBeNull();
     });
     vi.unstubAllGlobals();
   });

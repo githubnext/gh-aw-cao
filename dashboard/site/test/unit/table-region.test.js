@@ -56,7 +56,7 @@ describe('renderTableRegion', () => {
     expect(emptyCell?.textContent).toBe('No findings available.');
   });
 
-  it('preserves custom view data attributes for table and chart variants', () => {
+  it('preserves the custom table view data attribute', () => {
     const table = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No rows available.',
@@ -64,16 +64,8 @@ describe('renderTableRegion', () => {
       headCells: ['Column'],
       bodyRows: []
     });
-    const chart = renderTableRegion({
-      tableClassName: 'custom-chart-table',
-      emptyMessage: 'No points available.',
-      colSpan: 2,
-      headCells: ['X', 'Y'],
-      bodyRows: []
-    });
 
     expect(table.querySelector('table')?.getAttribute('data-custom-view-mark')).toBe('table');
-    expect(chart.querySelector('table')?.getAttribute('data-custom-view-mark')).toBe('chart');
   });
 
   it('accepts keyed-list descriptors as populated body rows', async () => {
