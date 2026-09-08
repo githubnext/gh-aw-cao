@@ -41,7 +41,8 @@ describe('notification story normalization', () => {
       timestamp: Date.parse('2026-09-08T02:00:00Z'),
       deepLink: pullRequestLink.href,
       priority: 1,
-      contributingRawEventIds: ['event-ci-passed', 'signal-ci-failed']
+      contributingRawEventIds: ['event-ci-passed', 'signal-ci-failed'],
+      conditionVersion: 'event-ci-passed'
     }];
 
     expect(normalizeNotificationStories(events)).toEqual(expected);

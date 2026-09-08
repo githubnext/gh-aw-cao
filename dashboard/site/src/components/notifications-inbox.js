@@ -91,6 +91,16 @@ function rowId(row) {
   return String(row.id || row['attention-signal-id'] || `${row.scope}:${row.objective}`);
 }
 
+/**
+ * The "done" acknowledgement is keyed to the current condition (the latest contributing raw
+ * event) rather than the stable story id, so that a stale acknowledgement does not silently
+ * persist once the underlying condition advances to a new event.
+ * @param {Record<string, unknown>} row
+ */
+function doneStateId(row) {
+  return String(row.conditionVersion || rowId(row));
+}
+
 /** @param {Record<string, unknown>} row */
 function rowStateIds(row) {
   return [rowId(row), ...(Array.isArray(row.contributingRawEventIds) ? row.contributingRawEventIds.map(String) : [])];
@@ -104,7 +114,7 @@ function hasRowState(values, row) {
 /** @param {Set<string>} values @param {Record<string, unknown>} row @param {boolean} active */
 function setRowState(values, row, active) {
   for (const id of rowStateIds(row)) values.delete(id);
-  if (active) values.add(rowId(row));
+  if (active) values.add(doneStateId(row));
 }
 
 /** @param {Record<string, unknown>} row */

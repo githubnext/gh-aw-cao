@@ -172,7 +172,7 @@ describe('work project view primitives', () => {
       { 'work-item-id': 'todo', name: 'Queued item', 'lifecycle-state': 'waiting' },
       { 'work-item-id': 'progress', name: 'Running item', 'lifecycle-state': 'active' },
       { 'work-item-id': 'review', name: 'Review item', 'lifecycle-state': 'review' },
-      { 'work-item-id': 'review', name: 'Blocked item', 'lifecycle-state': 'blocked' },
+      { 'work-item-id': 'blocked', name: 'Blocked item', 'lifecycle-state': 'blocked' },
       { 'work-item-id': 'done', name: 'Completed item', 'lifecycle-state': 'completed' }
     ];
     const rendered = renderWorkProjectView(/** @type {any} */ ({

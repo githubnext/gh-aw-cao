@@ -2016,7 +2016,12 @@ function workItemRows(workflows, runs, outcomes) {
         : workflowOutcomes[0];
       const lifecycleState = workItemLifecycle(run, matchedOutcome);
       const verificationState = outcomeVerificationState(matchedOutcome?.["outcome-state"]);
-      const rolloutMode = run?.["rollout-mode"] || workflow["rollout-mode"] || "unknown";
+      const runRolloutMode = run?.["rollout-mode"];
+      const rolloutMode =
+        (runRolloutMode && runRolloutMode !== "unknown" ? runRolloutMode : undefined) ||
+        workflow["rollout-mode"] ||
+        runRolloutMode ||
+        "unknown";
       return {
         "work-item-id": key,
         name: run

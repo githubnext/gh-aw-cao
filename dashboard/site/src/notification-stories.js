@@ -322,7 +322,12 @@ export function normalizeNotificationStories(rawEvents) {
         timestamp: eventTimestamp(latest),
         deepLink: deepLinkEvent ? eventDeepLink(deepLinkEvent) : '',
         priority: priorities.length > 0 ? Math.min(...priorities) : null,
-        contributingRawEventIds: [...new Set(events.map(rawEventId))].sort()
+        contributingRawEventIds: [...new Set(events.map(rawEventId))].sort(),
+        // Identifies the latest contributing raw event so consumers can key transient
+        // acknowledgement state (e.g. "done") to the current condition, invalidating stale
+        // acknowledgements once the underlying condition advances to a new event, while
+        // keeping the stable story `id` unchanged across refreshes.
+        conditionVersion: rawEventId(latest)
       }
     };
   }).sort((left, right) => (
