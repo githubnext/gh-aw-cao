@@ -4453,7 +4453,7 @@
             "controls": "interactive",
             "empty-message": "No detection observations require attention in the selected horizon.",
             "layout": "full",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "encoding": {
               "columns": [
                 {
