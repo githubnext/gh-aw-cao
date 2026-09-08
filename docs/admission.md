@@ -37,7 +37,7 @@ A manual dispatch can narrow a run, such as changing an authorized `live` run to
 
 `workflow_dispatch` authenticates the caller as the GitHub App bot that holds the write-App credential. Allowlisting that bot preserves safe-output worker dispatches, but its login alone is not cryptographic proof of a particular orchestrator run, App installation, or dispatch envelope: a holder of the same App credential can submit equivalent workflow-dispatch inputs directly.
 
-CAO therefore treats the write-App credential, its control-repository secret, and its selected installations as part of the trusted control-plane boundary. A worker independently fails closed unless the policy at its exact workflow SHA declares its package and worker, keeps both enabled, accepts the requested mode and output route, and accepts the target owner and any exact repository allowlist. Live work additionally reads the target default branch at an exact SHA and requires that target's `target-authority` declaration to name the current control repository. These checks prevent a dispatch from widening policy, operation, target, mode, or live authority, even when the caller has the allowlisted bot identity.
+CAO therefore treats the write-App credential, its control-repository secret, and its selected installations as part of the trusted control-plane boundary. A worker independently fails closed unless the policy at its exact workflow SHA declares its package and worker, keeps both enabled, accepts the requested mode and output route, and accepts the target owner and any exact repository allowlist. The target repository cannot widen, narrow, or veto this authority through its own files. These checks prevent a dispatch from widening policy, operation, target, or mode, even when the caller has the allowlisted bot identity.
 
 The correlation ID and control-plane run URL provide audit linkage only; they are dispatch inputs and cannot establish provenance by themselves. A deployment that requires proof that *only* a particular orchestrator run issued a worker dispatch needs a signed, replay-resistant envelope generated outside the agent-visible dispatch inputs (or a GitHub-provided source-run attestation). Do not treat the App login, installation access, or a matching run URL as a substitute for that stronger guarantee.
 
@@ -49,7 +49,7 @@ Admission is deliberately lightweight and repository-local. Once admitted, `.git
 | --- | --- |
 | Validates policy and workflow identity | Resolves repository inventory and allowlists |
 | Rejects disabled or undeclared packages and workers | Verifies target and review-repository access |
-| Prevents manual inputs from widening policy | Verifies target-owned authority for `live` work |
+| Prevents manual inputs from widening policy | Binds live workers to centrally authorized targets and output routes |
 | Computes policy ceilings | Applies repository, rollout, dispatch, and monthly AI Credit limits |
 | Uses only the control repository revision | Confirms installed worker workflow availability and binds output routing |
 
@@ -73,7 +73,7 @@ The [Configuration Reference](configuration.md) defines every policy field. The 
 | Configuration | Admission effect | Precompute effect |
 | --- | --- | --- |
 | `control-plane.packages` and `workers` | Declares and enables the exact workflow identity. | Resolves installed worker workflow paths. |
-| `mode`, target `mode`, and worker `max-mode` | Establishes the maximum mode a dispatch may request. | Requires matching target-owned authority before `live` work. |
+| `mode`, target `mode`, and worker `max-mode` | Establishes the maximum mode a dispatch may request. | Re-resolves the central ceiling before worker execution. |
 | `max-repositories` and `rollout-percent` | Rejects a wider manual request. | Bounds selected repositories. |
 | `scope` | Validates and returns the configured owners and repositories. | Filters inventory and rejects out-of-scope targets or review destinations; workers also reject targets outside a configured exact repository allowlist. |
 | `inventory` | Validates scan, cell, and batch limits. | Performs bounded discovery and deterministic batching. |

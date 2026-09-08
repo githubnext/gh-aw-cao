@@ -5,11 +5,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  assertTargetAuthority,
   configuredWorkerPackages,
   inspectPublishEvent,
   issueContentDigest,
-  parseAuthorityJson,
   publicationCommentMarker,
   publicationMarker,
   publishedIssueBody,
@@ -243,21 +241,9 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
   }
 });
 
-test("ops publish requires target-owned package authority", () => {
-  const authority = parseAuthorityJson(JSON.stringify({
-    version: 1,
-    "target-authority": { packages: { "aw-doctor": { authority: "acme/control" } } },
-  }));
-  assert.doesNotThrow(() => assertTargetAuthority(authority, "aw-doctor", "acme/control"));
-  assert.throws(
-    () => assertTargetAuthority(authority, "aw-doctor", "acme/other-control"),
-    /different control repository/,
-  );
-  assert.throws(() => parseAuthorityJson("version: ["), /not valid control policy JSON/);
-  assert.throws(
-    () => assertTargetAuthority({ version: 1, "target-authority": { packages: {} } }, "aw-doctor", "acme/control"),
-    /target-authority.packages.aw-doctor.authority must use owner\/repository form/,
-  );
+test("ops publish does not consult target-owned policy", () => {
+  const source = readFileSync(join(root, "ops-publish", "ops-publish.mjs"), "utf8");
+  assert.doesNotMatch(source, /target-authority|contents\/\.github\/workflows\/cao\.json/);
 });
 
 test("published issues retain review and run provenance", () => {

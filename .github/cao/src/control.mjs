@@ -656,59 +656,6 @@ function validateWorkerDispatch(context) {
   }
 }
 
-function validateLiveAuthority(context) {
-  if (context.mode !== "live") return null;
-  const packageName = context.packageName;
-  if (typeof packageName !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(packageName)) {
-    throw new ControlError("package slug must use lowercase characters for live authority validation");
-  }
-  let defaultBranch;
-  let targetSha;
-  try {
-    defaultBranch = ghApi(`repos/${context.targetRepository}`, { jq: ".default_branch" }).trim();
-  } catch (error) {
-    if (isRateLimitError(error)) throw error;
-    throw new ControlError("live authority validation could not read the target default branch");
-  }
-  try {
-    targetSha = ghApi(`repos/${context.targetRepository}/commits/${defaultBranch}`, { jq: ".sha" }).trim();
-  } catch (error) {
-    if (isRateLimitError(error)) throw error;
-    throw new ControlError("live authority validation could not resolve the target default branch commit");
-  }
-  if (!SHA_PATTERN.test(targetSha)) throw new ControlError("target default branch did not resolve to an exact commit SHA");
-  let authoritySource;
-  let document;
-  try {
-    authoritySource = decodeRepositoryFile(context.targetRepository, POLICY_PATH, targetSha);
-    document = parsePolicy(authoritySource);
-  } catch (error) {
-    if (error instanceof PolicyError) {
-      if (typeof authoritySource === "string" && error.message === `target-authority.packages.${packageName}.authority has an invalid value`) {
-        try {
-          const rawAuthority = JSON.parse(authoritySource)["target-authority"].packages[packageName].authority;
-          if (typeof rawAuthority === "string") throw new ControlError(error.message);
-        } catch (classificationError) {
-          if (classificationError instanceof ControlError) throw classificationError;
-        }
-      }
-      throw new ControlError(`target authority file must declare version 1 and target-authority.packages.${packageName}.authority`);
-    }
-    throw new ControlError(`live mode requires ${POLICY_PATH} on the target default branch`);
-  }
-  const authority = document["target-authority"]?.packages?.[packageName]?.authority;
-  if (!authority) {
-    throw new ControlError(`target authority file must declare version 1 and target-authority.packages.${context.packageName}.authority`);
-  }
-  if (!REPOSITORY_PATTERN.test(authority)) {
-    throw new ControlError(`target-authority.packages.${context.packageName}.authority has an invalid value`);
-  }
-  if (!repositoryEqual(authority, context.centralRepository)) {
-    throw new ControlError(`target assigns live authority for ${context.packageName} to a different control repository`);
-  }
-  return targetSha;
-}
-
 function createContext(policy) {
   const packageName = environment("CAO_PACKAGE");
   const role = environment("CAO_ROLE");
@@ -767,7 +714,7 @@ function writeDeniedPrecompute(policy) {
   }
 }
 
-function writeWorkerPrecompute(context, targetAuthoritySha) {
+function writeWorkerPrecompute(context) {
   writeJson(OUTPUT_PATH, {
     authorized: true,
     reason: "authorized",
@@ -787,9 +734,6 @@ function writeWorkerPrecompute(context, targetAuthoritySha) {
     candidate_repositories: [],
     worker_workflows: [],
     policy_source: { repository: context.controlRepository, path: POLICY_PATH, sha: context.workflowSha },
-    ...(targetAuthoritySha ? {
-      target_authority_source: { repository: context.targetRepository, path: POLICY_PATH, sha: targetAuthoritySha },
-    } : {}),
   });
 }
 
@@ -1040,8 +984,7 @@ function precompute() {
 
     if (context.role === "worker") {
       validateWorkerDispatch(context);
-      const targetAuthoritySha = validateLiveAuthority(context);
-      writeWorkerPrecompute(context, targetAuthoritySha);
+      writeWorkerPrecompute(context);
       log("Prepared worker precompute data.");
       return;
     }

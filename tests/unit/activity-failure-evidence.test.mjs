@@ -69,14 +69,14 @@ test("run failure evidence recognizes timed-out jobs", () => {
   });
 });
 
-test("CAO failure log extraction accepts controlled markers and the historical authority message", () => {
+test("CAO failure log extraction accepts only controlled markers", () => {
   assert.equal(
     extractCaoFailureMessage("2026-09-03T00:00:00Z [CAO failure] worker is disabled by its control-plane policy\n"),
     "Worker is disabled by its control-plane policy",
   );
   assert.equal(
     extractCaoFailureMessage("live mode requires .github/workflows/cao.json on the target default branch\n##[error]Process completed with exit code 1."),
-    "Target authority missing: add .github/workflows/cao.json to the target default branch for live mode",
+    "",
   );
   assert.equal(extractCaoFailureMessage("token-like arbitrary job output\n##[error]Process completed with exit code 1."), "");
 });

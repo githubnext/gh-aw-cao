@@ -1356,18 +1356,13 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
 });
 
-test("live workers require target-owned package authority before agent execution", () => {
+test("live workers use central policy as the activation authority", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
   assert.match(control, /package:\n\s+type: string\n\s+required: true/);
-  assert.match(precompute, /validateLiveAuthority/);
-  assert.match(precompute, /commits\/\$\{defaultBranch\}/);
-  assert.match(precompute, /decodeRepositoryFile\(context\.targetRepository, POLICY_PATH, targetSha\)/);
-  assert.match(precompute, /parsePolicy\(authoritySource\)/);
-  assert.doesNotMatch(precompute, /YAML|central-agentic-ops\.yml/);
-  assert.match(precompute, /target assigns live authority for \$\{context\.packageName\} to a different control repository/);
-  assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*validateLiveAuthority\(context\)[\s\S]*writeWorkerPrecompute\(context, targetAuthoritySha\)/);
+  assert.doesNotMatch(precompute, /validateLiveAuthority|target_authority_source|target default branch/);
+  assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
 
   for (const [name, bundle] of [
     ["uk-ai-advisory.md", "uk-ai-advisory"],
@@ -1910,7 +1905,7 @@ test("workers reject disabled, malformed, or over-ceiling dispatches before exec
   }
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
   assert.match(control, /Evaluate Central Agentic Ops admission/);
-  assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*validateLiveAuthority\(context\)[\s\S]*writeWorkerPrecompute\(context, targetAuthoritySha\)/);
+  assert.match(precompute, /validateWorkerDispatch\(context\)[\s\S]*writeWorkerPrecompute\(context\)/);
   assert.match(precompute, /must be review or live/);
   assert.match(precompute, /central_repo must identify the current control repository/);
   assert.match(precompute, /control_plane_run_url must match correlation_id and central_repo/);

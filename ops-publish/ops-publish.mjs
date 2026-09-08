@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { parsePolicy } from "../.github/cao/src/policy.mjs";
 
 export const PUBLISH_LABEL = "ops:publish-to-target";
 const API_TIMEOUT_MS = 30_000;
@@ -154,22 +153,6 @@ export function validateWorkflowRun({
   }
   const [targetOwner, targetName] = targetRepository.split("/");
   return { packageName, targetRepository, targetOwner, targetName };
-}
-
-export function parseAuthorityJson(source) {
-  try {
-    return parsePolicy(source);
-  } catch {
-    throw new Error("target authority file is not valid control policy JSON");
-  }
-}
-
-export function assertTargetAuthority(document, packageName, controlRepository) {
-  const authority = document?.["target-authority"]?.packages?.[packageName]?.authority;
-  requireRepository(authority, `target-authority.packages.${packageName}.authority`);
-  if (normalized(authority) !== normalized(controlRepository)) {
-    throw new Error(`target assigns live authority for ${packageName} to a different control repository`);
-  }
 }
 
 export function publicationMarker(sourceRepository, sourceIssueNumber) {
@@ -327,21 +310,6 @@ async function publishCommand() {
 
   const target = await apiRequest(process.env.TARGET_TOKEN, apiUrl, `/repos/${targetRepository}`);
   if (target.archived || target.disabled || !target.has_issues) throw new Error("target repository cannot accept published issues");
-  const targetCommit = await apiRequest(
-    process.env.TARGET_TOKEN,
-    apiUrl,
-    `/repos/${targetRepository}/commits/${encodeURIComponent(target.default_branch)}`,
-  );
-  if (!/^[0-9a-fA-F]{40,64}$/.test(targetCommit.sha || "")) {
-    throw new Error("target default branch did not resolve to an exact commit SHA");
-  }
-  const authorityFile = await apiRequest(
-    process.env.TARGET_TOKEN,
-    apiUrl,
-    `/repos/${targetRepository}/contents/.github/workflows/cao.json?ref=${encodeURIComponent(targetCommit.sha)}`,
-  );
-  const authoritySource = Buffer.from(authorityFile.content || "", "base64").toString("utf8");
-  assertTargetAuthority(parseAuthorityJson(authoritySource), packageName, process.env.CONTROL_REPOSITORY);
 
   const marker = publicationMarker(sourceRepository, sourceIssueNumber);
   let targetIssue = await findPublishedIssue(

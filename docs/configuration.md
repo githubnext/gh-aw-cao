@@ -98,24 +98,9 @@ Set `monthly-ai-credit-budget` on a package to a positive integer to enable mont
 
 If usage logs are unavailable or invalid, the orchestration admits no workers instead of ignoring the budget. Set the JSON value to `0` or remove it to disable monthly tuning.
 
-## Target Authority
+## Live Authority
 
-`live` workers also require `.github/workflows/cao.json` on the target's protected default branch. The target assigns each package to one control repository:
-
-```json
-{
-  "version": 1,
-  "target-authority": {
-    "packages": {
-      "dependabot": {
-        "authority": "acme/central-agentic-ops"
-      }
-    }
-  }
-}
-```
-
-The worker resolves the target default branch to an exact SHA and validates this document before agent execution. Review runs do not require target authority because they cannot mutate the target.
+`live` workers use only the control repository's `.github/workflows/cao.json` as their policy authority. Declare live package and worker ceilings, allowed owners or repositories, and target-specific modes there. Workers resolve that policy from the exact workflow SHA before agent execution; no `cao.json` or authority declaration is required in a target repository.
 
 ## Credentials
 

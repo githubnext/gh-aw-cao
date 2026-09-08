@@ -24,7 +24,7 @@ The execution boundary is the key architectural fact: orchestrators and workers 
 
 1. A schedule trigger or `workflow_dispatch` starts a package orchestrator workflow.
 2. Before activation, `.github/workflows/shared/control.md` fetches `.github/cao/src/control.mjs` and `.github/cao/src/policy.mjs` at the exact workflow commit and runs the `admit` command against policy from that same revision.
-3. A denied or invalid request skips activation and records the reason in the workflow summary. An admitted run executes the `precompute` command in the same pre-activation job to resolve routing, repository inventory, target-owned live authority, budgets, and worker workflow availability.
+3. A denied or invalid request skips activation and records the reason in the workflow summary. An admitted run executes the `precompute` command in the same pre-activation job to resolve routing, repository inventory, centrally owned live authority, budgets, and worker workflow availability.
 4. Pre-activation uploads only the resulting non-secret `control-precompute.json`. The agent job restores and validates that artifact before checkout; CAO policy and precompute credentials do not cross into the agent job.
 5. The admitted workflow imports shared control with its package mode and review repository.
 6. The orchestrator workflow ranks eligible repositories using package-specific discovery rules and applies `max_repos` and dispatch limits.
