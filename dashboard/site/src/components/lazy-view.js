@@ -3,6 +3,7 @@ import { h } from '../dom.js';
 const renderers = new WeakMap();
 const hydrationPromises = new WeakMap();
 const observers = new WeakMap();
+const scrollCleanups = new WeakMap();
 const activeTransitions = new WeakMap();
 const hydrationQueues = new WeakMap();
 
@@ -87,35 +88,49 @@ export function enableLazyViews(root) {
   if (lazyViews.length === 0) return;
 
   const Observer = root.ownerDocument.defaultView?.IntersectionObserver;
-  const observer = typeof Observer === 'function'
-    ? new Observer((entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
-        observer?.unobserve(entry.target);
-        if (entry.target instanceof HTMLElement) {
-          void hydrateLazyView(entry.target);
-        }
+  if (typeof Observer !== 'function') {
+    for (const element of lazyViews) void hydrateLazyView(element, { immediate: true });
+    return;
+  }
+
+  const scrollContainer = root.closest('main.dashboard-prototype');
+  const observer = new Observer((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
+      observer.unobserve(entry.target);
+      if (entry.target instanceof HTMLElement) {
+        void hydrateLazyView(entry.target);
       }
-    }, { rootMargin: '320px 0px' })
-    : null;
-  if (observer) observers.set(root, observer);
+    }
+  }, { root: scrollContainer, rootMargin: '320px 0px' });
+  observers.set(root, observer);
   for (const element of lazyViews) {
-    if (!observer) {
-      void hydrateLazyView(element, { immediate: true });
-      continue;
-    }
-    const disclosure = element.closest('details');
-    if (disclosure && !disclosure.open) {
-      disclosure.addEventListener('toggle', () => {
-        if (disclosure.open) void hydrateLazyView(element);
-      }, { once: true });
-      continue;
-    }
     observer.observe(element);
+    const disclosure = element.closest('details');
+    disclosure?.addEventListener('toggle', () => {
+      if (disclosure.open) {
+        observer.unobserve(element);
+        void hydrateLazyView(element);
+      }
+    }, { once: true });
     element.addEventListener('focusin', () => {
       observer.unobserve(element);
       void hydrateLazyView(element);
     }, { once: true });
+  }
+
+  const scrollTarget = scrollContainer ?? root.ownerDocument.scrollingElement;
+  if (scrollTarget) {
+    const hydrateReachedViews = () => {
+      const viewportBottom = scrollTarget.getBoundingClientRect().bottom;
+      for (const element of lazyViews) {
+        if (!element.parentNode || element.getBoundingClientRect().top > viewportBottom + 320) continue;
+        observer.unobserve(element);
+        void hydrateLazyView(element);
+      }
+    };
+    scrollTarget.addEventListener('scroll', hydrateReachedViews, { passive: true });
+    scrollCleanups.set(root, () => scrollTarget.removeEventListener('scroll', hydrateReachedViews));
   }
 }
 
@@ -125,6 +140,8 @@ export function enableLazyViews(root) {
 export function disconnectLazyViews(root) {
   observers.get(root)?.disconnect();
   observers.delete(root);
+  scrollCleanups.get(root)?.();
+  scrollCleanups.delete(root);
 }
 
 /**

@@ -35,6 +35,43 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
+  await page.setContent(`
+    <style>
+      main.dashboard-prototype { height: 300px; overflow-y: auto; }
+      .dashboard-lazy-view { min-height: var(--dashboard-lazy-view-min-height); }
+      .spacer { height: 500px; }
+    </style>
+    <main class="dashboard-prototype">
+      <section id="lazy-root"><div class="spacer"></div></section>
+    </main>
+    <script type="module">
+      import { enableLazyViews, renderLazyView } from ${JSON.stringify('http://dashboard.test/src/components/lazy-view.js')};
+      const root = document.querySelector('#lazy-root');
+      const panel = (id) => renderLazyView({
+        label: id,
+        minHeight: 240,
+        render: () => {
+          const article = document.createElement('article');
+          article.dataset.hydratedPanel = id;
+          article.style.height = '240px';
+          return article;
+        }
+      });
+      root.append(panel('near'), Object.assign(document.createElement('div'), { className: 'spacer' }), panel('skipped'), Object.assign(document.createElement('div'), { className: 'spacer' }));
+      enableLazyViews(root);
+    </script>
+  `);
+
+  await expect(page.locator('[data-hydrated-panel="near"]')).toHaveCount(1);
+  await expect(page.getByRole('region', { name: 'Loading skipped' })).toHaveCount(1);
+
+  await page.locator('main.dashboard-prototype').evaluate((scroller) => {
+    scroller.scrollTop = scroller.scrollHeight;
+  });
+  await expect(page.locator('[data-hydrated-panel="skipped"]')).toHaveCount(1);
+});
+
 /** @param {import('@playwright/test').Page} page @param {string} title */
 async function hydrateView(page, title) {
   const placeholder = page.getByRole('region', { name: `Loading ${title}` });

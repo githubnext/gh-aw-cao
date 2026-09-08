@@ -49,7 +49,10 @@ const RECONCILIATION_CONTRACTS = Object.freeze([
 export function deriveDataHealthSources(sources, context = {}) {
   const sourceRows = Object.entries(sources).map(([name, source]) => sourceDiagnostic(name, source));
   const fieldRows = Object.entries(sources).flatMap(([name, source]) => fieldDiagnostics(name, source));
-  const fileRows = Object.entries(sources).map(([name, source]) => loadedFileDiagnostic(name, source));
+  const fileRows = Object.entries(sources)
+    .map(([name, source]) => loadedFileDiagnostic(name, source))
+    .sort((left, right) => right.size - left.size || left.file.localeCompare(right.file));
+  const totalSize = fileRows.reduce((total, row) => total + row.size, 0);
   const schemaRows = Object.entries(sources).map(([name, source]) => schemaDiagnostic(name, source));
   const compatibilityRows = compatibilityDiagnostics(sources.workflows);
   const reconciliationRows = RECONCILIATION_CONTRACTS.map((contract) => reconcile(contract, sources));
@@ -91,6 +94,7 @@ export function deriveDataHealthSources(sources, context = {}) {
       'available-sources': sourceRows.filter((row) => row.availability === 'available').length,
       rows: sourceRows.reduce((total, row) => total + row.rows, 0),
       fields: fieldRows.length,
+      'total-size': formatBytes(totalSize),
       'populated-cells': sourceRows.reduce((total, row) => total + row['populated-cells'], 0),
       'empty-cells': sourceRows.reduce((total, row) => total + row['empty-cells'], 0),
       'external-link': activityLink
@@ -174,13 +178,25 @@ function sourceDiagnostic(name, source) {
 /** @param {string} name @param {LogicalSourceInput} source */
 function loadedFileDiagnostic(name, source) {
   const serialized = safeStringify(source);
+  const size = new TextEncoder().encode(serialized).length;
   return {
     file: `${name}.json`,
     source: name,
-    size: new TextEncoder().encode(serialized).length,
+    size,
+    'display-size': formatBytes(size),
     rows: Array.isArray(source?.rows) ? source.rows.length : 0,
     status: source?.metadata?.availability ?? 'unknown'
   };
+}
+
+/** @param {number} bytes */
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return 'Unknown';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length);
+  const value = bytes / (1024 ** exponent);
+  return `${new Intl.NumberFormat('en', { maximumFractionDigits: 1, useGrouping: false }).format(value)} ${units[exponent - 1]}`;
 }
 
 /**
