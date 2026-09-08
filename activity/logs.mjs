@@ -50,7 +50,10 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
     child.on("error", reject);
     child.on("close", (code, signal) => {
       const output = Buffer.concat(stdout).toString("utf8");
-      if (code === 0 && !signal) resolve(output);
+      if (code === 0 && !signal) resolve({
+        output,
+        stderr: Buffer.concat(stderr).toString("utf8").trim(),
+      });
       else reject(new Error(
         Buffer.concat(stderr).toString("utf8").trim()
           || `gh aw logs exited with ${signal || code}`,
@@ -171,7 +174,10 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
       .map((entry) => `${repository}/.github/workflows/${entry.name}`)
       .sort();
-    const raw = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
+    const workflowLabel = targets.length === 1 ? "workflow" : "workflows";
+    log.info`Calling gh aw logs --json --audit for ${targets.length} control-repository ${workflowLabel}`;
+    const { output: raw, stderr } = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
+    if (stderr) log.info`${stderr}`;
     const snapshot = JSON.parse(raw);
     if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");
     await writeFile(logsPath, `${JSON.stringify(snapshot, null, 2)}\n`);
@@ -187,7 +193,11 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       fallback: false,
     }, null, 2)}\n`);
     await writeOutcome("success");
-    log.info`Downloaded ${snapshot.runs.length} runs for ${targets.length} control-repository workflows with one gh aw logs invocation`;
+    const workflowCount = new Set(snapshot.runs.map((run) => run.workflow_path || run.workflow_name || "unknown")).size;
+    const runLabel = snapshot.runs.length === 1 ? "run" : "runs";
+    const snapshotWorkflowLabel = workflowCount === 1 ? "workflow" : "workflows";
+    log.info`Collected snapshot with ${snapshot.runs.length} ${runLabel} across ${workflowCount} ${snapshotWorkflowLabel}`;
+    log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} with one gh aw logs invocation`;
     return "success";
   } catch (error) {
     const snapshot = await existingSnapshot(logsPath);

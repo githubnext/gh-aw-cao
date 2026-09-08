@@ -32,11 +32,12 @@ test("activity logs uses one bounded gh aw logs invocation without heavy agent a
   await writeFile(ghPath, `#!/usr/bin/env node
 const fs = require("node:fs");
 fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(process.argv.slice(2)));
+process.stderr.write("Fetched 1 run\\n");
 process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
 `);
   await chmod(ghPath, 0o755);
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+    const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
         ...process.env,
         PATH: `${item.bin}:${process.env.PATH}`,
@@ -59,6 +60,9 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).available, true);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
+    assert.match(stdout, /Calling gh aw logs --json --audit for 1 control-repository workflow/);
+    assert.match(stdout, /Fetched 1 run/);
+    assert.match(stdout, /Collected snapshot with 1 run across 1 workflow/);
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
