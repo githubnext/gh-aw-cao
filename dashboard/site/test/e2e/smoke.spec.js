@@ -326,7 +326,7 @@ test('GitHub API raw quota table remains operable at desktop and narrow widths',
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('control-plane readiness surfaces blocking regressions', async ({ page }) => {
+test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
   /** @type {Error[]} */
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error));
@@ -393,29 +393,13 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
   await expect(readinessNavigation).toHaveAttribute('aria-current', 'page');
   await expect(readinessNavigation.locator('svg')).toHaveCount(1);
   await expect(page.locator('.nav-section-label').filter({ hasText: 'Experimental' })).toBeVisible();
-  const activityChart = readinessPage.locator('.custom-view').first().locator('[data-chart-widget="line"]');
-  await expect(activityChart).toBeVisible();
-  const [activityChartBox, activityAxisBox] = await Promise.all([
-    activityChart.boundingBox(),
-    activityChart.locator('.line-chart-axis').boundingBox()
-  ]);
-  expect(activityChartBox).not.toBeNull();
-  expect(activityAxisBox).not.toBeNull();
-  expect(activityAxisBox?.width).toBeGreaterThan((activityChartBox?.width ?? 0) * 0.95);
-  await expect(activityChart.locator('.line-chart-series').first()).toHaveCSS('stroke-dasharray', 'none');
-  expect(Number.parseFloat(await activityChart.locator('.line-chart-point').first().evaluate(
-    (point) => getComputedStyle(point).strokeWidth
-  ))).toBeGreaterThanOrEqual(2);
-  await expect(readinessPage).toContainText('Not ready');
-  await expect(readinessPage).toContainText('3 completed runs observed');
-  await hydrateView(page, 'Priority queue');
-  await readinessPage.locator('summary').filter({ hasText: 'Worker, orchestrator, and no-op evidence' }).click();
+  await expect(readinessPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
+  await expect(readinessPage.locator('[data-chart-widget]')).toHaveCount(0);
   await expect(readinessPage).toContainText('Worker failures');
   await expect(readinessPage).toContainText('Worker warnings');
   await expect(readinessPage).toContainText('No-op reports');
-  await expect(readinessPage).toContainText('Runtime regression');
-  await expect(readinessPage).toContainText('Output warning');
-  await expect(readinessPage).toContainText('Smoke regression');
+  await expect(readinessPage).toContainText('1 failure observed.');
 
   const windowStart = horizonFilter.locator('[aria-label="Window start time"]');
   const windowStop = horizonFilter.locator('[aria-label="Window stop time"]');
@@ -432,12 +416,8 @@ test('control-plane readiness surfaces blocking regressions', async ({ page }) =
   await expect.poll(() => page.evaluate(() => JSON.parse(
     localStorage.getItem('central-agentic-ops.dashboard.horizon-filter-settings') ?? '{}'
   ).range)).toBe('custom');
-  await expect(readinessPage).toContainText('Ready to ship');
-  await expect(readinessPage).toContainText('1 completed runs observed');
   await expect(readinessPage).not.toContainText('Smoke regression');
-  await expect(readinessPage).not.toContainText('No failures observed');
-  await expect(readinessPage).not.toContainText('No warnings observed');
-  await expect(readinessPage).not.toContainText('No no-op reports observed');
+  await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
   await horizonFilter.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1013,7 +993,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test('performance page renders a full heatmap and lays out supporting charts side by side', async ({ page }) => {
+test('performance page renders one full-view lazy job table', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 844 });
@@ -1055,27 +1035,12 @@ test('performance page renders a full heatmap and lays out supporting charts sid
 
   const pageRegion = page.locator('[data-page-id="performance"]');
   await expect(pageRegion).toBeVisible();
-  await expect(pageRegion.locator('.custom-view').first().locator('[data-chart-widget="histogram"]')).toBeVisible();
-  await expect(pageRegion.locator('[data-chart-widget="heatmap"]')).toBeVisible();
-  await hydrateView(page, 'Job time by sandbox runtime and agent engine');
-  await hydrateView(page, 'Job time by model');
-  await expect(pageRegion.locator('[data-chart-widget="bar"]')).toHaveCount(2);
-  const runtimeCharts = pageRegion.locator('[data-section-id="job-duration"] .custom-view-grid > [data-view-layout="half"]');
-  await expect(runtimeCharts).toHaveCount(2);
-  const chartLayout = await runtimeCharts.evaluateAll((charts) => {
-    const bounds = charts.map((chart) => chart.getBoundingClientRect());
-    return {
-      widgetHeights: charts.map((chart) => chart.querySelector('.chart-widget')?.getBoundingClientRect().height ?? 0),
-      firstRow: {
-        leftX: bounds[0].x,
-        rightX: bounds[1].x,
-        verticalOffset: Math.abs(bounds[0].y - bounds[1].y)
-      }
-    };
-  });
-  expect(chartLayout.firstRow.leftX).toBeLessThan(chartLayout.firstRow.rightX);
-  expect(chartLayout.firstRow.verticalOffset).toBeLessThan(1);
-  expect(Math.max(...chartLayout.widgetHeights) - Math.min(...chartLayout.widgetHeights)).toBeLessThan(1);
+  await expect(pageRegion.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  await expect(pageRegion.locator('[data-lazy-list]')).toBeVisible();
+  await expect(pageRegion.locator('[data-chart-widget]')).toHaveCount(0);
+  await expect(pageRegion.locator('tbody tr')).toHaveCount(1);
+  await expect(pageRegion).toContainText('gvisor');
+  await expect(pageRegion).toContainText('45s');
 });
 
 test('histogram keeps a low constant DOM size for 100,000 observations', async ({ page }) => {

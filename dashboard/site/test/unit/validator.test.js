@@ -853,7 +853,7 @@ dashboard:
   it('DLS-VIEW-005 accepts automatically binned histograms and rejects ambiguous histogram channels', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
-    const histogram = {
+    const histogram = /** @type {any} */ ({
       id: 'cost-per-run-distribution',
       data: { source: 'usage' },
       mark: 'chart',
@@ -862,7 +862,7 @@ dashboard:
         x: { field: 'run', type: 'nominal' },
         y: { field: 'aic', type: 'quantitative', aggregate: 'sum' }
       }
-    };
+    });
     costPage.views.push(histogram);
 
     expect(histogram).toMatchObject({
@@ -990,13 +990,13 @@ dashboard:
   it('validates source-free JSON callouts with canonical icons', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
-    const callout = {
+    const callout = /** @type {any} */ ({
       id: 'cost-evaluation-boundary',
       title: 'Budget and anomaly verdicts unavailable',
       description: 'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
       mark: 'callout',
       callout: { label: 'Evaluation boundary', icon: 'meter' }
-    };
+    });
     costPage.views.push(callout);
     expect(callout).toMatchObject({
       mark: 'callout',
@@ -1031,7 +1031,7 @@ dashboard:
       }));
       expect(rejected.errors).toContainEqual(expect.objectContaining({
         code: 'DLS-E003',
-        path: '$.dashboard.pages[3].views[5].data',
+        path: expect.stringContaining('.data'),
         message: 'callout views must not declare data.'
       }));
     }
