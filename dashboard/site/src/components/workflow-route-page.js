@@ -2,18 +2,15 @@
  * Shared declarative workflow-route page primitives.
  */
 
-import { workflowRouteBody, workflowRouteComposition } from './workflow-route-composition.js';
-import { renderWorkflowRouteShell } from './workflow-route-shell.js';
-import { workflowRoutePageConfigForBody } from './workflow-route-page-config.js';
+import { renderWorkflowRouteView } from './workflow-route-view.js';
 
 /**
+ * Renders the `workflow-route-page` element type. Identical in behavior to
+ * `renderWorkflowRouteView`; kept as a distinct export because both element
+ * types are registered separately in the `ui-elements.js` dispatch table.
  * @param {import('./ui-elements.js').ElementRenderContext} context
  * @returns {HTMLElement}
  */
 export function renderWorkflowRoutePage(context) {
-  const body = workflowRouteBody(context.elementConfig?.body);
-  return renderWorkflowRouteShell(context, {
-    ...workflowRouteComposition(body),
-    currentTab: workflowRoutePageConfigForBody(body).pageId
-  });
+  return renderWorkflowRouteView(context);
 }
