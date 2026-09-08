@@ -72,7 +72,7 @@ jobs:
     permissions:
       actions: read
       issues: write
-      pull-requests: read
+      pull-requests: write
     steps:
       - name: Download assessment
         id: download
