@@ -692,14 +692,18 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                 'aria-label': viewer ? `Open account menu for ${viewer.name || viewer.login}` : 'Open account menu',
                 title: viewer ? `${viewer.name || viewer.login} (${viewer.login})` : 'Open account menu'
               },
-              viewer
+              viewer?.avatarUrl
                 ? h('img', {
                   className: 'account-menu-avatar-image',
                   src: viewer.avatarUrl,
                   alt: '',
                   referrerPolicy: 'no-referrer'
                 })
-                : octicon('person')
+                : h('img', {
+                  className: 'account-menu-avatar-image',
+                  src: './assets/avatar-monalisa-octocat.png',
+                  alt: ''
+                })
             ),
             h(
               'div',
@@ -2171,6 +2175,7 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
     sources: selectedSources,
     contextDetails,
     scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
+    time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
@@ -2233,6 +2238,7 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
     sources: selectedSources,
     contextDetails,
     scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
+    time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
@@ -2247,6 +2253,7 @@ async function renderElementViewAsync(pageId, title, view, sources, contextDetai
     sources: selectedSources,
     contextDetails,
     scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
+    time: isPlainObject(viewData?.time) ? viewData.time : undefined,
     titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,

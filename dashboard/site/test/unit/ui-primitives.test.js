@@ -293,6 +293,15 @@ describe('ui primitives', () => {
     expect(rendered.querySelector('input')).toBe(input);
   });
 
+  it('can visually hide a control label without removing it', () => {
+    const input = document.createElement('input');
+    const rendered = renderLabeledControl('Filter rows', input, { visuallyHiddenLabel: true });
+
+    expect(rendered.textContent).toBe('Filter rows');
+    expect(rendered.querySelector('span')?.classList.contains('sr-only')).toBe(true);
+    expect(rendered.querySelector('input')).toBe(input);
+  });
+
   it('renders a labeled control with an optional class name and prefix node', () => {
     const select = document.createElement('select');
     const prefix = document.createElement('svg');

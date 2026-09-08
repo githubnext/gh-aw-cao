@@ -7180,35 +7180,242 @@
       {
         "id": "overview",
         "kind": "custom",
-        "title": "Home",
-        "navigation-label": "Home",
+        "title": "Overview",
+        "navigation-label": "Overview",
         "icon": "home",
         "class-name": "dashboard-overview-page",
-        "description": "A concise briefing of progress, work in motion, and decisions waiting for you.",
         "views": [
           {
             "id": "overview-attention",
             "locked": true,
             "data": {
               "sources": [
-                "attention-signals",
-                "workflows",
-                "agent-assignments",
-                "agent-smells",
-                "workflow-smells",
-                "security-findings",
-                "control-plane-smells",
-                "security-observations",
                 "runs",
                 "work-items",
-                "outcomes",
-                "operational-values",
-                "evidence-records"
+                "security-findings"
               ]
             },
             "mark": "element",
-            "element": "signal-list",
+            "element": "home-attention-summary",
             "layout": "full"
+          }
+        ]
+      },
+      {
+        "id": "overview-failed-runs",
+        "kind": "custom",
+        "title": "Failed runs",
+        "icon": "x-circle",
+        "description": "Runs in the selected horizon that ended in a failure state and need investigation.",
+        "route": {
+          "navigation-page": "overview"
+        },
+        "views": [
+          {
+            "id": "overview-failed-runs-ledger",
+            "title": "Failed run evidence",
+            "description": "Open a run on GitHub to inspect its jobs, logs, and retained evidence.",
+            "data": {
+              "source": "runs",
+              "filters": {
+                "run-conclusion": [
+                  "failure",
+                  "startup-failure",
+                  "stale",
+                  "timed-out"
+                ]
+              },
+              "order-by": [
+                {
+                  "field": "started-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "column-summaries": false,
+            "empty-message": "No failed runs were observed in the selected horizon.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "title": "Date"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "failure-detail",
+                  "type": "nominal",
+                  "title": "Error",
+                  "display": "run-link"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "overview-blocked-work",
+        "kind": "custom",
+        "title": "Blocked work",
+        "icon": "stop",
+        "description": "Delegated work whose latest admission or run state prevents progress.",
+        "route": {
+          "navigation-page": "overview"
+        },
+        "views": [
+          {
+            "id": "overview-blocked-work-ledger",
+            "title": "Blocked work evidence",
+            "description": "Open the latest GitHub run to resolve the admission or execution failure.",
+            "data": {
+              "source": "work-items",
+              "filters": {
+                "lifecycle-state": "blocked"
+              },
+              "order-by": [
+                {
+                  "field": "waiting-since",
+                  "direction": "asc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "column-summaries": false,
+            "empty-message": "No blocked work was observed in the selected horizon.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "waiting-since",
+                  "type": "temporal",
+                  "title": "Date"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "reason",
+                  "type": "nominal",
+                  "title": "Blocked by",
+                  "display": "run-link"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "overview-awaiting-review",
+        "kind": "custom",
+        "title": "Awaiting review",
+        "icon": "eye",
+        "description": "Produced outcomes that are waiting for a reviewer decision.",
+        "route": {
+          "navigation-page": "overview"
+        },
+        "views": [
+          {
+            "id": "overview-awaiting-review-ledger",
+            "title": "Review evidence",
+            "description": "Open the retained GitHub outcome or its run evidence to complete the review.",
+            "data": {
+              "source": "work-items",
+              "filters": {
+                "lifecycle-state": "review"
+              },
+              "order-by": [
+                {
+                  "field": "waiting-since",
+                  "direction": "asc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "column-summaries": false,
+            "empty-message": "No work is awaiting review in the selected horizon.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "waiting-since",
+                  "type": "temporal",
+                  "title": "Date"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "objective",
+                  "type": "nominal",
+                  "title": "Work",
+                  "display": "evidence-link"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "overview-security-findings",
+        "kind": "custom",
+        "title": "Security findings",
+        "icon": "shield",
+        "description": "Detected prompt-injection, secret-leak, and malicious-patch evidence from collected workflow runs.",
+        "route": {
+          "navigation-page": "overview"
+        },
+        "views": [
+          {
+            "id": "overview-security-findings-ledger",
+            "title": "Security finding evidence",
+            "description": "Open the GitHub run that produced each threat-detection finding.",
+            "data": {
+              "source": "security-findings",
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "column-summaries": false,
+            "empty-message": "No security findings were observed in the selected horizon.",
+            "layout": "full",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Date"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "smell-name",
+                  "type": "nominal",
+                  "title": "Finding",
+                  "display": "run-link"
+                }
+              ]
+            }
           }
         ]
       },
@@ -7366,15 +7573,15 @@
         "label": "Attention",
         "experimental": true,
         "pages": [
+          "work",
+          "agents",
+          "insights",
           "operations"
         ]
       },
       {
         "pages": [
           "overview",
-          "work",
-          "agents",
-          "insights",
           "configuration"
         ]
       },

@@ -15,6 +15,7 @@ describe('view formatter helpers', () => {
     expect(formatString('.github/workflows/nested/daily.md', 'workflow-relative-path')).toBe('nested/daily.md');
     expect(formatString('daily.md', 'workflow-relative-path')).toBe('daily.md');
     expect(formatString(null, 'workflow-relative-path')).toBe('unknown');
+    expect(formatString('.github/workflows/', 'workflow-relative-path')).toBe('unknown');
   });
 
   it('DLS-VIEW-013 formats aggregate metric values for count, distinct-count, sum, mean, min, max, and default field access', () => {

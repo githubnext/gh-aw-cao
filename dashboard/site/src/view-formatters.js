@@ -66,9 +66,9 @@ export function stringOrFallback(value, fallback) {
  */
 export function formatString(value, format, fallback = 'unknown') {
   const text = stringOrFallback(value, fallback);
-  return format === 'workflow-relative-path' && text.startsWith('.github/workflows/')
-    ? text.slice('.github/workflows/'.length)
-    : text;
+  if (format !== 'workflow-relative-path' || !text.startsWith('.github/workflows/')) return text;
+  const formatted = text.slice('.github/workflows/'.length);
+  return formatted || fallback;
 }
 
 /**

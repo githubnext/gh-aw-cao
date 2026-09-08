@@ -38,6 +38,70 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('defines Overview child pages with exact attention filters and GitHub evidence links', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const pages = Object.fromEntries(document.dashboard.pages.map(
+      (/** @type {{ id: string }} */ page) => [page.id, page]
+    ));
+
+    for (const pageId of [
+      'overview-failed-runs',
+      'overview-blocked-work',
+      'overview-awaiting-review',
+      'overview-security-findings'
+    ]) {
+      expect(pages[pageId].route).toEqual({ 'navigation-page': 'overview' });
+      expect(pages[pageId].views).toHaveLength(1);
+      expect(pages[pageId].views[0].mark).toBe('table');
+      expect(pages[pageId].views[0]['column-summaries']).toBe(false);
+    }
+
+    expect(pages['overview-failed-runs'].views[0]).toMatchObject({
+      data: { source: 'runs', filters: { 'run-conclusion': ['failure', 'startup-failure', 'stale', 'timed-out'] } },
+      encoding: {
+        columns: [
+          { field: 'started-at', type: 'temporal', title: 'Date' },
+          { field: 'repository', type: 'nominal', title: 'Repository' },
+          { field: 'failure-detail', type: 'nominal', title: 'Error', display: 'run-link' }
+        ]
+      }
+    });
+    expect(pages['overview-failed-runs'].views[0].encoding.href).toBeUndefined();
+    expect(pages['overview-blocked-work'].views[0]).toMatchObject({
+      data: { source: 'work-items', filters: { 'lifecycle-state': 'blocked' } },
+      encoding: {
+        columns: [
+          { field: 'waiting-since', type: 'temporal', title: 'Date' },
+          { field: 'repository', type: 'nominal', title: 'Repository' },
+          { field: 'reason', type: 'nominal', title: 'Blocked by', display: 'run-link' }
+        ]
+      }
+    });
+    expect(pages['overview-blocked-work'].views[0].encoding.href).toBeUndefined();
+    expect(pages['overview-awaiting-review'].views[0]).toMatchObject({
+      data: { source: 'work-items', filters: { 'lifecycle-state': 'review' } },
+      encoding: {
+        columns: [
+          { field: 'waiting-since', type: 'temporal', title: 'Date' },
+          { field: 'repository', type: 'nominal', title: 'Repository' },
+          { field: 'objective', type: 'nominal', title: 'Work', display: 'evidence-link' }
+        ]
+      }
+    });
+    expect(pages['overview-awaiting-review'].views[0].encoding.href).toBeUndefined();
+    expect(pages['overview-security-findings'].views[0]).toMatchObject({
+      data: { source: 'security-findings' },
+      encoding: {
+        columns: [
+          { field: 'observed-at', type: 'temporal', title: 'Date' },
+          { field: 'repository', type: 'nominal', title: 'Repository' },
+          { field: 'smell-name', type: 'nominal', title: 'Finding', display: 'run-link' }
+        ]
+      }
+    });
+    expect(pages['overview-security-findings'].views[0].encoding.href).toBeUndefined();
+  });
+
   it('accepts the aggregated call-site table and rejects hierarchy-breaking tree controls', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const apiPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api');
@@ -4163,6 +4227,36 @@ dashboard:
     if (!result.ok) {
       expect(result.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].encoding.columns[0].format' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' })
+      ]));
+    }
+  });
+
+  it('DLS-VIEW-008 rejects workflow path formatting without a type on non-nominal fields', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: invalid-inferred-format
+  title: Invalid inferred format
+  pages:
+    - id: summary
+      kind: custom
+      views:
+        - id: workflows
+          data:
+            source: workflows
+          mark: table
+          encoding:
+            columns:
+              - field: workflow-link
+                format: workflow-relative-path
+              - field: observed-at
+                format: workflow-relative-path
+`);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[0].format' }),
         expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' })
       ]));
     }

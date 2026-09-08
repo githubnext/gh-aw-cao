@@ -425,6 +425,117 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.table-summary-row')).toBeNull();
   });
 
+  it('renders failure detail using the row run link', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'failed-runs',
+      title: 'Failed runs',
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          columns: [{ field: 'failure-detail', type: 'nominal', display: 'run-link' }]
+        }
+      },
+      sourceName: 'runs',
+      rows: [{
+        'failure-detail': 'Target authority missing',
+        'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42', label: 'Run 42' }
+      }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const link = rendered?.querySelector('tbody a');
+    expect(link?.textContent).toBe('Target authority missing');
+    expect(link?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42');
+  });
+
+  it.each([
+    {
+      title: 'Blocked work',
+      sourceName: 'work-items',
+      columns: [
+        { field: 'waiting-since', type: 'temporal', title: 'Date' },
+        { field: 'repository', type: 'nominal', title: 'Repository' },
+        { field: 'reason', type: 'nominal', title: 'Blocked by', display: 'run-link' }
+      ],
+      row: {
+        'waiting-since': '2026-09-08T09:00:00Z',
+        repository: 'gh-aw-cao',
+        reason: 'Target authority missing',
+        'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/43', label: 'Run 43' }
+      },
+      linkText: 'Target authority missing',
+      href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/43'
+    },
+    {
+      title: 'Awaiting review',
+      sourceName: 'work-items',
+      columns: [
+        { field: 'waiting-since', type: 'temporal', title: 'Date' },
+        { field: 'repository', type: 'nominal', title: 'Repository' },
+        { field: 'objective', type: 'nominal', title: 'Work', display: 'evidence-link' }
+      ],
+      row: {
+        objective: 'Review dependency update',
+        repository: 'gh-aw-cao',
+        'waiting-since': '2026-09-08T10:00:00Z',
+        'evidence-link': { relation: 'evidence', href: 'https://github.com/githubnext/gh-aw-cao/pull/6181', label: 'Pull request 6181' }
+      },
+      linkText: 'Review dependency update',
+      href: 'https://github.com/githubnext/gh-aw-cao/pull/6181'
+    },
+    {
+      title: 'Security findings',
+      sourceName: 'security-findings',
+      columns: [
+        { field: 'observed-at', type: 'temporal', title: 'Date' },
+        { field: 'repository', type: 'nominal', title: 'Repository' },
+        { field: 'smell-name', type: 'nominal', title: 'Finding', display: 'run-link' }
+      ],
+      row: {
+        'observed-at': '2026-09-08T11:00:00Z',
+        repository: 'gh-aw-cao',
+        'smell-name': 'Prompt injection detected',
+        'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/44', label: 'Run 44' }
+      },
+      linkText: 'Prompt injection detected',
+      href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/44'
+    }
+  ])('renders the compact $title ledger with one actionable link', ({ title, sourceName, columns, row, linkText, href }) => {
+    const rendered = renderDataView('table', {
+      pageId: sourceName,
+      title,
+      view: {
+        mark: 'table',
+        'column-summaries': false,
+        encoding: {
+          columns
+        }
+      },
+      sourceName,
+      rows: [row],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect([...rendered?.querySelectorAll('thead th') ?? []].map((cell) => cell.textContent)).toEqual(columns.map((column) => column.title));
+    const links = rendered?.querySelectorAll('tbody a');
+    expect(links).toHaveLength(1);
+    expect(links?.[0].textContent).toBe(linkText);
+    expect(links?.[0].getAttribute('href')).toBe(href);
+  });
+
   it('preserves complete output evidence while marking it for visual ellipsis', () => {
     const evidence = 'Workflow failure evidence with complete diagnostic context';
     const rendered = renderDataView('table', {

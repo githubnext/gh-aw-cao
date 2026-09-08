@@ -454,13 +454,34 @@ export function renderCloseButton({ className, label, onClick }) {
 }
 
 /**
+ * Wires a toggle button to expand/collapse a companion panel, keeping the
+ * button's `aria-expanded` attribute and the panel's expanded CSS class in
+ * sync. Shared by the work-item mobile filter sheet, the settings sheet, and
+ * the notifications advanced-filter panel.
+ * @param {HTMLElement} toggle
+ * @param {HTMLElement} panel
+ * @param {{ expandedClass: string, onExpand?: (expanded: boolean) => void }} options
+ * @returns {(expanded: boolean) => void} setExpanded
+ */
+export function createExpandableToggle(toggle, panel, { expandedClass, onExpand }) {
+  /** @param {boolean} expanded */
+  const setExpanded = (expanded) => {
+    toggle.setAttribute('aria-expanded', String(expanded));
+    panel.classList.toggle(expandedClass, expanded);
+    if (onExpand) onExpand(expanded);
+  };
+  setExpanded(false);
+  return setExpanded;
+}
+
+/**
  * Renders the shared `<label><span>{label}</span>{control}</label>` pattern
  * used to associate a visible text label with a form control (search
  * inputs, facet selects, time-window inputs) across the filter bar and
  * table region toolbars.
  * @param {string} label
  * @param {Node} control
- * @param {{ className?: string, prefix?: Node }} [options]
+ * @param {{ className?: string, prefix?: Node, visuallyHiddenLabel?: boolean }} [options]
  * @returns {HTMLLabelElement}
  */
 export function renderLabeledControl(label, control, options = {}) {
@@ -468,7 +489,7 @@ export function renderLabeledControl(label, control, options = {}) {
     'label',
     options.className ? { className: options.className } : null,
     options.prefix,
-    h('span', null, label),
+    h('span', options.visuallyHiddenLabel ? { className: 'sr-only' } : null, label),
     control
   ));
 }

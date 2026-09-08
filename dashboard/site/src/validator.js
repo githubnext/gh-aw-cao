@@ -2917,17 +2917,31 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
 
   if (fieldDefinition.format !== undefined) {
     validateStringField(fieldDefinition.format, `${path}.format`, true, errors);
-    if (typeof fieldDefinition.format === 'string' && !FIELD_FORMAT_VALUES.includes(fieldDefinition.format)) {
+    const format = typeof fieldDefinition.format === 'string' ? fieldDefinition.format : null;
+    if (format !== null && !FIELD_FORMAT_VALUES.includes(format)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
         'format must use one canonical field format value.',
         `${path}.format`
       ));
     }
-    if (typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type)) {
+    const fieldName = typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null;
+    const intrinsicallyNominalOrOrdinal = fieldName !== null
+      && !LINK_FIELD_NAMES.includes(fieldName)
+      && !TEMPORAL_FIELD_NAMES.includes(fieldName)
+      && !ADDITIVE_MEASURE_FIELDS.includes(fieldName)
+      && !NON_ADDITIVE_MEASURE_FIELDS.includes(fieldName)
+      && aggregate === 'none';
+    if (
+      format === 'workflow-relative-path'
+      && (
+        (typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type))
+        || (fieldDefinition.type === undefined && !intrinsicallyNominalOrOrdinal)
+      )
+    ) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'workflow-relative-path format requires a nominal or ordinal field.',
+        `${format} format requires a nominal or ordinal field.`,
         `${path}.format`
       ));
     }

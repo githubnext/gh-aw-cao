@@ -29,7 +29,7 @@ export function summarizeTableColumns(columns) {
  * @returns {TableColumnSummary}
  */
 function summarizeTableColumn(column) {
-  if (column.display === 'outcome-link' || !SUMMARY_TYPES.has(String(column.type ?? ''))) {
+  if (['outcome-link', 'run-link', 'evidence-link'].includes(column.display ?? '') || !SUMMARY_TYPES.has(String(column.type ?? ''))) {
     return { kind: 'none' };
   }
   const values = column.values.filter((value) => value != null && value !== '');
