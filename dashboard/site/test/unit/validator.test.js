@@ -102,34 +102,23 @@ describe('dashboard document validation', () => {
     expect(pages['overview-security-findings'].views[0].encoding.href).toBeUndefined();
   });
 
-  it('accepts the aggregated call-site table and rejects hierarchy-breaking tree controls', () => {
+  it('accepts the GitHub API full-view lazy-list table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const apiPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api');
-    const stackView = apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-call-stacks');
 
-    expect(stackView).toMatchObject({
-      mark: 'table',
-      controls: 'interactive',
-      data: { limit: 20 },
-      encoding: {
-        columns: expect.arrayContaining([
-          expect.objectContaining({ field: 'operation-execution-id', aggregate: 'distinct-count', as: 'distinct-executions' })
-        ])
-      }
+    expect(apiPage.views).toEqual([
+      expect.objectContaining({
+        id: 'github-api-observations',
+        mark: 'table',
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
+      })
+    ]);
+    expect(apiPage.views[0].data).toMatchObject({
+      source: 'github-api-rate-limits'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-
-    stackView.data = { source: 'github-api-call-stacks' };
-    stackView.tree = {
-      'id-field': 'stack-frame-id',
-      'parent-field': 'stack-parent-id'
-    };
-    stackView.controls = 'interactive';
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    expect(rejected.errors).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'tree tables must use static controls to preserve hierarchy.' })
-    ]));
   });
 
   it('defines the Preview issue attribution views', () => {
