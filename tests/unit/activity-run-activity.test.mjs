@@ -135,10 +135,12 @@ test("runActivity removes cached agent directories before collecting logs", asyn
   });
   delete process.env.DASHBOARD_REPORT_ROOT;
   try {
-    await runActivity({});
+    const messages = [];
+    await runActivity({ core: { info: (message) => messages.push(message) } });
     await assert.rejects(access(agentPath), { code: "ENOENT" });
     assert.equal(await readFile(retainedPath, "utf8"), '{"usage":1}\n');
     assert.equal(await readFile(unrelatedPath, "utf8"), '{"retained":true}\n');
+    assert.deepEqual(messages, ["Removed cached agent logs from run-42"]);
   } finally {
     for (const key of Object.keys(process.env)) {
       if (!(key in originalEnv)) delete process.env[key];
