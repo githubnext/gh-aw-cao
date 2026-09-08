@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { processRows, processTableSummaries } from '../data-processor.js';
 import { formatCount } from './count-formatters.js';
 import { renderReactiveTableSummaryRow, renderTableSummaryRow } from './table-summary.js';
-import { renderEmptyTableRow, renderLabeledControl } from './ui-primitives.js';
+import { renderEmptyTableRow, renderLabeledControl, observeLoadMoreBoundary } from './ui-primitives.js';
 
 /**
  * @typedef {{ key: string, label: string, allLabel?: string, columnIndex: number, always?: boolean }} TableFilterField
@@ -314,16 +314,15 @@ function enableTableFilter(region, options) {
    limit = options.lazyList ? limit + options.pageSize : Number.POSITIVE_INFINITY;
    apply();
   };
-  more.addEventListener('click', loadMore);
-  region.addEventListener('table-sorted', () => apply());
-  apply();
-  const Observer = region.ownerDocument.defaultView?.IntersectionObserver;
-  if (options.lazyList && typeof Observer === 'function') {
-   const observer = new Observer((entries) => {
-     if (entries.some((entry) => entry.isIntersecting) && !more.hidden) loadMore();
-   }, { root: region.querySelector('.table-scroll'), rootMargin: '200px 0px' });
-   observer.observe(more);
-  }
+ more.addEventListener('click', loadMore);
+ region.addEventListener('table-sorted', () => apply());
+ apply();
+ const Observer = region.ownerDocument.defaultView?.IntersectionObserver;
+ if (options.lazyList) {
+  observeLoadMoreBoundary(Observer, more, () => {
+    if (!more.hidden) loadMore();
+  }, { root: region.querySelector('.table-scroll'), rootMargin: '200px 0px' });
+ }
 }
 
 /**

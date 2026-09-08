@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { observeLoadMoreBoundary } from './ui-primitives.js';
 
 /**
  * @template T
@@ -42,11 +43,10 @@ export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEm
     boundaryObserver?.disconnect();
     list.replaceChildren(...renderItems(renderedItems), ...(boundary ? [boundary] : []));
     afterRender();
-    if (!boundary || typeof globalThis.IntersectionObserver !== 'function') return;
-    boundaryObserver = new globalThis.IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) loadMore();
-    }, { rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px` });
-    boundaryObserver.observe(boundary);
+    if (!boundary) return;
+    boundaryObserver = observeLoadMoreBoundary(globalThis.IntersectionObserver, boundary, loadMore, {
+      rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px`
+    });
   };
 
   render();
