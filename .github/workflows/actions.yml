@@ -153,7 +153,18 @@ jobs:
               const networkLabel = network
                 ? `${network.downloadKbps}/${network.uploadKbps} Kbps, ${network.latencyMs} ms`
                 : 'default'
-              return `| ${analysis.device} | ${analysis.browser} | ${analysis.profile} | ${memory} | ${networkLabel} | ${analysis.dom.totalElements} | ${analysis.runtime?.navigation?.loadMs ?? 'n/a'} | ${formatBytes(analysis.runtime?.memory?.usedJSHeapSize)} |`
+              const mobileAccessibility = analysis.mobileAccessibility
+              const targetSize = !mobileAccessibility
+                ? 'n/a'
+                : mobileAccessibility.targets.total === 0
+                  ? 'n/a (no visible targets)'
+                  : `${mobileAccessibility.targets.undersized.length === 0 ? 'Pass' : 'Fail'} (${mobileAccessibility.targets.minimumWidth}px width min, ${mobileAccessibility.targets.minimumHeight}px height min)`
+              const reflow = mobileAccessibility ? (mobileAccessibility.reflow.passes ? 'Pass' : 'Fail') : 'n/a'
+              const zoom = mobileAccessibility ? (mobileAccessibility.zoom.passes ? 'Pass' : 'Fail') : 'n/a'
+              const names = mobileAccessibility
+                ? `${mobileAccessibility.accessibleNames.passes ? 'Pass' : 'Fail'} (${mobileAccessibility.accessibleNames.unnamedInteractive.length} unnamed)`
+                : 'n/a'
+              return `| ${analysis.device} | ${analysis.browser} | ${analysis.profile} | ${memory} | ${networkLabel} | ${analysis.dom.totalElements} | ${analysis.runtime?.navigation?.loadMs ?? 'n/a'} | ${formatBytes(analysis.runtime?.memory?.usedJSHeapSize)} | ${targetSize} | ${reflow} | ${zoom} | ${names} |`
             })
             const marker = '<!-- mobile-dashboard-analysis -->'
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
@@ -161,8 +172,8 @@ jobs:
               marker,
               '## Mobile dashboard analysis',
               '',
-              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | JS heap used |',
-              '| --- | --- | --- | --- | --- | ---: | ---: | ---: |',
+              '| Device | Browser | Profile | Memory limit | Network down/up, latency | DOM elements | Load (ms) | JS heap used | Visible target size | Visible reflow | Zoom | Visible accessible names |',
+              '| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- | --- |',
               ...rows,
               '',
               `[View detailed JSON, accessibility trees, traces, and screenshots in the workflow artifacts.](${runUrl})`,

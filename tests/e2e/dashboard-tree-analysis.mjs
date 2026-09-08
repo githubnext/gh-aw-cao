@@ -103,3 +103,51 @@ export function summarizeAccessibilityTree(snapshot) {
     },
   };
 }
+
+export function summarizeMobileAccessibility({
+  targets,
+  scrollWidth,
+  viewportWidth,
+  viewportMeta,
+  unnamedInteractive,
+}, minimumTargetSize = 24) {
+  const undersizedTargets = targets
+    .filter(({ width, height }) => width < minimumTargetSize || height < minimumTargetSize)
+    .sort((left, right) => Math.min(left.width, left.height) - Math.min(right.width, right.height));
+  const viewportDirectives = new Map(
+    viewportMeta
+      .split(",")
+      .map((directive) => directive.trim().split("=").map((part) => part.trim().toLowerCase()))
+      .filter(([name]) => name),
+  );
+  const maximumScale = Number(viewportDirectives.get("maximum-scale"));
+  const zoomAllowed = !["no", "0"].includes(viewportDirectives.get("user-scalable"))
+    && (!Number.isFinite(maximumScale) || maximumScale >= 2);
+
+  return {
+    minimumTargetSize,
+    targets: {
+      total: targets.length,
+      minimumWidth: targets.length === 0 ? 0 : Math.min(...targets.map(({ width }) => width)),
+      minimumHeight: targets.length === 0 ? 0 : Math.min(...targets.map(({ height }) => height)),
+      undersized: undersizedTargets,
+    },
+    reflow: {
+      viewportWidth,
+      scrollWidth,
+      passes: scrollWidth <= viewportWidth + 1,
+    },
+    zoom: {
+      viewportMeta,
+      passes: zoomAllowed,
+    },
+    accessibleNames: {
+      unnamedInteractive,
+      passes: unnamedInteractive.length === 0,
+    },
+    passes: undersizedTargets.length === 0
+      && scrollWidth <= viewportWidth + 1
+      && zoomAllowed
+      && unnamedInteractive.length === 0,
+  };
+}
