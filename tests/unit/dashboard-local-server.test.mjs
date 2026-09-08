@@ -73,7 +73,7 @@ test("Copilot shell policy allows safe text tools and rejects mutating sed", () 
   for (const command of [
     "grep key data.json > /dev/null",
     "grep key data.json 2> /dev/null",
-    "grep key data.json 2 > /dev/null",
+    "grep key data.json >> /dev/null",
   ]) {
     assert.equal(shellPermissionRejection(shellPermission(command, ["grep"])), null);
   }

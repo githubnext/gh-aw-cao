@@ -489,7 +489,7 @@ function hasUnquotedShellRedirection(command) {
 }
 
 function commandWithoutSafeNullRedirections(command) {
-  return command.replace(/(^|[\s;|&])(?:[012]\s*)?>\s*\/dev\/null(?=$|[\s;|&])/g, "$1");
+  return command.replace(/(^|[\s;|&])(?:[012]\s*)?>>?\s*\/dev\/null(?=$|[\s;|&])/g, "$1");
 }
 
 function shellCommandDetails(permission) {
