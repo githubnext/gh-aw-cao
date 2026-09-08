@@ -5411,7 +5411,7 @@
         "kind": "built-in",
         "page": "engines-models",
         "title": "Engines Models",
-        "icon": "copilot",
+        "icon": "sparkles-fill",
         "definition": {
           "data-state": {
             "availability": true,
@@ -7313,7 +7313,7 @@
         "kind": "custom",
         "title": "Operations",
         "navigation-label": "Operations",
-        "icon": "copilot",
+        "icon": "sparkles-fill",
         "class-name": "dashboard-next-agents-page",
         "description": "Browse operation packages, standalone workflows, and their runtime health.",
         "views": [
