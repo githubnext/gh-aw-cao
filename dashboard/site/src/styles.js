@@ -1237,6 +1237,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .notifications-health-metrics dt { grid-row: 2; color: var(--muted); font-size: .6875rem; white-space: nowrap; }
 .notifications-health-metrics dd { grid-row: 1; margin: 0; color: var(--fg); font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .notifications-toolbar { display: grid; grid-template-columns: auto minmax(180px, 1fr) auto auto; gap: 8px; margin-bottom: 12px; }
+.notifications-advanced-filters { display: contents; }
+.notifications-filter-toggle { display: none; }
 .notifications-state-tabs { display: flex; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; }
 .notifications-state-tabs button { padding: 5px 11px; border: 0; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .notifications-state-tabs button + button { border-left: 1px solid var(--border); }
@@ -1842,7 +1844,12 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .anomaly-readiness p { text-align: left; }
   .workflow-attention-list a, .workflow-attention-static { grid-template-columns: 20px minmax(0, 1fr); }
   .signal-rank, .signal-evidence { display: none; }
-  .notifications-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .notifications-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .notifications-filter-toggle { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
+  .notifications-filter-toggle[aria-expanded="true"] { background: var(--neutral-muted); }
+  .notifications-filter-toggle .octicon { width: 14px; height: 14px; }
+  .notifications-advanced-filters { display: none; }
+  .notifications-advanced-filters.is-expanded { min-width: 0; display: grid; grid-column: 1 / -1; gap: 8px; }
   .home-catchup-controls { width: 100%; }
   .home-catchup-controls select { min-width: 0; flex: 1; }
   .home-catchup-charts { grid-template-columns: minmax(0, 1fr); }

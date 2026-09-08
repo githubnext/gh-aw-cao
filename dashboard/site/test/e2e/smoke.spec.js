@@ -854,6 +854,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
+  const notificationFilters = overviewPage.locator('.notifications-advanced-filters');
+  const notificationFilterToggle = overviewPage.getByRole('button', { name: 'Filters' });
+  await expect(notificationFilterToggle).toBeVisible();
+  await expect(notificationFilterToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(notificationFilters).toBeHidden();
+  await notificationFilterToggle.click();
+  await expect(notificationFilterToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(notificationFilters).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();

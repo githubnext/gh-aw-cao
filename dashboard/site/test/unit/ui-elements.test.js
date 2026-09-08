@@ -785,6 +785,12 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('[aria-label="Sort notifications"]')).not.toBeNull();
     expect(rendered?.querySelector('[aria-label="Group notifications"]')).not.toBeNull();
     expect(/** @type {HTMLSelectElement | null} */ (rendered?.querySelector('[aria-label="Group notifications"]'))?.value).toBe('cause');
+    const notificationFilterToggle = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('.notifications-filter-toggle'));
+    expect(notificationFilterToggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(rendered?.querySelector('.notifications-advanced-filters')?.classList.contains('is-expanded')).toBe(false);
+    notificationFilterToggle?.click();
+    expect(notificationFilterToggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(rendered?.querySelector('.notifications-advanced-filters')?.classList.contains('is-expanded')).toBe(true);
     expect(rendered?.querySelector('.notifications-sidebar')).toBeNull();
     expect(rendered?.textContent).toContain('Upgrade agentic workflow dependencies');
     expect(rendered?.textContent).toContain('github/mona-tools');

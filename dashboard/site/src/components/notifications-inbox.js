@@ -296,6 +296,20 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(stateQuery, '').trim(); render(); } }, 'All');
   const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(stateQuery, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
   const later = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(stateQuery, '').trim()} is:later`.trim(); render(); } }, 'Later');
+  const advancedFilters = h('div', { className: 'notifications-advanced-filters' },
+    h('label', { className: 'notifications-search' }, octicon('search'), search),
+    h('label', { className: 'notifications-select' }, h('span', null, 'Sort by:'), sort),
+    h('label', { className: 'notifications-select' }, h('span', null, 'Group by:'), group));
+  const filterToggle = h('button', {
+    type: 'button',
+    className: 'notifications-filter-toggle',
+    'aria-expanded': 'false',
+    onClick: () => {
+      const expanded = filterToggle.getAttribute('aria-expanded') !== 'true';
+      filterToggle.setAttribute('aria-expanded', String(expanded));
+      advancedFilters.classList.toggle('is-expanded', expanded);
+    }
+  }, octicon('filter'), h('span', null, 'Filters'));
   search.addEventListener('input', () => render());
   sort.addEventListener('change', () => render());
   group.addEventListener('change', () => render());
@@ -321,9 +335,8 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const main = h('div', { className: 'notifications-main' },
       h('div', { className: 'notifications-toolbar' },
         h('div', { className: 'notifications-state-tabs' }, all, unread, later),
-        h('label', { className: 'notifications-search' }, octicon('search'), search),
-        h('label', { className: 'notifications-select' }, h('span', null, 'Sort by:'), sort),
-        h('label', { className: 'notifications-select' }, h('span', null, 'Group by:'), group)),
+        filterToggle,
+        advancedFilters),
       h('div', { className: 'notifications-selection-bar' },
         h('label', null, selectAll, h('span', null, 'Select all')),
         count,
