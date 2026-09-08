@@ -154,9 +154,11 @@ jobs:
                 ? `${network.downloadKbps}/${network.uploadKbps} Kbps, ${network.latencyMs} ms`
                 : 'default'
               const mobileAccessibility = analysis.mobileAccessibility
-              const targetSize = mobileAccessibility
-                ? `${mobileAccessibility.targets.undersized.length === 0 ? 'Pass' : 'Fail'} (${mobileAccessibility.targets.minimumWidth}×${mobileAccessibility.targets.minimumHeight}px min)`
-                : 'n/a'
+              const targetSize = !mobileAccessibility
+                ? 'n/a'
+                : mobileAccessibility.targets.total === 0
+                  ? 'n/a (no visible targets)'
+                  : `${mobileAccessibility.targets.undersized.length === 0 ? 'Pass' : 'Fail'} (${mobileAccessibility.targets.minimumWidth}px width min, ${mobileAccessibility.targets.minimumHeight}px height min)`
               const reflow = mobileAccessibility ? (mobileAccessibility.reflow.passes ? 'Pass' : 'Fail') : 'n/a'
               const zoom = mobileAccessibility ? (mobileAccessibility.zoom.passes ? 'Pass' : 'Fail') : 'n/a'
               const names = mobileAccessibility

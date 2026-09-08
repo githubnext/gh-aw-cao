@@ -194,8 +194,8 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
           || element.getAttribute("title")
           || element.getAttribute("name")
           || "",
-        width: Number(rectangle.width.toFixed(2)),
-        height: Number(rectangle.height.toFixed(2)),
+        width: rectangle.width,
+        height: rectangle.height,
       }];
     });
     return {

@@ -1270,7 +1270,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .notifications-cause-chevron { color: var(--muted); transition: transform 120ms ease; }
 .notifications-cause-cluster[open] .notifications-cause-chevron { transform: rotate(90deg); }
 .notifications-cause-cluster > .notifications-group { border-right: 0; border-bottom: 0; border-left: 0; }
-.notification-item { min-height: 62px; display: grid; grid-template-columns: 8px 16px auto minmax(0, 1fr) minmax(110px, auto) auto; align-items: center; gap: 10px; padding: 8px 10px; background: var(--canvas); }
+.notification-item { min-height: 62px; display: grid; grid-template-columns: 8px 24px auto minmax(0, 1fr) minmax(110px, auto) auto; align-items: center; gap: 10px; padding: 8px 10px; background: var(--canvas); }
+.notification-item input[type="checkbox"] { width: 24px; height: 24px; margin: 0; }
 .notification-item + .notification-item { border-top: 1px solid var(--border-muted); }
 .notification-item.unread { background: color-mix(in srgb, var(--accent) 7%, var(--canvas)); }
 .notification-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; }
@@ -1879,7 +1880,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .notifications-state-tabs { width: max-content; }
   .notifications-select { justify-content: space-between; }
   .notifications-select select { min-width: 0; margin-left: auto; }
-  .notification-item { grid-template-columns: 8px 16px auto minmax(0, 1fr) auto; }
+  .notification-item { grid-template-columns: 8px 24px auto minmax(0, 1fr) auto; }
   .notification-meta { grid-column: 3 / 5; justify-items: start; text-align: left; }
   .notification-actions { grid-column: 5; grid-row: 1 / span 2; flex-direction: column; opacity: 1; }
   .work-project-view { gap: 12px; }
@@ -2023,7 +2024,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .home-catchup-side-charts { grid-template-columns: minmax(0, 1fr); }
   .home-momentum-panel { padding: 13px 10px; }
   .home-momentum-chart { height: 116px; }
-  .notification-item { grid-template-columns: 8px 16px minmax(0, 1fr) auto; }
+  .notification-item { grid-template-columns: 8px 24px minmax(0, 1fr) auto; }
   .notification-item > .home-origin-badge { grid-column: 3; grid-row: 1; justify-self: start; }
   .notification-content { grid-column: 3 / 5; grid-row: 2; }
   .notification-meta { grid-column: 3 / 5; grid-row: 3; }
