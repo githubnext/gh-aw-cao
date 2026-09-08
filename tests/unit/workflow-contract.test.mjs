@@ -1968,6 +1968,19 @@ test("SelfCare data acquisition audit refreshes its specification", () => {
   assert.match(compiled, /specs\/data-acquisition-audit\.md/);
 });
 
+test("dashboard data schema workflow tracks every deployed source with Data Health inference", () => {
+  const source = workflow("dashboard-data-schema.md");
+
+  assert.match(source, /schedule: daily/);
+  assert.match(source, /if: github\.ref_name == 'main'/);
+  assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources/);
+  assert.match(source, /deriveDataHealthSources/);
+  assert.match(source, /manifest\.sources\.sort\(\)/);
+  assert.match(source, /allowed-files:\n\s+- "specs\/dashboard-data\.md"/);
+  assert.match(source, /if-no-changes: ignore/);
+  assert.doesNotMatch(source, /npm (?:install|ci)|npx /);
+});
+
 test("SelfCare runs every 20 minutes", () => {
   const source = workflow("self-care.md");
   const compiled = workflow("self-care.lock.yml");
@@ -2570,6 +2583,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ...packageLockNames,
       "uk-ai-advisory-package-maintainer.lock.yml",
       "dashboard-authoring-corpus.lock.yml",
+      "dashboard-data-schema.lock.yml",
       "design-decision-gate.lock.yml",
       "multi-device-docs-tester.lock.yml",
       "eu-cra-compliance-package-maintainer.lock.yml",
