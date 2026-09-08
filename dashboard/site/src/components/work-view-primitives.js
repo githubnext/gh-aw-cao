@@ -3,10 +3,11 @@
  */
 
 import { createElementCompositionConfig, selectElementComposition } from './view-element-composition.js';
+import { WORK_VIEW_SECTION_KEYS } from './route-body-specification.js';
 
 /** @typedef {'board'|'tasks'|'roadmap'} WorkViewBody */
 
-export const WORK_VIEW_BODY_VALUES = /** @type {const} */ (['board', 'tasks', 'roadmap']);
+export const WORK_VIEW_BODY_VALUES = /** @type {readonly WorkViewBody[]} */ (WORK_VIEW_SECTION_KEYS);
 
 const WORK_VIEW_CONFIG = createElementCompositionConfig(WORK_VIEW_BODY_VALUES, /** @type {WorkViewBody} */ ('board'));
 
