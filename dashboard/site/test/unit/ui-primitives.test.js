@@ -108,9 +108,11 @@ describe('ui primitives', () => {
   });
 
   it('formats a Date, timestamp, or date string as a short local date', () => {
-    expect(formatShortDate(new Date('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026');
-    expect(formatShortDate(Date.parse('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026');
-    expect(formatShortDate('2026-08-30T10:00:00Z')).toBe('Aug 30, 2026');
+    const localDate = new Date(2026, 7, 30, 10);
+    expect(formatShortDate(localDate, 'en-US')).toBe('Aug 30, 2026');
+    expect(formatShortDate(localDate.getTime(), 'en-US')).toBe('Aug 30, 2026');
+    expect(formatShortDate('2026-08-30T10:00:00', 'en-US')).toBe('Aug 30, 2026');
+    expect(formatShortDate(localDate)).toBe(localDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }));
   });
 
   it('computes whole-hour coverage windows and rejects invalid or non-increasing bounds', () => {

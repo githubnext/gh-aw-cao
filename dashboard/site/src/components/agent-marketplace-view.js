@@ -364,7 +364,7 @@ function workflowPermissions(workflow) {
  * @returns {string}
  */
 function formatLastObserved(observed) {
-  return observed ? formatShortDate(observed) : '';
+  return observed ? formatShortDate(observed, 'en-US') : '';
 }
 
 /** @param {Record<string, unknown>} row @returns {AgentCatalogEntry} */

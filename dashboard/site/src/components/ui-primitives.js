@@ -175,11 +175,12 @@ export function completenessCaveat(completeness, subject) {
  * the experiments table's observation date column, which both derive a
  * compact date label from a raw timestamp or ISO string.
  * @param {Date | number | string} input
+ * @param {string | undefined} [locale]
  * @returns {string}
  */
-export function formatShortDate(input) {
+export function formatShortDate(input, locale = undefined) {
   const date = input instanceof Date ? input : new Date(input);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /**
