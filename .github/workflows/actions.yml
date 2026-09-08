@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mobile-dashboard-integration
+  group: mobile-dashboard-integration-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -3044,6 +3044,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
+  assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
   assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
