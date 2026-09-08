@@ -1004,7 +1004,7 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('preserves threat evidence when Notifications derives agent smells', async () => {
+  it('does not turn agent smells into Home notifications', async () => {
     window.history.replaceState(null, '', '/#page-agents');
     const metadata = /** @type {const} */ ({
       'source-id': 'notification-agent-smell-fixture',
@@ -1044,11 +1044,10 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    const smell = [...page?.querySelectorAll('.notification-item') ?? []]
-      .find((item) => item.textContent?.includes('Agent smell: Review agent'));
-    expect(smell?.textContent).toContain('Malicious patch detected');
-    expect(smell?.querySelector('.home-origin-agents .octicon-copilot')).not.toBeNull();
-    expect(smell?.querySelector('.notification-content')?.getAttribute('href')).toBe('#page-agents');
+    expect(page?.querySelector('.home-attention-summary')).not.toBeNull();
+    expect(page?.querySelector('.notifications-inbox')).toBeNull();
+    expect(page?.textContent).toContain('0Security findings');
+    expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();
   });
 

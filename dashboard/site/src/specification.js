@@ -66,7 +66,8 @@ export const VIEW_ELEMENT_VALUES = [
   'experiments-evaluation',
   'work-project-view',
   'agent-marketplace-view',
-  'insights-overview'
+  'insights-overview',
+  'home-attention-summary'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_LAYOUT_VALUES = ['full', 'half', 'third'];

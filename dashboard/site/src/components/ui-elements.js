@@ -19,8 +19,8 @@ import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { renderWorkProjectView } from './work-project-view.js';
-import { agentSmellNotifications, renderAgentMarketplaceView, smellObservationNotifications } from './agent-marketplace-view.js';
-import { renderNotificationsInbox } from './notifications-inbox.js';
+import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
+import { renderHomeAttentionSummary } from './home-attention-summary.js';
 import { renderInsightsOverview } from './insights-overview.js';
 import { modeBadgeClassName, renderStatusBadge } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
@@ -73,10 +73,11 @@ const ELEMENT_RENDERERS = new Map([
   ['experiments-evaluation', renderExperimentsEvaluation],
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
-  ['insights-overview', renderInsightsOverview]
+  ['insights-overview', renderInsightsOverview],
+  ['home-attention-summary', renderHomeAttentionSummary]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'home-attention-summary']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -601,53 +602,21 @@ function renderContextSummaryValue(row) {
 /** @param {ElementRenderContext} context */
 function renderSignalListElement(context) {
   const sourceName = context.sourceNames[0];
-  const source = context.sources[sourceName];
-  const isCanonicalAttention = sourceName === 'attention-signals';
-  const sourceRows = rowsFor(context, sourceName);
-  const smellRows = isCanonicalAttention ? [
-    ...agentSmellNotifications(
-      rowsFor(context, 'workflows'),
-      rowsFor(context, 'agent-assignments'),
-      rowsFor(context, 'security-observations'),
-      rowsFor(context, 'agent-smells')
-    ),
-    ...smellObservationNotifications(rowsFor(context, 'workflow-smells'), {
-      signalType: 'workflow-smell', objectivePrefix: 'Workflow smell', icon: 'workflow',
-      expectedActor: 'workflow-owner', navigationHref: '#page-agents'
-    }),
-    ...smellObservationNotifications(rowsFor(context, 'security-findings'), {
-      signalType: 'security-finding', objectivePrefix: 'Security finding', icon: 'shield',
-      expectedActor: 'security-reviewer', navigationHref: '#page-security'
-    }),
-    ...smellObservationNotifications(rowsFor(context, 'control-plane-smells'), {
-      signalType: 'control-plane-smell', objectivePrefix: 'Control-plane smell', icon: 'gear',
-      expectedActor: 'control-plane-owner', navigationHref: '#page-configuration'
-    })
-  ] : [];
-  const rows = isCanonicalAttention ? rankCanonicalAttention([...sourceRows, ...smellRows]) : sourceRows;
-  if (isCanonicalAttention && source) return renderNotificationsInbox(rows, {
-    runs: rowsFor(context, 'runs'),
-    workItems: rowsFor(context, 'work-items'),
-    outcomes: rowsFor(context, 'outcomes'),
-    operationalValues: rowsFor(context, 'operational-values'),
-    evidenceRecords: rowsFor(context, 'evidence-records')
-  });
+  const rows = rowsFor(context, sourceName);
   const list = h(
     'div',
-    { className: `signal-list-region${isCanonicalAttention ? ' canonical-attention-list' : ''}` },
-    context.description && !isCanonicalAttention ? h('p', { className: 'signal-boundary-note' }, context.description) : null,
+    { className: 'signal-list-region' },
+    context.description ? h('p', { className: 'signal-boundary-note' }, context.description) : null,
     h(
       'ol',
       { className: 'signal-list' },
       ...(rows.length > 0
-        ? rows.map((row, index) => renderSignal(row, index, isCanonicalAttention))
+        ? rows.map((row, index) => renderSignal(row, index, false))
         : [h(
           'li',
           { className: 'signal-clear' },
           renderIconSpan('signal-icon', 'check-circle'),
-          h('span', { className: 'signal-copy' }, h('strong', null, isCanonicalAttention
-            ? 'No unresolved attention signals'
-            : 'No signals require attention'))
+          h('span', { className: 'signal-copy' }, h('strong', null, 'No signals require attention'))
         )])
     )
   );
@@ -726,22 +695,6 @@ function canonicalAttentionTone(consequence) {
   if (['critical', 'high'].includes(consequence.toLowerCase())) return 'critical';
   if (consequence.toLowerCase() === 'low') return 'informational';
   return 'action';
-}
-
-/** @param {Array<Record<string, unknown>>} rows */
-function rankCanonicalAttention(rows) {
-  return [...rows].sort((left, right) => {
-    const priority = numericValue(left.priority) - numericValue(right.priority);
-    if (priority !== 0) return priority;
-    const age = numericValue(right['age-seconds']) - numericValue(left['age-seconds']);
-    if (age !== 0) return age;
-    return stringValue(left['attention-signal-id']).localeCompare(stringValue(right['attention-signal-id']));
-  });
-}
-
-/** @param {unknown} value */
-function numericValue(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
 }
 
 /** @param {unknown} value */

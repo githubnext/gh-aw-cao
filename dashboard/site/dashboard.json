@@ -7180,30 +7180,20 @@
         "navigation-label": "Home",
         "icon": "home",
         "class-name": "dashboard-overview-page",
-        "description": "A concise briefing of progress, work in motion, and decisions waiting for you.",
+        "description": "Current failures, blocked work, reviews, and security findings.",
         "views": [
           {
             "id": "overview-attention",
             "locked": true,
             "data": {
               "sources": [
-                "attention-signals",
-                "workflows",
-                "agent-assignments",
-                "agent-smells",
-                "workflow-smells",
-                "security-findings",
-                "control-plane-smells",
-                "security-observations",
                 "runs",
                 "work-items",
-                "outcomes",
-                "operational-values",
-                "evidence-records"
+                "security-findings"
               ]
             },
             "mark": "element",
-            "element": "signal-list",
+            "element": "home-attention-summary",
             "layout": "full"
           }
         ]

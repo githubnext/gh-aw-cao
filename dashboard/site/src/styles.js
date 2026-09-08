@@ -1153,6 +1153,17 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .signal-evidence small { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .6875rem; }
 .signal-evidence .octicon { width: 12px; height: 12px; }
 .notifications-inbox { min-width: 0; display: grid; gap: 32px; }
+.home-attention-summary { display: grid; gap: 18px; padding: 12px 0; }
+.home-attention-summary h2 { margin: 0; font-size: 1rem; }
+.home-attention-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--border-muted); border-bottom: 1px solid var(--border-muted); }
+.home-attention-metric { min-width: 0; display: grid; gap: 4px; padding: 28px 22px; color: var(--fg); text-decoration: none; }
+.home-attention-metric + .home-attention-metric { border-left: 1px solid var(--border-muted); }
+.home-attention-metric:hover span { color: var(--accent); }
+.home-attention-metric:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.home-attention-metric strong { font-size: 2.5rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.home-attention-metric span { color: var(--muted); font-size: .8125rem; font-weight: 600; }
+.home-attention-metric-danger strong { color: var(--danger); }
+.home-attention-metric-attention strong { color: var(--attention); }
 .notifications-main { min-width: 0; }
 .notifications-health { min-width: 0; }
 .home-catchup { display: grid; gap: 22px; padding: 6px 0 28px; border-bottom: 1px solid var(--border-muted); }
@@ -1850,6 +1861,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .workflow-attention-list a, .workflow-attention-static { grid-template-columns: 20px minmax(0, 1fr); }
   .signal-rank, .signal-evidence { display: none; }
   .notifications-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .home-attention-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-attention-metric:nth-child(3) { border-left: 0; }
+  .home-attention-metric:nth-child(n + 3) { border-top: 1px solid var(--border-muted); }
   .notifications-filter-toggle { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
   .notifications-filter-toggle[aria-expanded="true"] { background: var(--neutral-muted); }
   .notifications-filter-toggle .octicon { width: 14px; height: 14px; }

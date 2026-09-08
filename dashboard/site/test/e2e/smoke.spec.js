@@ -827,13 +827,13 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Home' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
-  await expect(overviewPage.getByRole('searchbox', { name: 'Filter notifications' })).toHaveValue('is:unread');
-  await expect(overviewPage.getByRole('columnheader')).toHaveCount(0);
-  await expect(overviewPage.locator('.canonical-attention-item')).toHaveCount(3);
-  await expect(overviewPage).toContainText('Upgrade agentic workflow dependencies');
-  await expect(overviewPage).toContainText('Update the Dependabot release train');
-  await expect(overviewPage).toContainText('Three required validations passed.');
-  await expect(overviewPage.locator('a[href="https://example.com/evidence/release-train"]')).not.toHaveCount(0);
+  await expect(overviewPage.getByRole('heading', { name: 'Needs your attention' })).toBeVisible();
+  await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
+  await expect(overviewPage.locator('[href="#page-runs"]')).toContainText('0Failed runs');
+  await expect(overviewPage.locator('[href="#page-work-tasks"]')).toHaveCount(2);
+  await expect(overviewPage.locator('[href="#page-work-tasks"]').nth(1)).toContainText('1Awaiting review');
+  await expect(overviewPage.locator('[href="#page-security"]')).toContainText('0Security findings');
+  await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   for (const { label, pageId } of [
@@ -854,19 +854,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  const notificationFilters = overviewPage.locator('.notifications-advanced-filters');
-  const notificationFilterToggle = overviewPage.getByRole('button', { name: 'Filters' });
-  await expect(notificationFilterToggle).toBeVisible();
-  await expect(notificationFilterToggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(notificationFilters).toBeHidden();
-  await notificationFilterToggle.click();
-  await expect(notificationFilterToggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(notificationFilters).toBeVisible();
+  await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(overviewPage.locator('.canonical-attention-item').first()).toBeInViewport();
+  await expect(overviewPage.locator('.home-attention-metric').first()).toBeInViewport();
   await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
