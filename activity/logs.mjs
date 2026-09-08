@@ -171,6 +171,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       .filter((entry) => entry.isFile() && entry.name.endsWith(".lock.yml"))
       .map((entry) => `${repository}/.github/workflows/${entry.name}`)
       .sort();
+    log.info`Calling gh aw logs --json --audit for ${targets.length} control-repository workflows`;
     const raw = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
     const snapshot = JSON.parse(raw);
     if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");

@@ -36,7 +36,7 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
 `);
   await chmod(ghPath, 0o755);
   try {
-    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+    const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
         ...process.env,
         PATH: `${item.bin}:${process.env.PATH}`,
@@ -59,6 +59,7 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).available, true);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
+    assert.match(stdout, /Calling gh aw logs --json --audit for 1 control-repository workflows/);
   } finally {
     await rm(item.root, { recursive: true, force: true });
   }
