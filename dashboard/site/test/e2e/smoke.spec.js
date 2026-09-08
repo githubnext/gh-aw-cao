@@ -1634,7 +1634,6 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
                   },
                   mark: 'chart',
                   chart: 'pie',
-                  table: false,
                   encoding: {
                     x: { field: 'status-detail', type: 'nominal', title: 'Failure reason' },
                     y: { field: 'status-detail', type: 'quantitative', aggregate: 'count', title: 'Failed dispatches' }
@@ -2206,7 +2205,6 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
                     source: 'runs'
                   },
                   mark: 'chart',
-                  table: true,
                   encoding: {
                     x: {
                       field: 'started-at',
@@ -2395,7 +2393,7 @@ test('DLS-VIEW-013 DLS-VIEW-014 DLS-VIEW-015 DLS-SAFE-006 custom views render av
   await expect(page.locator('[data-chart-legend="text"]')).toHaveCount(0);
   await expect(page.locator('[data-chart-legend="visual"] li')).toHaveCount(2);
   await expect(page.locator('[data-chart-legend="visual"] li span')).toHaveText(['failure', 'success']);
-  await expect(page.locator('.custom-chart-table')).toHaveCount(0);
+  await expect(page.locator('.chart-view .table-region')).toHaveCount(0);
   await expect(page.locator('.page-section').filter({ has: page.getByRole('heading', { name: 'Daily Runs' }) }).locator('.view-source')).toHaveCount(0);
 
   await hydrateView(page, 'Empty Usage');

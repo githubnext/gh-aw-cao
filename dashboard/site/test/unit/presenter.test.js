@@ -2685,7 +2685,6 @@ describe('presenter built-in and custom pages', () => {
                   source: 'runs'
                 },
                 mark: 'chart',
-                table: true,
                 encoding: {
                   x: {
                     field: 'started-at',
@@ -2882,7 +2881,7 @@ describe('presenter built-in and custom pages', () => {
     expect(chartSection?.querySelector('[data-chart-legend="text"]')).toBeNull();
     expect(chartSection?.querySelectorAll('[data-chart-legend="visual"] li')).toHaveLength(2);
     expect(chartLegendLabels.map((item) => item.textContent)).toEqual(['failure', 'success']);
-    expect(chartSection?.querySelector('.custom-chart-table')).toBeNull();
+    expect(chartSection?.querySelector('.table-region')).toBeNull();
     expect(chartSection?.querySelectorAll('.view-source')).toHaveLength(0);
 
     const emptySection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Empty Usage'));

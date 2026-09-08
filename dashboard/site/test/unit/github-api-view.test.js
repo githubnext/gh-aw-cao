@@ -199,13 +199,11 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(apiPage.views[0]).toMatchObject({
       id: 'github-api-remaining-trend',
       chart: 'scatter',
-      table: false,
       data: { filters: { 'is-unhealthy': 'true' }, limit: 96 }
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-remaining-capacity')).toMatchObject({
       id: 'github-api-remaining-capacity',
       chart: 'bar',
-      table: false,
       data: expect.objectContaining({ limit: 24 })
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-at-risk')).toMatchObject({
@@ -214,7 +212,6 @@ describe('GitHub API rate-limit dashboard', () => {
     });
     expect(apiPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-remaining-trend')).toMatchObject({
       chart: 'scatter',
-      table: false,
       encoding: {
         x: expect.objectContaining({ field: 'observed-at', 'time-unit': 'hour' }),
         y: expect.objectContaining({ field: 'remaining-percent', aggregate: 'min', unit: 'percent' }),

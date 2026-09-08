@@ -100,8 +100,7 @@ export function renderTableRegion(options) {
         {
           className: tableClassName,
           ...(options.tableRole ? { role: options.tableRole } : {}),
-          ...(tableClassName === 'custom-table' ? { 'data-custom-view-mark': 'table' } : {}),
-          ...(tableClassName === 'custom-chart-table' ? { 'data-custom-view-mark': 'chart' } : {})
+          ...(tableClassName === 'custom-table' ? { 'data-custom-view-mark': 'table' } : {})
         },
         h(
           'thead',
