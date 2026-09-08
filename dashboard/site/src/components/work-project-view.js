@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { textValue, titleCase } from './count-formatters.js';
-import { createExpandableToggle, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -633,14 +633,10 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
   },
   h('option', { value: '' }, 'Move to…'),
   ...BOARD_COLUMNS.map((column) => h('option', { value: column.tone }, column.title))));
-  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', {
+  const { dialog, open: openDetail, close: closeDetail } = createModalDialog({
     className: 'work-mobile-detail',
-    'aria-label': `${item.name} details`
-  }));
-  const closeDetail = () => {
-    if (typeof dialog.close === 'function' && dialog.open) dialog.close();
-    else dialog.removeAttribute('open');
-  };
+    ariaLabel: `${item.name} details`
+  });
   /** @param {string} label @param {string} value @param {string[]} values @param {'owner'|'packageName'} property */
   const updateSelect = (label, value, values, property) => {
     const optionValues = [...new Set([value, ...values])];
@@ -685,10 +681,7 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
     type: 'button',
     className: 'work-mobile-details-button',
     'aria-label': `Open ${item.name} details`,
-    onclick: () => {
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else dialog.setAttribute('open', '');
-    }
+    onclick: () => openDetail()
   }, 'Details', renderIconSpan('work-mobile-details-icon', 'chevron-right', { ariaHidden: true }));
   element.append(h('footer', { className: 'work-mobile-item-actions' }, move, detailsButton), dialog);
   return element;
