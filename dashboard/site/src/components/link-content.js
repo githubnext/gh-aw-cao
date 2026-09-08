@@ -93,6 +93,23 @@ export function externalAnchorAttrs(href, label) {
 }
 
 /**
+ * Renders a github.com Actions run URL as an external link labeled with its run ID.
+ * @param {unknown} value
+ * @returns {HTMLElement | null}
+ */
+export function renderWorkflowRunUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    const match = url.pathname.match(/^\/[^/]+\/[^/]+\/actions\/runs\/([1-9]\d*)\/?$/);
+    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match) return null;
+    return renderExternalLink({ href: url.href, label: match[1] });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {SafeLink} link
  * @returns {HTMLElement}
  */
