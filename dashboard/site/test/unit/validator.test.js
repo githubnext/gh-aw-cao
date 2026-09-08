@@ -224,7 +224,8 @@ describe('dashboard document validation', () => {
         time: { range: '30d' },
         filters: {
           'review-state': expect.arrayContaining(['enforcement-disabled', 'evidence-missing', 'newly-allowed', 'decision-changed'])
-        }
+        },
+        limit: 25
       }
     });
     expect(review.encoding.actions[0]).toMatchObject({
@@ -242,14 +243,14 @@ describe('dashboard document validation', () => {
       id: 'firewall-policy-rules',
       mark: 'table',
       disclosure: 'supplemental',
-      data: { source: 'firewall-policy-rules' }
+      data: { source: 'firewall-policy-rules', limit: 25 }
     });
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',
       controls: 'interactive',
       disclosure: 'supplemental',
-      data: { source: 'firewall-observations', time: { range: '30d' } }
+      data: { source: 'firewall-observations', time: { range: '30d' }, limit: 25 }
     });
     expect(domains.encoding.columns).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: 'domain' }),
@@ -271,7 +272,7 @@ describe('dashboard document validation', () => {
       id: 'firewall-evidence-coverage',
       mark: 'table',
       disclosure: 'supplemental',
-      data: { source: 'firewall-observations', time: { range: '30d' } }
+      data: { source: 'firewall-observations', time: { range: '30d' }, limit: 25 }
     });
     const serialized = JSON.stringify(firewall).toLowerCase();
     expect(serialized).not.toContain('blocked = failure');

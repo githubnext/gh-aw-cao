@@ -1148,7 +1148,8 @@
                   "field": "observed-at",
                   "direction": "desc"
                 }
-              ]
+              ],
+              "limit": 25
             },
             "mark": "table",
             "controls": "interactive",
@@ -1293,10 +1294,15 @@
               },
               "order-by": [
                 {
+                  "field": "observed-at",
+                  "direction": "desc"
+                },
+                {
                   "field": "rule-order",
                   "direction": "asc"
                 }
-              ]
+              ],
+              "limit": 25
             },
             "mark": "table",
             "controls": "interactive",
@@ -1369,7 +1375,18 @@
                   "allowed",
                   "denied"
                 ]
-              }
+              },
+              "order-by": [
+                {
+                  "field": "observed-at",
+                  "direction": "desc"
+                },
+                {
+                  "field": "domain",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 25
             },
             "mark": "table",
             "controls": "interactive",
@@ -1499,7 +1516,8 @@
                   "field": "last-successful-collection-at",
                   "direction": "desc"
                 }
-              ]
+              ],
+              "limit": 25
             },
             "mark": "table",
             "controls": "interactive",
