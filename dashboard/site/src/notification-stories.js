@@ -176,13 +176,16 @@ function storyTitle(events, objectType) {
   const latestTitle = eventTitle(events[0]);
   if (objectType === 'security-finding') return latestTitle;
   const latestTimestamp = eventTimestamp(events[0]);
+  if (!latestTimestamp) return latestTitle;
   const terminal = latestTitle.toLowerCase();
   const transition = TRANSITION_RULES.find((rule) => (
     rule.terminal === terminal
-    && events.slice(1).some((event) => (
-      eventTimestamp(event) < latestTimestamp
-      && eventTitle(event).toLowerCase() === rule.initial
-    ))
+    && events.slice(1).some((event) => {
+      const timestamp = eventTimestamp(event);
+      return timestamp > 0
+        && timestamp < latestTimestamp
+        && eventTitle(event).toLowerCase() === rule.initial;
+    })
   ));
   return transition?.title ?? latestTitle;
 }
