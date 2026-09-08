@@ -60,7 +60,7 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).available, true);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
-    assert.match(stdout, /Calling gh aw logs --json --audit for 1 control-repository workflow/);
+    assert.ok(stdout.includes(`Calling gh aw logs with arguments: ${JSON.stringify(args.slice(2))}`));
     assert.match(stdout, /Fetched 1 run/);
     assert.match(stdout, /Collected snapshot with 1 run across 1 workflow/);
   } finally {
