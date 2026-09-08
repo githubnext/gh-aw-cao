@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseWorkflowRoute, workflowRouteValue } from '../../src/components/workflow-route.js';
 import { selectConfigBody } from '../../src/components/route-body-composition.js';
+import { createRouteBodyConfig } from '../../src/components/route-body-config.js';
 import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES } from '../../src/components/route-body-specification.js';
 
 describe('workflow-route helpers', () => {
@@ -38,5 +39,14 @@ describe('workflow-route helpers', () => {
 
   it('keeps workflow-route-page body values aligned with workflow-route values', () => {
     expect(WORKFLOW_ROUTE_PAGE_BODY_VALUES).toEqual(WORKFLOW_ROUTE_BODY_VALUES);
+  });
+
+  it('reuses canonical route body selection helpers across declarative route elements', () => {
+    const config = createRouteBodyConfig(/** @type {const} */ (['reports', 'runs']), 'reports');
+
+    expect(config.body('runs')).toBe('runs');
+    expect(config.body('invalid')).toBe('reports');
+    expect(config.composition({ reports: 'report-view', runs: 'runs-view' }, 'runs')).toBe('runs-view');
+    expect(config.composition({ reports: 'report-view', runs: 'runs-view' }, null)).toBe('report-view');
   });
 });
