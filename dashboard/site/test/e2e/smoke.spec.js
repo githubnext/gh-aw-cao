@@ -1387,7 +1387,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
 
 });
 
-test('built-in repositories page keeps repository scope above the run metadata', async ({ page }) => {
+test('built-in repositories page shows repository activity as one full view', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 
@@ -1441,18 +1441,13 @@ test('built-in repositories page keeps repository scope above the run metadata',
     </script>
   `);
 
-  const cells = page.locator('.context-summary > div');
-  await expect(cells).toHaveCount(3);
-  const boxes = await cells.evaluateAll((elements) => elements.map((element) => {
-    const { x, y, width } = element.getBoundingClientRect();
-    return { x, y, width };
-  }));
-
-  expect(boxes[1].y).toBeGreaterThan(boxes[0].y);
-  expect(boxes[2].y).toBe(boxes[1].y);
-  expect(boxes[2].x).toBeGreaterThan(boxes[1].x);
-  expect(boxes[0].x).toBeCloseTo(boxes[1].x, 0);
-  expect(boxes[0].x + boxes[0].width).toBeCloseTo(boxes[2].x + boxes[2].width, 0);
+  const views = page.locator('[data-page-id="repositories"] .custom-view');
+  await expect(views).toHaveCount(1);
+  await expect(views).toHaveAttribute('data-view-id', 'repositories-activity');
+  await expect(views).toHaveAttribute('data-view-layout', 'full');
+  await expect(views.getByRole('heading', { name: 'Activity by repository' })).toBeVisible();
+  await expect(views.getByRole('columnheader', { name: 'Repository' })).toBeVisible();
+  await expect(page.locator('.context-summary')).toHaveCount(0);
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {

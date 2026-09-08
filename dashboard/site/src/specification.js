@@ -203,7 +203,7 @@ export const PAGE_SECTION_LAYOUT_VALUES = ['full', 'wide', 'narrow'];
 export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   overview: ['repositories', 'workflows', 'runs', 'usage', 'findings', 'operational-values'],
   organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
-  repositories: ['repositories', 'runs', 'usage', 'operational-values'],
+  repositories: ['repository-activity'],
   packages: ['workflows', 'runs', 'outcomes', 'usage'],
   workflows: ['workflows', 'runs', 'outcomes', 'usage', 'findings', 'operational-values'],
   runs: ['runs'],
@@ -233,10 +233,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     usage: ['aic']
   },
   repositories: {
-    repositories: ['repository'],
-    runs: ['run'],
-    usage: ['aic'],
-    'operational-values': ['operational-value', 'operational-value-definition']
+    'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status']
   },
   packages: {
     workflows: ['organization', 'repository', 'package', 'package-name', 'workflow', 'workflow-role', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance'],
