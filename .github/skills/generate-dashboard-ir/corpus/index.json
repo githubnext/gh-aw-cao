@@ -1,4 +1,10 @@
 {
   "schemaVersion": 1,
-  "examples": []
+  "examples": [
+    {
+      "id": "triage-review-readiness",
+      "metadata": "examples/triage-review-readiness.json",
+      "dashboard": "examples/triage-review-readiness.dashboard.yml"
+    }
+  ]
 }
