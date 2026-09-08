@@ -14,6 +14,12 @@ function text(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** @param {unknown} value */
+function identifier(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return text(value);
+}
+
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -87,7 +93,7 @@ function eventRepository(event) {
 
 /** @param {Record<string, unknown>} event */
 function rawEventId(event) {
-  const explicit = text(event['event-id'] ?? event.eventId ?? event.id
+  const explicit = identifier(event['event-id'] ?? event.eventId ?? event.id
     ?? event['attention-signal-id'] ?? event['safe-output'] ?? event.finding
     ?? event['observation-id'] ?? event['smell-observation-id']);
   if (explicit) return explicit;
@@ -108,7 +114,7 @@ function linkedObject(href) {
     if (parts[2] === 'issues' && parts[3]) return { objectType: 'issue', objectId: parts[3] };
     if (parts[2] === 'actions' && parts[3] === 'runs' && parts[4]) return { objectType: 'workflow-run', objectId: parts[4] };
     if (parts[2] === 'deployments' && parts[3]) return { objectType: 'deployment', objectId: parts[3] };
-    const securityFindingId = parts.at(-1);
+    const securityFindingId = parts.slice(3).join(':');
     if (parts[2] === 'security' && securityFindingId) return { objectType: 'security-finding', objectId: securityFindingId };
   } catch {
     return null;
@@ -119,7 +125,7 @@ function linkedObject(href) {
 /** @param {Record<string, unknown>} event @returns {{ objectType: string, objectId: string }} */
 function eventObject(event) {
   const objectType = text(event.objectType ?? event['object-type']);
-  const objectId = text(event.objectId ?? event['object-id']);
+  const objectId = identifier(event.objectId ?? event['object-id']);
   if (objectType && objectId) return { objectType, objectId };
 
   for (const href of eventUrls(event)) {
@@ -128,15 +134,15 @@ function eventObject(event) {
   }
 
   const outcomeType = text(event['outcome-category']);
-  const outcomeId = text(event['outcome-number'] ?? event['safe-output']);
+  const outcomeId = identifier(event['outcome-number'] ?? event['safe-output']);
   if (['pull-request', 'issue'].includes(outcomeType) && outcomeId) {
     return { objectType: outcomeType, objectId: outcomeId };
   }
-  const findingId = text(event.finding ?? event['smell-observation-id']);
+  const findingId = identifier(event.finding ?? event['smell-observation-id']);
   if (findingId) return { objectType: 'security-finding', objectId: findingId };
-  const runId = text(event.run);
+  const runId = identifier(event.run);
   if (runId) return { objectType: 'workflow-run', objectId: runId };
-  const workItemId = text(event['work-item-id']);
+  const workItemId = identifier(event['work-item-id']);
   if (workItemId) return { objectType: 'work-item', objectId: workItemId };
   return { objectType: 'event', objectId: rawEventId(event) };
 }

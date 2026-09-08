@@ -102,4 +102,37 @@ describe('notification story normalization', () => {
 
     expect(events).toEqual(snapshot);
   });
+
+  it('canonicalizes numeric IDs and keeps security alert namespaces separate', () => {
+    const stories = normalizeNotificationStories([{
+      id: 1,
+      title: 'Issue updated',
+      repository: 'octo/widgets',
+      objectType: 'issue',
+      objectId: 42,
+      timestamp: '2026-09-08T01:00:00Z'
+    }, {
+      id: 2,
+      title: 'Issue updated again',
+      repository: 'octo/widgets',
+      objectType: 'issue',
+      objectId: 42,
+      timestamp: '2026-09-08T02:00:00Z'
+    }, {
+      id: 3,
+      title: 'Secret alert',
+      deepLink: 'https://github.com/octo/widgets/security/secret-scanning/7',
+      timestamp: '2026-09-08T03:00:00Z'
+    }, {
+      id: 4,
+      title: 'Code alert',
+      deepLink: 'https://github.com/octo/widgets/security/code-scanning/7',
+      timestamp: '2026-09-08T04:00:00Z'
+    }]);
+
+    expect(stories).toHaveLength(3);
+    expect(stories.find((story) => story.objectType === 'issue')?.contributingRawEventIds).toEqual(['1', '2']);
+    expect(stories.filter((story) => story.objectType === 'security-finding').map((story) => story.objectId))
+      .toEqual(['code-scanning:7', 'secret-scanning:7']);
+  });
 });
