@@ -515,6 +515,23 @@ describe('chart element helpers', () => {
     expect(chart.querySelectorAll('.chart-point')).toHaveLength(0);
   });
 
+  it('caps each series to its two endpoints when the series count collapses the per-series budget', () => {
+    const seriesCount = 3_000;
+    const pointsPerSeries = 5;
+    const points = Array.from({ length: seriesCount * pointsPerSeries }, (_, index) => ({
+      x: new Date(Math.floor(index / seriesCount) * 60_000).toISOString(),
+      y: index % 1_000,
+      color: `series-${index % seriesCount}`
+    }));
+    const chart = renderChartWidget('line', points, listChartSeries(points));
+    const seriesLines = [...chart.querySelectorAll('.line-chart-series')];
+
+    // Each series' per-series budget collapses to 2 points; sampleLineCoordinates
+    // must honor that instead of always emitting first/last plus bucket extrema.
+    expect(seriesLines.every((line) => (line.getAttribute('points')?.split(' ').length ?? 0) <= 2)).toBe(true);
+    expect(chart.querySelectorAll('.chart-point')).toHaveLength(0);
+  });
+
   it('renders a concise, evenly sampled timeline axis while preserving exact values', () => {
     const points = Array.from({ length: 9 }, (_, index) => ({
       x: `2026-09-0${index + 1}T0${index}:15:00Z`,

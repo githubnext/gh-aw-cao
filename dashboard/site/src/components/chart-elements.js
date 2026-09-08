@@ -713,6 +713,7 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
  */
 function sampleLineCoordinates(coordinates, limit) {
   if (coordinates.length <= limit) return coordinates;
+  if (limit <= 2) return [coordinates[0], coordinates[coordinates.length - 1]];
   const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
   const bucketSize = (coordinates.length - 2) / bucketCount;
   const sampled = [coordinates[0]];
