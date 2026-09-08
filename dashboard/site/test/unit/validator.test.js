@@ -243,7 +243,11 @@ describe('dashboard document validation', () => {
       id: 'firewall-policy-rules',
       mark: 'table',
       disclosure: 'supplemental',
-      data: { source: 'firewall-policy-rules', limit: 25 }
+      data: {
+        source: 'firewall-observations',
+        limit: 25,
+        'order-by': [{ field: 'policy-rule-order', direction: 'asc' }]
+      }
     });
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',

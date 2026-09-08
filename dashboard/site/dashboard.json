@@ -1285,16 +1285,16 @@
           },
           {
             "id": "firewall-policy-rules",
-            "title": "Policy effectiveness",
-            "description": "Effective policy inventory and rule utilization from authoritative policy manifests; unknown attribution remains explicit.",
+            "title": "Policy attribution",
+            "description": "Observed policy attribution and rule utilization; unavailable attribution remains explicit.",
             "data": {
-              "source": "firewall-policy-rules",
+              "source": "firewall-observations",
               "time": {
                 "range": "30d"
               },
               "order-by": [
                 {
-                  "field": "rule-order",
+                  "field": "policy-rule-order",
                   "direction": "asc"
                 }
               ],
@@ -1308,38 +1308,38 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "action",
+                  "field": "policy-rule-action",
                   "type": "ordinal",
                   "title": "Action",
                   "display": "status"
                 },
                 {
-                  "field": "rule-id",
+                  "field": "policy-rule-id",
                   "type": "nominal",
                   "title": "Rule ID"
                 },
                 {
-                  "field": "rule-order",
+                  "field": "policy-rule-order",
                   "type": "quantitative",
                   "title": "Order"
                 },
                 {
-                  "field": "protocol",
+                  "field": "policy-rule-protocol",
                   "type": "nominal"
                 },
                 {
-                  "field": "domain-pattern",
+                  "field": "policy-domain-pattern",
                   "type": "nominal",
                   "title": "Domain pattern"
                 },
                 {
-                  "field": "description",
+                  "field": "policy-rule-description",
                   "type": "nominal"
                 },
                 {
-                  "field": "hit-count",
+                  "field": "request-count",
                   "type": "quantitative",
-                  "title": "Hits"
+                  "title": "Requests"
                 },
                 {
                   "field": "policy-source",
