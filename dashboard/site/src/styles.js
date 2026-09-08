@@ -7,6 +7,7 @@
  */
 export function primerStylesheet() {
   return `:root {
+  color-scheme: dark;
   --canvas: #0d1117;
   --canvas-subtle: #151b23;
   --canvas-inset: #010409;
@@ -36,6 +37,7 @@ export function primerStylesheet() {
 }
 @media (prefers-color-scheme: light) {
   :root {
+    color-scheme: light;
     --canvas: #ffffff;
     --canvas-subtle: #f6f8fa;
     --canvas-inset: #f6f8fa;
