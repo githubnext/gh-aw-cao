@@ -171,8 +171,10 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
       "[role=tab]",
     ].join(",");
     const targets = [...document.querySelectorAll(selector)].flatMap((element) => {
-      const style = getComputedStyle(element);
-      const rectangle = element.getBoundingClientRect();
+      const wrappingLabel = element.closest("label");
+      const hitArea = wrappingLabel?.contains(element) ? wrappingLabel : element;
+      const style = getComputedStyle(hitArea);
+      const rectangle = hitArea.getBoundingClientRect();
       if (
         style.visibility === "hidden"
         || style.display === "none"

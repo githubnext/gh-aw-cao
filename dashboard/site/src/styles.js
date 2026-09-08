@@ -1248,7 +1248,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .notifications-select { min-height: 32px; display: flex; align-items: center; gap: 3px; padding: 0 5px 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--muted); font-size: .6875rem; white-space: nowrap; }
 .notifications-select select { max-width: 130px; border: 0; outline: 0; background: transparent; color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; }
 .notifications-selection-bar { min-height: 42px; display: flex; align-items: center; gap: 14px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px 6px 0 0; background: var(--canvas-subtle); font-size: .75rem; }
-.notifications-selection-bar label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.notifications-selection-bar label { min-height: 24px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .notifications-result-count { margin-left: auto; color: var(--muted); }
 .notifications-list { min-width: 0; }
 .notifications-load-boundary { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--border); border-top: 0; background: var(--canvas-subtle); color: var(--muted); font-size: .75rem; }
