@@ -37,7 +37,7 @@ function renderEvidenceLink(value, label) {
  */
 function formatMetric(value, unit) {
   if (!Number.isFinite(value)) return UNKNOWN;
-  if (unit === 'percent') return `${(value * 100).toFixed(1)}%`;
+  if (unit === 'percent') return formatCoveragePercent(value);
   if (unit === 'seconds' || unit === 's') return `${value.toFixed(1)}s`;
   return Number(value.toFixed(3)).toString();
 }
