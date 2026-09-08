@@ -384,6 +384,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .view-description-tooltip { position: absolute; top: 4px; right: 0; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
 .custom-view { min-width: 0; grid-column: span 12; }
+.custom-view[data-view-layout="full-view"] { min-height: calc(100dvh - 180px); display: flex; flex-direction: column; }
+.custom-view[data-view-layout="full-view"] > .page-section,
+.custom-view[data-view-layout="full-view"] > .page-section > .table-region { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+.custom-view[data-view-layout="full-view"] .table-scroll { min-height: 0; flex: 1; overflow: auto; }
 .custom-view[data-view-layout="half"] { grid-column: span 6; }
 .custom-view[data-view-layout="third"] { grid-column: span 4; }
 .view-metadata-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 12px; color: var(--fg); }
@@ -1821,6 +1825,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
+  .custom-view[data-view-layout="full-view"] { min-height: calc(100dvh - 140px); }
   .workflow-runtime-metrics { grid-template-columns: 1fr; }
   .workflow-identity { align-items: flex-start; flex-direction: column; gap: 10px; }
   .value-chart > dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }

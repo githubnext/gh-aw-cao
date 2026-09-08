@@ -32,7 +32,7 @@ export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-la
 export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'description', 'icon', 'class-name', 'route', 'views', 'sections'];
 export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page'];
 
-export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
+export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'lazy-list', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'route-field', 'limit', 'order-by', 'source-metadata'];
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
@@ -70,7 +70,7 @@ export const VIEW_ELEMENT_VALUES = [
   'home-attention-summary'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
-export const VIEW_LAYOUT_VALUES = ['full', 'half', 'third'];
+export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third'];
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental'];
 export const VIEW_CONTROL_VALUES = ['interactive', 'static'];
 export const MAX_ESSENTIAL_VIEWS_PER_PAGE = 4;
@@ -218,7 +218,7 @@ export const PAGE_SECTION_LAYOUT_VALUES = ['full', 'wide', 'narrow'];
 export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   overview: ['repositories', 'workflows', 'runs', 'usage', 'findings', 'operational-values'],
   organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
-  repositories: ['repositories', 'runs', 'usage', 'operational-values'],
+  repositories: ['repository-activity'],
   packages: ['workflows', 'runs', 'outcomes', 'usage'],
   workflows: ['workflows', 'runs', 'outcomes', 'usage', 'findings', 'operational-values'],
   runs: ['runs'],
@@ -248,10 +248,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     usage: ['aic']
   },
   repositories: {
-    repositories: ['repository'],
-    runs: ['run'],
-    usage: ['aic'],
-    'operational-values': ['operational-value', 'operational-value-definition']
+    'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status']
   },
   packages: {
     workflows: ['organization', 'repository', 'package', 'package-name', 'workflow', 'workflow-role', 'rollout-mode', 'max-ai-credits', 'package-aic-allowance'],

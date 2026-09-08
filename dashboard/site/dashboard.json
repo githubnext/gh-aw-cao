@@ -2024,107 +2024,16 @@
           },
           "views": [
             {
-              "id": "repositories-run-health",
-              "title": "Repository run health trend",
-              "description": "Daily conclusions summarize execution health across the observed repository scope.",
-              "data": {
-                "source": "runs",
-                "time": {
-                  "range": "30d"
-                }
-              },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
-              "id": "repository-scope",
-              "title": "Repository scope",
-              "data": {
-                "sources": [
-                  "repository-summary",
-                  "repositories",
-                  "runs",
-                  "usage",
-                  "operational-values"
-                ]
-              },
-              "mark": "element",
-              "element": "context-summary"
-            },
-            {
-              "id": "repository-discovery-coverage",
-              "title": "Discovery coverage",
-              "description": "Visibility-aware discovery totals distinguish observed repositories from the wider organization scope.",
-              "data": {
-                "sources": [
-                  "repository-coverage"
-                ]
-              },
-              "mark": "element",
-              "element": "summary-grid"
-            },
-            {
-              "id": "repositories-by-aic",
-              "title": "AI Credit usage by AW repository",
-              "description": "Read-only usage reported by AW runs, deduplicated by workflow run.",
-              "data": {
-                "source": "usage",
-                "order-by": [
-                  {
-                    "field": "total-aic",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "encoding": {
-                "x": {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "total-aic",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
-                "href": {
-                  "field": "repository-link",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
               "id": "repositories-activity",
-              "disclosure": "supplemental",
-              "disclosure-label": "Activity by repository",
+              "title": "Repositories",
               "description": "Repository-local execution health and all attributed package or local-workflow outcomes.",
               "data": {
                 "source": "repository-activity"
               },
               "mark": "table",
-              "controls": "static",
+              "controls": "interactive",
+              "lazy-list": true,
+              "layout": "full-view",
               "empty-message": "No repositories discovered.",
               "encoding": {
                 "columns": [

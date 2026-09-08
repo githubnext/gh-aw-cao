@@ -230,6 +230,7 @@ function renderTableView(context) {
           : []
       )),
       bodyRows,
+      lazyList: view['lazy-list'] === true,
       sortable: interactive
     })
   ], headingTag, view.description);
