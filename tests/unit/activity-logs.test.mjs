@@ -31,9 +31,29 @@ test("activity logs uses one bounded gh aw logs invocation without heavy agent a
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
 const fs = require("node:fs");
-fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(process.argv.slice(2)));
-process.stderr.write("Fetched 1 run\\n");
-process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
+const args = process.argv.slice(2);
+if (args[0] === "aw") {
+  fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
+  process.stderr.write("Fetched 1 run\\n");
+  process.stdout.write(JSON.stringify({runs:[{
+   database_id:42,
+   repository:"githubnext/gh-aw-cao",
+   workflow_path:".github/workflows/sample.lock.yml",
+   status:"completed"
+  }]}));
+} else {
+  process.stdout.write(JSON.stringify({jobs:[{
+   id:84,
+   name:"agent",
+   status:"completed",
+   conclusion:"success",
+   started_at:"2026-09-06T20:00:05Z",
+   completed_at:"2026-09-06T20:00:55Z",
+   runner_name:"GitHub Actions 2",
+   runner_group_name:"GitHub Actions",
+   labels:["ubuntu-latest"]
+  }]}));
+}
 `);
   await chmod(ghPath, 0o755);
   try {
@@ -59,7 +79,22 @@ process.stdout.write(JSON.stringify({runs:[{database_id:42}]}));
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
-    assert.equal(JSON.parse(await readFile(item.statePath, "utf8")).available, true);
+    const snapshot = JSON.parse(await readFile(item.logsPath, "utf8"));
+    assert.deepEqual(snapshot.runs[0].jobs, [{
+      jobId: 84,
+      name: "agent",
+      status: "completed",
+      conclusion: "success",
+      startedAt: "2026-09-06T20:00:05Z",
+      completedAt: "2026-09-06T20:00:55Z",
+      runnerName: "GitHub Actions 2",
+      runnerGroupName: "GitHub Actions",
+      labels: ["ubuntu-latest"],
+    }]);
+    const state = JSON.parse(await readFile(item.statePath, "utf8"));
+    assert.equal(state.available, true);
+    assert.equal(state.complete, true);
+    assert.equal(state.jobDetails.observedRuns, 1);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
     assert.ok(stdout.includes(`Calling gh aw logs with arguments: ${JSON.stringify(args.slice(2))}`));
     assert.match(stdout, /Fetched 1 run/);
@@ -111,7 +146,19 @@ if (args[0] === "aw") {
   process.stderr.write("storage limit reached\\n");
   process.exit(1);
 }
-process.stdout.write(JSON.stringify({workflow_runs:[{
+if (args.some((arg) => arg.endsWith("/jobs"))) {
+  process.stdout.write(JSON.stringify({jobs:[{
+    id:84,
+    name:"agent",
+    status:"completed",
+    conclusion:"success",
+    started_at:"2026-09-06T10:00:10Z",
+    completed_at:"2026-09-06T10:02:50Z",
+    runner_name:"GitHub Actions 2",
+    runner_group_name:"GitHub Actions",
+    labels:["ubuntu-latest"]
+  }]}));
+} else process.stdout.write(JSON.stringify({workflow_runs:[{
   id: 42,
   run_number: 9,
   run_attempt: 1,
@@ -147,6 +194,7 @@ process.stdout.write(JSON.stringify({workflow_runs:[{
     assert.equal(snapshot.runs[0].started_at, "2026-09-06T10:00:02Z");
     assert.equal(snapshot.runs[0].updated_at, "2026-09-06T10:03:00Z");
     assert.equal(snapshot.runs[0].failure_message, "cached detail");
+    assert.equal(snapshot.runs[0].jobs[0].name, "agent");
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, true);
     assert.equal(state.complete, false);

@@ -50,14 +50,14 @@ export function performanceJobRecord(job) {
     ? job.labels.filter((label) => typeof label === "string" && label.trim()).map((label) => label.trim())
     : [];
   return {
-    jobId: job?.id ?? null,
+    jobId: job?.id ?? job?.jobId ?? null,
     name: String(job?.name || "Unknown job"),
     status: String(job?.status || "unknown"),
     conclusion: job?.conclusion == null ? null : String(job.conclusion),
-    startedAt: job?.started_at || null,
-    completedAt: job?.completed_at || null,
-    runnerName: job?.runner_name || null,
-    runnerGroupName: job?.runner_group_name || null,
+    startedAt: job?.started_at || job?.startedAt || null,
+    completedAt: job?.completed_at || job?.completedAt || null,
+    runnerName: job?.runner_name || job?.runnerName || null,
+    runnerGroupName: job?.runner_group_name || job?.runnerGroupName || null,
     labels,
   };
 }
