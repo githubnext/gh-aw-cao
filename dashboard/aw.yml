@@ -118,6 +118,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/cell-display.js
   - source: site/src/components/configuration-view.js
     destination: .github/aw/dashboard/site/src/components/configuration-view.js
+  - source: site/src/components/code-region.js
+    destination: .github/aw/dashboard/site/src/components/code-region.js
   - source: site/src/components/configuration-actions.js
     destination: .github/aw/dashboard/site/src/components/configuration-actions.js
   - source: site/src/components/chart-elements.js

@@ -34,7 +34,8 @@ export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page'];
 
 export const VIEW_KEYS = ['id', 'title', 'description', 'intent', 'locked', 'data', 'mark', 'element', 'config', 'callout', 'chart', 'tree', 'layout', 'disclosure', 'disclosure-label', 'controls', 'column-summaries', 'empty-message', 'title-link', 'encoding'];
 export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'route-field', 'limit', 'order-by', 'source-metadata'];
-export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections'];
+export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections', 'language', 'code-field', 'label-field'];
+export const CODE_REGION_LANGUAGE_VALUES = ['json', 'yaml', 'javascript', 'shell', 'markdown', 'text'];
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field'];
 export const CALLOUT_KEYS = ['label', 'icon'];
 export const VIEW_MARK_VALUES = ['metric', 'table', 'chart', 'element', 'callout'];
@@ -45,6 +46,7 @@ export const VIEW_ELEMENT_VALUES = [
   'readiness-verdict',
   'context-summary',
   'data-health-domain-list',
+  'code-region',
   'anomaly-readiness',
   'signal-list',
   'package-activity',

@@ -16,6 +16,7 @@ import {
   BUILT_IN_PAGE_DEFINITION_KEYS,
   DEFAULTS_KEYS,
   CALLOUT_KEYS,
+  CODE_REGION_LANGUAGE_VALUES,
   ERROR_CODES,
   LINK_FIELD_NAMES,
   LINK_OBJECT_KEYS,
@@ -1416,11 +1417,14 @@ function validateView(view, viewNode, path, viewIds, errors) {
   validateStringField(view['disclosure-label'], `${path}.disclosure-label`, false, errors);
   if (
     view['disclosure-label'] !== undefined
-    && (view.disclosure !== 'supplemental' || view.mark !== 'table')
+    && (
+      view.disclosure !== 'supplemental'
+      || (view.mark !== 'table' && !(view.mark === 'element' && view.element === 'code-region'))
+    )
   ) {
     errors.push(createError(
       ERROR_CODES.invalidProgressiveDisclosureConfiguration,
-      'disclosure-label is allowed only on supplemental tables.',
+      'disclosure-label is allowed only on supplemental tables and code-region elements.',
       `${path}.disclosure-label`
     ));
   }
@@ -1662,7 +1666,60 @@ function validateView(view, viewNode, path, viewIds, errors) {
          `${path}.config.sections`
        ));
       }
+      const codeConfigKeys = ['language', 'code-field', 'label-field'];
+      if (view.element === 'code-region') {
+        validateStringField(view.config.language, `${path}.config.language`, true, errors);
+        if (typeof view.config.language === 'string' && !CODE_REGION_LANGUAGE_VALUES.includes(view.config.language)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'code-region config.language must use one canonical code language value.',
+            `${path}.config.language`
+          ));
+        }
+        validateRequiredIdentifier(view.config['code-field'], `${path}.config.code-field`, 'code field', errors);
+        if (view.config['label-field'] !== undefined) {
+          validateRequiredIdentifier(view.config['label-field'], `${path}.config.label-field`, 'label field', errors);
+        }
+        const sourceNames = isPlainObject(view.data) && Array.isArray(view.data.sources)
+          ? view.data.sources
+          : [];
+        if (sourceNames.length !== 1) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'code-region views must declare exactly one data source.',
+            `${path}.data.sources`
+          ));
+        } else if (typeof sourceNames[0] === 'string') {
+          const sourceFields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceNames[0])];
+          for (const key of ['code-field', 'label-field']) {
+            const field = view.config[key];
+            if (typeof field === 'string' && sourceFields && !sourceFields.includes(field)) {
+              errors.push(createError(
+                ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+                `code-region config.${key} must be declared by its data source.`,
+                `${path}.config.${key}`
+              ));
+            }
+          }
+        }
+      } else {
+        for (const key of codeConfigKeys) {
+          if (view.config[key] !== undefined) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              `config.${key} is supported only for the code-region element.`,
+              `${path}.config.${key}`
+            ));
+          }
+        }
+      }
     }
+  } else if (view.element === 'code-region') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'code-region views must declare config.language and config.code-field.',
+      `${path}.config`
+    ));
   }
 
   if (view.chart !== undefined) {

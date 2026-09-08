@@ -61,6 +61,19 @@ test("Copilot shell policy allows safe text tools and rejects mutating sed", () 
     ),
     null,
   );
+  assert.equal(
+    shellPermissionRejection(
+      shellPermission(
+        `grep -n '"id": "data-health' -A3 /tmp/dh.json 2>/dev/null || echo "no file"`,
+        ["grep", "echo"],
+      ),
+    ),
+    null,
+  );
+  assert.match(
+    shellPermissionRejection(shellPermission("grep key data.json > /dev/null", ["grep"])),
+    /redirection/,
+  );
   assert.match(
     shellPermissionRejection(shellPermission("awk 'BEGIN { system(\"id\") }' data.json", ["awk"])),
     /command execution/,

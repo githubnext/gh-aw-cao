@@ -481,6 +481,10 @@ function hasUnquotedShellRedirection(command) {
   return false;
 }
 
+function commandWithoutSafeNullRedirections(command) {
+  return command.replace(/(^|[\s;|&])(?:[012])?>\/dev\/null(?=$|[\s;|&])/g, "$1");
+}
+
 function shellCommandDetails(permission) {
   return {
     commands: permission.commands.map((command) => ({
@@ -505,11 +509,15 @@ function shellCommandIdentifiers(permission) {
 
 function shellAbsolutePaths(permission) {
   const commandPaths = permission.fullCommandText.match(/\/[^\s"'|;&<>]+/g) ?? [];
-  return [...new Set([...permission.possiblePaths, ...commandPaths])];
+  return [...new Set([...permission.possiblePaths, ...commandPaths])]
+    .filter((path) => path !== "/dev/null");
 }
 
 export function shellPermissionRejection(permission) {
-  if (permission.hasWriteFileRedirection || hasUnquotedShellRedirection(permission.fullCommandText)) {
+  if (
+    permission.hasWriteFileRedirection
+    || hasUnquotedShellRedirection(commandWithoutSafeNullRedirections(permission.fullCommandText))
+  ) {
     return "shell command uses redirection";
   }
   if (permission.possibleUrls.length > 0) return "shell command may access a URL";

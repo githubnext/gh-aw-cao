@@ -26,6 +26,7 @@ import { modeBadgeClassName, renderStatusBadge } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { renderCodeRegion } from './code-region.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -39,7 +40,7 @@ import { renderWorkflowRoutePage } from './workflow-route-page.js';
  *   titleLink?: Record<string, unknown>,
  *   element?: string,
  *   viewId?: string,
- *   elementConfig?: { body?: string, sections?: string[], section?: string },
+ *   elementConfig?: Record<string, unknown>,
  *   headingTag: 'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -52,6 +53,7 @@ const ELEMENT_RENDERERS = new Map([
   ['readiness-verdict', renderReadinessVerdictElement],
   ['context-summary', renderContextSummaryElement],
   ['data-health-domain-list', renderDataHealthDomainListElement],
+  ['code-region', renderCodeRegion],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
   ['package-activity', ({ sources, pageId }) => renderPackagesView(sources, pageId)],

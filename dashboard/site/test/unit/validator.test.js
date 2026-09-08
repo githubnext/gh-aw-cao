@@ -187,6 +187,45 @@ describe('dashboard document validation', () => {
     ]));
   });
 
+  it('validates declarative code-region fields and language', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const codeRegion = document.dashboard.pages.find((/** @type {{ id: string, views: Array<any> }} */ page) => page.id === 'data-health')
+      .views.find((/** @type {{ id: string }} */ view) => view.id === 'data-health-schema');
+
+    expect(codeRegion).toMatchObject({
+      mark: 'element',
+      element: 'code-region',
+      data: { sources: ['data-health-schema'] },
+      config: {
+        language: 'json',
+        'code-field': 'schema',
+        'label-field': 'source'
+      }
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    codeRegion.config.language = 'json-with-comments';
+    let rejected = validateDashboardDocument(JSON.stringify(document));
+    expect(rejected.ok).toBe(false);
+    expect(rejected.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.language'),
+        message: 'code-region config.language must use one canonical code language value.'
+      })
+    ]));
+
+    codeRegion.config.language = 'json';
+    codeRegion.config['code-field'] = 'undeclared-schema';
+    rejected = validateDashboardDocument(JSON.stringify(document));
+    expect(rejected.ok).toBe(false);
+    expect(rejected.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: expect.stringContaining('.config.code-field'),
+        message: 'code-region config.code-field must be declared by its data source.'
+      })
+    ]));
+  });
+
   it('defines an evidence-aware firewall operations page', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');

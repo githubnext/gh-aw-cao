@@ -16,6 +16,35 @@ const metadata = {
 };
 
 describe('UI elements', () => {
+  it('renders source-backed JSON in declarative code regions', () => {
+    const rendered = renderUiElement('code-region', {
+      pageId: 'data-health',
+      viewId: 'data-health-schema',
+      title: 'Data shape preview',
+      sourceNames: ['data-health-schema'],
+      sources: {
+        'data-health-schema': {
+          source: 'data-health-schema',
+          metadata,
+          rows: [{ source: 'runs', schema: '{ "run": "string" }' }]
+        }
+      },
+      elementConfig: {
+        language: 'json',
+        'code-field': 'schema',
+        'label-field': 'source'
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.querySelector('.code-region-header strong')?.textContent).toBe('runs');
+    expect(rendered?.querySelector('pre')?.getAttribute('aria-labelledby')).toContain('data-health-schema');
+    expect(rendered?.querySelector('code')?.className).toBe('language-json');
+    expect(rendered?.querySelector('code')?.textContent).toBe('{ "run": "string" }');
+    expect(rendered?.querySelector('code')?.innerHTML).toBe('{ "run": "string" }');
+  });
+
   it('renders data-health domain confidence as key/value pairs without a table', () => {
     const rendered = renderUiElement('data-health-domain-list', {
       pageId: 'data-health',
