@@ -3,7 +3,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { startDashboardServer } from "../../dashboard/local-server.mjs";
 import { captureMobileDashboardScreenshot } from "./dashboard-screenshot.mjs";
-import { summarizeAccessibilityTree, summarizeDomTree } from "./dashboard-tree-analysis.mjs";
+import {
+  summarizeAccessibilityTree,
+  summarizeDomTree,
+  summarizeMobileAccessibility,
+} from "./dashboard-tree-analysis.mjs";
 
 const maximumDomNodes = 6_000;
 let preview;
@@ -153,6 +157,48 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     return { nodes, structures };
   });
   const accessibilitySnapshot = await page.locator("body").ariaSnapshot();
+  const mobileAccessibility = await page.evaluate(() => {
+    const selector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([type=hidden]):not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "summary",
+      "[role=button]",
+      "[role=link]",
+      "[role=menuitem]",
+      "[role=tab]",
+    ].join(",");
+    const targets = [...document.querySelectorAll(selector)].flatMap((element) => {
+      const style = getComputedStyle(element);
+      const rectangle = element.getBoundingClientRect();
+      if (
+        style.visibility === "hidden"
+        || style.display === "none"
+        || style.pointerEvents === "none"
+        || rectangle.width === 0
+        || rectangle.height === 0
+      ) return [];
+      return [{
+        tag: element.tagName.toLowerCase(),
+        name: element.getAttribute("aria-label")
+          || element.textContent?.replace(/\s+/g, " ").trim()
+          || element.getAttribute("title")
+          || element.getAttribute("name")
+          || "",
+        width: Number(rectangle.width.toFixed(2)),
+        height: Number(rectangle.height.toFixed(2)),
+      }];
+    });
+    return {
+      targets,
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+      viewportMeta: document.querySelector('meta[name="viewport"]')?.getAttribute("content") ?? "",
+    };
+  });
+  const accessibility = summarizeAccessibilityTree(accessibilitySnapshot);
   const runtime = await page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0];
     const memory = performance.memory;
@@ -180,7 +226,11 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     },
     runtime,
     dom: summarizeDomTree(domTree.nodes, domTree.structures),
-    accessibility: summarizeAccessibilityTree(accessibilitySnapshot),
+    accessibility,
+    mobileAccessibility: summarizeMobileAccessibility({
+      ...mobileAccessibility,
+      unnamedInteractive: accessibility.issues.unnamedInteractive,
+    }),
   };
   console.log(formatDomAnalysis(analysis.dom));
   await mkdir(testInfo.outputDir, { recursive: true });
@@ -199,4 +249,11 @@ test("latest dashboard data loads within the mobile DOM budget", async ({ page }
     contentType: "application/yaml",
   });
   expect(analysis.dom.totalElements, `Dashboard rendered ${analysis.dom.totalElements} DOM elements`).toBeLessThanOrEqual(maximumDomNodes);
+  expect(
+    analysis.mobileAccessibility.targets.undersized,
+    `Interactive targets must be at least ${analysis.mobileAccessibility.minimumTargetSize} by ${analysis.mobileAccessibility.minimumTargetSize} CSS pixels`,
+  ).toEqual([]);
+  expect(analysis.mobileAccessibility.reflow, "The dashboard must reflow without horizontal page scrolling").toMatchObject({ passes: true });
+  expect(analysis.mobileAccessibility.zoom, "The viewport metadata must allow at least 200% zoom").toMatchObject({ passes: true });
+  expect(analysis.mobileAccessibility.accessibleNames.unnamedInteractive, "Interactive controls must have accessible names").toEqual([]);
 });

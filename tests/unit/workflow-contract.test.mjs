@@ -3082,6 +3082,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /Upload mobile analysis evidence[\s\S]*?if: always\(\)[\s\S]*?path: test-results\//);
   assert.match(workflow, /mobile-analysis-comment:[\s\S]*?permissions:[\s\S]*?pull-requests: write/);
   assert.match(workflow, /github\.event_name == 'pull_request'[\s\S]*?Comment with mobile analysis[\s\S]*?mobile-dashboard-analysis/);
+  assert.match(workflow, /\| Target size \| Reflow \| Zoom \| Accessible names \|/);
   const playwrightConfig = readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8");
   assert.match(playwrightConfig, /preserveOutput: "always"/);
   assert.match(playwrightConfig, /--max-old-space-size=\$\{memoryMb\}/);
@@ -3092,6 +3093,8 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const mobileTest = readFileSync(join(root, "tests", "e2e", "dashboard-mobile-live.spec.mjs"), "utf8");
   assert.match(mobileTest, /Network\.emulateNetworkConditions/);
   assert.match(mobileTest, /mobile-dashboard\.png/);
+  assert.match(mobileTest, /minimumTargetSize/);
+  assert.match(mobileTest, /horizontal page scrolling/);
   assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
