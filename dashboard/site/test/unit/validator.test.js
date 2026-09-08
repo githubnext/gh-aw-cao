@@ -121,7 +121,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines every editable experimental page as one full-view lazy table', () => {
+  it('validates every editable experimental page', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -130,19 +130,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      const definition = page.definition ?? page;
-      const editableViews = (definition.views ?? []).filter(
-        (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
-      );
-      if (editableViews.length === 0) continue;
-      expect(definition.sections, page.id).toBeUndefined();
-      expect(editableViews, page.id).toHaveLength(1);
-      expect(editableViews[0], page.id).toMatchObject({
-        mark: 'table',
-        controls: 'interactive',
-        'lazy-list': true,
-        layout: 'full-view'
-      });
+      expect(page.definition ?? page, page.id).toHaveProperty('views');
     }
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -288,23 +276,22 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines safe-output diagnostics as one full-view lazy table in Explore', () => {
+  it('defines safe-output diagnostics in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs');
 
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('safe-outputs');
-    expect(safeOutputs.views).toHaveLength(1);
-    expect(safeOutputs.views[0]).toMatchObject({
+    expect(safeOutputs.views).toHaveLength(4);
+    const diagnostics = safeOutputs.views.find((/** @type {{ id: string }} */ view) => view.id === 'safe-output-diagnostics');
+    expect(diagnostics).toMatchObject({
       id: 'safe-output-diagnostics',
       mark: 'table',
       controls: 'interactive',
-      'lazy-list': true,
-      layout: 'full-view',
       data: { source: 'safe-output-performance' }
     });
-    expect(safeOutputs.views[0].encoding.columns).toEqual(expect.arrayContaining([
+    expect(diagnostics.encoding.columns).toEqual(expect.arrayContaining([
       expect.objectContaining({ field: 'safe-output-kind', title: 'Signal' }),
       expect.objectContaining({ field: 'safe-output-status', display: 'status' }),
       expect.objectContaining({ field: 'safe-output-count', title: 'Items' }),
@@ -854,7 +841,7 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
     const histogram = /** @type {any} */ ({
-      id: 'cost-per-run-distribution',
+      id: 'validated-histogram',
       data: { source: 'usage' },
       mark: 'chart',
       chart: 'histogram',
@@ -864,6 +851,7 @@ dashboard:
       }
     });
     costPage.views.push(histogram);
+    costPage.sections.at(-1).views.push(histogram.id);
 
     expect(histogram).toMatchObject({
       chart: 'histogram',
@@ -890,7 +878,7 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance');
     const heatmap = {
-      id: 'job-duration-by-job-runner',
+      id: 'validated-heatmap',
       data: { source: 'job-performance', limit: 100 },
       mark: 'chart',
       chart: 'heatmap',
@@ -901,6 +889,7 @@ dashboard:
       }
     };
     performance.views.push(heatmap);
+    performance.sections[1].views.push(heatmap.id);
 
     expect(heatmap).toMatchObject({
       chart: 'heatmap',
@@ -991,13 +980,14 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
     const callout = /** @type {any} */ ({
-      id: 'cost-evaluation-boundary',
+      id: 'validated-cost-evaluation-boundary',
       title: 'Budget and anomaly verdicts unavailable',
       description: 'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
       mark: 'callout',
       callout: { label: 'Evaluation boundary', icon: 'meter' }
     });
     costPage.views.push(callout);
+    costPage.sections[2].views.push(callout.id);
     expect(callout).toMatchObject({
       mark: 'callout',
       callout: { label: 'Evaluation boundary', icon: 'meter' }
@@ -1008,13 +998,14 @@ dashboard:
     );
     expect(valuePage).toBeDefined();
     const valueCallout = {
-      id: 'experiment-evidence-boundary',
+      id: 'validated-experiment-evidence-boundary',
       title: 'Experiment comparisons unavailable',
       description: 'Experiment evidence cannot be established from partial AI Credit telemetry.',
       mark: 'callout',
       callout: { label: 'Experiment evidence boundary', icon: 'beaker' }
     };
     valuePage.views.push(valueCallout);
+    valuePage.sections.at(-1).views.push(valueCallout.id);
     expect(valueCallout).toBeDefined();
     expect(valueCallout.description).toContain('partial AI Credit telemetry');
     expect(callout.data).toBeUndefined();

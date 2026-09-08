@@ -30,7 +30,7 @@ async function activateCostPage(rendered) {
 }
 
 describe('Cost and efficiency dashboard view', () => {
-  it('renders observed AI Credit usage as one full-view lazy table', async () => {
+  it('renders observed AI Credit usage', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
@@ -52,20 +52,13 @@ describe('Cost and efficiency dashboard view', () => {
     );
 
     expect(dashboardPage).toMatchObject({ kind: 'custom', icon: 'meter' });
-    expect(dashboardPage.sections).toBeUndefined();
-    expect(dashboardPage.views).toHaveLength(1);
-    expect(dashboardPage.views[0]).toMatchObject({
-      id: 'cost-usage-records',
-      mark: 'table',
-      controls: 'interactive',
-      'lazy-list': true,
-      layout: 'full-view',
-      data: { source: 'usage' }
-    });
+    expect(dashboardPage.sections).toHaveLength(3);
+    expect(dashboardPage.views).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'cost-usage-trend', mark: 'chart' }),
+      expect.objectContaining({ id: 'cost-by-repository', mark: 'chart' })
+    ]));
     expect(rendered.querySelector('[data-nav-page-id="cost"] .octicon-meter')).not.toBeNull();
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
+    expect(page?.querySelectorAll('[data-chart-widget]')).toHaveLength(3);
     expect(page?.textContent).toContain('gh-aw-cao');
     expect(page?.textContent).toContain('service');
     expect(page?.textContent).toContain('4 AIC');

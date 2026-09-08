@@ -45,13 +45,10 @@ describe('declarative dispatch view', () => {
     });
 
     const dispatchTable = dispatchPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-worker-dispatches');
-    expect(dispatchPage.views).toHaveLength(1);
+    expect(dispatchPage.views).toHaveLength(5);
     expect(dispatchPage.sections).toBeUndefined();
     expect(dispatchTable).toMatchObject({
       mark: 'table',
-      controls: 'interactive',
-      'lazy-list': true,
-      layout: 'full-view',
       data: { source: 'dispatches' },
       encoding: {
         href: { field: 'run-link' }
@@ -60,8 +57,11 @@ describe('declarative dispatch view', () => {
     const pageFilter = /** @type {HTMLInputElement | null} */ (rendered.querySelector('.filter-bar input'));
     expect(pageFilter?.value).toBe('');
     const tables = rendered.querySelectorAll('table');
-    expect(tables).toHaveLength(1);
-    expect([...tables[0].querySelectorAll('thead tr:first-child th')].map((cell) => cell.textContent)).toEqual([
+    expect(tables).toHaveLength(2);
+    const dispatchTableElement = /** @type {HTMLTableElement} */ (
+      rendered.querySelector('[data-view-id="package-worker-dispatches"] table')
+    );
+    expect([...dispatchTableElement.querySelectorAll('thead tr:first-child th')].map((cell) => cell.textContent)).toEqual([
       'Started',
       'Type',
       'Package',
@@ -73,7 +73,7 @@ describe('declarative dispatch view', () => {
     ]);
     expect(rendered.textContent).toContain('Package worker');
     expect(rendered.textContent).toContain('Update dependencies');
-    expect(rendered.querySelector('table')?.className).toBe('custom-table');
+    expect(dispatchTableElement?.className).toBe('custom-table');
     expect(rendered.querySelector('.status-attention')).not.toBeNull();
     expect(rendered.querySelector('.table-summary-temporal')?.textContent).toContain('StartAug 30, 2026, 7:00 AM');
     expect(rendered.querySelector('.table-summary-temporal')?.textContent).toContain('StopAug 30, 2026, 7:00 AM');

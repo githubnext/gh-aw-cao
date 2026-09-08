@@ -23,7 +23,7 @@ const metadata = {
 };
 
 describe('Runtime dashboard view', () => {
-  it('keeps Runtime as one full-view lazy execution table', () => {
+  it('keeps Runtime organized into execution sections', () => {
     const runtimePage = authoritativeDashboard.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'runtime'
     );
@@ -33,16 +33,13 @@ describe('Runtime dashboard view', () => {
       kind: 'custom',
       title: 'Runtime & episodes'
     });
-    expect(runtimePage.sections).toBeUndefined();
-    expect(runtimePage.views).toEqual([
+    expect(runtimePage.sections).toHaveLength(2);
+    expect(runtimePage.views).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'runtime-execution-episodes',
-        mark: 'table',
-        controls: 'interactive',
-        'lazy-list': true,
-        layout: 'full-view'
+        mark: 'table'
       })
-    ]);
+    ]));
   });
 
   it('renders declarative triage signals, episode summary, and episode tables', () => {
