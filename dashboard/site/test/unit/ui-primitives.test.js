@@ -375,11 +375,18 @@ describe('ui primitives', () => {
   });
 
   it('renders a filter select with a placeholder option and sorted, de-duplicated values', () => {
-    const select = renderFilterSelect('Filter operations by owner', 'All owners', ['bravo', 'alpha', 'bravo']);
+    const select = renderFilterSelect('Filter operations by owner', 'All owners', ['bravo', 'Bravo', 'alpha', 'bravo']);
 
     expect(select.getAttribute('aria-label')).toBe('Filter operations by owner');
     const options = [...select.querySelectorAll('option')];
-    expect(options.map((option) => option.value)).toEqual(['', 'alpha', 'bravo']);
-    expect(options.map((option) => option.textContent)).toEqual(['All owners', 'alpha', 'bravo']);
+    expect(options.map((option) => option.value)).toEqual(['', 'Bravo', 'alpha', 'bravo']);
+    expect(options.map((option) => option.textContent)).toEqual(['All owners', 'Bravo', 'alpha', 'bravo']);
+  });
+
+  it('renders a filter select with a caller-provided sort comparator', () => {
+    const select = renderFilterSelect('Filter by owner', 'Owner', ['bravo', 'Bravo', 'alpha'],
+      (left, right) => left.localeCompare(right));
+
+    expect([...select.options].map((option) => option.value)).toEqual(['', 'alpha', 'bravo', 'Bravo']);
   });
 });

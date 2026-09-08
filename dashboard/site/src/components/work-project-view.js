@@ -171,7 +171,8 @@ function renderWorkFilterBar(items, onChange) {
 
 /** @param {string} label @param {string[]} values */
 function renderFacetSelect(label, values) {
-  return renderFilterSelect(`Filter by ${label.toLowerCase()}`, label, values);
+  return renderFilterSelect(`Filter by ${label.toLowerCase()}`, label, values,
+    (left, right) => left.localeCompare(right));
 }
 
 /**

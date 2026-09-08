@@ -311,12 +311,13 @@ export function renderCountBadge(count, ariaLabel) {
  * @param {string} ariaLabel
  * @param {string} placeholderLabel
  * @param {string[]} values
+ * @param {(left: string, right: string) => number} [compareFn]
  * @returns {HTMLSelectElement}
  */
-export function renderFilterSelect(ariaLabel, placeholderLabel, values) {
+export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareFn) {
   return /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': ariaLabel },
     h('option', { value: '' }, placeholderLabel),
-    ...[...new Set(values)].sort((left, right) => left.localeCompare(right)).map((value) => h('option', { value }, value))
+    ...[...new Set(values)].sort(compareFn).map((value) => h('option', { value }, value))
   ));
 }
 
