@@ -2924,7 +2924,7 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
         `${path}.format`
       ));
     }
-    if (!['nominal', 'ordinal'].includes(fieldDefinition.type)) {
+    if (typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type)) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
         'workflow-relative-path format requires a nominal or ordinal field.',
