@@ -827,7 +827,12 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
-      sources: {}
+      sources: {},
+      viewer: {
+        login: 'octocat',
+        name: 'The Octocat',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4'
+      }
     });
     document.body.append(rendered);
 
@@ -836,8 +841,25 @@ describe('presenter built-in and custom pages', () => {
     expect(labels).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
-      'Home', 'Work', 'Agents', 'Insights', 'Settings'
+      'Home', 'Work', 'Agents', 'Insights'
     ]);
+    expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
+    expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
+    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open account menu for The Octocat');
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('referrerpolicy')).toBe('no-referrer');
+    expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
+    expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['Light', 'Dark']);
+    const darkTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="dark"]'));
+    const lightTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="light"]'));
+    darkTheme?.click();
+    expect(rendered.dataset.theme).toBe('dark');
+    expect(darkTheme?.getAttribute('aria-pressed')).toBe('true');
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
+    lightTheme?.click();
+    expect(rendered.dataset.theme).toBe('light');
+    expect(lightTheme?.getAttribute('aria-pressed')).toBe('true');
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('light');
     expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([false]);
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Experimental');
@@ -849,7 +871,6 @@ describe('presenter built-in and custom pages', () => {
       'Work',
       'Agents',
       'Insights',
-      'Settings',
       'Operations',
       'Runtime',
       'Performance',
@@ -1163,7 +1184,6 @@ describe('presenter built-in and custom pages', () => {
       'Work',
       'Agents',
       'Insights',
-      'Settings',
       'Operations',
       'Runtime',
       'Performance',

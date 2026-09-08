@@ -165,6 +165,11 @@ test("local dashboard server composes package dashboards and reloads after updat
     catalogRoot: packageRoot,
     installedDashboardsDirectory: path.join(root, "installed-dashboards"),
     downloadData,
+    loadViewer: async () => ({
+      login: "octocat",
+      name: "The Octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+    }),
     allowMissingOrigin: true,
     workingDirectory: root,
     requestOutput: (message) => requestLogs.push(message),
@@ -205,6 +210,12 @@ test("local dashboard server composes package dashboards and reloads after updat
       repositories: {
         rows: [{ token: "[REDACTED]", note: "[REDACTED]" }],
       },
+    });
+    const viewerResponse = await fetch(`${preview.url}/viewer.json`);
+    assert.deepEqual(await viewerResponse.json(), {
+      login: "octocat",
+      name: "The Octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
     });
 
     test("repository skill discovery includes supported workspace skill directories", async () => {

@@ -67,7 +67,11 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput> }} PresentationInput
+ * @typedef {{ login: string, name: string, avatarUrl: string }} LocalViewer
+ */
+
+/**
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null }} PresentationInput
  */
 
 /**
@@ -136,7 +140,7 @@ function getBuiltInPagePayload(page) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources } = input;
+  const { document, sources: rawSources, viewer = null } = input;
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
@@ -170,7 +174,7 @@ export function renderDashboard(input) {
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
   const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))));
+  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer);
 
   const appShell = h(
     'div',
@@ -278,6 +282,7 @@ function inferOrganizationName(sources) {
  */
 function renderSidebar(pages, title, navigation) {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
+  const primaryPages = pages.filter((page) => page.id !== 'configuration');
   const configuredSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
       .map((section) => ({
@@ -286,9 +291,10 @@ function renderSidebar(pages, title, navigation) {
         pages: (Array.isArray(section?.pages) ? section.pages : [])
           .map((pageId) => pagesById.get(pageId))
           .filter((page) => page !== undefined)
+          .filter((page) => page.id !== 'configuration')
       }))
       .filter((section) => section.pages.length > 0)
-    : [{ label: undefined, experimental: false, pages }];
+    : [{ label: undefined, experimental: false, pages: primaryPages }];
   const experimentalPages = configuredSections
     .filter((section) => section.experimental)
     .flatMap((section) => section.pages);
@@ -485,19 +491,18 @@ function enableSidebarToggle(root) {
  * @param {HTMLElement} root
  */
 function enableThemeToggle(root) {
-  const toggle = root.querySelector('[data-theme-toggle]');
-  if (!(toggle instanceof HTMLButtonElement)) return;
+  const toggles = [...root.querySelectorAll('[data-theme-value]')];
+  if (toggles.length === 0) return;
   const view = root.ownerDocument.defaultView;
 
   /** @param {'light'|'dark'} theme */
   const setTheme = (theme) => {
     root.dataset.theme = theme;
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    const label = `Switch to ${nextTheme} mode`;
-    toggle.setAttribute('aria-label', label);
-    toggle.setAttribute('title', label);
-    toggle.setAttribute('aria-pressed', String(theme === 'dark'));
-    toggle.replaceChildren(octicon(theme === 'dark' ? 'sun' : 'moon'));
+    for (const toggle of toggles) {
+      if (!(toggle instanceof HTMLButtonElement)) continue;
+      const selected = toggle.dataset.themeValue === theme;
+      toggle.setAttribute('aria-pressed', String(selected));
+    }
   };
 
   /** @type {'light'|'dark'} */
@@ -510,14 +515,29 @@ function enableThemeToggle(root) {
   }
   setTheme(theme);
 
-  toggle.addEventListener('click', () => {
-    const nextTheme = root.dataset.theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    try {
-      view?.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    } catch {
-      // The theme still applies for the current render when storage is unavailable.
-    }
+  for (const toggle of toggles) {
+    toggle.addEventListener('click', () => {
+      const theme = toggle instanceof HTMLElement ? toggle.dataset.themeValue : undefined;
+      if (theme !== 'light' && theme !== 'dark') return;
+      setTheme(theme);
+      try {
+        view?.localStorage.setItem(THEME_STORAGE_KEY, theme);
+      } catch {
+        // The theme still applies for the current render when storage is unavailable.
+      }
+    });
+  }
+
+  const menu = root.querySelector('.account-menu');
+  if (!(menu instanceof HTMLDetailsElement)) return;
+  root.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    if (event.target.closest('.account-menu-settings') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
+  });
+  menu.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    menu.removeAttribute('open');
+    menu.querySelector('summary')?.focus();
   });
 }
 
@@ -584,15 +604,17 @@ function getPageIcon(page) {
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
+ * @param {LocalViewer | null} viewer
  * @returns {HTMLElement}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState) {
-  const initialPage = pages[0];
+function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer) {
+  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
   const initialPageDescription = initialPage?.description;
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
+  const settingsPage = pages.find((page) => page.id === 'configuration');
   return h(
     'div',
     { className: 'app-main' },
@@ -628,17 +650,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
           'div',
           { className: 'report-actions' },
           renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'theme-toggle',
-              dataset: { themeToggle: '' },
-              'aria-label': 'Switch color theme',
-              title: 'Switch color theme'
-            },
-            octicon('sun')
-          ),
           dashboardRepository
             ? h(
               'a',
@@ -650,7 +661,50 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
               },
               octicon('mark-github')
             )
-            : null
+            : null,
+          h(
+            'details',
+            { className: 'account-menu' },
+            h(
+              'summary',
+              {
+                className: 'account-menu-avatar',
+                'aria-label': viewer ? `Open account menu for ${viewer.name || viewer.login}` : 'Open account menu',
+                title: viewer ? `${viewer.name || viewer.login} (${viewer.login})` : 'Open account menu'
+              },
+              viewer
+                ? h('img', {
+                  className: 'account-menu-avatar-image',
+                  src: viewer.avatarUrl,
+                  alt: '',
+                  referrerPolicy: 'no-referrer'
+                })
+                : octicon('person')
+            ),
+            h(
+              'div',
+              { className: 'account-menu-popover' },
+              settingsPage
+                ? h(
+                  'a',
+                  { className: 'account-menu-settings', href: `#page-${encodeURIComponent(settingsPage.id)}` },
+                  octicon('gear'),
+                  h('span', null, 'Settings')
+                )
+                : null,
+              h(
+                'fieldset',
+                { className: 'appearance-settings' },
+                h('legend', null, 'Appearance'),
+                h(
+                  'div',
+                  { className: 'appearance-options' },
+                  h('button', { type: 'button', dataset: { themeValue: 'light' }, 'aria-pressed': 'false' }, octicon('sun'), h('span', null, 'Light')),
+                  h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
+                )
+              )
+            )
+          )
         )
       )
     ),

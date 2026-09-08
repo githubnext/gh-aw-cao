@@ -64,6 +64,11 @@
       const root = document.querySelector("#root");
       let renderedSources = {};
       const previewMode = new URLSearchParams(window.location.search).get("local-preview");
+      const localViewer = previewMode
+        ? await fetch("./viewer.json")
+          .then((response) => response.ok ? response.json() : null)
+          .catch(() => null)
+        : null;
       let dashboardSocket;
       if (previewMode) {
         const dashboardSocketUrl = new URL("./__dashboard_socket", window.location.href);
@@ -144,7 +149,7 @@
 
       const renderSources = (sources, state = "ready") => {
         renderedSources = sources;
-        const dashboard = renderDashboard({ document: dashboardDocument, sources });
+        const dashboard = renderDashboard({ document: dashboardDocument, sources, viewer: localViewer });
         if (state === "loading") {
           dashboard.classList.add("dashboard-loading");
           dashboard.setAttribute("aria-busy", "true");
