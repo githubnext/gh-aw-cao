@@ -340,6 +340,20 @@ async function collectDashboardRecordsImpl({
       headers: { Authorization: authorization },
     });
     if (!response.ok) {
+      const responseText = await response.text();
+      let detail = responseText.trim();
+      try {
+        detail = JSON.parse(responseText).message || detail;
+      } catch {
+        // Plain-text download failures retain their bounded response detail.
+      }
+      const rateLimited = response.status === 429
+        || (response.status === 403
+          && (response.headers.get("x-ratelimit-remaining") === "0" || /rate limit/i.test(detail)));
+      if (rateLimited) {
+        rateLimitError = new GitHubRateLimitError(new URL(url).pathname, response, detail);
+        throw rateLimitError;
+      }
       throw new Error(`GitHub workflow content download returned HTTP ${response.status}`);
     }
     return response.text();
@@ -469,6 +483,7 @@ async function collectDashboardRecordsImpl({
               payloads = ghAwPayloads(await githubDownload(downloadUrl));
               metadataAvailable = true;
             } catch (error) {
+              if (error instanceof GitHubRateLimitError) throw error;
               log.warning`${error.message}; generated metadata is unavailable for ${repositoryName}/${workflow.path}`;
             }
           }
@@ -653,9 +668,11 @@ async function collectDashboardRecordsImpl({
       workflow: metadata.workflowName || inventoryWorkflow?.name || record.workflow,
     };
   }))).sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
-  const scopedRecords = allowedRepositories.size === 0
-    ? records
-    : records.filter((record) => allowedRepositories.has(record.repository.toLowerCase()));
+  const scopedRecords = records.filter((record) => {
+    const repositoryName = record.repository.toLowerCase();
+    if (allowedRepositories.size > 0 && !allowedRepositories.has(repositoryName)) return false;
+    return repositoryStateByName.get(repositoryName)?.complete === true;
+  });
   return {
     generatedAt,
     repository,

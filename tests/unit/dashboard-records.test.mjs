@@ -245,6 +245,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   let lockSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   const commitSha = "cccccccccccccccccccccccccccccccccccccccc";
   let failNextDownload = false;
+  let rateLimitNextDownload = false;
   let lockDownloads = 0;
   const fetchImpl = async (input) => {
     const url = new URL(input);
@@ -281,6 +282,13 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     if (url.hostname === "raw.githubusercontent.com") {
       lockDownloads += 1;
       assert.equal(url.pathname, `/acme/service/${commitSha}/.github/workflows/remote-agent.lock.yml`);
+      if (rateLimitNextDownload) {
+        rateLimitNextDownload = false;
+        return new Response(JSON.stringify({ message: "Rate limit exceeded" }), {
+          status: 429,
+          headers: { "retry-after": "60" },
+        });
+      }
       if (failNextDownload) {
         failNextDownload = false;
         return new Response("unavailable", { status: 503 });
@@ -379,6 +387,21 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   assert.equal(lockDownloads, 3);
   assert.equal(retriedRefresh.remoteWorkflows[0].lockSha, lockSha);
   assert.equal(retriedRefresh.remoteWorkflows[0].ghAwVersion, "v0.88.7");
+  lockSha = "dddddddddddddddddddddddddddddddddddddddd";
+  rateLimitNextDownload = true;
+  const rateLimitedRefresh = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    previousSnapshot: retriedRefresh,
+    fetchImpl,
+    generatedAt: "2026-09-07T16:00:00Z",
+  });
+  assert.equal(rateLimitedRefresh.stale, true);
+  assert.equal(rateLimitedRefresh.workflowDiscovery.complete, false);
+  assert.equal(rateLimitedRefresh.remoteWorkflows[0].lockSha, retriedRefresh.remoteWorkflows[0].lockSha);
 });
 
 test("dashboard records refuse non-public remote workflow metadata on public Pages", async () => {
@@ -412,6 +435,17 @@ test("dashboard records refuse non-public remote workflow metadata on public Pag
 
 test("dashboard records skip remote data when repository visibility is unavailable", async () => {
   let privateDataRequested = false;
+  const hiddenIssue = {
+    number: 10,
+    title: "[Maintenance] Hidden target",
+    body: "target repository: `acme/private`",
+    body_html: "<p>Hidden target</p>",
+    state: "open",
+    html_url: "https://github.com/acme/control/issues/10",
+    url: "https://api.github.com/repos/acme/control/issues/10",
+    created_at: "2026-09-07T10:00:00Z",
+    updated_at: "2026-09-07T11:00:00Z",
+  };
   const output = await collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
@@ -431,6 +465,9 @@ test("dashboard records skip remote data when repository visibility is unavailab
       }
       if (url.pathname.startsWith("/repos/acme/private/")) privateDataRequested = true;
       if (url.pathname.startsWith("/repos/acme/control/")) {
+        if (url.pathname.endsWith("/issues")) {
+          return new Response(JSON.stringify([hiddenIssue]), { status: 200 });
+        }
         return url.pathname.endsWith("/actions/artifacts")
           ? new Response(JSON.stringify({ artifacts: [] }), { status: 200 })
           : new Response("[]", { status: 200 });
