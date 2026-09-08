@@ -251,7 +251,7 @@ describe('data shape preview', () => {
     sources.runs.rows = [{ shared }, { shared }];
     const expectedSize = new TextEncoder().encode(JSON.stringify(sources.runs)).length;
     const file = deriveDataHealthSources(sources)['data-health-files'].rows.find((item) => item.source === 'runs');
-    expect(file.size).toBe(expectedSize);
+    expect(file?.size).toBe(expectedSize);
   });
 
   it('reports an empty-object shape when a source has no cached rows', () => {
@@ -286,6 +286,9 @@ describe('CAO Activity debugging link', () => {
       githubUrlBase: 'https://github.com/',
       dashboardRepository: 'acme/app'
     })['data-health-summary'].rows[0];
-    expect(summary['external-link']?.href).toBe('https://github.com/acme/app/actions/workflows/activity.yml');
+    expect(summary['external-link']).toEqual({
+      href: 'https://github.com/acme/app/actions/workflows/activity.yml',
+      label: 'CAO Activity'
+    });
   });
 });

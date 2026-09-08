@@ -170,6 +170,7 @@ function loadedFileDiagnostic(name, source) {
  * @returns {string}
  */
 function safeStringify(value) {
+  /** @type {object[]} */
   const ancestors = [];
   return JSON.stringify(value, function replacer(_key, candidate) {
     while (ancestors.length > 0 && ancestors.at(-1) !== this) ancestors.pop();
