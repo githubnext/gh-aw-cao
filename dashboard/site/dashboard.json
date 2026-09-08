@@ -153,108 +153,15 @@
         "icon": "check-circle",
         "class-name": "readiness-page",
         "description": "Fail-closed release readiness across evidence integrity, package inventory, policy controls, and recent runtime behavior.",
-        "sections": [
-          {
-            "id": "readiness-verdict",
-            "title": "Release decision",
-            "description": "A ready verdict requires every gate to pass. Missing, partial, or stale evidence cannot produce a ready state.",
-            "layout": "full",
-            "views": [
-              "readiness-engine-activity",
-              "readiness-verdict-summary"
-            ]
-          },
-          {
-            "id": "readiness-regressions",
-            "title": "Unblock first",
-            "description": "Work top to bottom. Runtime failures lead, followed by control and evidence gaps, then lower-priority warnings.",
-            "layout": "full",
-            "count-source": "readiness-signals",
-            "count-label": "blocker groups",
-            "views": [
-              "readiness-regression-signals"
-            ]
-          },
-          {
-            "id": "readiness-observability",
-            "title": "Supporting evidence",
-            "description": "Role-attributed failures, authored warnings, and no-op outcomes from the current collection window.",
-            "layout": "full",
-            "views": [
-              "readiness-operational-observations"
-            ]
-          }
-        ],
         "views": [
           {
-            "id": "readiness-engine-activity",
-            "title": "Engine activity",
-            "description": "Hourly orchestrator and worker runs show whether the control plane is actively churning.",
-            "data": {
-              "source": "readiness-activity",
-              "time": {
-                "range": "24h"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "activity-hour",
-                "type": "temporal",
-                "time-unit": "hour",
-                "title": "Started"
-              },
-              "y": {
-                "field": "run-count",
-                "type": "quantitative",
-                "aggregate": "none",
-                "title": "Runs per hour"
-              },
-              "color": {
-                "field": "workflow-role",
-                "type": "nominal",
-                "title": "Role"
-              }
-            }
-          },
-          {
-            "id": "readiness-verdict-summary",
-            "title": "Readiness verdict",
-            "description": "Answers whether retained evidence supports releasing the control plane.",
-            "data": {
-              "sources": [
-                "readiness-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "readiness-verdict",
-            "layout": "full"
-          },
-          {
-            "id": "readiness-regression-signals",
-            "title": "Priority queue",
-            "data": {
-              "sources": [
-                "readiness-signals"
-              ]
-            },
-            "mark": "element",
-            "element": "signal-list",
-            "layout": "full",
-            "description": "Ranks release-readiness blockers and explains which evidence remains trustworthy when run, findings, or output sources are partial."
-          },
-          {
             "id": "readiness-operational-observations",
-            "disclosure-label": "Worker, orchestrator, and no-op evidence",
-            "disclosure": "supplemental",
             "description": "Failures, authored warnings, and no-op reports are attributed to orchestrator and worker workflows from workflow inventory.",
             "data": {
               "source": "readiness-observations"
             },
             "mark": "table",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "href": {
                 "field": "evidence-link",
@@ -288,7 +195,9 @@
                   "title": "Latest"
                 }
               ]
-            }
+            },
+            "controls": "interactive",
+            "lazy-list": true
           }
         ]
       },
@@ -412,164 +321,72 @@
         "icon": "meter",
         "class-name": "cost-page",
         "description": "Measured AI Credit allocation and efficiency evidence for the configured githubnext/gh-aw-cao repository.",
-        "sections": [
-          {
-            "id": "measured-usage",
-            "title": "Measured usage",
-            "description": "Observed AI Credit allocation and episode efficiency without inferred budgets or anomalies. AI Credit totals are allocation evidence, not monetary cost. Output yield is an investigation aid, not proof of efficiency or waste.",
-            "layout": "full",
-            "count-source": "cost-signals",
-            "count-label": "boundaries",
-            "views": [
-              "cost-usage-trend",
-              "cost-per-run-distribution",
-              "cost-summary",
-              "cost-signals"
-            ]
-          },
-          {
-            "id": "repository-allocation",
-            "title": "Repository allocation",
-            "layout": "full",
-            "views": [
-              "cost-by-repository"
-            ]
-          },
-          {
-            "id": "evaluation-boundary",
-            "title": "Evaluation boundary",
-            "layout": "full",
-            "views": [
-              "cost-evaluation-boundary"
-            ]
-          }
-        ],
         "views": [
           {
-            "id": "cost-usage-trend",
-            "title": "AI Credit usage trend",
-            "description": "Daily AI Credit allocation shows whether measured agent consumption is rising or falling.",
-            "data": {
-              "source": "usage",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Total AIC",
-                "unit": "aic"
-              }
-            }
-          },
-          {
-            "id": "cost-per-run-distribution",
-            "title": "AI Credits per run",
-            "description": "Automatically binned distribution of measured AI Credit allocation per workflow run.",
-            "data": {
-              "source": "usage"
-            },
-            "mark": "chart",
-            "chart": "histogram",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "run",
-                "type": "nominal",
-                "title": "Run"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "AIC per run",
-                "unit": "aic"
-              }
-            }
-          },
-          {
-            "id": "cost-summary",
-            "title": "Usage summary",
-            "description": "Answers how much measured AI Credit usage is retained for the current decision window.",
-            "data": {
-              "sources": [
-                "cost-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "summary-grid",
-            "layout": "full"
-          },
-          {
-            "id": "cost-signals",
-            "title": "Evidence boundaries",
-            "data": {
-              "sources": [
-                "cost-signals"
-              ]
-            },
-            "mark": "element",
-            "element": "signal-list",
-            "layout": "full",
-            "description": "Summarizes usage, budget, and anomaly evidence boundaries so unavailable verdicts are understood as collection limits."
-          },
-          {
-            "id": "cost-by-repository",
-            "title": "AI Credit usage by AW repository",
-            "description": "Read-only usage reported by AW runs, deduplicated by workflow run.",
+            "id": "cost-usage-records",
+            "title": "AI Credit usage",
+            "description": "Observed AI Credit allocation by workflow, repository, engine, model, and rollout mode.",
             "data": {
               "source": "usage",
               "order-by": [
                 {
-                  "field": "total-aic",
+                  "field": "observed-at",
                   "direction": "desc"
                 }
               ]
             },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No AI Credit usage was observed in the selected horizon.",
             "encoding": {
-              "x": {
-                "field": "repository",
-                "type": "nominal",
-                "title": "Repository"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "as": "total-aic",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "repository-link",
-                "type": "nominal"
-              }
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "engine",
+                  "type": "nominal",
+                  "title": "Engine"
+                },
+                {
+                  "field": "resolved-model",
+                  "type": "nominal",
+                  "title": "Model"
+                },
+                {
+                  "field": "aic",
+                  "type": "quantitative",
+                  "title": "AIC",
+                  "unit": "aic"
+                },
+                {
+                  "field": "estimated-usd",
+                  "type": "quantitative",
+                  "title": "Estimated USD"
+                }
+              ]
             }
-          },
-          {
-            "id": "cost-evaluation-boundary",
-            "title": "Budget and anomaly verdicts unavailable",
-            "description": "This answers whether observed AI Credit allocation supports a budget or anomaly decision; with partial AI Credit telemetry, totals are allocation evidence, not complete spend or ROI. A budget verdict requires an applicable budget, matching time window, and complete measured usage. An anomaly verdict requires a qualified historical baseline and disclosed statistical rule.",
-            "mark": "callout",
-            "callout": {
-              "label": "Evaluation boundary",
-              "icon": "meter"
-            },
-            "layout": "full"
           }
         ]
       },
@@ -765,44 +582,14 @@
         "description": "Operational assurance, warning, and telemetry-integrity signals for the configured githubnext/gh-aw-cao repository.",
         "views": [
           {
-            "id": "security-summary",
-            "title": "Assurance summary",
-            "description": "Answers which operational assurance gates and API capacity controls are represented in retained evidence.",
-            "data": {
-              "sources": [
-                "security-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "summary-grid",
-            "layout": "full",
-            "disclosure": "essential"
-          },
-          {
-            "id": "security-signals",
-            "title": "Assurance signals",
-            "description": "No vulnerability feed is retained. These are operational assurance signals, not vulnerability findings; generic run failures and collection gaps remain in their owning domains.",
-            "data": {
-              "sources": [
-                "security-signals"
-              ]
-            },
-            "mark": "element",
-            "element": "signal-list",
-            "layout": "full",
-            "disclosure": "supplemental"
-          },
-          {
             "id": "security-output-ledger",
-            "disclosure-label": "Output assurance records",
             "data": {
               "source": "findings"
             },
             "mark": "table",
             "controls": "interactive",
             "empty-message": "No retained output assurance records were observed.",
-            "layout": "full",
-            "disclosure": "supplemental",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -834,7 +621,8 @@
                   "title": "Updated"
                 }
               ]
-            }
+            },
+            "lazy-list": true
           }
         ]
       },
@@ -2322,78 +2110,15 @@
         "icon": "play",
         "class-name": "runtime-page",
         "description": "Execution failures, approval gates, and exact control-plane episode evidence.",
-        "sections": [
-          {
-            "id": "runtime-triage",
-            "title": "Needs attention",
-            "description": "Ranked evidence from execution state and exact episode attribution. No composite score is used.",
-            "layout": "full",
-            "count-source": "runtime-signals",
-            "count-label": "signals",
-            "views": [
-              "runtime-episode-summary",
-              "runtime-anomaly-readiness",
-              "runtime-needs-attention"
-            ]
-          },
-          {
-            "id": "observed-behavior",
-            "title": "Execution episodes",
-            "description": "Root orchestrator runs joined to worker outcomes only through explicit control-plane correlation evidence.",
-            "layout": "full",
-            "views": [
-              "runtime-execution-episodes",
-              "runtime-episode-attribution-gap"
-            ]
-          }
-        ],
         "views": [
           {
-            "id": "runtime-episode-summary",
-            "title": "Execution episodes",
-            "data": {
-              "sources": [
-                "runtime-episode-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "summary-grid",
-            "layout": "full"
-          },
-          {
-            "id": "runtime-anomaly-readiness",
-            "title": "Statistical anomaly readiness",
-            "data": {
-              "sources": [
-                "runtime-anomaly-readiness"
-              ]
-            },
-            "mark": "element",
-            "element": "anomaly-readiness",
-            "layout": "full"
-          },
-          {
-            "id": "runtime-needs-attention",
-            "title": "Needs attention",
-            "data": {
-              "sources": [
-                "runtime-signals"
-              ]
-            },
-            "mark": "element",
-            "element": "signal-list",
-            "layout": "full"
-          },
-          {
             "id": "runtime-execution-episodes",
-            "disclosure-label": "Observed root episodes",
             "description": "Dispatch manifests are not retained, so attribution is partial by construction.",
             "data": {
               "source": "runtime-episodes"
             },
             "mark": "table",
-            "disclosure": "supplemental",
-            "layout": "full",
+            "layout": "full-view",
             "empty-message": "No orchestrator runs were observed in the current run window.",
             "encoding": {
               "columns": [
@@ -2443,58 +2168,9 @@
                 "field": "run-link",
                 "type": "nominal"
               }
-            }
-          },
-          {
-            "id": "runtime-episode-attribution-gap",
-            "disclosure-label": "Worker attribution gaps",
-            "disclosure": "supplemental",
-            "description": "Worker runs without a retained safe output carrying an exact root correlation ID remain unattributed.",
-            "data": {
-              "source": "runtime-attribution-gaps"
             },
-            "mark": "table",
-            "layout": "full",
-            "empty-message": "All observed worker dispatches with retained evidence are attributed.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Result",
-                  "display": "status"
-                },
-                {
-                  "field": "control-transition",
-                  "type": "nominal",
-                  "title": "Control transition"
-                },
-                {
-                  "field": "reason-code",
-                  "type": "nominal",
-                  "title": "Reason code"
-                },
-                {
-                  "field": "evidence",
-                  "type": "nominal",
-                  "title": "Evidence gap"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
+            "controls": "interactive",
+            "lazy-list": true
           }
         ]
       },
@@ -2508,136 +2184,90 @@
         "description": "Workflow and job duration distributions across runners, sandbox runtimes, agent engines, and models.",
         "views": [
           {
-            "id": "workflow-run-duration-histogram",
-            "title": "Workflow run total time",
-            "description": "Distribution of elapsed workflow run time from execution start through completion.",
-            "data": {
-              "source": "run-performance"
-            },
-            "mark": "chart",
-            "chart": "histogram",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "run",
-                "type": "nominal",
-                "title": "Run"
-              },
-              "y": {
-                "field": "run-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "none",
-                "title": "Workflow run total time",
-                "unit": "human-duration"
-              }
-            }
-          },
-          {
-            "id": "job-duration-by-job-runner",
-            "title": "Job time by job and runner",
-            "description": "Mean elapsed job time, split by the runner labels reported by GitHub Actions.",
+            "id": "job-performance-records",
+            "title": "Job performance",
+            "description": "Observed job duration, execution state, runner, engine, and model evidence.",
             "data": {
               "source": "job-performance",
-              "limit": 100
+              "order-by": [
+                {
+                  "field": "started-at",
+                  "direction": "desc"
+                }
+              ]
             },
-            "mark": "chart",
-            "chart": "heatmap",
-            "layout": "full",
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No job performance data was observed in the selected horizon.",
             "encoding": {
-              "x": {
-                "field": "job",
-                "type": "nominal",
-                "title": "Job"
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
               },
-              "y": {
-                "field": "runner",
-                "type": "nominal",
-                "title": "Runner"
-              },
-              "color": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean job time",
-                "unit": "human-duration"
-              }
+              "columns": [
+                {
+                  "field": "job",
+                  "type": "nominal",
+                  "title": "Job"
+                },
+                {
+                  "field": "job-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "job-conclusion",
+                  "type": "nominal",
+                  "title": "Conclusion",
+                  "display": "status"
+                },
+                {
+                  "field": "job-duration-seconds",
+                  "type": "quantitative",
+                  "title": "Duration",
+                  "unit": "human-duration"
+                },
+                {
+                  "field": "runner",
+                  "type": "nominal",
+                  "title": "Runner"
+                },
+                {
+                  "field": "sandbox-runtime",
+                  "type": "nominal",
+                  "title": "Sandbox runtime"
+                },
+                {
+                  "field": "engine",
+                  "type": "nominal",
+                  "title": "Engine"
+                },
+                {
+                  "field": "model",
+                  "type": "nominal",
+                  "title": "Model"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "title": "Started"
+                }
+              ]
             }
-          },
-          {
-            "id": "job-duration-by-runtime-engine",
-            "title": "Job time by sandbox runtime and agent engine",
-            "description": "Mean elapsed job time grouped by the gh-aw sandbox runtime profile and agent engine.",
-            "data": {
-              "source": "job-performance"
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "sandbox-runtime",
-                "type": "nominal",
-                "title": "Sandbox runtime"
-              },
-              "y": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean job time",
-                "unit": "human-duration"
-              },
-              "color": {
-                "field": "engine",
-                "type": "nominal",
-                "title": "Agent engine"
-              }
-            }
-          },
-          {
-            "id": "job-duration-by-model",
-            "title": "Job time by model",
-            "description": "Mean elapsed job time grouped by resolved model, falling back to the requested model.",
-            "data": {
-              "source": "job-performance"
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "model",
-                "type": "nominal",
-                "title": "Model"
-              },
-              "y": {
-                "field": "job-duration-seconds",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean job time",
-                "unit": "human-duration"
-              }
-            }
-          }
-        ],
-        "sections": [
-          {
-            "id": "workflow-duration",
-            "title": "Workflow duration",
-            "layout": "full",
-            "views": [
-              "workflow-run-duration-histogram"
-            ]
-          },
-          {
-            "id": "job-duration",
-            "title": "Job duration",
-            "description": "Compare elapsed job time across discrete execution environments.",
-            "layout": "full",
-            "views": [
-              "job-duration-by-job-runner",
-              "job-duration-by-runtime-engine",
-              "job-duration-by-model"
-            ]
           }
         ]
       },
@@ -2740,100 +2370,7 @@
         "description": "Safe-output volume, diagnostic signals, and per-run delivery performance.",
         "views": [
           {
-            "id": "safe-output-distribution",
-            "title": "Safe-output types",
-            "description": "Distribution of retained safe outputs by output type.",
-            "data": {
-              "source": "outcomes"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "safe-output-kind",
-                "type": "nominal",
-                "title": "Type"
-              },
-              "y": {
-                "field": "safe-output",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Safe outputs"
-              },
-              "color": {
-                "field": "safe-output-kind",
-                "type": "nominal",
-                "title": "Type"
-              }
-            }
-          },
-          {
-            "id": "safe-output-trend",
-            "title": "Safe-output trend",
-            "description": "Daily output and diagnostic volume highlights changes in delivery, no-op, missing-data, missing-tool, and incomplete-report behavior.",
-            "data": {
-              "source": "safe-output-performance",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Observed"
-              },
-              "y": {
-                "field": "safe-output-count",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Safe outputs"
-              },
-              "color": {
-                "field": "safe-output-label",
-                "type": "nominal",
-                "title": "Disposition"
-              }
-            }
-          },
-          {
-            "id": "safe-output-workflow-performance",
-            "title": "Safe outputs by workflow",
-            "description": "Mean items per observed workflow run, split by output or diagnostic disposition.",
-            "data": {
-              "source": "safe-output-performance"
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "workflow",
-                "type": "nominal",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "safe-output-count",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean items per run"
-              },
-              "color": {
-                "field": "safe-output-label",
-                "type": "nominal",
-                "title": "Disposition"
-              }
-            }
-          },
-          {
             "id": "safe-output-diagnostics",
-            "disclosure-label": "Safe-output diagnostics",
-            "disclosure": "supplemental",
             "description": "Run-level evidence for delivered outputs and explicit noop, missing_data, missing_tool, or report_incomplete signals.",
             "data": {
               "source": "safe-output-performance",
@@ -2899,7 +2436,8 @@
                 "type": "nominal"
               }
             },
-            "layout": "full"
+            "layout": "full-view",
+            "lazy-list": true
           }
         ]
       },
@@ -3028,137 +2566,12 @@
         "description": "Workflow dispatch events retained from configured repositories.",
         "views": [
           {
-            "id": "dispatch-status",
-            "title": "Dispatch activation",
-            "description": "Activated and guarded dispatches expose whether authorized work is reaching execution.",
-            "data": {
-              "source": "dispatches"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "started-at",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Dispatches"
-              }
-            }
-          },
-          {
-            "id": "dispatch-package-distribution",
-            "title": "Dispatches by package",
-            "description": "Distribution of authoritative workflow_dispatch runs across packages.",
-            "data": {
-              "source": "dispatches"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "package-name",
-                "type": "nominal",
-                "title": "Package"
-              },
-              "y": {
-                "field": "started-at",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Dispatches"
-              }
-            }
-          },
-          {
-            "id": "dispatch-activation-summary",
-            "title": "Activation rate",
-            "description": "Share of authoritative workflow_dispatch runs that were activated versus skipped by a control-plane guard (for example an unauthorized pre-activation admission or a rollout gate).",
-            "data": {
-              "sources": [
-                "dispatch-activation-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "summary-grid",
-            "layout": "full"
-          },
-          {
-            "id": "package-dispatch-state",
-            "disclosure-label": "Package dispatching state",
-            "description": "Authoritative workflow_dispatch runs grouped by package. Worker counts, AI Credits, agents, and models reflect retained run and usage evidence; unavailable evidence is not inferred.",
-            "data": {
-              "source": "package-dispatch-state"
-            },
-            "mark": "table",
-            "disclosure": "supplemental",
-            "empty-message": "No packages were observed in the current run window.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "package-name",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                {
-                  "field": "dispatch-runs",
-                  "type": "quantitative",
-                  "title": "Dispatch runs"
-                },
-                {
-                  "field": "skipped",
-                  "type": "quantitative",
-                  "title": "Skipped"
-                },
-                {
-                  "field": "failed",
-                  "type": "quantitative",
-                  "title": "Failed"
-                },
-                {
-                  "field": "succeeded",
-                  "type": "quantitative",
-                  "title": "Succeeded"
-                },
-                {
-                  "field": "worker-dispatches",
-                  "type": "nominal",
-                  "title": "Dispatches by worker"
-                },
-                {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "title": "AIC",
-                  "unit": "aic"
-                },
-                {
-                  "field": "agent",
-                  "type": "nominal",
-                  "title": "Agent"
-                },
-                {
-                  "field": "model",
-                  "type": "nominal",
-                  "title": "Model"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
             "id": "package-worker-dispatches",
-            "disclosure-label": "Workflow dispatch events",
             "description": "Runs whose authoritative GitHub Actions trigger is workflow_dispatch, ordered newest first.",
             "data": {
               "source": "dispatches"
             },
             "mark": "table",
-            "disclosure": "supplemental",
             "empty-message": "No workflow dispatch events were observed in the current run window.",
             "encoding": {
               "href": {
@@ -3209,7 +2622,9 @@
                 }
               ]
             },
-            "layout": "full"
+            "layout": "full-view",
+            "controls": "interactive",
+            "lazy-list": true
           }
         ]
       },
@@ -3610,264 +3025,27 @@
       },
       {
         "id": "engines-models",
-        "kind": "built-in",
-        "page": "engines-models",
+        "kind": "custom",
         "title": "Engines Models",
         "icon": "sparkles-fill",
-        "definition": {
-          "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
-          },
-          "sections": [
+        "views": [
             {
-              "id": "model-agent-allocation",
-              "title": "Models & agentic engines",
-              "description": "Compare normalized AI Credit allocation by model and agentic engine.",
-              "layout": "full",
-              "views": [
-                "models-by-aic",
-                "engines-by-aic"
-              ]
-            },
-            {
-              "id": "model-allocation",
-              "title": "Models",
-              "description": "Observed model allocation and normalized AI Credit totals. Estimated USD uses the documented 1 AIC = $0.01 convention; billing dashboards remain authoritative.",
-              "layout": "full",
-              "count-source": "model-usage-summary",
-              "count-label": "models",
-              "views": [
-                "model-usage-table"
-              ]
-            },
-            {
-              "id": "agentic-engine-allocation",
-              "title": "Agentic engines",
-              "description": "Observed agentic engine allocation, version range, and model coverage from retained usage metadata.",
-              "layout": "full",
-              "count-source": "engine-usage-summary",
-              "count-label": "engines",
-              "views": [
-                "engine-usage-table"
-              ]
-            },
-            {
-              "id": "model-agent-run-aggregates",
-              "title": "Run aggregates",
-              "description": "Run counts summarize retained engine, model, and conclusion metadata. Open an aggregate to inspect the Runs table as evidence.",
-              "layout": "full",
-              "views": [
-                "engines-models-run-aggregates"
-              ]
-            }
-          ],
-          "views": [
-            {
-              "id": "models-by-aic",
-              "title": "AI Credit usage by model",
-              "description": "Normalized AI Credit allocation by resolved model, falling back to the requested model when resolution is unavailable.",
+              "id": "engines-models-usage",
+              "title": "Engines and models",
+              "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
               "data": {
-                "source": "model-usage-summary",
+                "source": "usage",
                 "order-by": [
                   {
-                    "field": "total-aic",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "empty-message": "No model usage data is available.",
-              "layout": "half",
-              "encoding": {
-                "x": {
-                  "field": "model",
-                  "type": "nominal",
-                  "title": "Model"
-                },
-                "y": {
-                  "field": "total-aic",
-                  "type": "quantitative",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                }
-              }
-            },
-            {
-              "id": "engines-by-aic",
-              "title": "AI Credit usage by agentic engine",
-              "description": "Normalized AI Credit allocation by observed agentic engine.",
-              "data": {
-                "source": "engine-usage-summary",
-                "order-by": [
-                  {
-                    "field": "total-aic",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "empty-message": "No agentic engine usage data is available.",
-              "layout": "half",
-              "encoding": {
-                "x": {
-                  "field": "engine",
-                  "type": "nominal",
-                  "title": "Agentic engine"
-                },
-                "y": {
-                  "field": "total-aic",
-                  "type": "quantitative",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                }
-              }
-            },
-            {
-              "id": "model-usage-table",
-              "title": "Models, pricing, and totals",
-              "data": {
-                "source": "model-usage-summary",
-                "order-by": [
-                  {
-                    "field": "total-aic",
+                    "field": "observed-at",
                     "direction": "desc"
                   }
                 ]
               },
               "mark": "table",
               "controls": "interactive",
-              "empty-message": "No model usage metadata is available.",
-              "layout": "full",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "model",
-                    "type": "nominal",
-                    "title": "Model"
-                  },
-                  {
-                    "field": "engine",
-                    "type": "nominal",
-                    "title": "Agentic engines"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal",
-                    "title": "Requested models"
-                  },
-                  {
-                    "field": "invocations",
-                    "type": "quantitative",
-                    "title": "Invocations"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Runs"
-                  },
-                  {
-                    "field": "total-aic",
-                    "type": "quantitative",
-                    "title": "Total AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "estimated-usd",
-                    "type": "quantitative",
-                    "title": "Estimated USD"
-                  },
-                  {
-                    "field": "pricing",
-                    "type": "nominal",
-                    "title": "Pricing"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "engine-usage-table",
-              "disclosure": "supplemental",
-              "disclosure-label": "Agentic engines, versions, and totals",
-              "data": {
-                "source": "engine-usage-summary",
-                "order-by": [
-                  {
-                    "field": "total-aic",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "empty-message": "No agentic engine metadata is available.",
-              "layout": "full",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "engine",
-                    "type": "nominal",
-                    "title": "Agentic engine"
-                  },
-                  {
-                    "field": "min-engine-version",
-                    "type": "nominal",
-                    "title": "Min version"
-                  },
-                  {
-                    "field": "max-engine-version",
-                    "type": "nominal",
-                    "title": "Max version"
-                  },
-                  {
-                    "field": "models",
-                    "type": "nominal",
-                    "title": "Models"
-                  },
-                  {
-                    "field": "invocations",
-                    "type": "quantitative",
-                    "title": "Invocations"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Runs"
-                  },
-                  {
-                    "field": "total-aic",
-                    "type": "quantitative",
-                    "title": "Total AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "estimated-usd",
-                    "type": "quantitative",
-                    "title": "Estimated USD"
-                  }
-                ]
-              }
-            },
-            {
-              "id": "engines-models-run-aggregates",
-              "disclosure-label": "Runs by agent and model",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "run-aggregate-summary",
-                "order-by": [
-                  {
-                    "field": "runs",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "table",
-              "controls": "static",
-              "empty-message": "No run aggregate metadata is available.",
-              "layout": "full",
+              "empty-message": "No engine or model usage metadata is available.",
+              "layout": "full-view",
               "encoding": {
                 "href": {
                   "field": "run-link",
@@ -3895,21 +3073,37 @@
                     "title": "Resolved model"
                   },
                   {
-                    "field": "run-conclusion",
+                    "field": "rollout-mode",
                     "type": "nominal",
-                    "title": "Conclusion",
-                    "display": "status"
+                    "title": "Mode",
+                    "display": "mode"
                   },
                   {
-                    "field": "runs",
+                    "field": "aic",
                     "type": "quantitative",
-                    "title": "Runs"
+                    "title": "AIC",
+                    "unit": "aic"
+                  },
+                  {
+                    "field": "repository",
+                    "type": "nominal",
+                    "title": "Repository"
+                  },
+                  {
+                    "field": "workflow",
+                    "type": "nominal",
+                    "title": "Workflow"
+                  },
+                  {
+                    "field": "observed-at",
+                    "type": "temporal",
+                    "title": "Observed"
                   }
                 ]
-              }
+              },
+              "lazy-list": true
             }
-          ]
-        },
+          ],
         "navigation-label": "Models & agents",
         "description": "Compare observed AI Credit allocation by model and agentic engine/version where usage telemetry provides that metadata."
       },
@@ -3921,238 +3115,16 @@
         "icon": "beaker",
         "class-name": "value-page",
         "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
-        "sections": [
-          {
-            "id": "outcome-operations",
-            "title": "Needs attention",
-            "description": "Grader maturity, usage coverage, output disposition, and experiment readiness.",
-            "layout": "full",
-            "count-source": "value-signals",
-            "count-label": "signals",
-            "views": [
-              "operational-value-trend",
-              "value-summary",
-              "value-signals"
-            ]
-          },
-          {
-            "id": "durable-output-evidence",
-            "title": "Durable outputs",
-            "description": "Retained issue, pull request, comment, review, and no-op records with navigable body and provenance details.",
-            "layout": "full",
-            "count-source": "outcomes",
-            "count-label": "outputs",
-            "views": [
-              "durable-output-ledger"
-            ]
-          },
-          {
-            "id": "comparable-evidence",
-            "title": "Operational value by workflow",
-            "description": "Latest evaluator versions only; repeated runs for one opportunity are collapsed.",
-            "layout": "full",
-            "count-source": "value-workflows",
-            "count-label": "observations",
-            "views": [
-              "operational-value-by-workflow"
-            ]
-          },
-          {
-            "id": "raw-collection-state",
-            "title": "Grader ledger",
-            "description": "All retained operational-value grader records, including unavailable and interim results.",
-            "layout": "full",
-            "count-source": "grader-observations",
-            "count-label": "records",
-            "views": [
-              "operational-value-ledger"
-            ]
-          },
-          {
-            "id": "experiment-evidence-boundary",
-            "title": "Evidence boundary",
-            "layout": "full",
-            "views": [
-              "experiment-evidence-boundary"
-            ]
-          }
-        ],
         "views": [
           {
-            "id": "operational-value-trend",
-            "title": "Operational-value attainment trend",
-            "description": "Mean attained value over time is the leading signal of realized operational outcomes.",
-            "data": {
-              "source": "operational-values",
-              "time": {
-                "range": "90d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day"
-              },
-              "y": {
-                "field": "operational-value",
-                "type": "quantitative",
-                "aggregate": "mean",
-                "title": "Mean attainment"
-              },
-              "color": {
-                "field": "operational-value-definition",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "value-summary",
-            "title": "Outcome summary",
-            "data": {
-              "sources": [
-                "value-summary"
-              ]
-            },
-            "mark": "element",
-            "element": "summary-grid",
-            "layout": "full",
-            "description": "Summarizes retained grader observations, matured evidence, measured value, and open outputs without inferring ROI from partial data."
-          },
-          {
-            "id": "value-signals",
-            "title": "Outcome signals",
-            "description": "Operational value is absolute attainment, not proof that a workflow caused an outcome. Missing and null grader results are not scored as zero.",
-            "data": {
-              "sources": [
-                "value-signals"
-              ]
-            },
-            "mark": "element",
-            "element": "signal-list",
-            "layout": "full"
-          },
-          {
-            "id": "durable-output-ledger",
-            "disclosure-label": "Retained outputs",
-            "data": {
-              "source": "outcomes"
-            },
-            "mark": "table",
-            "disclosure": "supplemental",
-            "controls": "interactive",
-            "empty-message": "No durable outputs were retained.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "outcome-title",
-                  "type": "nominal",
-                  "title": "Output",
-                  "display": "outcome-link"
-                },
-                {
-                  "field": "outcome-category",
-                  "type": "nominal",
-                  "title": "Type"
-                },
-                {
-                  "field": "outcome-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "outcome-state",
-                  "type": "nominal",
-                  "title": "Disposition",
-                  "display": "status"
-                },
-                {
-                  "field": "outcome-warning",
-                  "type": "nominal",
-                  "title": "Warning",
-                  "display": "status"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Updated"
-                }
-              ]
-            }
-          },
-          {
-            "id": "operational-value-by-workflow",
-            "disclosure-label": "Comparable observations",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "value-workflows"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No comparable operational-value observations are available.",
-            "layout": "full",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "operational-value-definition",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "opportunities",
-                  "type": "quantitative",
-                  "title": "Opportunities"
-                },
-                {
-                  "field": "mature-observations",
-                  "type": "quantitative",
-                  "title": "Mature"
-                },
-                {
-                  "field": "mean-operational-value",
-                  "type": "quantitative",
-                  "title": "Value"
-                },
-                {
-                  "field": "mean-baseline",
-                  "type": "quantitative",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Latest evidence"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ]
-            }
-          },
-          {
             "id": "operational-value-ledger",
-            "disclosure-label": "Collected observations",
-            "disclosure": "supplemental",
             "data": {
               "source": "grader-observations"
             },
             "mark": "table",
             "controls": "interactive",
             "empty-message": "No operational-value grader records were retained.",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -4202,19 +3174,8 @@
                   "title": "Run"
                 }
               ]
-            }
-          },
-          {
-            "id": "experiment-evidence-boundary",
-            "disclosure": "supplemental",
-            "title": "Experiment comparisons unavailable",
-            "description": "This answers whether observed outcomes support a reliable experiment comparison; partial AI Credit telemetry is allocation evidence, not complete spend or ROI. The report does not retain authoritative experiment definitions, variant assignments, or assignment-to-run links. It therefore does not infer control or treatment groups from workflow names, timestamps, models, or outcomes.",
-            "mark": "callout",
-            "callout": {
-              "label": "Evidence boundary",
-              "icon": "beaker"
             },
-            "layout": "full"
+            "lazy-list": true
           }
         ]
       },
@@ -4327,383 +3288,13 @@
         "class-name": "data-health-page",
         "views": [
           {
-            "id": "data-health-summary",
-            "title": "Overall confidence",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "table",
-            "controls": "static",
-            "layout": "full",
-            "description": "Availability, completeness, and freshness remain independent even when overall confidence changes.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "confidence",
-                  "type": "nominal",
-                  "title": "Confidence",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Primary reason"
-                },
-                {
-                  "field": "affected-domains",
-                  "type": "nominal",
-                  "title": "Affected areas"
-                },
-                {
-                  "field": "availability",
-                  "type": "nominal",
-                  "title": "Availability",
-                  "display": "status"
-                },
-                {
-                  "field": "completeness",
-                  "type": "nominal",
-                  "title": "Completeness",
-                  "display": "status"
-                },
-                {
-                  "field": "freshness",
-                  "type": "nominal",
-                  "title": "Freshness",
-                  "display": "status"
-                },
-                {
-                  "field": "scope-coverage",
-                  "type": "nominal",
-                  "title": "Scope coverage"
-                },
-                {
-                  "field": "collector-state",
-                  "type": "nominal",
-                  "title": "Collector state",
-                  "display": "status"
-                },
-                {
-                  "field": "compatibility-gaps",
-                  "type": "quantitative",
-                  "title": "Compatibility gaps"
-                },
-                {
-                  "field": "sources",
-                  "type": "quantitative",
-                  "title": "Sources"
-                },
-                {
-                  "field": "available-sources",
-                  "type": "quantitative",
-                  "title": "Available"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "fields",
-                  "type": "quantitative",
-                  "title": "Fields"
-                },
-                {
-                  "field": "total-size",
-                  "type": "nominal",
-                  "title": "Total size"
-                },
-                {
-                  "field": "next-action",
-                  "type": "nominal",
-                  "title": "Next action"
-                }
-              ]
-            }
-          },
-          {
-            "id": "data-health-files",
-            "disclosure-label": "Loaded files",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-files"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No dashboard files were loaded.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "file",
-                  "type": "nominal",
-                  "title": "File"
-                },
-                {
-                  "field": "display-size",
-                  "type": "nominal",
-                  "title": "Size"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-activity",
-            "title": "CAO Activity",
-            "disclosure": "supplemental",
-            "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
-            "data": {
-              "source": "data-health-summary"
-            },
-            "mark": "metric",
-            "layout": "third",
-            "encoding": {
-              "value": {
-                "field": "collector-state"
-              },
-              "href": {
-                "field": "external-link",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "data-health-domains",
-            "title": "Dashboard domain confidence",
-            "disclosure": "supplemental",
-            "data": {
-              "sources": [
-                "data-health-domains"
-              ]
-            },
-            "mark": "element",
-            "element": "data-health-domain-list",
-            "layout": "full"
-          },
-          {
-            "id": "data-health-coverage",
-            "disclosure-label": "Scope and evidence coverage",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-coverage"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No coverage contracts are available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "area",
-                  "type": "nominal",
-                  "title": "Evidence area"
-                },
-                {
-                  "field": "expected",
-                  "type": "nominal",
-                  "title": "Expected"
-                },
-                {
-                  "field": "observed",
-                  "type": "nominal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "missing",
-                  "type": "nominal",
-                  "title": "Missing"
-                },
-                {
-                  "field": "coverage-percent",
-                  "type": "nominal",
-                  "title": "Coverage"
-                },
-                {
-                  "field": "state",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-collections",
-            "disclosure-label": "Collector state",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-collections"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No collection metadata is available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Operation"
-                },
-                {
-                  "field": "state",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "failure-class",
-                  "type": "nominal",
-                  "title": "Failure class"
-                },
-                {
-                  "field": "progress",
-                  "type": "nominal",
-                  "title": "Progress"
-                },
-                {
-                  "field": "evidence-horizon",
-                  "type": "nominal",
-                  "title": "Evidence horizon"
-                },
-                {
-                  "field": "fallback",
-                  "type": "nominal",
-                  "title": "Fallback"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-compatibility",
-            "disclosure-label": "Producer contracts",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-compatibility"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No producer versions were observed.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "producer-version",
-                  "type": "nominal",
-                  "title": "Producer version"
-                },
-                {
-                  "field": "compatibility",
-                  "type": "nominal",
-                  "title": "Compatibility",
-                  "display": "status"
-                },
-                {
-                  "field": "missing-field-class",
-                  "type": "nominal",
-                  "title": "Missing fields"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                },
-                {
-                  "field": "next-action",
-                  "type": "nominal",
-                  "title": "Next action"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-reconciliation",
-            "disclosure-label": "Cross-source reconciliation",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-reconciliation"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No reconciliation contracts are available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "relationship",
-                  "type": "nominal",
-                  "title": "Relationship"
-                },
-                {
-                  "field": "expected",
-                  "type": "nominal",
-                  "title": "Expected"
-                },
-                {
-                  "field": "observed",
-                  "type": "nominal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "missing",
-                  "type": "nominal",
-                  "title": "Missing"
-                },
-                {
-                  "field": "coverage",
-                  "type": "nominal",
-                  "title": "Coverage"
-                },
-                {
-                  "field": "state",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
             "id": "data-health-sources",
-            "disclosure-label": "Cached source shape",
-            "disclosure": "supplemental",
             "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
             "data": {
               "source": "data-health-sources"
             },
             "mark": "table",
-            "controls": "static",
+            "controls": "interactive",
             "empty-message": "No cached data sources available.",
             "encoding": {
               "columns": [
@@ -4758,137 +3349,8 @@
                 }
               ]
             },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-fields",
-            "disclosure-label": "Field shape",
-            "disclosure": "supplemental",
-            "description": "Observed field types and population across every cached source.",
-            "data": {
-              "source": "data-health-fields"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No cached fields are available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "field",
-                  "type": "nominal",
-                  "title": "Field"
-                },
-                {
-                  "field": "types",
-                  "type": "nominal",
-                  "title": "Observed types"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "populated",
-                  "type": "quantitative",
-                  "title": "Populated"
-                },
-                {
-                  "field": "empty",
-                  "type": "quantitative",
-                  "title": "Empty"
-                },
-                {
-                  "field": "coverage",
-                  "type": "nominal",
-                  "title": "Coverage"
-                },
-                {
-                  "field": "shape",
-                  "type": "nominal",
-                  "title": "Shape"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-schema",
-            "disclosure-label": "Data shape preview",
-            "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-schema"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No cached sources are available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "schema",
-                  "type": "nominal",
-                  "title": "Inferred shape"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
-            "id": "data-health-provenance",
-            "disclosure-label": "Collection provenance",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-collections"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No provenance metadata is available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "collector-completed-at",
-                  "type": "temporal",
-                  "title": "Collector completed"
-                },
-                {
-                  "field": "retrieved-at",
-                  "type": "temporal",
-                  "title": "Retrieved"
-                },
-                {
-                  "field": "source-as-of",
-                  "type": "temporal",
-                  "title": "Source as of"
-                },
-                {
-                  "field": "snapshot-age",
-                  "type": "nominal",
-                  "title": "Snapshot age"
-                },
-                {
-                  "field": "provenance",
-                  "type": "nominal",
-                  "title": "Provenance"
-                }
-              ]
-            },
-            "layout": "full"
+            "layout": "full-view",
+            "lazy-list": true
           }
         ]
       },
@@ -5065,33 +3527,7 @@
         "description": "Installed gh-aw compiler versions and whether a newer gh-aw release is available.",
         "views": [
           {
-            "id": "workflow-versions",
-            "title": "Workflow versions",
-            "description": "Distribution of discovered workflows by compiled gh-aw version. The latest published release is marked current.",
-            "data": {
-              "source": "workflows"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "encoding": {
-              "x": {
-                "field": "gh-aw-version-label",
-                "type": "nominal",
-                "title": "gh-aw version"
-              },
-              "y": {
-                "field": "workflow",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Workflows"
-              }
-            },
-            "layout": "full"
-          },
-          {
             "id": "workflow-updates",
-            "disclosure-label": "Workflow update inventory",
-            "disclosure": "supplemental",
             "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
             "data": {
               "source": "workflows"
@@ -5132,7 +3568,9 @@
                 }
               ]
             },
-            "layout": "full"
+            "layout": "full-view",
+            "controls": "interactive",
+            "lazy-list": true
           }
         ]
       },
@@ -5144,97 +3582,7 @@
         "description": "Pre-activation decisions and gate behavior for control-plane orchestrators and workers.",
         "views": [
           {
-            "id": "admission-decision-distribution",
-            "title": "Admission decisions",
-            "description": "Authorized and denied pre-activation evaluations show whether control-plane work is clearing its safety boundary.",
-            "data": {
-              "source": "admissions"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "admission-status",
-                "type": "nominal",
-                "title": "Decision"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Evaluations"
-              }
-            }
-          },
-          {
-            "id": "admission-decision-trend",
-            "title": "Admission trend",
-            "description": "Daily decisions reveal changes in authorization behavior across orchestrators and workers.",
-            "data": {
-              "source": "admissions"
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "observed-at",
-                "type": "temporal",
-                "time-unit": "day",
-                "title": "Day"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Evaluations"
-              },
-              "color": {
-                "field": "admission-status",
-                "type": "nominal",
-                "title": "Decision"
-              }
-            }
-          },
-          {
-            "id": "admission-failed-gates",
-            "title": "Denied by gate",
-            "description": "Failed gate counts identify which pre-activation checks most often prevent execution.",
-            "data": {
-              "source": "admission-checks",
-              "filters": {
-                "check-status": [
-                  "failed"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "bar",
-            "layout": "half",
-            "encoding": {
-              "x": {
-                "field": "check",
-                "type": "nominal",
-                "title": "Gate"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Denied runs"
-              },
-              "color": {
-                "field": "workflow-role",
-                "type": "nominal",
-                "title": "Role"
-              }
-            }
-          },
-          {
             "id": "admission-decision-ledger",
-            "disclosure-label": "Admission evidence",
-            "disclosure": "supplemental",
             "description": "Latest structured pre-activation records preserve the decision, failing gate, reason, role, and run provenance.",
             "data": {
               "source": "admissions",
@@ -5247,7 +3595,7 @@
               "limit": 100
             },
             "mark": "table",
-            "layout": "full",
+            "layout": "full-view",
             "empty-message": "No structured admission records were observed in the current run window.",
             "encoding": {
               "href": {
@@ -5297,7 +3645,9 @@
                   "title": "Run"
                 }
               ]
-            }
+            },
+            "controls": "interactive",
+            "lazy-list": true
           }
         ]
       },
@@ -5334,38 +3684,7 @@
         "description": "Current report issues attributed to the worker workflows and packages that produced them.",
         "views": [
           {
-            "id": "preview-issues-by-package",
-            "title": "Issues by package",
-            "description": "Distribution of retained issues across their producing packages.",
-            "data": {
-              "source": "outcomes",
-              "filters": {
-                "outcome-category": [
-                  "issue"
-                ]
-              }
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "package",
-                "type": "nominal",
-                "title": "Package"
-              },
-              "y": {
-                "field": "safe-output",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Issues"
-              }
-            }
-          },
-          {
             "id": "preview-issue-ledger",
-            "disclosure-label": "Issues by worker and package",
-            "disclosure": "supplemental",
             "description": "Open an issue to inspect its full report and workflow provenance.",
             "data": {
               "source": "outcomes",
@@ -5382,7 +3701,7 @@
             "mark": "table",
             "controls": "interactive",
             "empty-message": "No issues were retained in the current report.",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -5418,7 +3737,8 @@
                   "title": "Updated"
                 }
               ]
-            }
+            },
+            "lazy-list": true
           }
         ]
       },

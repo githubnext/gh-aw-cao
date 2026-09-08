@@ -23,7 +23,7 @@ const metadata = {
 };
 
 describe('Runtime dashboard view', () => {
-  it('keeps Runtime and its execution views in the authoritative dashboard.json', () => {
+  it('keeps Runtime as one full-view lazy execution table', () => {
     const runtimePage = authoritativeDashboard.dashboard.pages.find(
       (/** @type {{ id: string }} */ page) => page.id === 'runtime'
     );
@@ -31,57 +31,17 @@ describe('Runtime dashboard view', () => {
     expect(runtimePage).toMatchObject({
       id: 'runtime',
       kind: 'custom',
-      title: 'Runtime & episodes',
-      sections: [
-        {
-          id: 'runtime-triage',
-          title: 'Needs attention',
-          'count-source': 'runtime-signals',
-          'count-label': 'signals',
-          views: ['runtime-episode-summary', 'runtime-anomaly-readiness', 'runtime-needs-attention']
-        },
-        {
-          id: 'observed-behavior',
-          title: 'Execution episodes',
-          views: [
-            'runtime-execution-episodes',
-            'runtime-episode-attribution-gap'
-          ]
-        }
-      ]
+      title: 'Runtime & episodes'
     });
-    expect(runtimePage.views.map(
-      (/** @type {{ id: string, mark: string, element?: string }} */ view) => ({
-        id: view.id,
-        mark: view.mark,
-        element: view.element
-      })
-    )).toEqual([
-      {
-        id: 'runtime-episode-summary',
-        mark: 'element',
-        element: 'summary-grid'
-      },
-      {
-        id: 'runtime-anomaly-readiness',
-        mark: 'element',
-        element: 'anomaly-readiness'
-      },
-      {
-        id: 'runtime-needs-attention',
-        mark: 'element',
-        element: 'signal-list'
-      },
-      {
+    expect(runtimePage.sections).toBeUndefined();
+    expect(runtimePage.views).toEqual([
+      expect.objectContaining({
         id: 'runtime-execution-episodes',
         mark: 'table',
-        element: undefined
-      },
-      {
-        id: 'runtime-episode-attribution-gap',
-        mark: 'table',
-        element: undefined
-      }
+        controls: 'interactive',
+        'lazy-list': true,
+        layout: 'full-view'
+      })
     ]);
   });
 

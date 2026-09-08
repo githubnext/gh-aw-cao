@@ -308,8 +308,11 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'updates');
-    expect(page?.querySelector('[data-chart-widget="pie"]')?.textContent).toContain('v0.88.7');
     const inventory = page?.querySelector('[data-view-id="workflow-updates"]');
+    expect(page?.querySelector('[data-chart-widget]')).toBeNull();
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(inventory?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(inventory?.textContent).toContain('v0.88.7');
     expect(inventory?.textContent).toContain('v0.89.0');
     expect(inventory?.textContent).toContain('update-available');
     expect(inventory?.querySelector('tbody a')?.getAttribute('href')).toBe(
@@ -352,22 +355,17 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'data-health');
-    const sourceView = [...(page?.querySelectorAll('details[data-disclosure="supplemental"]') ?? [])]
-      .find((view) => view.querySelector('summary')?.textContent?.includes('Cached source shape'));
+    const sourceView = page?.querySelector('[data-view-id="data-health-sources"]');
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
-    expect(page?.querySelector('[data-view-id="data-health-summary"]')?.previousElementSibling).toBeNull();
     expect(page?.querySelector('.layout-section')).toBeNull();
-    expect(page?.querySelectorAll('.view-disclosure[data-disclosure="supplemental"]')).toHaveLength(11);
-    expect(page?.querySelector('[data-view-id="data-health-domains"] table')).toBeNull();
-    expect(page?.querySelector('[data-view-id="data-health-domains"] .data-health-domain-list')).not.toBeNull();
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(sourceView?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('unavailable');
-    expect(sourceView?.querySelector('.page-section h3')).toBeNull();
-    expect(sourceView?.querySelector('.page-section')?.getAttribute('aria-label')).toBe('Cached source shape');
     expect(sourceView?.querySelector('tbody')?.textContent).not.toContain('overview');
-    expect(page?.textContent).toContain('Field shape');
+    expect(page?.textContent).toContain('Fields populated');
     rendered.remove();
   });
 
@@ -407,15 +405,14 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'data-health');
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
     expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull();
-    expect(page?.textContent).toContain('Overall confidence');
     expect(page?.textContent).toContain('insufficient');
-    expect(page?.querySelector('[data-view-id="data-health-summary"] .status-danger')?.textContent).toBe('insufficient');
+    expect(page?.querySelector('[data-view-id="data-health-sources"] .status-danger')?.textContent).toBe('insufficient');
     expect(page?.textContent).toContain('runs');
     expect(page?.textContent).toContain('unavailable');
     rendered.remove();
   });
 
-  it('renders built-in models and agents page with model and single-engine AIC summaries', () => {
+  it('renders engine and model usage as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
       'source-kind': 'fixture',
@@ -426,19 +423,7 @@ describe('presenter built-in and custom pages', () => {
       availability: /** @type {'available'} */ ('available')
     };
     const rendered = renderDashboard({
-      document: {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'models-agents-dashboard',
-          title: 'Models Agents Dashboard',
-          pages: [{
-            id: 'engines-models',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'engines-models',
-            title: 'Models & agents'
-          }]
-        }
-      },
+      document: authoritativeDashboardDocument,
       sources: {
         runs: {
           source: 'runs',
@@ -462,40 +447,18 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    const page = rendered.querySelector('[data-page-name="engines-models"]');
-    expect(page?.textContent).toContain('AI Credit usage by model');
-    expect(page?.textContent).toContain('Models, pricing, and totals');
-    expect(page?.textContent).toContain('1 AIC = $0.01 USD');
-    expect(page?.textContent).toContain('Total AIC');
-    expect(page?.textContent).toContain('25');
+    const page = await activatePage(rendered, 'engines-models');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget]')).toBeNull();
+    expect(page?.textContent).toContain('15 AIC');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('0.87.6');
     expect(page?.textContent).toContain('0.87.9');
-    expect(page?.querySelectorAll('.chart-view-pie')).toHaveLength(2);
-    expect(page?.querySelectorAll('.layout-section .pie-chart-card')).toHaveLength(2);
-    const allocationSection = page?.querySelector('[data-section-id="model-agent-allocation"]');
-    expect([...page?.querySelectorAll('.layout-section') ?? []].map((section) => section.getAttribute('data-section-id'))).toEqual([
-      'model-agent-allocation',
-      'model-allocation',
-      'agentic-engine-allocation',
-      'model-agent-run-aggregates'
-    ]);
-    expect(allocationSection?.querySelectorAll('.chart-view-pie')).toHaveLength(2);
-    const engineChart = [...allocationSection?.querySelectorAll('.chart-view-pie') ?? []]
-      .find((view) => view.querySelector('h4')?.textContent === 'AI Credit usage by agentic engine');
-    expect(engineChart?.querySelector('[role="status"]')).toBeNull();
-    expect(engineChart?.querySelector('[data-chart-category="copilot"]')).not.toBeNull();
-    expect(allocationSection?.querySelector('.custom-table')).toBeNull();
-    const runAggregates = page?.querySelector('[data-section-id="model-agent-run-aggregates"]');
-    const disclosure = runAggregates?.querySelector('.view-disclosure');
-    expect(disclosure?.hasAttribute('open')).toBe(false);
-    expect(disclosure?.querySelector('summary')?.textContent).toContain('Runs by agent and model');
-    disclosure?.setAttribute('open', '');
-    expect(disclosure?.querySelectorAll('tbody tr')).toHaveLength(3);
-    expect(disclosure?.querySelector('tbody a')?.getAttribute('href')).toBe('#page-runs');
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
   });
 
-  it('explains when model and agentic engine distribution data is missing', () => {
+  it('explains when engine and model usage data is missing', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
       'source-kind': 'fixture',
@@ -506,19 +469,7 @@ describe('presenter built-in and custom pages', () => {
       availability: /** @type {'empty'} */ ('empty')
     };
     const rendered = renderDashboard({
-      document: {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'models-agents-dashboard',
-          title: 'Models Agents Dashboard',
-          pages: [{
-            id: 'engines-models',
-            kind: /** @type {'built-in'} */ ('built-in'),
-            page: 'engines-models',
-            title: 'Models & agents'
-          }]
-        }
-      },
+      document: authoritativeDashboardDocument,
       sources: {
         runs: { source: 'runs', rows: [], metadata },
         usage: { source: 'usage', rows: [], metadata },
@@ -526,9 +477,9 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    const page = rendered.querySelector('[data-page-name="engines-models"]');
-    expect(page?.textContent).toContain('No model usage data is available.');
-    expect(page?.textContent).toContain('No agentic engine usage data is available.');
+    const page = await activatePage(rendered, 'engines-models');
+    expect(page?.textContent).toContain('No engine or model usage metadata is available.');
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     rendered.remove();
   });
 
@@ -1355,7 +1306,7 @@ describe('presenter built-in and custom pages', () => {
     }
   });
 
-  it('renders workflow and job performance charts from declarative sources', async () => {
+  it('renders job performance as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'performance-fixture',
       'source-kind': 'fixture',
@@ -1395,12 +1346,11 @@ describe('presenter built-in and custom pages', () => {
       .find(({ id }) => id === 'performance');
     expect([...page?.querySelectorAll('[data-view-id]') ?? []].map((view) => view.getAttribute('data-view-id')))
       .toEqual(configuredPage?.views.map(({ id }) => id));
-    expect(page?.querySelectorAll('.custom-view-grid > [data-view-layout="half"]')).toHaveLength(3);
-    expect(page?.querySelector('[data-chart-widget="histogram"]')).not.toBeNull();
-    expect(page?.querySelectorAll('[data-chart-widget="histogram"] .histogram-chart-bar')).toHaveLength(2);
-    expect(page?.querySelector('[data-chart-widget="heatmap"]')).not.toBeNull();
-    expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(2);
-    expect(page?.textContent).toContain('1m 0s');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.querySelector('[data-chart-widget]')).toBeNull();
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
+    expect(page?.textContent).toContain('45s');
     expect(page?.textContent).toContain('2m 30s');
     expect(page?.textContent).toContain('gvisor');
     expect(page?.textContent).toContain('gpt-5.4');
@@ -1472,7 +1422,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
   });
 
-  it('renders the Security assurance view without a findings summary table', async () => {
+  it('renders Security assurance records as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'security-fixture',
       'source-kind': 'fixture',
@@ -1544,23 +1494,15 @@ describe('presenter built-in and custom pages', () => {
     expect(dashboardPage).not.toHaveProperty('sections');
     expect(rendered.querySelector('[data-nav-page-id="security"] .octicon-shield')).not.toBeNull();
     expect(page?.querySelectorAll('.layout-section')).toHaveLength(0);
-    expect([...(page?.querySelectorAll('details[data-disclosure="supplemental"] > summary') ?? [])]
-      .map((summary) => summary.textContent)).toEqual([
-      expect.stringContaining('Assurance signals'),
-      expect.stringContaining('Output assurance records')
-    ]);
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
-    expect(page?.textContent).not.toContain('Security findings summary');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Approval gates2');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Explicit warnings2');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Package integrity gaps1');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Vulnerability findings—');
-    expect(page?.textContent).toContain('No vulnerability feed is retained.');
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(page?.textContent).toContain('<img src=x onerror=alert(1)>');
     expect(page?.querySelector('img')).toBeNull();
   });
 
-  it('renders the custom JSON-composed Value page from shared summary, signal, and table elements', async () => {
+  it('renders operational-value observations as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'value-fixture',
       'source-kind': 'fixture',
@@ -1736,59 +1678,27 @@ describe('presenter built-in and custom pages', () => {
     const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'operational-value');
     expect(dashboardPage).toMatchObject({ kind: 'custom', title: 'Value & outcomes' });
     expect(dashboardPage).not.toHaveProperty('page');
+    expect(dashboardPage).not.toHaveProperty('sections');
     expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull();
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Grader coverage4 / 5');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Mature evidence3');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Mean operational value50%');
-    expect(page?.querySelector('.summary-grid')?.textContent).toContain('Open outputs1');
-    expect([...(page?.querySelectorAll('.layout-section-header > strong') ?? [])].map((node) => node.textContent)).toEqual([
-      '5 signals',
-      '2 outputs',
-      '2 observations',
-      '5 records'
-    ]);
-
-    const signals = [...(page?.querySelectorAll('.signal-item') ?? [])];
-    expect(signals.map((signal) => signal.querySelector('.signal-copy > span')?.textContent)).toEqual([
-      'Grader unavailable',
-      'Maturity pending',
-      'AIC coverage',
-      'Open output',
-      'Experiment readiness'
-    ]);
-    expect(signals[3]?.querySelector('a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/issues/1');
-    expect(signals[4]?.querySelector('a')?.getAttribute('href')).toBe('#page-experiments');
-
     const tables = page?.querySelectorAll('.custom-table') ?? [];
-    expect(tables).toHaveLength(3);
-    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(tables[0]?.querySelector('a')?.getAttribute('href')).toBe('#page-outcome-detail?outcome=outcome-1');
-    expect(tables[1]?.textContent).toContain('daily-value');
-    expect(tables[1]?.textContent).toContain('0.7');
-    expect(tables[2]?.querySelectorAll('tbody tr')).toHaveLength(5);
-    expect(tables[2]?.querySelector('.status-success')?.textContent).toBe('pass');
-    expect(tables[2]?.querySelector('.status-attention')?.textContent).toBe('unavailable');
-    expect(tables[2]?.textContent).toContain('Mature');
-    expect(tables[2]?.textContent).toContain('Interim');
-    expect(tables[2]?.textContent).toContain('—');
-    expect(tables[2]?.textContent).toContain('sha256:curre');
-    expect(tables[2]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103');
-    expect(page?.querySelectorAll('.table-filter')).toHaveLength(2);
-    const graderRegion = /** @type {HTMLElement} */ (tables[2]?.closest('.table-region'));
+    expect(tables).toHaveLength(1);
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(5);
+    expect(tables[0]?.querySelector('.status-success')?.textContent).toBe('pass');
+    expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe('unavailable');
+    expect(tables[0]?.textContent).toContain('Mature');
+    expect(tables[0]?.textContent).toContain('Interim');
+    expect(tables[0]?.textContent).toContain('sha256:curre');
+    expect(tables[0]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103');
+    const graderRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'));
     const graderFilter = /** @type {HTMLInputElement} */ (graderRegion?.querySelector('[data-table-filter]'));
-    expect(graderFilter.closest('label')?.textContent).toContain('Filter Collected observations');
+    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational Value Ledger');
     graderFilter.value = 'review-value';
     graderFilter.dispatchEvent(new Event('input'));
     expect([...graderRegion.querySelectorAll('tbody tr')]
       .filter((row) => row instanceof HTMLTableRowElement && !row.hidden)).toHaveLength(1);
     expect(graderRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
-    expect(page?.textContent).toContain('not proof that a workflow caused an outcome');
-    const experimentBoundary = page?.querySelector('.dashboard-callout');
-    expect(experimentBoundary?.querySelector('.scope-kicker')?.textContent).toBe('Evidence boundary');
-    expect(experimentBoundary?.querySelector('.octicon-beaker')).not.toBeNull();
-    expect(experimentBoundary?.querySelector('h3')?.textContent).toBe('Experiment comparisons unavailable');
-    expect(experimentBoundary?.textContent).toContain('Experiment comparisons unavailable');
-    expect(experimentBoundary?.textContent).toContain('does not infer control or treatment groups');
   });
 
   it('DLS-VIEW-018 DLS-VIEW-019 DLS-VIEW-020 progressively discloses supplemental views in source order', () => {
@@ -2321,7 +2231,7 @@ describe('presenter built-in and custom pages', () => {
       (/** @type {{ kind: string }} */ page) => page.kind === 'built-in'
     );
     expect(Array.isArray(pages)).toBe(true);
-    expect(pages).toHaveLength(12);
+    expect(pages).toHaveLength(11);
     expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
@@ -2333,7 +2243,6 @@ describe('presenter built-in and custom pages', () => {
       'graders',
       'evals',
       'usage',
-      'engines-models',
       'findings'
     ]);
 
