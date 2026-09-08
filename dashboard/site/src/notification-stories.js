@@ -173,21 +173,26 @@ function eventDetail(event) {
 
 /** @param {Record<string, unknown>[]} events @param {string} objectType */
 function storyTitle(events, objectType) {
-  const latestTitle = eventTitle(events[0]);
+  const latest = events[0];
+  const latestTitle = eventTitle(latest);
   if (objectType === 'security-finding') return latestTitle;
-  const latestTimestamp = eventTimestamp(events[0]);
+
+  const latestTimestamp = eventTimestamp(latest);
   if (!latestTimestamp) return latestTitle;
+
   const terminal = latestTitle.toLowerCase();
-  const transition = TRANSITION_RULES.find((rule) => (
-    rule.terminal === terminal
-    && events.slice(1).some((event) => {
-      const timestamp = eventTimestamp(event);
-      return timestamp > 0
-        && timestamp < latestTimestamp
-        && eventTitle(event).toLowerCase() === rule.initial;
-    })
-  ));
-  return transition?.title ?? latestTitle;
+  const rule = TRANSITION_RULES.find((candidate) => candidate.terminal === terminal);
+  if (!rule) return latestTitle;
+
+  const prior = events.slice(1).find((event) => {
+    const timestamp = eventTimestamp(event);
+    if (timestamp <= 0 || timestamp >= latestTimestamp) return false;
+    const title = eventTitle(event).toLowerCase();
+    return title === rule.initial || title === rule.terminal;
+  });
+
+  const priorTitle = prior ? eventTitle(prior).toLowerCase() : '';
+  return priorTitle === rule.initial ? rule.title : latestTitle;
 }
 
 /**
