@@ -25,6 +25,7 @@
     "check": "npm run lint && npm run typecheck:cao && npm test && npm run test:load && npm run check:svg && npm run compile && npm run docs:build",
     "update-deps": "npx npm-check-updates -u && npm install",
     "test:e2e:docs": "npm run docs:build && playwright test --config=playwright.docs.config.mjs",
+    "test:e2e:experimental-views": "playwright test --config=playwright.experimental-views.config.mjs",
     "test:e2e:copilot-loop": "playwright test --config=playwright.copilot-loop.config.mjs",
     "test:e2e:local-server": "playwright test --config=playwright.local-server.config.mjs"
   },

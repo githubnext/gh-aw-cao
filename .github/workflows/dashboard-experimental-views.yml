@@ -1,0 +1,150 @@
+name: Dashboard experimental views
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  assess:
+    name: Assess experimental views
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Assess experimental views
+        id: assessment
+        continue-on-error: true
+        env:
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
+          EXPERIMENTAL_VIEWS_OUTPUT_DIR: test-results/experimental-views
+        run: npm run test:e2e:experimental-views
+      - name: Upload assessment
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dashboard-experimental-views
+          path: test-results/experimental-views/summary.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  comment:
+    name: Report experimental view assessment
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: assess
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Download assessment
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dashboard-experimental-views
+          path: assessment
+      - name: Comment with assessment
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const marker = '<!-- dashboard-experimental-views -->'
+            const summaryPath = 'assessment/summary.json'
+            const runUrl =
+              `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const escapeCell = (value) =>
+              String(value ?? '').replaceAll('|', '\\|').replaceAll('\n', ' ')
+            let body
+
+            if ('${{ steps.download.outcome }}' !== 'success' || !fs.existsSync(summaryPath)) {
+              core.info(`Experimental view assessment summary is unavailable at ${summaryPath}.`)
+              body = [
+                marker,
+                '### Experimental dashboard view assessment',
+                '',
+                'The informational assessment did not produce a summary.',
+                '',
+                `[View the workflow run](${runUrl}).`,
+              ].join('\n')
+            } else {
+              const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
+              const results = Array.isArray(summary.results) ? summary.results : []
+              const rows = results.map((result) => {
+                const findings = [
+                  ...(result.crashed ? ['browser crash'] : []),
+                  ...((result.errors || []).map((error) => `error: ${error}`)),
+                  ...((result.failedRequests || []).map((error) => `request: ${error}`)),
+                  ...((result.missingViews || []).map((view) => `missing view: ${view}`)),
+                  ...((result.missingData || []).map((value) => `missing data: ${value}`)),
+                  ...(result.domNodes > summary.maximumDomNodes
+                    ? [`DOM budget exceeded: ${result.domNodes}/${summary.maximumDomNodes}`]
+                    : []),
+                ]
+                core.info(
+                  `${result.pageId}: ${result.status}; ${result.domNodes ?? 'unknown'} DOM nodes; ` +
+                  `${findings.length} finding(s)`
+                )
+                return `| ${escapeCell(result.pageId)} | ${escapeCell(result.status)} | ` +
+                  `${escapeCell(result.domNodes ?? 'unknown')} | ${escapeCell(findings.join('; ') || 'None')} |`
+              })
+              const passed = results.filter((result) => result.status === 'passed').length
+              body = [
+                marker,
+                '### Experimental dashboard view assessment',
+                '',
+                `**${passed}/${results.length}** experimental views passed the informational assessment. ` +
+                  `The DOM budget is **${summary.maximumDomNodes}** nodes per loaded view.`,
+                summary.blocker ? `\nAssessment blocker: ${escapeCell(summary.blocker)}` : '',
+                '',
+                '| View | Result | DOM nodes | Findings |',
+                '|---|---:|---:|---|',
+                ...rows,
+                '',
+                `[View the workflow run](${runUrl}).`,
+              ].filter(Boolean).join('\n')
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            })
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            )
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...context.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
