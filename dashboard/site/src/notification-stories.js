@@ -281,14 +281,16 @@ function consequenceRank(events) {
  * @param {Record<string, unknown>[]} rawEvents
  */
 export function normalizeNotificationStories(rawEvents) {
-  /** @type {Map<string, { repository: string, objectType: string, objectId: string, events: Record<string, unknown>[] }>} */
+  /** @type {Map<string, { repository: string, identityScope: string, objectType: string, objectId: string, events: Record<string, unknown>[] }>} */
   const groups = new Map();
   for (const event of rawEvents) {
     const repository = eventRepository(event);
+    const identityScope = repository || text(event.scope);
     const { objectType, objectId } = eventObject(event);
-    const key = JSON.stringify([repository, objectType, objectId]);
+    const key = JSON.stringify([identityScope, objectType, objectId]);
     const group = groups.get(key) ?? {
       repository,
+      identityScope,
       objectType,
       objectId,
       events: /** @type {Record<string, unknown>[]} */ ([])
@@ -309,7 +311,7 @@ export function normalizeNotificationStories(rawEvents) {
     return {
       consequence: consequenceRank(events),
       story: {
-        id: `notification-story:${encodeURIComponent(group.repository)}:${encodeURIComponent(group.objectType)}:${encodeURIComponent(group.objectId)}`,
+        id: `notification-story:${encodeURIComponent(group.identityScope)}:${encodeURIComponent(group.objectType)}:${encodeURIComponent(group.objectId)}`,
         classification: storyClassification(latest, group.objectType, title),
         sourceType: eventSourceType(latest),
         title,

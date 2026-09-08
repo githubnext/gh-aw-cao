@@ -97,6 +97,135 @@ describe('notifications inbox large data', () => {
     const refreshedBulkDone = rendered.querySelector('[aria-label="Mark selected as done"]');
     expect(refreshedBulkDone?.hasAttribute('disabled')).toBe(false);
   });
+
+  it('keeps search, grouping, bulk actions, and deep links working with normalized stories', () => {
+    const rendered = renderNotificationsInbox([
+      attentionRow({
+        'attention-signal-id': 'ci-failed',
+        objective: 'CI failed',
+        reason: 'The test job failed.',
+        scope: 'githubnext/repository',
+        'observed-at': '2026-09-08T01:00:00Z',
+        'evidence-link': {
+          href: 'https://github.com/githubnext/repository/pull/42',
+          label: 'View pull request'
+        }
+      }),
+      attentionRow({
+        'attention-signal-id': 'ci-passed',
+        'signal-type': 'status-update',
+        objective: 'CI passed',
+        reason: 'All required checks passed.',
+        scope: 'githubnext/repository',
+        'observed-at': '2026-09-08T02:00:00Z',
+        'evidence-link': {
+          href: 'https://github.com/githubnext/repository/pull/42',
+          label: 'View pull request'
+        }
+      }),
+      attentionRow({
+        'attention-signal-id': 'other',
+        objective: 'Review deployment',
+        scope: 'githubnext/other',
+        'observed-at': '2026-09-08T03:00:00Z'
+      })
+    ]);
+    document.body.append(rendered);
+
+    expect(rendered.querySelector('.notifications-result-count')?.textContent).toBe('2 notifications');
+    expect(rendered.textContent).toContain('CI recovered');
+    expect(rendered.querySelector('a[href="https://github.com/githubnext/repository/pull/42"]')).not.toBeNull();
+
+    const search = /** @type {HTMLInputElement} */ (rendered.querySelector('[aria-label="Filter notifications"]'));
+    search.value = 'recovered';
+    search.dispatchEvent(new Event('input'));
+    expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1);
+
+    search.value = '';
+    search.dispatchEvent(new Event('input'));
+    const group = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Group notifications"]'));
+    group.value = 'repository';
+    group.dispatchEvent(new Event('change'));
+    expect([...rendered.querySelectorAll('.notifications-group-heading')].map((heading) => heading.textContent))
+      .toEqual(['githubnext/other', 'githubnext/repository']);
+
+    const selectAll = /** @type {HTMLInputElement} */ (rendered.querySelector('[aria-label="Select all notifications"]'));
+    selectAll.click();
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Mark selected as done"]')).click();
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.notifications') ?? '{}');
+    expect(stored.done).toHaveLength(2);
+    expect(stored.done.every((/** @type {string} */ id) => id.startsWith('notification-story:'))).toBe(true);
+  });
+
+  it('preserves non-repository scope and uses the latest event for collapsed-story date grouping', () => {
+    const now = Date.now();
+    const rendered = renderNotificationsInbox([
+      attentionRow({
+        'attention-signal-id': 'a-old',
+        'age-seconds': 700_000,
+        objective: 'Deployment started',
+        scope: 'production',
+        'observed-at': new Date(now - 700_000_000).toISOString(),
+        'evidence-link': {
+          href: 'https://example.com/deployments/42',
+          label: 'View deployment'
+        },
+        objectType: 'deployment',
+        objectId: '42'
+      }),
+      attentionRow({
+        'attention-signal-id': 'z-new',
+        'age-seconds': 60,
+        objective: 'Deployment succeeded',
+        scope: 'production',
+        'observed-at': new Date(now - 60_000).toISOString(),
+        'evidence-link': {
+          href: 'https://example.com/deployments/42',
+          label: 'View deployment'
+        },
+        objectType: 'deployment',
+        objectId: '42'
+      })
+    ]);
+    document.body.append(rendered);
+
+    expect(rendered.querySelector('.notification-repository')?.textContent).toBe('production');
+    const group = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Group notifications"]'));
+    group.value = 'date';
+    group.dispatchEvent(new Event('change'));
+    expect(rendered.querySelector('.notifications-group-heading')?.textContent).toBe('Today');
+  });
+
+  it('keeps the newest story when attention and operational events describe the same object', () => {
+    const now = Date.now();
+    const link = {
+      href: 'https://github.com/githubnext/repository/issues/99',
+      label: 'View issue'
+    };
+    const rendered = renderNotificationsInbox([attentionRow({
+      'attention-signal-id': 'new-failure',
+      objective: 'Deployment failed',
+      reason: 'The latest deployment needs attention.',
+      scope: 'githubnext/repository',
+      'observed-at': new Date(now - 60_000).toISOString(),
+      'evidence-link': link
+    })], {
+      outcomes: [{
+        'safe-output': 'outcome-99',
+        'outcome-state': 'pending',
+        'outcome-title': 'Review generated change',
+        organization: 'githubnext',
+        repository: 'repository',
+        'observed-at': new Date(now - 3_600_000).toISOString(),
+        'external-link': link
+      }]
+    });
+    document.body.append(rendered);
+
+    expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1);
+    expect(rendered.querySelector('.notifications-main')?.textContent).toContain('Deployment failed');
+    expect(rendered.querySelector('.notifications-main')?.textContent).not.toContain('Review generated change');
+  });
 });
 
 
@@ -235,10 +364,126 @@ describe('catch up queue', () => {
     swipe(/** @type {Element} */ (rendered.querySelector('.home-catchup-mobile-card')), 90, 10);
 
     expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(0);
-    expect(rendered.querySelector('.home-catchup-mobile')?.textContent).toContain("You're all caught up.");
+    expect(rendered.querySelector('.home-catchup-mobile')?.textContent).toContain('✓ You are caught up');
     stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
     expect(stored.done).toHaveLength(1);
     expect(stored.later).toHaveLength(1);
+  });
+
+  it('routes completion to Later in Notifications while excluding Done stories after refresh', () => {
+    const rows = catchUpRows();
+    const rendered = renderNotificationsInbox(rows);
+    document.body.append(rendered);
+
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-later')).click();
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-done')).click();
+
+    expect(rendered.querySelector('.home-catchup-mobile')?.textContent).toContain('✓ You are caught up');
+    const notificationsLink = /** @type {HTMLAnchorElement} */ (rendered.querySelector('.home-catchup-mobile a[href="#page-overview"]'));
+    expect(notificationsLink.textContent).toContain('View Later in Notifications');
+    notificationsLink.click();
+
+    expect(/** @type {HTMLInputElement} */ (rendered.querySelector('[aria-label="Filter notifications"]')).value).toBe('is:later');
+    expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1);
+    expect(rendered.textContent).toContain('Investigate failure');
+    expect(rendered.textContent).not.toContain('Review agent configuration');
+
+    document.body.replaceChildren();
+    const refreshed = renderNotificationsInbox(rows);
+    document.body.append(refreshed);
+    expect(refreshed.querySelector('.home-catchup-mobile')?.textContent).toContain('✓ You are caught up');
+    /** @type {HTMLButtonElement} */ ([...refreshed.querySelectorAll('.notifications-state-tabs button')]
+      .find((button) => button.textContent === 'Later')).click();
+    expect(refreshed.querySelectorAll('.notification-item')).toHaveLength(1);
+    expect(refreshed.querySelector('.notification-content')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/repository/actions/runs/42');
+
+    /** @type {HTMLButtonElement} */ (refreshed.querySelector('.notifications-main [aria-label="Mark as done"]')).click();
+    expect(refreshed.querySelectorAll('.notification-item')).toHaveLength(0);
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}');
+    expect(stored.later).toEqual([]);
+    expect(stored.done).toHaveLength(2);
+  });
+
+  it('keeps deferred operational stories accessible from Notifications', () => {
+    const id = 'notification-story:githubnext%2Frepository:issue:99';
+    window.localStorage.setItem('central-agentic-ops.dashboard.catch-up-queue', JSON.stringify({
+      queue: [],
+      size: 1,
+      seen: [id],
+      done: [],
+      later: [id]
+    }));
+    const rendered = renderNotificationsInbox([], {
+      outcomes: [{
+        'safe-output': 'outcome-99',
+        'outcome-state': 'pending',
+        'outcome-title': 'Review generated change',
+        'outcome-summary': 'A pull request is ready for review.',
+        organization: 'githubnext',
+        repository: 'repository',
+        'observed-at': new Date().toISOString(),
+        'external-link': {
+          href: 'https://github.com/githubnext/repository/issues/99',
+          label: 'View issue'
+        }
+      }]
+    });
+    document.body.append(rendered);
+
+    /** @type {HTMLButtonElement} */ ([...rendered.querySelectorAll('.notifications-state-tabs button')]
+      .find((button) => button.textContent === 'Later')).click();
+
+    expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1);
+    expect(rendered.textContent).toContain('Review generated change');
+    expect(rendered.querySelector('.notification-content')?.getAttribute('href'))
+      .toBe('https://github.com/githubnext/repository/issues/99');
+  });
+
+  it('keeps every deferred operational-value story accessible when newer values arrive', () => {
+    const ids = ['workflow-a', 'workflow-b'].map((workflow) => (
+      `notification-story:githubnext%2Frepository:workflow:${workflow}`
+    ));
+    window.localStorage.setItem('central-agentic-ops.dashboard.catch-up-queue', JSON.stringify({
+      queue: [],
+      size: 2,
+      seen: ids,
+      done: [],
+      later: ids
+    }));
+    const rendered = renderNotificationsInbox([], {
+      operationalValues: [{
+        'observation-id': 'value-a',
+        organization: 'githubnext',
+        repository: 'repository',
+        workflow: 'workflow-a',
+        'maturity-status': 'matured',
+        'operational-value': 0.7,
+        'observed-at': new Date(Date.now() - 60_000).toISOString()
+      }, {
+        'observation-id': 'value-b',
+        organization: 'githubnext',
+        repository: 'repository',
+        workflow: 'workflow-b',
+        'maturity-status': 'matured',
+        'operational-value': 0.8,
+        'observed-at': new Date().toISOString()
+      }]
+    });
+    document.body.append(rendered);
+
+    const group = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Group notifications"]'));
+    group.value = 'none';
+    group.dispatchEvent(new Event('change'));
+    expect(new Set([...rendered.querySelectorAll('.notification-item input')].map((input) => (
+      /** @type {HTMLInputElement} */ (input).dataset.notificationId
+    )))).toEqual(new Set(ids));
+    /** @type {HTMLButtonElement} */ ([...rendered.querySelectorAll('.notifications-state-tabs button')]
+      .find((button) => button.textContent === 'Later')).click();
+
+    expect(rendered.querySelectorAll('.notification-item')).toHaveLength(2);
+    expect(rendered.textContent).toContain('workflow-a');
+    expect(rendered.textContent).toContain('workflow-b');
   });
 
   it('provides mobile buttons equivalent to the swipe actions', () => {

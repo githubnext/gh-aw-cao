@@ -74,13 +74,43 @@ function writeCatchUpQueueState(state) {
   }
 }
 
+/** @param {Iterable<string>} ids */
+function markCatchUpStoriesDone(ids) {
+  const state = readCatchUpQueueState();
+  const done = new Set(ids);
+  for (const id of done) {
+    state.done.add(id);
+    state.later.delete(id);
+  }
+  state.queue = state.queue.filter((id) => !done.has(id));
+  writeCatchUpQueueState(state);
+}
+
 /** @param {Record<string, unknown>} row */
 function rowId(row) {
-  return String(row['attention-signal-id'] || `${row.scope}:${row.objective}`);
+  return String(row.id || row['attention-signal-id'] || `${row.scope}:${row.objective}`);
+}
+
+/** @param {Record<string, unknown>} row */
+function rowStateIds(row) {
+  return [rowId(row), ...(Array.isArray(row.contributingRawEventIds) ? row.contributingRawEventIds.map(String) : [])];
+}
+
+/** @param {Set<string>} values @param {Record<string, unknown>} row */
+function hasRowState(values, row) {
+  return rowStateIds(row).some((id) => values.has(id));
+}
+
+/** @param {Set<string>} values @param {Record<string, unknown>} row @param {boolean} active */
+function setRowState(values, row, active) {
+  for (const id of rowStateIds(row)) values.delete(id);
+  if (active) values.add(rowId(row));
 }
 
 /** @param {Record<string, unknown>} row */
 function repository(row) {
+  const normalizedRepository = String(row.repository || '');
+  if (/^[^/\s]+\/[^/\s]+$/.test(normalizedRepository)) return normalizedRepository;
   const scope = String(row.scope || '');
   if (/^[^/\s]+\/[^/\s]+$/.test(scope)) return scope;
   const link = findLink(row, 'repository-link') ?? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link');
@@ -101,12 +131,20 @@ function scopeLabel(row) {
 /** @param {Record<string, unknown>} row */
 function age(row) {
   const seconds = Number(row['age-seconds']);
-  return Number.isFinite(seconds) ? `${formatClockDuration(seconds * 1000)} ago` : 'Recently';
+  if (Number.isFinite(seconds)) return `${formatClockDuration(seconds * 1000)} ago`;
+  const timestamp = Number(row.timestamp);
+  return Number.isFinite(timestamp) && timestamp > 0
+    ? `${formatClockDuration(Math.max(0, Date.now() - timestamp))} ago`
+    : 'Recently';
 }
 
 /** @param {Record<string, unknown>} row */
 function dateGroup(row) {
-  const seconds = Number(row['age-seconds']);
+  const declaredSeconds = Number(row['age-seconds']);
+  const timestamp = Number(row.timestamp);
+  const seconds = Number.isFinite(declaredSeconds)
+    ? declaredSeconds
+    : Number.isFinite(timestamp) && timestamp > 0 ? Math.max(0, (Date.now() - timestamp) / 1000) : Number.NaN;
   if (!Number.isFinite(seconds) || seconds < 86_400) return 'Today';
   if (seconds < 604_800) return 'This week';
   return 'Older';
@@ -116,16 +154,21 @@ function dateGroup(row) {
  * @param {Record<string, unknown>} row
  * @param {string} query
  * @param {{ read: Set<string>, saved: Set<string>, done: Set<string> }} state
+ * @param {{ done: Set<string>, later: Set<string> }} catchUpState
  */
-function matchesQuery(row, query, state) {
+function matchesQuery(row, query, state, catchUpState) {
   const id = rowId(row);
-  const haystack = [row.objective, row.scope, row.reason, row['expected-actor'], row['signal-type']]
+  const haystack = [
+    row.title, row.objective, row.repository, row.scope, row.detail, row.reason,
+    row.classification, row.sourceType, row['expected-actor'], row['signal-type']
+  ]
     .map((value) => String(value || '').toLowerCase()).join(' ');
   return query.toLowerCase().trim().split(/\s+/).filter(Boolean).every((token) => {
-    if (token === 'is:unread') return !state.read.has(id);
-    if (token === 'is:read') return state.read.has(id);
-    if (token === 'is:saved') return state.saved.has(id);
-    if (token === 'is:done') return state.done.has(id);
+    if (token === 'is:unread') return !hasRowState(state.read, row);
+    if (token === 'is:read') return hasRowState(state.read, row);
+    if (token === 'is:saved') return hasRowState(state.saved, row);
+    if (token === 'is:done') return hasRowState(state.done, row);
+    if (token === 'is:later') return catchUpState.later.has(id) && !catchUpState.done.has(id);
     if (token.startsWith('repo:')) return repository(row).toLowerCase().includes(token.slice(5));
     if (token.startsWith('actor:')) return String(row['expected-actor'] || '').toLowerCase().includes(token.slice(6));
     return haystack.includes(token);
@@ -134,9 +177,45 @@ function matchesQuery(row, query, state) {
 
 /**
  * @param {Record<string, unknown>[]} rows
+ * @param {{ outcomes?: Record<string, unknown>[], operationalValues?: Record<string, unknown>[] }} sources
+ */
+function inboxStories(rows, sources) {
+  const now = Date.now();
+  const preparedAttention = rows.map((row) => ({
+    ...row,
+    ...(!row.timestamp && !row['observed-at'] && Number.isFinite(Number(row['age-seconds']))
+      ? { timestamp: now - Number(row['age-seconds']) * 1000 }
+      : {})
+  }));
+  const rawRows = new Map(rows.map((row) => [rowId(row), row]));
+  const events = [
+    ...preparedAttention,
+    ...outcomeStoryEvents(sources.outcomes ?? []),
+    ...operationalValueStoryEvents((sources.operationalValues ?? []).filter((row) => row['maturity-status'] === 'matured'))
+  ];
+  return normalizeNotificationStories(events).map((story) => {
+    const representative = story.contributingRawEventIds
+      .map((id) => rawRows.get(id))
+      .find((row) => row !== undefined) ?? {};
+    return {
+      ...representative,
+      ...story,
+      'attention-signal-id': story.id,
+      objective: story.title,
+      reason: story.detail,
+      scope: story.repository || representative.scope,
+      'signal-type': story.sourceType,
+      'age-seconds': undefined
+    };
+  });
+}
+
+/**
+ * @param {Record<string, unknown>[]} rows
  * @param {{ runs?: Record<string, unknown>[], workItems?: Record<string, unknown>[], outcomes?: Record<string, unknown>[], operationalValues?: Record<string, unknown>[], evidenceRecords?: Record<string, unknown>[] }} sources
  */
 export function renderNotificationsInbox(rows, sources = {}) {
+  const stories = inboxStories(rows, sources);
   const state = readState();
   const selected = new Set();
   /** @type {Record<string, unknown>[]} */
@@ -194,10 +273,15 @@ export function renderNotificationsInbox(rows, sources = {}) {
 
   /** @param {boolean} [resetWindow] */
   render = (resetWindow = true) => {
-    let visible = rows.filter((row) => matchesQuery(row, search.value, state));
+    const catchUpState = readCatchUpQueueState();
+    let visible = stories.filter((row) => (
+      !catchUpState.done.has(rowId(row)) && matchesQuery(row, search.value, state, catchUpState)
+    ));
     visible = [...visible].sort((left, right) => {
       if (sort.value === 'priority') return Number(left.priority || 99) - Number(right.priority || 99);
-      const delta = Number(left['age-seconds'] || 0) - Number(right['age-seconds'] || 0);
+      const leftTimestamp = Number(left.timestamp) || 0;
+      const rightTimestamp = Number(right.timestamp) || 0;
+      const delta = rightTimestamp - leftTimestamp;
       return sort.value === 'oldest' ? -delta : delta;
     });
     currentVisible = visible;
@@ -209,8 +293,10 @@ export function renderNotificationsInbox(rows, sources = {}) {
     }
     lazyList.render(resetWindow);
   };
-  const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(/\bis:(read|unread)\b/g, '').trim(); render(); } }, 'All');
-  const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(/\bis:(read|unread)\b/g, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
+  const stateQuery = /\bis:(read|unread|later)\b/g;
+  const all = h('button', { type: 'button', onClick: () => { search.value = search.value.replace(stateQuery, '').trim(); render(); } }, 'All');
+  const unread = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(stateQuery, '').trim()} is:unread`.trim(); render(); } }, 'Unread');
+  const later = h('button', { type: 'button', onClick: () => { search.value = `${search.value.replace(stateQuery, '').trim()} is:later`.trim(); render(); } }, 'Later');
   search.addEventListener('input', () => render());
   sort.addEventListener('change', () => render());
   group.addEventListener('change', () => render());
@@ -227,6 +313,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
   });
   bulkDone.addEventListener('click', () => {
     for (const id of selected) state.done.add(id);
+    markCatchUpStoriesDone(selected);
     writeState(state);
     render();
   });
@@ -234,7 +321,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
 
   const main = h('div', { className: 'notifications-main' },
       h('div', { className: 'notifications-toolbar' },
-        h('div', { className: 'notifications-state-tabs' }, all, unread),
+        h('div', { className: 'notifications-state-tabs' }, all, unread, later),
         h('label', { className: 'notifications-search' }, octicon('search'), search),
         h('label', { className: 'notifications-select' }, h('span', null, 'Sort by:'), sort),
         h('label', { className: 'notifications-select' }, h('span', null, 'Group by:'), group)),
@@ -243,27 +330,36 @@ export function renderNotificationsInbox(rows, sources = {}) {
         count,
         bulkDone),
       list);
-  const health = renderOperationalPulse(rows, sources);
-  return h('div', { className: `notifications-inbox${rows.length > 0 ? ' has-notifications' : ' is-clear'}` },
+  const showNotifications = (query = '') => {
+    search.value = query;
+    render();
+    main.scrollIntoView?.();
+    search.focus();
+  };
+  const health = renderOperationalPulse(rows, sources, showNotifications);
+  return h('div', { className: `notifications-inbox${stories.length > 0 ? ' has-notifications' : ' is-clear'}` },
     health,
     main);
 }
 
 /** @param {Record<string, unknown>} row */
 function causeKey(row) {
-  const reason = String(row.reason || 'No additional detail')
+  const reason = String(row.detail || row.reason || 'No additional detail')
     .toLowerCase()
     .replace(/https?:\/\/\S+/g, '<url>')
     .replace(/\b\d+\b/g, '#')
     .replace(/\s+/g, ' ')
     .trim();
-  return `${String(row['signal-type'] || 'notification').toLowerCase()}:${reason}`;
+  return `${String(row.sourceType || row['signal-type'] || 'notification').toLowerCase()}:${reason}`;
 }
 
 /** @param {Record<string, unknown>} row */
 function isHighPriority(row) {
   const consequence = String(row['consequence-tier'] || '').toLowerCase();
-  return consequence === 'critical' || consequence === 'high';
+  const priority = row.priority === null || row.priority === undefined || row.priority === ''
+    ? Number.NaN
+    : Number(row.priority);
+  return consequence === 'critical' || consequence === 'high' || (Number.isFinite(priority) && priority <= 1);
 }
 
 /**
@@ -299,7 +395,7 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
       h('summary', { className: 'notifications-cause-summary' },
         h('span', { className: 'notification-kind' }, first?.['signal-type'] === 'agent-smell' ? smellMark() : octicon(String(first?.icon || 'issue'))),
         h('span', { className: 'notifications-cause-copy' },
-          h('strong', null, String(first?.reason || 'Repeated notification cause')),
+          h('strong', null, String(first?.detail || first?.reason || 'Repeated notification cause')),
           h('small', null, `${entries.length} occurrences across ${repositories.size} ${repositories.size === 1 ? 'repository' : 'repositories'}`)),
         octicon('chevron-right', 'notifications-cause-chevron')),
       entriesList);
@@ -318,8 +414,9 @@ const ACTIVE_STATUSES = new Set(['queued', 'in-progress', 'in_progress', 'waitin
 /**
  * @param {Record<string, unknown>[]} attentionRows
  * @param {{ runs?: Record<string, unknown>[], workItems?: Record<string, unknown>[], outcomes?: Record<string, unknown>[], operationalValues?: Record<string, unknown>[], evidenceRecords?: Record<string, unknown>[] }} sources
+ * @param {(query?: string) => void} showNotifications
  */
-function renderOperationalPulse(attentionRows, sources) {
+function renderOperationalPulse(attentionRows, sources, showNotifications) {
   const runs = sources.runs ?? [];
   const workItems = sources.workItems ?? [];
   const outcomes = sources.outcomes ?? [];
@@ -339,7 +436,14 @@ function renderOperationalPulse(attentionRows, sources) {
     const start = range.value === 'since' && lastCatchUp
       ? lastCatchUp
       : end - (Number.parseInt(range.value, 10) || 7) * DAY_MILLISECONDS;
-    content.replaceChildren(renderCatchUpContent(attentionRows, { runs, workItems, outcomes, operationalValues, evidenceRecords }, start, end, () => render()));
+    content.replaceChildren(renderCatchUpContent(
+      attentionRows,
+      { runs, workItems, outcomes, operationalValues, evidenceRecords },
+      start,
+      end,
+      () => render(),
+      showNotifications
+    ));
   };
   range.addEventListener('change', render);
   markCaughtUp.addEventListener('click', () => {
@@ -360,8 +464,9 @@ function renderOperationalPulse(attentionRows, sources) {
  * @param {number} start
  * @param {number} end
  * @param {() => void} redraw
+ * @param {(query?: string) => void} showNotifications
  */
-function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
+function renderCatchUpContent(attentionRows, sources, start, end, redraw, showNotifications) {
   const currentOutcomes = within(sources.outcomes, start, end);
   const previousOutcomes = within(sources.outcomes, start - (end - start), start);
   const delivered = currentOutcomes.filter((row) => row['outcome-state'] === 'lifecycle-close').length;
@@ -408,9 +513,9 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
         h('span', null, size > 0 ? `${queuedStories.length} of ${size} remaining` : `${queuedStories.length} highlight${queuedStories.length === 1 ? '' : 's'}`)),
       queuedStories.length > 0
         ? h('div', { className: 'home-story-rail' }, ...queuedStories.slice(0, 4).map((story) => renderCatchUpStory(story, processStory)))
-        : h('p', { className: 'home-catchup-quiet' }, size > 0
-          ? "You're all caught up."
-          : 'No meaningful state changes were observed in this interval.')),
+        : size > 0
+          ? renderCaughtUp(queueState.later.size, showNotifications)
+          : h('p', { className: 'home-catchup-quiet' }, 'No meaningful state changes were observed in this interval.')),
     h('section', { className: 'home-catchup-mobile', 'aria-labelledby': 'home-catchup-mobile-title' },
       h('header', null,
         h('h3', { id: 'home-catchup-mobile-title' }, 'Catch Up'),
@@ -419,9 +524,24 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw) {
           : 'No highlights')),
       queuedStories.length > 0
         ? renderMobileCatchUpStory(queuedStories[0], processStory)
-        : h('p', { className: 'home-catchup-quiet' }, size > 0
-          ? "You're all caught up."
-          : 'No meaningful state changes were observed in this interval.')));
+        : size > 0
+          ? renderCaughtUp(queueState.later.size, showNotifications)
+          : h('p', { className: 'home-catchup-quiet' }, 'No meaningful state changes were observed in this interval.')));
+}
+
+/** @param {number} laterCount @param {(query?: string) => void} showNotifications */
+function renderCaughtUp(laterCount, showNotifications) {
+  const label = laterCount > 0 ? 'View Later in Notifications' : 'Back to Notifications';
+  return h('p', { className: 'home-catchup-quiet' },
+    h('strong', null, '✓ You are caught up'),
+    ' ',
+    h('a', {
+      href: '#page-overview',
+      onClick: /** @param {MouseEvent} event */ (event) => {
+        event.preventDefault();
+        showNotifications(laterCount > 0 ? 'is:later' : '');
+      }
+    }, label));
 }
 
 /** @param {Record<string, unknown>[]} rows @param {number} start @param {number} end */
@@ -553,7 +673,19 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
     timestamp: end - Number(row['age-seconds'] || 0) * 1000,
     deepLink: findLink(row, 'evidence-link')?.href || ''
   }));
-  const outcomeStories = outcomes
+  const latestValue = operationalValues
+    .filter((row) => row['maturity-status'] === 'matured' && observedAt(row) >= start && observedAt(row) <= end)
+    .sort((left, right) => observedAt(right) - observedAt(left))[0];
+  return normalizeNotificationStories([
+    ...attention,
+    ...outcomeStoryEvents(outcomes),
+    ...operationalValueStoryEvents(latestValue ? [latestValue] : [])
+  ]).filter((story) => Number.isFinite(story.timestamp));
+}
+
+/** @param {Record<string, unknown>[]} outcomes */
+function outcomeStoryEvents(outcomes) {
+  return outcomes
     .filter((row) => ['pending', 'lifecycle-close'].includes(String(row['outcome-state'])))
     .map((row) => {
       const outcomeId = String(row['safe-output'] || row['outcome-number'] || '');
@@ -567,24 +699,23 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
         deepLink: findLink(row, 'external-link')?.href || findLink(row, 'evidence-link')?.href || ''
       };
     });
-  const latestValue = operationalValues
-    .filter((row) => row['maturity-status'] === 'matured' && observedAt(row) >= start && observedAt(row) <= end)
-    .sort((left, right) => observedAt(right) - observedAt(left))[0];
-  const valueStory = latestValue ? [{
-    ...latestValue,
-    ...(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition']
-      ? { 'event-id': `operational-value:${String(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition'])}` }
+}
+
+/** @param {Record<string, unknown>[]} operationalValues */
+function operationalValueStoryEvents(operationalValues) {
+  return operationalValues.map((row) => ({
+    ...row,
+    ...(row['observation-id'] || row.workflow || row['operational-value-definition']
+      ? { 'event-id': `operational-value:${String(row['observation-id'] || row.workflow || row['operational-value-definition'])}` }
       : {}),
     classification: 'operational-value',
-    title: String(latestValue.workflow || 'Operational value measured'),
-    detail: `Matured operational value reached ${Math.round(Number(latestValue['operational-value']) * 100)}%.`,
-    timestamp: observedAt(latestValue),
-    deepLink: findLink(latestValue, 'evidence-link')?.href || '',
+    title: String(row.workflow || 'Operational value measured'),
+    detail: `Matured operational value reached ${Math.round(Number(row['operational-value']) * 100)}%.`,
+    timestamp: observedAt(row),
+    deepLink: findLink(row, 'evidence-link')?.href || '',
     objectType: 'workflow',
-    objectId: String(latestValue.workflow || latestValue['observation-id'] || '')
-  }] : [];
-  return normalizeNotificationStories([...attention, ...outcomeStories, ...valueStory])
-    .filter((story) => Number.isFinite(story.timestamp));
+    objectId: String(row.workflow || row['observation-id'] || '')
+  }));
 }
 
 /**
@@ -692,7 +823,7 @@ function catchUpClassificationLabel(classification) {
 
 /** @param {Record<string, unknown>} row */
 function notificationOrigin(row) {
-  const signal = String(row['signal-type'] || '').toLowerCase();
+  const signal = String(row.sourceType || row['signal-type'] || '').toLowerCase();
   if (signal.includes('agent') || signal.includes('security') || signal.includes('threat')) return { label: 'Agents', icon: 'copilot', tone: 'agents' };
   if (signal.includes('value') || signal.includes('evidence') || signal.includes('budget') || signal.includes('capacity')) return { label: 'Insights', icon: 'graph', tone: 'insights' };
   return { label: 'Work', icon: 'project-roadmap', tone: 'work' };
@@ -706,8 +837,10 @@ function renderOriginBadge(origin) {
 /** @param {Record<string, unknown>} row @param {{ read: Set<string>, saved: Set<string>, done: Set<string> }} state @param {Set<string>} selected @param {HTMLButtonElement} bulkDone @param {() => void} render */
 function renderNotification(row, state, selected, bulkDone, render) {
   const id = rowId(row);
-  const link = findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link');
-  const unread = !state.read.has(id);
+  const deepLink = typeof row.deepLink === 'string' && row.deepLink ? { href: row.deepLink } : null;
+  const link = deepLink ?? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link');
+  const unread = !hasRowState(state.read, row);
+  const done = hasRowState(state.done, row);
   /** @param {string} label @param {string} icon @param {boolean} active @param {() => void} change */
   const action = (label, icon, active, change) => h('button', {
     type: 'button', className: `notifications-icon-button${active ? ' active' : ''}`,
@@ -726,11 +859,14 @@ function renderNotification(row, state, selected, bulkDone, render) {
     renderOriginBadge(notificationOrigin(row)),
     h(link ? 'a' : 'div', { className: 'notification-content', ...(link ? { href: link.href, onClick: () => { state.read.add(id); writeState(state); } } : {}) },
       h('span', { className: 'notification-repository' }, scopeLabel(row)),
-      h('strong', null, String(row.objective || 'Notification')),
-      h('small', null, String(row.reason || 'No additional detail'))),
+      h('strong', null, String(row.title || row.objective || 'Notification')),
+      h('small', null, String(row.detail || row.reason || 'No additional detail'))),
     h('span', { className: 'notification-meta' }, String(row['expected-actor'] || ''), h('small', null, age(row))),
     h('span', { className: 'notification-actions' },
-      action(unread ? 'Mark as read' : 'Mark as unread', unread ? 'check' : 'read', !unread, () => unread ? state.read.add(id) : state.read.delete(id)),
-      action(state.saved.has(id) ? 'Unsave' : 'Save', 'bookmark', state.saved.has(id), () => state.saved.has(id) ? state.saved.delete(id) : state.saved.add(id)),
-      action(state.done.has(id) ? 'Move to inbox' : 'Mark as done', state.done.has(id) ? 'inbox' : 'check-circle', state.done.has(id), () => state.done.has(id) ? state.done.delete(id) : state.done.add(id))));
+      action(unread ? 'Mark as read' : 'Mark as unread', unread ? 'check' : 'read', !unread, () => setRowState(state.read, row, unread)),
+      action(hasRowState(state.saved, row) ? 'Unsave' : 'Save', 'bookmark', hasRowState(state.saved, row), () => setRowState(state.saved, row, !hasRowState(state.saved, row))),
+      action(done ? 'Move to inbox' : 'Mark as done', done ? 'inbox' : 'check-circle', done, () => {
+        setRowState(state.done, row, !done);
+        if (!done) markCatchUpStoriesDone([id]);
+      })));
 }
