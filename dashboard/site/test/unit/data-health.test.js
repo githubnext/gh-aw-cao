@@ -220,3 +220,56 @@ describe('producer compatibility and reconciliation', () => {
     expect(row).toMatchObject({ expected: 'Unknown', coverage: 'Unknown', state: 'unknown' });
   });
 });
+
+describe('data shape preview', () => {
+  it('infers a recursive schema merged across sampled rows, marking optional and mixed-type fields', () => {
+    const sources = completeSources();
+    sources.runs.rows = [
+      { organization: 'acme', repository: 'app', run: '42', attempts: 1, labels: ['flaky'], meta: { retries: 1 } },
+      { organization: 'acme', repository: 'app', run: '43', attempts: '2', labels: [], extra: true }
+    ];
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
+    expect(schema.source).toBe('runs');
+    expect(schema.schema).toContain('attempts: number | string');
+    expect(schema.schema).toContain('labels: string[]');
+    expect(schema.schema).toContain('extra?: boolean');
+    expect(schema.schema).toContain('meta?: { retries: number }');
+  });
+
+  it('detects and breaks reference cycles instead of recursing without bound', () => {
+    const sources = completeSources();
+    const cyclicRow = /** @type {Record<string, any>} */ ({ organization: 'acme', repository: 'app' });
+    cyclicRow.self = cyclicRow;
+    sources.runs.rows = [cyclicRow];
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
+    expect(schema.schema).toContain('self: (circular)');
+  });
+
+  it('reports an empty-object shape when a source has no cached rows', () => {
+    const sources = completeSources();
+    sources.runs.rows = [];
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
+    expect(schema.schema).toBe('{}');
+  });
+});
+
+describe('CAO Activity debugging link', () => {
+  it('links the data health summary to the CAO Activity workflow when repository context is known', () => {
+    const sources = completeSources();
+    const summary = deriveDataHealthSources(sources, {
+      githubUrlBase: 'https://github.com',
+      dashboardRepository: 'acme/app'
+    })['data-health-summary'].rows[0];
+    expect(summary['external-link']).toEqual({
+      href: 'https://github.com/acme/app/actions/workflows/activity.yml',
+      label: 'CAO Activity'
+    });
+  });
+
+  it('omits the activity link when repository context is unavailable', () => {
+    const sources = completeSources();
+    const summary = deriveDataHealthSources(sources)['data-health-summary'].rows[0];
+    expect(summary['external-link']).toBeNull();
+  });
+});
+

@@ -6138,7 +6138,8 @@
             "layout": "full",
             "views": [
               "data-health-confidence",
-              "data-health-summary"
+              "data-health-summary",
+              "data-health-activity"
             ]
           },
           {
@@ -6194,6 +6195,15 @@
             "views": [
               "data-health-sources",
               "data-health-fields"
+            ]
+          },
+          {
+            "id": "data-shape-preview",
+            "title": "Data shape preview",
+            "description": "Recursive schema inference for each cached source, sampled from loaded rows with cycles detected and broken.",
+            "layout": "full",
+            "views": [
+              "data-health-schema"
             ]
           },
           {
@@ -6275,6 +6285,7 @@
           {
             "id": "data-health-summary",
             "title": "Data health summary",
+            "disclosure": "supplemental",
             "data": {
               "source": "data-health-summary"
             },
@@ -6360,6 +6371,26 @@
                   "title": "Next action"
                 }
               ]
+            }
+          },
+          {
+            "id": "data-health-activity",
+            "title": "CAO Activity",
+            "description": "Collector state, linking to the CAO Activity workflow run history for debugging.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-summary"
+            },
+            "mark": "metric",
+            "layout": "third",
+            "encoding": {
+              "value": {
+                "field": "collector-state"
+              },
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              }
             }
           },
           {
@@ -6720,6 +6751,33 @@
                   "field": "shape",
                   "type": "nominal",
                   "title": "Shape"
+                }
+              ]
+            },
+            "layout": "full"
+          },
+          {
+            "id": "data-health-schema",
+            "title": "Data shape preview",
+            "description": "Recursive JSON schema inference per source, merged across sampled rows; reference cycles are detected and rendered as (circular) instead of recursing without bound.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "data-health-schema"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No cached sources are available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "schema",
+                  "type": "nominal",
+                  "title": "Inferred shape"
                 }
               ]
             },

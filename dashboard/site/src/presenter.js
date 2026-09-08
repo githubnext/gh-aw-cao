@@ -158,7 +158,7 @@ export function renderDashboard(input) {
     ),
     pages
   );
-  const dataHealthSources = deriveDataHealthSources(rawSources);
+  const dataHealthSources = deriveDataHealthSources(rawSources, { githubUrlBase, dashboardRepository });
   const sources = {
     ...derivedSources,
     ...Object.fromEntries(
