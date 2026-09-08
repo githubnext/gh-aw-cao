@@ -1681,9 +1681,11 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       const rendered = isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
         ? await renderElementViewAsync(page.id, getViewTitle(view, index), view, sources, resolveViewContextDetails(view, sources), headingTag, routeParameter)
         : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter);
-      rendered.classList.add('custom-view');
-      rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
-      rendered.setAttribute('data-view-layout', layout);
+      if (disclosure === 'essential') {
+        rendered.classList.add('custom-view');
+        rendered.setAttribute('data-view-id', viewId || `view-${index + 1}`);
+        rendered.setAttribute('data-view-layout', layout);
+      }
       rendered.setAttribute('data-disclosure', disclosure);
       return rendered;
     };
