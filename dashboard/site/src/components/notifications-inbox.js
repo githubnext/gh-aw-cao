@@ -169,14 +169,19 @@ function matchesQuery(row, query, state, catchUpState) {
  */
 function inboxStories(rows, sources) {
   const now = Date.now();
-  const prepared = rows.map((row) => ({
+  const preparedAttention = rows.map((row) => ({
     ...row,
     ...(!row.timestamp && !row['observed-at'] && Number.isFinite(Number(row['age-seconds']))
       ? { timestamp: now - Number(row['age-seconds']) * 1000 }
       : {})
   }));
   const rawRows = new Map(rows.map((row) => [rowId(row), row]));
-  const attentionStories = normalizeNotificationStories(prepared).map((story) => {
+  const events = [
+    ...preparedAttention,
+    ...outcomeStoryEvents(sources.outcomes ?? []),
+    ...operationalValueStoryEvents((sources.operationalValues ?? []).filter((row) => row['maturity-status'] === 'matured'))
+  ];
+  return normalizeNotificationStories(events).map((story) => {
     const representative = story.contributingRawEventIds
       .map((id) => rawRows.get(id))
       .find((row) => row !== undefined) ?? {};
@@ -186,19 +191,11 @@ function inboxStories(rows, sources) {
       'attention-signal-id': story.id,
       objective: story.title,
       reason: story.detail,
-      scope: story.repository,
-      'signal-type': story.sourceType
+      scope: story.repository || representative.scope,
+      'signal-type': story.sourceType,
+      'age-seconds': undefined
     };
   });
-  const operationalRows = [...(sources.outcomes ?? []), ...(sources.operationalValues ?? [])];
-  const operationalStories = catchUpStories(
-    [],
-    sources.outcomes ?? [],
-    sources.operationalValues ?? [],
-    0,
-    latestObservedAt(operationalRows)
-  );
-  return [...new Map([...attentionStories, ...operationalStories].map((story) => [story.id, story])).values()];
 }
 
 /**
@@ -662,7 +659,19 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
     timestamp: end - Number(row['age-seconds'] || 0) * 1000,
     deepLink: findLink(row, 'evidence-link')?.href || ''
   }));
-  const outcomeStories = outcomes
+  const latestValue = operationalValues
+    .filter((row) => row['maturity-status'] === 'matured' && observedAt(row) >= start && observedAt(row) <= end)
+    .sort((left, right) => observedAt(right) - observedAt(left))[0];
+  return normalizeNotificationStories([
+    ...attention,
+    ...outcomeStoryEvents(outcomes),
+    ...operationalValueStoryEvents(latestValue ? [latestValue] : [])
+  ]).filter((story) => Number.isFinite(story.timestamp));
+}
+
+/** @param {Record<string, unknown>[]} outcomes */
+function outcomeStoryEvents(outcomes) {
+  return outcomes
     .filter((row) => ['pending', 'lifecycle-close'].includes(String(row['outcome-state'])))
     .map((row) => {
       const outcomeId = String(row['safe-output'] || row['outcome-number'] || '');
@@ -676,24 +685,23 @@ function catchUpStories(attentionRows, outcomes, operationalValues, start, end) 
         deepLink: findLink(row, 'external-link')?.href || findLink(row, 'evidence-link')?.href || ''
       };
     });
-  const latestValue = operationalValues
-    .filter((row) => row['maturity-status'] === 'matured' && observedAt(row) >= start && observedAt(row) <= end)
-    .sort((left, right) => observedAt(right) - observedAt(left))[0];
-  const valueStory = latestValue ? [{
-    ...latestValue,
-    ...(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition']
-      ? { 'event-id': `operational-value:${String(latestValue['observation-id'] || latestValue.workflow || latestValue['operational-value-definition'])}` }
+}
+
+/** @param {Record<string, unknown>[]} operationalValues */
+function operationalValueStoryEvents(operationalValues) {
+  return operationalValues.map((row) => ({
+    ...row,
+    ...(row['observation-id'] || row.workflow || row['operational-value-definition']
+      ? { 'event-id': `operational-value:${String(row['observation-id'] || row.workflow || row['operational-value-definition'])}` }
       : {}),
     classification: 'operational-value',
-    title: String(latestValue.workflow || 'Operational value measured'),
-    detail: `Matured operational value reached ${Math.round(Number(latestValue['operational-value']) * 100)}%.`,
-    timestamp: observedAt(latestValue),
-    deepLink: findLink(latestValue, 'evidence-link')?.href || '',
+    title: String(row.workflow || 'Operational value measured'),
+    detail: `Matured operational value reached ${Math.round(Number(row['operational-value']) * 100)}%.`,
+    timestamp: observedAt(row),
+    deepLink: findLink(row, 'evidence-link')?.href || '',
     objectType: 'workflow',
-    objectId: String(latestValue.workflow || latestValue['observation-id'] || '')
-  }] : [];
-  return normalizeNotificationStories([...attention, ...outcomeStories, ...valueStory])
-    .filter((story) => Number.isFinite(story.timestamp));
+    objectId: String(row.workflow || row['observation-id'] || '')
+  }));
 }
 
 /**
