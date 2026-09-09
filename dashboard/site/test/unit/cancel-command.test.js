@@ -35,6 +35,16 @@ describe('dashboard cancel command', () => {
     expect(cancel).toHaveBeenCalledTimes(1);
   });
 
+  it('positions the attention notice above the footer', () => {
+    offerCancelCommand(document);
+
+    const styles = document.querySelector('style[data-cancel-command-styles]')?.textContent;
+    expect(styles).toContain('bottom: 60px');
+    expect(styles).toContain('border: 1px solid var(--attention)');
+    expect(styles).toContain('background: var(--attention-muted)');
+    expect(styles).not.toContain('var(--surface)');
+  });
+
   it('cancels from the keyboard only while the command is offered', () => {
     vi.useFakeTimers();
     const cancel = vi.fn(() => 1);

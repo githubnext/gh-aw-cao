@@ -16,14 +16,16 @@ function installStyles(document) {
   position: fixed;
   z-index: 1001;
   right: 16px;
-  bottom: 16px;
-  display: flex;
+  bottom: 60px;
+  max-width: calc(100vw - 32px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--attention);
   border-radius: 6px;
-  background: var(--surface);
+  background: var(--attention-muted);
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   color: var(--fg);
   font-size: 13px;
@@ -32,13 +34,22 @@ function installStyles(document) {
   padding: 4px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: transparent;
+  background: var(--canvas-subtle);
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
 .cancel-command-button:hover {
-  border-color: var(--accent);
+  background: var(--neutral-muted);
+}
+@media (max-width: 480px) {
+  .cancel-command {
+    left: 16px;
+    grid-template-columns: 1fr;
+  }
+  .cancel-command-button {
+    justify-self: end;
+  }
 }`;
   document.head.append(style);
 }
