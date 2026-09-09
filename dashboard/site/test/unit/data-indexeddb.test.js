@@ -131,7 +131,7 @@ describe('canonical IndexedDB generations', () => {
       status: 'committed',
       recordCount: 100_000
     });
-  }, 45_000);
+  }, 20_000);
 
   it('preserves the active generation when replacement validation fails', async () => {
     await stageCanonicalBatch(indexedDB, batch('generation-a'), 'generation-a');
