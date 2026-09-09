@@ -326,7 +326,7 @@ test('GitHub API raw quota table remains operable at desktop and narrow widths',
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
+test('control-plane readiness presents operational evidence across engine activity, verdict, priority queue, and supporting evidence views', async ({ page }) => {
   /** @type {Error[]} */
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error));
@@ -393,13 +393,11 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   await expect(readinessNavigation).toHaveAttribute('aria-current', 'page');
   await expect(readinessNavigation.locator('svg')).toHaveCount(1);
   await expect(page.locator('.nav-section-label').filter({ hasText: 'Experimental' })).toBeVisible();
-  await expect(readinessPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
-  await expect(readinessPage.locator('[data-chart-widget]')).toHaveCount(0);
-  await expect(readinessPage).toContainText('Worker failures');
+  await expect(readinessPage.locator('[data-chart-widget]')).toHaveCount(1);
+  await expect(readinessPage.getByText('Worker, orchestrator, and no-op evidence').first()).toBeVisible();
+  await expect(readinessPage).toContainText('1 orchestrator run failed');
+  await expect(readinessPage).toContainText('1 worker run failed');
   await expect(readinessPage).toContainText('Worker warnings');
-  await expect(readinessPage).toContainText('No-op reports');
-  await expect(readinessPage).toContainText('1 failure observed.');
 
   const windowStart = horizonFilter.locator('[aria-label="Window start time"]');
   const windowStop = horizonFilter.locator('[aria-label="Window stop time"]');
@@ -417,7 +415,6 @@ test('control-plane readiness presents operational evidence in one lazy table', 
     localStorage.getItem('central-agentic-ops.dashboard.horizon-filter-settings') ?? '{}'
   ).range)).toBe('custom');
   await expect(readinessPage).not.toContainText('Smoke regression');
-  await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
   await horizonFilter.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -993,7 +990,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test('performance page renders one full-view lazy job table', async ({ page }) => {
+test('performance page renders workflow and job duration charts', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 844 });
@@ -1035,11 +1032,8 @@ test('performance page renders one full-view lazy job table', async ({ page }) =
 
   const pageRegion = page.locator('[data-page-id="performance"]');
   await expect(pageRegion).toBeVisible();
-  await expect(pageRegion.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  await expect(pageRegion.locator('[data-lazy-list]')).toBeVisible();
-  await expect(pageRegion.locator('[data-chart-widget]')).toHaveCount(0);
-  await expect(pageRegion.locator('tbody tr')).toHaveCount(1);
-  await expect(pageRegion).toContainText('gvisor');
+  await expect(pageRegion.locator('[data-chart-widget]')).toHaveCount(4);
+  await expect(pageRegion.getByRole('heading', { name: 'Job time by job and runner' })).toBeVisible();
   await expect(pageRegion).toContainText('45s');
 });
 
