@@ -64,6 +64,14 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     dashboard.generation,
     required
   );
+  const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
+  if (!hasPublishedSources) {
+    return paginateDashboardSources(
+      deriveDashboardLinkSources(pageScopedSources(canonicalPayload, requested), context),
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
+      continuationRevision(context.queries, dashboard.generation)
+    );
+  }
   const derivedSources = deriveRuntimeSources(
     deriveRepositorySources(
       deriveOverviewSources(

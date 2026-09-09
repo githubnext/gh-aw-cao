@@ -156,7 +156,7 @@
 
       /**
        * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
-       * @param {'ready' | 'loading' | 'cached'} [state]
+       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
        * @param {boolean} [prepared]
        * @param {(pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
        */
@@ -186,6 +186,14 @@
           status.className = "source-loading-status";
           status.setAttribute("role", "status");
           status.textContent = "Showing cached data while loading the latest dashboard data…";
+          dashboard.querySelector(".report-body")?.prepend(status);
+        } else if (state === "stale") {
+          dashboard.classList.add("dashboard-stale");
+
+          const status = document.createElement("p");
+          status.className = "source-loading-status";
+          status.setAttribute("role", "status");
+          status.textContent = "Showing cached data because the latest dashboard data could not be loaded.";
           dashboard.querySelector(".report-body")?.prepend(status);
         }
         attachCopilotPanel(dashboard);
@@ -952,7 +960,7 @@
                 console.error(`Unable to refresh live dashboard data: ${message}`);
                 updateWithViewTransition(
                   document,
-                  () => renderSources(displayedSources, "ready", true, loadPageSources),
+                  () => renderSources(displayedSources, "stale", true, loadPageSources),
                 );
               },
             );

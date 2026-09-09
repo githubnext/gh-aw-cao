@@ -302,7 +302,7 @@ test('data worker queries the retained active generation before downloading sour
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardPage } = await import(processorUrl);
     return loadCanonicalDashboardPage(
-      ['failed-runs'],
+      ['failed-runs', 'overview-attention-domains'],
       { githubUrlBase: 'https://github.com', pages: [] }
     );
   });
@@ -311,6 +311,7 @@ test('data worker queries the retained active generation before downloading sour
     rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
     metadata: { 'source-kind': 'canonical-query' }
   });
+  expect(retained['overview-attention-domains']).toBeUndefined();
 });
 
 test('data worker executes declarative queries and returns only the derived projection', async ({ page }) => {
