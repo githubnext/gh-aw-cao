@@ -295,6 +295,7 @@ describe('dashboard document validation', () => {
       'observed-at'
     ]);
     expect(detection.views[0].encoding.href).toEqual({ field: 'run-link', type: 'nominal' });
+    expect(detection.views[0].encoding).not.toHaveProperty('actions');
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -997,8 +998,16 @@ dashboard:
       expect(tables.filter(
         (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental'
       )).toHaveLength(tables.length - 1);
+      const queryByName = new Map(document.dashboard.queries.map(
+        (/** @type {{ name: string, from: string }} */ query) => [query.name, query]
+      ));
+      /** @param {string} source @returns {string} */
+      const canonicalSource = (source) => {
+        const query = queryByName.get(source);
+        return query ? canonicalSource(query.from) : source;
+      };
       const sources = page.views.map(
-        (/** @type {{ data: { source: string } }} */ view) => view.data.source
+        (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
       );
       expect(sources.sort()).toEqual(['operational-values', 'operational-values', 'outcomes', 'runs'].sort());
     }

@@ -3393,25 +3393,6 @@
                   "title": "Observed"
                 }
               ],
-              "actions": [
-                {
-                  "intent": "Investigate this detection result using the linked GitHub Actions run as authoritative evidence.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "repository",
-                    "workflow",
-                    "run",
-                    "detection-state",
-                    "detection-signal",
-                    "inspection-warning",
-                    "job-status",
-                    "job-conclusion",
-                    "run-link"
-                  ]
-                }
-              ],
               "href": {
                 "field": "run-link",
                 "type": "nominal"

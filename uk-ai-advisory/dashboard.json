@@ -5,6 +5,69 @@
     "title": "UK AI Advisory",
     "description": "Track resilience-review activation, frozen advisory reports, and explicit human acceptance of non-binding findings.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "uk-ai-advisory-runs",
+        "intent": "Show UK AI Advisory orchestrator, maintainer, and resilience-review runs so operators can verify package activation.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/uk-ai-advisory.md",
+                ".github/workflows/uk-ai-advisory-package-maintainer.md",
+                ".github/workflows/uk-ai-advisory-operational-resilience.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "uk-ai-advisory-reports",
+        "intent": "List frozen non-binding UK AI resilience reports so humans can review findings and their disposition.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "uk-ai-advisory"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "uk-ai-advisory-acceptance",
+        "intent": "Show explicit non-bot acceptance observations for frozen resilience reports while preserving maturity and missing-evidence states.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "equals": ".github/workflows/uk-ai-advisory-operational-resilience.md"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "uk-ai-advisory-dashboard",
@@ -19,7 +82,7 @@
             "title": "Advisory runs by conclusion",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "uk-ai-advisory-runs",
               "time": {
                 "range": "30d"
               },
@@ -33,6 +96,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -51,7 +115,7 @@
             "description": "Reports are non-binding evidence frozen at a target commit and require human review.",
             "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "uk-ai-advisory-reports",
               "filters": {
                 "package": [
                   "uk-ai-advisory"
@@ -60,6 +124,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No UK AI advisory reports were retained.",
             "encoding": {
               "href": {
@@ -74,7 +141,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Advisory report"
+                  "title": "Advisory report",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -87,6 +155,23 @@
                   "type": "temporal",
                   "title": "Published"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this non-binding resilience report, verify its frozen evidence and limitations, and identify the next human decision.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "evidence-strength",
+                    "published-at",
+                    "external-link"
+                  ]
+                }
               ]
             }
           },
@@ -96,7 +181,7 @@
             "description": "Attainment records explicit non-bot acceptance of a frozen report after the 30-day maturation window.",
             "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "uk-ai-advisory-acceptance",
               "filters": {
                 "workflow": [
                   ".github/workflows/uk-ai-advisory-operational-resilience.md"
@@ -105,6 +190,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No UK AI advisory acceptance evidence is available.",
             "encoding": {
               "href": {
@@ -146,7 +234,7 @@
             "description": "Mean acceptance attainment is diagnostic and does not convert advisory evidence into a legal or causal conclusion.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "uk-ai-advisory-acceptance",
               "time": {
                 "range": "90d"
               },
@@ -158,6 +246,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",

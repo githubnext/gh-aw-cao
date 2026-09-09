@@ -5,6 +5,68 @@
     "title": "Dependabot",
     "description": "Track manifest-aware dependency update runs, proposed release trains, and validated merged resolutions.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "dependabot-run-observations",
+        "intent": "Show Dependabot orchestrator and release-train worker runs so operators can verify activation and investigate execution failures.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/dependabot.md",
+                ".github/workflows/dependabot-release-train-updater.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "dependabot-release-train-outcomes",
+        "intent": "List retained Dependabot release-train proposals so reviewers can inspect their disposition and repository evidence.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "dependabot"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "dependabot-resolution-attainment",
+        "intent": "Show validated dependency-resolution observations for assigned release-train pull requests without treating missing or immature evidence as zero.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "equals": ".github/workflows/dependabot-release-train-updater.md"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "dependabot-dashboard",
@@ -18,7 +80,7 @@
             "title": "Release-train runs by conclusion",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "dependabot-run-observations",
               "time": {
                 "range": "30d"
               },
@@ -31,6 +93,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -49,7 +112,7 @@
             "description": "Repository-linked proposals remain human-reviewed and are never treated as successful until accepted evidence matures.",
             "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "dependabot-release-train-outcomes",
               "filters": {
                 "package": [
                   "dependabot"
@@ -58,6 +121,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No dependency release-train outputs were retained.",
             "encoding": {
               "href": {
@@ -72,7 +138,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Release train"
+                  "title": "Release train",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -85,6 +152,22 @@
                   "type": "temporal",
                   "title": "Published"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this dependency release train, verify its retained evidence, and recommend the safest next action.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "published-at",
+                    "external-link"
+                  ]
+                }
               ]
             }
           },
@@ -94,7 +177,7 @@
             "description": "Each opportunity is an assigned dependency pull request; validated merge evidence matures after 14 days.",
             "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "dependabot-resolution-attainment",
               "filters": {
                 "workflow": [
                   ".github/workflows/dependabot-release-train-updater.md"
@@ -103,6 +186,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No Dependabot attainment evidence is available.",
             "encoding": {
               "href": {
@@ -144,7 +230,7 @@
             "description": "Mean attainment groups only the release-train evaluator definition and does not imply causal impact.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "dependabot-resolution-attainment",
               "time": {
                 "range": "90d"
               },
@@ -156,6 +242,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",

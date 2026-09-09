@@ -5,6 +5,73 @@
     "title": "AW Doctor",
     "description": "Track upgrade, compiler-security, and failure-triage activation, durable maintenance issues, and matured resolution evidence.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "aw-doctor-maintenance-runs",
+        "intent": "List AW Doctor maintenance runs so operators can verify activation and prioritize failed upgrade, compiler-security, and failure-triage work.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/aw-doctor.md",
+                ".github/workflows/aw-maintenance-compiler-security.md",
+                ".github/workflows/aw-maintenance-upgrade.md",
+                ".github/workflows/aw-failures-investigator.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "aw-doctor-maintenance-outcomes",
+        "intent": "List retained AW Doctor upgrade, compiler-security, and failure-triage outputs so maintainers can review actionable issues.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "aw-doctor"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "aw-doctor-maintenance-attainment",
+        "intent": "Show failure-recovery and clean full-scan attainment while preserving maturity, evidence cutoffs, and unavailable evidence.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/aw-failures-investigator.md",
+                ".github/workflows/aw-maintenance-compiler-security.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "aw-doctor-dashboard",
@@ -19,7 +86,7 @@
             "description": "Mean failure-recovery and clean-scan attainment is diagnostic and does not infer that a worker caused the observed state.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "aw-doctor-maintenance-attainment",
               "time": {
                 "range": "90d"
               },
@@ -32,6 +99,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",
@@ -55,7 +123,7 @@
             "description": "Answers which AW Doctor failures need attention first; use the run link for detailed evidence.",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "aw-doctor-maintenance-runs",
               "time": {
                 "range": "30d"
               },
@@ -70,6 +138,9 @@
             },
             "mark": "table",
             "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
             "empty-message": "No AW maintenance workflow runs were observed in the last 30 days.",
             "encoding": {
               "href": {
@@ -135,6 +206,29 @@
                   "type": "temporal",
                   "title": "Started"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Investigate this failed AW Doctor run using the retained failure details and linked GitHub Actions evidence.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Investigate",
+                  "context": [
+                    "organization",
+                    "repository",
+                    "workflow",
+                    "run",
+                    "run-conclusion",
+                    "failure-job",
+                    "failure-step",
+                    "failure-message",
+                    "run-link"
+                  ],
+                  "when": {
+                    "field": "run-conclusion",
+                    "equals": "failure"
+                  }
+                }
               ]
             }
           },
@@ -144,7 +238,7 @@
             "description": "Retained maintenance outputs identify actionable upgrades, compiler-security findings, or investigated failures; clean repositories may correctly produce no output.",
             "disclosure": "supplemental",
             "data": {
-              "source": "outcomes",
+              "source": "aw-doctor-maintenance-outcomes",
               "filters": {
                 "package": [
                   "aw-doctor"
@@ -153,6 +247,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No AW maintenance outputs were retained.",
             "encoding": {
               "href": {
@@ -167,7 +264,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Maintenance output"
+                  "title": "Maintenance output",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -189,7 +287,7 @@
             "description": "Failure-recovery and compiler-security observations preserve maturity and evidence cutoffs; unavailable or incomplete evidence is not scored as zero.",
             "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "aw-doctor-maintenance-attainment",
               "filters": {
                 "workflow": [
                   ".github/workflows/aw-failures-investigator.md",
@@ -199,6 +297,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No AW maintenance attainment evidence is available.",
             "encoding": {
               "href": {
