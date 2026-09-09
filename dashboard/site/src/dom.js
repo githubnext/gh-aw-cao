@@ -157,7 +157,11 @@ function appendChildren(parent, children) {
  * @param {Node | string} child
  */
 function appendNode(parent, child) {
-  parent.appendChild(typeof child === 'string' ? document.createTextNode(child) : child)
+  if (typeof child === 'string') {
+    parent.appendChild(document.createTextNode(child))
+    return
+  }
+  parent.appendChild(child)
 }
 
 /**
