@@ -63,11 +63,13 @@ jobs:
           if [[ -f .github/aw/activity/index.mjs ]]; then
             echo "ACTIVITY_INDEXER=.github/aw/activity/index.mjs" >> "$GITHUB_ENV"
             echo "ACTIVITY_LOGS=.github/aw/activity/logs.mjs" >> "$GITHUB_ENV"
+            echo "ACTIVITY_LOGS_COLLECTOR=.github/aw/activity/collect-logs.sh" >> "$GITHUB_ENV"
             echo "ACTIVITY_RUNNER=.github/aw/activity/run-activity.mjs" >> "$GITHUB_ENV"
             echo "GITHUB_TELEMETRY=.github/aw/activity/github-telemetry.mjs" >> "$GITHUB_ENV"
           elif [[ -f activity/index.mjs ]]; then
             echo "ACTIVITY_INDEXER=activity/index.mjs" >> "$GITHUB_ENV"
             echo "ACTIVITY_LOGS=activity/logs.mjs" >> "$GITHUB_ENV"
+            echo "ACTIVITY_LOGS_COLLECTOR=activity/collect-logs.sh" >> "$GITHUB_ENV"
             echo "ACTIVITY_RUNNER=activity/run-activity.mjs" >> "$GITHUB_ENV"
             echo "GITHUB_TELEMETRY=activity/github-telemetry.mjs" >> "$GITHUB_ENV"
           else
@@ -109,6 +111,15 @@ jobs:
           restore-keys: |
             cao-activity-v2-
 
+      - name: Download agentic workflow logs
+        env:
+          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
+          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
+          REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/gh-aw-logs-exit-code
+          REPORT_RUN_WINDOW_DAYS: "30"
+        run: bash "$ACTIVITY_LOGS_COLLECTOR"
+
       - name: Run activity workflow
         id: run-activity
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -122,6 +133,7 @@ jobs:
           REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
+          REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/gh-aw-logs-exit-code
           REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
           REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
