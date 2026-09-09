@@ -10,8 +10,9 @@ const authoritativeQueries = JSON.parse(
  * presentation tests can render derived sources without a main-thread fallback.
  *
  * @param {Record<string, import('../src/presenter.js').LogicalSourceInput>} sources
+ * @param {string[]} [requested]
  * @returns {Record<string, import('../src/presenter.js').LogicalSourceInput>}
  */
-export function applyDashboardQueries(sources) {
-  return { ...sources, ...executeDashboardQueries(authoritativeQueries, sources, ['workflow-inventory']) };
+export function applyDashboardQueries(sources, requested = ['workflow-inventory']) {
+  return { ...sources, ...executeDashboardQueries(authoritativeQueries, sources, requested) };
 }

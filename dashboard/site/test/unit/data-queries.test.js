@@ -64,6 +64,24 @@ const usage = {
 const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('counts database entities through the declared horizon queries', () => {
+    const sources = {
+      workflows,
+      runs: { source: 'runs', rows: [{ run: '1' }, { run: '2' }], metadata: metadata('runs') },
+      events: { source: 'events', rows: [{ event: 'a' }, { event: 'b' }, { event: 'c' }], metadata: metadata('events') }
+    };
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      sources,
+      ['database-workflow-count', 'database-run-count', 'database-event-count']
+    );
+
+    expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
+    expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
+    expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);
+  });
+
   it('continues query results without exposing cursors in query definitions', () => {
     const sources = {
       runs: {
@@ -302,6 +320,54 @@ describe('declarative dashboard queries', () => {
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
   });
+
+  it('projects the event inspection view from its request-scoped dashboard query', () => {
+      const events = {
+        source: 'events',
+        rows: [
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+            session: 'session-1', event: 'event-1', 'event-source': 'agent', 'event-type': 'agent_turn',
+            'event-status': 'completed', 'event-summary': 'First turn', 'correlation-id': 'correlation-1',
+            'source-sequence': 1, 'event-timestamp': '2026-09-01T00:00:00Z'
+          },
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+            session: 'session-2', event: 'event-2', 'event-source': 'gateway', 'event-type': 'tool_call',
+            'event-status': 'started', 'event-summary': 'Second turn', 'correlation-id': 'correlation-2',
+            'source-sequence': 2, 'event-timestamp': '2026-09-02T00:00:00Z'
+          }
+        ],
+        metadata: metadata('events')
+      };
+      const runs = {
+        source: 'runs',
+        rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
+        metadata: metadata('runs')
+      };
+      const derived = executeDashboardQueries(
+        dashboardQueries,
+        { events, runs },
+        ['event-inspection']
+      );
+
+      expect(derived['event-inspection'].rows).toEqual([
+        expect.objectContaining({
+          event: 'event-2',
+          'event-source': 'gateway',
+          'event-type': 'tool_call',
+          'observed-at': '2026-09-02T00:00:00Z',
+          'run-link': { href: 'run-2' }
+        }),
+        expect.objectContaining({
+          event: 'event-1',
+          'event-source': 'agent',
+          'event-type': 'agent_turn',
+          'observed-at': '2026-09-01T00:00:00Z',
+          'run-link': { href: 'run-1' }
+        })
+      ]);
+    });
 
   it('computes the Repositories and Packages view payloads from dashboard queries', () => {
     const repositories = {

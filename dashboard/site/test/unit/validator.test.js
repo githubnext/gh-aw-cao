@@ -445,6 +445,34 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
+  it('defines the Runs table as a declarative query projection', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const query = document.dashboard.queries.find((/** @type {{ name: string }} */ candidate) =>
+      candidate.name === 'runs-table'
+    );
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
+      candidate.id === 'runs'
+    );
+
+    expect(query).toMatchObject({
+      from: 'runs',
+      select: expect.arrayContaining([
+        { field: 'run' },
+        { field: 'run-conclusion' },
+        { field: 'started-at' },
+        { field: 'run-link' }
+      ]),
+      'order-by': [{ field: 'started-at', direction: 'desc' }]
+    });
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'runs-runs-source'
+    )).toMatchObject({
+      data: { source: 'runs-table' },
+      mark: 'table'
+    });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('accepts workflow-route-page on multiple pages without page-specific JavaScript routing', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -501,10 +529,10 @@ dashboard:
     }
     expect(packagesView.data.source).toBe('package-inventory');
     expect(workflowsView.data.source).toBe('workflow-inventory');
-    expect(runsView.data.source).toBe('runs');
+    expect(runsView.data.source).toBe('runs-table');
     expect(packagesPage.definition.views).toHaveLength(1);
     expect(workflowsPage.definition.views).toHaveLength(1);
-    expect(runsPage.definition.views).toHaveLength(1);
+    expect(runsPage.definition.views).toHaveLength(2);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
