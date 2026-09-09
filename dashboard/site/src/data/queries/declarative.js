@@ -551,15 +551,44 @@ function runDashboardQuery(definition, sources, budget) {
   const input = /** @type {Row[]} */ (sources[definition.from].rows);
   enforceLimit(input.length, 'max-input-rows', definition.from);
   budget.spend(input.length);
-  let rows = input.map((row) => ({ ...row }));
+  let rows = timeQueryStage(definition.name, 'from', () => input.map((row) => ({ ...row })));
   for (const join of definition.joins ?? []) {
-    rows = applyJoin(rows, join, /** @type {Row[]} */ (sources[join.source].rows), join.source, budget);
+    rows = timeQueryStage(definition.name, `join:${join.source}`, () => (
+      applyJoin(rows, join, /** @type {Row[]} */ (sources[join.source].rows), join.source, budget)
+    ));
   }
   const operators = compileRowOperators(definition);
   budget.spend(rows.length * Math.max(1, operators.length));
-  rows = tidy(rows, operators);
+  for (const operator of operators) {
+    rows = timeQueryStage(definition.name, queryOperatorStage(operator), () => tidy(rows, [operator]));
+  }
   enforceLimit(rows.length, 'max-output-rows', definition.name);
   return rows;
+}
+
+/**
+ * @template T
+ * @param {string} queryName
+ * @param {string} stage
+ * @param {() => T} operation
+ * @returns {T}
+ */
+function timeQueryStage(queryName, stage, operation) {
+  const label = `[dashboard-query:${queryName}] ${stage}`;
+  console.time(label);
+  try {
+    return operation();
+  } finally {
+    console.timeEnd(label);
+  }
+}
+
+/** @param {import('../../data-operations.js').DataOperator} operator */
+function queryOperatorStage(operator) {
+  if (operator.op === 'summarize') return 'aggregate';
+  if (operator.op === 'arrange') return 'order-by';
+  if (operator.op === 'slice') return 'limit';
+  return operator.op;
 }
 
 /**
