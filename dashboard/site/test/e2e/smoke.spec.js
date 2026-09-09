@@ -1915,9 +1915,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         workflows: {
           source: 'workflows',
           rows: [
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 250, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
-            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'max-ai-credits': 800, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
-            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'max-ai-credits': 250, 'package-aic-allowance': 1250, 'package-inventory-warnings': 1 }
+            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context.md', 'workflow-name': 'Ambient Context', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
+            { package: 'ambient-context', 'package-name': 'Ambient Context', 'package-icon': 'workflow', workflow: '.github/workflows/ambient-context-worker.md', 'workflow-name': 'Ambient Context Worker', 'workflow-role': 'worker', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 800, 'package-aic-allowance': 1050, 'package-inventory-warnings': 0 },
+            { package: 'aw-doctor', 'package-name': 'AW Doctor', 'package-icon': 'gear', workflow: '.github/workflows/aw-doctor.md', 'workflow-role': 'orchestrator', 'rollout-mode': 'review', 'workflow-active': true, 'max-ai-credits': 250, 'package-aic-allowance': 1250, 'package-inventory-warnings': 1 }
           ],
           metadata
         },
@@ -1976,9 +1976,21 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
   await expect(packageRows).toHaveCount(2);
+  await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
+    'Package',
+    'Workflows',
+    'Roles',
+    'Modes',
+    'Registration',
+    'Runs',
+    'AIC'
+  ]);
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
+  await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
+  await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('true');
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });

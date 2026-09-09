@@ -64,6 +64,18 @@ describe('link content helpers', () => {
     expect(anchor.querySelector('.octicon-external-link')).toBeNull();
   });
 
+  it('uses a presentation-only dashboard route when no external target is available', () => {
+    expect(findLink({
+      'package-link': {
+        'dashboard-href': '#page-package-insights?package=aw-doctor',
+        'dashboard-label': 'View AW Doctor package dashboard'
+      }
+    }, 'package-link')).toEqual({
+      href: '#page-package-insights?package=aw-doctor',
+      label: 'View AW Doctor package dashboard'
+    });
+  });
+
   it('DLS-SAFE-010 renders labeled external links and optional linked value content', () => {
     const link = { href: 'https://example.com/run/4', label: 'Run 4' };
     const anchor = renderExternalLink(link);

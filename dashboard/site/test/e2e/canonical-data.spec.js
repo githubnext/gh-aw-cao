@@ -615,7 +615,6 @@ test('data worker computes repository and package pages with request-scoped dash
       package: 'dashboard',
       'package-name': 'Dashboard',
       workflows: 1,
-      repositories: 1,
       roles: 'worker',
       modes: 'review',
       registration: 'true',

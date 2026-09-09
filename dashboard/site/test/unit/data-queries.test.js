@@ -563,7 +563,6 @@ describe('declarative dashboard queries', () => {
       package: 'aw-doctor',
       'package-name': 'AW Doctor',
       workflows: 2,
-      repositories: 1,
       roles: 'orchestrator, worker',
       modes: 'review',
       registration: 'false, true',

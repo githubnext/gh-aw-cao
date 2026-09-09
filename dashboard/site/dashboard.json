@@ -1013,7 +1013,7 @@
       },
       {
         "name": "package-inventory",
-        "intent": "Summarize centrally managed packages with their workflow, repository, rollout, run, and AI Credit totals.",
+        "intent": "Summarize centrally managed packages with their workflow, rollout, run, and AI Credit totals.",
         "description": "Centrally managed package inventory and observed execution totals.",
         "from": "workflow-inventory",
         "filter": {
@@ -1025,7 +1025,6 @@
           "by": ["package", "package-name"],
           "values": [
             { "field": "workflow", "as": "workflows", "reducer": "count" },
-            { "field": "repository", "as": "repositories", "reducer": "distinct-count" },
             { "field": "workflow-role", "as": "roles", "reducer": "distinct-list" },
             { "field": "rollout-mode", "as": "modes", "reducer": "distinct-list" },
             { "field": "workflow-active", "as": "registration", "reducer": "distinct-list" },
@@ -2389,11 +2388,6 @@
                     "title": "Workflows"
                   },
                   {
-                    "field": "repositories",
-                    "type": "quantitative",
-                    "title": "Control repositories"
-                  },
-                  {
                     "field": "roles",
                     "type": "nominal",
                     "title": "Roles"
@@ -2401,12 +2395,14 @@
                   {
                     "field": "modes",
                     "type": "nominal",
-                    "title": "Modes"
+                    "title": "Modes",
+                    "display": "mode"
                   },
                   {
                     "field": "registration",
                     "type": "nominal",
-                    "title": "Registration"
+                    "title": "Registration",
+                    "display": "active-state"
                   },
                   {
                     "field": "runs",

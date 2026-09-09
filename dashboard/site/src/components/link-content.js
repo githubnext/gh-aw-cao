@@ -32,10 +32,7 @@ export function findFirstLink(rows, field) {
  */
 export function findLink(row, field) {
   const candidate = row[field];
-  if (!isPlainObject(candidate) || typeof candidate.href !== 'string' || typeof candidate.label !== 'string') {
-    return null;
-  }
-  if (!isSafeHttpsUrl(candidate.href) || candidate.label.trim().length === 0) {
+  if (!isPlainObject(candidate)) {
     return null;
   }
   const dashboardHref = typeof candidate['dashboard-href'] === 'string' && candidate['dashboard-href'].startsWith('#page-')
@@ -43,10 +40,21 @@ export function findLink(row, field) {
     : null;
   const dashboardLabel = typeof candidate['dashboard-label'] === 'string' && candidate['dashboard-label'].trim().length > 0
     ? candidate['dashboard-label']
-    : candidate.label;
-  return dashboardHref
-    ? { href: dashboardHref, label: dashboardLabel, externalHref: candidate.href }
-    : { href: candidate.href, label: candidate.label };
+    : null;
+  const externalHref = typeof candidate.href === 'string' && isSafeHttpsUrl(candidate.href)
+    ? candidate.href
+    : null;
+  const externalLabel = typeof candidate.label === 'string' && candidate.label.trim().length > 0
+    ? candidate.label
+    : null;
+  if (dashboardHref && dashboardLabel) {
+    return {
+      href: dashboardHref,
+      label: dashboardLabel,
+      ...(externalHref && externalLabel ? { externalHref } : {})
+    };
+  }
+  return externalHref && externalLabel ? { href: externalHref, label: externalLabel } : null;
 }
 
 /**
