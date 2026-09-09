@@ -760,8 +760,8 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshButton?.tagName).toBe('BUTTON');
     expect(refreshButton?.getAttribute('title')).toBeTruthy();
     expect(refreshButton?.getAttribute('aria-label')).toBeTruthy();
-    expect(refreshButton?.closest('.report-footer')).not.toBeNull();
-    expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull();
+    expect(refreshButton?.closest('.account-menu')).not.toBeNull();
+    expect(rendered.querySelector('.report-footer .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
     expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
@@ -788,7 +788,7 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations/actions/workflows/dashboard.yml');
     expect(refreshLink?.getAttribute('aria-label')).toBe('Open the dashboard workflow on GitHub Actions');
     expect(refreshLink?.getAttribute('title')).toBe('Open the dashboard workflow on GitHub Actions');
-    expect(refreshLink?.closest('.report-footer')).not.toBeNull();
+    expect(refreshLink?.closest('.account-menu')).not.toBeNull();
     const repositoryLink = rendered.querySelector('.repository-link');
     expect(repositoryLink).not.toBeNull();
     expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');

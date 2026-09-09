@@ -579,7 +579,7 @@ function enableThemeToggle(root) {
   if (!(menu instanceof HTMLDetailsElement)) return;
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
-    if (event.target.closest('.account-menu-settings') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
+    if (event.target.closest('.account-menu-action') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
   });
   menu.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -734,11 +734,35 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
               settingsPage
                 ? h(
                   'a',
-                  { className: 'account-menu-settings', href: `#page-${encodeURIComponent(settingsPage.id)}` },
+                  { className: 'account-menu-settings account-menu-action', href: `#page-${encodeURIComponent(settingsPage.id)}` },
                   octicon('gear'),
                   h('span', null, 'Settings')
                 )
                 : null,
+              dashboardRepository
+                ? h(
+                  'a',
+                  {
+                    className: 'refresh-button account-menu-action',
+                    href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
+                    title: REFRESH_WORKFLOW_DESCRIPTION,
+                    'aria-label': REFRESH_WORKFLOW_DESCRIPTION
+                  },
+                  octicon('sync'),
+                  h('span', null, 'Refresh')
+                )
+                : h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'refresh-button account-menu-action',
+                    title: REFRESH_CONTROL_DESCRIPTION,
+                    'aria-label': REFRESH_CONTROL_DESCRIPTION,
+                    onclick: () => window.location.reload()
+                  },
+                  octicon('sync'),
+                  h('span', null, 'Refresh')
+                ),
               h(
                 'fieldset',
                 { className: 'appearance-settings' },
@@ -779,31 +803,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h('span', null, 'Last updated'),
         h('time', { dateTime: evaluatedAt }, `${formatReportDate(evaluatedAt)} UTC`),
         h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
-      ),
-      dashboardRepository
-        ? h(
-          'a',
-          {
-            className: 'refresh-button',
-            href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
-            title: REFRESH_WORKFLOW_DESCRIPTION,
-            'aria-label': REFRESH_WORKFLOW_DESCRIPTION
-          },
-          octicon('sync'),
-          h('span', null, 'Refresh')
-        )
-        : h(
-          'button',
-          {
-            type: 'button',
-            className: 'refresh-button',
-            title: REFRESH_CONTROL_DESCRIPTION,
-            'aria-label': REFRESH_CONTROL_DESCRIPTION,
-            onclick: () => window.location.reload()
-          },
-          octicon('sync'),
-          h('span', null, 'Refresh')
-        )
+      )
     )
   );
 }
