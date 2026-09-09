@@ -1431,7 +1431,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
 
 });
 
-test('JSON full-view mode fills the viewport and hides chrome while scrolling', async ({ page }) => {
+test('JSON full-view mode fills the viewport and supports repeated lazy-list scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 
@@ -1513,10 +1513,25 @@ test('JSON full-view mode fills the viewport and hides chrome while scrolling', 
   const more = view.locator('[data-table-more]');
   await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
   await expect(view.locator('tbody > tr')).toHaveCount(50);
-  await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
   await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
   await expect(view.locator('tbody > tr')).toHaveCount(50);
-  expect(await view.locator('tbody > tr').first().evaluate((row) => row.textContent)).not.toContain('repository-1');
+  await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
+
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    for (const firstRepository of [26, 1]) {
+      await scroll.evaluate((element) => { element.scrollTop = 0; });
+      await scroll.dispatchEvent('scroll');
+      await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
+      await expect(view.locator('tbody > tr')).toHaveCount(50);
+    }
+    for (const firstRepository of [26, 51]) {
+      await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      await scroll.dispatchEvent('scroll');
+      await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
+      await expect(view.locator('tbody > tr')).toHaveCount(50);
+    }
+  }
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);

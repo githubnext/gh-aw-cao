@@ -262,21 +262,31 @@ function enableTableFilter(region, options, rows) {
 
   let limit = options.pageSize;
   let revision = 0;
+  let lazyWindowStart = 0;
+  let lazyMatchedRows = /** @type {HTMLTableRowElement[]} */ ([]);
+  let lazyShown = 0;
   /**
    * @param {HTMLTableRowElement[]} matchedRows
    * @param {number} shown
    * @param {boolean} reset
+   * @param {number} [requestedStart]
    */
-  const renderLazyWindow = (matchedRows, shown, reset) => {
+  const renderLazyWindow = (matchedRows, shown, reset, requestedStart) => {
     const windowSize = options.pageSize * 2;
-    const windowStart = Math.max(0, shown - windowSize);
-    const nextRows = matchedRows.slice(windowStart, shown);
-    const anchor = !reset && windowStart > 0 ? nextRows[0] : null;
-    const anchorTop = anchor?.parentNode === body ? anchor.getBoundingClientRect().top : null;
+    const lastWindowStart = Math.max(0, shown - windowSize);
+    const windowStart = reset
+      ? 0
+      : Math.min(requestedStart ?? lastWindowStart, lastWindowStart);
+    const nextRows = matchedRows.slice(windowStart, Math.min(shown, windowStart + windowSize));
+    const anchor = reset ? null : nextRows.find((row) => row.parentNode === body);
+    const anchorTop = anchor?.getBoundingClientRect().top ?? null;
 
     const nextRowSet = new Set(nextRows);
     for (const row of rows) row.hidden = !nextRowSet.has(row);
     body.replaceChildren(...nextRows);
+    lazyWindowStart = windowStart;
+    lazyMatchedRows = matchedRows;
+    lazyShown = shown;
 
     if (anchor && anchorTop !== null && scroll instanceof HTMLElement) {
       scroll.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
@@ -354,6 +364,18 @@ function enableTableFilter(region, options, rows) {
  apply();
  const Observer = region.ownerDocument.defaultView?.IntersectionObserver;
  if (options.lazyList) {
+  scroll?.addEventListener('scroll', () => {
+    if (!(scroll instanceof HTMLElement) || scroll.scrollHeight <= scroll.clientHeight) return;
+    const windowSize = options.pageSize * 2;
+    if (scroll.scrollTop <= 1 && lazyWindowStart > 0) {
+      renderLazyWindow(lazyMatchedRows, lazyShown, false, Math.max(0, lazyWindowStart - options.pageSize));
+    } else if (
+      scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 1
+      && lazyWindowStart + windowSize < lazyShown
+    ) {
+      renderLazyWindow(lazyMatchedRows, lazyShown, false, lazyWindowStart + options.pageSize);
+    }
+  });
   observeLoadMoreBoundary(Observer, more, () => {
     if (!more.hidden) loadMore();
   }, { root: region.querySelector('.table-scroll'), rootMargin: '200px 0px' });
