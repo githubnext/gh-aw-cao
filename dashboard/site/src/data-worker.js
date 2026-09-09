@@ -17,6 +17,15 @@ import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
 let liveDashboard = null;
+/**
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, generation: string | null }} DashboardSubscription
+ */
+/** @type {Map<string, DashboardSubscription>} */
+const dashboardSubscriptions = new Map();
+/** @type {Set<string>} */
+const dirtyDashboardSubscriptions = new Set();
+let subscriptionFlushScheduled = false;
+let subscriptionFlushRunning = false;
 
 async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
@@ -54,9 +63,10 @@ function pageScopedSources(sources, requested) {
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
  * @param {{ aborted?: boolean }} [signal]
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {typeof liveDashboard} [dashboard]
  */
-async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}) {
-  const dashboard = await loadActiveDashboard();
+async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}, dashboard = liveDashboard) {
+  dashboard ??= await loadActiveDashboard();
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
@@ -66,8 +76,12 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   );
   const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
   if (!hasPublishedSources) {
+    const querySources = {
+      ...canonicalPayload,
+      ...executeDashboardQueries(context.queries, canonicalPayload, requested, { signal })
+    };
     return paginateDashboardSources(
-      deriveDashboardLinkSources(pageScopedSources(canonicalPayload, requested), context),
+      deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
       continuationRevision(context.queries, dashboard.generation)
     );
@@ -93,6 +107,77 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   );
 }
 
+/** @param {Iterable<string>} [ids] */
+function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
+  for (const id of ids) {
+    if (dashboardSubscriptions.has(id)) dirtyDashboardSubscriptions.add(id);
+  }
+  if (subscriptionFlushScheduled || subscriptionFlushRunning || dirtyDashboardSubscriptions.size === 0) return;
+  subscriptionFlushScheduled = true;
+  queueMicrotask(() => {
+    subscriptionFlushScheduled = false;
+    void flushDashboardSubscriptions();
+  });
+}
+
+async function flushDashboardSubscriptions() {
+  if (subscriptionFlushRunning) return;
+  subscriptionFlushRunning = true;
+  try {
+    while (dirtyDashboardSubscriptions.size > 0) {
+      const ids = [...dirtyDashboardSubscriptions];
+      dirtyDashboardSubscriptions.clear();
+      const dashboard = liveDashboard;
+      if (!dashboard) {
+        for (const id of ids) dirtyDashboardSubscriptions.add(id);
+        break;
+      }
+      await Promise.all(ids.map(async (id) => {
+        const subscription = dashboardSubscriptions.get(id);
+        if (!subscription) return;
+        try {
+          const pagination = subscription.generation === dashboard.generation
+            ? subscription.pagination
+            : resetPagination(subscription.pagination);
+          const data = await queryLiveDashboard(
+            new Set(subscription.sourceNames),
+            subscription.context,
+            subscription.requestContext,
+            undefined,
+            pagination,
+            dashboard
+          );
+          if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            subscription.generation = dashboard.generation;
+            subscription.pagination = pagination;
+            self.postMessage({ subscriptionId: id, generation: dashboard.generation, data });
+          }
+        } catch (error) {
+          if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            self.postMessage({
+              subscriptionId: id,
+              generation: dashboard.generation,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+
+      }));
+    }
+
+    /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
+    function resetPagination(pagination) {
+      return Object.fromEntries(Object.entries(pagination).map(([source, request]) => [
+        source,
+        { limit: request.limit }
+      ]));
+    }
+  } finally {
+    subscriptionFlushRunning = false;
+    if (liveDashboard) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
+  }
+}
+
 /** @param {unknown} value */
 function dashboardContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -114,7 +199,7 @@ function dashboardContext(value) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -155,6 +240,8 @@ export function processDataRequest(request, signal) {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         generation
       };
+      const changed = activated || !hadPublishedSources;
+      if (changed) scheduleDashboardSubscriptions();
       const projected = await queryLiveDashboard(
         requested,
         context,
@@ -163,7 +250,7 @@ export function processDataRequest(request, signal) {
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
       return request.reportActivation
-        ? { sources: projected, changed: activated || !hadPublishedSources }
+        ? { sources: projected, changed }
         : projected;
     })();
   }
@@ -250,6 +337,27 @@ function cancelInFlight(ids) {
 if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessage' in self) {
   self.addEventListener('message', (event) => {
     const id = event.data?.id;
+    if (event.data?.operation === 'subscribe-canonical-dashboard') {
+      const subscriptionId = event.data.subscriptionId;
+      if (typeof subscriptionId !== 'string' || !subscriptionId.trim()) return;
+      const context = dashboardContext(event.data.context);
+      dashboardSubscriptions.set(subscriptionId, {
+        sourceNames: [...requestedSourceNames(event.data.sourceNames)],
+        context,
+        requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
+        pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
+        generation: liveDashboard?.generation ?? null
+      });
+      if (liveDashboard && event.data.emitCurrent !== false) {
+        scheduleDashboardSubscriptions([subscriptionId]);
+      }
+      return;
+    }
+    if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
+      dashboardSubscriptions.delete(event.data.subscriptionId);
+      dirtyDashboardSubscriptions.delete(event.data.subscriptionId);
+      return;
+    }
     if (event.data?.operation === 'cancel-data-processing') {
       const cancelled = cancelInFlight(event.data.ids);
       self.postMessage({ id, data: { cancelled } });

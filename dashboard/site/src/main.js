@@ -1,7 +1,7 @@
       import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources } from "./data-processor.js";
+      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources, subscribeCanonicalDashboardView } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
@@ -955,44 +955,59 @@
 
           if (cachedSources) {
             const displayedSources = cachedSources;
+            const refreshPagination = continuationRequests(initialLazySources);
+            const refreshOwner = new AbortController();
+            window.addEventListener("pagehide", (event) => {
+              if (!event.persisted) refreshOwner.abort();
+            });
+            let refreshFailed = false;
+            /** @param {unknown} error */
+            const showStaleSources = (error) => {
+              if (refreshFailed) return;
+              refreshFailed = true;
+              const message = error instanceof Error ? error.message : String(error);
+              console.error(`Unable to refresh live dashboard data: ${message}`);
+              updateWithViewTransition(
+                document,
+                () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources),
+              );
+            };
             renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
             loadingProgress.complete();
             cancelCommand.complete();
+            subscribeCanonicalDashboardView(
+              `page:${initialPageId}`,
+              initialSources,
+              dashboardContext,
+              (sources) => updateWithViewTransition(
+                document,
+                () => renderSources(
+                  bindContinuations(sources, initialLazySources),
+                  "ready",
+                  true,
+                  loadPageSources,
+                  loadHorizonSources,
+                ),
+              ),
+              refreshPagination,
+              { signal: refreshOwner.signal, onError: showStaleSources, emitCurrent: false },
+            );
             const refresh = refreshCanonicalDashboardSources(
               sourceUrl,
               initialSources,
               dashboardContext,
-              continuationRequests(initialLazySources),
+              refreshPagination,
             );
             void refresh.then(
-              ({ sources, changed }) => {
-                if (changed) {
-                  updateWithViewTransition(
-                    document,
-                    () => renderSources(
-                      bindContinuations(sources, initialLazySources),
-                      "ready",
-                      true,
-                      loadPageSources,
-                      loadHorizonSources,
-                    ),
-                  );
-                  return;
-                }
+              ({ changed }) => {
+                if (changed) return;
                 const dashboard = root.firstElementChild;
                 if (!(dashboard instanceof HTMLElement)) return;
                 dashboard.classList.remove("dashboard-refreshing");
                 dashboard.removeAttribute("aria-busy");
                 dashboard.querySelector(".source-loading-status")?.remove();
               },
-              (error) => {
-                const message = error instanceof Error ? error.message : String(error);
-                console.error(`Unable to refresh live dashboard data: ${message}`);
-                updateWithViewTransition(
-                  document,
-                  () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources),
-                );
-              },
+              showStaleSources,
             );
           } else {
             renderSources(

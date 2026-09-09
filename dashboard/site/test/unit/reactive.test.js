@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { derived, effect, state } from '../../src/reactive.js';
+import { describe, expect, it, vi } from 'vitest';
+import { batch, derived, effect, onCleanup, state } from '../../src/reactive.js';
 import { h, keyed } from '../../src/dom.js';
 
 describe('reactive core', () => {
@@ -33,6 +33,103 @@ describe('reactive core', () => {
     value.set('c');
 
     expect(seen).toEqual(['a', 'b']);
+  });
+
+  it('DLS-CONF-004 batches dependent effects with their final state', () => {
+    const first = state(1);
+    const second = state(2);
+    /** @type {number[]} */
+    const seen = [];
+    const runner = effect(() => {
+      seen.push(first.get() + second.get());
+    });
+
+    batch(() => {
+      first.set(3);
+      second.set(4);
+      first.set(5);
+    });
+
+    expect(seen).toEqual([3, 9]);
+    runner.stop();
+  });
+
+  it('DLS-CONF-004 does not rerun a queued consumer after a derived update', () => {
+    const value = state(1);
+    const doubled = derived(() => value.get() * 2);
+    /** @type {number[][]} */
+    const seen = [];
+    const runner = effect(() => {
+      seen.push([value.get(), doubled.get()]);
+    });
+
+    batch(() => value.set(2));
+
+    expect(seen).toEqual([[1, 2], [2, 4]]);
+    runner.stop();
+    doubled.dispose();
+  });
+
+  it('DLS-CONF-004 resolves chained derived values before consumer effects', () => {
+    const value = state(1);
+    const doubled = derived(() => value.get() * 2);
+    const incremented = derived(() => doubled.get() + 1);
+    /** @type {number[][]} */
+    const seen = [];
+    const runner = effect(() => {
+      seen.push([value.get(), incremented.get()]);
+    });
+
+    batch(() => value.set(2));
+
+    expect(seen).toEqual([[1, 3], [2, 5]]);
+    runner.stop();
+    incremented.dispose();
+    doubled.dispose();
+  });
+
+  it('DLS-CONF-004 runs registered cleanup before reruns and disposal', () => {
+    const value = state('a');
+    /** @type {string[]} */
+    const cleaned = [];
+    const runner = effect(() => {
+      const current = value.get();
+      onCleanup(() => cleaned.push(current));
+    });
+
+    value.set('b');
+    runner.stop();
+
+    expect(cleaned).toEqual(['a', 'b']);
+    expect(() => onCleanup(() => {})).toThrow('inside an effect');
+  });
+
+  it('DLS-CONF-004 stops effects when their owner signal aborts', () => {
+    const controller = new AbortController();
+    const value = state(1);
+    /** @type {number[]} */
+    const seen = [];
+    effect(() => seen.push(value.get()), { signal: controller.signal });
+
+    controller.abort();
+    value.set(2);
+
+    expect(seen).toEqual([1]);
+  });
+
+  it('DLS-CONF-004 completes cleanup when an effect aborts its owner while running', () => {
+    const controller = new AbortController();
+    const cleanup = vi.fn();
+    const value = state(1);
+
+    effect(() => {
+      controller.abort();
+      onCleanup(cleanup);
+      value.get();
+    }, { signal: controller.signal });
+    value.set(2);
+
+    expect(cleanup).toHaveBeenCalledOnce();
   });
 
   it('DLS-CONF-004 builds DOM trees with text and attributes', () => {

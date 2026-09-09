@@ -4,23 +4,79 @@
  */
 
 /**
- * @typedef {{ run: () => void, schedule: () => void, stop: () => void, _registerCleanup: (cleanup: () => void) => void }} EffectHandle
+ * @typedef {{ run: () => void, schedule: () => void, stop: () => void, _computed: boolean, _stopped: boolean, _registerCleanup: (cleanup: () => void) => void }} EffectHandle
  */
 
 /** @type {EffectHandle | null} */
 let activeEffect = null;
+let batchDepth = 0;
+let flushing = false;
+/** @type {Set<EffectHandle>} */
+const pendingEffects = new Set();
+/** @type {Set<EffectHandle>} */
+const pendingComputations = new Set();
+
+function flushEffects() {
+  if (batchDepth > 0 || flushing) return;
+  flushing = true;
+  try {
+    while (pendingComputations.size > 0 || pendingEffects.size > 0) {
+      const queue = pendingComputations.size > 0 ? pendingComputations : pendingEffects;
+      const handle = queue.values().next().value;
+      if (!handle) break;
+      queue.delete(handle);
+      handle.run();
+    }
+  } finally {
+    flushing = false;
+  }
+}
+
+/**
+ * Groups reactive writes so each dependent effect runs once with the final
+ * state, matching the transaction semantics used by mature reactive runtimes.
+ * @template T
+ * @param {() => T} fn
+ * @returns {T}
+ */
+export function batch(fn) {
+  batchDepth += 1;
+  try {
+    return fn();
+  } finally {
+    batchDepth -= 1;
+    flushEffects();
+  }
+}
+
+/**
+ * Registers lifecycle cleanup with the currently running effect.
+ * @param {() => void} cleanup
+ */
+export function onCleanup(cleanup) {
+  if (!activeEffect) {
+    throw new Error('Reactive cleanup must be registered inside an effect.');
+  }
+  activeEffect._registerCleanup(cleanup);
+}
 
 /**
  * @param {() => void} fn
+ * @param {{ computed?: boolean, signal?: AbortSignal }} [options]
  * @returns {EffectHandle}
  */
-export function effect(fn) {
+export function effect(fn, options = {}) {
   /** @type {Set<() => void>} */
   const cleanups = new Set();
+  let stopped = false;
+  const stopFromSignal = () => handle.stop();
 
   /** @type {EffectHandle} */
   const handle = {
+    _computed: options.computed === true,
+    _stopped: false,
     run() {
+      if (stopped) return;
       for (const cleanup of cleanups) {
         cleanup();
       }
@@ -34,23 +90,38 @@ export function effect(fn) {
       }
     },
     schedule() {
-      handle.run();
+      if (stopped) return;
+      if (batchDepth > 0 || flushing) {
+        (handle._computed ? pendingComputations : pendingEffects).add(handle);
+      } else {
+        handle.run();
+      }
     },
     stop() {
+      if (stopped) return;
+      stopped = true;
+      handle._stopped = true;
+      options.signal?.removeEventListener('abort', stopFromSignal);
+      pendingEffects.delete(handle);
+      pendingComputations.delete(handle);
       for (const cleanup of cleanups) {
         cleanup();
       }
       cleanups.clear();
-      if (activeEffect === handle) {
-        activeEffect = null;
-      }
     },
     _registerCleanup(cleanup) {
-      cleanups.add(cleanup);
+      if (stopped) cleanup();
+      else cleanups.add(cleanup);
     }
   };
 
-  handle.run();
+  if (options.signal?.aborted) {
+    stopped = true;
+    handle._stopped = true;
+  } else {
+    options.signal?.addEventListener('abort', stopFromSignal, { once: true });
+    handle.run();
+  }
   return handle;
 }
 
@@ -66,7 +137,7 @@ export function state(initialValue) {
 
   return {
     get() {
-      if (activeEffect) {
+      if (activeEffect && !activeEffect._stopped) {
         const subscriber = activeEffect;
         const listener = () => subscriber.schedule();
         listeners.add(listener);
@@ -112,7 +183,7 @@ export function derived(compute) {
   const value = state(compute());
   const handle = effect(() => {
     value.set(compute());
-  });
+  }, { computed: true });
 
   return {
     get() {
