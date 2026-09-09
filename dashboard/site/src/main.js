@@ -957,7 +957,9 @@
             const displayedSources = cachedSources;
             const refreshPagination = continuationRequests(initialLazySources);
             const refreshOwner = new AbortController();
-            window.addEventListener("pagehide", () => refreshOwner.abort(), { once: true });
+            window.addEventListener("pagehide", (event) => {
+              if (!event.persisted) refreshOwner.abort();
+            });
             let refreshFailed = false;
             /** @param {unknown} error */
             const showStaleSources = (error) => {

@@ -350,14 +350,22 @@ test('data worker queries the retained active generation before downloading sour
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardPage, refreshCanonicalDashboardSources } = await import(processorUrl);
-    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: [],
+      queries: [{
+        name: 'cached-run-totals',
+        from: 'runs',
+        aggregate: { values: [{ field: 'run', as: 'runs', reducer: 'distinct-count' }] }
+      }]
+    };
     const retained = await loadCanonicalDashboardPage(
-      ['failed-runs', 'overview-attention-domains'],
+      ['failed-runs', 'cached-run-totals', 'overview-attention-domains'],
       context
     );
     const refreshed = await refreshCanonicalDashboardSources(
       `${location.origin}/sources.json`,
-      ['failed-runs', 'overview-attention-domains'],
+      ['failed-runs', 'cached-run-totals', 'overview-attention-domains'],
       context
     );
     return { retained, refreshed };
@@ -366,6 +374,10 @@ test('data worker queries the retained active generation before downloading sour
   expect(result.retained['failed-runs']).toMatchObject({
     rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
     metadata: { 'source-kind': 'canonical-query' }
+  });
+  expect(result.retained['cached-run-totals']).toMatchObject({
+    rows: [{ runs: 1 }],
+    metadata: { 'source-kind': 'derived', 'query-name': 'cached-run-totals' }
   });
   expect(result.retained['overview-attention-domains']).toBeUndefined();
   expect(result.refreshed.changed).toBe(true);
