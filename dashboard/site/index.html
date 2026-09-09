@@ -16,7 +16,8 @@
       import { disposeDashboard, renderDashboard, updateWithViewTransition } from "./src/presenter.js";
       import { startLoadingProgress } from "./src/loading-progress.js";
       import { loadDashboardSources } from "./src/source-loader.js";
-      import { loadCanonicalViewSources } from "./src/data/queries/view-sources.js";
+      import { ingestDashboardSources } from "./src/data/ingest/coordinator.js";
+      import { loadCanonicalViewSources, readCanonicalViewSources } from "./src/data/queries/view-sources.js";
       import { octicon } from "./src/octicons.js";
 
       const metadata = (id, overrides = {}) => ({
@@ -842,6 +843,15 @@
         });
       }
 
+      async function loadLiveCanonicalViewSources(sourceUrl) {
+        let sources = await loadDashboardSources(fetch, sourceUrl);
+        const { generation } = await ingestDashboardSources(window.indexedDB, sources, {
+          storage: navigator.storage,
+        });
+        sources = null;
+        return readCanonicalViewSources(window.indexedDB, generation);
+      }
+
       if (new URLSearchParams(window.location.search).has("fixtures")) {
         renderSources(await withCanonicalViewSources(fixtureSources, true));
         loadingProgress.complete();
@@ -850,8 +860,7 @@
         const sourceUrl = new URL("./sources.json", window.location.href).href;
 
         try {
-          const sources = await loadDashboardSources(fetch, sourceUrl);
-          renderSources(await withCanonicalViewSources(sources, true));
+          renderSources(await loadLiveCanonicalViewSources(sourceUrl));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });

@@ -218,6 +218,17 @@ export async function loadCanonicalViewSources(indexedDB, sources, options = {})
   if (options.ingest) {
     await ingestDashboardSources(indexedDB, sources, { storage: options.storage });
   }
+  return readCanonicalViewSources(indexedDB, generation);
+}
+
+/**
+ * Reads one already-ingested generation without retaining its source input.
+ * Large live snapshots use this after releasing the fetched source object.
+ *
+ * @param {IDBFactory} indexedDB
+ * @param {string} generation
+ */
+export async function readCanonicalViewSources(indexedDB, generation) {
   if (!await activeGenerationIsUsable(indexedDB, generation)) {
     throw new Error(`Canonical generation ${generation} is not active and usable`);
   }

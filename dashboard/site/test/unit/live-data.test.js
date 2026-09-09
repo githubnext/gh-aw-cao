@@ -18,7 +18,10 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { loadDashboardSources } from "./src/source-loader.js"');
     expect(preview).toContain("loadDashboardSources(fetch, sourceUrl)");
-    expect(preview).toContain("renderSources(await withCanonicalViewSources(sources, true))");
+    expect(preview).toContain("await ingestDashboardSources(window.indexedDB, sources, {");
+    expect(preview).toContain("sources = null");
+    expect(preview).toContain("return readCanonicalViewSources(window.indexedDB, generation)");
+    expect(preview).toContain("renderSources(await loadLiveCanonicalViewSources(sourceUrl))");
     expect(preview).not.toContain('./src/source-cache.js');
     expect(preview).not.toContain('Showing cached data.');
     expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {');

@@ -68,14 +68,10 @@ export function processDataHealthSources(sources, context) {
  * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
  */
 export function processCanonicalDashboardSources(sources, generation) {
-  return processRequest(
-    { operation: 'canonicalize-dashboard-sources', sources, generation },
-    () => ({
-      ...normalize(adaptDashboardSources(sources).observations, { generation }),
-      ...snapshotDashboardSources(sources, generation)
-    }),
-    false
-  );
+  return {
+    ...normalize(adaptDashboardSources(sources).observations, { generation }),
+    ...snapshotDashboardSources(sources, generation)
+  };
 }
 
 /**
