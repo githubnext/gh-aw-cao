@@ -87,6 +87,10 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
       runAttempt(row),
     )));
     const expectedEvents = new Set(sources.events.rows.map((row) => String(row.event)));
+    console.error("Deployed source row counts:", Object.fromEntries(
+      ["repositories", "workflows", "runs", "job-performance", "sessions", "events", "work-items", "security-findings"]
+        .map((source) => [source, sources[source]?.rows?.length ?? 0]),
+    ));
     const [repositories, workflows, runs, jobs, sessions, events, workItems, findings] = await Promise.all([
       readActiveCollection(indexedDB, "repositories"),
       readActiveCollection(indexedDB, "workflows"),
@@ -107,6 +111,7 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
       workItems,
       findings,
     })) {
+      console.error(`Canonical ${table} rows: ${entries.length}`);
       assert.ok(entries.length > 0, `canonical ${table} table must contain an entry`);
     }
 
