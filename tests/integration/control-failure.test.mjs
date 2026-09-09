@@ -31,7 +31,6 @@ const failures = [
   ["oversized repository request", { ROLE: "orchestrator", TARGET_REPO: "", REQUESTED_MAX_REPOS: "1001" }, "max_repositories must be an integer in 1..1000"],
   ["invalid rollout request", { ROLE: "orchestrator", TARGET_REPO: "", REQUESTED_ROLLOUT_PERCENT: "0" }, "rollout_percent must be an integer in 1..100"],
   ["invalid dispatch maximum", { ROLE: "orchestrator", TARGET_REPO: "", DISPATCH_MAX: "invalid" }, "dispatch_max must be an integer from 1 through 1000"],
-  ["invalid credit declaration", { ROLE: "orchestrator", TARGET_REPO: "", ORCHESTRATOR_CREDITS: "invalid" }, "AI Credit admission values must be non-negative integers"],
 ];
 
 const invalidPolicies = [

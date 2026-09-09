@@ -1380,8 +1380,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .insights-series-menu label:hover { background: var(--canvas-subtle); }
 .insights-series-menu label i { width: 18px; height: 0; border-top-width: 2px; border-top-style: solid; }
 .insights-series-menu label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.insights-plot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
-.insights-plot-panel { min-width: 0; display: grid; align-content: start; gap: 12px; padding: 18px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.insights-plot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; padding-top: 4px; }
+.insights-plot-panel { min-width: 0; display: grid; align-content: start; gap: 12px; }
 .insights-plot-panel .chart-widget { min-height: 210px; padding: 0; }
 .insights-plot-panel .pie-chart-widget { min-height: 190px; }
 .insights-plot-panel .pie-chart-widget svg { max-height: 180px; }
@@ -1930,8 +1930,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .insights-lead-metrics { width: 100%; justify-content: space-between; gap: 12px; }
   .insights-lead-metrics dd, .insights-inline-metrics dd { font-size: 1rem; }
   .insights-value-lead > .chart-legend { display: none; }
-  .insights-plot-grid { grid-template-columns: minmax(0, 1fr); }
-  .insights-plot-panel { padding: 16px 0; border-right: 0; }
+  .insights-plot-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .insights-value-lead .chart-widget, .insights-plot-panel .chart-widget, .insights-experiment-band .chart-widget { min-height: 190px; }
   .notifications-search { grid-column: 1; }
   .notifications-state-tabs { width: max-content; }

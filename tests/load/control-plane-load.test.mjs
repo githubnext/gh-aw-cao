@@ -249,7 +249,7 @@ test("control precompute excludes workers disabled by policy", () => {
   }
 });
 
-test("control precompute tunes target admission to the remaining monthly package budget", () => {
+test("control precompute ignores deprecated monthly package budgets", () => {
   const run = runPrecompute({
     ORCHESTRATOR_CREDITS: "250",
     WORKER_CREDITS_PER_TARGET: "600",
@@ -265,17 +265,18 @@ test("control precompute tunes target admission to the remaining monthly package
   try {
     assert.equal(run.result.status, 0, run.result.stderr);
     const output = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
-    assert.equal(output.monthly_credit_budget, 2000);
-    assert.equal(output.monthly_ai_credits_spent, 500);
-    assert.equal(output.monthly_ai_credits_remaining, 1500);
-    assert.equal(output.monthly_budget_target_cap, 2);
-    assert.equal(output.effective_max_repos, 2);
+    assert.equal(output.monthly_credit_budget, 0);
+    assert.equal(output.monthly_ai_credits_spent, 0);
+    assert.equal(output.monthly_ai_credits_remaining, 0);
+    assert.equal(output.monthly_budget_error, "");
+    assert.equal(output.monthly_budget_target_cap, 10);
+    assert.equal(output.effective_max_repos, 10);
   } finally {
     rmSync(run.temporaryDirectory, { recursive: true, force: true });
   }
 });
 
-test("control precompute fails monthly budget admission closed when usage is unreadable", () => {
+test("control precompute does not read monthly budget usage logs", () => {
   const run = runPrecompute({
     DISPATCH_MAX: "10",
     WORKER_CREDITS_PER_TARGET: "600",
@@ -291,9 +292,9 @@ test("control precompute fails monthly budget admission closed when usage is unr
   try {
     assert.equal(run.result.status, 0, run.result.stderr);
     const output = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
-    assert.match(output.monthly_budget_error, /could not read valid month-to-date AI Credit usage/);
-    assert.equal(output.monthly_budget_target_cap, 0);
-    assert.equal(output.effective_max_repos, 0);
+    assert.equal(output.monthly_budget_error, "");
+    assert.equal(output.monthly_budget_target_cap, 10);
+    assert.equal(output.effective_max_repos, 10);
   } finally {
     rmSync(run.temporaryDirectory, { recursive: true, force: true });
   }
