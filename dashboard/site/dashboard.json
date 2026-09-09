@@ -3721,7 +3721,6 @@
         "views": [
           {
             "id": "event-inspection",
-            "intent": "Inspect individual workflow events and open the run that produced each event.",
             "title": "Event inspection",
             "description": "Observed events ordered from newest to oldest with source, status, identity, and run context.",
             "data": {
