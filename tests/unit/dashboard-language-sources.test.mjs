@@ -82,6 +82,80 @@ test("detection observations preserve verdict, warning, tooling, skipped, and un
   assert.equal(byRun.get("2")["run-link"].href, "https://github.com/githubnext/gh-aw-cao/actions/runs/2");
 });
 
+test("dashboard source bridge publishes normalized gh-aw sessions and events", () => {
+  const generatedAt = "2026-09-09T05:00:00Z";
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt,
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      bundles: [],
+      workflows: [{
+        repository: "githubnext/gh-aw-cao",
+        path: ".github/workflows/dashboard.lock.yml",
+        runHealth: { runRecords: [{
+          runId: 303,
+          runAttempt: 1,
+          status: "completed",
+          conclusion: "success",
+          createdAt: "2026-09-09T04:00:00Z",
+          updatedAt: "2026-09-09T04:01:00Z",
+          jobs: [{ jobId: 404, name: "agent", status: "completed", conclusion: "success" }],
+        }] },
+      }],
+    },
+    usage: {
+      generatedAt,
+      available: true,
+      complete: true,
+      securityAvailable: true,
+      securityComplete: true,
+      runs: [],
+      securityRuns: [{
+        repository: "githubnext/gh-aw-cao",
+        workflowPath: ".github/workflows/dashboard.lock.yml",
+        runId: 303,
+        runAttempt: 1,
+        createdAt: "2026-09-09T04:00:00Z",
+        logsPayload: {
+          status: "completed",
+          jobs: [{ jobId: 404, name: "agent" }],
+        },
+        timeline: [{
+          sourceId: "sandbox/agent/events.jsonl:1",
+          sessionId: "githubnext/gh-aw-cao:303:1:gh-aw",
+          timestamp: "2026-09-09T04:00:01Z",
+          source: "agent",
+          type: "agent_turn",
+          sourceSequence: 1,
+        }],
+      }],
+    },
+    operationalValues: { records: [] },
+    report: { generatedAt, records: [] },
+    inventory: { generatedAt, repositories: [] },
+    controlSettings: {},
+    githubTelemetry: [],
+  });
+
+  assert.deepEqual(sources.sessions.rows[0], {
+    organization: "githubnext",
+    repository: "gh-aw-cao",
+    workflow: ".github/workflows/dashboard.md",
+    run: "303",
+    "run-attempt": 1,
+    session: "githubnext/gh-aw-cao:303:1:gh-aw",
+    "job-id": "404",
+    "session-kind": "unified-operational-log",
+    "session-status": "completed",
+    "started-at": "2026-09-09T04:00:01Z",
+    "ended-at": "2026-09-09T04:00:01Z",
+    "observed-at": "2026-09-09T04:00:00Z",
+  });
+  assert.equal(sources.events.rows[0]["event-type"], "agent_turn");
+  assert.equal(sources.events.rows[0]["event-source"], "agent");
+});
+
 test("detection observations normalize conclusions and keep usable verdicts independent of job failures", () => {
   const clear = { promptInjection: false, secretLeak: false, maliciousPatch: false, warnings: [] };
   const rows = detectionObservationRows({
@@ -1207,12 +1281,14 @@ test("dashboard source bridge exposes run and job performance dimensions", () =>
         path: ".github/workflows/review.lock.yml",
         runHealth: { runRecords: [{
           runId: 42,
+          runAttempt: 2,
           status: "completed",
           conclusion: "success",
           displayTitle: "Review: live",
           startedAt: "2026-09-03T05:00:00Z",
           updatedAt: "2026-09-03T05:10:00Z",
           jobs: [{
+            jobId: 84,
             name: "agent",
             status: "completed",
             conclusion: "success",
@@ -1222,6 +1298,7 @@ test("dashboard source bridge exposes run and job performance dimensions", () =>
             runnerGroupName: "GitHub Actions",
             labels: ["ubuntu-latest"],
           }, {
+            jobId: 85,
             name: "detection",
             status: "in_progress",
             conclusion: null,
@@ -1257,6 +1334,7 @@ test("dashboard source bridge exposes run and job performance dimensions", () =>
     repository: "control",
     workflow: ".github/workflows/review.md",
     run: "42",
+    "run-attempt": 2,
     "started-at": "2026-09-03T05:00:00Z",
     "run-conclusion": "success",
     "rollout-mode": "live",
@@ -1273,6 +1351,7 @@ test("dashboard source bridge exposes run and job performance dimensions", () =>
   const { "run-duration-seconds": _runDuration, ...commonPerformance } = sources["run-performance"].rows[0];
   assert.deepEqual(sources["job-performance"].rows[0], {
     ...commonPerformance,
+    "job-id": "84",
     job: "agent",
     "job-status": "completed",
     "job-conclusion": "success",
@@ -1283,6 +1362,7 @@ test("dashboard source bridge exposes run and job performance dimensions", () =>
   });
   assert.deepEqual(sources["job-performance"].rows[1], {
     ...commonPerformance,
+    "job-id": "85",
     job: "detection",
     "job-status": "in_progress",
     "job-conclusion": "unknown",

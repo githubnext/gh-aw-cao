@@ -26,7 +26,7 @@ async function fixture() {
   };
 }
 
-test("activity logs uses one bounded gh aw logs invocation without heavy agent artifacts", async () => {
+test("activity logs uses one bounded gh aw logs invocation with transaction-log artifacts", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
@@ -76,7 +76,7 @@ if (args[0] === "aw") {
     assert.deepEqual(args.slice(0, 4), ["aw", "logs", "--json", "--audit"]);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
-      "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
+      "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     assert.equal(args.filter((value) => value === "logs").length, 1);
@@ -101,7 +101,12 @@ if (args[0] === "aw") {
     assert.equal(state.complete, true);
     assert.equal(state.jobDetails.observedRuns, 1);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
-    assert.ok(stdout.includes(`Calling gh aw logs with arguments: ${JSON.stringify(args.slice(2))}`));
+    assert.ok(stdout.includes(
+      "Calling command: gh aw logs --json --audit "
+      + `--output ${item.outputPath} --summary-file '' `
+      + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent ",
+    ));
+    assert.ok(stdout.includes("githubnext/gh-aw-cao/.github/workflows/sample.lock.yml"));
     assert.match(stdout, /Fetched 1 run/);
     assert.match(stdout, /Collected snapshot with 1 run across 1 workflow/);
   } finally {

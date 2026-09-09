@@ -28,9 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install gh-aw
-        uses: github/gh-aw-actions/setup-cli@0c4566ff6a133b81c2b1ecd6559623e1313a1927 # v0.88.7
+        uses: github/gh-aw-actions/setup-cli@5e508589e03a7757a7e05b26e834292f5445bfb6 # v0.88.8
         with:
-          version: v0.88.7
+          version: v0.88.8
       - name: Run contract suite
         run: npm run check
       - name: Check patch formatting
@@ -100,9 +100,9 @@ jobs:
           fi
       - name: Install gh-aw
         if: steps.package-api.outputs.ready == 'true'
-        uses: github/gh-aw-actions/setup-cli@0c4566ff6a133b81c2b1ecd6559623e1313a1927 # v0.88.7
+        uses: github/gh-aw-actions/setup-cli@5e508589e03a7757a7e05b26e834292f5445bfb6 # v0.88.8
         with:
-          version: v0.88.7
+          version: v0.88.8
       - name: Run package lifecycle integration
         if: steps.package-api.outputs.ready == 'true'
         env:

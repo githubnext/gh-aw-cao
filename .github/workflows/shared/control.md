@@ -194,12 +194,6 @@ jobs:
           echo "::error title=CAO admission could not verify runner disk capacity::Free disk space could not be read for ${CAO_DISK_PATH}. See the admission summary for next steps."
           exit 1
 
-      - name: Install gh-aw CLI when monthly budget is enabled
-        if: ${{ steps.cao_admission.outputs.authorized == 'true' && steps.cao_admission.outputs.monthly_credit_budget != '0' }}
-        uses: github/gh-aw-actions/setup-cli@v0.88.7
-        with:
-          version: v0.88.7
-
       - name: Run CAO control precompute
         id: cao_precompute
         if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
@@ -361,13 +355,12 @@ In `review` mode, built-in safe outputs operate against `SAFE_OUTPUT_REPO`. Neve
 
 If `control_role` is `orchestrator`, filter and prioritize target repositories, then dispatch the configured worker workflows.
 
-Use the `enabled`, `inventory_version`, `batch_id`, `max_repos`, `rollout_percent`, `effective_max_repos`, `monthly_credit_budget`, `monthly_ai_credits_spent`, `monthly_ai_credits_remaining`, `monthly_budget_target_cap`, `safe_output_mode`, `safe_output_repo`, and per-candidate `safe_output_mode` fields from `/tmp/gh-aw/agent/control-precompute.json`; do not infer those values from workflow inputs.
+Use the `enabled`, `inventory_version`, `batch_id`, `max_repos`, `rollout_percent`, `effective_max_repos`, `safe_output_mode`, `safe_output_repo`, and per-candidate `safe_output_mode` fields from `/tmp/gh-aw/agent/control-precompute.json`; do not infer those values from workflow inputs.
 
 For orchestrators, use the importing package's `Discovery` and `Workers` sections only for ranking, prioritization, and deciding whether a precomputed candidate is useful for this package.
 
 - If `enabled` is not `true`, do not select repositories or dispatch workers. Call `report_incomplete` explaining that the package is disabled by its package kill switch.
 - If `repo_error` is non-empty, select no repositories and dispatch no workers. Call `report_incomplete` with the precomputed error; do not retry discovery, fall back to inferred inventory, or wait for an API rate limit to reset.
-- If `monthly_budget_error` is non-empty, select no repositories and dispatch no workers. Call `report_incomplete` with the precomputed error; do not ignore the configured budget or estimate missing usage.
 
 Continue with the repository targeting and workflow dispatch steps below.
 
@@ -421,11 +414,6 @@ Continue with the repository targeting and workflow dispatch steps below.
   - Default review output repository: <safe_output_repo or not applicable>
   - Selected target modes: <target-to-mode list or none>
   - Live target changes allowed: <live target list or none>
-  - Monthly AI Credit budget: <monthly_credit_budget, or disabled when 0>
-  - Month-to-date AI Credits: <monthly_ai_credits_spent>
-  - Monthly AI Credits remaining: <monthly_ai_credits_remaining>
-  - Budget target cap: <monthly_budget_target_cap>
-
   ### Repository Decisions
   - Selected: <repository list with priority rationale, or none>
   - Skipped: <repository list with reason for each, or none>

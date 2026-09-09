@@ -48,7 +48,7 @@ CAO installs and operates agentic workflow packages from a central control repos
 This specification covers:
 
 - `.github/workflows/cao.json` as the sole persistent non-secret CAO policy authority;
-- package and worker enablement, repository scope, rollout, output-mode ceilings, and cross-run package admission;
+- package and worker enablement, repository scope, rollout, and output-mode ceilings;
 - deterministic policy resolution, narrowing, provenance, and revocation; and
 - the authority boundary between CAO and gh-aw.
 
@@ -210,7 +210,7 @@ A control repository uses `control-plane`. A target repository uses `target-auth
 | `scope` | Eligible owners and optional repository restriction | Resolver safe defaults |
 | `inventory` | Scan, cell, and batch ceilings | Schema defaults |
 | `web` | Presentation settings for deterministic web surfaces | Packaged defaults |
-| `defaults` | Mode, repository, rollout, and monthly admission defaults | Schema defaults |
+| `defaults` | Mode, repository, and rollout defaults | Schema defaults |
 | `packages` | Explicit package and worker workflow declarations | Undeclared packages and workers are disabled |
 | `publishing` | Deterministic reviewed-output publication | Disabled |
 
@@ -233,9 +233,9 @@ The optional `web.favicon` value MUST be an absolute HTTPS URL without credentia
 | `mode` | `review` or `live` | Output-mode ceiling |
 | `max-repositories` | Integer from 1 through 1000 | Rollout ceiling |
 | `rollout-percent` | Integer from 1 through 100 | Rollout ceiling |
-| `monthly-ai-credit-budget` | Non-negative integer; `0` disables budget admission | Cross-run package admission |
+| `monthly-ai-credit-budget` | Deprecated compatibility field; no runtime admission effect | None |
 
-`monthly-ai-credit-budget` MUST NOT replace, raise, or reinterpret gh-aw `max-ai-credits` or `max-turns`. When the value is positive, the orchestrator MUST read unique month-to-date AI Credit usage for the package orchestrator and workers, reserve the orchestrator's declared maximum, and admit only complete worker sets that fit the remaining budget. The budget-derived target cap MUST be intersected with all repository, rollout, and dispatch caps. Unreadable or invalid usage evidence MUST set the budget target cap to zero and prevent dispatch; it MUST NOT be estimated. A value of `0` disables monthly admission without changing native gh-aw per-run limits.
+`monthly-ai-credit-budget` MUST NOT replace, raise, or reinterpret gh-aw `max-ai-credits` or `max-turns`. CAO accepts the field for compatibility with existing policy files, but the resolver MUST NOT read month-to-date AI Credit usage or use the value to admit, deny, or cap repositories. Native gh-aw per-run limits remain cumulative.
 
 An absent package is disabled. A package's `workers` map declares its worker identities and exact workflow slugs; undeclared workers are disabled. Every worker requires `workflow`, defaults to enabled, may set `enabled: false`, and may set `max-mode` only to narrow the resolved package or exact-target mode. Package, worker, and workflow identifiers use lowercase kebab-case, and workflow identities must be unique within a package.
 
@@ -279,7 +279,7 @@ The resolver MUST:
 1. record the workflow revision;
 2. fetch, parse, and validate control policy at that revision;
 3. resolve static package, role, and worker identity;
-4. resolve defaults, enablement, scope, rollout, inventory, mode ceilings, and monthly admission;
+4. resolve defaults, enablement, scope, rollout, inventory, and mode ceilings;
 5. intersect dispatch-request narrowing;
 6. verify that the job-local credential supplied by gh-aw can access the admitted repositories and required APIs, without selecting, minting, or storing that credential in CAO policy;
 7. write effective policy and provenance; and
@@ -289,9 +289,9 @@ The resolver MUST:
 
 The resolver MUST write exactly one derived record to `/tmp/gh-aw/agent/control-precompute.json`. Every authorized record MUST include authorization status and reason, package, role, worker when applicable, effective mode and routing, control repository, workflow and policy commit SHA, lowercase SHA-256 policy digest, schema version, and resolution time.
 
-An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; monthly budget, month-to-date usage, remaining budget, budget-derived target cap, and any budget error; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, and the standard dispatch envelope.
+An orchestrator record MUST additionally include inventory version and batch identity; configured and effective repository and rollout caps; repository discovery status; the bounded candidate repositories; and eligible worker workflows with skip reasons. A worker record MUST additionally include the target, worker enablement and mode ceiling, and the standard dispatch envelope.
 
-Consumers MUST treat the record's `candidate_repositories`, `worker_workflows`, `effective_max_repos`, `safe_output_mode`, `safe_output_repo`, and budget fields as authoritative. They MUST NOT reconstruct those values from workflow inputs.
+Consumers MUST treat the record's `candidate_repositories`, `worker_workflows`, `effective_max_repos`, `safe_output_mode`, and `safe_output_repo` fields as authoritative. They MUST NOT reconstruct those values from workflow inputs.
 
 The record MUST NOT be treated as persistent configuration. Environment variables MAY transport derived values, but changing them MUST NOT alter the validated record.
 
@@ -303,7 +303,7 @@ A newer policy MAY revoke or narrow an outstanding dispatch before worker execut
 
 ## 7. Failure and Revocation
 
-The resolver MUST fail closed for missing or invalid policy, unknown identities, invalid bounds, widening requests, unauthorized destinations, unavailable required authentication, or unreadable enabled-budget evidence.
+The resolver MUST fail closed for missing or invalid policy, unknown identities, invalid bounds, widening requests, unauthorized destinations, or unavailable required authentication.
 
 An expected denial MUST write a stable reason to the effective record, emit gh-aw's native `noop`, and perform no model invocation. An integrity failure MUST fail visibly before model execution and MUST NOT print secrets or unnecessary untrusted content.
 
@@ -325,7 +325,7 @@ A compliance suite MUST record the implementation revision and claimed level, us
 | T-CFG-004 | Put execution fields such as engine, `max-ai-credits`, permissions, or safe outputs in CAO JSON | Rejected | 1 |
 | T-ARC-001 | Use broad credentials against a target outside CAO scope | Denied | 2 |
 | T-ARC-002 | Declare gh-aw capabilities without CAO live policy | No rollout or live authority inferred | 2 |
-| T-ARC-003 | Exceed monthly admission while a per-run gh-aw limit remains available | Admission denied; native limit unchanged | 2 |
+| T-ARC-003 | Configure deprecated monthly admission while a per-run gh-aw limit remains available | Monthly value ignored; native limit unchanged | 2 |
 | T-EXE-001 | Inspect an orchestrator dispatch and worker run | Standard envelope present, credentials absent, worker bound to one target | 2 |
 | T-RES-001 | Resolve when workflow SHA differs from latest default branch | Policy at workflow SHA used | 2 |
 | T-RES-002 | Request live under a review ceiling | Rejected as widening | 2 |
@@ -441,5 +441,5 @@ Invalid JSON, schema violations, unknown static identities, widening requests, u
 - Defined the JSON-governed CAO control architecture.
 - Assigned rollout and target authority to CAO.
 - Assigned engine limits, generated job topology, authentication, and safe-output execution to gh-aw.
-- Defined the central orchestrator and worker execution contract, credential reach, runtime records, monthly admission, revalidation timing, and protected environment boundary.
+- Defined the central orchestrator and worker execution contract, credential reach, runtime records, deprecated monthly budget compatibility, revalidation timing, and protected environment boundary.
 - Added conformance classes, compliance levels, tests, examples, and security and privacy considerations.

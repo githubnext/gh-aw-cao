@@ -416,7 +416,7 @@ export function effectivePolicy(
     safe_output_mode: effective.mode,
     max_repositories: effective["max-repositories"],
     rollout_percent: effective["rollout-percent"],
-    monthly_ai_credit_budget: effective["monthly-ai-credit-budget"],
+    monthly_ai_credit_budget: 0,
     target_policies: targetPolicies,
     worker_policies: workerPolicies,
     allowed_owners: allowedOwners,

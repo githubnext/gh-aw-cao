@@ -145,13 +145,13 @@ test("CAO admission emits plain logs outside GitHub Actions", () => {
   ].join("\n"));
 });
 
-test("CAO admission exports the authorized package budget", () => {
+test("CAO admission ignores deprecated monthly package budgets", () => {
   const { result, output } = runAdmission({
     policy: controlPolicy({ packagePolicy: { "monthly-ai-credit-budget": 1200 } }),
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "1200" });
+  assert.deepEqual(output, { authorized: "true", reason: "authorized", monthly_credit_budget: "0" });
 });
 
 test("CAO admission denies a disabled package without failing the workflow", () => {

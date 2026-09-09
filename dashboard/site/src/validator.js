@@ -1038,7 +1038,8 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
           ));
         }
         seenSources.add(sourceName);
-        sourceFieldCoverage.set(sourceName, new Set(getBuiltInRequiredFields(pageName, sourceName)));
+        const coverageSource = sourceName;
+        sourceFieldCoverage.set(coverageSource, new Set(getBuiltInRequiredFields(pageName, coverageSource)));
       }
       continue;
     }
@@ -1052,11 +1053,12 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
-    if (!sourceFieldCoverage.has(data.source)) {
-      sourceFieldCoverage.set(data.source, new Set());
+    const coverageSource = data.source;
+    if (!sourceFieldCoverage.has(coverageSource)) {
+      sourceFieldCoverage.set(coverageSource, new Set());
     }
 
-    collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(data.source));
+    collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(coverageSource));
   }
 
   for (const sourceName of BUILT_IN_PAGE_REQUIRED_SOURCES[pageName]) {
@@ -2527,6 +2529,18 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
       ));
     }
   }
+  const filterForbiddenChannels = markValue === 'table'
+    ? ['href']
+    : ['value', 'x', 'y', 'color', 'reference', 'href'];
+  for (const channel of filterForbiddenChannels) {
+    if (isPlainObject(encoding[channel]) && encoding[channel].filter !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'filter is allowed only on table column field definitions.',
+        `${viewPath}.encoding.${channel}.filter`
+      ));
+    }
+  }
 
   if (markValue === 'metric') {
     validateMetricEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
@@ -2896,6 +2910,13 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
   validateOptionalStringField(fieldDefinition.title, `${path}.title`, errors);
   if (fieldDefinition.unit !== undefined) {
     validateStringField(fieldDefinition.unit, `${path}.unit`, true, errors);
+  }
+  if (fieldDefinition.filter !== undefined && typeof fieldDefinition.filter !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'filter must be a boolean.',
+      `${path}.filter`
+    ));
   }
 
   const aggregate = fieldDefinition.aggregate ?? 'none';

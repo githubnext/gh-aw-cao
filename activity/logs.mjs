@@ -29,18 +29,24 @@ async function writeOutcome(outcome) {
   }
 }
 
+function shellQuote(argument) {
+  if (argument === "") return "''";
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(argument)) return argument;
+  return `'${argument.replaceAll("'", "'\\''")}'`;
+}
+
 function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn) {
   return new Promise((resolve, reject) => {
     const args = [
       "aw", "logs", "--json", "--audit",
       "--output", outputDirectory, "--summary-file", "",
-      "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
+      "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
       "--count", String(runLimit), "--timeout", "15",
       "--max-github-api-rate-limit", "-2000", "--max-storage", "1200", "--prune-older-runs",
       ...targets,
     ];
-    log.info`Calling gh aw logs with arguments: ${JSON.stringify(args.slice(2))}`;
+    log.info`Calling command: ${["gh", ...args].map(shellQuote).join(" ")}`;
     const child = execute("gh", args, { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
     const stderr = [];

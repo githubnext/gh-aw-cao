@@ -6,7 +6,7 @@ import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
-import { createExpandableToggle, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, renderLazyDisclosure, renderSearchInput } from './ui-primitives.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -399,19 +399,19 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
     const first = entries[0];
     const repositories = new Set(entries.map(repository).filter(Boolean));
     const entriesList = h('ul', { className: 'notifications-group' });
-    const cluster = h('details', { className: 'notifications-cause-cluster' },
-      h('summary', { className: 'notifications-cause-summary' },
+    const cluster = renderLazyDisclosure(
+      'notifications-cause-cluster',
+      [
         h('span', { className: 'notification-kind' }, first?.['signal-type'] === 'agent-smell' ? smellMark() : octicon(String(first?.icon || 'issue'))),
         h('span', { className: 'notifications-cause-copy' },
           h('strong', null, String(first?.detail || first?.reason || 'Repeated notification cause')),
           h('small', null, `${entries.length} occurrences across ${repositories.size} ${repositories.size === 1 ? 'repository' : 'repositories'}`)),
-        octicon('chevron-right', 'notifications-cause-chevron')),
-      entriesList);
-    cluster.addEventListener('toggle', () => {
-      if (/** @type {HTMLDetailsElement} */ (cluster).open && entriesList.childElementCount === 0) {
-        entriesList.replaceChildren(...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)));
-      }
-    });
+        octicon('chevron-right', 'notifications-cause-chevron')
+      ],
+      entriesList,
+      (container) => container.replaceChildren(...entries.map((row) => renderNotification(row, state, selected, bulkDone, render))),
+      { summaryClassName: 'notifications-cause-summary' }
+    );
     content.push(cluster);
   }
   return content;

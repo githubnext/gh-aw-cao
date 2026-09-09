@@ -25,6 +25,7 @@ import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
+import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -71,7 +72,7 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -137,6 +138,28 @@ function getBuiltInPagePayload(page) {
 }
 
 /**
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ * @returns {string[]}
+ */
+export function dashboardPageSourceNames(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return [];
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  const names = new Set();
+  for (const view of payload.views ?? []) {
+    for (const sourceName of getViewSources(view)) names.add(sourceName);
+  }
+  for (const section of payload.sections ?? []) {
+    if (typeof section['count-source'] === 'string') names.add(section['count-source']);
+  }
+  for (const callout of document.dashboard.callouts ?? []) {
+    if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
+  }
+  return [...names];
+}
+
+/**
  * @param {PresentationInput} input
  * @returns {HTMLElement}
  */
@@ -152,14 +175,15 @@ export function renderDashboard(input) {
   const dashboardRepository = typeof document.dashboard.repository === 'string' && document.dashboard.repository.length > 0
     ? document.dashboard.repository
     : null;
-  const derivedSources = deriveWorkflowDashboardLinks(
-    deriveRepositoryDashboardLinks(
-      deriveRuntimeSources(deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(deriveEntityLinkSources(rawSources, githubUrlBase))))),
-      pages
-    ),
-    pages
-  );
-  const dataHealthSources = deriveDataHealthCalloutSources(rawSources);
+  const derivedSources = input.prepared
+    ? rawSources
+    : deriveDashboardLinkSources(
+      deriveRuntimeSources(
+        deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(deriveEntityLinkSources(rawSources, githubUrlBase))))
+      ),
+      { githubUrlBase, pages }
+    );
+  const dataHealthSources = input.prepared ? {} : deriveDataHealthCalloutSources(rawSources);
   const sources = {
     ...derivedSources,
     ...Object.fromEntries(
@@ -206,6 +230,9 @@ export function renderDashboard(input) {
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      if (input.loadPageSources) {
+        return input.loadPageSources(pageId).then(render);
+      }
       /** @param {Record<string, LogicalSourceInput>} resolved */
       const withDataHealth = (resolved) => ({
         ...derivedSources,
@@ -2739,186 +2766,6 @@ function valuesEqualForFilter(actual, expected) {
     return expected === 'unknown';
   }
   return String(actual) === String(expected);
-}
-
-
-/**
- * Derives organization/repository/workflow GitHub links for every row that
- * exposes sufficient GitHub identity but does not already carry an explicit
- * relation-specific link field, so every GitHub-addressable entity can be
- * rendered as a link (Section 9.2 DLS-LINK-006/DLS-LINK-007).
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {string} githubUrlBase
- * @returns {Record<string, LogicalSourceInput>}
- */
-function deriveEntityLinkSources(sources, githubUrlBase) {
-  return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
-    name,
-    {
-      ...source,
-      rows: Array.isArray(source?.rows) ? source.rows.map((row) => deriveEntityLinkRow(row, githubUrlBase)) : source?.rows
-    }
-  ]));
-}
-
-/**
- * Adds presentation-only repository routes while retaining the canonical
- * external link for repository-scoped GitHub controls.
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
- * @returns {Record<string, LogicalSourceInput>}
- */
-function deriveRepositoryDashboardLinks(sources, pages) {
-  const detailPage = pages.find((page) => page.kind === 'custom' && page.route?.['hash-query-parameter'] === 'repository');
-  if (!detailPage) return sources;
-
-  return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
-    name,
-    {
-      ...source,
-      rows: Array.isArray(source?.rows)
-        ? source.rows.map((row) => deriveRepositoryDashboardLink(row, detailPage.id))
-        : source?.rows
-    }
-  ]));
-}
-
-/**
- * Adds presentation-only workflow routes while retaining the canonical
- * authored workflow link for explicit source controls.
- * @param {Record<string, LogicalSourceInput>} sources
- * @param {Array<PresentableBuiltInPage | PresentableCustomPage>} pages
- * @returns {Record<string, LogicalSourceInput>}
- */
-function deriveWorkflowDashboardLinks(sources, pages) {
-  const insightsPage = pages.find((page) => page.kind === 'custom' && page.id === 'workflow-runtime');
-  if (!insightsPage) return sources;
-  const knownWorkflows = new Set((sources.workflows?.rows ?? [])
-    .map(workflowDashboardIdentity)
-    .filter((identity) => identity !== null));
-
-  return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
-    name,
-    {
-      ...source,
-      rows: Array.isArray(source?.rows)
-        ? source.rows.map((row) => deriveWorkflowDashboardLink(row, insightsPage.id, knownWorkflows))
-        : source?.rows
-    }
-  ]));
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @param {string} pageId
- * @param {Set<string>} knownWorkflows
- * @returns {Record<string, unknown>}
- */
-function deriveWorkflowDashboardLink(row, pageId, knownWorkflows) {
-  const identity = workflowDashboardIdentity(row);
-  const workflowLink = row['workflow-link'];
-  if (!identity || !knownWorkflows.has(identity) || !isPlainObject(workflowLink)) return row;
-
-  return {
-    ...row,
-    'workflow-link': {
-      ...workflowLink,
-      'dashboard-href': `#page-${encodeURIComponent(pageId)}?workflow=${encodeURIComponent(identity)}`,
-      'dashboard-label': `View ${trimmedString(row['workflow-name']) ?? trimmedString(row.workflow)} workflow dashboard`
-    }
-  };
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @param {string} pageId
- * @returns {Record<string, unknown>}
- */
-function deriveRepositoryDashboardLink(row, pageId) {
-  const organization = trimmedString(row.organization);
-  const repository = trimmedString(row.repository);
-  const repositorySlug = repository && repository.includes('/') ? repository : (organization && repository ? `${organization}/${repository}` : null);
-  const repositoryLink = row['repository-link'];
-  if (!repositorySlug || !isPlainObject(repositoryLink)) return row;
-
-  return {
-    ...row,
-    'repository-link': {
-      ...repositoryLink,
-      'dashboard-href': `#page-${encodeURIComponent(pageId)}?repository=${encodeURIComponent(repositorySlug)}`,
-      'dashboard-label': `View ${repositorySlug} repository dashboard`
-    }
-  };
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @param {string} githubUrlBase
- * @returns {Record<string, unknown>}
- */
-function deriveEntityLinkRow(row, githubUrlBase) {
-  const organization = trimmedString(row.organization);
-  const repository = trimmedString(row.repository);
-  const workflow = trimmedString(row.workflow);
-  // The `repository` field is documented as retaining its domain syntax (Section 9.2), so it may
-  // already be a fully-qualified `owner/repo` slug or just the bare repository name.
-  const repositorySlug = repository && repository.includes('/') ? repository : (organization && repository ? `${organization}/${repository}` : null);
-  const workflowRepositorySlug = repositorySlugValue(row['runtime-repository']) ?? repositorySlug;
-  /** @type {Record<string, unknown>} */
-  const derived = {};
-
-  if (organization && !findLink(row, 'organization-link')) {
-    derived['organization-link'] = {
-      relation: 'organization',
-      href: `${githubUrlBase}/${organization}`,
-      label: `View ${organization} on GitHub`
-    };
-  }
-  if (repositorySlug && !findLink(row, 'repository-link')) {
-    derived['repository-link'] = {
-      relation: 'repository',
-      href: `${githubUrlBase}/${repositorySlug}`,
-      label: `View ${repositorySlug} on GitHub`
-    };
-  }
-  if (workflowRepositorySlug && workflow && !findLink(row, 'workflow-link')) {
-    const workflowPath = workflow.replace(/^\/+/, '');
-    derived['workflow-link'] = {
-      relation: 'workflow',
-      href: `${githubUrlBase}/${workflowRepositorySlug}/blob/HEAD/${workflowPath}`,
-      label: `View ${workflow} on GitHub`
-    };
-  }
-
-  return Object.keys(derived).length > 0 ? { ...row, ...derived } : row;
-}
-
-/**
- * @param {unknown} value
- * @returns {string | null}
- */
-function trimmedString(value) {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-/** @param {unknown} value */
-function repositorySlugValue(value) {
-  const repository = trimmedString(value);
-  return repository && /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,98}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/.test(repository)
-    ? repository
-    : null;
-}
-
-/** @param {Record<string, unknown>} row */
-function workflowDashboardIdentity(row) {
-  const organization = trimmedString(row.organization);
-  const repository = trimmedString(row.repository);
-  const repositorySlug = repository && repository.includes('/') ? repository : (organization && repository ? `${organization}/${repository}` : null);
-  const workflowRepositorySlug = repositorySlugValue(row['runtime-repository']) ?? repositorySlug;
-  const workflow = trimmedString(row.workflow);
-  return workflowRepositorySlug && workflow ? `${workflowRepositorySlug}:${workflow}` : null;
 }
 
 /**

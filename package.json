@@ -2,9 +2,11 @@
   "name": "central-agentic-ops",
   "private": true,
   "scripts": {
+    "install:gh-aw": "curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash",
     "setup:github-apps": "node .github/cao/setup-github-apps.mjs",
     "activity:local": "local-action run activity local-runner.mjs",
     "activity:local:node": "node activity/local-runner.mjs",
+    "activity:run-workflow:local": "GITHUB_TOKEN=${GITHUB_TOKEN:-$GH_TOKEN} ACTIVITY_LOGS=activity/logs.mjs GITHUB_TELEMETRY=activity/github-telemetry.mjs ACTIVITY_INDEXER=activity/index.mjs DASHBOARD_REPORT_ROOT=dashboard/report DASHBOARD_COLLECTION=true REPORT_AIC_USAGE=_activity/aic-usage.json REPORT_AIC_CACHE=_activity/gh-aw-logs REPORT_GH_AW_LOGS=_activity/gh-aw-logs.json REPORT_GH_AW_LOGS_STATE=_activity/gh-aw-logs-state.json REPORT_DEPLOYED_WORKFLOWS=_activity/deployed-workflows.json REPORT_OPERATIONAL_VALUES=_activity/operational-values.json REPORT_VALUE_CACHE=_activity/operational-values.json REPORT_CONTROL_SETTINGS=_activity/control-settings.json REPORT_INVENTORY=_activity/control-plane-inventory.json REPORT_RECORDS=_activity/dashboard-records.json node activity/local-runner.mjs activity/run-activity.mjs --verbose",
     "dashboard:local": "node dashboard/local-server.mjs",
     "dashboard:local:copilot": "node dashboard/local-server.mjs --copilot",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/sources.json MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=playwright.mobile.config.mjs",
@@ -47,6 +49,7 @@
     "@github/local-action": "^7.0.1",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "^7.0.2"
   }
 }

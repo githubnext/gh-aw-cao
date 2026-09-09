@@ -1,6 +1,6 @@
 name: CAO Dashboard
 description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages. Requires the activity package.
-min-version: v0.88.7
+min-version: v0.88.8
 experimental: true
 includes:
   - source: dashboard.yml
@@ -48,6 +48,30 @@ resources:
     destination: .github/aw/dashboard/site/src/data-processor.js
   - source: site/src/data-worker.js
     destination: .github/aw/dashboard/site/src/data-worker.js
+  - source: site/src/data/adapters/dashboard-sources.js
+    destination: .github/aw/dashboard/site/src/data/adapters/dashboard-sources.js
+  - source: site/src/data/adapters/gh-aw-logs.js
+    destination: .github/aw/dashboard/site/src/data/adapters/gh-aw-logs.js
+  - source: site/src/data/adapters/sql-export.js
+    destination: .github/aw/dashboard/site/src/data/adapters/sql-export.js
+  - source: site/src/data/ingest/coordinator.js
+    destination: .github/aw/dashboard/site/src/data/ingest/coordinator.js
+  - source: site/src/data/ingest/errors.js
+    destination: .github/aw/dashboard/site/src/data/ingest/errors.js
+  - source: site/src/data/model/ids.js
+    destination: .github/aw/dashboard/site/src/data/model/ids.js
+  - source: site/src/data/model/schema.js
+    destination: .github/aw/dashboard/site/src/data/model/schema.js
+  - source: site/src/data/normalize/index.js
+    destination: .github/aw/dashboard/site/src/data/normalize/index.js
+  - source: site/src/data/queries/index.js
+    destination: .github/aw/dashboard/site/src/data/queries/index.js
+  - source: site/src/data/queries/view-sources.js
+    destination: .github/aw/dashboard/site/src/data/queries/view-sources.js
+  - source: site/src/data/storage/indexeddb.js
+    destination: .github/aw/dashboard/site/src/data/storage/indexeddb.js
+  - source: site/src/data/storage/quota.js
+    destination: .github/aw/dashboard/site/src/data/storage/quota.js
   - source: site/src/copilot-prompt.js
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js
@@ -62,6 +86,8 @@ resources:
     destination: .github/aw/dashboard/site/src/debounce.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
+  - source: site/src/inferred-sources.js
+    destination: .github/aw/dashboard/site/src/inferred-sources.js
   - source: site/src/loading-progress.js
     destination: .github/aw/dashboard/site/src/loading-progress.js
   - source: site/src/notification-stories.js
@@ -88,8 +114,6 @@ resources:
     destination: .github/aw/dashboard/site/src/smells.svg
   - source: site/src/specification.js
     destination: .github/aw/dashboard/site/src/specification.js
-  - source: site/src/source-cache.js
-    destination: .github/aw/dashboard/site/src/source-cache.js
   - source: site/src/source-loader.js
     destination: .github/aw/dashboard/site/src/source-loader.js
   - source: site/src/styles.js

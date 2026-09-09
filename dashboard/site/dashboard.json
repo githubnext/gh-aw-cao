@@ -806,7 +806,8 @@
                   {
                     "field": "failure-summary",
                     "type": "nominal",
-                    "title": "Failure rate"
+                    "title": "Failure rate",
+                    "filter": false
                   },
                   {
                     "field": "aic",
@@ -3781,7 +3782,7 @@
             "title": "Failed run evidence",
             "description": "Open a run on GitHub to inspect its jobs, logs, and retained evidence.",
             "data": {
-              "source": "runs",
+              "source": "failed-runs",
               "filters": {
                 "run-conclusion": [
                   "failure",

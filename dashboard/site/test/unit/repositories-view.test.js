@@ -140,7 +140,7 @@ describe('repositories view', () => {
           { field: 'reports' },
           { field: 'evaluated-workflows' },
           { field: 'runs' },
-          { field: 'failure-summary' },
+          { field: 'failure-summary', filter: false },
           { field: 'aic', unit: 'aic' },
           { field: 'status', display: 'status' }
         ],
