@@ -487,7 +487,10 @@ async function collectDashboardRecordsImpl({
         throw new Error(`Expected workflow files from ${repositoryName}`);
       }
       const workflowFileByPath = new Map(workflowFiles.map((file) => [file.path, file]));
-      const agenticWorkflows = workflows.filter((workflow) => String(workflow.path || "").endsWith(".lock.yml"));
+      const agenticWorkflows = workflows.filter((workflow) => (
+        String(workflow.path || "").endsWith(".lock.yml")
+        && workflowFileByPath.has(workflow.path)
+      ));
       return {
         repository: repositoryName,
         complete: true,
@@ -627,25 +630,18 @@ async function collectDashboardRecordsImpl({
   const issueByUrl = new Map(reportSources.flatMap((source) => source.issues.map((issue) => [issue.url, issue])));
   const runCache = new Map();
 
-  async function metadataFromRunUrl(runUrl) {
+  function provenanceFromRunUrl(runUrl) {
     const match = runUrl.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/actions\/runs\/(\d+)/);
     if (!match) return { mode: "unknown", conclusion: "unknown", repository: "", runtimeRepository: "", workflowPath: "", workflowId: "", workflowName: "" };
-    const [, runOwner, runRepository, runId] = match;
-    const cacheKey = `${runOwner}/${runRepository}/${runId}`;
-    if (!runCache.has(cacheKey)) {
-      runCache.set(cacheKey, githubOptional(`/repos/${runOwner}/${runRepository}/actions/runs/${runId}`, null));
-    }
-    const run = await runCache.get(cacheKey);
-    const mode = parseRolloutMode(run?.display_title);
-    const workflowPath = run?.path || "";
+    const [, runOwner, runRepository] = match;
     return {
-      mode: normalizeMode(mode),
-      conclusion: run?.conclusion || "unknown",
-      repository: targetRepositoryFromRun(run, `${runOwner}/${runRepository}`, canonicalAllowedRepositories, owner),
+      mode: "unknown",
+      conclusion: "unknown",
+      repository: "",
       runtimeRepository: `${runOwner}/${runRepository}`,
-      workflowPath,
-      workflowId: workflowPath.split("/").at(-1)?.replace(/\.lock\.yml$/, "") || "",
-      workflowName: run?.name || "",
+      workflowPath: "",
+      workflowId: "",
+      workflowName: "",
     };
   }
 
@@ -657,10 +653,10 @@ async function collectDashboardRecordsImpl({
     ...(await Promise.all(reportSources.flatMap((source) => source.artifacts
       .map((artifact) => recordFromArtifact(artifact, source.repository))))).filter(Boolean),
   ];
-  const records = (await Promise.all(discoveredRecords.map(async (record) => {
+  const records = discoveredRecords.map((record) => {
     const metadata = record.mode && record.conclusion
       ? { mode: record.mode, conclusion: record.conclusion, runtimeRepository: "", workflowPath: "", workflowId: "", workflowName: "" }
-      : await metadataFromRunUrl(record.runUrl);
+      : provenanceFromRunUrl(record.runUrl);
     const workflowId = record.workflowId || metadata.workflowId;
     const inventoryWorkflow = (inventory.workflows || []).find((workflow) => workflow.id === workflowId);
     const markerBundle = record.workflowId ? bundleDefinitions.find((definition) => (
@@ -696,7 +692,7 @@ async function collectDashboardRecordsImpl({
       workflowId,
       workflow: metadata.workflowName || inventoryWorkflow?.name || record.workflow,
     };
-  }))).sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
+  }).sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
   const scopedRecords = records.filter((record) => {
     const repositoryName = record.repository.toLowerCase();
     if (canonicalAllowedRepositories.size > 0 && !canonicalAllowedRepositories.has(repositoryName)) return false;

@@ -19,7 +19,7 @@ const publicRepositoryMetadata = {
   default_branch: "main",
 };
 
-test("dashboard records retain durable-output target and run attribution", async () => {
+test("dashboard records retain durable-output provenance without querying workflow-run metadata", async () => {
   const issue = {
     number: 7,
     title: "[Maintenance] Update available",
@@ -31,8 +31,10 @@ test("dashboard records retain durable-output target and run attribution", async
     created_at: "2026-09-01T10:00:00Z",
     updated_at: "2026-09-01T11:00:00Z",
   };
+  const requests = [];
   const fetchImpl = async (input) => {
     const url = new URL(input);
+    requests.push(url.pathname);
     let value;
     if (url.pathname === "/repos/acme/control" || url.pathname === "/repos/acme/service") value = publicRepositoryMetadata;
     else if (url.pathname === "/repos/github/gh-aw/releases/latest") value = { tag_name: "v0.89.0" };
@@ -41,12 +43,6 @@ test("dashboard records retain durable-output target and run attribution", async
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
     else if (url.pathname.endsWith("/actions/workflows")) value = { workflows: [] };
-    else if (url.pathname.endsWith("/actions/runs/42")) value = {
-      name: "Maintenance / Worker",
-      path: ".github/workflows/maintenance-worker.lock.yml",
-      display_title: "Maintenance / Worker · live",
-      conclusion: "success",
-    };
     else throw new Error(`Unexpected request: ${url}`);
     return new Response(JSON.stringify(value), { status: 200 });
   };
@@ -80,11 +76,12 @@ test("dashboard records retain durable-output target and run attribution", async
     id: "acme/control-issue-7",
     repository: "acme/service",
     runtimeRepository: "acme/control",
-    workflowPath: ".github/workflows/maintenance-worker.lock.yml",
-    workflow: "Maintenance / Worker",
-    mode: "live",
-    conclusion: "success",
+    workflowPath: "",
+    workflow: "Worker",
+    mode: "review",
+    conclusion: "unknown",
   }]);
+  assert.equal(requests.includes("/repos/acme/control/actions/runs/42"), false);
 });
 
 test("dashboard records attribute issues from the gh-aw workflow XML marker", async () => {
@@ -273,6 +270,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
       return new Response(JSON.stringify({
         workflows: [
           { name: "Remote agent", path: ".github/workflows/remote-agent.lock.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/remote-agent.lock.yml" },
+          { name: "Deleted agent", path: ".github/workflows/deleted-agent.lock.yml", state: "disabled_manually", html_url: "https://github.com/acme/service/actions/workflows/deleted-agent.lock.yml" },
           { name: "CI", path: ".github/workflows/ci.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/ci.yml" },
         ],
       }), { status: 200 });
