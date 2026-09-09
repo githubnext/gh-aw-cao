@@ -442,6 +442,43 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
   });
 
+  it('renders event inspection as one full-view lazy table', async () => {
+    const metadata = {
+      'source-id': 'event-inspection-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'event-inspection': {
+          source: 'event-inspection',
+          rows: [
+            {
+              'observed-at': '2026-09-02T12:00:00Z', 'event-source': 'agent', 'event-type': 'assistant_message',
+              'event-status': 'completed', 'event-summary': 'Produced a review', repository: 'gh-aw-cao',
+              workflow: '.github/workflows/review.yml', run: '1002', 'run-attempt': 1, session: 'session-1',
+              event: 'event-1', 'correlation-id': 'correlation-1', 'source-sequence': 3,
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1002', label: 'View run 1002' }
+            }
+          ],
+          metadata
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'events');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.textContent).toContain('Produced a review');
+    expect(page?.textContent).toContain('assistant_message');
+    expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
+  });
+
   it('explains when engine and model usage data is missing', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
@@ -958,6 +995,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1282,6 +1320,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
