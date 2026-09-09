@@ -17,6 +17,9 @@ export default [
       }
     },
     rules: {
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
       'no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
     }
   },
