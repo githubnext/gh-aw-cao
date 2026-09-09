@@ -75,6 +75,10 @@ if (args[0] === "aw") {
     const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
     const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
+    assert.deepEqual(args.slice(args.indexOf("--repo"), args.indexOf("--repo") + 2), [
+      "--repo",
+      "githubnext/gh-aw-cao",
+    ]);
     assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
@@ -88,7 +92,7 @@ if (args[0] === "aw") {
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "10"]);
     assert.deepEqual(args.slice(args.indexOf("--timeout"), args.indexOf("--timeout") + 2), ["--timeout", "10"]);
-    assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
+    assert.equal(args.at(-1), "sample");
     const snapshot = JSON.parse(await readFile(item.logsPath, "utf8"));
     assert.deepEqual(snapshot.runs[0].jobs, [{
       jobId: 84,

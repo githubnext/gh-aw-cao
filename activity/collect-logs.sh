@@ -14,12 +14,13 @@ mkdir -p "$output_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_pa
 
 mapfile -t targets < <(
   find "$root/.github/workflows" -maxdepth 1 -type f -name '*.lock.yml' -printf '%f\n' |
-    sort |
-    sed "s#^#$repository/.github/workflows/#"
+    sed 's/\.lock\.yml$//' |
+    sort
 )
 
 set +e
 gh aw logs --audit \
+  --repo "$repository" \
   --output "$output_directory" \
   --summary-file "" \
   --cached-json "$logs_path" \
