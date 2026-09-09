@@ -255,9 +255,6 @@ function githubApiRequestRequirement(policy, options) {
       : policy.allowed_repositories.length > 0
         ? policy.allowed_repositories.length
         : Math.ceil(policy.inventory["max-scan-repositories"] / 100);
-    if (policy.monthly_ai_credit_budget > 0) {
-      estimated += (Object.keys(policy.worker_policies || {}).length + 1) * 10;
-    }
   } else if (policy.safe_output_mode === "live") {
     estimated += 3;
   }
@@ -431,11 +428,10 @@ function admit() {
   }
 
   writeAdmissionRecord(result, options, workflowSha);
-  const monthlyCreditBudget = result.authorized ? result.monthly_ai_credit_budget : 0;
   const outputs = {
     authorized: result.authorized,
     reason: result.reason,
-    monthly_credit_budget: monthlyCreditBudget,
+    monthly_credit_budget: 0,
   };
   if (result.github_api_capacity?.status !== "available" && result.github_api_capacity) {
     Object.assign(outputs, {
@@ -781,9 +777,6 @@ function createInventory(context, repositories) {
   requireNonNegativeInteger(batchIndex, "batch_index must be a non-negative integer");
   requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
-  requireNonNegativeInteger(context.orchestratorCredits, "AI Credit admission values must be non-negative integers");
-  requireNonNegativeInteger(context.workerCreditsPerTarget, "AI Credit admission values must be non-negative integers");
-
   const sorted = [...repositories].sort((left, right) => left.id - right.id || left.full_name.localeCompare(right.full_name));
   const version = inventoryDigest(sorted);
   const cell = context.targetRepository ? sorted : sorted.filter(({ id }) => id % cellCount === cellIndex);
@@ -815,9 +808,6 @@ function writeOrchestratorPrecompute(context) {
   requirePositiveInteger(context.policy.inventory["batch-size"], 100_000, "batch_size must be an integer from 1 through 100000");
   requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
-  requireNonNegativeInteger(context.orchestratorCredits, "AI Credit admission values must be non-negative integers");
-  requireNonNegativeInteger(context.workerCreditsPerTarget, "AI Credit admission values must be non-negative integers");
-
   const { sourcePath, ref } = controlSourcePath();
   const source = Buffer.from(ghApi(`repos/${context.controlRepository}/contents/${sourcePath}`, {
     fields: { ref }, jq: ".content",
@@ -894,7 +884,11 @@ function writeOrchestratorPrecompute(context) {
     effective_max_repos: effectiveMaximum,
     orchestrator_credits: context.orchestratorCredits,
     worker_credits_per_target: context.workerCreditsPerTarget,
-    monthly_credit_budget: context.policy.monthly_ai_credit_budget,
+    monthly_credit_budget: 0,
+    monthly_ai_credits_spent: 0,
+    monthly_ai_credits_remaining: 0,
+    monthly_budget_error: "",
+    monthly_budget_target_cap: effectiveMaximum,
     safe_output_mode: context.mode,
     safe_output_repo: context.safeOutputRepository,
     repo_source: selected.source,
@@ -905,56 +899,7 @@ function writeOrchestratorPrecompute(context) {
     candidate_repositories: resolvedCandidates,
     worker_workflows: workerWorkflows,
   };
-  writeJson(OUTPUT_PATH, applyMonthlyBudget(context, configuredWorkers, result));
-}
-
-function applyMonthlyBudget(context, configuredWorkers, result) {
-  const budget = result.monthly_credit_budget;
-  requireNonNegativeInteger(budget, "monthly_credit_budget must be a non-negative integer");
-  requireNonNegativeInteger(context.workerCreditsPerTarget, "worker_credits_per_target must be a non-negative integer");
-  if (budget > 0 && context.workerCreditsPerTarget === 0) {
-    throw new ControlError("monthly_credit_budget requires positive worker_credits_per_target");
-  }
-
-  let spent = 0;
-  let budgetError = "";
-  if (budget > 0) {
-    const monthStart = new Date().toISOString().slice(0, 8) + "01";
-    const runs = new Map();
-    for (const workflowId of [...new Set([context.packageName, ...configuredWorkers])].sort()) {
-      const command = spawnSync("gh", ["aw", "logs", workflowId, "--start-date", monthStart, "--json", "-c", "1000"], {
-        encoding: "utf8",
-        maxBuffer: 64 * 1024 * 1024,
-      });
-      let document;
-      try {
-        document = JSON.parse(command.stdout);
-      } catch {
-        document = null;
-      }
-      if (!Array.isArray(document?.runs)) {
-        budgetError = `could not read valid month-to-date AI Credit usage for ${workflowId} (exit code ${command.status ?? 1})`;
-        break;
-      }
-      for (const item of document.runs) runs.set(item.run_id, item);
-    }
-    if (!budgetError) spent = [...runs.values()].reduce((total, item) => total + (Number(item.aic) || 0), 0);
-  }
-  const remaining = Math.max(0, budget - spent);
-  const targetCap = budget === 0
-    ? Number(result.max_repos)
-    : budgetError || budget <= spent + context.orchestratorCredits
-      ? 0
-      : Math.floor((budget - spent - context.orchestratorCredits) / context.workerCreditsPerTarget);
-  return {
-    ...result,
-    monthly_credit_budget: budget,
-    monthly_ai_credits_spent: spent,
-    monthly_ai_credits_remaining: remaining,
-    monthly_budget_error: budgetError,
-    monthly_budget_target_cap: targetCap,
-    effective_max_repos: Math.min(result.effective_max_repos, targetCap),
-  };
+  writeJson(OUTPUT_PATH, result);
 }
 
 function precompute() {

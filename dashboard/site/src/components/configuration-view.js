@@ -21,7 +21,7 @@ const EXACT_EXPLANATIONS = {
   'control-plane.defaults.mode': 'Sets the inherited execution mode. Review proposes changes; live may write authorized outputs.',
   'control-plane.defaults.max-repositories': 'Caps repositories selected by each package.',
   'control-plane.defaults.rollout-percent': 'Deterministically limits the percentage of eligible repositories selected.',
-  'control-plane.defaults.monthly-ai-credit-budget': 'Caps monthly AI Credits; zero disables budget-based tuning.',
+  'control-plane.defaults.monthly-ai-credit-budget': 'Deprecated compatibility field; it no longer gates monthly AI Credit usage.',
   'control-plane.packages': 'Declares installed operation packages and their permitted behavior.',
   'control-plane.publishing': 'Controls optional publishing of reviewed operation issues.',
   'control-plane.publishing.enabled': 'Enables or disables reviewed operation publishing.',
