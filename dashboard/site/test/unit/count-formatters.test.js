@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { clampPercent, computeObservationCoverage, countBy, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, countBy, formatAic, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -96,5 +96,12 @@ describe('count formatters', () => {
     expect(counts.get('ready')).toBe(2);
     expect(counts.get('blocked')).toBe(1);
     expect(countBy([], (row) => row.readiness).size).toBe(0);
+  });
+
+  it('formats AI Credit amounts with at most one fractional digit', () => {
+    expect(formatAic(0)).toBe('0');
+    expect(formatAic(10)).toBe('10');
+    expect(formatAic(1234.567)).toBe('1,234.6');
+    expect(formatAic(0.5)).toBe('0.5');
   });
 });

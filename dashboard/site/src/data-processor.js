@@ -27,7 +27,8 @@ const pending = new Map();
  *   registeredWorker: Worker | null,
  *   latest: Record<string, import('./presenter.js').LogicalSourceInput> | null,
  *   snapshot: Record<string, import('./presenter.js').LogicalSourceInput> | null,
- *   frame: number | null
+ *   frame: number | null,
+ *   emitCurrent: boolean
  * }} ViewSubscription
  */
 /** @type {Map<string, ViewSubscription>} */
@@ -168,6 +169,23 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
 }
 
 /**
+ * Refreshes the canonical dashboard and reports whether ingestion activated a
+ * changed generation or hydrated transient published sources after reload.
+ * @param {string} sourceUrl
+ * @param {string[]} sourceNames
+ * @param {{ githubUrlBase?: string, pages: unknown[] }} context
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
+ */
+export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
+  return /** @type {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>} */ (processRequest(
+    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, reportActivation: true },
+    () => Promise.reject(new Error('Live canonical dashboard refresh requires a data worker.')),
+    false
+  ));
+}
+
+/**
  * Queries one page from the live canonical dashboard retained by the worker.
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[], queries?: unknown[] }} context
@@ -192,7 +210,7 @@ export function loadCanonicalDashboardPage(sourceNames, context, pagination) {
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
  * @param {(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void} listener
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
- * @param {{ signal?: AbortSignal, onError?: (error: Error) => void }} [options]
+ * @param {{ signal?: AbortSignal, onError?: (error: Error) => void, emitCurrent?: boolean }} [options]
  * @returns {() => void}
  */
 export function subscribeCanonicalDashboardView(viewId, sourceNames, context, listener, pagination, options = {}) {
@@ -221,7 +239,8 @@ export function subscribeCanonicalDashboardView(viewId, sourceNames, context, li
       registeredWorker: null,
       latest: null,
       snapshot: null,
-      frame: null
+      frame: null,
+      emitCurrent: options.emitCurrent !== false
     };
     subscriptions.set(viewId, subscription);
   }
@@ -306,7 +325,8 @@ function registerSubscription(processor, subscription) {
     subscriptionId: subscription.id,
     sourceNames: subscription.sourceNames,
     context: subscription.context,
-    pagination: subscription.pagination
+    pagination: subscription.pagination,
+    emitCurrent: subscription.emitCurrent
   });
 }
 

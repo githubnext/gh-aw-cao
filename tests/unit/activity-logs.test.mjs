@@ -34,13 +34,13 @@ const fs = require("node:fs");
 const args = process.argv.slice(2);
 if (args[0] === "aw") {
   fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
-  process.stderr.write("Fetched 1 run\\n");
-  process.stdout.write(JSON.stringify({runs:[{
+  fs.writeFileSync(args[args.indexOf("--cached-json") + 1], JSON.stringify({runs:[{
    database_id:42,
    repository:"githubnext/gh-aw-cao",
    workflow_path:".github/workflows/sample.lock.yml",
    status:"completed"
   }]}));
+  process.stderr.write("Fetched 1 run\\n");
 } else {
   fs.writeFileSync(process.env.GH_JOB_ARGS_PATH, JSON.stringify(args));
   process.stdout.write(JSON.stringify({jobs:[{
@@ -73,7 +73,8 @@ if (args[0] === "aw") {
       },
     });
     const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
-    assert.deepEqual(args.slice(0, 4), ["aw", "logs", "--json", "--audit"]);
+    assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
+    assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
       "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
@@ -106,7 +107,7 @@ if (args[0] === "aw") {
     assert.equal(state.jobDetails.observedRuns, 1);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
     assert.ok(stdout.includes(
-      "Calling command: gh aw logs --json --audit "
+      "Calling command: gh aw logs --audit "
       + `--output ${item.outputPath} --summary-file '' `
       + `--cached-json ${item.logsPath} `
       + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent ",

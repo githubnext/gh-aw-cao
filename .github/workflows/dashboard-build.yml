@@ -50,9 +50,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/cao-activity
-          key: cao-activity-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cao-activity-v2-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            cao-activity-
+            cao-activity-v2-
           lookup-only: true
 
       - name: Dispatch activity refresh
@@ -120,15 +120,15 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/cao-activity
-          key: ${{ format('cao-activity-{0}-{1}', needs.activity.outputs.run-id, needs.activity.outputs.run-attempt) }}
+          key: ${{ format('cao-activity-v2-{0}-{1}', needs.activity.outputs.run-id, needs.activity.outputs.run-attempt) }}
           restore-keys: |
-            cao-activity-
+            cao-activity-v2-
 
       - name: Require collected activity data
         env:
           ACTIVITY_DATA_ROOT: ${{ runner.temp }}/cao-activity
         run: |
-          for file in control-settings.json control-plane-inventory.json deployed-workflows.json aic-usage.json operational-values.json dashboard-records.json; do
+          for file in control-settings.json control-plane-inventory.json deployed-workflows.json aic-usage.json operational-values.json dashboard-records.json gh-aw-logs.json; do
             if [[ ! -f "$ACTIVITY_DATA_ROOT/$file" ]]; then
               echo "Collected activity data is unavailable: $file" >&2
               exit 1
@@ -160,6 +160,7 @@ jobs:
               "$REPORT_OUTPUT/dashboard.json" \
               .github/aw/dashboards
           fi
+          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.json" "$REPORT_OUTPUT/gh-aw-logs.json"
 
       - name: Build Dashboard Language sources
         env:

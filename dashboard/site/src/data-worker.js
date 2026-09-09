@@ -6,6 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { activeGenerationMetadata } from './data/storage/indexeddb.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -25,6 +26,17 @@ const dashboardSubscriptions = new Map();
 const dirtyDashboardSubscriptions = new Set();
 let subscriptionFlushScheduled = false;
 let subscriptionFlushRunning = false;
+
+async function loadActiveDashboard() {
+  if (liveDashboard) return liveDashboard;
+  const active = await activeGenerationMetadata(indexedDB);
+  if (!active) throw new Error('Canonical dashboard data has not been loaded.');
+  liveDashboard = {
+    logicalSources: {},
+    generation: active.generation
+  };
+  return liveDashboard;
+}
 
 /**
  * @param {unknown} sourceNames
@@ -54,7 +66,7 @@ function pageScopedSources(sources, requested) {
  * @param {typeof liveDashboard} [dashboard]
  */
 async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}, dashboard = liveDashboard) {
-  if (!dashboard) throw new Error('Canonical dashboard data has not been loaded.');
+  dashboard ??= await loadActiveDashboard();
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
@@ -62,6 +74,14 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     dashboard.generation,
     required
   );
+  const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
+  if (!hasPublishedSources) {
+    return paginateDashboardSources(
+      deriveDashboardLinkSources(pageScopedSources(canonicalPayload, requested), context),
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
+      continuationRevision(context.queries, dashboard.generation)
+    );
+  }
   const derivedSources = deriveRuntimeSources(
     deriveRepositorySources(
       deriveOverviewSources(
@@ -138,14 +158,15 @@ async function flushDashboardSubscriptions() {
           }
         }
 
-        /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
-        function resetPagination(pagination) {
-          return Object.fromEntries(Object.entries(pagination).map(([source, request]) => [
-            source,
-            { limit: request.limit }
-          ]));
-        }
       }));
+    }
+
+    /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
+    function resetPagination(pagination) {
+      return Object.fromEntries(Object.entries(pagination).map(([source, request]) => [
+        source,
+        { limit: request.limit }
+      ]));
     }
   } finally {
     subscriptionFlushRunning = false;
@@ -174,7 +195,7 @@ function dashboardContext(value) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -206,22 +227,27 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      const hadPublishedSources = Object.keys(liveDashboard?.logicalSources ?? {}).length > 0;
       const sources = await loadDashboardSources(fetch, sourceUrl.href);
-      const { generation } = await ingestDashboardSources(indexedDB, sources, {
+      const { generation, activated } = await ingestDashboardSources(indexedDB, sources, {
         storage: globalThis.navigator?.storage
       });
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         generation
       };
-      scheduleDashboardSubscriptions();
-      return queryLiveDashboard(
+      const changed = activated || !hadPublishedSources;
+      if (changed) scheduleDashboardSubscriptions();
+      const projected = await queryLiveDashboard(
         requested,
         context,
         /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
         signal,
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
+      return request.reportActivation
+        ? { sources: projected, changed }
+        : projected;
     })();
   }
   if (request?.operation === 'execute-dashboard-queries') {
@@ -318,7 +344,9 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
         generation: liveDashboard?.generation ?? null
       });
-      if (liveDashboard) scheduleDashboardSubscriptions([subscriptionId]);
+      if (liveDashboard && event.data.emitCurrent !== false) {
+        scheduleDashboardSubscriptions([subscriptionId]);
+      }
       return;
     }
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {

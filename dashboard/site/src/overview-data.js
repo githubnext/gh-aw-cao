@@ -3,7 +3,7 @@
  */
 
 import { formatNumber, formatPercent } from './view-formatters.js';
-import { formatCount, pluralSuffix, titleCase } from './components/count-formatters.js';
+import { formatAic, formatCount, pluralSuffix, titleCase } from './components/count-formatters.js';
 import { classifyUtilizationRatio, isApprovalConclusion, isFailureConclusion } from './components/run-classification.js';
 import { buildAttentionItems } from './components/attention-rules.js';
 
@@ -1095,12 +1095,6 @@ function roundMetric(value) {
   return Math.round(value * 1000) / 1000;
 }
 
-/**
- * @param {number} value
- */
-function formatAic(value) {
-      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(value);
-}
 
 /** @param {Record<string, unknown>} row */
 function isApiCapacityBlock(row) {

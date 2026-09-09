@@ -73,6 +73,28 @@ describe('canonical dashboard view subscriptions', () => {
     }]);
   });
 
+  it('can wait for the next database update instead of replaying current rows', () => {
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    const unsubscribe = subscribeCanonicalDashboardView(
+      'refresh-table',
+      ['runs'],
+      { pages: [] },
+      () => {},
+      undefined,
+      { emitCurrent: false }
+    );
+    const worker = SubscriptionWorker.current;
+    expect(worker).toBeDefined();
+    if (!worker) throw new Error('Subscription worker was not created.');
+
+    expect(worker.messages.find((message) => message.subscriptionId === 'refresh-table')).toMatchObject({
+      operation: 'subscribe-canonical-dashboard',
+      subscriptionId: 'refresh-table',
+      emitCurrent: false
+    });
+    unsubscribe();
+  });
+
   it('tracks duplicate listener registrations independently', () => {
     vi.stubGlobal('Worker', SubscriptionWorker);
     const listener = vi.fn();

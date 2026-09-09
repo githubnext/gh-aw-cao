@@ -1,7 +1,7 @@
       import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
+      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources, subscribeCanonicalDashboardView } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
@@ -159,7 +159,7 @@
 
       /**
        * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
-       * @param {'ready' | 'loading' | 'cached'} [state]
+       * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
        * @param {boolean} [prepared]
        * @param {(pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
        * @param {() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadHorizonSources]
@@ -198,6 +198,14 @@
           status.className = "source-loading-status";
           status.setAttribute("role", "status");
           status.textContent = "Showing cached data while loading the latest dashboard data…";
+          dashboard.querySelector(".report-body")?.prepend(status);
+        } else if (state === "stale") {
+          dashboard.classList.add("dashboard-stale");
+
+          const status = document.createElement("p");
+          status.className = "source-loading-status";
+          status.setAttribute("role", "status");
+          status.textContent = "Showing cached data because the latest dashboard data could not be loaded.";
           dashboard.querySelector(".report-body")?.prepend(status);
         }
         attachCopilotPanel(dashboard);
@@ -886,6 +894,8 @@
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./sources.json", window.location.href).href;
+        /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
+        let cachedSources = null;
 
         try {
           const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
@@ -925,28 +935,103 @@
             DASHBOARD_HORIZON_COUNT_SOURCES,
             dashboardContext,
           );
-          renderSources(
-            bindContinuations(
-              await loadCanonicalDashboardSources(
-                sourceUrl,
-                initialSources,
-                dashboardContext,
-                continuationRequests(initialLazySources),
-              ),
-              initialLazySources,
+          /**
+           * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
+           */
+          const loadInitialSources = async (load) => bindContinuations(
+            await load(
+              initialSources,
+              continuationRequests(initialLazySources),
             ),
-            "ready",
-            true,
-            loadPageSources,
-            loadHorizonSources,
+            initialLazySources,
           );
+          try {
+            cachedSources = await loadInitialSources(
+              (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            );
+          } catch {
+            // An empty or incompatible database is rebuilt from the published sources below.
+          }
+
+          if (cachedSources) {
+            const displayedSources = cachedSources;
+            const refreshPagination = continuationRequests(initialLazySources);
+            const refreshOwner = new AbortController();
+            window.addEventListener("pagehide", () => refreshOwner.abort(), { once: true });
+            let refreshFailed = false;
+            /** @param {unknown} error */
+            const showStaleSources = (error) => {
+              if (refreshFailed) return;
+              refreshFailed = true;
+              const message = error instanceof Error ? error.message : String(error);
+              console.error(`Unable to refresh live dashboard data: ${message}`);
+              updateWithViewTransition(
+                document,
+                () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources),
+              );
+            };
+            renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
+            loadingProgress.complete();
+            cancelCommand.complete();
+            subscribeCanonicalDashboardView(
+              `page:${initialPageId}`,
+              initialSources,
+              dashboardContext,
+              (sources) => updateWithViewTransition(
+                document,
+                () => renderSources(
+                  bindContinuations(sources, initialLazySources),
+                  "ready",
+                  true,
+                  loadPageSources,
+                  loadHorizonSources,
+                ),
+              ),
+              refreshPagination,
+              { signal: refreshOwner.signal, onError: showStaleSources, emitCurrent: false },
+            );
+            const refresh = refreshCanonicalDashboardSources(
+              sourceUrl,
+              initialSources,
+              dashboardContext,
+              refreshPagination,
+            );
+            void refresh.then(
+              ({ changed }) => {
+                if (changed) return;
+                const dashboard = root.firstElementChild;
+                if (!(dashboard instanceof HTMLElement)) return;
+                dashboard.classList.remove("dashboard-refreshing");
+                dashboard.removeAttribute("aria-busy");
+                dashboard.querySelector(".source-loading-status")?.remove();
+              },
+              showStaleSources,
+            );
+          } else {
+            renderSources(
+              await loadInitialSources(
+                (requested, pagination) => loadCanonicalDashboardSources(
+                  sourceUrl,
+                  requested,
+                  dashboardContext,
+                  pagination,
+                ),
+              ),
+              "ready",
+              true,
+              loadPageSources,
+              loadHorizonSources,
+            );
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
           root.textContent = failure.message;
           throw failure;
         } finally {
-          loadingProgress.complete();
-          cancelCommand.complete();
+          if (!cachedSources) {
+            loadingProgress.complete();
+            cancelCommand.complete();
+          }
         }
       }

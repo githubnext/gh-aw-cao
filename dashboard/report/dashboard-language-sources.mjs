@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { sourceId } from "../site/src/data/model/ids.js";
+import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -823,17 +823,21 @@ function collectedLogRuns(usage) {
   return [...runs.values()];
 }
 
-function transactionLogRows(usage) {
+export function transactionLogRows(usage) {
   const sessions = [];
   const events = [];
   for (const run of usage.securityRuns || []) {
     const timeline = Array.isArray(run.timeline) ? run.timeline : [];
-    if (timeline.length === 0) continue;
     const names = repositoryParts(run.repository);
     const attempt = Number(run.runAttempt) || 1;
-    const session = firstText(timeline[0]?.sessionId);
+    const session = firstText(
+      timeline[0]?.sessionId,
+      sourceId("session", "gh-aw-logs", `${canonicalRunId(run.runId, attempt)}:unified`),
+    );
     if (!session) continue;
     const timestamps = timeline.map((event) => firstText(event.timestamp)).filter(Boolean).sort();
+    const observedAt = firstText(run.createdAt, usage.generatedAt);
+    if (timestamps.length === 0 && observedAt) timestamps.push(observedAt);
     const agentJob = Array.isArray(run.logsPayload?.jobs)
       ? run.logsPayload.jobs.find((job) => /agent/i.test(firstText(job?.name)))
       : null;
@@ -853,6 +857,18 @@ function transactionLogRows(usage) {
       "ended-at": run.logsPayload?.status === "completed" ? timestamps.at(-1) : undefined,
       "observed-at": run.createdAt || usage.generatedAt,
     });
+    if (timeline.length === 0) {
+      events.push({
+        ...common,
+        event: sourceId("event", "gh-aw-logs", `${session}:run-observed`),
+        "event-timestamp": timestamps[0],
+        "event-source": "workflow",
+        "event-type": "run_observed",
+        "event-status": firstText(run.logsPayload?.status, run.conclusion, "unknown"),
+        "source-sequence": 0,
+        "observed-at": observedAt,
+      });
+    }
     timeline.forEach((event) => events.push({
       ...common,
       event: sourceId("event", "gh-aw-logs", event.sourceId),

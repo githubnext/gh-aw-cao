@@ -54,6 +54,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/adapters/gh-aw-logs.js
   - source: site/src/data/adapters/sql-export.js
     destination: .github/aw/dashboard/site/src/data/adapters/sql-export.js
+  - source: site/src/data/continuation.js
+    destination: .github/aw/dashboard/site/src/data/continuation.js
   - source: site/src/data/ingest/coordinator.js
     destination: .github/aw/dashboard/site/src/data/ingest/coordinator.js
   - source: site/src/data/ingest/errors.js

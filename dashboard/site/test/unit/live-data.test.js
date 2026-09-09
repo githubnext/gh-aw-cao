@@ -11,16 +11,23 @@ describe("live Dashboard Language sources", () => {
     const preview = readFileSync(resolve("src/main.js"), "utf8");
 
     expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
-    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("await loadCanonicalDashboardSources("));
+    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
-    expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js"');
+    expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
+    expect(preview).toContain("subscribeCanonicalDashboardView(");
+    expect(preview).toContain("emitCurrent: false");
     expect(preview).toContain('loadCanonicalDashboardPage(\n            DASHBOARD_HORIZON_COUNT_SOURCES,');
-    expect(preview).toMatch(/await loadCanonicalDashboardSources\(\s*sourceUrl,\s*initialSources,\s*dashboardContext,\s*continuationRequests\(initialLazySources\)/);
+    expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
+    expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
+    expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources)');
+    expect(preview).toContain("Showing cached data because the latest dashboard data could not be loaded.");
+    expect(preview).toContain("if (changed) return;");
+    expect(preview).toContain('dashboard.classList.remove("dashboard-refreshing")');
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');
