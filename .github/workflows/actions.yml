@@ -51,7 +51,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Install browser
-        run: npx playwright install --with-deps "$MOBILE_BROWSER"
+        # Playwright's system dependencies come from the Ubuntu archives. The runner
+        # image also configures Google's Chrome repository, whose index intermittently
+        # fails checksum verification and breaks `apt-get update`; CI never installs
+        # from it, so drop it before resolving dependencies.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps "$MOBILE_BROWSER"
         env:
           MOBILE_BROWSER: ${{ matrix.browser }}
       - name: Test latest dashboard data on mobile
