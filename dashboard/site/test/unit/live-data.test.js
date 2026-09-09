@@ -26,7 +26,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
     expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources)');
-    expect(preview).toContain("Showing cached data because the latest dashboard data could not be loaded.");
+    expect(preview).toContain("renderRefreshError(retryRefresh)");
+    expect(preview).toContain("refreshSources");
     expect(preview).toContain("if (changed) return;");
     expect(preview).toContain('dashboard.classList.remove("dashboard-refreshing")');
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
