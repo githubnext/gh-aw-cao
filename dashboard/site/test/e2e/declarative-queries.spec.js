@@ -90,6 +90,14 @@ function queryScenarioSources() {
         }
       ],
       metadata
+    },
+    outcomes: {
+      rows: [
+        { 'safe-output': 'issue-1', 'safe-output-kind': 'create-issue' },
+        { 'safe-output': 'issue-2', 'safe-output-kind': 'create-issue' },
+        { 'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request' }
+      ],
+      metadata
     }
   };
 }
@@ -255,6 +263,17 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
     expect.objectContaining({ workflow: '.github/workflows/audit.md', runs: 1 })
   ]));
   expect(payload['run-totals'].rows).toHaveLength(3);
+});
+
+test('the authored Safe Outputs query groups canonical outcomes by type', async ({ page }) => {
+  const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
+  const query = dashboard.dashboard.queries.find(({ name }) => name === 'safe-outputs-by-type');
+  const payload = await loadThroughWorker(page, [query], ['safe-outputs-by-type']);
+
+  expect(payload['safe-outputs-by-type'].rows).toEqual([
+    { 'safe-output-kind': 'create-issue', 'safe-output-count': 2 },
+    { 'safe-output-kind': 'create-pull-request', 'safe-output-count': 1 }
+  ]);
 });
 
 test('scenario 4: a left join keeps unmatched rows and fills joined fields with null', async ({ page }) => {

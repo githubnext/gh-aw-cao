@@ -303,28 +303,34 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines safe-output diagnostics as one full-view lazy table in Explore', () => {
+  it('defines Safe Outputs as one declarative type summary in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs');
+    const safeOutputsQuery = document.dashboard.queries.find(
+      (/** @type {{ name: string }} */ query) => query.name === 'safe-outputs-by-type'
+    );
 
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('safe-outputs');
     expect(safeOutputs.views).toHaveLength(1);
     expect(safeOutputs.views[0]).toMatchObject({
-      id: 'safe-output-diagnostics',
+      id: 'safe-outputs-by-type',
       mark: 'table',
       controls: 'interactive',
-      'lazy-list': true,
-      layout: 'full-view',
-      data: { source: 'safe-output-performance' }
+      data: { source: 'safe-outputs-by-type' }
     });
-    expect(safeOutputs.views[0].encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'safe-output-kind', title: 'Signal' }),
-      expect.objectContaining({ field: 'safe-output-status', display: 'status' }),
-      expect.objectContaining({ field: 'safe-output-count', title: 'Items' }),
-      expect.objectContaining({ field: 'run-conclusion', display: 'status' })
-    ]));
+    expect(safeOutputs.views[0].encoding.columns).toEqual([
+      expect.objectContaining({ field: 'safe-output-kind', title: 'Type' }),
+      expect.objectContaining({ field: 'safe-output-count', title: 'Safe outputs' })
+    ]);
+    expect(safeOutputsQuery).toMatchObject({
+      from: 'outcomes',
+      aggregate: {
+        by: ['safe-output-kind'],
+        values: [{ field: 'safe-output', as: 'safe-output-count', reducer: 'distinct-count' }]
+      }
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
