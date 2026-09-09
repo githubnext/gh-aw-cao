@@ -1,7 +1,7 @@
 import { CANONICAL_SCHEMA_VERSION, relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 3;
+export const DATABASE_VERSION = 4;
 
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
@@ -9,7 +9,9 @@ const ENTITY_STORES = /** @type {const} */ ([
   'runs',
   'jobs',
   'sessions',
-  'events'
+  'events',
+  'workItems',
+  'findings'
 ]);
 const GENERATION_STORES = ENTITY_STORES;
 const META_STORE = 'meta';
@@ -89,10 +91,26 @@ function createSchema(database) {
   createIndex(events, 'bySource', ['generation', 'source']);
   createIndex(events, 'byCorrelation', ['generation', 'correlationId']);
 
+  createOperationalEntityStores(database);
+
   const checkpoints = database.createObjectStore('ingestionCheckpoints', {
     keyPath: ['generation', 'chunk']
   });
   createIndex(checkpoints, 'generation', 'generation');
+}
+
+/** @param {IDBDatabase} database */
+function createOperationalEntityStores(database) {
+  if (!database.objectStoreNames.contains('workItems')) {
+    const workItems = database.createObjectStore('workItems', { keyPath: ['generation', 'id'] });
+    createIndex(workItems, 'generation', 'generation');
+    createIndex(workItems, 'byLifecycleState', ['generation', 'lifecycleState']);
+  }
+  if (!database.objectStoreNames.contains('findings')) {
+    const findings = database.createObjectStore('findings', { keyPath: ['generation', 'id'] });
+    createIndex(findings, 'generation', 'generation');
+    createIndex(findings, 'bySeverity', ['generation', 'severity']);
+  }
 }
 
 /** @param {IDBDatabase} database */
@@ -112,6 +130,7 @@ export function openCanonicalDatabase(indexedDB) {
     request.onupgradeneeded = (event) => {
       if (event.oldVersion < 1) createSchema(request.result);
       if (event.oldVersion < 3) deleteLegacySourceStores(request.result);
+      if (event.oldVersion >= 1 && event.oldVersion < 4) createOperationalEntityStores(request.result);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));

@@ -870,8 +870,12 @@ describe('presenter built-in and custom pages', () => {
     expect(labels).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
-      'Overview'
+      'Overview',
+      'Repositories',
+      'Workflows',
+      'Packages'
     ]);
+    expect(rendered.querySelector('[data-nav-page-id="workflows"] .octicon-workflow')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
@@ -907,6 +911,9 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[0]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
+      'Repositories',
+      'Workflows',
+      'Packages',
       'Work',
       'Operations',
       'Insights',
@@ -928,9 +935,6 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
-      'Workflows',
-      'Repositories',
-      'Packages',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1231,6 +1235,9 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
+      'Repositories',
+      'Workflows',
+      'Packages',
       'Work',
       'Operations',
       'Insights',
@@ -1252,9 +1259,6 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
-      'Workflows',
-      'Repositories',
-      'Packages',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',

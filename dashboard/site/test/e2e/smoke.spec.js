@@ -726,7 +726,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Workflows', 'Packages']);
+  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
   await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
@@ -857,15 +858,40 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
+  await overviewPage.locator('[href="#page-overview-failed-runs"]').click();
+  const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
+  await expect(failedRunsPage).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(failedRunsPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
+  const fullViewShellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return { width, height };
+  });
+  await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Overview' }).click();
+  await expect(overviewPage).toBeVisible();
+
+  for (const pageId of ['overview-blocked-work', 'overview-security-findings']) {
+    await page.evaluate((nextPageId) => { window.location.hash = `#page-${nextPageId}`; }, pageId);
+    const attentionPage = page.locator(`[data-page-id="${pageId}"]`);
+    await expect(attentionPage).toBeVisible();
+    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+    await expect(attentionPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  }
+  await page.evaluate(() => { window.location.hash = '#page-overview'; });
+  await expect(overviewPage).toBeVisible();
+
   await overviewPage.locator('[href="#page-overview-awaiting-review"]').click();
   const reviewPage = page.locator('[data-page-id="overview-awaiting-review"]');
   await expect(reviewPage).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(reviewPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
   expect(await page.locator('.top-nav > .shell').evaluate((element) => {
     const { width, height } = element.getBoundingClientRect();
     return { width, height };
-  })).toEqual(shellSize);
+  })).toEqual(fullViewShellSize);
   await expect(reviewPage.locator('.custom-view')).toHaveCount(1);
-  await expect(reviewPage.locator('.table-summary-row')).toHaveCount(0);
+  await expect(reviewPage.locator('.table-summary-row .table-summary-cell')).toHaveCount(3);
   await expect(reviewPage.locator('tbody tr')).toHaveCount(1);
   await expect(reviewPage.locator('tbody a[href="https://example.com/evidence/release-train"]')).toBeVisible();
   await expect(page.locator('[data-breadcrumb-dashboard]')).toHaveText('Overview');
@@ -1482,6 +1508,13 @@ test('JSON full-view mode fills the viewport and hides chrome while scrolling', 
   expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
+  expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+
+  await page.setViewportSize({ width: 1000, height: 900 });
 
   await view.locator('.table-scroll').evaluate((element) => {
     element.scrollTop = 100;

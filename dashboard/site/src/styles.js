@@ -1784,6 +1784,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }
   .dashboard-root { height: auto; min-height: 100vh; overflow: visible; }
   .app-shell { height: auto; min-height: 100vh; display: block; overflow: visible; }
+  .dashboard-root.dashboard-full-view { height: 100dvh; min-height: 0; overflow: hidden; }
+  .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
   .org-sidebar { height: auto; display: block; overflow: visible; padding: 14px 12px 10px; border-right: 0; border-bottom: 1px solid var(--border); }
   .sidebar-header { margin: 0 0 8px; }
   .sidebar-brand { font-size: 1rem; }
@@ -1840,11 +1842,13 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mode-filter-control input { width: auto; }
   .time-window-control > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
+  .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 16px 14px 28px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
   .custom-view[data-view-layout="full-view"] { min-height: 100%; }
+  .dashboard-full-view .table-filter { min-width: 0; }
   .workflow-runtime-metrics { grid-template-columns: 1fr; }
   .workflow-identity { align-items: flex-start; flex-direction: column; gap: 10px; }
   .value-chart > dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }

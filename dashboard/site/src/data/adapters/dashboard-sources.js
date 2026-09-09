@@ -61,6 +61,8 @@ export function adaptDashboardSources(sources) {
   const jobs = sourceDocument(sources['job-performance']);
   const sessions = sourceDocument(sources.sessions);
   const events = sourceDocument(sources.events);
+  const workItems = sourceDocument(sources['work-items']);
+  const findings = sourceDocument(sources['security-findings']);
   const generation = dashboardSourceGeneration(sources);
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
@@ -240,6 +242,81 @@ export function adaptDashboardSources(sources) {
         correlationId: row['correlation-id'],
         payloadRef: row['payload-ref'],
         sourceSequence: Number.isInteger(sourceSequence) && sourceSequence >= 0 ? sourceSequence : undefined
+      }
+    });
+  }
+
+  for (const candidate of workItems.rows) {
+    const row = objectRow(candidate);
+    if (!row) continue;
+    const workItemId = requiredString(row['work-item-id'], 'work-item.work-item-id');
+    observations.push({
+      kind: 'work-item',
+      source: SOURCE,
+      sourceId: workItemId,
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(workItems.metadata), 'work-item.observed-at'),
+      data: {
+        workItemId,
+        name: row.name,
+        objective: row.objective,
+        organization: row.organization,
+        repository: row.repository,
+        workflowPath: row.workflow,
+        githubRunId: row.run,
+        workflowName: row['workflow-name'],
+        workflowIcon: row['workflow-icon'],
+        packageName: row.package,
+        scope: row.scope,
+        domain: row.domain,
+        workType: row['work-type'],
+        lifecycleState: row['lifecycle-state'],
+        phase: row.phase,
+        reason: row.reason,
+        reasonEvidenceClass: row['reason-evidence-class'],
+        nextAction: row['next-action'],
+        nextActor: row['next-actor'],
+        safeOutputKind: row['safe-output-kind'],
+        waitingOn: row['waiting-on'],
+        waitingSince: row['waiting-since'],
+        owner: row.owner,
+        consequenceTier: row['consequence-tier'],
+        verificationState: row['verification-state'],
+        outcomeState: row['outcome-state'],
+        startedAt: row['started-at'],
+        completedAt: row['ended-at'],
+        evidenceLink: row['evidence-link'],
+        repositoryLink: row['repository-link'],
+        runLink: row['run-link']
+      }
+    });
+  }
+
+  for (const candidate of findings.rows) {
+    const row = objectRow(candidate);
+    if (!row) continue;
+    const observationId = requiredString(row['smell-observation-id'], 'finding.smell-observation-id');
+    observations.push({
+      kind: 'finding',
+      source: SOURCE,
+      sourceId: observationId,
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(findings.metadata), 'finding.observed-at'),
+      data: {
+        observationId,
+        findingId: row['smell-id'],
+        organization: row.organization,
+        repository: row.repository,
+        workflowPath: row.workflow,
+        githubRunId: row.run,
+        name: row['smell-name'],
+        category: row['smell-category'],
+        severity: row['smell-severity'],
+        summary: row['smell-summary'],
+        evidence: row['smell-evidence'],
+        recommendation: row['smell-recommendation'],
+        evidenceLink: row['evidence-link'],
+        repositoryLink: row['repository-link'],
+        workflowLink: row['workflow-link'],
+        runLink: row['run-link']
       }
     });
   }

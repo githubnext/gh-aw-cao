@@ -53,7 +53,8 @@ describe('dashboard document validation', () => {
       expect(pages[pageId].route).toEqual({ 'navigation-page': 'overview' });
       expect(pages[pageId].views).toHaveLength(1);
       expect(pages[pageId].views[0].mark).toBe('table');
-      expect(pages[pageId].views[0]['column-summaries']).toBe(false);
+      expect(pages[pageId].views[0].layout).toBe('full-view');
+      expect(pages[pageId].views[0]['column-summaries']).toBe(true);
     }
 
     expect(pages['overview-failed-runs'].views[0]).toMatchObject({

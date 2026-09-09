@@ -40,12 +40,14 @@ describe('canonical IndexedDB generations', () => {
 
     expect([...database.objectStoreNames]).toEqual([
       'events',
+      'findings',
       'ingestionCheckpoints',
       'jobs',
       'meta',
       'repositories',
       'runs',
       'sessions',
+      'workItems',
       'workflows'
     ]);
     database.close();
