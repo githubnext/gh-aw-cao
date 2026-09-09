@@ -1431,7 +1431,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
 
 });
 
-test('JSON full-view mode fills the viewport and hides chrome while scrolling', async ({ page }) => {
+test('JSON full-view mode fills the viewport and supports repeated lazy-list scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1000, height: 900 });
 
@@ -1455,7 +1455,7 @@ test('JSON full-view mode fills the viewport and hides chrome while scrolling', 
       const sources = {
         inventory: {
           source: 'inventory',
-          rows: Array.from({ length: 60 }, (_, index) => ({
+          rows: Array.from({ length: 100 }, (_, index) => ({
             organization: 'githubnext',
             repository: \`repository-\${index + 1}\`
           })),
@@ -1508,6 +1508,30 @@ test('JSON full-view mode fills the viewport and hides chrome while scrolling', 
   expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+
+  const scroll = view.locator('.table-scroll');
+  const more = view.locator('[data-table-more]');
+  await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  await expect(view.locator('tbody > tr')).toHaveCount(50);
+  await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  await expect(view.locator('tbody > tr')).toHaveCount(50);
+  await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
+
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    for (const firstRepository of [26, 1]) {
+      await scroll.evaluate((element) => { element.scrollTop = 0; });
+      await scroll.dispatchEvent('scroll');
+      await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
+      await expect(view.locator('tbody > tr')).toHaveCount(50);
+    }
+    for (const firstRepository of [26, 51]) {
+      await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      await scroll.dispatchEvent('scroll');
+      await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
+      await expect(view.locator('tbody > tr')).toHaveCount(50);
+    }
+  }
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
