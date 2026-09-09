@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildDashboardLanguageSources,
   detectionObservationRows,
+  transactionLogRows,
 } from "../../dashboard/report/dashboard-language-sources.mjs";
 
 function detectionRun(runId, verdict, overrides = {}) {
@@ -40,6 +41,29 @@ function detectionJob(run, conclusion = "success") {
     },
   };
 }
+
+test("transaction logs retain a session when artifacts contain no timeline", () => {
+  const rows = transactionLogRows({
+    generatedAt: "2026-09-09T05:00:00Z",
+    securityRuns: [{
+      repository: "githubnext/gh-aw-cao",
+      workflowPath: ".github/workflows/dashboard.lock.yml",
+      runId: 304,
+      runAttempt: 1,
+      createdAt: "2026-09-09T04:02:00Z",
+      conclusion: "success",
+      logsPayload: { status: "completed" },
+      timeline: [],
+    }],
+  });
+
+  assert.equal(rows.sessions.length, 1);
+  assert.equal(rows.sessions[0].session, "session:gh-aw-logs:github%3Arun%3A304%3Aattempt%3A1%3Aunified");
+  assert.deepEqual(rows.events.map(({ ["event-source"]: source, ["event-type"]: type }) => ({ source, type })), [{
+    source: "workflow",
+    type: "run_observed",
+  }]);
+});
 
 test("detection observations preserve verdict, warning, tooling, skipped, and unknown states", () => {
   const clear = { promptInjection: false, secretLeak: false, maliciousPatch: false, warnings: [] };

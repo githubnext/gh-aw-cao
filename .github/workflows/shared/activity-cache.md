@@ -6,9 +6,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/cao-activity
-          key: cao-activity-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
+          key: cao-activity-v2-lookup-${{ github.run_id }}-${{ github.run_attempt }}-activation
           restore-keys: |
-            cao-activity-
+            cao-activity-v2-
 
   agent:
     pre-steps:
@@ -16,9 +16,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/cao-activity
-          key: cao-activity-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
+          key: cao-activity-v2-lookup-${{ github.run_id }}-${{ github.run_attempt }}-agent
           restore-keys: |
-            cao-activity-
+            cao-activity-v2-
 ---
 
 <!--

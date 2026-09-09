@@ -10,15 +10,18 @@ on:
       - .github/workflows/actions.yml
       - dashboard/**
       - playwright.mobile.config.mjs
+      - tests/integration/dashboard-deployed-data.test.mjs
       - tests/e2e/dashboard-mobile-live.spec.mjs
   pull_request:
     paths:
       - .github/workflows/actions.yml
       - dashboard/**
       - playwright.mobile.config.mjs
+      - tests/integration/dashboard-deployed-data.test.mjs
       - tests/e2e/dashboard-mobile-live.spec.mjs
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -26,6 +29,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  deployed-data:
+    name: Deployed data
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Set up gh-aw
+        uses: github/gh-aw-actions/setup-cli@af9516b9001c6aa6d4817b7484de4bb017ebb27f # v0.89.0
+        with:
+          version: v0.89.0
+      - name: Test deployed dashboard data ingestion
+        run: node --test tests/integration/dashboard-deployed-data.test.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   mobile:
     name: ${{ matrix.device }}
     runs-on: ubuntu-latest

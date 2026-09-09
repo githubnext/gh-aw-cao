@@ -107,10 +107,10 @@ Administrative setup (`.github/cao/setup-github-apps.mjs`), release workflows, C
 
 | Cache or index | Producer | Consumer | Reuse boundary |
 | --- | --- | --- | --- |
-| `cao-activity-*` Actions cache | `.github/workflows/activity.yml` | Next activity run and dashboard builder | Complete collection snapshot; latest matching key across runs |
+| `cao-activity-v2-*` Actions cache | `.github/workflows/activity.yml` | Next activity run and dashboard builder | Complete collection snapshot; latest matching key across runs |
 | `deployed-workflows.json` local run index | `activity/index.mjs` | Activity collectors | Rebuilt from checked-out metadata and the shared logs snapshot without API fallback |
 | Shared gh-aw logs JSON, state, and artifacts | `activity/logs.mjs` | Activity index plus AI Credit, security, and operational-value collectors | Persistent activity cache |
-| Operational-value observations | `dashboard/report/operational-values.mjs` | Later activity runs | Retained inside the shared `cao-activity-*` Actions cache |
+| Operational-value observations | `dashboard/report/operational-values.mjs` | Later activity runs | Retained inside the shared `cao-activity-v2-*` Actions cache |
 | `records.mjs` run map | `dashboard/report/records.mjs` | The same process | In-memory only |
 | gh-aw release list | `aw-maintenance-upgrade.md` | Later upgrade runs | 24-hour file cache restored by Actions cache |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |

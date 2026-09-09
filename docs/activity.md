@@ -120,15 +120,14 @@ control-plane-inventory.json
 control-settings.json
 dashboard-records.json
 deployed-workflows.json
-gh-aw-logs/
 gh-aw-logs.json
 gh-aw-logs-state.json
 operational-values.json
 ```
 
 Snapshots use the immutable cache key
-`cao-activity-${github.run_id}-${github.run_attempt}` and restore prefix
-`cao-activity-`. Consumers that dispatch Activity wait for that exact run and
+`cao-activity-v2-${github.run_id}-${github.run_attempt}` and restore prefix
+`cao-activity-v2-`. Consumers that dispatch Activity wait for that exact run and
 reconstruct its immutable key from the run ID and attempt.
 
 The cache improves collection efficiency; it is not durable historical
