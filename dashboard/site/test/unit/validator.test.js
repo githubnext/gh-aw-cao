@@ -529,6 +529,18 @@ dashboard:
       });
     }
     expect(packagesView.data.source).toBe('package-inventory');
+    expect(packagesView.encoding.href).toEqual({ field: 'package-link', type: 'nominal' });
+    expect(packagesView.encoding.columns.map((/** @type {{ title: string }} */ column) => column.title)).toEqual([
+      'Package',
+      'Workflows',
+      'Roles',
+      'Modes',
+      'Registration',
+      'Runs',
+      'AIC'
+    ]);
+    expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
+    expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
     expect(packagesPage.definition.views).toHaveLength(1);

@@ -1976,9 +1976,21 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
   await expect(packageRows).toHaveCount(2);
+  await expect(page.locator('[data-page-id="packages"] .custom-table thead tr').first().locator('th')).toHaveText([
+    'Package',
+    'Workflows',
+    'Roles',
+    'Modes',
+    'Registration',
+    'Runs',
+    'AIC'
+  ]);
   const awDoctorSummary = packageRows.filter({ hasText: 'AW Doctor' });
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
+  await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
+  await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
+  await expect(awDoctorSummary.locator('[data-field="registration"] .status')).toHaveText('false');
   await page.evaluate(() => {
     window.location.hash = '#page-package-detail?package=ambient-context';
   });
