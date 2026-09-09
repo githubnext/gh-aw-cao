@@ -26,10 +26,7 @@ function createMemoryStorage() {
   }
 }
 
-if (
-  typeof window !== 'undefined' &&
-  typeof window.localStorage?.getItem !== 'function'
-) {
+if (typeof window !== 'undefined' && typeof window.localStorage?.getItem !== 'function') {
   const localStorage = createMemoryStorage()
   Object.defineProperty(window, 'localStorage', {
     configurable: true,

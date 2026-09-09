@@ -76,22 +76,7 @@ export function keyed(items, renderItem, key) {
   return descriptor
 }
 
-const SVG_TAGS = new Set([
-  'svg',
-  'path',
-  'symbol',
-  'use',
-  'g',
-  'defs',
-  'line',
-  'circle',
-  'rect',
-  'polyline',
-  'polygon',
-  'text',
-  'tspan',
-  'title',
-])
+const SVG_TAGS = new Set(['svg', 'path', 'symbol', 'use', 'g', 'defs', 'line', 'circle', 'rect', 'polyline', 'polygon', 'text', 'tspan', 'title'])
 
 const FORM_CONTROL_TAGS = new Set(['input', 'select', 'textarea'])
 let generatedFormControlId = 0
@@ -104,18 +89,10 @@ let generatedFormControlId = 0
  */
 export function h(name, props, ...children) {
   const element = SVG_TAGS.has(name)
-    ? /** @type {HTMLElement} */ (
-        /** @type {unknown} */ (
-          document.createElementNS('http://www.w3.org/2000/svg', name)
-        )
-      )
+    ? /** @type {HTMLElement} */ (/** @type {unknown} */ (document.createElementNS('http://www.w3.org/2000/svg', name)))
     : document.createElement(name)
   applyProps(element, props ?? {})
-  if (
-    FORM_CONTROL_TAGS.has(name) &&
-    !element.hasAttribute('id') &&
-    !element.hasAttribute('name')
-  ) {
+  if (FORM_CONTROL_TAGS.has(name) && !element.hasAttribute('id') && !element.hasAttribute('name')) {
     element.id = `cao-field-${++generatedFormControlId}`
   }
   appendChildren(element, flattenChildren(children))
@@ -136,16 +113,11 @@ function applyProps(element, props) {
       continue
     }
     if (key.startsWith('on') && typeof value === 'function') {
-      element.addEventListener(
-        key.slice(2).toLowerCase(),
-        /** @type {EventListener} */ (value),
-      )
+      element.addEventListener(key.slice(2).toLowerCase(), /** @type {EventListener} */ (value))
       continue
     }
     if (key === 'dataset' && typeof value === 'object' && value !== null) {
-      for (const [dataKey, dataValue] of Object.entries(
-        /** @type {Record<string, unknown>} */ (value),
-      )) {
+      for (const [dataKey, dataValue] of Object.entries(/** @type {Record<string, unknown>} */ (value))) {
         element.setAttribute(`data-${toKebabCase(dataKey)}`, String(dataValue))
       }
       continue
@@ -185,9 +157,7 @@ function appendChildren(parent, children) {
  * @param {Node | string} child
  */
 function appendNode(parent, child) {
-  parent.appendChild(
-    typeof child === 'string' ? document.createTextNode(child) : child,
-  )
+  parent.appendChild(typeof child === 'string' ? document.createTextNode(child) : child)
 }
 
 /**
@@ -214,9 +184,7 @@ function normalizeChild(child) {
  * @returns {unknown[]}
  */
 function flattenChildren(children) {
-  return children.flatMap((child) =>
-    Array.isArray(child) ? flattenChildren(child) : [child],
-  )
+  return children.flatMap((child) => (Array.isArray(child) ? flattenChildren(child) : [child]))
 }
 
 /**

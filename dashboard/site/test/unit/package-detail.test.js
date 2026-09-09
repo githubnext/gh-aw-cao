@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { renderPackageNavigation } from '../../src/components/package-detail.js'
-import {
-  renderPackageRouteVariant,
-  renderPackageRouteView,
-} from '../../src/components/package-route-view.js'
+import { renderPackageRouteVariant, renderPackageRouteView } from '../../src/components/package-route-view.js'
 
 const metadata = {
   'source-id': 'fixture',
@@ -39,8 +36,7 @@ const workflows = [
       relation: 'workflow',
       href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
       label: 'View Ambient Context',
-      'dashboard-href':
-        '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
+      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
       'dashboard-label': 'View Ambient Context workflow dashboard',
     },
   },
@@ -177,27 +173,13 @@ describe('renderPackageNavigation', () => {
       }),
     )
 
-    expect(
-      rendered
-        .querySelector('.package-tabs [aria-current="page"]')
-        ?.getAttribute('href'),
-    ).toBe('#page-package-insights?package=ambient-context')
-    expect(rendered.querySelector('.value-report h2')?.textContent).toBe(
-      'Ambient Context / AGENTS.md',
-    )
+    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-insights?package=ambient-context')
+    expect(rendered.querySelector('.value-report h2')?.textContent).toBe('Ambient Context / AGENTS.md')
     expect(rendered.querySelector('.value-score')?.textContent).toContain('75%')
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
-      'Outcome change from first observation',
-    )
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
-      'Primary operational value+25.0 pts',
-    )
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain(
-      'Weekly operational attainment',
-    )
-    expect(
-      rendered.querySelector('.value-attainment .primary-weekly'),
-    ).not.toBeNull()
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation')
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Primary operational value+25.0 pts')
+    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly operational attainment')
+    expect(rendered.querySelector('.value-attainment .primary-weekly')).not.toBeNull()
     expect(rendered.textContent).not.toContain('github/other')
   })
 
@@ -210,61 +192,27 @@ describe('renderPackageNavigation', () => {
     )
 
     expect(rendered.dataset.package).toBe('ambient-context')
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe(
-      'InsightsWorkflowsDispatchesReports',
-    )
-    expect(
-      rendered
-        .querySelector('.package-tabs [aria-current="page"]')
-        ?.getAttribute('href'),
-    ).toBe('#page-package-detail?package=ambient-context')
-    expect(rendered.querySelector('.package-readme h1')?.textContent).toBe(
-      'Ambient Context',
-    )
-    expect(rendered.querySelector('.package-readme h2')?.textContent).toBe(
-      'Capabilities',
-    )
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('InsightsWorkflowsDispatchesReports')
+    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context')
+    expect(rendered.querySelector('.package-readme h1')?.textContent).toBe('Ambient Context')
+    expect(rendered.querySelector('.package-readme h2')?.textContent).toBe('Capabilities')
     expect(rendered.querySelectorAll('.package-readme li')).toHaveLength(2)
-    expect(
-      rendered.querySelector('.package-readme-about')?.textContent,
-    ).toContain('Keeps repository guidance current.')
-    expect(
-      rendered
-        .querySelector('.package-marketplace-detail')
-        ?.getAttribute('data-package'),
-    ).toBe('ambient-context')
-    expect(
-      rendered.querySelector('.package-marketplace-title')?.textContent,
-    ).toBe('Ambient ContextPackage')
-    expect(rendered.querySelector('.package-rollout')?.textContent).toBe(
-      'review',
-    )
-    expect(
-      rendered
-        .querySelector('.package-marketplace-actions a')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.package-readme-about')?.textContent).toContain('Keeps repository guidance current.')
+    expect(rendered.querySelector('.package-marketplace-detail')?.getAttribute('data-package')).toBe('ambient-context')
+    expect(rendered.querySelector('.package-marketplace-title')?.textContent).toBe('Ambient ContextPackage')
+    expect(rendered.querySelector('.package-rollout')?.textContent).toBe('review')
+    expect(rendered.querySelector('.package-marketplace-actions a')?.getAttribute('href')).toBe(
       'https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md',
     )
-    expect(
-      [...rendered.querySelectorAll('.package-readme a')]
-        .find((link) => link.textContent === 'guide')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect([...rendered.querySelectorAll('.package-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe(
       'https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md',
     )
-    const resources = /** @type {HTMLDetailsElement} */ (
-      rendered.querySelector('.package-readme-resources')
-    )
+    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.package-readme-resources'))
     expect(resources.open).toBe(false)
-    expect(resources.querySelector('summary')?.textContent).toBe(
-      'ResourcesShow details',
-    )
+    expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details')
     resources.open = true
     expect(resources.textContent).toContain('Source repository')
-    expect(
-      [...resources.querySelectorAll('a')].at(-1)?.getAttribute('href'),
-    ).toBe('https://ghe.example/githubnext/gh-aw-cao')
+    expect([...resources.querySelectorAll('a')].at(-1)?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao')
     expect(rendered.textContent).not.toContain('Other')
   })
 
@@ -276,14 +224,8 @@ describe('renderPackageNavigation', () => {
       }),
     )
 
-    expect(
-      rendered
-        .querySelector('.package-tabs [aria-current="page"]')
-        ?.getAttribute('href'),
-    ).toBe('#page-package-detail?package=ambient-context')
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe(
-      'InsightsWorkflowsDispatchesReports',
-    )
+    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context')
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('InsightsWorkflowsDispatchesReports')
   })
 
   describe('dispatch navigation', () => {
@@ -306,11 +248,7 @@ describe('renderPackageNavigation', () => {
         }),
       )
 
-      expect(
-        rendered
-          .querySelector('.package-tabs [aria-current="page"]')
-          ?.getAttribute('href'),
-      ).toBe('#page-package-dispatches?package=ambient-context')
+      expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-dispatches?package=ambient-context')
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Workflow dispatch runs for the Ambient Context package.',
@@ -325,9 +263,7 @@ describe('renderPackageNavigation', () => {
         workflow.package === 'ambient-context'
           ? {
               ...workflow,
-              'package-targets': [
-                { repository: 'githubnext/gh-aw-cao', mode: 'live' },
-              ],
+              'package-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }],
             }
           : workflow,
       )
@@ -375,8 +311,7 @@ describe('renderPackageNavigation', () => {
 
     expect(detail).toEqual({
       title: 'Ambient Context',
-      description:
-        'Orchestrator and worker workflows in the Ambient Context package.',
+      description: 'Orchestrator and worker workflows in the Ambient Context package.',
       mode: 'review',
       navigationPage: 'packages',
     })
@@ -395,11 +330,7 @@ describe('renderPackageNavigation', () => {
         }),
       )
 
-      expect(
-        rendered
-          .querySelector('.package-tabs [aria-current="page"]')
-          ?.getAttribute('href'),
-      ).toBe('#page-package-reports?package=ambient-context')
+      expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-reports?package=ambient-context')
       expect(rendered.getAttribute('data-route-view')).not.toBeNull()
     })
 
@@ -483,11 +414,7 @@ describe('renderPackageNavigation', () => {
   it('renders the same unavailable state for workflow and report navigation', () => {
     const unavailableContext = context()
 
-    for (const selectedView of /** @type {const} */ ([
-      'workflows',
-      'dispatches',
-      'reports',
-    ])) {
+    for (const selectedView of /** @type {const} */ (['workflows', 'dispatches', 'reports'])) {
       const rendered = renderPackageRouteView({
         ...unavailableContext,
         elementConfig: { body: selectedView },

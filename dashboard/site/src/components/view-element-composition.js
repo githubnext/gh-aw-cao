@@ -23,10 +23,6 @@ export function createElementCompositionConfig(values, fallback) {
  * @returns {V}
  */
 export function selectElementComposition(compositions, config, selected) {
-  const key =
-    typeof selected === 'string' &&
-    config.values.includes(/** @type {T} */ (selected))
-      ? /** @type {T} */ (selected)
-      : config.fallback
+  const key = typeof selected === 'string' && config.values.includes(/** @type {T} */ (selected)) ? /** @type {T} */ (selected) : config.fallback
   return selectNamedComposition(compositions, key, config.fallback)
 }

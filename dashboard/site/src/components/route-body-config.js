@@ -22,11 +22,6 @@ export function createRouteBodyConfig(values, fallback) {
     values,
     fallback,
     body: (value) => selectConfigBody({ values, fallback }, value),
-    composition: (compositions, value) =>
-      selectNamedComposition(
-        compositions,
-        selectConfigBody({ values, fallback }, value),
-        fallback,
-      ),
+    composition: (compositions, value) => selectNamedComposition(compositions, selectConfigBody({ values, fallback }, value), fallback),
   }
 }

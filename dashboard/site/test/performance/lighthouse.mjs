@@ -6,17 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 
 const siteRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
-const lighthouseCli = join(
-  siteRoot,
-  'node_modules',
-  'lighthouse',
-  'cli',
-  'index.js',
-)
-const outputRoot = resolve(
-  process.env.DASHBOARD_PERFORMANCE_OUTPUT_DIR ||
-    join(siteRoot, 'test-results', 'lighthouse'),
-)
+const lighthouseCli = join(siteRoot, 'node_modules', 'lighthouse', 'cli', 'index.js')
+const outputRoot = resolve(process.env.DASHBOARD_PERFORMANCE_OUTPUT_DIR || join(siteRoot, 'test-results', 'lighthouse'))
 
 // Allows small run-to-run variance while retaining a high Lighthouse score.
 const scoreThreshold = 0.88
@@ -32,15 +23,13 @@ const scenarios = [
   {
     id: 'cfo',
     persona: 'Chief Financial Officer',
-    question:
-      'Where is AI Credit usage concentrated, and is it producing operational value?',
+    question: 'Where is AI Credit usage concentrated, and is it producing operational value?',
     routes: ['cost', 'usage', 'packages'],
   },
   {
     id: 'cto',
     persona: 'Chief Technology Officer',
-    question:
-      'Which automation bottleneck most threatens control-plane reliability?',
+    question: 'Which automation bottleneck most threatens control-plane reliability?',
     routes: ['readiness', 'performance', 'workflows'],
   },
   {
@@ -67,20 +56,14 @@ function run(command, args, options = {}) {
         resolvePromise()
         return
       }
-      reject(
-        new Error(
-          `${command} exited with ${signal ? `signal ${signal}` : `code ${code}`}`,
-        ),
-      )
+      reject(new Error(`${command} exited with ${signal ? `signal ${signal}` : `code ${code}`}`))
     })
   })
 }
 
 async function serveFile(request, response) {
   const url = new URL(request.url || '/', 'http://127.0.0.1')
-  const pathname = decodeURIComponent(
-    url.pathname === '/' ? '/index.html' : url.pathname,
-  )
+  const pathname = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname)
   const path = resolve(siteRoot, `.${pathname}`)
   if (path !== siteRoot && !path.startsWith(`${siteRoot}${sep}`)) {
     response.writeHead(403).end()
@@ -92,8 +75,7 @@ async function serveFile(request, response) {
     if (!details.isFile()) throw new Error('Not a file')
     response.writeHead(200, {
       'cache-control': 'no-store',
-      'content-type':
-        contentTypes.get(extname(path)) || 'application/octet-stream',
+      'content-type': contentTypes.get(extname(path)) || 'application/octet-stream',
     })
     response.end(await readFile(path))
   } catch {
@@ -110,8 +92,7 @@ async function startServer() {
     server.listen(0, '127.0.0.1', resolvePromise)
   })
   const address = server.address()
-  if (!address || typeof address === 'string')
-    throw new Error('Unable to resolve dashboard server port')
+  if (!address || typeof address === 'string') throw new Error('Unable to resolve dashboard server port')
   return { server, origin: `http://127.0.0.1:${address.port}` }
 }
 
@@ -138,14 +119,9 @@ async function recordJourney(browser, origin, scenario, directory) {
           window.location.hash = `#page-${pageId}`
         }, route)
       }
-      await page
-        .locator(`[data-page-id="${route}"]`)
-        .waitFor({ state: 'visible' })
+      await page.locator(`[data-page-id="${route}"]`).waitFor({ state: 'visible' })
     }
-    if (errors.length > 0)
-      throw new Error(
-        `${scenario.id} journey page errors: ${errors.join('; ')}`,
-      )
+    if (errors.length > 0) throw new Error(`${scenario.id} journey page errors: ${errors.join('; ')}`)
   } finally {
     await context.tracing.stop({
       path: join(directory, 'playwright-trace.zip'),
@@ -156,8 +132,7 @@ async function recordJourney(browser, origin, scenario, directory) {
 
 function auditValue(lhr, auditId) {
   const value = lhr.audits?.[auditId]?.numericValue
-  if (typeof value !== 'number')
-    throw new Error(`Lighthouse report omitted ${auditId}`)
+  if (typeof value !== 'number') throw new Error(`Lighthouse report omitted ${auditId}`)
   return value
 }
 
@@ -185,27 +160,14 @@ async function auditScenario(origin, scenario, directory, chromePath) {
 
   const lhr = JSON.parse(await readFile(`${reportPath}.report.json`, 'utf8'))
   const score = lhr.categories?.performance?.score
-  if (typeof score !== 'number')
-    throw new Error(
-      `${scenario.id} Lighthouse report omitted its performance score`,
-    )
+  if (typeof score !== 'number') throw new Error(`${scenario.id} Lighthouse report omitted its performance score`)
 
-  const metrics = Object.fromEntries(
-    Object.keys(metricBudgets).map((auditId) => [
-      auditId,
-      auditValue(lhr, auditId),
-    ]),
-  )
+  const metrics = Object.fromEntries(Object.keys(metricBudgets).map((auditId) => [auditId, auditValue(lhr, auditId)]))
   const failures = []
-  if (score < scoreThreshold)
-    failures.push(
-      `score ${score.toFixed(2)} is below ${scoreThreshold.toFixed(2)}`,
-    )
+  if (score < scoreThreshold) failures.push(`score ${score.toFixed(2)} is below ${scoreThreshold.toFixed(2)}`)
   for (const [auditId, budget] of Object.entries(metricBudgets)) {
     if (metrics[auditId] > budget) {
-      failures.push(
-        `${auditId} ${metrics[auditId].toFixed(2)} exceeds ${budget}`,
-      )
+      failures.push(`${auditId} ${metrics[auditId].toFixed(2)} exceeds ${budget}`)
     }
   }
 
@@ -228,8 +190,7 @@ async function main() {
   await rm(outputRoot, { force: true, recursive: true })
   await mkdir(outputRoot, { recursive: true })
 
-  const chromePath =
-    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath()
+  const chromePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath()
   await access(chromePath)
   const { server, origin } = await startServer()
   const browser = await chromium.launch({
@@ -255,31 +216,21 @@ async function main() {
 
   const summary = {
     generatedAt: new Date().toISOString(),
-    methodology:
-      'Lighthouse desktop cold navigation plus Playwright traced persona journey',
+    methodology: 'Lighthouse desktop cold navigation plus Playwright traced persona journey',
     results,
   }
-  await writeFile(
-    join(outputRoot, 'summary.json'),
-    `${JSON.stringify(summary, null, 2)}\n`,
-  )
+  await writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)
 
-  const failures = results.flatMap((result) =>
-    result.failures.map((failure) => `${result.id}: ${failure}`),
-  )
+  const failures = results.flatMap((result) => result.failures.map((failure) => `${result.id}: ${failure}`))
   if (failures.length > 0) {
     for (const failure of failures) {
       console.log(`::warning title=Lighthouse budget exceeded::${failure}`)
     }
-    console.warn(
-      `Dashboard performance budgets exceeded:\n${failures.join('\n')}`,
-    )
+    console.warn(`Dashboard performance budgets exceeded:\n${failures.join('\n')}`)
   }
 
   for (const result of results) {
-    console.log(
-      `${result.id}: Lighthouse performance ${(result.score * 100).toFixed(0)}`,
-    )
+    console.log(`${result.id}: Lighthouse performance ${(result.score * 100).toFixed(0)}`)
   }
   console.log(`Performance evidence: ${outputRoot}`)
   return failures.length > 0 ? 42 : 0

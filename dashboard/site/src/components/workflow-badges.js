@@ -31,11 +31,7 @@ export function renderWorkflowBadges(workflow, options = {}) {
   return h(
     'span',
     { className: containerClassName },
-    h(
-      'span',
-      { className: `${roleClassName} workflow-badge-${role}` },
-      titleCase(role),
-    ),
+    h('span', { className: `${roleClassName} workflow-badge-${role}` }, titleCase(role)),
     ...memberships.map((membership) =>
       h(
         'a',
@@ -52,11 +48,7 @@ export function renderWorkflowBadges(workflow, options = {}) {
 /** @param {Record<string, unknown>} workflow */
 export function workflowRole(workflow) {
   const role = text(workflow['workflow-role']).toLowerCase()
-  return ['orchestrator', 'worker', 'standalone'].includes(role)
-    ? role
-    : workflowPackageMemberships(workflow).length > 0
-      ? 'operation'
-      : 'unknown'
+  return ['orchestrator', 'worker', 'standalone'].includes(role) ? role : workflowPackageMemberships(workflow).length > 0 ? 'operation' : 'unknown'
 }
 
 /** @param {Record<string, unknown>} workflow */
@@ -73,17 +65,10 @@ export function workflowPackageMemberships(workflow) {
       : []
   const unique = new Map()
   for (const membership of memberships) {
-    if (
-      !membership ||
-      typeof membership !== 'object' ||
-      Array.isArray(membership)
-    )
-      continue
+    if (!membership || typeof membership !== 'object' || Array.isArray(membership)) continue
     const id = text(membership.id).trim()
     const name = text(membership.name).trim()
     if (id && name) unique.set(id, { id, name })
   }
-  return [...unique.values()].sort((left, right) =>
-    left.name.localeCompare(right.name),
-  )
+  return [...unique.values()].sort((left, right) => left.name.localeCompare(right.name))
 }

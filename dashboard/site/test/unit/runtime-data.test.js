@@ -26,12 +26,7 @@ describe('runtime data', () => {
       },
     })
 
-    expect(sources.runs.rows.map((row) => row['failure-detail'])).toEqual([
-      'Target authority missing',
-      'Compile workflows',
-      'Run 3',
-      'Producer detail',
-    ])
+    expect(sources.runs.rows.map((row) => row['failure-detail'])).toEqual(['Target authority missing', 'Compile workflows', 'Run 3', 'Producer detail'])
     expect(sources.runs.metadata).toBe(metadata)
   })
 
@@ -80,18 +75,12 @@ describe('runtime data', () => {
       },
     })
 
-    expect(sources['runtime-signals'].rows.map((row) => row.kind)).toEqual([
-      'Run failures',
-      'Approval gate',
-      'Evidence gap',
-      'Evidence gap',
-    ])
+    expect(sources['runtime-signals'].rows.map((row) => row.kind)).toEqual(['Run failures', 'Approval gate', 'Evidence gap', 'Evidence gap'])
     expect(sources['runtime-anomaly-readiness'].rows).toEqual([
       {
         icon: 'pulse',
         title: 'Statistical anomalies · not evaluated',
-        detail:
-          'The current window does not provide a representative historical baseline. Direct evidence remains visible without inferred anomaly labels.',
+        detail: 'The current window does not provide a representative historical baseline. Direct evidence remains visible without inferred anomaly labels.',
       },
     ])
     expect(sources['runtime-signals'].rows[0]['navigation-href']).toBe(
@@ -332,8 +321,7 @@ describe('runtime data', () => {
             run: '3',
             event: 'workflow_dispatch',
             'run-conclusion': 'failure',
-            'failure-message':
-              'Target authority missing: add .github/workflows/cao.json to the target default branch for live mode',
+            'failure-message': 'Target authority missing: add .github/workflows/cao.json to the target default branch for live mode',
             'failure-job': 'pre_activation',
             'failure-step': 'Run CAO control precompute',
           },

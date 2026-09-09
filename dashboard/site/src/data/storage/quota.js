@@ -9,8 +9,7 @@ export async function inspectStorage(storage) {
   return {
     usage,
     quota,
-    available:
-      usage !== null && quota !== null ? Math.max(0, quota - usage) : null,
+    available: usage !== null && quota !== null ? Math.max(0, quota - usage) : null,
   }
 }
 
@@ -24,9 +23,7 @@ export async function reclaimExpendableGenerations(indexedDB) {
   const states = await listGenerationStates(indexedDB)
   const deleted = []
   for (const state of ['failed', 'retired']) {
-    for (const item of states.filter(
-      (candidate) => candidate.state === state,
-    )) {
+    for (const item of states.filter((candidate) => candidate.state === state)) {
       await deleteGeneration(indexedDB, item.generation)
       deleted.push(item.generation)
     }
@@ -46,8 +43,7 @@ export async function withQuotaRecovery(operation, reclaim) {
   try {
     return await operation()
   } catch (error) {
-    if (!(error instanceof DOMException) || error.name !== 'QuotaExceededError')
-      throw error
+    if (!(error instanceof DOMException) || error.name !== 'QuotaExceededError') throw error
     await reclaim()
     return operation()
   }

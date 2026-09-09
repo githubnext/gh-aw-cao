@@ -81,12 +81,7 @@ function safeHref(value) {
 
 /** @param {Record<string, unknown>} event */
 function eventTimestamp(event) {
-  const value =
-    event.timestamp ??
-    event['observed-at'] ??
-    event['published-at'] ??
-    event['ended-at'] ??
-    event['started-at']
+  const value = event.timestamp ?? event['observed-at'] ?? event['published-at'] ?? event['ended-at'] ?? event['started-at']
   if (typeof value === 'number' && Number.isFinite(value)) return value
   const timestamp = Date.parse(text(value))
   return Number.isFinite(timestamp) ? timestamp : 0
@@ -122,8 +117,7 @@ function eventUrls(event) {
 function eventRepository(event) {
   const explicit = text(event.repository)
   const organization = text(event.organization)
-  if (organization && explicit && !explicit.includes('/'))
-    return `${organization}/${explicit}`
+  if (organization && explicit && !explicit.includes('/')) return `${organization}/${explicit}`
   if (/^[^/\s]+\/[^/\s]+$/.test(explicit)) return explicit
   const scope = text(event.scope)
   if (/^[^/\s]+\/[^/\s]+$/.test(scope)) return scope
@@ -131,8 +125,7 @@ function eventRepository(event) {
     try {
       const url = new URL(href)
       const [owner, repository] = url.pathname.split('/').filter(Boolean)
-      if (url.hostname === 'github.com' && owner && repository)
-        return `${owner}/${repository}`
+      if (url.hostname === 'github.com' && owner && repository) return `${owner}/${repository}`
     } catch {
       // Ignore malformed raw links when deriving identity.
     }
@@ -154,16 +147,7 @@ function rawEventId(event) {
   )
   if (explicit) return explicit
   return `event:${encodeURIComponent(
-    [
-      eventRepository(event),
-      text(
-        event.title ??
-          event.objective ??
-          event['outcome-title'] ??
-          event['finding-summary'],
-      ),
-      eventTimestamp(event),
-    ].join(':'),
+    [eventRepository(event), text(event.title ?? event.objective ?? event['outcome-title'] ?? event['finding-summary']), eventTimestamp(event)].join(':'),
   )}`
 }
 
@@ -173,17 +157,12 @@ function linkedObject(href) {
     const url = new URL(href)
     if (url.hostname !== 'github.com') return null
     const parts = url.pathname.split('/').filter(Boolean)
-    if (parts[2] === 'pull' && parts[3])
-      return { objectType: 'pull-request', objectId: parts[3] }
-    if (parts[2] === 'issues' && parts[3])
-      return { objectType: 'issue', objectId: parts[3] }
-    if (parts[2] === 'actions' && parts[3] === 'runs' && parts[4])
-      return { objectType: 'workflow-run', objectId: parts[4] }
-    if (parts[2] === 'deployments' && parts[3])
-      return { objectType: 'deployment', objectId: parts[3] }
+    if (parts[2] === 'pull' && parts[3]) return { objectType: 'pull-request', objectId: parts[3] }
+    if (parts[2] === 'issues' && parts[3]) return { objectType: 'issue', objectId: parts[3] }
+    if (parts[2] === 'actions' && parts[3] === 'runs' && parts[4]) return { objectType: 'workflow-run', objectId: parts[4] }
+    if (parts[2] === 'deployments' && parts[3]) return { objectType: 'deployment', objectId: parts[3] }
     const securityFindingId = parts.slice(3).join(':')
-    if (parts[2] === 'security' && securityFindingId)
-      return { objectType: 'security-finding', objectId: securityFindingId }
+    if (parts[2] === 'security' && securityFindingId) return { objectType: 'security-finding', objectId: securityFindingId }
   } catch {
     return null
   }
@@ -217,38 +196,17 @@ function eventObject(event) {
 
 /** @param {Record<string, unknown>} event */
 function eventTitle(event) {
-  return (
-    text(
-      event.title ??
-        event.objective ??
-        event['outcome-title'] ??
-        event['finding-summary'] ??
-        event['workflow-name'],
-    ) || 'Notification'
-  )
+  return text(event.title ?? event.objective ?? event['outcome-title'] ?? event['finding-summary'] ?? event['workflow-name']) || 'Notification'
 }
 
 /** @param {Record<string, unknown>} event */
 function eventSourceType(event) {
-  return text(
-    event.classification ??
-      event['signal-type'] ??
-      event['event-type'] ??
-      event['outcome-state'] ??
-      event.type,
-  )
+  return text(event.classification ?? event['signal-type'] ?? event['event-type'] ?? event['outcome-state'] ?? event.type)
 }
 
 /** @param {Record<string, unknown>} event */
 function eventDetail(event) {
-  return (
-    text(
-      event.detail ??
-        event.reason ??
-        event['outcome-summary'] ??
-        event['smell-summary'],
-    ) || 'No additional detail'
-  )
+  return text(event.detail ?? event.reason ?? event['outcome-summary'] ?? event['smell-summary']) || 'No additional detail'
 }
 
 /** @param {Record<string, unknown>[]} events @param {string} objectType */
@@ -261,9 +219,7 @@ function storyTitle(events, objectType) {
   if (!latestTimestamp) return latestTitle
 
   const terminal = latestTitle.toLowerCase()
-  const rule = TRANSITION_RULES.find(
-    (candidate) => candidate.terminal === terminal,
-  )
+  const rule = TRANSITION_RULES.find((candidate) => candidate.terminal === terminal)
   if (!rule) return latestTitle
 
   const prior = events.slice(1).find((event) => {
@@ -296,37 +252,21 @@ function storyClassification(event, objectType, title) {
     .map(normalizedText)
     .filter(Boolean)
     .join(' ')
-  const summary = normalizedText(
-    `${eventTitle(event)} ${text(event.action ?? event['next-action'])}`,
-  )
+  const summary = normalizedText(`${eventTitle(event)} ${text(event.action ?? event['next-action'])}`)
   const actor = normalizedText(event['expected-actor'])
-  const resolved =
-    /\b(?:accepted|closed|completed|passed|recovered|resolved|submitted|succeeded|success)\b/.test(
-      `${state} ${normalizedText(title)}`,
-    )
+  const resolved = /\b(?:accepted|closed|completed|passed|recovered|resolved|submitted|succeeded|success)\b/.test(`${state} ${normalizedText(title)}`)
 
-  if (
-    objectType === 'security-finding' ||
-    /\bsecurity (?:finding|alert)\b/.test(state)
-  )
-    return 'needs_you'
+  if (objectType === 'security-finding' || /\bsecurity (?:finding|alert)\b/.test(state)) return 'needs_you'
   if (resolved) return 'update'
   if (
-    /\b(?:action required|blocked|failure|failed|pending|timed out)\b/.test(
-      state,
-    ) ||
+    /\b(?:action required|blocked|failure|failed|pending|timed out)\b/.test(state) ||
     /\b(?:failure|failed|failing|timed out)\b/.test(summary) ||
-    /\b(?:mention(?:ed|s)?|review|assign(?:ed|ment|s)?)\b/.test(
-      `${state} ${summary}`,
-    ) ||
+    /\b(?:mention(?:ed|s)?|review|assign(?:ed|ment|s)?)\b/.test(`${state} ${summary}`) ||
     /\b(?:human|maintainer|operator|owner|reviewer|user)\b/.test(actor)
   ) {
     return 'needs_you'
   }
-  if (
-    /\b(?:lifecycle close|status update|update|workflow run)\b/.test(state) ||
-    /\b(?:changed|started|updated)\b/.test(summary)
-  ) {
+  if (/\b(?:lifecycle close|status update|update|workflow run)\b/.test(state) || /\b(?:changed|started|updated)\b/.test(summary)) {
     return 'update'
   }
   return 'fyi'
@@ -335,23 +275,13 @@ function storyClassification(event, objectType, title) {
 /** @param {Record<string, unknown>[]} events */
 function consequenceRank(events) {
   const declaredRanks = events
-    .flatMap((event) => [
-      event['consequence-tier'],
-      event.consequence,
-      event.severity,
-      event['finding-severity'],
-      event['smell-severity'],
-    ])
+    .flatMap((event) => [event['consequence-tier'], event.consequence, event.severity, event['finding-severity'], event['smell-severity']])
     .map((value) => CONSEQUENCE_RANK.get(normalizedText(value)))
     .filter((value) => value !== undefined)
   if (declaredRanks.length > 0) return Math.min(...declaredRanks)
 
-  const priorities = events
-    .map((event) => numericPriority(event.priority))
-    .filter((value) => value !== null)
-  return priorities.length > 0
-    ? Math.min(...priorities)
-    : Number.MAX_SAFE_INTEGER
+  const priorities = events.map((event) => numericPriority(event.priority)).filter((value) => value !== null)
+  return priorities.length > 0 ? Math.min(...priorities) : Number.MAX_SAFE_INTEGER
 }
 
 /**
@@ -379,16 +309,10 @@ export function normalizeNotificationStories(rawEvents) {
 
   return [...groups.values()]
     .map((group) => {
-      const events = [...group.events].sort(
-        (left, right) =>
-          eventTimestamp(right) - eventTimestamp(left) ||
-          rawEventId(left).localeCompare(rawEventId(right)),
-      )
+      const events = [...group.events].sort((left, right) => eventTimestamp(right) - eventTimestamp(left) || rawEventId(left).localeCompare(rawEventId(right)))
       const latest = events[0]
       const deepLinkEvent = events.find((event) => eventDeepLink(event))
-      const priorities = events
-        .map((event) => numericPriority(event.priority))
-        .filter((value) => value !== null)
+      const priorities = events.map((event) => numericPriority(event.priority)).filter((value) => value !== null)
       const title = storyTitle(events, group.objectType)
       return {
         consequence: consequenceRank(events),
@@ -410,10 +334,8 @@ export function normalizeNotificationStories(rawEvents) {
     })
     .sort(
       (left, right) =>
-        (STORY_CLASS_RANK.get(left.story.classification) ??
-          Number.MAX_SAFE_INTEGER) -
-          (STORY_CLASS_RANK.get(right.story.classification) ??
-            Number.MAX_SAFE_INTEGER) ||
+        (STORY_CLASS_RANK.get(left.story.classification) ?? Number.MAX_SAFE_INTEGER) -
+          (STORY_CLASS_RANK.get(right.story.classification) ?? Number.MAX_SAFE_INTEGER) ||
         left.consequence - right.consequence ||
         right.story.timestamp - left.story.timestamp ||
         left.story.id.localeCompare(right.story.id),
@@ -438,21 +360,13 @@ export function buildCatchUpQueue(stories, previous = {}) {
   const done = new Set(previous.done ?? [])
   const later = new Set(previous.later ?? [])
   const priorQueue = Array.isArray(previous.queue) ? previous.queue : []
-  const seen = new Set([
-    ...(previous.seen ?? []),
-    ...priorQueue,
-    ...done,
-    ...later,
-  ])
+  const seen = new Set([...(previous.seen ?? []), ...priorQueue, ...done, ...later])
   const available = new Map(stories.map((story) => [story.id, story]))
-  const isQueueable = /** @param {string} id */ (id) =>
-    available.has(id) && !done.has(id) && !later.has(id)
+  const isQueueable = /** @param {string} id */ (id) => available.has(id) && !done.has(id) && !later.has(id)
 
   const preserved = priorQueue.filter(isQueueable)
   const preservedIds = new Set(preserved)
-  const additions = stories
-    .map((story) => story.id)
-    .filter((id) => !preservedIds.has(id) && isQueueable(id))
+  const additions = stories.map((story) => story.id).filter((id) => !preservedIds.has(id) && isQueueable(id))
   const queue = [...preserved, ...additions]
 
   for (const id of additions) seen.add(id)

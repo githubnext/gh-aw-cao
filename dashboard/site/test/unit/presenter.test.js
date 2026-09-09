@@ -3,39 +3,22 @@ import { describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
-import {
-  renderDashboard,
-  enableDashboardKeyboardNavigation,
-  enableDashboardPageNavigation,
-} from '../../src/presenter.js'
+import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation } from '../../src/presenter.js'
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs'
 import { packageDashboardSources } from '../package-dashboard-documents.js'
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url))
-const builtInDashboardDocument = JSON.parse(
-  readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8'),
-)
-const packageDashboardDocuments = packageDashboardSources.map((source) =>
-  JSON.parse(source),
-)
-const authoritativeDashboardDocument = composeDashboardDocuments(
-  builtInDashboardDocument,
-  packageDashboardDocuments,
-)
+const builtInDashboardDocument = JSON.parse(readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8'))
+const packageDashboardDocuments = packageDashboardSources.map((source) => JSON.parse(source))
+const authoritativeDashboardDocument = composeDashboardDocuments(builtInDashboardDocument, packageDashboardDocuments)
 
 /** @param {HTMLElement} rendered @param {string} pageId */
 async function activatePage(rendered, pageId) {
-  const link = /** @type {HTMLAnchorElement | null} */ (
-    rendered.querySelector(`[data-nav-page-id="${pageId}"]`)
-  )
+  const link = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector(`[data-nav-page-id="${pageId}"]`))
   expect(link).not.toBeNull()
   link?.click()
   await vi.waitFor(() => {
-    expect(
-      rendered
-        .querySelector(`[data-page-id="${pageId}"]`)
-        ?.hasAttribute('data-page-pending'),
-    ).toBe(false)
+    expect(rendered.querySelector(`[data-page-id="${pageId}"]`)?.hasAttribute('data-page-pending')).toBe(false)
   })
   rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/')
   return rendered.querySelector(`[data-page-id="${pageId}"]`)
@@ -108,38 +91,20 @@ describe('dashboard DOM provenance', () => {
       await vi.waitFor(() => {
         expect(rendered.getAttribute('data-json-path')).toBe('$.dashboard')
       })
-      expect(
-        rendered
-          .querySelector('[data-nav-page-id="trace"]')
-          ?.getAttribute('data-json-path'),
-      ).toBe('$.dashboard.pages[0]')
+      expect(rendered.querySelector('[data-nav-page-id="trace"]')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]')
       expect(page?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0]')
-      expect(section?.getAttribute('data-json-path')).toBe(
-        '$.dashboard.pages[0].sections[0]',
-      )
-      expect(summary?.getAttribute('data-json-path')).toBe(
-        '$.dashboard.pages[0].views[0]',
-      )
-      expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe(
-        'summary-grid',
-      )
-      expect(
-        metric?.querySelector('.metric-value')?.getAttribute('data-json-path'),
-      ).toBe('$.dashboard.pages[0].views[1]')
+      expect(section?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]')
+      expect(summary?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]')
+      expect(summary?.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid')
+      expect(metric?.querySelector('.metric-value')?.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[1]')
       await vi.waitFor(() => {
-        expect(
-          [...rendered.querySelectorAll('*')].every((element) =>
-            element.hasAttribute('data-json-path'),
-          ),
-        ).toBe(true)
+        expect([...rendered.querySelectorAll('*')].every((element) => element.hasAttribute('data-json-path'))).toBe(true)
       })
 
       const dynamicChild = rendered.ownerDocument.createElement('span')
       summary?.append(dynamicChild)
       await vi.waitFor(() => {
-        expect(dynamicChild.getAttribute('data-json-path')).toBe(
-          '$.dashboard.pages[0].views[0]',
-        )
+        expect(dynamicChild.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]')
         expect(dynamicChild.getAttribute('data-js-view')).toBe('summary-grid')
       })
 
@@ -152,15 +117,9 @@ describe('dashboard DOM provenance', () => {
       replacementSection.append(replacementView)
       page?.replaceChildren(replacementSection)
       await vi.waitFor(() => {
-        expect(replacementSection.getAttribute('data-json-path')).toBe(
-          '$.dashboard.pages[0].sections[0]',
-        )
-        expect(replacementView.getAttribute('data-json-path')).toBe(
-          '$.dashboard.pages[0].views[0]',
-        )
-        expect(
-          replacementView.querySelector('dt')?.getAttribute('data-js-view'),
-        ).toBe('summary-grid')
+        expect(replacementSection.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].sections[0]')
+        expect(replacementView.getAttribute('data-json-path')).toBe('$.dashboard.pages[0].views[0]')
+        expect(replacementView.querySelector('dt')?.getAttribute('data-js-view')).toBe('summary-grid')
       })
     } finally {
       window.history.pushState(null, '', '/')
@@ -179,8 +138,7 @@ describe('dashboard DOM provenance', () => {
         },
       }
     })
-    const { renderDashboard: renderDashboardWithFailingProvenance } =
-      await import('../../src/presenter.js')
+    const { renderDashboard: renderDashboardWithFailingProvenance } = await import('../../src/presenter.js')
     window.history.pushState(null, '', '?debug=1')
     try {
       const rendered = renderDashboardWithFailingProvenance({
@@ -204,9 +162,7 @@ describe('dashboard DOM provenance', () => {
       })
 
       await vi.waitFor(() => {
-        expect(rendered.dataset.domProvenanceError).toContain(
-          'provenance module failed to load',
-        )
+        expect(rendered.dataset.domProvenanceError).toContain('provenance module failed to load')
       })
     } finally {
       window.history.pushState(null, '', '/')
@@ -488,9 +444,7 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'updates')
     const inventory = page?.querySelector('[data-view-id="workflow-updates"]')
     expect(page?.querySelector('[data-chart-widget]')).toBeNull()
-    expect(
-      page?.querySelectorAll('[data-view-layout="full-view"]'),
-    ).toHaveLength(1)
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1)
     expect(inventory?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(inventory?.textContent).toContain('v0.88.7')
     expect(inventory?.textContent).toContain('v0.89.0')
@@ -535,24 +489,16 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const page = await activatePage(rendered, 'data-health')
-    const sourceView = page?.querySelector(
-      '[data-view-id="data-health-sources"]',
-    )
+    const sourceView = page?.querySelector('[data-view-id="data-health-sources"]')
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull()
     expect(page?.querySelector('.layout-section')).toBeNull()
-    expect(
-      page?.querySelectorAll('[data-view-layout="full-view"]'),
-    ).toHaveLength(1)
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1)
     expect(sourceView?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2)
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs')
     expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage')
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain(
-      'unavailable',
-    )
-    expect(sourceView?.querySelector('tbody')?.textContent).not.toContain(
-      'overview',
-    )
+    expect(sourceView?.querySelector('tbody')?.textContent).toContain('unavailable')
+    expect(sourceView?.querySelector('tbody')?.textContent).not.toContain('overview')
     expect(page?.textContent).toContain('Fields populated')
     rendered.remove()
   })
@@ -592,14 +538,9 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'data-health')
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull()
-    expect(
-      page?.querySelector('[data-view-availability="unavailable"]'),
-    ).toBeNull()
+    expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull()
     expect(page?.textContent).toContain('insufficient')
-    expect(
-      page?.querySelector('[data-view-id="data-health-sources"] .status-danger')
-        ?.textContent,
-    ).toBe('insufficient')
+    expect(page?.querySelector('[data-view-id="data-health-sources"] .status-danger')?.textContent).toBe('insufficient')
     expect(page?.textContent).toContain('runs')
     expect(page?.textContent).toContain('unavailable')
     rendered.remove()
@@ -719,9 +660,7 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const page = await activatePage(rendered, 'engines-models')
-    expect(
-      page?.querySelectorAll('[data-view-layout="full-view"]'),
-    ).toHaveLength(1)
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1)
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(page?.querySelector('[data-chart-widget]')).toBeNull()
     expect(page?.textContent).toContain('15 AIC')
@@ -751,9 +690,7 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const page = await activatePage(rendered, 'engines-models')
-    expect(page?.textContent).toContain(
-      'No engine or model usage metadata is available.',
-    )
+    expect(page?.textContent).toContain('No engine or model usage metadata is available.')
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull()
     rendered.remove()
   })
@@ -798,8 +735,7 @@ describe('presenter built-in and custom pages', () => {
               repository: 'gh-aw-cao',
               package: 'dependabot',
               'package-name': 'Dependabot',
-              workflow:
-                '.github/workflows/dependabot-release-train-updater.yml',
+              workflow: '.github/workflows/dependabot-release-train-updater.yml',
               'workflow-name': 'Release Train Updater',
               'workflow-role': 'worker',
               'workflow-active': 'true',
@@ -877,39 +813,24 @@ describe('presenter built-in and custom pages', () => {
 
     const page = rendered.querySelector('[data-page-name="workflows"]')
     expect(globalThis.document.title).toBe('Workflows · Workflow Topology')
-    expect(page?.getAttribute('data-page-description')).toContain(
-      'does not assert that a dispatch occurred',
-    )
+    expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred')
     expect(page?.querySelector('.view-metadata-summary')).toBeNull()
-    expect(
-      rendered.querySelector('.horizon-summary [aria-label="Data status"]'),
-    ).toBeNull()
-    expect(
-      rendered.querySelector(
-        '.filter-tuning-controls .horizon-details [aria-label="Data status"]',
-      )?.textContent,
-    ).toBe('CompletenesscompleteFreshnessfresh')
+    expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull()
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe(
+      'CompletenesscompleteFreshnessfresh',
+    )
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull()
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(page?.querySelector('[data-table-filter]')).not.toBeNull()
     const rows = [...(page?.querySelectorAll('tbody tr') ?? [])]
     expect(rows).toHaveLength(3)
-    expect(
-      rows.find((row) => row.textContent?.includes('dependabot.yml'))
-        ?.textContent,
-    ).toContain('30')
-    expect(
-      rows.find((row) => row.textContent?.includes('ci.yml'))?.textContent,
-    ).toContain('5')
+    expect(rows.find((row) => row.textContent?.includes('dependabot.yml'))?.textContent).toContain('30')
+    expect(rows.find((row) => row.textContent?.includes('ci.yml'))?.textContent).toContain('5')
     expect(page?.querySelector('.mode-review')).not.toBeNull()
     expect(page?.querySelector('.mode-live')).not.toBeNull()
     expect(page?.querySelector('.status-success')).not.toBeNull()
-    const rocket = rendered.querySelector(
-      '[data-nav-page-id="workflows"] .octicon-rocket',
-    )
-    expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(
-      /\/src\/octicons\.svg#octicon-rocket$/,
-    )
+    const rocket = rendered.querySelector('[data-nav-page-id="workflows"] .octicon-rocket')
+    expect(rocket?.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-rocket$/)
   })
 
   it('DLS-LINK-006 DLS-LINK-007 derives organization, repository, and workflow links from raw identity fields in the topology view', () => {
@@ -983,19 +904,11 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    const links = [
-      ...rendered.querySelectorAll('[data-page-name="workflows"] table a'),
-    ].map((link) => link.getAttribute('href'))
+    const links = [...rendered.querySelectorAll('[data-page-name="workflows"] table a')].map((link) => link.getAttribute('href'))
     expect(links).toContain('#page-package-insights?package=dependabot')
-    expect(links).toContain(
-      '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.yml',
-    )
-    expect(links).toContain(
-      '#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml',
-    )
-    expect(links).toContain(
-      '#page-repository-detail?repository=github%2Ftarget-service',
-    )
+    expect(links).toContain('#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.yml')
+    expect(links).toContain('#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml')
+    expect(links).toContain('#page-repository-detail?repository=github%2Ftarget-service')
   })
 
   it('DLS-LINK-006 DLS-LINK-007 renders derived entity links in table columns and honours a custom github-url-base plus explicit link overrides', () => {
@@ -1058,28 +971,13 @@ describe('presenter built-in and custom pages', () => {
 
     const table = rendered.querySelector('table')
     const links = [...(table?.querySelectorAll('tbody a') ?? [])]
-    const derivedOrganizationLink = links.find(
-      (link) =>
-        link.getAttribute('href') === 'https://github.example.com/octo-org',
-    )
+    const derivedOrganizationLink = links.find((link) => link.getAttribute('href') === 'https://github.example.com/octo-org')
     expect(derivedOrganizationLink).toBeDefined()
-    const derivedRepositoryLink = links.find(
-      (link) =>
-        link.getAttribute('href') ===
-        'https://github.example.com/octo-org/platform',
-    )
+    const derivedRepositoryLink = links.find((link) => link.getAttribute('href') === 'https://github.example.com/octo-org/platform')
     expect(derivedRepositoryLink).toBeDefined()
-    const overriddenRepositoryLink = links.find(
-      (link) => link.getAttribute('href') === 'https://example.com/custom',
-    )
+    const overriddenRepositoryLink = links.find((link) => link.getAttribute('href') === 'https://example.com/custom')
     expect(overriddenRepositoryLink).toBeDefined()
-    expect(
-      links.some(
-        (link) =>
-          link.getAttribute('href') ===
-          'https://github.example.com/octo-org/overridden',
-      ),
-    ).toBe(false)
+    expect(links.some((link) => link.getAttribute('href') === 'https://github.example.com/octo-org/overridden')).toBe(false)
   })
 
   it('DLS-SAFE-011 renders a descriptive refresh control and omits the GitHub repository link when repository is absent', () => {
@@ -1108,20 +1006,10 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshButton?.getAttribute('aria-label')).toBeTruthy()
     expect(refreshButton?.closest('.report-footer')).not.toBeNull()
     expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull()
-    expect(
-      rendered
-        .querySelector('.report-footer-status time')
-        ?.getAttribute('datetime'),
-    ).toBeTruthy()
+    expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy()
     expect(rendered.querySelector('.repository-link')).toBeNull()
-    expect(
-      rendered.querySelector('.account-menu-avatar .octicon-gear'),
-    ).not.toBeNull()
-    expect(
-      rendered
-        .querySelector('.account-menu-avatar')
-        ?.classList.contains('account-menu-icon'),
-    ).toBe(true)
+    expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull()
+    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true)
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull()
   })
 
@@ -1148,30 +1036,16 @@ describe('presenter built-in and custom pages', () => {
 
     const refreshLink = rendered.querySelector('.refresh-button')
     expect(refreshLink?.tagName).toBe('A')
-    expect(refreshLink?.getAttribute('href')).toBe(
-      'https://github.example.com/octo-org/agentic-operations/actions/workflows/dashboard.yml',
-    )
-    expect(refreshLink?.getAttribute('aria-label')).toBe(
-      'Open the dashboard workflow on GitHub Actions',
-    )
-    expect(refreshLink?.getAttribute('title')).toBe(
-      'Open the dashboard workflow on GitHub Actions',
-    )
+    expect(refreshLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations/actions/workflows/dashboard.yml')
+    expect(refreshLink?.getAttribute('aria-label')).toBe('Open the dashboard workflow on GitHub Actions')
+    expect(refreshLink?.getAttribute('title')).toBe('Open the dashboard workflow on GitHub Actions')
     expect(refreshLink?.closest('.report-footer')).not.toBeNull()
     const repositoryLink = rendered.querySelector('.repository-link')
     expect(repositoryLink).not.toBeNull()
-    expect(repositoryLink?.getAttribute('href')).toBe(
-      'https://github.example.com/octo-org/agentic-operations',
-    )
-    expect(repositoryLink?.getAttribute('aria-label')).toBe(
-      'View octo-org/agentic-operations on GitHub',
-    )
-    expect(repositoryLink?.getAttribute('title')).toBe(
-      'View octo-org/agentic-operations on GitHub',
-    )
-    expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe(
-      'agentic-operations',
-    )
+    expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations')
+    expect(repositoryLink?.getAttribute('aria-label')).toBe('View octo-org/agentic-operations on GitHub')
+    expect(repositoryLink?.getAttribute('title')).toBe('View octo-org/agentic-operations on GitHub')
+    expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('agentic-operations')
   })
 
   it('routes repository entity links to the repository detail view while retaining GitHub Actions links', async () => {
@@ -1263,50 +1137,22 @@ describe('presenter built-in and custom pages', () => {
     })
     document.body.append(rendered)
 
-    const repositoryLink = rendered.querySelector(
-      '[data-page-id="repositories"] tbody a',
-    )
-    expect(repositoryLink?.getAttribute('href')).toBe(
-      '#page-repository-detail?repository=octo-org%2Fplatform',
-    )
+    const repositoryLink = rendered.querySelector('[data-page-id="repositories"] tbody a')
+    expect(repositoryLink?.getAttribute('href')).toBe('#page-repository-detail?repository=octo-org%2Fplatform')
     expect(repositoryLink?.getAttribute('target')).toBeNull()
 
-    window.history.replaceState(
-      null,
-      '',
-      `/${repositoryLink?.getAttribute('href')}`,
-    )
+    window.history.replaceState(null, '', `/${repositoryLink?.getAttribute('href')}`)
     window.dispatchEvent(new Event('hashchange'))
 
-    expect(
-      rendered
-        .querySelector('[data-page-id="repository-detail"]')
-        ?.hasAttribute('hidden'),
-    ).toBe(false)
+    expect(rendered.querySelector('[data-page-id="repository-detail"]')?.hasAttribute('hidden')).toBe(false)
     await vi.waitFor(() => {
-      expect(
-        rendered
-          .querySelector('[data-page-id="repository-detail"]')
-          ?.hasAttribute('data-page-pending'),
-      ).toBe(false)
+      expect(rendered.querySelector('[data-page-id="repository-detail"]')?.hasAttribute('data-page-pending')).toBe(false)
     })
-    expect(
-      rendered.querySelector(
-        '[data-page-id="repository-detail"] [data-route-view] .metric-value',
-      )?.textContent,
-    ).toBe('1')
-    expect(
-      rendered
-        .querySelector(
-          '[data-page-id="repository-detail"] [data-route-view] .metric-link a',
-        )
-        ?.getAttribute('href'),
-    ).toBe('https://github.com/octo-org/platform/actions')
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="repositories"]')
-        ?.getAttribute('aria-current'),
-    ).toBe('page')
+    expect(rendered.querySelector('[data-page-id="repository-detail"] [data-route-view] .metric-value')?.textContent).toBe('1')
+    expect(rendered.querySelector('[data-page-id="repository-detail"] [data-route-view] .metric-link a')?.getAttribute('href')).toBe(
+      'https://github.com/octo-org/platform/actions',
+    )
+    expect(rendered.querySelector('[data-nav-page-id="repositories"]')?.getAttribute('aria-current')).toBe('page')
     rendered.remove()
     window.history.replaceState(null, '', '/')
   })
@@ -1324,130 +1170,51 @@ describe('presenter built-in and custom pages', () => {
     })
     document.body.append(rendered)
 
-    const labels = [...rendered.querySelectorAll('.nav-section-label')].map(
-      (node) => node.textContent?.trim(),
-    )
+    const labels = [...rendered.querySelectorAll('.nav-section-label')].map((node) => node.textContent?.trim())
     const sections = [...rendered.querySelectorAll('.nav-section')]
     expect(labels).toEqual(['Experimental'])
-    expect(
-      [...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) =>
-        node.textContent?.trim(),
-      ),
-    ).toEqual(['Experimental'])
-    expect(
-      [
-        ...rendered.querySelectorAll(
-          '.primary-nav > [data-nav-page-id] .nav-label',
-        ),
-      ].map((node) => node.textContent),
-    ).toEqual(['Overview', 'Repositories', 'Workflows', 'Packages'])
-    expect(
-      rendered.querySelector(
-        '[data-nav-page-id="workflows"] .octicon-workflow',
-      ),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector(
-        '[data-nav-page-id="agents"] .octicon-sparkles-fill',
-      ),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector(
-        '[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill',
-      ),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector('[data-nav-page-id="configuration"]'),
-    ).toBeNull()
-    expect(
-      rendered.querySelector('.account-menu-settings')?.getAttribute('href'),
-    ).toBe('#page-configuration')
-    expect(
-      rendered
-        .querySelector('.account-menu-avatar')
-        ?.getAttribute('aria-label'),
-    ).toBe('Open account menu for The Octocat')
-    expect(
-      rendered
-        .querySelector('.account-menu-avatar')
-        ?.classList.contains('account-menu-icon'),
-    ).toBe(false)
-    expect(
-      rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src'),
-    ).toBe('https://avatars.githubusercontent.com/u/583231?v=4')
-    expect(
-      rendered
-        .querySelector('.account-menu-avatar-image')
-        ?.getAttribute('referrerpolicy'),
-    ).toBe('no-referrer')
-    expect(
-      rendered.querySelector('.appearance-settings legend')?.textContent,
-    ).toBe('Appearance')
-    expect(
-      [...rendered.querySelectorAll('[data-theme-value]')].map(
-        (node) => node.textContent,
-      ),
-    ).toEqual(['System', 'Light', 'Dark'])
-    const systemTheme = /** @type {HTMLButtonElement | null} */ (
-      rendered.querySelector('[data-theme-value="system"]')
-    )
-    const darkTheme = /** @type {HTMLButtonElement | null} */ (
-      rendered.querySelector('[data-theme-value="dark"]')
-    )
-    const lightTheme = /** @type {HTMLButtonElement | null} */ (
-      rendered.querySelector('[data-theme-value="light"]')
-    )
+    expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental'])
+    expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
+      'Overview',
+      'Repositories',
+      'Workflows',
+      'Packages',
+    ])
+    expect(rendered.querySelector('[data-nav-page-id="workflows"] .octicon-workflow')).not.toBeNull()
+    expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull()
+    expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull()
+    expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull()
+    expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration')
+    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open account menu for The Octocat')
+    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(false)
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4')
+    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('referrerpolicy')).toBe('no-referrer')
+    expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance')
+    expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark'])
+    const systemTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="system"]'))
+    const darkTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="dark"]'))
+    const lightTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="light"]'))
     expect(rendered.hasAttribute('data-theme')).toBe(false)
     expect(systemTheme?.getAttribute('aria-pressed')).toBe('true')
     darkTheme?.click()
     expect(rendered.dataset.theme).toBe('dark')
     expect(darkTheme?.getAttribute('aria-pressed')).toBe('true')
-    expect(
-      window.localStorage.getItem('central-agentic-ops.dashboard.theme'),
-    ).toBe('dark')
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark')
     lightTheme?.click()
     expect(rendered.dataset.theme).toBe('light')
     expect(lightTheme?.getAttribute('aria-pressed')).toBe('true')
-    expect(
-      window.localStorage.getItem('central-agentic-ops.dashboard.theme'),
-    ).toBe('light')
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('light')
     systemTheme?.click()
     expect(rendered.hasAttribute('data-theme')).toBe(false)
     expect(systemTheme?.getAttribute('aria-pressed')).toBe('true')
-    expect(
-      window.localStorage.getItem('central-agentic-ops.dashboard.theme'),
-    ).toBe('system')
-    expect(
-      sections.map(
-        (section) => /** @type {HTMLDetailsElement} */ (section).open,
-      ),
-    ).toEqual([false])
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('system')
+    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([false])
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull()
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="operations"]')
-        ?.closest('.nav-section')?.textContent,
-    ).toContain('Experimental')
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="runtime"]')
-        ?.closest('.nav-section'),
-    ).toBe(sections[0])
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="preview"]')
-        ?.closest('.nav-section'),
-    ).toBe(sections[0])
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')
-        ?.closest('.nav-section'),
-    ).toBe(sections[0])
-    expect(
-      [...rendered.querySelectorAll('.nav-label')].map(
-        (node) => node.textContent,
-      ),
-    ).toEqual([
+    expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Experimental')
+    expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')).toBe(sections[0])
+    expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[0])
+    expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[0])
+    expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
       'Repositories',
       'Workflows',
@@ -1482,45 +1249,19 @@ describe('presenter built-in and custom pages', () => {
     ])
     expect(rendered.querySelector('[data-nav-page-id="runs"]')).toBeNull()
     expect(rendered.querySelector('[data-nav-page-id="findings"]')).toBeNull()
-    expect(
-      rendered
-        .querySelector('[data-page-id="overview"]')
-        ?.classList.contains('dashboard-overview-page'),
-    ).toBe(true)
-    expect(
-      rendered
-        .querySelector('[data-page-id="organizations"]')
-        ?.classList.contains('organizations-page'),
-    ).toBe(false)
-    expect(
-      rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent,
-    ).toBe('Overview')
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('[data-breadcrumb-dashboard]')
-      )?.hidden,
-    ).toBe(true)
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe(
-      'Overview',
-    )
+    expect(rendered.querySelector('[data-page-id="overview"]')?.classList.contains('dashboard-overview-page')).toBe(true)
+    expect(rendered.querySelector('[data-page-id="organizations"]')?.classList.contains('organizations-page')).toBe(false)
+    expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview')
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true)
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Overview')
 
-    ;/** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector('[data-nav-page-id="cost"]')
-    )?.click()
+    ;/** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'))?.click()
 
     expect(window.location.hash).toBe('#page-cost')
     expect(/** @type {HTMLDetailsElement} */ (sections[0]).open).toBe(true)
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('[data-breadcrumb-dashboard]')
-      )?.hidden,
-    ).toBe(true)
-    expect(
-      rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent,
-    ).toBe('Overview')
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe(
-      'Cost & efficiency',
-    )
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true)
+    expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview')
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency')
     rendered.remove()
     window.history.replaceState(null, '', '/')
   })
@@ -1587,14 +1328,9 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'overview')
     expect(page?.querySelector('.home-attention-summary')).not.toBeNull()
     expect(page?.querySelector('.notifications-inbox')).toBeNull()
-    expect(
-      page?.querySelector('[href="#page-overview-security-findings"] strong')
-        ?.textContent,
-    ).toBe('—')
+    expect(page?.querySelector('[href="#page-overview-security-findings"] strong')?.textContent).toBe('—')
     expect(page?.querySelector('.home-attention-detail')).toBeNull()
-    expect(page?.textContent).toContain(
-      'No attention observed in available evidence',
-    )
+    expect(page?.textContent).toContain('No attention observed in available evidence')
     expect(page?.textContent).not.toContain('Malicious patch detected')
     rendered.remove()
   })
@@ -1606,21 +1342,9 @@ describe('presenter built-in and custom pages', () => {
       sources: {},
     })
 
-    expect(
-      /** @type {HTMLDetailsElement | null} */ (
-        rendered.querySelector('.nav-section')
-      )?.open,
-    ).toBe(true)
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="cost"]')
-        ?.getAttribute('aria-current'),
-    ).toBe('page')
-    expect(
-      rendered
-        .querySelector('[data-mobile-nav-page-id="overview"]')
-        ?.getAttribute('href'),
-    ).toBe('#page-overview')
+    expect(/** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.nav-section'))?.open).toBe(true)
+    expect(rendered.querySelector('[data-nav-page-id="cost"]')?.getAttribute('aria-current')).toBe('page')
+    expect(rendered.querySelector('[data-mobile-nav-page-id="overview"]')?.getAttribute('href')).toBe('#page-overview')
 
     rendered.remove()
     window.history.replaceState(null, '', '/')
@@ -1635,19 +1359,9 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered)
 
     const sections = [...rendered.querySelectorAll('.nav-section')]
-    const experimentalSection = sections.find(
-      (section) =>
-        section.querySelector('summary')?.textContent?.trim() ===
-        'Experimental',
-    )
-    expect(
-      /** @type {HTMLDetailsElement | undefined} */ (experimentalSection)?.open,
-    ).toBe(true)
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="security"]')
-        ?.getAttribute('aria-current'),
-    ).toBe('page')
+    const experimentalSection = sections.find((section) => section.querySelector('summary')?.textContent?.trim() === 'Experimental')
+    expect(/** @type {HTMLDetailsElement | undefined} */ (experimentalSection)?.open).toBe(true)
+    expect(rendered.querySelector('[data-nav-page-id="security"]')?.getAttribute('aria-current')).toBe('page')
 
     rendered.remove()
     window.history.replaceState(null, '', '/')
@@ -1707,16 +1421,10 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'preview')
     const rows = [...(page?.querySelectorAll('.custom-table tbody tr') ?? [])]
-    const status = /** @type {HTMLSelectElement | null} */ (
-      page?.querySelector('[data-table-facet="outcome-status"]') ?? null
-    )
+    const status = /** @type {HTMLSelectElement | null} */ (page?.querySelector('[data-table-facet="outcome-status"]') ?? null)
     expect(rows).toHaveLength(2)
     expect(page?.textContent).not.toContain('Unattributed issue')
-    expect([...(status?.options ?? [])].map((option) => option.value)).toEqual([
-      '',
-      'closed',
-      'open',
-    ])
+    expect([...(status?.options ?? [])].map((option) => option.value)).toEqual(['', 'closed', 'open'])
 
     if (status) {
       status.value = 'closed'
@@ -1784,49 +1492,26 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({ document, sources })
     expect(rendered.querySelectorAll('.site-callout')).toHaveLength(2)
-    expect(
-      rendered.querySelector('[data-site-callout="rate-limit-message"]')
-        ?.textContent,
-    ).toContain('Dashboard data is partial')
-    const detailsLink = /** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector(
-        '[data-site-callout="rate-limit-message"] .site-callout-link',
-      )
-    )
+    expect(rendered.querySelector('[data-site-callout="rate-limit-message"]')?.textContent).toContain('Dashboard data is partial')
+    const detailsLink = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link'))
     expect(detailsLink?.getAttribute('href')).toBe('#page-data-health')
     expect(detailsLink?.textContent).toBe('View data health')
-    const navigationLink = /** @type {HTMLAnchorElement | null} */ (
-      rendered.querySelector(
-        '[data-site-callout="operator-message"] .site-callout-link',
-      )
-    )
+    const navigationLink = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link'))
     expect(navigationLink?.getAttribute('href')).toBe('#page-usage')
     expect(navigationLink?.textContent).toBe('View usage')
-    const dismiss = /** @type {HTMLButtonElement | null} */ (
-      rendered.querySelector(
-        '[data-site-callout="operator-message"] .site-callout-dismiss',
-      )
-    )
+    const dismiss = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-site-callout="operator-message"] .site-callout-dismiss'))
     expect(dismiss?.getAttribute('aria-label')).toBe('Dismiss Operator message')
     dismiss?.click()
-    expect(
-      rendered.querySelector('[data-site-callout="operator-message"]'),
-    ).toBeNull()
+    expect(rendered.querySelector('[data-site-callout="operator-message"]')).toBeNull()
     expect(window.localStorage).toHaveLength(0)
     expect(sessionStorage).toHaveLength(0)
 
     const rerendered = renderDashboard({ document, sources })
-    expect(
-      rerendered.querySelector('[data-site-callout="operator-message"]'),
-    ).toBeNull()
-    expect(
-      rerendered.querySelector('[data-site-callout="rate-limit-message"]'),
-    ).not.toBeNull()
+    expect(rerendered.querySelector('[data-site-callout="operator-message"]')).toBeNull()
+    expect(rerendered.querySelector('[data-site-callout="rate-limit-message"]')).not.toBeNull()
 
     const complete = renderDashboard({ document, sources: {} })
-    expect(
-      complete.querySelector('[data-site-callout="rate-limit-message"]'),
-    ).toBeNull()
+    expect(complete.querySelector('[data-site-callout="rate-limit-message"]')).toBeNull()
   })
 
   it('collapses the sidebar to icons and restores the persisted display mode', () => {
@@ -1836,13 +1521,9 @@ describe('presenter built-in and custom pages', () => {
         document: authoritativeDashboardDocument,
         sources: {},
       })
-      const toggle = /** @type {HTMLButtonElement | null} */ (
-        rendered.querySelector('.sidebar-toggle')
-      )
+      const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.sidebar-toggle'))
       const shell = rendered.querySelector('.app-shell')
-      const overviewLink = rendered.querySelector(
-        '[data-nav-page-id="overview"]',
-      )
+      const overviewLink = rendered.querySelector('[data-nav-page-id="overview"]')
 
       expect(toggle?.getAttribute('aria-label')).toBe('Collapse navigation')
       expect(toggle?.getAttribute('aria-expanded')).toBe('true')
@@ -1855,34 +1536,21 @@ describe('presenter built-in and custom pages', () => {
       expect(toggle?.getAttribute('aria-label')).toBe('Expand navigation')
       expect(toggle?.getAttribute('aria-expanded')).toBe('false')
       expect(toggle?.querySelector('.octicon-sidebar-collapse')).not.toBeNull()
-      expect(
-        window.localStorage.getItem(
-          'central-agentic-ops.dashboard.sidebar-collapsed',
-        ),
-      ).toBe('true')
+      expect(window.localStorage.getItem('central-agentic-ops.dashboard.sidebar-collapsed')).toBe('true')
 
       const restored = renderDashboard({
         document: authoritativeDashboardDocument,
         sources: {},
       })
-      expect(
-        restored
-          .querySelector('.app-shell')
-          ?.classList.contains('sidebar-collapsed'),
-      ).toBe(true)
-      expect(
-        restored.querySelector('.sidebar-toggle')?.getAttribute('aria-label'),
-      ).toBe('Expand navigation')
+      expect(restored.querySelector('.app-shell')?.classList.contains('sidebar-collapsed')).toBe(true)
+      expect(restored.querySelector('.sidebar-toggle')?.getAttribute('aria-label')).toBe('Expand navigation')
     } finally {
       window.localStorage.clear()
     }
   })
 
   it('keeps the sidebar interactive when localStorage is unavailable', () => {
-    const storageDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'localStorage',
-    )
+    const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       value: undefined,
@@ -1892,9 +1560,7 @@ describe('presenter built-in and custom pages', () => {
         document: authoritativeDashboardDocument,
         sources: {},
       })
-      const toggle = /** @type {HTMLButtonElement | null} */ (
-        rendered.querySelector('.sidebar-toggle')
-      )
+      const toggle = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.sidebar-toggle'))
       const shell = rendered.querySelector('.app-shell')
 
       expect(shell?.classList.contains('sidebar-collapsed')).toBe(false)
@@ -1902,8 +1568,7 @@ describe('presenter built-in and custom pages', () => {
       expect(shell?.classList.contains('sidebar-collapsed')).toBe(true)
       expect(toggle?.getAttribute('aria-label')).toBe('Expand navigation')
     } finally {
-      if (storageDescriptor)
-        Object.defineProperty(window, 'localStorage', storageDescriptor)
+      if (storageDescriptor) Object.defineProperty(window, 'localStorage', storageDescriptor)
     }
   })
 
@@ -1912,21 +1577,11 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {},
     })
-    const menu = /** @type {HTMLDetailsElement | null} */ (
-      rendered.querySelector('.mobile-nav-menu')
-    )
-    const menuLinks = [
-      ...rendered.querySelectorAll(
-        '.mobile-nav-menu-list [data-mobile-nav-page-id]',
-      ),
-    ]
+    const menu = /** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.mobile-nav-menu'))
+    const menuLinks = [...rendered.querySelectorAll('.mobile-nav-menu-list [data-mobile-nav-page-id]')]
 
-    expect(menu?.querySelector('summary')?.getAttribute('aria-label')).toBe(
-      'Select view',
-    )
-    expect(
-      menuLinks.every((link) => link.querySelector('.octicon') !== null),
-    ).toBe(true)
+    expect(menu?.querySelector('summary')?.getAttribute('aria-label')).toBe('Select view')
+    expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true)
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
       'Repositories',
@@ -1961,9 +1616,7 @@ describe('presenter built-in and custom pages', () => {
       'AW Optimization',
     ])
 
-    const costLink = menuLinks.find(
-      (link) => link.textContent?.trim() === 'Cost',
-    )
+    const costLink = menuLinks.find((link) => link.textContent?.trim() === 'Cost')
     menu?.setAttribute('open', '')
     ;/** @type {HTMLAnchorElement | undefined} */ (costLink)?.click()
 
@@ -1981,40 +1634,23 @@ describe('presenter built-in and custom pages', () => {
     expect(authoritativeDashboardDocument.dashboard.defaults?.time).toEqual({
       range: '1w',
     })
-    expect(
-      rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label'),
-    ).toBe('Horizon unavailable')
-    expect(
-      rendered
-        .querySelector('.dashboard-horizon')
-        ?.classList.contains('dashboard-horizon-skeleton'),
-    ).toBe(true)
+    expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label')).toBe('Horizon unavailable')
+    expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(true)
     expect(rendered.querySelectorAll('.dashboard-horizon')).toHaveLength(1)
     expect(rendered.querySelector('.freshness')).toBeNull()
-    const horizonHelp = rendered.querySelector(
-      '.dashboard-horizon .tooltip-trigger',
-    )
-    const horizonTooltip = rendered.querySelector(
-      '.dashboard-horizon .tooltip-content',
-    )
+    const horizonHelp = rendered.querySelector('.dashboard-horizon .tooltip-trigger')
+    const horizonTooltip = rendered.querySelector('.dashboard-horizon .tooltip-content')
     expect(horizonHelp).toBeNull()
     expect(horizonTooltip).toBeNull()
 
-    for (const pageId of [
-      'runtime',
-      'security',
-      'firewall',
-      'operational-value',
-    ]) {
+    for (const pageId of ['runtime', 'security', 'firewall', 'operational-value']) {
       await activatePage(rendered, pageId)
       const filterBar = rendered.querySelector('.report-actions > .filter-bar')
       expect(filterBar?.querySelector('input')?.value).toBe('')
       expect(filterBar?.querySelector('.count-badge')?.textContent).toBe('3')
-      expect(
-        [
-          ...(filterBar?.querySelectorAll('.mode-filter-control input') ?? []),
-        ].every((input) => /** @type {HTMLInputElement} */ (input).checked),
-      ).toBe(true)
+      expect([...(filterBar?.querySelectorAll('.mode-filter-control input') ?? [])].every((input) => /** @type {HTMLInputElement} */ (input).checked)).toBe(
+        true,
+      )
       const filterControl = filterBar?.querySelector('.filter-control')
       const horizon = rendered.querySelector('.dashboard-horizon')
       expect(filterControl).not.toBeNull()
@@ -2084,21 +1720,12 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const page = await activatePage(rendered, 'performance')
-    const configuredPages =
-      /** @type {Array<{ id: string, views: Array<{ id: string }> }>} */ (
-        authoritativeDashboardDocument.dashboard.pages
-      )
-    const configuredPage = configuredPages.find(
-      ({ id }) => id === 'performance',
+    const configuredPages = /** @type {Array<{ id: string, views: Array<{ id: string }> }>} */ (authoritativeDashboardDocument.dashboard.pages)
+    const configuredPage = configuredPages.find(({ id }) => id === 'performance')
+    expect([...(page?.querySelectorAll('[data-view-id]') ?? [])].map((view) => view.getAttribute('data-view-id'))).toEqual(
+      configuredPage?.views.map(({ id }) => id),
     )
-    expect(
-      [...(page?.querySelectorAll('[data-view-id]') ?? [])].map((view) =>
-        view.getAttribute('data-view-id'),
-      ),
-    ).toEqual(configuredPage?.views.map(({ id }) => id))
-    expect(
-      page?.querySelectorAll('[data-view-layout="full-view"]'),
-    ).toHaveLength(1)
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1)
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(page?.querySelector('[data-chart-widget]')).toBeNull()
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2)
@@ -2119,8 +1746,7 @@ describe('presenter built-in and custom pages', () => {
             label: 'Data horizon',
             tooltip: {
               label: 'Data horizon details',
-              description:
-                'Data is included from the start up to the exclusive end.',
+              description: 'Data is included from the start up to the exclusive end.',
               icon: 'question',
             },
           },
@@ -2146,11 +1772,7 @@ describe('presenter built-in and custom pages', () => {
       sources: {
         runs: {
           source: 'runs',
-          rows: [
-            { run: 'recent', 'observed-at': '2026-08-30T12:00:00Z' },
-            { run: 'expired', 'observed-at': '2026-08-20T12:00:00Z' },
-            { run: 'timeless' },
-          ],
+          rows: [{ run: 'recent', 'observed-at': '2026-08-30T12:00:00Z' }, { run: 'expired', 'observed-at': '2026-08-20T12:00:00Z' }, { run: 'timeless' }],
           metadata: {
             'source-id': 'runs-fixture',
             'source-kind': 'fixture',
@@ -2170,32 +1792,13 @@ describe('presenter built-in and custom pages', () => {
     expect(table?.textContent).toContain('recent')
     expect(table?.textContent).toContain('timeless')
     expect(table?.textContent).not.toContain('expired')
-    expect(
-      rendered
-        .querySelector('.dashboard-horizon')
-        ?.getAttribute('data-dashboard-evaluated-at'),
-    ).toBe('2026-09-01T12:00:00.000Z')
-    expect(
-      rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label'),
-    ).toContain('2 days')
-    expect(
-      rendered.querySelector('.filter-tuning-controls .horizon-details')
-        ?.textContent,
-    ).toBe(
+    expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z')
+    expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('2 days')
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details')?.textContent).toBe(
       'Data is included from the start up to the exclusive end.StartAug 30, 2026, 12:30 PM UTCEndSep 1, 2026, 12:00 PM UTCDuration2 daysCompletenesscompleteFreshnessfresh',
     )
-    expect(
-      rendered
-        .querySelector(
-          '.filter-tuning-controls .horizon-details time:first-of-type',
-        )
-        ?.getAttribute('datetime'),
-    ).toBe('2026-08-30T12:30:00.000Z')
-    expect(
-      rendered
-        .querySelectorAll('.filter-tuning-controls .horizon-details time')[1]
-        ?.getAttribute('datetime'),
-    ).toBe('2026-09-01T12:00:00.000Z')
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z')
+    expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z')
   })
 
   it('renders Security assurance records as one full-view lazy table', async () => {
@@ -2302,19 +1905,13 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const page = await activatePage(rendered, 'security')
-    const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find(
-      (/** @type {{ id: string }} */ candidate) => candidate.id === 'security',
-    )
+    const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'security')
     expect(dashboardPage).toMatchObject({ kind: 'custom' })
     expect(dashboardPage).not.toHaveProperty('page')
     expect(dashboardPage).not.toHaveProperty('sections')
-    expect(
-      rendered.querySelector('[data-nav-page-id="security"] .octicon-shield'),
-    ).not.toBeNull()
+    expect(rendered.querySelector('[data-nav-page-id="security"] .octicon-shield')).not.toBeNull()
     expect(page?.querySelectorAll('.layout-section')).toHaveLength(0)
-    expect(
-      page?.querySelectorAll('[data-view-layout="full-view"]'),
-    ).toHaveLength(1)
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1)
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull()
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(2)
@@ -2506,61 +2103,32 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const page = await activatePage(rendered, 'operational-value')
-    const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find(
-      (/** @type {{ id: string }} */ candidate) =>
-        candidate.id === 'operational-value',
-    )
+    const dashboardPage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'operational-value')
     expect(dashboardPage).toMatchObject({
       kind: 'custom',
       title: 'Value & outcomes',
     })
     expect(dashboardPage).not.toHaveProperty('page')
     expect(dashboardPage).not.toHaveProperty('sections')
-    expect(
-      rendered.querySelector(
-        '[data-nav-page-id="operational-value"] .octicon-beaker',
-      ),
-    ).not.toBeNull()
+    expect(rendered.querySelector('[data-nav-page-id="operational-value"] .octicon-beaker')).not.toBeNull()
     const tables = page?.querySelectorAll('.custom-table') ?? []
     expect(tables).toHaveLength(1)
-    expect(
-      page?.querySelectorAll('[data-view-layout="full-view"]'),
-    ).toHaveLength(1)
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1)
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull()
     expect(tables[0]?.querySelectorAll('tbody tr')).toHaveLength(5)
-    expect(tables[0]?.querySelector('.status-success')?.textContent).toBe(
-      'pass',
-    )
-    expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe(
-      'unavailable',
-    )
+    expect(tables[0]?.querySelector('.status-success')?.textContent).toBe('pass')
+    expect(tables[0]?.querySelector('.status-attention')?.textContent).toBe('unavailable')
     expect(tables[0]?.textContent).toContain('Mature')
     expect(tables[0]?.textContent).toContain('Interim')
     expect(tables[0]?.textContent).toContain('sha256:curre')
-    expect(
-      tables[0]
-        ?.querySelector('a[aria-label="View run 103"]')
-        ?.getAttribute('href'),
-    ).toContain('/actions/runs/103')
-    const graderRegion = /** @type {HTMLElement} */ (
-      tables[0]?.closest('.table-region')
-    )
-    const graderFilter = /** @type {HTMLInputElement} */ (
-      graderRegion?.querySelector('[data-table-filter]')
-    )
-    expect(graderFilter.closest('label')?.textContent).toContain(
-      'Filter Operational Value Ledger',
-    )
+    expect(tables[0]?.querySelector('a[aria-label="View run 103"]')?.getAttribute('href')).toContain('/actions/runs/103')
+    const graderRegion = /** @type {HTMLElement} */ (tables[0]?.closest('.table-region'))
+    const graderFilter = /** @type {HTMLInputElement} */ (graderRegion?.querySelector('[data-table-filter]'))
+    expect(graderFilter.closest('label')?.textContent).toContain('Filter Operational Value Ledger')
     graderFilter.value = 'review-value'
     graderFilter.dispatchEvent(new Event('input'))
-    expect(
-      [...graderRegion.querySelectorAll('tbody tr')].filter(
-        (row) => row instanceof HTMLTableRowElement && !row.hidden,
-      ),
-    ).toHaveLength(1)
-    expect(
-      graderRegion.querySelector('.table-filter-result')?.textContent,
-    ).toBe('Showing 1 of 1 result')
+    expect([...graderRegion.querySelectorAll('tbody tr')].filter((row) => row instanceof HTMLTableRowElement && !row.hidden)).toHaveLength(1)
+    expect(graderRegion.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result')
   })
 
   it('DLS-VIEW-018 DLS-VIEW-019 DLS-VIEW-020 progressively discloses supplemental views in source order', () => {
@@ -2620,21 +2188,15 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    const views = rendered.querySelectorAll(
-      '[data-page-id="runs"] > .custom-view-grid > .custom-view',
-    )
+    const views = rendered.querySelectorAll('[data-page-id="runs"] > .custom-view-grid > .custom-view')
     expect(views).toHaveLength(2)
     expect(views[0]?.getAttribute('data-disclosure')).toBe('essential')
     const supplemental = /** @type {HTMLDetailsElement} */ (views[1])
     expect(supplemental.tagName).toBe('DETAILS')
     expect(supplemental.getAttribute('data-disclosure')).toBe('supplemental')
     expect(supplemental.open).toBe(false)
-    expect(supplemental.querySelector('summary')?.textContent).toContain(
-      'Completed runs',
-    )
-    const supplementalContent = supplemental.querySelector(
-      ':scope > .page-section',
-    )
+    expect(supplemental.querySelector('summary')?.textContent).toContain('Completed runs')
+    const supplementalContent = supplemental.querySelector(':scope > .page-section')
     expect(supplementalContent?.textContent).toContain('1')
     expect(supplementalContent?.classList.contains('custom-view')).toBe(false)
     expect(supplementalContent?.hasAttribute('data-view-layout')).toBe(false)
@@ -2983,16 +2545,10 @@ describe('presenter built-in and custom pages', () => {
     expect(overviewPage?.getAttribute('data-page-kind')).toBe('custom')
     expect(overviewPage?.querySelectorAll('.custom-view')).toHaveLength(2)
     expect(overviewPage?.querySelectorAll('.layout-section')).toHaveLength(0)
-    expect(
-      overviewPage?.querySelector('.overview-observability h2')?.textContent,
-    ).toBe('Attention by domain')
-    const cards = [
-      ...(overviewPage?.querySelectorAll('.attention-domain-card') ?? []),
-    ]
+    expect(overviewPage?.querySelector('.overview-observability h2')?.textContent).toBe('Attention by domain')
+    const cards = [...(overviewPage?.querySelectorAll('.attention-domain-card') ?? [])]
     expect(cards).toHaveLength(6)
-    expect(
-      cards.map((card) => card.querySelector('header strong')?.textContent),
-    ).toEqual([
+    expect(cards.map((card) => card.querySelector('header strong')?.textContent)).toEqual([
       'Runtime health',
       'Episodes & autonomy',
       'Security & controls',
@@ -3017,18 +2573,10 @@ describe('presenter built-in and custom pages', () => {
       '#page-operational-value',
       '#page-cost',
     ])
-    expect(
-      cards.every((card) => card.textContent?.includes('Open evidence')),
-    ).toBe(true)
-    expect(
-      overviewPage?.querySelector('.overview-method-note')?.textContent,
-    ).toContain('State key:')
+    expect(cards.every((card) => card.textContent?.includes('Open evidence'))).toBe(true)
+    expect(overviewPage?.querySelector('.overview-method-note')?.textContent).toContain('State key:')
     expect(overviewPage?.querySelector('.overview-package-status')).toBeNull()
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('.data-state-summary')
-      )?.hidden,
-    ).toBe(true)
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true)
   })
 
   it('DLS-PAGE-002 keeps unavailable prerequisites visible in the domain overview', () => {
@@ -3050,9 +2598,7 @@ describe('presenter built-in and custom pages', () => {
                 completeness: true,
                 freshness: true,
               },
-              views: [
-                { id: 'workflows-source', data: { source: 'workflows' } },
-              ],
+              views: [{ id: 'workflows-source', data: { source: 'workflows' } }],
             },
           },
         ],
@@ -3090,24 +2636,14 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const overviewPage = rendered.querySelector('[data-page-name="overview"]')
-    const cards = [
-      ...(overviewPage?.querySelectorAll('.attention-domain-card') ?? []),
-    ]
+    const cards = [...(overviewPage?.querySelectorAll('.attention-domain-card') ?? [])]
     expect(cards).toHaveLength(6)
-    const runtimeCard = cards.find((card) =>
-      card.textContent?.includes('Runtime health'),
-    )
-    const valueCard = cards.find((card) =>
-      card.textContent?.includes('Value & outcomes'),
-    )
-    const evidenceCard = cards.find((card) =>
-      card.textContent?.includes('Evidence quality'),
-    )
+    const runtimeCard = cards.find((card) => card.textContent?.includes('Runtime health'))
+    const valueCard = cards.find((card) => card.textContent?.includes('Value & outcomes'))
+    const evidenceCard = cards.find((card) => card.textContent?.includes('Evidence quality'))
     expect(runtimeCard?.textContent).toContain('Unavailable')
     expect(runtimeCard?.textContent).toContain('Not observed')
-    expect(runtimeCard?.textContent).toContain(
-      'workflow registrations may still be current',
-    )
+    expect(runtimeCard?.textContent).toContain('workflow registrations may still be current')
     expect(valueCard?.textContent).toContain('Threshold unavailable')
     expect(valueCard?.textContent).toContain('no ROI is inferred')
     expect(evidenceCard?.textContent).toContain('2 gaps')
@@ -3156,13 +2692,7 @@ describe('presenter built-in and custom pages', () => {
                   id: 'packages-summary',
                   title: 'All output by package',
                   data: {
-                    sources: [
-                      'workflows',
-                      'usage',
-                      'findings',
-                      'outcomes',
-                      'runs',
-                    ],
+                    sources: ['workflows', 'usage', 'findings', 'outcomes', 'runs'],
                   },
                   mark: 'element',
                   element: 'package-summary-table',
@@ -3333,22 +2863,14 @@ describe('presenter built-in and custom pages', () => {
     })
 
     const packagesPage = rendered.querySelector('[data-page-name="packages"]')
-    expect(
-      packagesPage?.querySelector('[data-view-layout="full-view"]'),
-    ).not.toBeNull()
+    expect(packagesPage?.querySelector('[data-view-layout="full-view"]')).not.toBeNull()
     expect(packagesPage?.querySelector('[data-table-filter]')).not.toBeNull()
-    const packageSummaryRows = [
-      ...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? []),
-    ]
+    const packageSummaryRows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])]
     expect(packageSummaryRows).toHaveLength(2)
     expect(packageSummaryRows[0]?.textContent).toContain('Daily Ops')
     expect(packageSummaryRows[0]?.textContent).toContain('40')
     expect(packageSummaryRows[1]?.textContent).toContain('Empty Ops')
-    expect(
-      /** @type {HTMLElement | null} */ (
-        packagesPage?.querySelector('.data-state-summary')
-      )?.hidden,
-    ).toBe(true)
+    expect(/** @type {HTMLElement | null} */ (packagesPage?.querySelector('.data-state-summary'))?.hidden).toBe(true)
   })
 
   it('DLS-SEM-022 DLS-SEM-023 DLS-PAGE-014 DLS-PAGE-015 keeps packages repository-scoped and distinguishes unknown or unavailable telemetry', () => {
@@ -3459,9 +2981,7 @@ describe('presenter built-in and custom pages', () => {
       sources: { workflows, runs, usage },
     })
     const packagesPage = rendered.querySelector('[data-page-name="packages"]')
-    const rows = [
-      ...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? []),
-    ]
+    const rows = [...(packagesPage?.querySelectorAll('.custom-table tbody tr') ?? [])]
     expect(rows).toHaveLength(2)
     expect(rows[0]?.textContent).toContain('10')
     expect(rows[1]?.textContent).toContain('20')
@@ -3483,23 +3003,15 @@ describe('presenter built-in and custom pages', () => {
         usage,
       },
     })
-    const unavailablePackagesPage = unavailable.querySelector(
-      '[data-page-name="packages"]',
-    )
-    expect(
-      unavailablePackagesPage?.querySelector('.custom-table'),
-    ).not.toBeNull()
+    const unavailablePackagesPage = unavailable.querySelector('[data-page-name="packages"]')
+    expect(unavailablePackagesPage?.querySelector('.custom-table')).not.toBeNull()
   })
 
   it('DLS-PAGE-001 DLS-PAGE-002 DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-006 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 DLS-PAGE-015 authoritative dashboard.json keeps the remaining built-in pages declarative', () => {
-    const pages = authoritativeDashboardDocument.dashboard.pages.filter(
-      (/** @type {{ kind: string }} */ page) => page.kind === 'built-in',
-    )
+    const pages = authoritativeDashboardDocument.dashboard.pages.filter((/** @type {{ kind: string }} */ page) => page.kind === 'built-in')
     expect(Array.isArray(pages)).toBe(true)
     expect(pages).toHaveLength(11)
-    expect(
-      pages.map((/** @type {{ page: string }} */ page) => page.page),
-    ).toEqual([
+    expect(pages.map((/** @type {{ page: string }} */ page) => page.page)).toEqual([
       'overview',
       'organizations',
       'repositories',
@@ -3526,34 +3038,21 @@ describe('presenter built-in and custom pages', () => {
       expect(page.definition.views.length).toBeGreaterThan(0)
       expect(
         page.definition.views.every(
-          (
-            /** @type {{ data?: { source?: unknown, sources?: unknown } }} */ view,
-          ) =>
-            typeof view?.data?.source === 'string' ||
-            (Array.isArray(view?.data?.sources) &&
-              view.data.sources.every((source) => typeof source === 'string')),
+          (/** @type {{ data?: { source?: unknown, sources?: unknown } }} */ view) =>
+            typeof view?.data?.source === 'string' || (Array.isArray(view?.data?.sources) && view.data.sources.every((source) => typeof source === 'string')),
         ),
       ).toBe(true)
     }
 
-    const runsPage = pages.find(
-      (/** @type {{ page: string }} */ page) => page.page === 'runs',
-    )
-    expect(
-      runsPage?.definition.views.map(
-        (/** @type {{ data: { source: string } }} */ view) => view.data.source,
-      ),
-    ).toEqual(['runs'])
+    const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs')
+    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source)).toEqual(['runs'])
 
-    const repositoriesPage = pages.find(
-      (/** @type {{ page: string }} */ page) => page.page === 'repositories',
-    )
+    const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories')
     expect(repositoriesPage?.definition.views).toMatchObject([
       {
         id: 'repositories-activity',
         title: 'Repositories',
-        description:
-          'Repository-local execution health and all attributed package or local-workflow outcomes.',
+        description: 'Repository-local execution health and all attributed package or local-workflow outcomes.',
         data: { source: 'repository-activity' },
         mark: 'table',
         controls: 'interactive',
@@ -3694,18 +3193,10 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    const headings = [
-      ...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3'),
-    ].map((element) => element.textContent)
+    const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent)
     expect(headings).toEqual(['Runs'])
-    expect(
-      rendered.querySelectorAll('[data-page-id="runs"] .custom-table'),
-    ).toHaveLength(1)
-    expect(
-      rendered
-        .querySelector('[data-page-id="runs"]')
-        ?.getAttribute('data-page-kind'),
-    ).toBe('custom')
+    expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1)
+    expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom')
   })
 
   it('DLS-PAGE-009 DLS-PAGE-014 renders built-in evals page with distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state deterministically', () => {
@@ -3827,27 +3318,13 @@ describe('presenter built-in and custom pages', () => {
     const evalsPage = rendered.querySelector('[data-page-name="evals"]')
     expect(evalsPage?.textContent).toContain('Evals Evals Source')
     expect(evalsPage?.textContent).toContain('Evals Observations Source')
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('.data-state-summary')
-      )?.hidden,
-    ).toBe(true)
-    expect(
-      evalsPage
-        ?.querySelectorAll('.custom-table')[0]
-        ?.querySelectorAll('tbody tr'),
-    ).toHaveLength(2)
-    expect(
-      evalsPage
-        ?.querySelectorAll('.custom-table')[1]
-        ?.querySelectorAll('tbody tr'),
-    ).toHaveLength(3)
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('.data-state-summary'))?.hidden).toBe(true)
+    expect(evalsPage?.querySelectorAll('.custom-table')[0]?.querySelectorAll('tbody tr')).toHaveLength(2)
+    expect(evalsPage?.querySelectorAll('.custom-table')[1]?.querySelectorAll('tbody tr')).toHaveLength(3)
     expect(evalsPage?.textContent).toContain('release-risk')
     expect(evalsPage?.textContent).toContain('UNKNOWN')
 
-    const sidebarCurrentPage = rendered.querySelector(
-      '.primary-nav a[aria-current="page"]',
-    )
+    const sidebarCurrentPage = rendered.querySelector('.primary-nav a[aria-current="page"]')
     expect(sidebarCurrentPage?.getAttribute('aria-current')).toBe('page')
     expect(sidebarCurrentPage?.textContent).toContain('Evals')
 
@@ -3922,23 +3399,14 @@ describe('presenter built-in and custom pages', () => {
     })
 
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Findings')
-    expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe(
-      'github',
-    )
-    expect(
-      rendered.querySelector('[data-page-id="findings"] .custom-table thead')
-        ?.textContent,
-    ).toContain('Issue Link')
+    expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('github')
+    expect(rendered.querySelector('[data-page-id="findings"] .custom-table thead')?.textContent).toContain('Issue Link')
 
-    const summaryCell = rendered.querySelector(
-      '[data-page-id="findings"] .custom-table tbody td',
-    )
+    const summaryCell = rendered.querySelector('[data-page-id="findings"] .custom-table tbody td')
     expect(summaryCell?.textContent).toContain('<img src=x onerror=alert(1)>')
     expect(summaryCell?.querySelector('img')).toBeNull()
 
-    const issueLink = rendered.querySelector(
-      '[data-page-id="findings"] .custom-table tbody a',
-    )
+    const issueLink = rendered.querySelector('[data-page-id="findings"] .custom-table tbody a')
     expect(issueLink?.getAttribute('href')).toBe('https://example.com/issues/1')
     expect(issueLink?.getAttribute('aria-label')).toBe('Issue 1 label')
     expect(issueLink?.getAttribute('target')).toBe('_blank')
@@ -3992,11 +3460,7 @@ describe('presenter built-in and custom pages', () => {
                 },
                 mark: 'table',
                 encoding: {
-                  columns: [
-                    { field: 'finding-summary' },
-                    { field: 'finding-severity' },
-                    { field: 'finding-status' },
-                  ],
+                  columns: [{ field: 'finding-summary' }, { field: 'finding-severity' }, { field: 'finding-status' }],
                   href: {
                     field: 'pull-request-link',
                   },
@@ -4209,25 +3673,15 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    expect(rendered.querySelector('#page-title')?.textContent).toBe(
-      'Custom Views',
-    )
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Custom Views')
 
-    const metricSection = [...rendered.querySelectorAll('.page-section')].find(
-      (section) => section.textContent?.includes('Total AI Credits'),
-    )
-    expect(
-      metricSection?.querySelector('[data-metric-value="aic"]')?.textContent,
-    ).toBe('5')
+    const metricSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Total AI Credits'))
+    expect(metricSection?.querySelector('[data-metric-value="aic"]')?.textContent).toBe('5')
     expect(metricSection?.textContent).not.toContain('Source: usage')
     expect(metricSection?.textContent).not.toContain('Filters:')
 
-    const tableSection = [...rendered.querySelectorAll('.page-section')].find(
-      (section) => section.textContent?.includes('Findings Table'),
-    )
-    const tableRows = tableSection
-      ? tableSection.querySelectorAll('.custom-table tbody tr')
-      : null
+    const tableSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Findings Table'))
+    const tableRows = tableSection ? tableSection.querySelectorAll('.custom-table tbody tr') : null
     expect(tableRows).toHaveLength(1)
     const linkedCell = tableRows?.[0]?.querySelector('a')
     expect(linkedCell?.textContent).toBe('Unsafe dependency')
@@ -4237,60 +3691,28 @@ describe('presenter built-in and custom pages', () => {
     expect(tableSection?.textContent).not.toContain('Out of scope finding')
     expect(tableSection?.textContent).not.toContain('Out of range finding')
 
-    const chartSection = [...rendered.querySelectorAll('.page-section')].find(
-      (section) => section.textContent?.includes('Daily Runs'),
-    )
-    const chartLegendLabels = chartSection
-      ? [
-          ...chartSection.querySelectorAll(
-            '[data-chart-legend="visual"] li span',
-          ),
-        ]
-      : []
+    const chartSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Daily Runs'))
+    const chartLegendLabels = chartSection ? [...chartSection.querySelectorAll('[data-chart-legend="visual"] li span')] : []
     expect(chartSection?.querySelector('.chart-default')).toBeNull()
     expect(chartSection?.querySelector('[data-chart-legend="text"]')).toBeNull()
-    expect(
-      chartSection?.querySelectorAll('[data-chart-legend="visual"] li'),
-    ).toHaveLength(2)
-    expect(chartLegendLabels.map((item) => item.textContent)).toEqual([
-      'failure',
-      'success',
-    ])
+    expect(chartSection?.querySelectorAll('[data-chart-legend="visual"] li')).toHaveLength(2)
+    expect(chartLegendLabels.map((item) => item.textContent)).toEqual(['failure', 'success'])
     expect(chartSection?.querySelector('.table-region')).toBeNull()
     expect(chartSection?.querySelectorAll('.view-source')).toHaveLength(0)
 
-    const emptySection = [...rendered.querySelectorAll('.page-section')].find(
-      (section) => section.textContent?.includes('Empty Usage'),
-    )
-    expect(
-      emptySection?.querySelector('[data-view-availability="empty"]')
-        ?.textContent,
-    ).toBe('No observations matched the effective context.')
+    const emptySection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Empty Usage'))
+    expect(emptySection?.querySelector('[data-view-availability="empty"]')?.textContent).toBe('No observations matched the effective context.')
     expect(emptySection?.textContent).toContain('Affected source: empty-usage')
 
-    const unavailableSection = [
-      ...rendered.querySelectorAll('.page-section'),
-    ].find((section) => section.textContent?.includes('Missing Source'))
-    expect(
-      unavailableSection?.querySelector(
-        '[data-view-availability="unavailable"]',
-      )?.textContent,
-    ).toBe('This view is unavailable.')
-    expect(unavailableSection?.textContent).toContain(
-      'Source unavailable: missing-source',
-    )
+    const unavailableSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Source'))
+    expect(unavailableSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view is unavailable.')
+    expect(unavailableSection?.textContent).toContain('Source unavailable: missing-source')
 
-    const missingElementSourceSection = [
-      ...rendered.querySelectorAll('.page-section'),
-    ].find((section) => section.textContent?.includes('Missing Element Source'))
-    expect(
-      missingElementSourceSection?.querySelector(
-        '[data-view-availability="unavailable"]',
-      )?.textContent,
-    ).toBe('This view is unavailable.')
-    expect(missingElementSourceSection?.textContent).toContain(
-      'No sources declared for element view.',
+    const missingElementSourceSection = [...rendered.querySelectorAll('.page-section')].find((section) =>
+      section.textContent?.includes('Missing Element Source'),
     )
+    expect(missingElementSourceSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view is unavailable.')
+    expect(missingElementSourceSection?.textContent).toContain('No sources declared for element view.')
   })
 
   it('DLS-SAFE-007 DLS-SAFE-008 enables keyboard navigation across labeled page sections without relying on color alone', () => {
@@ -4373,16 +3795,10 @@ describe('presenter built-in and custom pages', () => {
     rendered.ownerDocument.body.append(rendered)
     enableDashboardKeyboardNavigation(rendered)
 
-    const sections = rendered.querySelectorAll(
-      '[data-page-id="keyboard-navigation"] .page-section',
-    )
+    const sections = rendered.querySelectorAll('[data-page-id="keyboard-navigation"] .page-section')
     expect(sections).toHaveLength(2)
-    expect(sections[0]?.getAttribute('aria-labelledby')).toContain(
-      'keyboard-navigation-runs-source-heading',
-    )
-    expect(
-      [...sections].map((section) => section.getAttribute('aria-labelledby')),
-    ).toEqual([
+    expect(sections[0]?.getAttribute('aria-labelledby')).toContain('keyboard-navigation-runs-source-heading')
+    expect([...sections].map((section) => section.getAttribute('aria-labelledby'))).toEqual([
       'keyboard-navigation-runs-source-heading',
       'keyboard-navigation-outcomes-source-heading',
     ])
@@ -4391,14 +3807,10 @@ describe('presenter built-in and custom pages', () => {
     const secondSection = /** @type {HTMLElement} */ (sections[1])
 
     firstSection.focus()
-    firstSection.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
-    )
+    firstSection.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     expect(rendered.ownerDocument.activeElement).toBe(secondSection)
 
-    secondSection.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }),
-    )
+    secondSection.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
     expect(rendered.ownerDocument.activeElement).toBe(firstSection)
   })
 
@@ -4433,8 +3845,7 @@ describe('presenter built-in and custom pages', () => {
                 {
                   id: 'conclusions',
                   title: 'Conclusions',
-                  description:
-                    'Run conclusions grouped across the selected window.',
+                  description: 'Run conclusions grouped across the selected window.',
                   data: { source: 'runs' },
                   mark: 'chart',
                   chart: 'pie',
@@ -4487,50 +3898,16 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    expect(
-      rendered.querySelectorAll(
-        '.custom-view-grid > [data-view-layout="half"]',
-      ),
-    ).toHaveLength(2)
-    expect(
-      rendered
-        .querySelector('[data-chart-widget="line"] polyline')
-        ?.getAttribute('points'),
-    ).not.toBe('')
-    expect(
-      rendered.querySelectorAll(
-        '[data-chart-widget="line"] [role="img"][tabindex="0"]',
-      ),
-    ).toHaveLength(2)
-    expect(
-      rendered
-        .querySelector('[data-chart-widget="line"] [role="img"][tabindex="0"]')
-        ?.getAttribute('aria-label'),
-    ).toContain(': 2')
-    expect(
-      rendered.querySelectorAll('[data-chart-widget="line"] .point-tooltip'),
-    ).toHaveLength(2)
-    expect(
-      rendered
-        .querySelector('[data-chart-widget="line"] .point-tooltip')
-        ?.getAttribute('aria-hidden'),
-    ).toBe('true')
-    expect(
-      rendered.querySelectorAll(
-        '[data-chart-widget="pie"] [data-chart-category]',
-      ),
-    ).toHaveLength(2)
-    expect(
-      rendered
-        .querySelector('[data-chart-widget="pie"] svg')
-        ?.getAttribute('aria-label'),
-    ).toContain('Pie chart:')
-    expect(
-      rendered.querySelector('.chart-view-pie .view-description')?.textContent,
-    ).toContain('Run conclusions grouped')
-    expect(
-      rendered.querySelector('.chart-view-pie .pie-chart-layout'),
-    ).not.toBeNull()
+    expect(rendered.querySelectorAll('.custom-view-grid > [data-view-layout="half"]')).toHaveLength(2)
+    expect(rendered.querySelector('[data-chart-widget="line"] polyline')?.getAttribute('points')).not.toBe('')
+    expect(rendered.querySelectorAll('[data-chart-widget="line"] [role="img"][tabindex="0"]')).toHaveLength(2)
+    expect(rendered.querySelector('[data-chart-widget="line"] [role="img"][tabindex="0"]')?.getAttribute('aria-label')).toContain(': 2')
+    expect(rendered.querySelectorAll('[data-chart-widget="line"] .point-tooltip')).toHaveLength(2)
+    expect(rendered.querySelector('[data-chart-widget="line"] .point-tooltip')?.getAttribute('aria-hidden')).toBe('true')
+    expect(rendered.querySelectorAll('[data-chart-widget="pie"] [data-chart-category]')).toHaveLength(2)
+    expect(rendered.querySelector('[data-chart-widget="pie"] svg')?.getAttribute('aria-label')).toContain('Pie chart:')
+    expect(rendered.querySelector('.chart-view-pie .view-description')?.textContent).toContain('Run conclusions grouped')
+    expect(rendered.querySelector('.chart-view-pie .pie-chart-layout')).not.toBeNull()
   })
 
   it('shows one hash-addressable page at a time and updates active navigation without scrolling', async () => {
@@ -4585,58 +3962,26 @@ describe('presenter built-in and custom pages', () => {
     })
     rendered.ownerDocument.body.append(rendered)
 
-    const first = /** @type {HTMLElement} */ (
-      rendered.querySelector('#page-first')
-    )
-    const second = /** @type {HTMLElement} */ (
-      rendered.querySelector('#page-second')
-    )
-    const firstLink = /** @type {HTMLAnchorElement} */ (
-      rendered.querySelector('[data-nav-page-id="first"]')
-    )
-    const secondLink = /** @type {HTMLAnchorElement} */ (
-      rendered.querySelector('[data-nav-page-id="second"]')
-    )
-    const firstDetails = /** @type {HTMLDetailsElement} */ (
-      first.querySelector('details')
-    )
+    const first = /** @type {HTMLElement} */ (rendered.querySelector('#page-first'))
+    const second = /** @type {HTMLElement} */ (rendered.querySelector('#page-second'))
+    const firstLink = /** @type {HTMLAnchorElement} */ (rendered.querySelector('[data-nav-page-id="first"]'))
+    const secondLink = /** @type {HTMLAnchorElement} */ (rendered.querySelector('[data-nav-page-id="second"]'))
+    const firstDetails = /** @type {HTMLDetailsElement} */ (first.querySelector('details'))
     expect(first.hidden).toBe(false)
     expect(second.hidden).toBe(true)
     expect(first.hasAttribute('data-page-pending')).toBe(false)
     expect(second.hasAttribute('data-page-pending')).toBe(true)
     firstDetails.open = true
-    const pageScroller = /** @type {HTMLElement} */ (
-      rendered.querySelector('main.dashboard-prototype')
-    )
+    const pageScroller = /** @type {HTMLElement} */ (rendered.querySelector('main.dashboard-prototype'))
     pageScroller.scrollTop = 320
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('[data-breadcrumb-root]')
-      )?.hidden,
-    ).toBe(true)
-    expect(
-      rendered.querySelector('[data-breadcrumb-root]')?.hasAttribute('href'),
-    ).toBe(false)
-    expect(
-      rendered
-        .querySelector('[data-breadcrumb-dashboard]')
-        ?.getAttribute('href'),
-    ).toBe('#page-first')
-    expect(
-      rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent,
-    ).toBe('Overview')
-    expect(
-      /** @type {HTMLElement} */ (
-        rendered.querySelector('[data-breadcrumb-dashboard]')
-      )?.hidden,
-    ).toBe(true)
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-root]'))?.hidden).toBe(true)
+    expect(rendered.querySelector('[data-breadcrumb-root]')?.hasAttribute('href')).toBe(false)
+    expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.getAttribute('href')).toBe('#page-first')
+    expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview')
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true)
     expect(rendered.querySelector('#page-title')?.textContent).toBe('First')
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe(
-      'First',
-    )
-    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
-      'First page description',
-    )
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('First')
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('First page description')
     expect(rendered.ownerDocument.title).toBe('First · Page Navigation')
     first.dispatchEvent(
       new CustomEvent('dashboard-route-allocation', {
@@ -4650,14 +3995,10 @@ describe('presenter built-in and custom pages', () => {
         },
       }),
     )
-    const titleLink = /** @type {HTMLAnchorElement} */ (
-      rendered.querySelector('[data-page-title-link]')
-    )
+    const titleLink = /** @type {HTMLAnchorElement} */ (rendered.querySelector('[data-page-title-link]'))
     expect(titleLink.hidden).toBe(false)
     expect(titleLink.textContent).toBe('#42')
-    expect(titleLink.getAttribute('href')).toBe(
-      'https://github.com/octo/repo/issues/42',
-    )
+    expect(titleLink.getAttribute('href')).toBe('https://github.com/octo/repo/issues/42')
     expect(titleLink.getAttribute('target')).toBe('_blank')
     expect(titleLink.getAttribute('rel')).toBe('noopener noreferrer')
     expect(rendered.ownerDocument.title).toBe('Linked issue · Page Navigation')
@@ -4673,28 +4014,18 @@ describe('presenter built-in and custom pages', () => {
     expect(second.getAttribute('aria-busy')).toBe('true')
     expect(second.querySelector('.dashboard-view-skeleton')).not.toBeNull()
     expect(secondLink.getAttribute('aria-current')).toBe('page')
-    expect(rendered.ownerDocument.defaultView?.location.hash).toBe(
-      '#page-second',
-    )
+    expect(rendered.ownerDocument.defaultView?.location.hash).toBe('#page-second')
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Second')
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe(
-      'Second',
-    )
-    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
-      'Second page description',
-    )
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Second')
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Second page description')
     expect(rendered.ownerDocument.title).toBe('Second · Page Navigation')
     expect(titleLink.hidden).toBe(true)
     expect(titleLink.hasAttribute('href')).toBe(false)
-    expect(rendered.ownerDocument.activeElement).toBe(
-      rendered.querySelector('#page-title'),
-    )
+    expect(rendered.ownerDocument.activeElement).toBe(rendered.querySelector('#page-title'))
     await vi.waitFor(() => {
       expect(rendered.querySelector('#page-second')).not.toBe(second)
     })
-    const renderedSecond = /** @type {HTMLElement} */ (
-      rendered.querySelector('#page-second')
-    )
+    const renderedSecond = /** @type {HTMLElement} */ (rendered.querySelector('#page-second'))
     expect(renderedSecond.hidden).toBe(false)
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(false)
     expect(renderedSecond.hasAttribute('aria-busy')).toBe(false)
@@ -4704,22 +4035,12 @@ describe('presenter built-in and custom pages', () => {
 
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(true)
     expect(renderedSecond.childElementCount).toBe(0)
-    expect(
-      rendered.querySelector('#page-first .dashboard-view-skeleton'),
-    ).not.toBeNull()
+    expect(rendered.querySelector('#page-first .dashboard-view-skeleton')).not.toBeNull()
     await vi.waitFor(() => {
-      expect(
-        rendered.querySelector('#page-first .dashboard-view-skeleton'),
-      ).toBeNull()
+      expect(rendered.querySelector('#page-first .dashboard-view-skeleton')).toBeNull()
     })
-    const rehydratedFirst = /** @type {HTMLElement} */ (
-      rendered.querySelector('#page-first')
-    )
-    expect(
-      /** @type {HTMLDetailsElement | null} */ (
-        rehydratedFirst.querySelector('details')
-      )?.open,
-    ).toBe(true)
+    const rehydratedFirst = /** @type {HTMLElement} */ (rendered.querySelector('#page-first'))
+    expect(/** @type {HTMLDetailsElement | null} */ (rehydratedFirst.querySelector('details'))?.open).toBe(true)
     expect(pageScroller.scrollTop).toBe(320)
     rendered.ownerDocument.defaultView?.history.replaceState(null, '', '/')
   })
@@ -4737,8 +4058,7 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(root)
     /** @param {string} pageId */
     const renderPage = (pageId) => {
-      if (pageId === 'second')
-        return Promise.reject(new Error('Page rendering failed.'))
+      if (pageId === 'second') return Promise.reject(new Error('Page rendering failed.'))
       const page = document.createElement('section')
       page.className = 'dashboard-page'
       page.id = `page-${pageId}`
@@ -4748,23 +4068,15 @@ describe('presenter built-in and custom pages', () => {
     try {
       enableDashboardPageNavigation(root, 'Dashboard', renderPage, 'first')
       await vi.waitFor(() => {
-        expect(
-          root.querySelector('#page-first')?.hasAttribute('data-page-pending'),
-        ).toBe(false)
+        expect(root.querySelector('#page-first')?.hasAttribute('data-page-pending')).toBe(false)
       })
 
-      ;/** @type {HTMLAnchorElement} */ (
-        root.querySelector('[data-nav-page-id="second"]')
-      ).click()
+      ;/** @type {HTMLAnchorElement} */ (root.querySelector('[data-nav-page-id="second"]')).click()
 
       await vi.waitFor(() => {
-        expect(root.querySelector('#page-second .empty')?.textContent).toBe(
-          'Unable to load this page.',
-        )
+        expect(root.querySelector('#page-second .empty')?.textContent).toBe('Unable to load this page.')
       })
-      const page = /** @type {HTMLElement} */ (
-        root.querySelector('#page-second')
-      )
+      const page = /** @type {HTMLElement} */ (root.querySelector('#page-second'))
       expect(page.getAttribute('aria-busy')).toBeNull()
       expect(page.querySelector('.empty')?.getAttribute('role')).toBe('alert')
     } finally {
@@ -4782,17 +4094,14 @@ describe('presenter built-in and custom pages', () => {
           rows: [
             {
               title: 'Private repository discovery is off',
-              effect:
-                'Private repositories are excluded from workflow inventory and run-health totals.',
+              effect: 'Private repositories are excluded from workflow inventory and run-health totals.',
               'technical-detail': 'Raw private repository collection detail.',
             },
             {
               kind: 'github-api-rate-limit-403',
               title: 'Durable output collection unavailable',
-              effect:
-                'Durable output evidence is partial because GitHub rate-limited collection.',
-              'technical-detail':
-                'GitHub API rate limit exceeded for /repos/githubnext/gh-aw-cao/actions/runs.',
+              effect: 'Durable output evidence is partial because GitHub rate-limited collection.',
+              'technical-detail': 'GitHub API rate limit exceeded for /repos/githubnext/gh-aw-cao/actions/runs.',
               endpoint: '/repos/githubnext/gh-aw-cao/actions/runs',
             },
           ],
@@ -4814,39 +4123,15 @@ describe('presenter built-in and custom pages', () => {
     window?.history.replaceState(null, '', '/#page-coverage')
     window?.dispatchEvent(new HashChangeEvent('hashchange'))
 
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('#page-coverage')
-      )?.hidden,
-    ).toBe(false)
-    expect(rendered.querySelector('#page-title')?.textContent).toBe(
-      'Coverage diagnostics',
-    )
-    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
-      'Drill-down into the canonical Data Health coverage and collection evidence.',
-    )
-    expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe(
-      'Operational health',
-    )
-    expect(
-      /** @type {HTMLElement | null} */ (
-        rendered.querySelector('[data-breadcrumb-dashboard]')
-      )?.hidden,
-    ).toBe(true)
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe(
-      'Coverage diagnostics',
-    )
-    expect(
-      rendered
-        .querySelector('[data-nav-page-id="operations"]')
-        ?.getAttribute('aria-current'),
-    ).toBe('page')
-    expect(
-      rendered.querySelectorAll('.org-sidebar [data-nav-page-id="coverage"]'),
-    ).toHaveLength(0)
-    const coveragePage = authoritativeDashboardDocument.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'coverage',
-    )
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('#page-coverage'))?.hidden).toBe(false)
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('Coverage diagnostics')
+    expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Drill-down into the canonical Data Health coverage and collection evidence.')
+    expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Operational health')
+    expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true)
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Coverage diagnostics')
+    expect(rendered.querySelector('[data-nav-page-id="operations"]')?.getAttribute('aria-current')).toBe('page')
+    expect(rendered.querySelectorAll('.org-sidebar [data-nav-page-id="coverage"]')).toHaveLength(0)
+    const coveragePage = authoritativeDashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'coverage')
     expect(coveragePage.route).toEqual({ 'navigation-page': 'operations' })
     expect(coveragePage.views[1]).toMatchObject({
       mark: 'table',
@@ -4867,43 +4152,19 @@ describe('presenter built-in and custom pages', () => {
       data: { source: 'data-health-collections' },
     })
     await vi.waitFor(() => {
-      expect(
-        rendered
-          .querySelector('#page-coverage')
-          ?.hasAttribute('data-page-pending'),
-      ).toBe(false)
+      expect(rendered.querySelector('#page-coverage')?.hasAttribute('data-page-pending')).toBe(false)
     })
-    const essentialRows = rendered.querySelectorAll(
-      '#page-coverage [data-disclosure="essential"] .custom-table tbody tr',
-    )
+    const essentialRows = rendered.querySelectorAll('#page-coverage [data-disclosure="essential"] .custom-table tbody tr')
     expect(essentialRows.length).toBeGreaterThanOrEqual(9)
-    const essentialText = [
-      ...rendered.querySelectorAll(
-        '#page-coverage [data-disclosure="essential"]',
-      ),
-    ]
-      .map((view) => view.textContent)
-      .join(' ')
+    const essentialText = [...rendered.querySelectorAll('#page-coverage [data-disclosure="essential"]')].map((view) => view.textContent).join(' ')
     expect(essentialText).not.toContain('GitHub API rate limit exceeded')
-    const supplementalDetails = rendered.querySelectorAll(
-      '#page-coverage .view-disclosure[data-disclosure="supplemental"]',
-    )
+    const supplementalDetails = rendered.querySelectorAll('#page-coverage .view-disclosure[data-disclosure="supplemental"]')
     expect(supplementalDetails).toHaveLength(2)
-    expect(
-      /** @type {HTMLDetailsElement} */ (supplementalDetails[0]).open,
-    ).toBe(false)
-    expect(supplementalDetails[0].textContent).toContain(
-      'Durable output evidence is partial because GitHub rate-limited collection.',
-    )
-    expect(supplementalDetails[0].textContent).not.toContain(
-      'GitHub API rate limit exceeded',
-    )
-    expect(
-      /** @type {HTMLDetailsElement} */ (supplementalDetails[1]).open,
-    ).toBe(false)
-    expect(supplementalDetails[1].textContent).toContain(
-      'GitHub API rate limit exceeded',
-    )
+    expect(/** @type {HTMLDetailsElement} */ (supplementalDetails[0]).open).toBe(false)
+    expect(supplementalDetails[0].textContent).toContain('Durable output evidence is partial because GitHub rate-limited collection.')
+    expect(supplementalDetails[0].textContent).not.toContain('GitHub API rate limit exceeded')
+    expect(/** @type {HTMLDetailsElement} */ (supplementalDetails[1]).open).toBe(false)
+    expect(supplementalDetails[1].textContent).toContain('GitHub API rate limit exceeded')
 
     window?.history.replaceState(null, '', '/')
   })
@@ -4980,24 +4241,10 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    expect(
-      rendered.querySelectorAll('[data-chart-widget="bar"] rect[role="img"]'),
-    ).toHaveLength(2)
-    expect(
-      rendered
-        .querySelector('[data-chart-widget="bar"] rect')
-        ?.getAttribute('aria-label'),
-    ).toContain('failure')
-    expect(
-      rendered
-        .querySelector('[data-chart-legend="visual"]')
-        ?.getAttribute('class'),
-    ).toContain('chart-legend-bar')
-    expect(
-      [
-        ...rendered.querySelectorAll('[data-chart-legend="visual"] li span'),
-      ].map((item) => item.textContent),
-    ).toEqual(['failure', 'success'])
+    expect(rendered.querySelectorAll('[data-chart-widget="bar"] rect[role="img"]')).toHaveLength(2)
+    expect(rendered.querySelector('[data-chart-widget="bar"] rect')?.getAttribute('aria-label')).toContain('failure')
+    expect(rendered.querySelector('[data-chart-legend="visual"]')?.getAttribute('class')).toContain('chart-legend-bar')
+    expect([...rendered.querySelectorAll('[data-chart-legend="visual"] li span')].map((item) => item.textContent)).toEqual(['failure', 'success'])
     expect(rendered.querySelectorAll('.custom-table a')).toHaveLength(1)
     expect(rendered.querySelector('.custom-table a')?.textContent).toBe('2')
   })
@@ -5086,26 +4333,11 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    const safeLinks = rendered.querySelectorAll(
-      '.custom-table a, .metric-link a',
-    )
+    const safeLinks = rendered.querySelectorAll('.custom-table a, .metric-link a')
     expect(safeLinks).toHaveLength(2)
-    expect([...safeLinks].map((link) => link.textContent)).toEqual([
-      '4',
-      'Run 4',
-    ])
-    expect(
-      [...safeLinks].every(
-        (link) => !String(link.getAttribute('href')).includes('user:secret@'),
-      ),
-    ).toBe(true)
-    expect(
-      [...safeLinks].every((link) =>
-        String(link.getAttribute('href')).startsWith(
-          'https://example.com/runs/4',
-        ),
-      ),
-    ).toBe(true)
+    expect([...safeLinks].map((link) => link.textContent)).toEqual(['4', 'Run 4'])
+    expect([...safeLinks].every((link) => !String(link.getAttribute('href')).includes('user:secret@'))).toBe(true)
+    expect([...safeLinks].every((link) => String(link.getAttribute('href')).startsWith('https://example.com/runs/4'))).toBe(true)
     expect(rendered.textContent).not.toContain('Credentialed Run')
     expect(rendered.textContent).not.toContain('FTP Run')
     expect(rendered.textContent).toContain('Run 4')
@@ -5177,19 +4409,13 @@ describe('presenter built-in and custom pages', () => {
     const rows = [...rendered.querySelectorAll('.custom-table tbody tr')]
     expect(rows).toHaveLength(2)
     expect(rows.map((row) => row.textContent)).toEqual(['charlie6', 'alpha5'])
-    const filter = /** @type {HTMLInputElement} */ (
-      rendered.querySelector('.table-filter input')
-    )
+    const filter = /** @type {HTMLInputElement} */ (rendered.querySelector('.table-filter input'))
     expect(filter).toBeTruthy()
-    expect(filter.closest('label')?.textContent).toContain(
-      'Filter Repository usage',
-    )
+    expect(filter.closest('label')?.textContent).toContain('Filter Repository usage')
     filter.value = 'alpha'
     filter.dispatchEvent(new Event('input'))
     expect(rows.map((row) => row.hasAttribute('hidden'))).toEqual([true, false])
-    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe(
-      'Showing 1 of 1 result',
-    )
+    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result')
     expect(rendered.querySelector('.freshness')).toBeNull()
   })
 
@@ -5261,23 +4487,13 @@ describe('presenter built-in and custom pages', () => {
       },
     })
 
-    expect(
-      rendered.querySelector('.custom-table .status-success')?.textContent,
-    ).toBe('true')
-    expect(
-      rendered.querySelector('.custom-table .mode-review')?.textContent,
-    ).toBe('review')
-    expect(
-      rendered.querySelector('.custom-table .status-danger')?.textContent,
-    ).toBe('failure')
+    expect(rendered.querySelector('.custom-table .status-success')?.textContent).toBe('true')
+    expect(rendered.querySelector('.custom-table .mode-review')?.textContent).toBe('review')
+    expect(rendered.querySelector('.custom-table .status-danger')?.textContent).toBe('failure')
   })
 
   it('routes and reallocates a JSON-selected repository workflow view from a hash query argument', () => {
-    window.history.replaceState(
-      null,
-      '',
-      '/#page-repository-detail?repository=octo-org%2Focto-repo',
-    )
+    window.history.replaceState(null, '', '/#page-repository-detail?repository=octo-org%2Focto-repo')
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -5369,37 +4585,21 @@ describe('presenter built-in and custom pages', () => {
     const repositoryView = rendered.querySelector('[data-route-view]')
     expect(repositoryView?.textContent).toContain('Review')
     expect(repositoryView?.textContent).not.toContain('Other')
-    expect(rendered.querySelector('#page-title')?.textContent).toBe(
-      'octo-org/octo-repo',
-    )
-    expect(rendered.ownerDocument.title).toBe(
-      'octo-org/octo-repo · Repository detail',
-    )
-    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe(
-      'octo-org/octo-repo',
-    )
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('octo-org/octo-repo')
+    expect(rendered.ownerDocument.title).toBe('octo-org/octo-repo · Repository detail')
+    expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('octo-org/octo-repo')
     expect(repositoryView?.querySelector('tbody a')?.getAttribute('href')).toBe(
       '#page-workflow-runtime?workflow=octo-org%2Focto-repo%3A.github%2Fworkflows%2Freview.md',
     )
-    expect(
-      repositoryView?.querySelector('tbody a')?.getAttribute('target'),
-    ).toBeNull()
+    expect(repositoryView?.querySelector('tbody a')?.getAttribute('target')).toBeNull()
 
-    window.history.replaceState(
-      null,
-      '',
-      '/#page-repository-detail?repository=other-org%2Fother-repo',
-    )
+    window.history.replaceState(null, '', '/#page-repository-detail?repository=other-org%2Fother-repo')
     window.dispatchEvent(new Event('hashchange'))
 
     expect(repositoryView?.textContent).toContain('Other')
     expect(repositoryView?.textContent).not.toContain('Review')
-    expect(rendered.querySelector('#page-title')?.textContent).toBe(
-      'other-org/other-repo',
-    )
-    expect(rendered.ownerDocument.title).toBe(
-      'other-org/other-repo · Repository detail',
-    )
+    expect(rendered.querySelector('#page-title')?.textContent).toBe('other-org/other-repo')
+    expect(rendered.ownerDocument.title).toBe('other-org/other-repo · Repository detail')
     expect(document.activeElement).toBe(rendered.querySelector('#page-title'))
     rendered.remove()
     window.history.replaceState(null, '', '/')

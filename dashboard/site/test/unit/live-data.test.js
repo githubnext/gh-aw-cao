@@ -9,72 +9,46 @@ describe('live Dashboard Language sources', () => {
   it('loads generated sources progressively and requires an explicit fixture opt-in', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8')
 
-    expect(
-      preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'),
-    ).toBeLessThan(preview.indexOf('await loadCanonicalDashboardSources('))
-    expect(preview.indexOf('startLoadingProgress(document)')).toBeLessThan(
-      preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'),
-    )
+    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf('await loadCanonicalDashboardSources('))
+    expect(preview.indexOf('startLoadingProgress(document)')).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'))
     expect(preview).toContain('renderSources({}, "loading")')
     expect(preview).toContain('dashboard-loading-skeleton')
     expect(preview).not.toContain('Loading dashboard data…')
     expect(preview).toContain('startLoadingProgress(document)')
     expect(preview).toContain('loadingProgress.complete()')
-    expect(preview).toContain(
-      'import { loadCanonicalDashboardPage, loadCanonicalDashboardSources } from "./src/data-processor.js"',
-    )
+    expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources } from "./src/data-processor.js"')
     expect(preview).toMatch(
       /await loadCanonicalDashboardSources\(\s*sourceUrl,\s*dashboardPageSourceNames\(dashboardDocument, initialPageId\),\s*dashboardContext/,
     )
     expect(preview).not.toContain('loadDashboardSources(fetch, sourceUrl)')
-    expect(preview).not.toContain(
-      'ingestDashboardSources(window.indexedDB, sources',
-    )
+    expect(preview).not.toContain('ingestDashboardSources(window.indexedDB, sources')
     expect(preview).not.toContain('./src/source-cache.js')
     expect(preview).not.toContain('Showing cached data.')
-    expect(preview).toContain(
-      'loadCanonicalViewSources(window.indexedDB, sources, {',
-    )
+    expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {')
     expect(preview).toContain('storage: navigator.storage')
     expect(preview).toContain('has("fixtures")')
     expect(preview).toContain('Unable to load live dashboard data:')
-    expect(preview).toContain(
-      'window.addEventListener("dashboard-preview-update"',
-    )
-    expect(preview).toContain(
-      'renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)',
-    )
+    expect(preview).toContain('window.addEventListener("dashboard-preview-update"')
+    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)')
     expect(preview).toContain('event: "preview.rendered"')
     expect(preview).toContain('get("local-preview")')
-    expect(preview).toMatch(
-      /previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/,
-    )
+    expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/)
     expect(preview).toContain('viewer: localViewer')
-    expect(preview).toContain(
-      'new URL("./__dashboard_socket", window.location.href)',
-    )
+    expect(preview).toContain('new URL("./__dashboard_socket", window.location.href)')
     expect(preview).toContain('previewMode === "copilot"')
     expect(preview).toContain('await import("./src/copilot-prompt.js")')
-    expect(preview).toContain(
-      'copilotPrompt = renderCopilotPrompt(dashboardSocket)',
-    )
-    expect(preview).toContain(
-      'dashboard.classList.add("dashboard-copilot-enabled")',
-    )
+    expect(preview).toContain('copilotPrompt = renderCopilotPrompt(dashboardSocket)')
+    expect(preview).toContain('dashboard.classList.add("dashboard-copilot-enabled")')
     expect(preview).toContain('octicon(open ? "chevron-down" : "chevron-up")')
     expect(preview).toContain('panel.prepend(toggleButton)')
     expect(preview).toContain('sidebar?.append(toggleButton)')
     expect(preview).toContain('dashboard.append(panel)')
-    expect(preview).not.toContain(
-      'dashboard.querySelector(".org-sidebar")?.append(copilotPrompt)',
-    )
+    expect(preview).not.toContain('dashboard.querySelector(".org-sidebar")?.append(copilotPrompt)')
     expect(preview).not.toContain('Retain the illustrative fixture data')
   })
 
   it('maps the operations report inputs into canonical logical sources', () => {
-    const temporaryDirectory = mkdtempSync(
-      join(tmpdir(), 'dashboard-language-sources-'),
-    )
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), 'dashboard-language-sources-'))
     const inputs = {
       deployed: {
         generatedAt: '2026-08-30T12:00:00Z',
@@ -232,64 +206,34 @@ describe('live Dashboard Language sources', () => {
       },
     }
     for (const [name, value] of Object.entries(inputs)) {
-      writeFileSync(
-        join(temporaryDirectory, `${name}.json`),
-        JSON.stringify(value),
-      )
+      writeFileSync(join(temporaryDirectory, `${name}.json`), JSON.stringify(value))
     }
     const output = join(temporaryDirectory, 'sources.json')
     try {
-      execFileSync(
-        process.execPath,
-        [resolve('../../dashboard/report/dashboard-language-sources.mjs')],
-        {
-          env: {
-            ...process.env,
-            REPORT_DEPLOYED_WORKFLOWS: join(
-              temporaryDirectory,
-              'deployed.json',
-            ),
-            REPORT_AIC_USAGE: join(temporaryDirectory, 'usage.json'),
-            REPORT_OPERATIONAL_VALUES: join(
-              temporaryDirectory,
-              'operationalValues.json',
-            ),
-            REPORT_RECORDS: join(temporaryDirectory, 'report.json'),
-            REPORT_INVENTORY: join(temporaryDirectory, 'inventory.json'),
-            REPORT_CONTROL_SETTINGS: join(
-              temporaryDirectory,
-              'controlSettings.json',
-            ),
-            REPORT_DASHBOARD_SOURCES: output,
-          },
+      execFileSync(process.execPath, [resolve('../../dashboard/report/dashboard-language-sources.mjs')], {
+        env: {
+          ...process.env,
+          REPORT_DEPLOYED_WORKFLOWS: join(temporaryDirectory, 'deployed.json'),
+          REPORT_AIC_USAGE: join(temporaryDirectory, 'usage.json'),
+          REPORT_OPERATIONAL_VALUES: join(temporaryDirectory, 'operationalValues.json'),
+          REPORT_RECORDS: join(temporaryDirectory, 'report.json'),
+          REPORT_INVENTORY: join(temporaryDirectory, 'inventory.json'),
+          REPORT_CONTROL_SETTINGS: join(temporaryDirectory, 'controlSettings.json'),
+          REPORT_DASHBOARD_SOURCES: output,
         },
-      )
+      })
       let sources = JSON.parse(readFileSync(output, 'utf8'))
-      const sourceManifest = JSON.parse(
-        readFileSync(
-          join(temporaryDirectory, 'sources', 'manifest.json'),
-          'utf8',
-        ),
-      )
-      const splitRuns = JSON.parse(
-        readFileSync(join(temporaryDirectory, 'sources', 'runs.json'), 'utf8'),
-      )
+      const sourceManifest = JSON.parse(readFileSync(join(temporaryDirectory, 'sources', 'manifest.json'), 'utf8'))
+      const splitRuns = JSON.parse(readFileSync(join(temporaryDirectory, 'sources', 'runs.json'), 'utf8'))
 
       expect(sourceManifest).toEqual({
         version: 1,
         generation: expect.stringMatching(/^[a-f0-9]{64}$/),
         sources: Object.keys(sources),
       })
-      expect(splitRuns.metadata['artifact-generation']).toBe(
-        sourceManifest.generation,
-      )
+      expect(splitRuns.metadata['artifact-generation']).toBe(sourceManifest.generation)
       expect(splitRuns.rows).toHaveLength(sources.runs.rows.length)
-      expect(
-        splitRuns.rows.every(
-          (/** @type {Record<string, unknown>} */ row) =>
-            !('logs-payload' in row),
-        ),
-      ).toBe(true)
+      expect(splitRuns.rows.every((/** @type {Record<string, unknown>} */ row) => !('logs-payload' in row))).toBe(true)
 
       expect(sources.workflows.rows[0]).toMatchObject({
         organization: 'githubnext',
@@ -381,9 +325,7 @@ describe('live Dashboard Language sources', () => {
       expect(overview['overview-managed-packages'].rows).toContainEqual(
         expect.objectContaining({
           package: 'dependabot',
-          'repository-modes': expect.arrayContaining([
-            { repository: 'githubnext/gh-aw-cao', mode: 'live' },
-          ]),
+          'repository-modes': expect.arrayContaining([{ repository: 'githubnext/gh-aw-cao', mode: 'live' }]),
           'rollout-live-repositories': 1,
           'rollout-repositories': 7,
           'rollout-percent': 100,
@@ -410,42 +352,25 @@ describe('live Dashboard Language sources', () => {
         error: 'GitHub API rate limit exceeded; collection stopped.',
         errorStatus: 403,
       }
-      writeFileSync(
-        join(temporaryDirectory, 'report.json'),
-        JSON.stringify(rateLimitedReport),
-      )
-      execFileSync(
-        process.execPath,
-        [resolve('../../dashboard/report/dashboard-language-sources.mjs')],
-        {
-          env: {
-            ...process.env,
-            REPORT_DEPLOYED_WORKFLOWS: join(
-              temporaryDirectory,
-              'deployed.json',
-            ),
-            REPORT_AIC_USAGE: join(temporaryDirectory, 'usage.json'),
-            REPORT_OPERATIONAL_VALUES: join(
-              temporaryDirectory,
-              'operationalValues.json',
-            ),
-            REPORT_RECORDS: join(temporaryDirectory, 'report.json'),
-            REPORT_INVENTORY: join(temporaryDirectory, 'inventory.json'),
-            REPORT_CONTROL_SETTINGS: join(
-              temporaryDirectory,
-              'controlSettings.json',
-            ),
-            REPORT_DASHBOARD_SOURCES: output,
-          },
+      writeFileSync(join(temporaryDirectory, 'report.json'), JSON.stringify(rateLimitedReport))
+      execFileSync(process.execPath, [resolve('../../dashboard/report/dashboard-language-sources.mjs')], {
+        env: {
+          ...process.env,
+          REPORT_DEPLOYED_WORKFLOWS: join(temporaryDirectory, 'deployed.json'),
+          REPORT_AIC_USAGE: join(temporaryDirectory, 'usage.json'),
+          REPORT_OPERATIONAL_VALUES: join(temporaryDirectory, 'operationalValues.json'),
+          REPORT_RECORDS: join(temporaryDirectory, 'report.json'),
+          REPORT_INVENTORY: join(temporaryDirectory, 'inventory.json'),
+          REPORT_CONTROL_SETTINGS: join(temporaryDirectory, 'controlSettings.json'),
+          REPORT_DASHBOARD_SOURCES: output,
         },
-      )
+      })
       sources = JSON.parse(readFileSync(output, 'utf8'))
       expect(sources['coverage-diagnostics'].rows).toContainEqual(
         expect.objectContaining({
           kind: 'github-api-rate-limit-403',
           title: 'Durable output collection unavailable',
-          effect:
-            'Durable output evidence is partial because GitHub rate-limited collection.',
+          effect: 'Durable output evidence is partial because GitHub rate-limited collection.',
           'technical-detail': rateLimitedReport.error,
         }),
       )

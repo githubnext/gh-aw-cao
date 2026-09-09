@@ -1,20 +1,11 @@
 import { h } from '../dom.js'
 import { formatNumber } from '../view-formatters.js'
 import { formatRoundedPercent } from './count-formatters.js'
-import {
-  listChartSeries,
-  renderChartWidget,
-  renderPieLegend,
-} from './chart-elements.js'
+import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js'
 import { renderLazyView } from './lazy-view.js'
 import { rowsFor } from './source-rows.js'
 
-const FAILURE_CONCLUSIONS = new Set([
-  'failure',
-  'timed-out',
-  'startup-failure',
-  'action-required',
-])
+const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required'])
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderInsightsOverview(context) {
@@ -42,16 +33,10 @@ export function renderInsightsOverview(context) {
   })
   const valueSeries = listChartSeries(valuePoints)
   const meanValue = mean(valuePoints.map((point) => point.y))
-  const acceptedOutcomes = outcomes.filter(
-    (row) => String(row['outcome-state']) === 'accepted',
-  ).length
-  const matureValues = values.filter(
-    (row) => String(row['maturity-status']) === 'matured',
-  ).length
+  const acceptedOutcomes = outcomes.filter((row) => String(row['outcome-state']) === 'accepted').length
+  const matureValues = values.filter((row) => String(row['maturity-status']) === 'matured').length
 
-  const outcomeEntries = counts(outcomes, (row) =>
-    String(row['outcome-state'] || 'unknown'),
-  )
+  const outcomeEntries = counts(outcomes, (row) => String(row['outcome-state'] || 'unknown'))
   const usagePoints = dailyPoints(
     usage,
     'observed-at',
@@ -59,50 +44,22 @@ export function renderInsightsOverview(context) {
     () => 'AI Credits',
   )
   const usageSeries = listChartSeries(usagePoints)
-  const totalAic = usage.reduce(
-    (total, row) => total + finiteNumber(row.aic),
-    0,
-  )
+  const totalAic = usage.reduce((total, row) => total + finiteNumber(row.aic), 0)
 
-  const activeStatuses = new Set([
-    'queued',
-    'in-progress',
-    'in_progress',
-    'waiting',
-    'pending',
-  ])
+  const activeStatuses = new Set(['queued', 'in-progress', 'in_progress', 'waiting', 'pending'])
   const completedRuns = runs.filter((row) => {
     const status = String(row['run-status'] || '')
     const conclusion = String(row['run-conclusion'] || '')
-    return (
-      status === 'completed' ||
-      (!activeStatuses.has(status) &&
-        Boolean(conclusion) &&
-        conclusion !== 'unknown')
-    )
+    return status === 'completed' || (!activeStatuses.has(status) && Boolean(conclusion) && conclusion !== 'unknown')
   })
-  const successfulRuns = completedRuns.filter(
-    (row) => String(row['run-conclusion']) === 'success',
-  ).length
-  const failedRuns = completedRuns.filter((row) =>
-    FAILURE_CONCLUSIONS.has(String(row['run-conclusion'])),
-  ).length
-  const activeRuns = runs.filter((row) =>
-    activeStatuses.has(String(row['run-status'])),
-  ).length
+  const successfulRuns = completedRuns.filter((row) => String(row['run-conclusion']) === 'success').length
+  const failedRuns = completedRuns.filter((row) => FAILURE_CONCLUSIONS.has(String(row['run-conclusion']))).length
+  const activeRuns = runs.filter((row) => activeStatuses.has(String(row['run-status']))).length
   const runPoints = runs.flatMap((row, index) => {
     const observed = String(row['started-at'] || '')
     const conclusion = String(row['run-conclusion'] || '')
     return Number.isFinite(Date.parse(observed)) &&
-      [
-        'success',
-        'failure',
-        'timed-out',
-        'startup-failure',
-        'action-required',
-        'cancelled',
-        'skipped',
-      ].includes(conclusion)
+      ['success', 'failure', 'timed-out', 'startup-failure', 'action-required', 'cancelled', 'skipped'].includes(conclusion)
       ? [
           {
             x: observed,
@@ -116,27 +73,11 @@ export function renderInsightsOverview(context) {
       : []
   })
 
-  const detectionEntries = counts(detections, (row) =>
-    String(row['detection-state-label'] || row['detection-state'] || 'Unknown'),
-  )
-  const usableVerdicts = mean(
-    detections
-      .map((row) => Number(row['usable-verdict-percent']))
-      .filter(Number.isFinite),
-  )
-  const experimentEntries = counts(experiments, (row) =>
-    String(row.decision || row.readiness || 'Pending'),
-  )
-  const decisionReady = experiments.filter((row) =>
-    ['PROMOTE', 'REJECT', 'READY'].includes(
-      String(row.decision || row.readiness).toUpperCase(),
-    ),
-  ).length
-  const valueChart = h(
-    'div',
-    { className: 'insights-value-chart' },
-    renderChartWidget('line', valuePoints, valueSeries),
-  )
+  const detectionEntries = counts(detections, (row) => String(row['detection-state-label'] || row['detection-state'] || 'Unknown'))
+  const usableVerdicts = mean(detections.map((row) => Number(row['usable-verdict-percent'])).filter(Number.isFinite))
+  const experimentEntries = counts(experiments, (row) => String(row.decision || row.readiness || 'Pending'))
+  const decisionReady = experiments.filter((row) => ['PROMOTE', 'REJECT', 'READY'].includes(String(row.decision || row.readiness).toUpperCase())).length
+  const valueChart = h('div', { className: 'insights-value-chart' }, renderChartWidget('line', valuePoints, valueSeries))
 
   return h(
     'section',
@@ -154,31 +95,18 @@ export function renderInsightsOverview(context) {
           'div',
           null,
           h('span', { className: 'insights-eyebrow' }, 'Value created'),
-          h(
-            'h2',
-            { id: 'insights-value-title' },
-            'Operational value attainment',
-          ),
-          h(
-            'p',
-            null,
-            'Measured attainment and accepted repository outcomes, without inferring unsupported ROI.',
-          ),
+          h('h2', { id: 'insights-value-title' }, 'Operational value attainment'),
+          h('p', null, 'Measured attainment and accepted repository outcomes, without inferring unsupported ROI.'),
         ),
         h(
           'dl',
           { className: 'insights-lead-metrics' },
-          metric(
-            meanValue === null ? '—' : formatRoundedPercent(meanValue),
-            'mean attainment',
-          ),
+          metric(meanValue === null ? '—' : formatRoundedPercent(meanValue), 'mean attainment'),
           metric(formatNumber(acceptedOutcomes), 'accepted outcomes'),
           metric(formatNumber(matureValues), 'mature observations'),
         ),
       ),
-      valueSeries.length > 1
-        ? renderValueSeriesSelector(valuePoints, valueSeries, valueChart)
-        : null,
+      valueSeries.length > 1 ? renderValueSeriesSelector(valuePoints, valueSeries, valueChart) : null,
       valueChart,
     ),
 
@@ -188,13 +116,7 @@ export function renderInsightsOverview(context) {
       insightPanel(
         'Outcome disposition',
         'What happened to retained outputs.',
-        renderChartWidget(
-          'pie',
-          [],
-          [],
-          pieSummary(outcomeEntries),
-          'Outcomes',
-        ),
+        renderChartWidget('pie', [], [], pieSummary(outcomeEntries), 'Outcomes'),
         renderPieLegend(outcomeEntries, sumEntries(outcomeEntries)),
       ),
       renderLazyPanel('AI Credit allocation', () =>
@@ -202,12 +124,7 @@ export function renderInsightsOverview(context) {
           'AI Credit allocation',
           'Daily measured allocation, not monetary cost.',
           renderChartWidget('line', usagePoints, usageSeries),
-          h(
-            'div',
-            { className: 'insights-panel-stat' },
-            h('strong', null, formatNumber(totalAic)),
-            h('span', null, 'AIC observed'),
-          ),
+          h('div', { className: 'insights-panel-stat' }, h('strong', null, formatNumber(totalAic)), h('span', null, 'AIC observed')),
         ),
       ),
       renderLazyPanel('Execution health', () =>
@@ -218,12 +135,7 @@ export function renderInsightsOverview(context) {
           h(
             'dl',
             { className: 'insights-inline-metrics' },
-            metric(
-              completedRuns.length
-                ? formatRoundedPercent(successfulRuns / completedRuns.length)
-                : '—',
-              'successful',
-            ),
+            metric(completedRuns.length ? formatRoundedPercent(successfulRuns / completedRuns.length) : '—', 'successful'),
             metric(formatNumber(failedRuns), 'failed'),
             metric(formatNumber(activeRuns), 'active'),
           ),
@@ -233,21 +145,11 @@ export function renderInsightsOverview(context) {
         insightPanel(
           'Threat detection',
           'Usable verdicts remain distinct from unavailable evidence.',
-          renderChartWidget(
-            'pie',
-            [],
-            [],
-            pieSummary(detectionEntries),
-            'Observations',
-          ),
+          renderChartWidget('pie', [], [], pieSummary(detectionEntries), 'Observations'),
           h(
             'div',
             { className: 'insights-panel-stat' },
-            h(
-              'strong',
-              null,
-              usableVerdicts === null ? '—' : `${Math.round(usableVerdicts)}%`,
-            ),
+            h('strong', null, usableVerdicts === null ? '—' : `${Math.round(usableVerdicts)}%`),
             h('span', null, 'usable verdict coverage'),
           ),
         ),
@@ -270,29 +172,12 @@ export function renderInsightsOverview(context) {
               'div',
               null,
               h('span', { className: 'insights-eyebrow' }, 'Change confidence'),
-              h(
-                'h2',
-                { id: 'insights-experiments-title' },
-                'Experiment decisions',
-              ),
-              h(
-                'p',
-                null,
-                'Observed decisions and readiness, without treating workflow execution as experiment success.',
-              ),
+              h('h2', { id: 'insights-experiments-title' }, 'Experiment decisions'),
+              h('p', null, 'Observed decisions and readiness, without treating workflow execution as experiment success.'),
             ),
-            h(
-              'strong',
-              { className: 'insights-decision-count' },
-              formatNumber(decisionReady),
-              h('small', null, ' decision-ready'),
-            ),
+            h('strong', { className: 'insights-decision-count' }, formatNumber(decisionReady), h('small', null, ' decision-ready')),
           ),
-          renderChartWidget(
-            'bar',
-            entryPoints(experimentEntries),
-            listChartSeries(entryPoints(experimentEntries)),
-          ),
+          renderChartWidget('bar', entryPoints(experimentEntries), listChartSeries(entryPoints(experimentEntries))),
         ),
       220,
     ),
@@ -325,9 +210,7 @@ function renderValueSeriesSelector(points, series, chartHost) {
     count.textContent = `${selected.size} of ${series.length}`
     const visibleSeries = series.filter((item) => selected.has(item.name))
     const visiblePoints = points.filter((point) => selected.has(point.color))
-    chartHost.replaceChildren(
-      renderChartWidget('line', visiblePoints, visibleSeries),
-    )
+    chartHost.replaceChildren(renderChartWidget('line', visiblePoints, visibleSeries))
   }
   const options = series.map((item) => {
     const input = /** @type {HTMLInputElement} */ (
@@ -342,13 +225,7 @@ function renderValueSeriesSelector(points, series, chartHost) {
       })
     )
     inputs.push(input)
-    return h(
-      'label',
-      null,
-      input,
-      h('i', { className: item.className, 'aria-hidden': 'true' }),
-      h('span', null, item.name),
-    )
+    return h('label', null, input, h('i', { className: item.className, 'aria-hidden': 'true' }), h('span', null, item.name))
   })
   /** @param {boolean} enabled */
   const setAll = (enabled) => {
@@ -373,24 +250,14 @@ function renderValueSeriesSelector(points, series, chartHost) {
         h('button', { type: 'button', onClick: () => setAll(true) }, 'All'),
         h('button', { type: 'button', onClick: () => setAll(false) }, 'None'),
       ),
-      h(
-        'fieldset',
-        null,
-        h('legend', null, 'Operational value series'),
-        ...options,
-      ),
+      h('fieldset', null, h('legend', null, 'Operational value series'), ...options),
     ),
   )
 }
 
 /** @param {string} title @param {string} description @param {...(Node | string | null)} children */
 function insightPanel(title, description, ...children) {
-  return h(
-    'section',
-    { className: 'insights-plot-panel' },
-    h('header', null, h('h2', null, title), h('p', null, description)),
-    ...children,
-  )
+  return h('section', { className: 'insights-plot-panel' }, h('header', null, h('h2', null, title), h('p', null, description)), ...children)
 }
 
 /** @param {string} value @param {string} label */
@@ -400,9 +267,7 @@ function metric(value, label) {
 
 /** @param {number[]} values */
 function mean(values) {
-  return values.length > 0
-    ? values.reduce((total, value) => total + value, 0) / values.length
-    : null
+  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null
 }
 
 /** @param {unknown} value */

@@ -12,16 +12,15 @@ export function debounce(callback, delay) {
     clearTimeout(timer)
     timer = undefined
   }
-  const debounced =
-    /** @type {((...args: Args) => void) & { cancel: () => void }} */ (
-      (...args) => {
-        cancel()
-        timer = setTimeout(() => {
-          timer = undefined
-          callback(...args)
-        }, delay)
-      }
-    )
+  const debounced = /** @type {((...args: Args) => void) & { cancel: () => void }} */ (
+    (...args) => {
+      cancel()
+      timer = setTimeout(() => {
+        timer = undefined
+        callback(...args)
+      }, delay)
+    }
+  )
   debounced.cancel = cancel
   return debounced
 }

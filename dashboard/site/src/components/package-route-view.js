@@ -10,10 +10,7 @@ import { renderPackageRouteShell } from './package-route-shell.js'
  * @returns {HTMLElement}
  */
 export function renderPackageRouteView(context) {
-  return renderPackageRouteShell(
-    context,
-    packageRouteComposition(context.elementConfig?.body),
-  )
+  return renderPackageRouteShell(context, packageRouteComposition(context.elementConfig?.body))
 }
 
 /**

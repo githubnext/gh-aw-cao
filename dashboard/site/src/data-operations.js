@@ -21,10 +21,7 @@
  * @returns {Row[]}
  */
 export function tidy(rows, operators) {
-  return operators.reduce(
-    (current, operator) => applyOperator(current, operator),
-    [...rows],
-  )
+  return operators.reduce((current, operator) => applyOperator(current, operator), [...rows])
 }
 
 /** @param {Row[]} rows @param {DataOperator} operator */
@@ -33,14 +30,10 @@ function applyOperator(rows, operator) {
   if (operator.op === 'summarize') return summarize(rows, operator)
   if (operator.op === 'arrange') return arrange(rows, operator)
   if (operator.op === 'slice') {
-    const offset = Number.isInteger(operator.offset)
-      ? Math.max(0, Number(operator.offset))
-      : 0
+    const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0
     return rows.slice(offset, offset + Math.max(0, operator.limit))
   }
-  throw new TypeError(
-    `Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`,
-  )
+  throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`)
 }
 
 /** @param {Row[]} rows @param {FilterOperator} operator */
@@ -55,19 +48,13 @@ function filter(rows, operator) {
           .toLocaleLowerCase('en')
           .includes(query),
       )
-    return (
-      matchesSearch &&
-      (operator.predicates ?? []).every((predicate) =>
-        matches(row[predicate.field], predicate),
-      )
-    )
+    return matchesSearch && (operator.predicates ?? []).every((predicate) => matches(row[predicate.field], predicate))
   })
 }
 
 /** @param {unknown} value @param {Predicate} predicate */
 function matches(value, predicate) {
-  if (Array.isArray(predicate.in))
-    return predicate.in.some((candidate) => sameValue(value, candidate))
+  if (Array.isArray(predicate.in)) return predicate.in.some((candidate) => sameValue(value, candidate))
   if (typeof predicate.includes === 'string') {
     return String(value ?? '')
       .toLocaleLowerCase('en')
@@ -78,9 +65,7 @@ function matches(value, predicate) {
 
 /** @param {unknown} left @param {unknown} right */
 function sameValue(left, right) {
-  return left == null
-    ? right === 'unknown' || right == null
-    : String(left) === String(right)
+  return left == null ? right === 'unknown' || right == null : String(left) === String(right)
 }
 
 /** @param {Row[]} rows @param {SummarizeOperator} operator */
@@ -115,11 +100,9 @@ function reduceValues(input, reducer) {
   if (reducer === 'count') return present.length
   if (reducer === 'distinct-count') return new Set(present.map(String)).size
   const values = present.map(Number).filter(Number.isFinite)
-  if (reducer === 'sum')
-    return values.reduce((total, value) => total + value, 0)
+  if (reducer === 'sum') return values.reduce((total, value) => total + value, 0)
   if (values.length === 0) return null
-  if (reducer === 'mean')
-    return values.reduce((total, value) => total + value, 0) / values.length
+  if (reducer === 'mean') return values.reduce((total, value) => total + value, 0) / values.length
   if (reducer === 'min') return Math.min(...values)
   return Math.max(...values)
 }
@@ -128,12 +111,8 @@ function reduceValues(input, reducer) {
 function arrange(rows, operator) {
   return [...rows].sort((left, right) => {
     for (const ordering of operator.by) {
-      const comparison = compareValues(
-        left[ordering.field],
-        right[ordering.field],
-      )
-      if (comparison !== 0)
-        return ordering.direction === 'desc' ? -comparison : comparison
+      const comparison = compareValues(left[ordering.field], right[ordering.field])
+      if (comparison !== 0) return ordering.direction === 'desc' ? -comparison : comparison
     }
     return 0
   })
@@ -146,11 +125,9 @@ function compareValues(left, right) {
   if (right == null || right === '') return -1
   const leftNumber = Number(String(left).replace(/,/g, ''))
   const rightNumber = Number(String(right).replace(/,/g, ''))
-  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber))
-    return leftNumber - rightNumber
+  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) return leftNumber - rightNumber
   const leftDate = Date.parse(String(left))
   const rightDate = Date.parse(String(right))
-  if (Number.isFinite(leftDate) && Number.isFinite(rightDate))
-    return leftDate - rightDate
+  if (Number.isFinite(leftDate) && Number.isFinite(rightDate)) return leftDate - rightDate
   return String(left).localeCompare(String(right))
 }

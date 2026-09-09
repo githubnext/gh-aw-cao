@@ -17,10 +17,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('uses the GitHub Agentic Workflows favicon', () => {
     const preview = readFileSync(resolve('index.html'), 'utf8')
     const favicon = readFileSync(resolve('favicon.svg'), 'utf8')
-    const agenticWorkflowsFavicon = readFileSync(
-      resolve('../../public/favicon.svg'),
-      'utf8',
-    )
+    const agenticWorkflowsFavicon = readFileSync(resolve('../../public/favicon.svg'), 'utf8')
 
     expect(preview).toContain('<link rel="icon" href="./favicon.svg">')
     expect(favicon).toBe(agenticWorkflowsFavicon)
@@ -36,34 +33,16 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8')
 
     expect(styles).toContain('.lede { color: var(--muted); }')
-    expect(styles).toContain(
-      '.pie-chart-total-value { fill: var(--fg); font-size: 5px;',
-    )
-    expect(styles).toContain(
-      '.chart-widget { min-height: 230px; display: grid; place-items: center; margin: 12px 0; border: 0; background: transparent; }',
-    )
-    expect(styles).toContain(
-      '.pie-chart-layout .chart-widget { min-width: 0; min-height: 160px; margin: 0; }',
-    )
-    expect(styles).toContain(
-      '.pie-chart-layout .chart-widget svg { width: 100%; max-width: 160px;',
-    )
-    expect(styles).toMatch(
-      /@media \(max-width: 700px\) \{[\s\S]*\.pie-chart-layout \.chart-widget svg \{ max-width: 140px; \}/,
-    )
-    expect(styles).toContain(
-      '#page-preview .pie-chart-card { padding: 0; border: 0; }',
-    )
-    expect(styles).toContain(
-      '#page-preview .pie-chart-layout .chart-widget { border: 0; background: transparent; }',
-    )
-    expect(styles).toContain(
-      '.chart-widget .chart-series-12 { stroke: var(--violet); }',
-    )
+    expect(styles).toContain('.pie-chart-total-value { fill: var(--fg); font-size: 5px;')
+    expect(styles).toContain('.chart-widget { min-height: 230px; display: grid; place-items: center; margin: 12px 0; border: 0; background: transparent; }')
+    expect(styles).toContain('.pie-chart-layout .chart-widget { min-width: 0; min-height: 160px; margin: 0; }')
+    expect(styles).toContain('.pie-chart-layout .chart-widget svg { width: 100%; max-width: 160px;')
+    expect(styles).toMatch(/@media \(max-width: 700px\) \{[\s\S]*\.pie-chart-layout \.chart-widget svg \{ max-width: 140px; \}/)
+    expect(styles).toContain('#page-preview .pie-chart-card { padding: 0; border: 0; }')
+    expect(styles).toContain('#page-preview .pie-chart-layout .chart-widget { border: 0; background: transparent; }')
+    expect(styles).toContain('.chart-widget .chart-series-12 { stroke: var(--violet); }')
     expect(styles).toContain('transition: color 120ms ease;')
-    expect(styles).toContain(
-      'transition: background-color 120ms ease, color 120ms ease;',
-    )
+    expect(styles).toContain('transition: background-color 120ms ease, color 120ms ease;')
     expect(styles).toContain('transition: opacity 80ms linear;')
     expect(styles).toContain('@media (prefers-reduced-motion: reduce)')
     expect(styles).toContain('transition-duration: 0.01ms !important;')
@@ -81,16 +60,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const presenter = readFileSync(resolve('src/presenter.js'), 'utf8')
     const styles = readFileSync(resolve('src/styles.js'), 'utf8')
 
-    for (const shellClass of [
-      'app-shell',
-      'org-sidebar',
-      'sidebar-brand',
-      'primary-nav',
-      'app-main',
-      'overview-header',
-      'title-area',
-      'report-body',
-    ]) {
+    for (const shellClass of ['app-shell', 'org-sidebar', 'sidebar-brand', 'primary-nav', 'app-main', 'overview-header', 'title-area', 'report-body']) {
       expect(presenter).toContain(`className: '${shellClass}`)
     }
 
@@ -111,19 +81,13 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('systematically ellipsizes security signal titles at every viewport size', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8')
 
-    expect(styles).toContain(
-      '.signal-copy > strong, .signal-copy > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-    )
-    expect(styles).not.toContain(
-      '.signal-copy > strong, .signal-copy > small { overflow: visible; white-space: normal; }',
-    )
+    expect(styles).toContain('.signal-copy > strong, .signal-copy > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }')
+    expect(styles).not.toContain('.signal-copy > strong, .signal-copy > small { overflow: visible; white-space: normal; }')
   })
 
   it('systematically ellipsizes output evidence at every viewport size', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8')
 
-    expect(styles).toContain(
-      '.table-output-evidence { display: block; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
-    )
+    expect(styles).toContain('.table-output-evidence { display: block; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }')
   })
 })

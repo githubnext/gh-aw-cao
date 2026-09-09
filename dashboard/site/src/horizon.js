@@ -12,13 +12,8 @@ export const DEFAULT_DASHBOARD_HORIZON = '1w'
  */
 export function resolveDashboardHorizon(dashboard) {
   const configured =
-    dashboard && typeof dashboard === 'object'
-      ? /** @type {{ defaults?: { time?: { range?: unknown } } }} */ (dashboard)
-          .defaults?.time?.range
-      : undefined
-  return typeof configured === 'string' && HORIZON_PATTERN.test(configured)
-    ? configured
-    : DEFAULT_DASHBOARD_HORIZON
+    dashboard && typeof dashboard === 'object' ? /** @type {{ defaults?: { time?: { range?: unknown } } }} */ (dashboard).defaults?.time?.range : undefined
+  return typeof configured === 'string' && HORIZON_PATTERN.test(configured) ? configured : DEFAULT_DASHBOARD_HORIZON
 }
 
 /**
@@ -52,11 +47,6 @@ export function formatDashboardHorizonHours(hours) {
   if (!Number.isInteger(hours) || hours <= 0) {
     throw new Error(`Invalid dashboard horizon hours: ${hours}`)
   }
-  const unit =
-    hours % UNIT_HOURS.w === 0
-      ? /** @type {'w'} */ ('w')
-      : hours % UNIT_HOURS.d === 0
-        ? /** @type {'d'} */ ('d')
-        : /** @type {'h'} */ ('h')
+  const unit = hours % UNIT_HOURS.w === 0 ? /** @type {'w'} */ ('w') : hours % UNIT_HOURS.d === 0 ? /** @type {'d'} */ ('d') : /** @type {'h'} */ ('h')
   return formatDashboardHorizon(`${hours / UNIT_HOURS[unit]}${unit}`)
 }

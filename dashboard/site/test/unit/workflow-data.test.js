@@ -45,9 +45,7 @@ describe('deriveWorkflowSources', () => {
       { label: 'Package workflows', value: '2' },
       { label: 'Standalone workflows', value: '1' },
     ])
-    expect(
-      sources['packaged-workflows'].rows.map((row) => row['workflow-role']),
-    ).toEqual(['orchestrator', 'worker'])
+    expect(sources['packaged-workflows'].rows.map((row) => row['workflow-role'])).toEqual(['orchestrator', 'worker'])
     expect(sources['packaged-workflows'].rows[0]).toEqual(
       expect.objectContaining({
         'package-name': 'Dependabot',
@@ -103,9 +101,7 @@ describe('deriveWorkflowSources', () => {
       },
     })
 
-    expect(
-      sources['standalone-workflows'].rows.map((row) => row.workflow),
-    ).toEqual(expect.arrayContaining(['unknown-role.md', 'no-role.md']))
+    expect(sources['standalone-workflows'].rows.map((row) => row.workflow)).toEqual(expect.arrayContaining(['unknown-role.md', 'no-role.md']))
     expect(sources['packaged-workflows'].rows).toEqual([])
   })
 
@@ -247,10 +243,7 @@ describe('deriveWorkflowSources', () => {
       workflows: {
         source: 'workflows',
         metadata,
-        rows: [
-          workflow({ repository: 'control', workflow: 'shared.md' }),
-          workflow({ repository: 'target', workflow: 'shared.md' }),
-        ],
+        rows: [workflow({ repository: 'control', workflow: 'shared.md' }), workflow({ repository: 'target', workflow: 'shared.md' })],
       },
       usage: {
         source: 'usage',
@@ -259,9 +252,7 @@ describe('deriveWorkflowSources', () => {
       },
     })
 
-    expect(
-      sources['packaged-workflows'].rows.every((row) => row.aic === undefined),
-    ).toBe(true)
+    expect(sources['packaged-workflows'].rows.every((row) => row.aic === undefined)).toBe(true)
   })
 
   it('does not present a bare organization as a qualified repository', () => {
@@ -347,9 +338,7 @@ describe('deriveWorkflowSources', () => {
       },
     })
 
-    expect(
-      sources['workflow-reports'].rows.map((row) => row['outcome-title']),
-    ).toEqual(['Newer report', 'Older report'])
+    expect(sources['workflow-reports'].rows.map((row) => row['outcome-title'])).toEqual(['Newer report', 'Older report'])
     expect(sources['workflow-reports'].rows[0]).toEqual(
       expect.objectContaining({
         'workflow-route': 'githubnext/control:.github/workflows/dependabot.md',
@@ -403,13 +392,8 @@ describe('deriveWorkflowSources', () => {
       },
     })
 
-    expect(sources['workflow-runs'].rows.map((row) => row.run)).toEqual([
-      '42',
-      '41',
-    ])
-    expect(sources['workflow-runs'].rows[0]['workflow-route']).toBe(
-      'githubnext/control:.github/workflows/dependabot.md',
-    )
+    expect(sources['workflow-runs'].rows.map((row) => row.run)).toEqual(['42', '41'])
+    expect(sources['workflow-runs'].rows[0]['workflow-route']).toBe('githubnext/control:.github/workflows/dependabot.md')
     expect(sources['workflow-runs'].rows[1]['run-link']).toEqual(
       expect.objectContaining({
         href: 'https://github.com/githubnext/control/actions/runs/41',

@@ -11,13 +11,7 @@ import { observeLoadMoreBoundary } from './ui-primitives.js'
  *   afterRender?: () => void
  * }} options
  */
-export function renderLazyInfiniteList({
-  items,
-  batchSize,
-  renderItems,
-  renderEmpty,
-  afterRender = () => {},
-}) {
+export function renderLazyInfiniteList({ items, batchSize, renderItems, renderEmpty, afterRender = () => {} }) {
   const list = h('div', { className: 'notifications-list' })
   let renderedLimit = batchSize
   /** @type {IntersectionObserver | null} */
@@ -47,34 +41,18 @@ export function renderLazyInfiniteList({
               className: 'notifications-load-boundary',
               dataset: { notificationsLoadBoundary: '' },
             },
-            h(
-              'span',
-              null,
-              `Showing ${renderedItems.length} of ${currentItems.length}`,
-            ),
-            h(
-              'button',
-              { type: 'button', onClick: loadMore },
-              `Load ${Math.min(batchSize, remaining)} more`,
-            ),
+            h('span', null, `Showing ${renderedItems.length} of ${currentItems.length}`),
+            h('button', { type: 'button', onClick: loadMore }, `Load ${Math.min(batchSize, remaining)} more`),
           )
         : null
 
     boundaryObserver?.disconnect()
-    list.replaceChildren(
-      ...renderItems(renderedItems),
-      ...(boundary ? [boundary] : []),
-    )
+    list.replaceChildren(...renderItems(renderedItems), ...(boundary ? [boundary] : []))
     afterRender()
     if (!boundary) return
-    boundaryObserver = observeLoadMoreBoundary(
-      globalThis.IntersectionObserver,
-      boundary,
-      loadMore,
-      {
-        rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px`,
-      },
-    )
+    boundaryObserver = observeLoadMoreBoundary(globalThis.IntersectionObserver, boundary, loadMore, {
+      rootMargin: `${Number(globalThis.window?.innerHeight) || 768}px 0px`,
+    })
   }
 
   render()

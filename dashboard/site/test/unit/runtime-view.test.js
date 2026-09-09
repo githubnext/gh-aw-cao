@@ -6,9 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { renderDashboard } from '../../src/presenter.js'
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url))
-const authoritativeDashboard = JSON.parse(
-  readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8'),
-)
+const authoritativeDashboard = JSON.parse(readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8'))
 
 const metadata = {
   'source-id': 'runtime-fixture',
@@ -24,9 +22,7 @@ const metadata = {
 
 describe('Runtime dashboard view', () => {
   it('keeps Runtime as one full-view lazy execution table', () => {
-    const runtimePage = authoritativeDashboard.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'runtime',
-    )
+    const runtimePage = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runtime')
 
     expect(runtimePage).toMatchObject({
       id: 'runtime',
@@ -200,65 +196,31 @@ describe('Runtime dashboard view', () => {
 
     const rendered = renderDashboard({ document, sources })
 
-    expect(
-      rendered.querySelector('[data-nav-page-id="runtime"]'),
-    ).not.toBeNull()
+    expect(rendered.querySelector('[data-nav-page-id="runtime"]')).not.toBeNull()
     const runtimePage = rendered.querySelector('[data-page-id="runtime"]')
-    expect(
-      runtimePage?.querySelector(
-        '[data-section-id="runtime-triage"] .scope-kicker',
-      )?.textContent,
-    ).toBe('Runtime Triage')
-    expect(
-      runtimePage?.querySelector(
-        '[data-section-id="runtime-triage"] .layout-section-header h3',
-      )?.textContent,
-    ).toBe('Needs attention')
-    expect(
-      runtimePage?.querySelector('.anomaly-readiness')?.getAttribute('role'),
-    ).toBe('note')
-    expect(
-      runtimePage?.querySelector('.anomaly-readiness')?.textContent,
-    ).toContain('Statistical anomalies · not evaluated')
-    expect(
-      runtimePage?.querySelector('.anomaly-readiness .octicon-pulse'),
-    ).not.toBeNull()
+    expect(runtimePage?.querySelector('[data-section-id="runtime-triage"] .scope-kicker')?.textContent).toBe('Runtime Triage')
+    expect(runtimePage?.querySelector('[data-section-id="runtime-triage"] .layout-section-header h3')?.textContent).toBe('Needs attention')
+    expect(runtimePage?.querySelector('.anomaly-readiness')?.getAttribute('role')).toBe('note')
+    expect(runtimePage?.querySelector('.anomaly-readiness')?.textContent).toContain('Statistical anomalies · not evaluated')
+    expect(runtimePage?.querySelector('.anomaly-readiness .octicon-pulse')).not.toBeNull()
     const attention = rendered.querySelector('.signal-list-region')?.textContent
     expect(attention).toContain('Approval gate')
     expect(attention).toContain('Run failures')
     expect(attention).toContain('1 worker dispatch lacks episode evidence')
-    expect(attention).toContain(
-      '1 root episode has no correlated worker attempt or output',
-    )
-    expect(
-      rendered
-        .querySelector('.signal-critical .signal-icon use')
-        ?.getAttribute('href'),
-    ).toContain('#octicon-issue-opened')
-    expect(
-      [...rendered.querySelectorAll('.signal-list > li > a')].map((link) =>
-        link.getAttribute('href'),
-      ),
-    ).toEqual([
+    expect(attention).toContain('1 root episode has no correlated worker attempt or output')
+    expect(rendered.querySelector('.signal-critical .signal-icon use')?.getAttribute('href')).toContain('#octicon-issue-opened')
+    expect([...rendered.querySelectorAll('.signal-list > li > a')].map((link) => link.getAttribute('href'))).toEqual([
       '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot-worker.md',
       '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdependabot.md',
       '#page-runtime?section=runtime-observed-root-episodes-heading',
       '#page-runtime?section=runtime-worker-attribution-gaps-heading',
     ])
     expect(rendered.querySelector('.signal-list a[target]')).toBeNull()
-    expect(rendered.querySelector('.summary-grid')?.textContent).toContain(
-      'Worker attribution0 / 1',
-    )
-    expect(rendered.querySelector('.summary-grid')?.textContent).toContain(
-      'Repeated coverageUnavailable',
-    )
+    expect(rendered.querySelector('.summary-grid')?.textContent).toContain('Worker attribution0 / 1')
+    expect(rendered.querySelector('.summary-grid')?.textContent).toContain('Repeated coverageUnavailable')
     const tables = rendered.querySelectorAll('.custom-table')
     expect(tables).toHaveLength(2)
-    expect(tables[0]?.textContent).toContain(
-      '10DependabotDependabot5m 0saction-requiredRoot only',
-    )
-    expect(tables[1]?.textContent).toContain(
-      '11Dependabot workerfailureNo retained root correlation ID',
-    )
+    expect(tables[0]?.textContent).toContain('10DependabotDependabot5m 0saction-requiredRoot only')
+    expect(tables[1]?.textContent).toContain('11Dependabot workerfailureNo retained root correlation ID')
   })
 })

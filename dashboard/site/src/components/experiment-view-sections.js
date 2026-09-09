@@ -28,7 +28,5 @@ export function isExperimentViewSection(section) {
  */
 export function experimentViewSectionRenderer(section, renderers) {
   const rendererName = EXPERIMENT_VIEW_SECTION_RENDERERS[section]
-  return rendererName && typeof renderers[rendererName] === 'function'
-    ? rendererName
-    : null
+  return rendererName && typeof renderers[rendererName] === 'function' ? rendererName : null
 }

@@ -2,10 +2,7 @@
  * Compliance fixtures and machine-readable conformance helpers for the dashboard validator and presenter.
  */
 
-import {
-  validateDashboardDocument,
-  validateLogicalSources,
-} from './validator.js'
+import { validateDashboardDocument, validateLogicalSources } from './validator.js'
 import { renderDashboard } from './presenter.js'
 
 export const IMPLEMENTATION_VERSION = '0.1.0-prototype'
@@ -342,26 +339,8 @@ export function runComplianceSmokeSuite() {
 
   const appendixAValidation = validateDashboardDocument(appendixAFixture)
   const appendixASources = createAppendixASources()
-  results.push(
-    createResult(
-      'T-DOC-001',
-      'DLS-DOC-001',
-      appendixAValidation.ok,
-      appendixAValidation.ok
-        ? null
-        : summarizeErrors(appendixAValidation.errors),
-    ),
-  )
-  results.push(
-    createResult(
-      'T-PAGE-001',
-      'DLS-PAGE-001',
-      appendixAValidation.ok,
-      appendixAValidation.ok
-        ? null
-        : summarizeErrors(appendixAValidation.errors),
-    ),
-  )
+  results.push(createResult('T-DOC-001', 'DLS-DOC-001', appendixAValidation.ok, appendixAValidation.ok ? null : summarizeErrors(appendixAValidation.errors)))
+  results.push(createResult('T-PAGE-001', 'DLS-PAGE-001', appendixAValidation.ok, appendixAValidation.ok ? null : summarizeErrors(appendixAValidation.errors)))
   results.push(
     createResult(
       'T-TEST-001',
@@ -377,17 +356,13 @@ export function runComplianceSmokeSuite() {
 
   for (const fixture of Object.values(appendixCFixtures)) {
     const result = validateDashboardDocument(fixture.yaml)
-    const hasExpectedCode =
-      !result.ok &&
-      result.errors.some((error) => error.code === fixture.expectedCode)
+    const hasExpectedCode = !result.ok && result.errors.some((error) => error.code === fixture.expectedCode)
     results.push(
       createResult(
         fixtureToTestId(fixture.requirementId),
         fixture.requirementId,
         hasExpectedCode,
-        hasExpectedCode
-          ? null
-          : summarizeErrors(result.ok ? [] : result.errors),
+        hasExpectedCode ? null : summarizeErrors(result.ok ? [] : result.errors),
       ),
     )
   }
@@ -398,51 +373,21 @@ export function runComplianceSmokeSuite() {
       sources: appendixASources,
     })
     const summaryText = element.textContent || ''
-    const exposesDataState =
-      summaryText.includes('Availability') &&
-      summaryText.includes('Completeness') &&
-      summaryText.includes('Freshness')
+    const exposesDataState = summaryText.includes('Availability') && summaryText.includes('Completeness') && summaryText.includes('Freshness')
     results.push(
       createResult(
         'T-DATA-001',
         'DLS-DATA-003',
         exposesDataState,
-        exposesDataState
-          ? null
-          : 'Rendered Appendix A fixture did not expose page or view source metadata and data-state text.',
+        exposesDataState ? null : 'Rendered Appendix A fixture did not expose page or view source metadata and data-state text.',
       ),
     )
-    results.push(
-      ...runPageComplianceChecks(appendixAValidation.value, appendixASources),
-    )
-    results.push(
-      ...runLinkComplianceChecks(appendixAValidation.value, appendixASources),
-    )
+    results.push(...runPageComplianceChecks(appendixAValidation.value, appendixASources))
+    results.push(...runLinkComplianceChecks(appendixAValidation.value, appendixASources))
   } else {
-    results.push(
-      createResult(
-        'T-DATA-001',
-        'DLS-DATA-003',
-        false,
-        summarizeErrors(appendixAValidation.errors),
-      ),
-    )
-    results.push(
-      createResult(
-        'T-PAGE-001',
-        'DLS-PAGE-014',
-        false,
-        summarizeErrors(appendixAValidation.errors),
-      ),
-    )
-    results.push(
-      createResult(
-        'T-LINK-001',
-        'DLS-LINK-006',
-        false,
-        summarizeErrors(appendixAValidation.errors),
-      ),
-    )
+    results.push(createResult('T-DATA-001', 'DLS-DATA-003', false, summarizeErrors(appendixAValidation.errors)))
+    results.push(createResult('T-PAGE-001', 'DLS-PAGE-014', false, summarizeErrors(appendixAValidation.errors)))
+    results.push(createResult('T-LINK-001', 'DLS-LINK-006', false, summarizeErrors(appendixAValidation.errors)))
   }
 
   return results
@@ -475,12 +420,7 @@ function runSemanticComplianceChecks() {
 
   /** @type {ComplianceResult[]} */
   const results = semanticAcceptanceRequirements.map((requirementId) =>
-    createResult(
-      requirementToTestId(requirementId),
-      requirementId,
-      validDocument.ok,
-      validDocument.ok ? null : summarizeErrors(validDocument.errors),
-    ),
+    createResult(requirementToTestId(requirementId), requirementId, validDocument.ok, validDocument.ok ? null : summarizeErrors(validDocument.errors)),
   )
 
   const presenterElement = validDocument.ok
@@ -490,17 +430,13 @@ function runSemanticComplianceChecks() {
       })
     : null
   const presenterText = presenterElement?.textContent || ''
-  const hasNonCausationStatement = presenterText.includes(
-    'without implying causation',
-  )
+  const hasNonCausationStatement = presenterText.includes('without implying causation')
   results.push(
     createResult(
       'T-SEM-002',
       'DLS-SEM-014',
       hasNonCausationStatement,
-      hasNonCausationStatement
-        ? null
-        : 'Presenter output did not include the required non-causation statement for experiments.',
+      hasNonCausationStatement ? null : 'Presenter output did not include the required non-causation statement for experiments.',
     ),
   )
 
@@ -522,9 +458,7 @@ function runSemanticComplianceChecks() {
       'T-SEM-003',
       'DLS-SEM-022',
       packageMembershipCovered,
-      packageMembershipCovered
-        ? null
-        : 'Package workflow role and membership fixtures did not produce the expected acceptance and rejection results.',
+      packageMembershipCovered ? null : 'Package workflow role and membership fixtures did not produce the expected acceptance and rejection results.',
     ),
   )
 
@@ -557,18 +491,13 @@ function runSemanticComplianceChecks() {
       ],
     },
   })
-  const packageAllowanceCovered =
-    validSources.ok &&
-    !invalidNegativeAllowance.ok &&
-    !invalidMismatchedAllowance.ok
+  const packageAllowanceCovered = validSources.ok && !invalidNegativeAllowance.ok && !invalidMismatchedAllowance.ok
   results.push(
     createResult(
       'T-SEM-003',
       'DLS-SEM-023',
       packageAllowanceCovered,
-      packageAllowanceCovered
-        ? null
-        : 'Package allowance fixtures did not produce the expected non-negative and summed-limit validation results.',
+      packageAllowanceCovered ? null : 'Package allowance fixtures did not produce the expected non-negative and summed-limit validation results.',
     ),
   )
 
@@ -580,22 +509,10 @@ function runSemanticComplianceChecks() {
  */
 function runContextComplianceChecks() {
   const validDocument = validateDashboardDocument(contextFixture)
-  const requirements = [
-    'DLS-CTX-001',
-    'DLS-CTX-002',
-    'DLS-CTX-004',
-    'DLS-CTX-005',
-    'DLS-CTX-006',
-    'DLS-CTX-009',
-  ]
+  const requirements = ['DLS-CTX-001', 'DLS-CTX-002', 'DLS-CTX-004', 'DLS-CTX-005', 'DLS-CTX-006', 'DLS-CTX-009']
 
   return requirements.map((requirementId) =>
-    createResult(
-      requirementToTestId(requirementId),
-      requirementId,
-      validDocument.ok,
-      validDocument.ok ? null : summarizeErrors(validDocument.errors),
-    ),
+    createResult(requirementToTestId(requirementId), requirementId, validDocument.ok, validDocument.ok ? null : summarizeErrors(validDocument.errors)),
   )
 }
 
@@ -610,29 +527,22 @@ function runPageComplianceChecks(document, sources) {
   const exposesAvailability = text.includes('Availability')
   const exposesCompleteness = text.includes('Completeness')
   const exposesFreshness = text.includes('Freshness')
-  const hasIndependentDataStates =
-    exposesAvailability && exposesCompleteness && exposesFreshness
+  const hasIndependentDataStates = exposesAvailability && exposesCompleteness && exposesFreshness
   const pageTitles = ['Overview', 'Workflows', 'Usage by Repository']
-  const hasRequiredPageTitles = pageTitles.every((title) =>
-    text.includes(title),
-  )
+  const hasRequiredPageTitles = pageTitles.every((title) => text.includes(title))
 
   return [
     createResult(
       'T-PAGE-001',
       'DLS-PAGE-001',
       hasRequiredPageTitles,
-      hasRequiredPageTitles
-        ? null
-        : 'Rendered Appendix A fixture did not expose the expected built-in and custom page titles.',
+      hasRequiredPageTitles ? null : 'Rendered Appendix A fixture did not expose the expected built-in and custom page titles.',
     ),
     createResult(
       'T-PAGE-001',
       'DLS-PAGE-014',
       hasIndependentDataStates,
-      hasIndependentDataStates
-        ? null
-        : 'Rendered built-in fixture did not expose independent availability, completeness, and freshness text.',
+      hasIndependentDataStates ? null : 'Rendered built-in fixture did not expose independent availability, completeness, and freshness text.',
     ),
   ]
 }
@@ -644,14 +554,10 @@ function runPageComplianceChecks(document, sources) {
  */
 function runLinkComplianceChecks(document, sources) {
   const rendered = renderDashboard({ document, sources })
-  const pageSections = [...rendered.querySelectorAll('.dashboard-page')].filter(
-    (page) => page instanceof HTMLElement && !page.hidden,
-  )
+  const pageSections = [...rendered.querySelectorAll('.dashboard-page')].filter((page) => page instanceof HTMLElement && !page.hidden)
   const activePage = pageSections[0] ?? rendered
   const linkElements = [...activePage.querySelectorAll('a[href]')]
-  const anchorsByLabel = new Map(
-    linkElements.map((element) => [element.textContent?.trim() || '', element]),
-  )
+  const anchorsByLabel = new Map(linkElements.map((element) => [element.textContent?.trim() || '', element]))
   const expectedLinks = [
     {
       label: 'Issue #7',
@@ -672,16 +578,8 @@ function runLinkComplianceChecks(document, sources) {
       .replace(/\s+/g, ' ')
       .trim()
   const missingLinks = expectedLinks.filter(({ label, href }) => {
-    const anchor =
-      anchorsByLabel.get(label) ??
-      linkElements.find(
-        (element) => normalizeAnchorText(element.textContent) === label,
-      ) ??
-      null
-    return (
-      !(anchor instanceof HTMLAnchorElement) ||
-      anchor.getAttribute('href') !== href
-    )
+    const anchor = anchorsByLabel.get(label) ?? linkElements.find((element) => normalizeAnchorText(element.textContent) === label) ?? null
+    return !(anchor instanceof HTMLAnchorElement) || anchor.getAttribute('href') !== href
   })
   const passes = missingLinks.length === 0
 
@@ -690,9 +588,7 @@ function runLinkComplianceChecks(document, sources) {
       'T-LINK-001',
       'DLS-LINK-003',
       passes,
-      passes
-        ? null
-        : `Rendered fixture did not expose required available associations: ${missingLinks.map(({ label }) => label).join(', ')}`,
+      passes ? null : `Rendered fixture did not expose required available associations: ${missingLinks.map(({ label }) => label).join(', ')}`,
     ),
     createResult(
       'T-LINK-001',
@@ -712,11 +608,7 @@ function runLinkComplianceChecks(document, sources) {
 function requirementToTestId(requirementId) {
   if (requirementId.startsWith('DLS-SEM-')) {
     const numeric = Number.parseInt(requirementId.slice('DLS-SEM-'.length), 10)
-    return numeric >= 17
-      ? 'T-SEM-003'
-      : numeric >= 8
-        ? 'T-SEM-002'
-        : 'T-SEM-001'
+    return numeric >= 17 ? 'T-SEM-003' : numeric >= 8 ? 'T-SEM-002' : 'T-SEM-001'
   }
   if (requirementId.startsWith('DLS-CTX-')) {
     return 'T-CTX-001'
@@ -754,9 +646,7 @@ function createResult(testId, requirementId, passed, failureEvidence) {
     requirementId,
     implementationVersion: IMPLEMENTATION_VERSION,
     status: passed ? 'pass' : 'fail',
-    failureEvidence: passed
-      ? null
-      : failureEvidence || 'No failure evidence recorded.',
+    failureEvidence: passed ? null : failureEvidence || 'No failure evidence recorded.',
   }
 }
 
@@ -768,9 +658,7 @@ function summarizeErrors(errors) {
   if (errors.length === 0) {
     return 'Expected a validation failure but no coded errors were produced.'
   }
-  return errors
-    .map((error) => `${error.code} at ${error.path}: ${error.message}`)
-    .join('; ')
+  return errors.map((error) => `${error.code} at ${error.path}: ${error.message}`).join('; ')
 }
 
 /**

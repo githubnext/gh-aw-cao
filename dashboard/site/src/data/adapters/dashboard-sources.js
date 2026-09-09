@@ -5,26 +5,18 @@ const SOURCE = 'dashboard-sources'
 
 /** @param {unknown} value */
 function sourceDocument(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value))
-    return { rows: [], metadata: {} }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { rows: [], metadata: {} }
   const source = /** @type {{ rows?: unknown, metadata?: unknown }} */ (value)
   return {
     rows: Array.isArray(source.rows) ? source.rows : [],
     metadata:
-      source.metadata &&
-      typeof source.metadata === 'object' &&
-      !Array.isArray(source.metadata)
-        ? /** @type {Record<string, unknown>} */ (source.metadata)
-        : {},
+      source.metadata && typeof source.metadata === 'object' && !Array.isArray(source.metadata) ? /** @type {Record<string, unknown>} */ (source.metadata) : {},
   }
 }
 
 /** @param {Record<string, unknown>} metadata */
 function metadataTimestamp(metadata) {
-  return requiredString(
-    metadata['as-of'] ?? metadata['retrieved-at'],
-    'source metadata timestamp',
-  )
+  return requiredString(metadata['as-of'] ?? metadata['retrieved-at'], 'source metadata timestamp')
 }
 
 /** @param {Record<string, unknown>} sources */
@@ -41,24 +33,13 @@ export function dashboardSourceGeneration(sources) {
     throw new Error('Dashboard sources contain multiple artifact generations')
   }
   const metadata =
-    Object.keys(repositories.metadata).length > 0
-      ? repositories.metadata
-      : Object.keys(workflows.metadata).length > 0
-        ? workflows.metadata
-        : runs.metadata
-  return requiredString(
-    [...artifactGenerations][0] ??
-      metadata['as-of'] ??
-      metadata['retrieved-at'],
-    'dashboard source generation',
-  )
+    Object.keys(repositories.metadata).length > 0 ? repositories.metadata : Object.keys(workflows.metadata).length > 0 ? workflows.metadata : runs.metadata
+  return requiredString([...artifactGenerations][0] ?? metadata['as-of'] ?? metadata['retrieved-at'], 'dashboard source generation')
 }
 
 /** @param {unknown} row */
 function objectRow(row) {
-  return row && typeof row === 'object' && !Array.isArray(row)
-    ? /** @type {Record<string, unknown>} */ (row)
-    : null
+  return row && typeof row === 'object' && !Array.isArray(row) ? /** @type {Record<string, unknown>} */ (row) : null
 }
 
 /**
@@ -91,10 +72,7 @@ export function adaptDashboardSources(sources) {
       kind: 'repository',
       source: SOURCE,
       sourceId: fullName,
-      observedAt: requiredString(
-        row['observed-at'] ?? metadataTimestamp(repositories.metadata),
-        'repository.observed-at',
-      ),
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(repositories.metadata), 'repository.observed-at'),
       data: {
         id: sourceId('repository', SOURCE, fullName.toLowerCase()),
         owner,
@@ -119,21 +97,13 @@ export function adaptDashboardSources(sources) {
       kind: 'workflow',
       source: SOURCE,
       sourceId: coordinate,
-      observedAt: requiredString(
-        row['observed-at'] ?? metadataTimestamp(workflows.metadata),
-        'workflow.observed-at',
-      ),
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(workflows.metadata), 'workflow.observed-at'),
       data: {
         id: sourceId('workflow', SOURCE, coordinate),
         repositoryId: sourceId('repository', SOURCE, fullName.toLowerCase()),
         name: row['workflow-name'] ?? path,
         path,
-        state:
-          row['workflow-active'] === 'true'
-            ? 'active'
-            : row['workflow-active'] === 'false'
-              ? 'disabled'
-              : 'unknown',
+        state: row['workflow-active'] === 'true' ? 'active' : row['workflow-active'] === 'false' ? 'disabled' : 'unknown',
         ghAwVersion: row['gh-aw-version'] ?? 'unknown',
         ghAwCurrentVersion: row['gh-aw-current-version'] ?? 'unknown',
         ghAwUpdateState: row['gh-aw-update-state'] ?? 'unknown',
@@ -150,29 +120,17 @@ export function adaptDashboardSources(sources) {
     const path = requiredString(row.workflow, 'run.workflow')
     const githubRunId = requiredString(row.run, 'run.run')
     const sourceAttempt = row['run-attempt'] ?? row.attempt
-    const attempt =
-      Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0
-        ? Number(sourceAttempt)
-        : 1
+    const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1
     const fullName = `${owner}/${repository}`
     observations.push({
       kind: 'run',
       source: SOURCE,
       sourceId: `${fullName}:${githubRunId}:${attempt}`.toLowerCase(),
-      observedAt: requiredString(
-        row['ended-at'] ??
-          row['started-at'] ??
-          metadataTimestamp(runs.metadata),
-        'run observed time',
-      ),
+      observedAt: requiredString(row['ended-at'] ?? row['started-at'] ?? metadataTimestamp(runs.metadata), 'run observed time'),
       data: {
         id: runId(githubRunId, attempt),
         repositoryId: sourceId('repository', SOURCE, fullName.toLowerCase()),
-        workflowId: sourceId(
-          'workflow',
-          SOURCE,
-          `${fullName}:${path}`.toLowerCase(),
-        ),
+        workflowId: sourceId('workflow', SOURCE, `${fullName}:${path}`.toLowerCase()),
         owner,
         repository,
         repositoryFullName: fullName,
@@ -185,11 +143,7 @@ export function adaptDashboardSources(sources) {
         conclusion: row['run-conclusion'] ?? null,
         startedAt: row['started-at'] ?? null,
         completedAt: row['ended-at'] ?? null,
-        failureDetail:
-          row['failure-detail'] ??
-          row['failure-message'] ??
-          row['failure-step'] ??
-          `Run ${githubRunId}`,
+        failureDetail: row['failure-detail'] ?? row['failure-message'] ?? row['failure-step'] ?? `Run ${githubRunId}`,
         runLink: row['run-link'] ?? null,
         rolloutMode: row['rollout-mode'] ?? 'unknown',
         engine: row.engine ?? 'unknown',
@@ -208,19 +162,12 @@ export function adaptDashboardSources(sources) {
     const githubRunId = requiredString(row.run, 'job.run')
     const githubJobId = requiredString(String(row['job-id']), 'job.job-id')
     const sourceAttempt = row['run-attempt']
-    const attempt =
-      Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0
-        ? Number(sourceAttempt)
-        : 1
+    const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1
     observations.push({
       kind: 'job',
       source: SOURCE,
-      sourceId:
-        `${owner}/${repository}:${githubRunId}:${attempt}:${githubJobId}`.toLowerCase(),
-      observedAt: requiredString(
-        row['started-at'] ?? metadataTimestamp(jobs.metadata),
-        'job observed time',
-      ),
+      sourceId: `${owner}/${repository}:${githubRunId}:${attempt}:${githubJobId}`.toLowerCase(),
+      observedAt: requiredString(row['started-at'] ?? metadataTimestamp(jobs.metadata), 'job observed time'),
       data: {
         githubJobId,
         runId: runId(githubRunId, attempt),
@@ -249,27 +196,16 @@ export function adaptDashboardSources(sources) {
     const session = requiredString(row.session, 'session.session')
     const githubRunId = requiredString(row.run, 'session.run')
     const sourceAttempt = row['run-attempt']
-    const attempt =
-      Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0
-        ? Number(sourceAttempt)
-        : 1
+    const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1
     observations.push({
       kind: 'session',
       source: SOURCE,
       sourceId: session,
-      observedAt: requiredString(
-        row['observed-at'] ??
-          row['started-at'] ??
-          metadataTimestamp(sessions.metadata),
-        'session observed time',
-      ),
+      observedAt: requiredString(row['observed-at'] ?? row['started-at'] ?? metadataTimestamp(sessions.metadata), 'session observed time'),
       data: {
         id: session,
         runId: runId(githubRunId, attempt),
-        jobId:
-          row['job-id'] === undefined || row['job-id'] === null
-            ? undefined
-            : jobId(requiredString(String(row['job-id']), 'session.job-id')),
+        jobId: row['job-id'] === undefined || row['job-id'] === null ? undefined : jobId(requiredString(String(row['job-id']), 'session.job-id')),
         kind: row['session-kind'] ?? 'unified-operational-log',
         status: row['session-status'] ?? 'unknown',
         startedAt: row['started-at'] ?? null,
@@ -286,29 +222,18 @@ export function adaptDashboardSources(sources) {
       kind: 'event',
       source: SOURCE,
       sourceId: requiredString(row.event, 'event.event'),
-      observedAt: requiredString(
-        row['observed-at'] ??
-          row['event-timestamp'] ??
-          metadataTimestamp(events.metadata),
-        'event observed time',
-      ),
+      observedAt: requiredString(row['observed-at'] ?? row['event-timestamp'] ?? metadataTimestamp(events.metadata), 'event observed time'),
       data: {
         id: requiredString(row.event, 'event.event'),
         sessionId: requiredString(row.session, 'event.session'),
-        timestamp: requiredString(
-          row['event-timestamp'],
-          'event.event-timestamp',
-        ),
+        timestamp: requiredString(row['event-timestamp'], 'event.event-timestamp'),
         source: requiredString(row['event-source'], 'event.event-source'),
         type: requiredString(row['event-type'], 'event.event-type'),
         summary: row['event-summary'],
         status: row['event-status'],
         correlationId: row['correlation-id'],
         payloadRef: row['payload-ref'],
-        sourceSequence:
-          Number.isInteger(sourceSequence) && sourceSequence >= 0
-            ? sourceSequence
-            : undefined,
+        sourceSequence: Number.isInteger(sourceSequence) && sourceSequence >= 0 ? sourceSequence : undefined,
       },
     })
   }
@@ -316,18 +241,12 @@ export function adaptDashboardSources(sources) {
   for (const candidate of workItems.rows) {
     const row = objectRow(candidate)
     if (!row) continue
-    const workItemId = requiredString(
-      row['work-item-id'],
-      'work-item.work-item-id',
-    )
+    const workItemId = requiredString(row['work-item-id'], 'work-item.work-item-id')
     observations.push({
       kind: 'work-item',
       source: SOURCE,
       sourceId: workItemId,
-      observedAt: requiredString(
-        row['observed-at'] ?? metadataTimestamp(workItems.metadata),
-        'work-item.observed-at',
-      ),
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(workItems.metadata), 'work-item.observed-at'),
       data: {
         workItemId,
         name: row.name,
@@ -367,18 +286,12 @@ export function adaptDashboardSources(sources) {
   for (const candidate of findings.rows) {
     const row = objectRow(candidate)
     if (!row) continue
-    const observationId = requiredString(
-      row['smell-observation-id'],
-      'finding.smell-observation-id',
-    )
+    const observationId = requiredString(row['smell-observation-id'], 'finding.smell-observation-id')
     observations.push({
       kind: 'finding',
       source: SOURCE,
       sourceId: observationId,
-      observedAt: requiredString(
-        row['observed-at'] ?? metadataTimestamp(findings.metadata),
-        'finding.observed-at',
-      ),
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(findings.metadata), 'finding.observed-at'),
       data: {
         observationId,
         findingId: row['smell-id'],

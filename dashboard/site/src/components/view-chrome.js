@@ -4,12 +4,7 @@
 
 import { h } from '../dom.js'
 import { octicon } from '../octicons.js'
-import {
-  renderDlRow,
-  renderListWithFallback,
-  renderSectionHeading,
-  renderTooltip,
-} from './ui-primitives.js'
+import { renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js'
 import { formatCount, slugify, titleCase } from './count-formatters.js'
 
 /**
@@ -20,13 +15,7 @@ import { formatCount, slugify, titleCase } from './count-formatters.js'
  * @param {string} [description]
  * @returns {HTMLElement}
  */
-export function renderPageSection(
-  pageId,
-  title,
-  content,
-  headingTag = 'h3',
-  description,
-) {
+export function renderPageSection(pageId, title, content, headingTag = 'h3', description) {
   const headingId = `${pageId}-${slugify(title, 'section')}-heading`
   const tooltip = description
     ? renderTooltip({
@@ -68,11 +57,7 @@ export function renderTitledRegion(pageId, title, content) {
  * @returns {HTMLElement}
  */
 export function renderSummaryRegion(pageId, title, listClassName, counts) {
-  return renderTitledRegion(
-    pageId,
-    title,
-    renderSummaryList(listClassName, counts),
-  )
+  return renderTitledRegion(pageId, title, renderSummaryList(listClassName, counts))
 }
 
 /**
@@ -82,12 +67,7 @@ export function renderSummaryRegion(pageId, title, listClassName, counts) {
  */
 export function renderSummaryList(listClassName, counts) {
   const entries = [...counts.entries()]
-  return renderListWithFallback(
-    listClassName,
-    entries,
-    ([name, count]) => `${name}: ${count}`,
-    'No data available.',
-  )
+  return renderListWithFallback(listClassName, entries, ([name, count]) => `${name}: ${count}`, 'No data available.')
 }
 
 /**
@@ -116,9 +96,7 @@ export function renderDefinitionList(className, rows) {
  * @returns {HTMLElement[]}
  */
 export function renderDefinitionListRows(rows) {
-  return rows.map((row) =>
-    renderDlRow(String(row.label ?? ''), String(row.value ?? '')),
-  )
+  return rows.map((row) => renderDlRow(String(row.label ?? ''), String(row.value ?? '')))
 }
 
 /**
@@ -166,9 +144,7 @@ export function customViewAvailabilityMessage(availability) {
 export function renderCustomViewStateDetails(sourceName, contextDetails) {
   const details = []
   if (sourceName) {
-    details.push(
-      h('p', { className: 'view-source' }, `Affected source: ${sourceName}`),
-    )
+    details.push(h('p', { className: 'view-source' }, `Affected source: ${sourceName}`))
   }
   details.push(...renderContextChrome(contextDetails))
   return details
@@ -182,8 +158,7 @@ export function renderProvenanceList(items) {
   return renderListWithFallback(
     'provenance-list',
     items,
-    (item) =>
-      `${item.sourceName}: ${item.sourceId} (${item.sourceKind}) — as of ${item.asOf}`,
+    (item) => `${item.sourceName}: ${item.sourceId} (${item.sourceKind}) — as of ${item.asOf}`,
     'No source provenance available for this page.',
   )
 }
@@ -219,28 +194,11 @@ export function renderMetadataSection(title, content, headingTag = 'h2') {
  * }} [options]
  * @returns {HTMLElement}
  */
-export function renderTitledBodySection(
-  headingId,
-  heading,
-  body,
-  options = {},
-) {
-  const {
-    sectionClassName,
-    headingTag = 'h3',
-    bodyClassName,
-    bodyAttributes = {},
-  } = options
-  const bodyProps = bodyClassName
-    ? { ...bodyAttributes, className: bodyClassName }
-    : bodyAttributes
+export function renderTitledBodySection(headingId, heading, body, options = {}) {
+  const { sectionClassName, headingTag = 'h3', bodyClassName, bodyAttributes = {} } = options
+  const bodyProps = bodyClassName ? { ...bodyAttributes, className: bodyClassName } : bodyAttributes
   const headingProps = headingId ? { id: headingId } : null
-  return h(
-    'section',
-    sectionClassName ? { className: sectionClassName } : null,
-    h(headingTag, headingProps, heading),
-    h('div', bodyProps, ...body),
-  )
+  return h('section', sectionClassName ? { className: sectionClassName } : null, h(headingTag, headingProps, heading), h('div', bodyProps, ...body))
 }
 
 /**
@@ -262,8 +220,6 @@ export function renderLayoutSectionChrome(pageId, section, count) {
     'header',
     { className: 'layout-section-header' },
     sectionHeading,
-    count !== null && section['count-label']
-      ? h('strong', null, `${formatCount(count)} ${section['count-label']}`)
-      : null,
+    count !== null && section['count-label'] ? h('strong', null, `${formatCount(count)} ${section['count-label']}`) : null,
   )
 }

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  IMPLEMENTATION_VERSION,
-  appendixAFixture,
-  appendixCFixtures,
-  runComplianceSmokeSuite,
-} from '../../src/compliance.js'
+import { IMPLEMENTATION_VERSION, appendixAFixture, appendixCFixtures, runComplianceSmokeSuite } from '../../src/compliance.js'
 import { validateDashboardDocument } from '../../src/validator.js'
 
 describe('compliance suite', () => {
@@ -29,11 +24,7 @@ describe('compliance suite', () => {
 
   it('DLS-TEST-003 includes exact time boundaries and distinct empty unavailable partial stale and unknown data states in compliance fixtures', () => {
     const results = runComplianceSmokeSuite()
-    const testResult = results.find(
-      (result) =>
-        result.testId === 'T-TEST-001' &&
-        result.requirementId === 'DLS-TEST-003',
-    )
+    const testResult = results.find((result) => result.testId === 'T-TEST-001' && result.requirementId === 'DLS-TEST-003')
 
     expect(testResult).toEqual(expect.objectContaining({ status: 'pass' }))
   })
@@ -72,22 +63,14 @@ describe('compliance suite', () => {
     }
   })
 
-  it.each(
-    Object.entries(appendixCFixtures).filter(
-      ([, fixture]) => fixture.requirementId !== 'DLS-SEM-003',
-    ),
-  )(
+  it.each(Object.entries(appendixCFixtures).filter(([, fixture]) => fixture.requirementId !== 'DLS-SEM-003'))(
     'T-VAL-001 Appendix C fixture %s rejects with the documented error code',
     (_name, fixture) => {
       const result = validateDashboardDocument(fixture.yaml)
 
       expect(result.ok).toBe(false)
       if (!result.ok) {
-        expect(result.errors).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ code: fixture.expectedCode }),
-          ]),
-        )
+        expect(result.errors).toEqual(expect.arrayContaining([expect.objectContaining({ code: fixture.expectedCode })]))
       }
     },
   )

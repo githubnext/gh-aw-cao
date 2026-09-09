@@ -11,9 +11,6 @@
  * @returns {V}
  */
 export function selectNamedComposition(compositions, selected, fallback) {
-  const key =
-    typeof selected === 'string' && Object.hasOwn(compositions, selected)
-      ? /** @type {T} */ (selected)
-      : fallback
+  const key = typeof selected === 'string' && Object.hasOwn(compositions, selected) ? /** @type {T} */ (selected) : fallback
   return compositions[key]
 }

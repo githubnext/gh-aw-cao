@@ -44,12 +44,8 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('table')).toBeNull()
     expect(rendered?.querySelector('dt')?.textContent).toBe('inventory')
     expect(rendered?.querySelector('dd')?.textContent).toContain('degraded')
-    expect(rendered?.querySelector('dd')?.textContent).toContain(
-      'Known bounded gap.',
-    )
-    expect(rendered?.querySelector('dd')?.textContent).toContain(
-      'Refresh inventory.',
-    )
+    expect(rendered?.querySelector('dd')?.textContent).toContain('Known bounded gap.')
+    expect(rendered?.querySelector('dd')?.textContent).toContain('Refresh inventory.')
   })
 
   it('renders the domain-specific empty state when no contracts are available', () => {
@@ -68,19 +64,13 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(rendered?.textContent).toBe(
-      'No dashboard domain contracts are available.',
-    )
+    expect(rendered?.textContent).toBe('No dashboard domain contracts are available.')
   })
 
   it('uses auto-fill to keep agent marketplace card widths stable when results shrink', () => {
     const styles = primerStylesheet()
-    expect(styles).toContain(
-      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; }',
-    )
-    expect(styles).not.toContain(
-      '.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fit,',
-    )
+    expect(styles).toContain('.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; }')
+    expect(styles).not.toContain('.agent-marketplace-grid { display: grid; grid-template-columns: repeat(auto-fit,')
   })
 
   it('does not classify blocked assignment state as an agent smell', () => {
@@ -128,45 +118,40 @@ describe('UI elements', () => {
       ],
     )
 
-    expect(notifications[0]?.['evidence-link']?.href).toBe(
-      'https://ghe.example/github/mona-tools',
-    )
+    expect(notifications[0]?.['evidence-link']?.href).toBe('https://ghe.example/github/mona-tools')
   })
 
   it.each([
     ['low', 'low', 3],
     ['medium', 'medium', 2],
     ['high', 'high', 1],
-  ])(
-    'preserves %s severity in agent smell notifications',
-    (smellSeverity, consequenceTier, priority) => {
-      const notifications = agentSmellNotifications(
-        [
-          {
-            organization: 'github',
-            repository: 'mona-tools',
-            workflow: '.github/workflows/upgrade.md',
-            'workflow-name': 'Upgrade agent',
-          },
-        ],
-        [],
-        [],
-        [
-          {
-            organization: 'github',
-            repository: 'mona-tools',
-            workflow: '.github/workflows/upgrade.lock.yml',
-            'smell-id': 'partially-reducible',
-            'smell-name': 'Partially reducible',
-            'smell-severity': smellSeverity,
-          },
-        ],
-      )
+  ])('preserves %s severity in agent smell notifications', (smellSeverity, consequenceTier, priority) => {
+    const notifications = agentSmellNotifications(
+      [
+        {
+          organization: 'github',
+          repository: 'mona-tools',
+          workflow: '.github/workflows/upgrade.md',
+          'workflow-name': 'Upgrade agent',
+        },
+      ],
+      [],
+      [],
+      [
+        {
+          organization: 'github',
+          repository: 'mona-tools',
+          workflow: '.github/workflows/upgrade.lock.yml',
+          'smell-id': 'partially-reducible',
+          'smell-name': 'Partially reducible',
+          'smell-severity': smellSeverity,
+        },
+      ],
+    )
 
-      expect(notifications[0]?.['consequence-tier']).toBe(consequenceTier)
-      expect(notifications[0]?.priority).toBe(priority)
-    },
-  )
+    expect(notifications[0]?.['consequence-tier']).toBe(consequenceTier)
+    expect(notifications[0]?.priority).toBe(priority)
+  })
 
   it('renders structured smell observations on matching agents', () => {
     const rendered = renderUiElement('agent-marketplace-view', {
@@ -211,14 +196,9 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(
-      rendered?.querySelector('.agent-badge-smell')?.getAttribute('title'),
-    ).toContain('Agent by default: Deterministic automation would be simpler.')
+    expect(rendered?.querySelector('.agent-badge-smell')?.getAttribute('title')).toContain('Agent by default: Deterministic automation would be simpler.')
     expect(rendered?.querySelector('.agent-icon-smell')).toBeNull()
-    expect(
-      rendered?.querySelector('[aria-label="Filter operations by status"]')
-        ?.textContent,
-    ).toContain('Smells (1)')
+    expect(rendered?.querySelector('[aria-label="Filter operations by status"]')?.textContent).toContain('Smells (1)')
   })
 
   it('renders marketplace agent tiles with details, health badges, and sorting', () => {
@@ -238,8 +218,7 @@ describe('UI elements', () => {
               'agent-description': 'Runs release automation.',
               permissions: 'contents: read',
               'agent-state': 'active',
-              'work-item-id':
-                'githubnext/gh-aw-cao:.github/workflows/release.md:run:3',
+              'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/release.md:run:3',
               'run-count': 3,
               'total-runtime-seconds': 5400,
               'last-observed-at': '2026-08-30T09:00:00Z',
@@ -251,8 +230,7 @@ describe('UI elements', () => {
               'agent-description': 'Reviews pull requests.',
               permissions: 'pull-requests: write',
               'agent-state': 'completed',
-              'work-item-id':
-                'githubnext/gh-aw-cao:.github/workflows/review.md:run:1',
+              'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/review.md:run:1',
               'run-count': 1,
               'total-runtime-seconds': 60,
               'last-observed-at': '2026-08-30T09:00:00Z',
@@ -265,49 +243,31 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(
-      2,
-    )
-    expect(
-      rendered?.querySelector('.agent-marketplace-tile')?.textContent,
-    ).toContain('Slow')
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2)
+    expect(rendered?.querySelector('.agent-marketplace-tile')?.textContent).toContain('Slow')
     expect(rendered?.querySelector('[data-facet="smells"]')).toBeNull()
-    const statusFilter = rendered?.querySelector(
-      '[aria-label="Filter operations by status"]',
-    )
-    expect(statusFilter?.textContent).toBe(
-      'All statusesSmells (0)Disabled (0)Slow (1)Stale (2)',
-    )
+    const statusFilter = rendered?.querySelector('[aria-label="Filter operations by status"]')
+    expect(statusFilter?.textContent).toBe('All statusesSmells (0)Disabled (0)Slow (1)Stale (2)')
     if (statusFilter instanceof HTMLSelectElement) {
       statusFilter.value = 'slow'
       statusFilter.dispatchEvent(new Event('change'))
     }
-    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(
-      1,
-    )
-    expect(
-      rendered?.querySelector('.agent-marketplace-title')?.textContent,
-    ).toBe('Zeta Agent')
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1)
+    expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Zeta Agent')
     if (statusFilter instanceof HTMLSelectElement) {
       statusFilter.value = 'all'
       statusFilter.dispatchEvent(new Event('change'))
     }
     expect(rendered?.querySelector('[aria-label^="Agent smells:"]')).toBeNull()
     expect(rendered?.textContent).toContain('Runs release automation.')
-    expect(
-      rendered
-        ?.querySelector('[aria-label="View Zeta Agent"]')
-        ?.getAttribute('href'),
-    ).toContain('#page-workflow-runtime?workflow=')
+    expect(rendered?.querySelector('[aria-label="View Zeta Agent"]')?.getAttribute('href')).toContain('#page-workflow-runtime?workflow=')
     const select = rendered?.querySelector('[aria-label="Sort operations"]')
     expect(select).not.toBeNull()
     if (select instanceof HTMLSelectElement) {
       select.value = 'name'
       select.dispatchEvent(new Event('change'))
     }
-    expect(
-      rendered?.querySelector('.agent-marketplace-title')?.textContent,
-    ).toBe('Alpha Agent')
+    expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Alpha Agent')
   })
 
   it('populates the agent marketplace from package and standalone workflow inventory', () => {
@@ -364,47 +324,26 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(
-      1,
-    )
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1)
     expect(rendered?.textContent).toContain('AW Doctor')
     expect(rendered?.textContent).toContain('Package')
     expect(rendered?.textContent).toContain('Standalone')
     expect(rendered?.querySelector('[aria-label="Featured"]')).toBeNull()
     expect(rendered?.textContent).not.toContain('available')
-    expect(
-      rendered?.querySelector('[aria-label="Agent status legend"]'),
-    ).toBeNull()
-    expect(
-      rendered?.querySelector('[aria-label="Filter operations by owner"]')
-        ?.textContent,
-    ).toContain('githubnext/gh-aw-cao')
-    const agentFilters = rendered?.querySelector(
-      '[aria-label="Operation catalog filters"]',
-    )
+    expect(rendered?.querySelector('[aria-label="Agent status legend"]')).toBeNull()
+    expect(rendered?.querySelector('[aria-label="Filter operations by owner"]')?.textContent).toContain('githubnext/gh-aw-cao')
+    const agentFilters = rendered?.querySelector('[aria-label="Operation catalog filters"]')
     expect(agentFilters).not.toBeNull()
-    expect(agentFilters?.textContent ?? '').toBe(
-      'Operation packages1Standalone workflows1All entries2',
-    )
-    expect(
-      rendered?.querySelector('.agent-marketplace-owner')?.textContent,
-    ).toBe('githubnext/gh-aw-cao')
-    expect(
-      rendered
-        ?.querySelector('[aria-label="View AW Doctor"]')
-        ?.getAttribute('href'),
-    ).toBe('#page-package-detail?package=aw-doctor')
+    expect(agentFilters?.textContent ?? '').toBe('Operation packages1Standalone workflows1All entries2')
+    expect(rendered?.querySelector('.agent-marketplace-owner')?.textContent).toBe('githubnext/gh-aw-cao')
+    expect(rendered?.querySelector('[aria-label="View AW Doctor"]')?.getAttribute('href')).toBe('#page-package-detail?package=aw-doctor')
     const packageFacet = rendered?.querySelector('[data-facet="package"]')
     expect(packageFacet).not.toBeNull()
     expect(packageFacet?.getAttribute('aria-current')).toBe('page')
-    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(
-      1,
-    )
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1)
     const allFacet = rendered?.querySelector('[data-facet="all"]')
     if (allFacet instanceof HTMLButtonElement) allFacet.click()
-    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(
-      2,
-    )
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(2)
     expect(rendered?.textContent).toContain('CAO Activity')
   })
 
@@ -451,20 +390,10 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(
-      1,
-    )
-    expect(
-      rendered?.querySelector('.agent-marketplace-title')?.textContent,
-    ).toBe('Review assistant')
-    expect(
-      rendered?.querySelector(
-        '.agent-marketplace-summary .agent-marketplace-description',
-      )?.textContent,
-    ).toBe('Reviews changes before merge.')
-    expect(
-      rendered?.querySelector('.agent-marketplace-count')?.textContent,
-    ).toBe('1 of 1 entries')
+    expect(rendered?.querySelectorAll('.agent-marketplace-tile')).toHaveLength(1)
+    expect(rendered?.querySelector('.agent-marketplace-title')?.textContent).toBe('Review assistant')
+    expect(rendered?.querySelector('.agent-marketplace-summary .agent-marketplace-description')?.textContent).toBe('Reviews changes before merge.')
+    expect(rendered?.querySelector('.agent-marketplace-count')?.textContent).toBe('1 of 1 entries')
     expect(rendered?.textContent).not.toContain('/tmp/review-agent.md')
     expect(rendered?.textContent).not.toContain('.github/workflows/review.md')
     expect(rendered?.textContent).not.toContain('[aw] Failure Investigator')
@@ -478,14 +407,7 @@ describe('UI elements', () => {
       pageId: 'insights',
       title: 'Insights',
       description: 'Operational impact.',
-      sourceNames: [
-        'operational-values',
-        'outcomes',
-        'usage',
-        'runs',
-        'detection-observations',
-        'experiments',
-      ],
+      sourceNames: ['operational-values', 'outcomes', 'usage', 'runs', 'detection-observations', 'experiments'],
       sources: {
         'operational-values': source([
           {
@@ -513,11 +435,7 @@ describe('UI elements', () => {
             'observed-at': '2026-08-30T10:00:00Z',
           },
         ]),
-        outcomes: source([
-          { 'outcome-state': 'accepted' },
-          { 'outcome-state': 'accepted' },
-          { 'outcome-state': 'rejected' },
-        ]),
+        outcomes: source([{ 'outcome-state': 'accepted' }, { 'outcome-state': 'accepted' }, { 'outcome-state': 'rejected' }]),
         usage: source([
           { aic: 4, 'observed-at': '2026-08-29T10:00:00Z' },
           { aic: 6, 'observed-at': '2026-08-30T10:00:00Z' },
@@ -548,59 +466,34 @@ describe('UI elements', () => {
             'usable-verdict-percent': 100,
           },
         ]),
-        experiments: source([
-          { decision: 'PROMOTE' },
-          { decision: 'INCONCLUSIVE' },
-        ]),
+        experiments: source([{ decision: 'PROMOTE' }, { decision: 'INCONCLUSIVE' }]),
       },
       contextDetails: [],
       headingTag: 'h3',
     })
     if (rendered) enableLazyViews(rendered)
 
-    expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe(
-      'Operational value attainment',
-    )
-    expect(
-      rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent,
-    ).toBe('70%')
-    expect(
-      rendered?.querySelectorAll('.insights-lead-metrics dd')[1]?.textContent,
-    ).toBe('2')
-    expect(
-      rendered?.querySelectorAll('.insights-lead-metrics dd')[2]?.textContent,
-    ).toBe('4')
+    expect(rendered?.querySelector('#insights-value-title')?.textContent).toBe('Operational value attainment')
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[0]?.textContent).toBe('70%')
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[1]?.textContent).toBe('2')
+    expect(rendered?.querySelectorAll('.insights-lead-metrics dd')[2]?.textContent).toBe('4')
     expect(rendered?.querySelectorAll('[data-chart-widget]')).toHaveLength(6)
-    expect(
-      rendered?.querySelectorAll('[data-chart-widget="pie"]'),
-    ).toHaveLength(2)
-    expect(
-      rendered?.querySelector('[data-chart-widget="swimlane"]'),
-    ).not.toBeNull()
+    expect(rendered?.querySelectorAll('[data-chart-widget="pie"]')).toHaveLength(2)
+    expect(rendered?.querySelector('[data-chart-widget="swimlane"]')).not.toBeNull()
     expect(rendered?.querySelector('[data-chart-widget="bar"]')).not.toBeNull()
     expect(rendered?.textContent).toContain('10AIC observed')
     expect(rendered?.textContent).toContain('1 decision-ready')
     const seriesSelector = rendered?.querySelector('.insights-series-selector')
     expect(seriesSelector?.hasAttribute('open')).toBe(false)
-    expect(seriesSelector?.querySelector('summary')?.textContent).toBe(
-      'Series2 of 2',
-    )
-    expect(
-      rendered?.querySelector('.insights-value-lead > .chart-legend'),
-    ).toBeNull()
-    const seriesInputs = seriesSelector?.querySelectorAll(
-      'input[type="checkbox"]',
-    )
+    expect(seriesSelector?.querySelector('summary')?.textContent).toBe('Series2 of 2')
+    expect(rendered?.querySelector('.insights-value-lead > .chart-legend')).toBeNull()
+    const seriesInputs = seriesSelector?.querySelectorAll('input[type="checkbox"]')
     expect(seriesInputs).toHaveLength(2)
     if (seriesInputs?.[0] instanceof HTMLInputElement) {
       seriesInputs[0].checked = false
       seriesInputs[0].dispatchEvent(new Event('change'))
-      expect(seriesSelector?.querySelector('summary')?.textContent).toBe(
-        'Series1 of 2',
-      )
-      expect(
-        rendered?.querySelector('.insights-value-chart')?.textContent,
-      ).not.toContain('No data is available')
+      expect(seriesSelector?.querySelector('summary')?.textContent).toBe('Series1 of 2')
+      expect(rendered?.querySelector('.insights-value-chart')?.textContent).not.toContain('No data is available')
     }
   })
 
@@ -653,99 +546,51 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe(
-      'BoardTasksRoadmap',
-    )
-    expect(
-      rendered
-        ?.querySelector('[href="#page-work-roadmap"]')
-        ?.getAttribute('aria-current'),
-    ).toBe('page')
+    expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap')
+    expect(rendered?.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBe('page')
     expect(rendered?.querySelector('.work-board')).toBeNull()
     expect(rendered?.querySelector('.work-tasks')).toBeNull()
-    expect(
-      rendered?.querySelector('.work-avatar .octicon-dependabot'),
-    ).not.toBeNull()
+    expect(rendered?.querySelector('.work-avatar .octicon-dependabot')).not.toBeNull()
     expect(rendered?.querySelector('.work-roadmap-scroll')).not.toBeNull()
     expect(rendered?.querySelector('.work-roadmap-calendar')).not.toBeNull()
-    expect(
-      rendered?.querySelectorAll('.work-roadmap-ticks time').length,
-    ).toBeGreaterThan(1)
+    expect(rendered?.querySelectorAll('.work-roadmap-ticks time').length).toBeGreaterThan(1)
     expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2)
     expect(rendered?.querySelector('.work-roadmap-avatar')).not.toBeNull()
-    expect(
-      rendered?.querySelector('.work-roadmap-label')?.textContent,
-    ).toContain('dependency-automation')
+    expect(rendered?.querySelector('.work-roadmap-label')?.textContent).toContain('dependency-automation')
     expect(rendered?.querySelector('.work-roadmap-end')).not.toBeNull()
-    const zoomButtons = rendered
-      ? [...rendered.querySelectorAll('[data-roadmap-zoom]')]
-      : []
-    expect(zoomButtons.map((button) => button.textContent)).toEqual([
-      'Day',
-      'Week',
-      'Month',
-      'Quarter',
-      'Year',
-    ])
-    expect(
-      rendered
-        ?.querySelector('[data-roadmap-zoom="year"]')
-        ?.getAttribute('aria-checked'),
-    ).toBe('true')
+    const zoomButtons = rendered ? [...rendered.querySelectorAll('[data-roadmap-zoom]')] : []
+    expect(zoomButtons.map((button) => button.textContent)).toEqual(['Day', 'Week', 'Month', 'Quarter', 'Year'])
+    expect(rendered?.querySelector('[data-roadmap-zoom="year"]')?.getAttribute('aria-checked')).toBe('true')
     const dayZoom = rendered?.querySelector('[data-roadmap-zoom="day"]')
-    if (!(dayZoom instanceof HTMLButtonElement))
-      throw new Error('day zoom control did not render')
+    if (!(dayZoom instanceof HTMLButtonElement)) throw new Error('day zoom control did not render')
     dayZoom.click()
-    expect(
-      rendered?.querySelector('.work-roadmap-zoom-label')?.textContent,
-    ).toBe('Day')
-    expect(rendered?.querySelectorAll('.work-roadmap-ticks time')).toHaveLength(
-      12,
-    )
-    expect(
-      rendered
-        ?.querySelector('[data-roadmap-zoom="day"]')
-        ?.getAttribute('aria-checked'),
-    ).toBe('true')
+    expect(rendered?.querySelector('.work-roadmap-zoom-label')?.textContent).toBe('Day')
+    expect(rendered?.querySelectorAll('.work-roadmap-ticks time')).toHaveLength(12)
+    expect(rendered?.querySelector('[data-roadmap-zoom="day"]')?.getAttribute('aria-checked')).toBe('true')
 
     const filterBar = rendered?.querySelector('.work-filter-bar')
-    const stateFilter = filterBar?.querySelector(
-      '[aria-label="Filter by state"]',
-    )
-    expect(
-      filterBar?.querySelector('[aria-label="Filter by package"]')?.textContent,
-    ).toContain('dependabot')
-    if (!(stateFilter instanceof HTMLSelectElement))
-      throw new Error('state filter did not render')
+    const stateFilter = filterBar?.querySelector('[aria-label="Filter by state"]')
+    expect(filterBar?.querySelector('[aria-label="Filter by package"]')?.textContent).toContain('dependabot')
+    if (!(stateFilter instanceof HTMLSelectElement)) throw new Error('state filter did not render')
     stateFilter.value = 'Needs Review'
     stateFilter.dispatchEvent(new Event('change'))
     expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(1)
-    expect(
-      rendered?.querySelector('.work-roadmap-lane')?.textContent,
-    ).toContain('Review security posture')
-    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe(
-      '1 of 2',
-    )
+    expect(rendered?.querySelector('.work-roadmap-lane')?.textContent).toContain('Review security posture')
+    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('1 of 2')
 
     const search = filterBar?.querySelector('[aria-label="Filter work items"]')
-    if (!(search instanceof HTMLInputElement))
-      throw new Error('work search did not render')
+    if (!(search instanceof HTMLInputElement)) throw new Error('work search did not render')
     search.value = 'missing workflow'
     search.dispatchEvent(new Event('input'))
-    expect(rendered?.textContent).toContain(
-      'No work items match the current filters.',
-    )
+    expect(rendered?.textContent).toContain('No work items match the current filters.')
 
     const clear = filterBar?.querySelector('[aria-label="Clear work filters"]')
-    if (!(clear instanceof HTMLButtonElement))
-      throw new Error('clear filters button did not render')
+    if (!(clear instanceof HTMLButtonElement)) throw new Error('clear filters button did not render')
     clear.click()
     expect(search.value).toBe('')
     expect(stateFilter.value).toBe('')
     expect(rendered?.querySelectorAll('.work-roadmap-lane')).toHaveLength(2)
-    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe(
-      '2 of 2',
-    )
+    expect(filterBar?.querySelector('.work-filter-count')?.textContent).toBe('2 of 2')
   })
 
   it('renders a single declarative work slice when config.body selects one', () => {
@@ -776,11 +621,7 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(
-      rendered
-        ?.querySelector('[href="#page-work-tasks"]')
-        ?.getAttribute('aria-current'),
-    ).toBe('page')
+    expect(rendered?.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page')
     expect(rendered?.querySelector('.work-tasks')).not.toBeNull()
     expect(rendered?.querySelector('.work-board')).toBeNull()
     expect(rendered?.querySelector('.work-roadmap')).toBeNull()
@@ -821,26 +662,16 @@ describe('UI elements', () => {
 
     const board = render('board')
     expect(board?.querySelectorAll('.work-card-stack')).toHaveLength(1)
-    expect(board?.querySelectorAll('.work-card-stack .work-card')).toHaveLength(
-      2,
-    )
+    expect(board?.querySelectorAll('.work-card-stack .work-card')).toHaveLength(2)
     const boardWorkers = board?.querySelector('.work-card-workers')
     expect(boardWorkers?.hasAttribute('open')).toBe(false)
-    expect(boardWorkers?.querySelector('summary')?.textContent).toContain(
-      '1 worker',
-    )
-    expect(boardWorkers?.querySelector('summary')?.textContent).toContain(
-      'Show cards',
-    )
+    expect(boardWorkers?.querySelector('summary')?.textContent).toContain('1 worker')
+    expect(boardWorkers?.querySelector('summary')?.textContent).toContain('Show cards')
 
     const tasks = render('tasks')
     expect(tasks?.querySelector('.work-task-group')).toBeNull()
     expect(tasks?.querySelectorAll('.work-task-row')).toHaveLength(2)
-    expect(
-      [...(tasks?.querySelectorAll('.work-task-type') ?? [])].map(
-        (cell) => cell.textContent,
-      ),
-    ).toEqual(['worker', 'orchestrator'])
+    expect([...(tasks?.querySelectorAll('.work-task-type') ?? [])].map((cell) => cell.textContent)).toEqual(['worker', 'orchestrator'])
 
     const roadmap = render('roadmap')
     expect(roadmap?.querySelector('.work-roadmap-group')).toBeNull()
@@ -903,12 +734,8 @@ describe('UI elements', () => {
 
     expect(rendered?.getAttribute('role')).toBe('note')
     expect(rendered?.querySelector('.octicon-pulse')).not.toBeNull()
-    expect(rendered?.textContent).toContain(
-      'Statistical anomalies · not evaluated',
-    )
-    expect(rendered?.textContent).toContain(
-      'A representative historical baseline is unavailable.',
-    )
+    expect(rendered?.textContent).toContain('Statistical anomalies · not evaluated')
+    expect(rendered?.textContent).toContain('A representative historical baseline is unavailable.')
     expect(
       renderUiElement('anomaly-readiness', {
         pageId: 'runtime',
@@ -947,16 +774,10 @@ describe('UI elements', () => {
     })
 
     expect(rendered?.querySelector('table')).toBeNull()
-    expect(
-      rendered?.querySelectorAll('.configuration-action-list > li'),
-    ).toHaveLength(1)
+    expect(rendered?.querySelectorAll('.configuration-action-list > li')).toHaveLength(1)
     expect(rendered?.textContent).toContain('Promote self-care to live')
-    expect(rendered?.textContent).toContain(
-      'control-plane.packages.self-care.mode',
-    )
-    expect(
-      rendered?.querySelector('[data-intent-presentation="copy-prompt"]'),
-    ).not.toBeNull()
+    expect(rendered?.textContent).toContain('control-plane.packages.self-care.mode')
+    expect(rendered?.querySelector('[data-intent-presentation="copy-prompt"]')).not.toBeNull()
   })
 
   it('renders the suggested configuration changes empty state inside the list widget', () => {
@@ -978,9 +799,7 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(
-      rendered?.querySelector('.configuration-actions-empty')?.textContent,
-    ).toBe('No configuration changes are currently suggested.')
+    expect(rendered?.querySelector('.configuration-actions-empty')?.textContent).toBe('No configuration changes are currently suggested.')
   })
 
   it('allows same-document signal navigation and rejects non-fragment URLs', () => {
@@ -1002,9 +821,7 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(rendered?.querySelector('a')?.getAttribute('href')).toBe(
-      '#runtime-evidence',
-    )
+    expect(rendered?.querySelector('a')?.getAttribute('href')).toBe('#runtime-evidence')
     expect(rendered?.querySelectorAll('a')).toHaveLength(1)
   })
 
@@ -1013,8 +830,7 @@ describe('UI elements', () => {
     const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview',
       title: 'Need attention',
-      description:
-        'Unresolved conditions that require an authorized person to act or investigate.',
+      description: 'Unresolved conditions that require an authorized person to act or investigate.',
       sourceNames: [
         'attention-signals',
         'workflows',
@@ -1084,8 +900,7 @@ describe('UI elements', () => {
               'agent-id': 'upgrade-agent',
               'agent-name': 'Upgrade agent',
               'agent-state': 'blocked',
-              'work-item-id':
-                'github/mona-tools:.github/workflows/upgrade.md:run:42',
+              'work-item-id': 'github/mona-tools:.github/workflows/upgrade.md:run:42',
               'run-count': 1,
               'total-runtime-seconds': 2400,
               stale: true,
@@ -1221,39 +1036,19 @@ describe('UI elements', () => {
     expect(rendered?.getAttribute('aria-label')).toBe('Needs your attention')
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull()
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4)
-    for (const href of [
-      'failed-runs',
-      'blocked-work',
-      'awaiting-review',
-      'security-findings',
-    ]) {
-      expect(
-        rendered?.querySelector(`[href="#page-overview-${href}"] strong`)
-          ?.textContent,
-      ).toBe('1')
+    for (const href of ['failed-runs', 'blocked-work', 'awaiting-review', 'security-findings']) {
+      expect(rendered?.querySelector(`[href="#page-overview-${href}"] strong`)?.textContent).toBe('1')
     }
-    expect(rendered?.querySelector('h3')?.textContent).toBe(
-      '4 items need your attention',
-    )
-    expect(
-      [
-        ...(rendered?.querySelectorAll('.home-attention-icon .octicon') ?? []),
-      ].map((icon) => icon.classList[1]),
-    ).toEqual([
+    expect(rendered?.querySelector('h3')?.textContent).toBe('4 items need your attention')
+    expect([...(rendered?.querySelectorAll('.home-attention-icon .octicon') ?? [])].map((icon) => icon.classList[1])).toEqual([
       'octicon-x-circle',
       'octicon-stop',
       'octicon-person',
       'octicon-shield',
     ])
-    expect(
-      rendered?.querySelectorAll('.home-attention-icon-active'),
-    ).toHaveLength(4)
-    expect(
-      rendered?.querySelectorAll('.home-attention-count-active'),
-    ).toHaveLength(4)
-    expect(
-      rendered?.querySelectorAll('.home-attention-label-active'),
-    ).toHaveLength(4)
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(4)
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(4)
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(4)
     expect(rendered?.querySelector('.home-attention-detail')).toBeNull()
     expect(rendered?.querySelector('.notifications-main')).toBeNull()
     expect(rendered?.querySelector('.home-catchup')).toBeNull()
@@ -1288,19 +1083,11 @@ describe('UI elements', () => {
       },
     ])
 
-    expect(
-      rendered?.querySelectorAll('.notifications-cause-cluster'),
-    ).toHaveLength(1)
-    expect(
-      rendered?.querySelector('.notifications-cause-summary')?.textContent,
-    ).toContain('2 occurrences across 2 repositories')
-    const cluster = /** @type {HTMLDetailsElement | null} */ (
-      rendered?.querySelector('.notifications-cause-cluster') ?? null
-    )
+    expect(rendered?.querySelectorAll('.notifications-cause-cluster')).toHaveLength(1)
+    expect(rendered?.querySelector('.notifications-cause-summary')?.textContent).toContain('2 occurrences across 2 repositories')
+    const cluster = /** @type {HTMLDetailsElement | null} */ (rendered?.querySelector('.notifications-cause-cluster') ?? null)
     expect(cluster?.open).toBe(false)
-    expect(
-      rendered?.querySelector('.notifications-priority-group')?.textContent,
-    ).toContain('Confirm authority')
+    expect(rendered?.querySelector('.notifications-priority-group')?.textContent).toContain('Confirm authority')
     expect(rendered?.querySelectorAll('.notification-item')).toHaveLength(1)
     if (cluster) {
       cluster.open = true
@@ -1353,30 +1140,16 @@ describe('UI elements', () => {
 
     expect(rendered?.classList.contains('home-attention-summary')).toBe(true)
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4)
-    expect(
-      rendered?.querySelector('.home-attention-empty strong')?.textContent,
-    ).toBe('Nothing needs your attention')
-    expect(
-      rendered?.querySelector('.home-attention-empty p')?.textContent,
-    ).toBe(
+    expect(rendered?.querySelector('.home-attention-empty strong')?.textContent).toBe('Nothing needs your attention')
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toBe(
       'No failed runs, blocked work, review waits, or security findings were observed from Aug 23, 2026, 12:00 PM UTC to Aug 30, 2026, 12:00 PM UTC.',
     )
-    expect(
-      rendered?.querySelector('.home-attention-metric strong')?.textContent,
-    ).toBe('0')
+    expect(rendered?.querySelector('.home-attention-metric strong')?.textContent).toBe('0')
     expect(rendered?.querySelector('.home-attention-metric[href]')).toBeNull()
-    expect(
-      rendered?.querySelectorAll('.home-attention-metric-empty'),
-    ).toHaveLength(4)
-    expect(
-      rendered?.querySelectorAll('.home-attention-icon-active'),
-    ).toHaveLength(0)
-    expect(
-      rendered?.querySelectorAll('.home-attention-count-active'),
-    ).toHaveLength(0)
-    expect(
-      rendered?.querySelectorAll('.home-attention-label-active'),
-    ).toHaveLength(0)
+    expect(rendered?.querySelectorAll('.home-attention-metric-empty')).toHaveLength(4)
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0)
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0)
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0)
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull()
   })
 
@@ -1384,8 +1157,7 @@ describe('UI elements', () => {
     const rendered = renderUiElement('home-attention-summary', {
       pageId: 'overview',
       title: 'Need attention',
-      description:
-        'Unresolved conditions that require an authorized person to act or investigate.',
+      description: 'Unresolved conditions that require an authorized person to act or investigate.',
       sourceNames: ['attention-signals'],
       sources: {
         'attention-signals': {
@@ -1400,28 +1172,14 @@ describe('UI elements', () => {
 
     expect(rendered?.classList.contains('home-attention-summary')).toBe(true)
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4)
-    expect(
-      rendered?.querySelector('.home-attention-empty strong')?.textContent,
-    ).toBe('No attention observed in available evidence')
-    expect(
-      rendered?.querySelector('.home-attention-empty p')?.textContent,
-    ).toContain(
+    expect(rendered?.querySelector('.home-attention-empty strong')?.textContent).toBe('No attention observed in available evidence')
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain(
       'failed runs, blocked work and review waits, security findings could not be fully evaluated',
     )
-    expect(
-      [
-        ...(rendered?.querySelectorAll('.home-attention-metric strong') ?? []),
-      ].map((count) => count.textContent),
-    ).toEqual(['—', '—', '—', '—'])
-    expect(
-      rendered?.querySelectorAll('.home-attention-icon-active'),
-    ).toHaveLength(0)
-    expect(
-      rendered?.querySelectorAll('.home-attention-count-active'),
-    ).toHaveLength(0)
-    expect(
-      rendered?.querySelectorAll('.home-attention-label-active'),
-    ).toHaveLength(0)
+    expect([...(rendered?.querySelectorAll('.home-attention-metric strong') ?? [])].map((count) => count.textContent)).toEqual(['—', '—', '—', '—'])
+    expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0)
+    expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0)
+    expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0)
     expect(rendered?.querySelector('.home-attention-detail')).toBeNull()
     expect(rendered?.querySelector('.notifications-inbox')).toBeNull()
   })
@@ -1448,27 +1206,11 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(
-      rendered?.querySelector('.home-attention-empty-incomplete strong')
-        ?.textContent,
-    ).toBe('No attention observed in available evidence')
-    expect(
-      rendered?.querySelector('.home-attention-empty p')?.textContent,
-    ).toContain('security findings could not be fully evaluated')
-    expect(
-      rendered?.querySelector('.home-attention-metric-security-findings strong')
-        ?.textContent,
-    ).toBeUndefined()
-    expect(
-      [...(rendered?.querySelectorAll('.home-attention-metric') ?? [])]
-        .at(-1)
-        ?.querySelector('strong')?.textContent,
-    ).toBe('0')
-    expect(
-      [...(rendered?.querySelectorAll('.home-attention-metric') ?? [])]
-        .at(-1)
-        ?.hasAttribute('href'),
-    ).toBe(false)
+    expect(rendered?.querySelector('.home-attention-empty-incomplete strong')?.textContent).toBe('No attention observed in available evidence')
+    expect(rendered?.querySelector('.home-attention-empty p')?.textContent).toContain('security findings could not be fully evaluated')
+    expect(rendered?.querySelector('.home-attention-metric-security-findings strong')?.textContent).toBeUndefined()
+    expect([...(rendered?.querySelectorAll('.home-attention-metric') ?? [])].at(-1)?.querySelector('strong')?.textContent).toBe('0')
+    expect([...(rendered?.querySelectorAll('.home-attention-metric') ?? [])].at(-1)?.hasAttribute('href')).toBe(false)
   })
 
   it('renders a blocked readiness verdict with the next unblock action', () => {
@@ -1517,8 +1259,7 @@ describe('UI elements', () => {
                 null,
                 {
                   label: 'octo/one',
-                  'navigation-href':
-                    '#page-repository-detail?repository=octo%2Fone',
+                  'navigation-href': '#page-repository-detail?repository=octo%2Fone',
                 },
                 { label: 'unsafe', 'navigation-href': 'javascript:alert(1)' },
               ],
@@ -1536,9 +1277,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('dd')?.textContent).toBe('octo/one, unsafe')
     expect(rendered?.textContent).toContain('Run windowComplete 24-hour window')
     expect(rendered?.querySelectorAll('a')).toHaveLength(1)
-    expect(rendered?.querySelector('a')?.getAttribute('href')).toBe(
-      '#page-repository-detail?repository=octo%2Fone',
-    )
+    expect(rendered?.querySelector('a')?.getAttribute('href')).toBe('#page-repository-detail?repository=octo%2Fone')
   })
 
   it('flags managed packages that dispatch but produce no output', () => {
@@ -1588,63 +1327,21 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    const cards = [
-      ...(rendered?.querySelectorAll('.package-status-card') ?? []),
-    ]
+    const cards = [...(rendered?.querySelectorAll('.package-status-card') ?? [])]
     expect(cards).toHaveLength(2)
-    expect(
-      cards[0]?.querySelector('.package-status-identity')?.getAttribute('href'),
-    ).toBe('#page-package-insights?package=daily-ops')
-    expect(
-      cards[0]?.querySelector('.package-status-activity')?.getAttribute('href'),
-    ).toBe('#page-package-dispatches?package=daily-ops')
-    expect(
-      cards[0]
-        ?.querySelector('.package-status-activity')
-        ?.classList.contains('package-status-activity-warning'),
-    ).toBe(true)
-    expect(
-      cards[0]?.querySelector('.package-status-activity-state')?.textContent,
-    ).toContain('2 failed')
-    expect(
-      cards[0]
-        ?.querySelector('.package-status-activity-state')
-        ?.classList.contains('package-status-activity-state-failed'),
-    ).toBe(true)
-    expect(
-      cards[0]?.querySelector('.package-status-activity .octicon-alert'),
-    ).not.toBeNull()
-    expect(
-      cards[0]
-        ?.querySelector('.package-status-activity')
-        ?.getAttribute('aria-label'),
-    ).toContain('2 failed, 1 in progress')
-    expect(
-      cards[0]
-        ?.querySelector('.package-status-activity')
-        ?.getAttribute('aria-label'),
-    ).toContain('warning: dispatches produced no output')
-    expect(
-      cards[1]
-        ?.querySelector('.package-status-activity')
-        ?.classList.contains('package-status-activity-warning'),
-    ).toBe(false)
-    expect(
-      cards[1]?.querySelector('.package-status-activity-state')?.textContent,
-    ).toContain('1 awaiting approval')
-    expect(
-      cards[1]
-        ?.querySelector('.package-status-activity-state')
-        ?.classList.contains('package-status-activity-state-attention'),
-    ).toBe(true)
-    expect(
-      cards[1]?.querySelector('.package-status-activity .octicon-shield-check'),
-    ).not.toBeNull()
-    expect(
-      cards[1]
-        ?.querySelector('.package-status-activity')
-        ?.getAttribute('aria-label'),
-    ).not.toContain('warning')
+    expect(cards[0]?.querySelector('.package-status-identity')?.getAttribute('href')).toBe('#page-package-insights?package=daily-ops')
+    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('href')).toBe('#page-package-dispatches?package=daily-ops')
+    expect(cards[0]?.querySelector('.package-status-activity')?.classList.contains('package-status-activity-warning')).toBe(true)
+    expect(cards[0]?.querySelector('.package-status-activity-state')?.textContent).toContain('2 failed')
+    expect(cards[0]?.querySelector('.package-status-activity-state')?.classList.contains('package-status-activity-state-failed')).toBe(true)
+    expect(cards[0]?.querySelector('.package-status-activity .octicon-alert')).not.toBeNull()
+    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('aria-label')).toContain('2 failed, 1 in progress')
+    expect(cards[0]?.querySelector('.package-status-activity')?.getAttribute('aria-label')).toContain('warning: dispatches produced no output')
+    expect(cards[1]?.querySelector('.package-status-activity')?.classList.contains('package-status-activity-warning')).toBe(false)
+    expect(cards[1]?.querySelector('.package-status-activity-state')?.textContent).toContain('1 awaiting approval')
+    expect(cards[1]?.querySelector('.package-status-activity-state')?.classList.contains('package-status-activity-state-attention')).toBe(true)
+    expect(cards[1]?.querySelector('.package-status-activity .octicon-shield-check')).not.toBeNull()
+    expect(cards[1]?.querySelector('.package-status-activity')?.getAttribute('aria-label')).not.toContain('warning')
   })
 
   it('renders package activity primitives as independently reusable elements', () => {
@@ -1759,12 +1456,8 @@ describe('UI elements', () => {
       headingTag: 'h3',
     })
 
-    expect(
-      utilization?.querySelector('.package-utilization-card'),
-    ).not.toBeNull()
-    expect(utilization?.textContent).toContain(
-      '10 of 100 AIC across 1 reported run',
-    )
+    expect(utilization?.querySelector('.package-utilization-card')).not.toBeNull()
+    expect(utilization?.textContent).toContain('10 of 100 AIC across 1 reported run')
     expect(trend?.querySelector('.package-chart-point')).not.toBeNull()
     expect(trend?.querySelector('h3')?.textContent).toBe('All runs over time')
     expect(summary?.querySelector('.package-summary-table')).not.toBeNull()
@@ -1806,13 +1499,8 @@ describe('UI elements', () => {
       }),
     )
 
-    expect(
-      rendered?.querySelector('.package-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Workflows')
-    expect(rendered?.querySelector('.package-tabs')?.textContent).toContain(
-      'Reports',
-    )
+    expect(rendered?.querySelector('.package-tabs [aria-current="page"]')?.textContent).toBe('Workflows')
+    expect(rendered?.querySelector('.package-tabs')?.textContent).toContain('Reports')
   })
 
   it('renders the packages page shell through one declarative element composition', () => {
@@ -1960,10 +1648,7 @@ describe('UI elements', () => {
       }),
     )
 
-    expect(
-      rendered?.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Insights')
+    expect(rendered?.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Insights')
     expect(rendered?.querySelector('.workflow-runtime-metrics')).not.toBeNull()
   })
 
@@ -2011,10 +1696,7 @@ describe('UI elements', () => {
       }),
     )
 
-    expect(
-      rendered?.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Insights')
+    expect(rendered?.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Insights')
     expect(rendered?.querySelector('.workflow-runtime-metrics')).not.toBeNull()
   })
 
@@ -2055,10 +1737,7 @@ describe('UI elements', () => {
       }),
     )
 
-    expect(
-      rendered?.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Reports')
+    expect(rendered?.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Reports')
   })
 
   it('renders outcome-detail-section from declarative config and filtered outcome scope', () => {

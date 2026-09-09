@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { renderUiElement } from '../../src/components/ui-elements.js'
-import {
-  deriveRepositorySources,
-  summarizeRepositories,
-} from '../../src/repository-data.js'
+import { deriveRepositorySources, summarizeRepositories } from '../../src/repository-data.js'
 
-const dashboard = JSON.parse(
-  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'),
-)
+const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'))
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -96,9 +91,7 @@ function sources() {
         'coverage-end': '2026-08-31T18:00:00Z',
       },
     ),
-    outcomes: source('outcomes', [
-      { organization: 'octo', repository: 'quiet', 'safe-output': 'report-1' },
-    ]),
+    outcomes: source('outcomes', [{ organization: 'octo', repository: 'quiet', 'safe-output': 'report-1' }]),
     usage: source(
       'usage',
       [
@@ -164,11 +157,7 @@ describe('repositories view', () => {
   it('aggregates repository activity using report ordering and status precedence', () => {
     const summaries = summarizeRepositories(sources())
 
-    expect(summaries.map((summary) => summary.repository)).toEqual([
-      'octo/failing',
-      'octo/active',
-      'octo/quiet',
-    ])
+    expect(summaries.map((summary) => summary.repository)).toEqual(['octo/failing', 'octo/active', 'octo/quiet'])
     expect(summaries[0]).toMatchObject({
       workflows: 2,
       runs: 2,
@@ -199,9 +188,7 @@ describe('repositories view', () => {
         status: 'Disabled workflows',
       }),
     ])
-    expect(
-      deriveRepositorySources(sources())['repository-workflows'].rows,
-    ).toEqual(
+    expect(deriveRepositorySources(sources())['repository-workflows'].rows).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           repository: 'octo/failing',
@@ -218,9 +205,7 @@ describe('repositories view', () => {
   })
 
   it('configures one full-width repository table with interactive filters', () => {
-    const repositoriesPage = dashboard.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'repositories',
-    )
+    const repositoriesPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'repositories')
 
     expect(repositoriesPage.definition.views).toHaveLength(1)
     expect(repositoriesPage.definition.views[0]).toMatchObject({
@@ -260,9 +245,7 @@ describe('repositories view', () => {
       completeness: 'unknown',
     }
     const derived = deriveRepositorySources(sourceInputs)
-    const scope = /** @type {HTMLElement} */ (
-      renderUiElement('context-summary', context(sourceInputs))
-    )
+    const scope = /** @type {HTMLElement} */ (renderUiElement('context-summary', context(sourceInputs)))
     expect(scope.textContent).toContain('Actions run data unavailable')
     expect(scope.textContent).toContain('Usage data unavailable')
     expect(derived['repository-activity'].rows[0]).toMatchObject({
@@ -272,26 +255,16 @@ describe('repositories view', () => {
   })
 
   it('derives route-scoped repository detail data for generic views', () => {
-    const repositoryPage = dashboard.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'repository-detail',
-    )
-    const workflowsView = repositoryPage.views.find(
-      (/** @type {{ id: string }} */ view) =>
-        view.id === 'repository-authored-workflows',
-    )
-    const workflowAicView = repositoryPage.views.find(
-      (/** @type {{ id: string }} */ view) =>
-        view.id === 'repository-workflow-aic',
-    )
+    const repositoryPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'repository-detail')
+    const workflowsView = repositoryPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'repository-authored-workflows')
+    const workflowAicView = repositoryPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'repository-workflow-aic')
     expect(repositoryPage.views[0].id).toBe('repository-workflow-aic')
     expect(workflowsView).toMatchObject({
       mark: 'table',
       controls: 'interactive',
       'column-summaries': true,
       encoding: {
-        columns: expect.arrayContaining([
-          { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
-        ]),
+        columns: expect.arrayContaining([{ field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' }]),
       },
     })
     expect(workflowAicView).toMatchObject({

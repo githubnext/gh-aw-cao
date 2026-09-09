@@ -26,12 +26,8 @@ describe('view chrome component helpers', () => {
 
     expect(section.className).toBe('page-section')
     expect(section.getAttribute('tabindex')).toBe('0')
-    expect(section.getAttribute('aria-labelledby')).toBe(
-      'runs-run-status-counts-heading',
-    )
-    expect(section.querySelector('h3')?.id).toBe(
-      'runs-run-status-counts-heading',
-    )
+    expect(section.getAttribute('aria-labelledby')).toBe('runs-run-status-counts-heading')
+    expect(section.querySelector('h3')?.id).toBe('runs-run-status-counts-heading')
     expect(section.querySelector('h3')?.textContent).toBe('Run Status Counts')
   })
 
@@ -46,36 +42,24 @@ describe('view chrome component helpers', () => {
     ])
     const empty = renderProvenanceList([])
 
-    expect(populated.textContent).toContain(
-      'runs: runs-fixture (fixture) — as of 2026-08-29T20:00:00Z',
-    )
-    expect(empty.textContent).toContain(
-      'No source provenance available for this page.',
-    )
+    expect(populated.textContent).toContain('runs: runs-fixture (fixture) — as of 2026-08-29T20:00:00Z')
+    expect(empty.textContent).toContain('No source provenance available for this page.')
   })
 
   it('renders reusable view chrome paragraphs for populated and empty metadata lines', () => {
-    const rendered = renderViewChrome([
-      'As of 2026-08-29T20:00:00Z • completeness complete • freshness fresh',
-      'Additional detail',
-    ])
+    const rendered = renderViewChrome(['As of 2026-08-29T20:00:00Z • completeness complete • freshness fresh', 'Additional detail'])
     const empty = renderViewChrome([])
 
     expect(rendered).toHaveLength(2)
     expect(rendered[0]?.className).toBe('view-metadata')
-    expect(rendered[0]?.textContent).toBe(
-      'As of 2026-08-29T20:00:00Z • completeness complete • freshness fresh',
-    )
+    expect(rendered[0]?.textContent).toBe('As of 2026-08-29T20:00:00Z • completeness complete • freshness fresh')
     expect(rendered[1]?.className).toBe('view-metadata')
     expect(rendered[1]?.textContent).toBe('Additional detail')
     expect(empty).toHaveLength(0)
   })
 
   it('DLS-VIEW-013 renders reusable custom-view context lists including empty input', () => {
-    const populated = renderContextList([
-      'Source: usage',
-      'Scope: {"organization":"github"}',
-    ])
+    const populated = renderContextList(['Source: usage', 'Scope: {"organization":"github"}'])
     const empty = renderContextList([])
 
     expect(populated.className).toBe('view-context')
@@ -88,10 +72,7 @@ describe('view chrome component helpers', () => {
   })
 
   it('DLS-VIEW-013 renders reusable context chrome around the shared context list', () => {
-    const populated = renderContextChrome([
-      'Source: usage',
-      'Filters: {"status":"open"}',
-    ])
+    const populated = renderContextChrome(['Source: usage', 'Filters: {"status":"open"}'])
     const empty = renderContextChrome([])
 
     expect(populated).toHaveLength(1)
@@ -120,16 +101,10 @@ describe('view chrome component helpers', () => {
 
   it('DLS-VIEW-013 renders reusable custom-view availability messages and affected-source details', () => {
     expect(customViewAvailabilityMessage('available')).toBe('Data available.')
-    expect(customViewAvailabilityMessage('empty')).toBe(
-      'No observations matched the effective context.',
-    )
-    expect(customViewAvailabilityMessage('unavailable')).toBe(
-      'This view is unavailable.',
-    )
+    expect(customViewAvailabilityMessage('empty')).toBe('No observations matched the effective context.')
+    expect(customViewAvailabilityMessage('unavailable')).toBe('This view is unavailable.')
 
-    const withSource = renderCustomViewStateDetails('usage', [
-      'Filters: {"status":"open"}',
-    ])
+    const withSource = renderCustomViewStateDetails('usage', ['Filters: {"status":"open"}'])
     const withoutSource = renderCustomViewStateDetails(null, [])
 
     expect(withSource).toHaveLength(2)
@@ -171,20 +146,12 @@ describe('view chrome component helpers', () => {
   })
 
   it('DLS-SAFE-007 wraps single-content titled regions with the shared page-section markup', () => {
-    const region = renderTitledRegion(
-      'usage',
-      'Usage Totals',
-      renderProvenanceList([]),
-    )
+    const region = renderTitledRegion('usage', 'Usage Totals', renderProvenanceList([]))
 
     expect(region.className).toBe('page-section')
-    expect(region.getAttribute('aria-labelledby')).toBe(
-      'usage-usage-totals-heading',
-    )
+    expect(region.getAttribute('aria-labelledby')).toBe('usage-usage-totals-heading')
     expect(region.querySelector('h3')?.textContent).toBe('Usage Totals')
-    expect(region.querySelector('.provenance-list')?.textContent).toContain(
-      'No source provenance available for this page.',
-    )
+    expect(region.querySelector('.provenance-list')?.textContent).toContain('No source provenance available for this page.')
   })
 
   it('DLS-VIEW-013 renders reusable summary lists including empty counts', () => {
@@ -215,23 +182,12 @@ describe('view chrome component helpers', () => {
         ['full', 1],
       ]),
     )
-    const empty = renderSummaryRegion(
-      'runs',
-      'Outcome Counts',
-      'run-outcome-counts',
-      new Map(),
-    )
+    const empty = renderSummaryRegion('runs', 'Outcome Counts', 'run-outcome-counts', new Map())
 
     expect(populated.className).toBe('page-section')
-    expect(populated.getAttribute('aria-labelledby')).toBe(
-      'overview-rollout-mode-filtering-heading',
-    )
-    expect(populated.querySelector('h3')?.textContent).toBe(
-      'Rollout Mode Filtering',
-    )
-    expect(populated.querySelector('ul')?.className).toBe(
-      'overview-rollout-mode-counts',
-    )
+    expect(populated.getAttribute('aria-labelledby')).toBe('overview-rollout-mode-filtering-heading')
+    expect(populated.querySelector('h3')?.textContent).toBe('Rollout Mode Filtering')
+    expect(populated.querySelector('ul')?.className).toBe('overview-rollout-mode-counts')
     expect(populated.textContent).toContain('shadow: 2')
     expect(populated.textContent).toContain('full: 1')
     expect(empty.querySelector('ul')?.className).toBe('run-outcome-counts')
@@ -249,25 +205,14 @@ describe('view chrome component helpers', () => {
     ])
 
     expect(section.querySelector('h3')?.textContent).toBe('Provenance')
-    expect(section.getAttribute('aria-labelledby')).toBe(
-      'evals-provenance-heading',
-    )
-    expect(section.querySelector('.provenance-list')?.textContent).toContain(
-      'evals: evals-fixture (fixture) — as of 2026-08-29T20:00:00Z',
-    )
+    expect(section.getAttribute('aria-labelledby')).toBe('evals-provenance-heading')
+    expect(section.querySelector('.provenance-list')?.textContent).toContain('evals: evals-fixture (fixture) — as of 2026-08-29T20:00:00Z')
   })
 
   it('renders metadata sections with configurable heading levels', () => {
-    const defaultHeading = renderMetadataSection(
-      'Status',
-      document.createElement('p'),
-    )
+    const defaultHeading = renderMetadataSection('Status', document.createElement('p'))
     defaultHeading.querySelector('p')?.append('Closed')
-    const customHeading = renderMetadataSection(
-      'Workflow',
-      document.createElement('p'),
-      'h3',
-    )
+    const customHeading = renderMetadataSection('Workflow', document.createElement('p'), 'h3')
     customHeading.querySelector('p')?.append('Daily review')
 
     expect(defaultHeading.querySelector('h2')?.textContent).toBe('Status')
@@ -288,33 +233,15 @@ describe('view chrome component helpers', () => {
         bodyAttributes: { role: 'group', 'aria-label': 'Observation details' },
       },
     )
-    populated
-      .querySelector('p')
-      ?.append(
-        'Missing, failed, and null grader results are excluded rather than scored as zero.',
-      )
-    const plain = renderTitledBodySection('', 'Workflow observations', [
-      document.createElement('p'),
-    ])
+    populated.querySelector('p')?.append('Missing, failed, and null grader results are excluded rather than scored as zero.')
+    const plain = renderTitledBodySection('', 'Workflow observations', [document.createElement('p')])
     plain.querySelector('p')?.append('Body')
 
     expect(populated.className).toBe('value-details-section')
-    expect(populated.querySelector('h4')?.id).toBe(
-      'workflow-observations-heading',
-    )
-    expect(
-      populated.querySelector('.value-details-body')?.getAttribute('role'),
-    ).toBe('group')
-    expect(
-      populated
-        .querySelector('.value-details-body')
-        ?.getAttribute('aria-label'),
-    ).toBe('Observation details')
-    expect(
-      populated
-        .querySelector('.value-details-body')
-        ?.querySelectorAll('p, table'),
-    ).toHaveLength(2)
+    expect(populated.querySelector('h4')?.id).toBe('workflow-observations-heading')
+    expect(populated.querySelector('.value-details-body')?.getAttribute('role')).toBe('group')
+    expect(populated.querySelector('.value-details-body')?.getAttribute('aria-label')).toBe('Observation details')
+    expect(populated.querySelector('.value-details-body')?.querySelectorAll('p, table')).toHaveLength(2)
     expect(plain.querySelector('h3')?.textContent).toBe('Workflow observations')
     expect(plain.querySelector('h3')?.hasAttribute('id')).toBe(false)
     expect(plain.textContent).toContain('Body')
@@ -335,18 +262,10 @@ describe('view chrome component helpers', () => {
     )
 
     expect(header.className).toBe('layout-section-header')
-    expect(
-      header.querySelector('.section-heading .scope-kicker')?.textContent,
-    ).toBe('Run Trend')
-    expect(header.querySelector('h3')?.id).toBe(
-      'packages-run-trend-layout-heading',
-    )
+    expect(header.querySelector('.section-heading .scope-kicker')?.textContent).toBe('Run Trend')
+    expect(header.querySelector('h3')?.id).toBe('packages-run-trend-layout-heading')
     expect(header.querySelector('h3')?.textContent).toBe('Package run trend')
-    expect(header.querySelector('.section-heading p')?.textContent).toBe(
-      'Thirty-day retained package run totals.',
-    )
-    expect(
-      header.querySelector('.layout-section-header > strong')?.textContent,
-    ).toBe('12 records')
+    expect(header.querySelector('.section-heading p')?.textContent).toBe('Thirty-day retained package run totals.')
+    expect(header.querySelector('.layout-section-header > strong')?.textContent).toBe('12 records')
   })
 })

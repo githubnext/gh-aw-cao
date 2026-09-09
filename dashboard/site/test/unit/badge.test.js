@@ -69,8 +69,6 @@ describe('badge', () => {
     ['insufficient', 'status-danger'],
     ['unknown', 'status-muted'],
   ])('color-codes data confidence %s as %s', (confidence, expectedClass) => {
-    expect(renderStatusBadge(confidence).className).toBe(
-      `status ${expectedClass}`,
-    )
+    expect(renderStatusBadge(confidence).className).toBe(`status ${expectedClass}`)
   })
 })

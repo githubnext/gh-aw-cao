@@ -41,9 +41,7 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.textContent).toContain('Mean2')
     expect(rendered.textContent).toContain('Stddev1')
     expect(rendered.textContent).not.toContain('Median')
-    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe(
-      'Score distribution, 3 values',
-    )
+    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Score distribution, 3 values')
   })
 
   it('reports an unavailable deviation for a single quantitative value', () => {
@@ -63,12 +61,7 @@ describe('renderTableSummaryRow', () => {
       {
         label: 'Started',
         type: 'temporal',
-        values: [
-          '2026-08-31T14:25:55Z',
-          '2026-08-31T13:25:23Z',
-          'invalid',
-          '2026-08-30T12:00:00Z',
-        ],
+        values: ['2026-08-31T14:25:55Z', '2026-08-31T13:25:23Z', 'invalid', '2026-08-30T12:00:00Z'],
       },
     ])
 
@@ -180,11 +173,7 @@ describe('renderTableSummaryRow', () => {
       },
     ])
 
-    expect(
-      [...rendered.querySelectorAll('.table-summary-count')].map(
-        (node) => node.textContent,
-      ),
-    ).toEqual(['2 items', '1 item'])
+    expect([...rendered.querySelectorAll('.table-summary-count')].map((node) => node.textContent)).toEqual(['2 items', '1 item'])
     expect(rendered.textContent).not.toContain('[object Object]')
   })
 })

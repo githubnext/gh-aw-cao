@@ -21,12 +21,7 @@ export function renderLinkedText(text, link) {
  * @param {(value: unknown) => string} toText
  * @returns {(column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement}
  */
-export function createEntityAwareCellRenderer(
-  entityLinkFields,
-  findLink,
-  renderTableCellValue,
-  toText,
-) {
+export function createEntityAwareCellRenderer(entityLinkFields, findLink, renderTableCellValue, toText) {
   /**
    * @param {string | { field: string, display?: unknown, format?: unknown, type?: unknown }} column
    * @param {unknown} value
@@ -37,21 +32,13 @@ export function createEntityAwareCellRenderer(
     const field = typeof column === 'string' ? column : column.field
     const display = typeof column === 'string' ? undefined : column.display
     const renderedValue = renderTableCellValue(display, value, column)
-    const linkField = Object.prototype.hasOwnProperty.call(
-      entityLinkFields,
-      field,
-    )
+    const linkField = Object.prototype.hasOwnProperty.call(entityLinkFields, field)
       ? entityLinkFields[/** @type {keyof typeof entityLinkFields} */ (field)]
       : null
     if (linkField) {
       const link = findLink(row, linkField)
       if (link) {
-        const linkedText =
-          typeof column !== 'string' &&
-          column.format !== undefined &&
-          typeof renderedValue === 'string'
-            ? renderedValue
-            : toText(value)
+        const linkedText = typeof column !== 'string' && column.format !== undefined && typeof renderedValue === 'string' ? renderedValue : toText(value)
         return renderLinkedText(linkedText, link)
       }
     }

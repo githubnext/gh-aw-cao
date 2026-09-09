@@ -6,21 +6,10 @@ import { h } from '../dom.js'
 import { octicon } from '../octicons.js'
 import { formatClockDuration } from '../view-formatters.js'
 import { findLink } from './link-content.js'
-import {
-  renderPackagesView,
-  renderPackageSummary,
-  renderPackageUtilization,
-  renderRunTrend,
-} from './packages-view.js'
-import {
-  renderPackageRouteVariant,
-  renderPackageRouteView,
-} from './package-route-view.js'
+import { renderPackagesView, renderPackageSummary, renderPackageUtilization, renderRunTrend } from './packages-view.js'
+import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js'
 import { renderOutcomeDetail } from './outcome-detail.js'
-import {
-  isOutcomeDetailSectionConfig,
-  renderOutcomeDetailSection,
-} from './outcome-detail-sections.js'
+import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js'
 import {
   renderSectionHeading,
   isPlainObject,
@@ -74,30 +63,15 @@ const ELEMENT_RENDERERS = new Map([
   ['data-health-domain-list', renderDataHealthDomainListElement],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
-  [
-    'package-activity',
-    ({ sources, pageId }) => renderPackagesView(sources, pageId),
-  ],
+  ['package-activity', ({ sources, pageId }) => renderPackagesView(sources, pageId)],
   ['package-utilization', ({ sources }) => renderPackageUtilization(sources)],
   ['package-run-trend', ({ sources }) => renderRunTrend(sources)],
   ['package-summary-table', ({ sources }) => renderPackageSummary(sources)],
   ['package-activity-shell', renderPackageActivityShellElement],
-  [
-    'package-insights',
-    (context) => renderPackageRouteVariant(context, 'insights'),
-  ],
-  [
-    'package-detail',
-    (context) => renderPackageRouteVariant(context, 'workflows'),
-  ],
-  [
-    'package-dispatches',
-    (context) => renderPackageRouteVariant(context, 'dispatches'),
-  ],
-  [
-    'package-reports',
-    (context) => renderPackageRouteVariant(context, 'reports'),
-  ],
+  ['package-insights', (context) => renderPackageRouteVariant(context, 'insights')],
+  ['package-detail', (context) => renderPackageRouteVariant(context, 'workflows')],
+  ['package-dispatches', (context) => renderPackageRouteVariant(context, 'dispatches')],
+  ['package-reports', (context) => renderPackageRouteVariant(context, 'reports')],
   ['package-route', renderPackageRouteView],
   ['workflow-route', renderWorkflowRouteView],
   ['workflow-route-page', renderWorkflowRoutePage],
@@ -156,16 +130,14 @@ const LAZY_ELEMENT_RENDERERS = new Map([
     'package-activity-lazy',
     lazyElementRenderer(
       () => import('./packages-view.js'),
-      ({ renderPackagesView }, { sources, pageId }) =>
-        renderPackagesView(sources, pageId),
+      ({ renderPackagesView }, { sources, pageId }) => renderPackagesView(sources, pageId),
     ),
   ],
   [
     'package-utilization-lazy',
     lazyElementRenderer(
       () => import('./packages-view.js'),
-      ({ renderPackageUtilization }, { sources }) =>
-        renderPackageUtilization(sources),
+      ({ renderPackageUtilization }, { sources }) => renderPackageUtilization(sources),
     ),
   ],
   [
@@ -186,10 +158,7 @@ const LAZY_ELEMENT_RENDERERS = new Map([
     'package-activity-shell-lazy',
     lazyElementRenderer(
       () => import('./packages-view.js'),
-      (
-        { renderPackageUtilization, renderRunTrend, renderPackageSummary },
-        context,
-      ) =>
+      ({ renderPackageUtilization, renderRunTrend, renderPackageSummary }, context) =>
         renderPackagesModeShell({
           pageId: context.pageId,
           sections: [
@@ -213,32 +182,28 @@ const LAZY_ELEMENT_RENDERERS = new Map([
     'package-insights-lazy',
     lazyElementRenderer(
       () => import('./package-route-view.js'),
-      ({ renderPackageRouteVariant }, context) =>
-        renderPackageRouteVariant(context, 'insights'),
+      ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'insights'),
     ),
   ],
   [
     'package-detail-lazy',
     lazyElementRenderer(
       () => import('./package-route-view.js'),
-      ({ renderPackageRouteVariant }, context) =>
-        renderPackageRouteVariant(context, 'workflows'),
+      ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'workflows'),
     ),
   ],
   [
     'package-dispatches-lazy',
     lazyElementRenderer(
       () => import('./package-route-view.js'),
-      ({ renderPackageRouteVariant }, context) =>
-        renderPackageRouteVariant(context, 'dispatches'),
+      ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'dispatches'),
     ),
   ],
   [
     'package-reports-lazy',
     lazyElementRenderer(
       () => import('./package-route-view.js'),
-      ({ renderPackageRouteVariant }, context) =>
-        renderPackageRouteVariant(context, 'reports'),
+      ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'reports'),
     ),
   ],
   [
@@ -252,16 +217,14 @@ const LAZY_ELEMENT_RENDERERS = new Map([
     'workflow-route-lazy',
     lazyElementRenderer(
       () => import('./workflow-route-view.js'),
-      ({ renderWorkflowRouteView }, context) =>
-        renderWorkflowRouteView(context),
+      ({ renderWorkflowRouteView }, context) => renderWorkflowRouteView(context),
     ),
   ],
   [
     'workflow-route-page-lazy',
     lazyElementRenderer(
       () => import('./workflow-route-page.js'),
-      ({ renderWorkflowRoutePage }, context) =>
-        renderWorkflowRoutePage(context),
+      ({ renderWorkflowRoutePage }, context) => renderWorkflowRoutePage(context),
     ),
   ],
 ])
@@ -292,17 +255,11 @@ export async function renderUiElementAsync(name, context) {
  */
 function renderOutcomeDetailSectionElement(context) {
   const outcomes = rowsFor(context, 'outcomes')
-  const sectionConfig = isOutcomeDetailSectionConfig(context.elementConfig)
-    ? context.elementConfig
-    : null
+  const sectionConfig = isOutcomeDetailSectionConfig(context.elementConfig) ? context.elementConfig : null
   if (!sectionConfig) return null
   const outcomeId = stringValue(context.scope?.['safe-output'])
-  const outcome = outcomes.find(
-    (row) => String(row['safe-output']) === outcomeId,
-  )
-  return outcome
-    ? renderOutcomeDetailSection(outcome, sectionConfig.body)
-    : null
+  const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId)
+  return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null
 }
 
 /**
@@ -368,17 +325,9 @@ function renderDomainAttentionElement(context) {
             null,
             renderIconSpan('attention-domain-icon', stringValue(row.icon)),
             h('strong', null, stringValue(row.domain)),
-            h(
-              'span',
-              { className: 'attention-domain-state' },
-              stringValue(row.state),
-            ),
+            h('span', { className: 'attention-domain-state' }, stringValue(row.state)),
           ),
-          h(
-            'span',
-            { className: 'attention-domain-value' },
-            stringValue(row.value),
-          ),
+          h('span', { className: 'attention-domain-value' }, stringValue(row.value)),
           h('p', null, stringValue(row.detail)),
           h('footer', null, 'Open evidence'),
         ),
@@ -416,43 +365,21 @@ function renderPackageStatusGridElement(context) {
         const liveCoveragePercent = Number(row['live-coverage-percent'])
         const rolloutLiveRepositories = Number(row['rollout-live-repositories'])
         const rolloutRepositories = Number(row['rollout-repositories'])
-        const coverageKnown =
-          Number.isFinite(liveCoveragePercent) &&
-          Number.isFinite(rolloutLiveRepositories) &&
-          rolloutRepositories > 0
-        const coveragePercent = coverageKnown
-          ? clampPercent(liveCoveragePercent)
-          : null
-        const reviewRepositories = coverageKnown
-          ? rolloutRepositories - rolloutLiveRepositories
-          : null
-        const dispatchCount =
-          row['dispatch-count'] == null ? null : Number(row['dispatch-count'])
-        const runTelemetryUnavailable =
-          context.sources.runs?.metadata?.availability === 'unavailable' ||
-          !context.sources.runs
-        const outputCollectionUnavailable =
-          context.sources.outcomes?.metadata?.availability === 'unavailable' ||
-          !context.sources.outcomes
-        const dispatchStatus = packageDispatchStatus(
-          row,
-          dispatchCount,
-          runTelemetryUnavailable,
-        )
-        const outputDispatchCount =
-          row['dispatches-with-safe-output'] == null
-            ? null
-            : Number(row['dispatches-with-safe-output'])
+        const coverageKnown = Number.isFinite(liveCoveragePercent) && Number.isFinite(rolloutLiveRepositories) && rolloutRepositories > 0
+        const coveragePercent = coverageKnown ? clampPercent(liveCoveragePercent) : null
+        const reviewRepositories = coverageKnown ? rolloutRepositories - rolloutLiveRepositories : null
+        const dispatchCount = row['dispatch-count'] == null ? null : Number(row['dispatch-count'])
+        const runTelemetryUnavailable = context.sources.runs?.metadata?.availability === 'unavailable' || !context.sources.runs
+        const outputCollectionUnavailable = context.sources.outcomes?.metadata?.availability === 'unavailable' || !context.sources.outcomes
+        const dispatchStatus = packageDispatchStatus(row, dispatchCount, runTelemetryUnavailable)
+        const outputDispatchCount = row['dispatches-with-safe-output'] == null ? null : Number(row['dispatches-with-safe-output'])
         const dispatchText = Number.isFinite(dispatchCount)
           ? `${dispatchCount} dispatch${dispatchCount === 1 ? '' : 'es'}`
           : runTelemetryUnavailable
             ? 'Run telemetry unavailable'
             : 'Dispatches unavailable'
         const outputCountsKnown =
-          dispatchCount !== null &&
-          outputDispatchCount !== null &&
-          Number.isFinite(dispatchCount) &&
-          Number.isFinite(outputDispatchCount)
+          dispatchCount !== null && outputDispatchCount !== null && Number.isFinite(dispatchCount) && Number.isFinite(outputDispatchCount)
         const outputText = outputCountsKnown
           ? (dispatchCount ?? 0) > 0
             ? `${outputDispatchCount}/${dispatchCount} produced output`
@@ -460,20 +387,9 @@ function renderPackageStatusGridElement(context) {
           : outputCollectionUnavailable
             ? 'Output collection unavailable'
             : 'Outputs unavailable'
-        const noOutputWarning =
-          outputCountsKnown &&
-          (dispatchCount ?? 0) > 0 &&
-          outputDispatchCount === 0
-        const repoModes = Array.isArray(row['repository-modes'])
-          ? row['repository-modes'].filter(isPlainObject)
-          : []
-        const repoEntries =
-          repoModes.length > 0
-            ? repoModes.filter(
-                (entry) =>
-                  typeof entry.repository === 'string' && entry.repository,
-              )
-            : []
+        const noOutputWarning = outputCountsKnown && (dispatchCount ?? 0) > 0 && outputDispatchCount === 0
+        const repoModes = Array.isArray(row['repository-modes']) ? row['repository-modes'].filter(isPlainObject) : []
+        const repoEntries = repoModes.length > 0 ? repoModes.filter((entry) => typeof entry.repository === 'string' && entry.repository) : []
         const inventoryText = stringValue(row.inventory || 'Needs attention')
         return h(
           'article',
@@ -493,9 +409,7 @@ function renderPackageStatusGridElement(context) {
                 className: 'package-status-identity',
               }),
             ),
-            inventoryText === 'Ready'
-              ? null
-              : h('span', { className: 'package-status-state' }, inventoryText),
+            inventoryText === 'Ready' ? null : h('span', { className: 'package-status-state' }, inventoryText),
           ),
           h(
             'div',
@@ -507,19 +421,9 @@ function renderPackageStatusGridElement(context) {
                 'div',
                 null,
                 h('span', null, 'Rollout'),
-                h(
-                  'strong',
-                  null,
-                  coverageKnown
-                    ? `${rolloutLiveRepositories} live · ${reviewRepositories} review`
-                    : 'No target data',
-                ),
+                h('strong', null, coverageKnown ? `${rolloutLiveRepositories} live · ${reviewRepositories} review` : 'No target data'),
               ),
-              h(
-                'strong',
-                null,
-                coverageKnown ? `${coveragePercent}% live` : 'Unknown',
-              ),
+              h('strong', null, coverageKnown ? `${coveragePercent}% live` : 'Unknown'),
             ),
             coverageKnown
               ? h('progress', {
@@ -532,12 +436,7 @@ function renderPackageStatusGridElement(context) {
           h(
             'div',
             { className: 'package-status-runtime' },
-            h(
-              'div',
-              { className: 'package-status-repository-heading' },
-              h('span', null, 'Target repositories'),
-              h('span', null, 'Mode'),
-            ),
+            h('div', { className: 'package-status-repository-heading' }, h('span', null, 'Target repositories'), h('span', null, 'Mode')),
             renderListOrEmptyMessage(
               'package-status-repositories',
               repoEntries,
@@ -546,17 +445,11 @@ function renderPackageStatusGridElement(context) {
                 return h(
                   'li',
                   null,
-                  h(
-                    'span',
-                    { className: 'package-status-repository-name' },
-                    octicon('repo'),
-                    h('span', null, stringValue(entry.repository)),
-                  ),
+                  h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
                   h(
                     'span',
                     {
-                      className:
-                        `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim(),
+                      className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim(),
                     },
                     octicon('dot-fill'),
                     capitalize(repoMode),
@@ -578,11 +471,7 @@ function renderPackageStatusGridElement(context) {
             h(
               'span',
               { className: 'package-status-activity-heading' },
-              h(
-                'span',
-                { className: 'package-status-activity-label' },
-                'Recent',
-              ),
+              h('span', { className: 'package-status-activity-label' }, 'Recent'),
               h(
                 'span',
                 {
@@ -593,17 +482,10 @@ function renderPackageStatusGridElement(context) {
                 dispatchStatus.label,
               ),
             ),
+            h('span', null, octicon('paper-airplane'), h('strong', null, dispatchText)),
             h(
               'span',
-              null,
-              octicon('paper-airplane'),
-              h('strong', null, dispatchText),
-            ),
-            h(
-              'span',
-              noOutputWarning
-                ? { title: 'Dispatched but produced no output' }
-                : null,
+              noOutputWarning ? { title: 'Dispatched but produced no output' } : null,
               octicon(noOutputWarning ? 'alert' : 'shield-check'),
               h('strong', null, outputText),
             ),
@@ -619,50 +501,21 @@ function renderPackageStatusGridElement(context) {
  * @param {number | null} dispatchCount
  * @param {boolean} runTelemetryUnavailable
  */
-function packageDispatchStatus(
-  row,
-  dispatchCount,
-  runTelemetryUnavailable = false,
-) {
-  const successful =
-    row['dispatch-success-count'] == null
-      ? null
-      : Number(row['dispatch-success-count'])
-  const failed =
-    row['dispatch-failure-count'] == null
-      ? null
-      : Number(row['dispatch-failure-count'])
-  const approval =
-    row['dispatch-approval-count'] == null
-      ? null
-      : Number(row['dispatch-approval-count'])
-  const pending =
-    row['dispatch-pending-count'] == null
-      ? null
-      : Number(row['dispatch-pending-count'])
-  if (
-    ![dispatchCount, successful, failed, approval, pending].every(
-      Number.isFinite,
-    )
-  ) {
+function packageDispatchStatus(row, dispatchCount, runTelemetryUnavailable = false) {
+  const successful = row['dispatch-success-count'] == null ? null : Number(row['dispatch-success-count'])
+  const failed = row['dispatch-failure-count'] == null ? null : Number(row['dispatch-failure-count'])
+  const approval = row['dispatch-approval-count'] == null ? null : Number(row['dispatch-approval-count'])
+  const pending = row['dispatch-pending-count'] == null ? null : Number(row['dispatch-pending-count'])
+  if (![dispatchCount, successful, failed, approval, pending].every(Number.isFinite)) {
     return {
       tone: 'unknown',
       icon: 'circle',
       label: 'Unknown',
-      detail: runTelemetryUnavailable
-        ? 'Recent dispatch status is unavailable because run telemetry was not collected.'
-        : 'Recent dispatch status unavailable',
+      detail: runTelemetryUnavailable ? 'Recent dispatch status is unavailable because run telemetry was not collected.' : 'Recent dispatch status unavailable',
     }
   }
 
-  const other = Math.max(
-    0,
-    Number(dispatchCount) -
-      Number(successful) -
-      Number(failed) -
-      Number(approval) -
-      Number(pending),
-  )
+  const other = Math.max(0, Number(dispatchCount) - Number(successful) - Number(failed) - Number(approval) - Number(pending))
   const details = [
     Number(successful) > 0 ? `${successful} succeeded` : '',
     Number(failed) > 0 ? `${failed} failed` : '',
@@ -692,8 +545,7 @@ function packageDispatchStatus(
       label: `${pending} in progress`,
       detail,
     }
-  if (other > 0)
-    return { tone: 'unknown', icon: 'alert', label: `${other} other`, detail }
+  if (other > 0) return { tone: 'unknown', icon: 'alert', label: `${other} other`, detail }
   if (Number(dispatchCount) > 0)
     return {
       tone: 'success',
@@ -717,11 +569,7 @@ function renderSummaryGridElement(context) {
 function renderDataHealthDomainListElement(context) {
   const rows = rowsFor(context, context.sourceNames[0])
   if (rows.length === 0) {
-    return h(
-      'p',
-      { className: 'data-health-domain-list-empty' },
-      'No dashboard domain contracts are available.',
-    )
+    return h('p', { className: 'data-health-domain-list-empty' }, 'No dashboard domain contracts are available.')
   }
   return h(
     'dl',
@@ -733,16 +581,8 @@ function renderDataHealthDomainListElement(context) {
           'div',
           { className: 'data-health-domain-value' },
           renderStatusBadge(row.confidence),
-          h(
-            'span',
-            { className: 'data-health-domain-reason' },
-            stringValue(row.reason),
-          ),
-          h(
-            'span',
-            { className: 'data-health-domain-action' },
-            stringValue(row['next-action']),
-          ),
+          h('span', { className: 'data-health-domain-reason' }, stringValue(row.reason)),
+          h('span', { className: 'data-health-domain-action' }, stringValue(row['next-action'])),
         ),
       ),
     ),
@@ -752,33 +592,16 @@ function renderDataHealthDomainListElement(context) {
 /** @param {ElementRenderContext} context */
 function renderReadinessVerdictElement(context) {
   const rows = rowsFor(context, context.sourceNames[0])
-  const verdict =
-    stringValue(rows.find((row) => row.label === 'Control plane')?.value) ||
-    'Evidence incomplete'
-  const tone =
-    verdict === 'Ready to ship'
-      ? 'ready'
-      : verdict === 'Not ready'
-        ? 'blocked'
-        : 'unknown'
+  const verdict = stringValue(rows.find((row) => row.label === 'Control plane')?.value) || 'Evidence incomplete'
+  const tone = verdict === 'Ready to ship' ? 'ready' : verdict === 'Not ready' ? 'blocked' : 'unknown'
   const checks = rowsFor(context, 'readiness-checks')
   const signals = rowsFor(context, 'readiness-signals')
   const observations = rowsFor(context, 'readiness-observations')
   const metadata = context.sources[context.sourceNames[0]]?.metadata
-  const blocking = signals.filter(
-    (row) => stringValue(row.tone) === 'critical' || Number(row.priority) === 0,
-  )
-  const stateLabel =
-    tone === 'ready' ? 'READY' : tone === 'blocked' ? 'BLOCKED' : 'UNKNOWN'
-  const icon =
-    tone === 'ready'
-      ? 'check-circle'
-      : tone === 'blocked'
-        ? 'x-circle'
-        : 'question'
-  const evidenceRows = rows.filter(
-    (row) => row.label !== 'Control plane' && row.label !== 'Unblock first',
-  )
+  const blocking = signals.filter((row) => stringValue(row.tone) === 'critical' || Number(row.priority) === 0)
+  const stateLabel = tone === 'ready' ? 'READY' : tone === 'blocked' ? 'BLOCKED' : 'UNKNOWN'
+  const icon = tone === 'ready' ? 'check-circle' : tone === 'blocked' ? 'x-circle' : 'question'
+  const evidenceRows = rows.filter((row) => row.label !== 'Control plane' && row.label !== 'Unblock first')
   return h(
     'section',
     {
@@ -793,12 +616,7 @@ function renderReadinessVerdictElement(context) {
         'div',
         { className: 'readiness-hero' },
         h('small', null, 'Control-plane readiness'),
-        h(
-          'div',
-          { className: 'readiness-state' },
-          renderIconSpan('readiness-verdict-icon', icon, { ariaHidden: true }),
-          h('strong', null, stateLabel),
-        ),
+        h('div', { className: 'readiness-state' }, renderIconSpan('readiness-verdict-icon', icon, { ariaHidden: true }), h('strong', null, stateLabel)),
         h(
           'p',
           null,
@@ -851,22 +669,8 @@ function renderReadinessVerdictElement(context) {
               ),
             )
           : rows.find((row) => row.label === 'Unblock first')
-            ? [
-                h(
-                  'p',
-                  { className: 'readiness-clear' },
-                  stringValue(
-                    rows.find((row) => row.label === 'Unblock first')?.value,
-                  ),
-                ),
-              ]
-            : [
-                h(
-                  'p',
-                  { className: 'readiness-clear' },
-                  'No blocking conditions.',
-                ),
-              ],
+            ? [h('p', { className: 'readiness-clear' }, stringValue(rows.find((row) => row.label === 'Unblock first')?.value))]
+            : [h('p', { className: 'readiness-clear' }, 'No blocking conditions.')],
       ),
       readinessBlock(
         'Readiness gates',
@@ -876,19 +680,8 @@ function renderReadinessVerdictElement(context) {
             {
               className: `readiness-gate readiness-gate-${stringValue(row['readiness-state']).toLowerCase()}`,
             },
-            octicon(
-              stringValue(row['readiness-state']) === 'Ready'
-                ? 'check-circle'
-                : stringValue(row['readiness-state']) === 'Blocked'
-                  ? 'stop'
-                  : 'question',
-            ),
-            h(
-              'span',
-              null,
-              h('strong', null, stringValue(row.check)),
-              h('small', null, stringValue(row.detail)),
-            ),
+            octicon(stringValue(row['readiness-state']) === 'Ready' ? 'check-circle' : stringValue(row['readiness-state']) === 'Blocked' ? 'stop' : 'question'),
+            h('span', null, h('strong', null, stringValue(row.check)), h('small', null, stringValue(row.detail))),
           ),
         ),
       ),
@@ -896,20 +689,10 @@ function renderReadinessVerdictElement(context) {
         observations.length > 0 ? 'Other observations' : 'Evidence',
         observations.length > 0
           ? observations.map((row) =>
-              h(
-                'div',
-                { className: 'readiness-observation' },
-                h('strong', null, stringValue(row.signal)),
-                h('span', null, stringValue(row.detail)),
-              ),
+              h('div', { className: 'readiness-observation' }, h('strong', null, stringValue(row.signal)), h('span', null, stringValue(row.detail))),
             )
           : evidenceRows.map((row) =>
-              h(
-                'div',
-                { className: 'readiness-evidence-row' },
-                h('span', null, stringValue(row.label)),
-                h('strong', null, stringValue(row.value)),
-              ),
+              h('div', { className: 'readiness-evidence-row' }, h('span', null, stringValue(row.label)), h('strong', null, stringValue(row.value))),
             ),
       ),
     ),
@@ -918,12 +701,7 @@ function renderReadinessVerdictElement(context) {
 
 /** @param {string} title @param {Array<HTMLElement|string|null>} content */
 function readinessBlock(title, content) {
-  return h(
-    'section',
-    { className: 'readiness-block' },
-    h('h3', null, title),
-    h('div', { className: 'readiness-block-content' }, ...content),
-  )
+  return h('section', { className: 'readiness-block' }, h('h3', null, title), h('div', { className: 'readiness-block-content' }, ...content))
 }
 
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
@@ -931,24 +709,19 @@ function snapshotAge(metadata) {
   const value = metadata?.['as-of'] || metadata?.['retrieved-at']
   if (!value) return 'Unavailable'
   const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? String(value)
-    : `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC · ${elapsedSince(date)}`
+  return Number.isNaN(date.getTime()) ? String(value) : `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC · ${elapsedSince(date)}`
 }
 
 /** @param {Date} date */
 function elapsedSince(date) {
   const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000))
-  return minutes < 60
-    ? `${minutes}m ago`
-    : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`
+  return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`
 }
 
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function evidenceState(metadata) {
   if (!metadata || metadata.availability === 'unavailable') return 'Unavailable'
-  if (metadata.completeness !== 'complete' || metadata.freshness !== 'fresh')
-    return 'Incomplete'
+  if (metadata.completeness !== 'complete' || metadata.freshness !== 'fresh') return 'Incomplete'
   return '✓ Complete'
 }
 
@@ -956,15 +729,11 @@ function evidenceState(metadata) {
  * @param {ElementRenderContext} context
  */
 function renderContextSummaryElement(context) {
-  const rows = context.sourceNames
-    .flatMap((sourceName) => rowsFor(context, sourceName))
-    .filter(isContextSummaryRow)
+  const rows = context.sourceNames.flatMap((sourceName) => rowsFor(context, sourceName)).filter(isContextSummaryRow)
   return h(
     'dl',
     { className: 'context-summary', 'aria-label': context.title },
-    ...rows.map((row) =>
-      renderDlRow(stringValue(row.label), renderContextSummaryValue(row)),
-    ),
+    ...rows.map((row) => renderDlRow(stringValue(row.label), renderContextSummaryValue(row))),
   )
 }
 
@@ -977,11 +746,7 @@ function renderAnomalyReadinessElement(context) {
 
 /** @param {Record<string, unknown>} row */
 function isContextSummaryRow(row) {
-  return (
-    typeof row.label === 'string' &&
-    (['string', 'number', 'boolean'].includes(typeof row.value) ||
-      Array.isArray(row.items))
-  )
+  return typeof row.label === 'string' && (['string', 'number', 'boolean'].includes(typeof row.value) || Array.isArray(row.items))
 }
 
 /**
@@ -1004,9 +769,7 @@ function renderSignalListElement(context) {
   const list = h(
     'div',
     { className: 'signal-list-region' },
-    context.description
-      ? h('p', { className: 'signal-boundary-note' }, context.description)
-      : null,
+    context.description ? h('p', { className: 'signal-boundary-note' }, context.description) : null,
     h(
       'ol',
       { className: 'signal-list' },
@@ -1017,11 +780,7 @@ function renderSignalListElement(context) {
               'li',
               { className: 'signal-clear' },
               renderIconSpan('signal-icon', 'check-circle'),
-              h(
-                'span',
-                { className: 'signal-copy' },
-                h('strong', null, 'No signals require attention'),
-              ),
+              h('span', { className: 'signal-copy' }, h('strong', null, 'No signals require attention')),
             ),
           ]),
     ),
@@ -1036,9 +795,7 @@ function renderSignalListElement(context) {
  */
 function renderSignal(row, index, isCanonicalAttention = false) {
   const link = isCanonicalAttention
-    ? (findLink(row, 'evidence-link') ??
-      findLink(row, 'run-link') ??
-      findLink(row, 'external-link'))
+    ? (findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link'))
     : (findLink(row, 'run-link') ?? findLink(row, 'external-link'))
   const navigationHref = safeNavigationHref(row['navigation-href'])
   const navigationPage = stringValue(row['navigation-page'])
@@ -1049,15 +806,8 @@ function renderSignal(row, index, isCanonicalAttention = false) {
   const reason = stringValue(row.detail) || stringValue(row.reason)
   const scope = isCanonicalAttention ? stringValue(row.scope) : ''
   const ageSeconds = Number(row['age-seconds'])
-  const age =
-    isCanonicalAttention && Number.isFinite(ageSeconds)
-      ? `${formatClockDuration(ageSeconds * 1000)} old`
-      : ''
-  const evidence =
-    stringValue(row.evidence) ||
-    (isCanonicalAttention
-      ? [stringValue(row['expected-actor']), age].filter(Boolean).join(' · ')
-      : '')
+  const age = isCanonicalAttention && Number.isFinite(ageSeconds) ? `${formatClockDuration(ageSeconds * 1000)} old` : ''
+  const evidence = stringValue(row.evidence) || (isCanonicalAttention ? [stringValue(row['expected-actor']), age].filter(Boolean).join(' · ') : '')
   const tone = stringValue(row.tone) || canonicalAttentionTone(consequence)
   const content = [
     isCanonicalAttention
@@ -1070,11 +820,7 @@ function renderSignal(row, index, isCanonicalAttention = false) {
           h('strong', null, String(index + 1)),
           h('small', null, 'Priority'),
         )
-      : h(
-          'span',
-          { className: 'signal-rank', 'aria-hidden': 'true' },
-          String(index + 1),
-        ),
+      : h('span', { className: 'signal-rank', 'aria-hidden': 'true' }, String(index + 1)),
     renderIconSpan('signal-icon', stringValue(row.icon) || 'issue'),
     h(
       'span',
@@ -1083,20 +829,11 @@ function renderSignal(row, index, isCanonicalAttention = false) {
       h('strong', null, title),
       h('small', null, [scope, reason].filter(Boolean).join(' · ')),
     ),
-    h(
-      'span',
-      { className: 'signal-evidence' },
-      h('strong', null, evidence),
-      h('small', null, stringValue(row.action) || 'View details'),
-    ),
+    h('span', { className: 'signal-evidence' }, h('strong', null, evidence), h('small', null, stringValue(row.action) || 'View details')),
   ]
   const className = `signal-item signal-${tone || 'informational'}${isCanonicalAttention ? ' canonical-attention-item' : ''}`
   if (link) {
-    return h(
-      'li',
-      { className },
-      h('a', { href: link.href, 'aria-label': link.label }, ...content),
-    )
+    return h('li', { className }, h('a', { href: link.href, 'aria-label': link.label }, ...content))
   }
   if (navigationPage) {
     return h(
@@ -1125,8 +862,7 @@ function humanizeSignalLabel(value) {
 
 /** @param {string} consequence */
 function canonicalAttentionTone(consequence) {
-  if (['critical', 'high'].includes(consequence.toLowerCase()))
-    return 'critical'
+  if (['critical', 'high'].includes(consequence.toLowerCase())) return 'critical'
   if (consequence.toLowerCase() === 'low') return 'informational'
   return 'action'
 }
@@ -1136,9 +872,7 @@ function safeNavigationHref(value) {
   if (typeof value !== 'string' || !value.startsWith('#')) return null
   try {
     const url = new URL(value, 'https://dashboard.invalid/')
-    return url.origin === 'https://dashboard.invalid' && url.hash === value
-      ? value
-      : null
+    return url.origin === 'https://dashboard.invalid' && url.hash === value ? value : null
   } catch {
     return null
   }
@@ -1163,7 +897,5 @@ function stringValue(value) {
  * @param {string} value
  */
 function capitalize(value) {
-  return value.length === 0
-    ? value
-    : `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+  return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`
 }

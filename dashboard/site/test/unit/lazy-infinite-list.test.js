@@ -15,9 +15,7 @@ describe('lazy infinite list', () => {
       constructor(callback) {
         intersect = () =>
           callback(
-            /** @type {IntersectionObserverEntry[]} */ (
-              /** @type {unknown} */ ([{ isIntersecting: true }])
-            ),
+            /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ isIntersecting: true }])),
             /** @type {IntersectionObserver} */ (/** @type {unknown} */ (this)),
           )
       }
@@ -63,10 +61,7 @@ describe('lazy infinite list', () => {
       renderEmpty: () => document.createElement('p'),
     }).element
     document.body.append(rendered)
-    clickLoadMore = () =>
-      rendered
-        .querySelector('button')
-        ?.dispatchEvent(new Event('click', { bubbles: true }))
+    clickLoadMore = () => rendered.querySelector('button')?.dispatchEvent(new Event('click', { bubbles: true }))
 
     expect(rendered.querySelectorAll('.lazy-item')).toHaveLength(10)
 

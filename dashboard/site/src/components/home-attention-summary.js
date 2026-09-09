@@ -12,13 +12,8 @@ function timestamp(value) {
 
 /** @param {import('../presenter.js').LogicalSourceInput | undefined} source */
 function evidenceState(source) {
-  if (!source || source.metadata?.availability !== 'available')
-    return 'unavailable'
-  if (
-    source.metadata.completeness !== 'complete' ||
-    source.metadata.freshness !== 'fresh'
-  )
-    return 'incomplete'
+  if (!source || source.metadata?.availability !== 'available') return 'unavailable'
+  if (source.metadata.completeness !== 'complete' || source.metadata.freshness !== 'fresh') return 'incomplete'
   return 'complete'
 }
 
@@ -31,9 +26,7 @@ function metricCount(count, state) {
 function effectiveInterval(time) {
   const start = timestamp(time?.start)
   const end = timestamp(time?.end)
-  return start !== null && end !== null
-    ? `${formatMediumUtcDateTime(start)} UTC to ${formatMediumUtcDateTime(end)} UTC`
-    : 'the selected dashboard horizon'
+  return start !== null && end !== null ? `${formatMediumUtcDateTime(start)} UTC to ${formatMediumUtcDateTime(end)} UTC` : 'the selected dashboard horizon'
 }
 
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
@@ -45,15 +38,9 @@ export function renderHomeAttentionSummary(context) {
   const runs = rowsFor(context.sources, 'runs')
   const workItems = rowsFor(context.sources, 'work-items')
   const securityFindings = rowsFor(context.sources, 'security-findings')
-  const failedRuns = runs.filter((row) =>
-    isFailureConclusion(row['run-conclusion']),
-  )
-  const blockedWork = workItems.filter(
-    (row) => row['lifecycle-state'] === 'blocked',
-  )
-  const awaitingReview = workItems.filter(
-    (row) => row['lifecycle-state'] === 'review',
-  )
+  const failedRuns = runs.filter((row) => isFailureConclusion(row['run-conclusion']))
+  const blockedWork = workItems.filter((row) => row['lifecycle-state'] === 'blocked')
+  const awaitingReview = workItems.filter((row) => row['lifecycle-state'] === 'review')
   const metrics = [
     {
       count: metricCount(failedRuns.length, runEvidence),
@@ -84,11 +71,7 @@ export function renderHomeAttentionSummary(context) {
       tone: 'danger',
     },
   ]
-  const attentionCount =
-    failedRuns.length +
-    blockedWork.length +
-    awaitingReview.length +
-    securityFindings.length
+  const attentionCount = failedRuns.length + blockedWork.length + awaitingReview.length + securityFindings.length
   const hasObservedAttention = attentionCount > 0
   const evidenceGaps = [
     [runEvidence, 'failed runs'],
@@ -117,13 +100,7 @@ export function renderHomeAttentionSummary(context) {
       className: 'home-attention-summary',
       'aria-label': 'Needs your attention',
     },
-    h(
-      context.headingTag,
-      null,
-      attentionCount === 1
-        ? '1 item needs your attention'
-        : `${attentionCount} items need your attention`,
-    ),
+    h(context.headingTag, null, attentionCount === 1 ? '1 item needs your attention' : `${attentionCount} items need your attention`),
     quietState
       ? h(
           'div',

@@ -11,13 +11,7 @@ import { findLink } from './components/link-content.js'
  * @returns {Record<string, LogicalSourceInput>}
  */
 export function deriveDashboardLinkSources(sources, context) {
-  return deriveWorkflowDashboardLinks(
-    deriveRepositoryDashboardLinks(
-      deriveEntityLinkSources(sources, context.githubUrlBase),
-      context.pages,
-    ),
-    context.pages,
-  )
+  return deriveWorkflowDashboardLinks(deriveRepositoryDashboardLinks(deriveEntityLinkSources(sources, context.githubUrlBase), context.pages), context.pages)
 }
 
 /**
@@ -31,9 +25,7 @@ export function deriveEntityLinkSources(sources, githubUrlBase) {
       name,
       {
         ...source,
-        rows: Array.isArray(source?.rows)
-          ? source.rows.map((row) => deriveEntityLinkRow(row, githubUrlBase))
-          : source?.rows,
+        rows: Array.isArray(source?.rows) ? source.rows.map((row) => deriveEntityLinkRow(row, githubUrlBase)) : source?.rows,
       },
     ]),
   )
@@ -44,11 +36,7 @@ export function deriveEntityLinkSources(sources, githubUrlBase) {
  * @param {DashboardPage[]} pages
  */
 function deriveRepositoryDashboardLinks(sources, pages) {
-  const detailPage = pages.find(
-    (page) =>
-      page.kind === 'custom' &&
-      page.route?.['hash-query-parameter'] === 'repository',
-  )
+  const detailPage = pages.find((page) => page.kind === 'custom' && page.route?.['hash-query-parameter'] === 'repository')
   if (!detailPage) return sources
 
   return Object.fromEntries(
@@ -56,11 +44,7 @@ function deriveRepositoryDashboardLinks(sources, pages) {
       name,
       {
         ...source,
-        rows: Array.isArray(source?.rows)
-          ? source.rows.map((row) =>
-              deriveRepositoryDashboardLink(row, detailPage.id),
-            )
-          : source?.rows,
+        rows: Array.isArray(source?.rows) ? source.rows.map((row) => deriveRepositoryDashboardLink(row, detailPage.id)) : source?.rows,
       },
     ]),
   )
@@ -71,26 +55,16 @@ function deriveRepositoryDashboardLinks(sources, pages) {
  * @param {DashboardPage[]} pages
  */
 function deriveWorkflowDashboardLinks(sources, pages) {
-  const insightsPage = pages.find(
-    (page) => page.kind === 'custom' && page.id === 'workflow-runtime',
-  )
+  const insightsPage = pages.find((page) => page.kind === 'custom' && page.id === 'workflow-runtime')
   if (!insightsPage) return sources
-  const knownWorkflows = new Set(
-    (sources.workflows?.rows ?? [])
-      .map(workflowDashboardIdentity)
-      .filter((identity) => identity !== null),
-  )
+  const knownWorkflows = new Set((sources.workflows?.rows ?? []).map(workflowDashboardIdentity).filter((identity) => identity !== null))
 
   return Object.fromEntries(
     Object.entries(sources).map(([name, source]) => [
       name,
       {
         ...source,
-        rows: Array.isArray(source?.rows)
-          ? source.rows.map((row) =>
-              deriveWorkflowDashboardLink(row, insightsPage.id, knownWorkflows),
-            )
-          : source?.rows,
+        rows: Array.isArray(source?.rows) ? source.rows.map((row) => deriveWorkflowDashboardLink(row, insightsPage.id, knownWorkflows)) : source?.rows,
       },
     ]),
   )
@@ -104,12 +78,7 @@ function deriveWorkflowDashboardLinks(sources, pages) {
 function deriveWorkflowDashboardLink(row, pageId, knownWorkflows) {
   const identity = workflowDashboardIdentity(row)
   const workflowLink = row['workflow-link']
-  if (
-    !identity ||
-    !knownWorkflows.has(identity) ||
-    !isPlainObject(workflowLink)
-  )
-    return row
+  if (!identity || !knownWorkflows.has(identity) || !isPlainObject(workflowLink)) return row
 
   return {
     ...row,
@@ -125,12 +94,7 @@ function deriveWorkflowDashboardLink(row, pageId, knownWorkflows) {
 function deriveRepositoryDashboardLink(row, pageId) {
   const organization = trimmedString(row.organization)
   const repository = trimmedString(row.repository)
-  const repositorySlug =
-    repository && repository.includes('/')
-      ? repository
-      : organization && repository
-        ? `${organization}/${repository}`
-        : null
+  const repositorySlug = repository && repository.includes('/') ? repository : organization && repository ? `${organization}/${repository}` : null
   const repositoryLink = row['repository-link']
   if (!repositorySlug || !isPlainObject(repositoryLink)) return row
 
@@ -149,14 +113,8 @@ function deriveEntityLinkRow(row, githubUrlBase) {
   const organization = trimmedString(row.organization)
   const repository = trimmedString(row.repository)
   const workflow = trimmedString(row.workflow)
-  const repositorySlug =
-    repository && repository.includes('/')
-      ? repository
-      : organization && repository
-        ? `${organization}/${repository}`
-        : null
-  const workflowRepositorySlug =
-    repositorySlugValue(row['runtime-repository']) ?? repositorySlug
+  const repositorySlug = repository && repository.includes('/') ? repository : organization && repository ? `${organization}/${repository}` : null
+  const workflowRepositorySlug = repositorySlugValue(row['runtime-repository']) ?? repositorySlug
   /** @type {Record<string, unknown>} */
   const derived = {}
 
@@ -196,30 +154,17 @@ function trimmedString(value) {
 /** @param {unknown} value */
 function repositorySlugValue(value) {
   const repository = trimmedString(value)
-  return repository &&
-    /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,98}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/.test(
-      repository,
-    )
-    ? repository
-    : null
+  return repository && /^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,98}[A-Za-z0-9])?\/[A-Za-z0-9_.-]{1,100}$/.test(repository) ? repository : null
 }
 
 /** @param {Record<string, unknown>} row */
 function workflowDashboardIdentity(row) {
   const organization = trimmedString(row.organization)
   const repository = trimmedString(row.repository)
-  const repositorySlug =
-    repository && repository.includes('/')
-      ? repository
-      : organization && repository
-        ? `${organization}/${repository}`
-        : null
-  const workflowRepositorySlug =
-    repositorySlugValue(row['runtime-repository']) ?? repositorySlug
+  const repositorySlug = repository && repository.includes('/') ? repository : organization && repository ? `${organization}/${repository}` : null
+  const workflowRepositorySlug = repositorySlugValue(row['runtime-repository']) ?? repositorySlug
   const workflow = trimmedString(row.workflow)
-  return workflowRepositorySlug && workflow
-    ? `${workflowRepositorySlug}:${workflow}`
-    : null
+  return workflowRepositorySlug && workflow ? `${workflowRepositorySlug}:${workflow}` : null
 }
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */

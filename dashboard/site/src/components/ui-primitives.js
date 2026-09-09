@@ -20,24 +20,11 @@ import { octicon } from '../octicons.js'
  * @param {SectionHeadingOptions} options
  * @returns {HTMLElement}
  */
-export function renderSectionHeading({
-  kicker,
-  id,
-  title,
-  description,
-  summary,
-  headingTag = 'h3',
-}) {
+export function renderSectionHeading({ kicker, id, title, description, summary, headingTag = 'h3' }) {
   return h(
     'div',
     { className: 'section-heading' },
-    h(
-      'div',
-      null,
-      h('span', { className: 'scope-kicker' }, kicker),
-      h(headingTag, { id }, title),
-      description ? h('p', null, description) : null,
-    ),
+    h('div', null, h('span', { className: 'scope-kicker' }, kicker), h(headingTag, { id }, title), description ? h('p', null, description) : null),
     summary ? h('strong', null, summary) : null,
   )
 }
@@ -53,12 +40,7 @@ export function renderSectionHeading({
  * @param {{ className?: string }} [options]
  * @returns {HTMLElement}
  */
-export function renderPanelHeader(
-  headingId,
-  heading,
-  description,
-  options = {},
-) {
+export function renderPanelHeader(headingId, heading, description, options = {}) {
   return h(
     'header',
     options.className ? { className: options.className } : null,
@@ -76,11 +58,7 @@ export function renderPanelHeader(
  * @returns {HTMLElement}
  */
 export function renderTableHeadRow(labels) {
-  return h(
-    'tr',
-    null,
-    ...labels.map((label) => h('th', { scope: 'col' }, label)),
-  )
+  return h('tr', null, ...labels.map((label) => h('th', { scope: 'col' }, label)))
 }
 
 /**
@@ -94,13 +72,7 @@ export function renderTableHeadRow(labels) {
  * @returns {HTMLElement}
  */
 export function renderDlRow(term, description, detail) {
-  return h(
-    'div',
-    null,
-    h('dt', null, ...(Array.isArray(term) ? term : [term])),
-    h('dd', null, description),
-    detail ? h('p', null, detail) : null,
-  )
+  return h('div', null, h('dt', null, ...(Array.isArray(term) ? term : [term])), h('dd', null, description), detail ? h('p', null, detail) : null)
 }
 
 /**
@@ -144,12 +116,7 @@ export function renderTooltip({ id, label, description, icon, content }) {
       },
       icon,
     ),
-    h(
-      'span',
-      { id, className: 'tooltip-content', role: 'tooltip' },
-      h('span', { className: 'tooltip-description' }, description),
-      content,
-    ),
+    h('span', { id, className: 'tooltip-content', role: 'tooltip' }, h('span', { className: 'tooltip-description' }, description), content),
   )
 }
 
@@ -163,9 +130,7 @@ export function renderTooltip({ id, label, description, icon, content }) {
 export function coverageWindowHours(metadata) {
   const start = Date.parse(String(metadata?.['coverage-start'] ?? ''))
   const end = Date.parse(String(metadata?.['coverage-end'] ?? ''))
-  return Number.isFinite(start) && Number.isFinite(end) && end > start
-    ? Math.round((end - start) / 3_600_000)
-    : null
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? Math.round((end - start) / 3_600_000) : null
 }
 
 /**
@@ -179,8 +144,7 @@ export function coverageWindowHours(metadata) {
  */
 export function completenessCaveat(completeness, subject) {
   if (completeness === 'partial') return `Partial ${subject} coverage.`
-  if (completeness === 'unknown')
-    return `${subject[0].toUpperCase()}${subject.slice(1)} coverage is unknown.`
+  if (completeness === 'unknown') return `${subject[0].toUpperCase()}${subject.slice(1)} coverage is unknown.`
   return ''
 }
 
@@ -293,16 +257,8 @@ export function renderEmptyMessage(message, extraAttrs) {
  * @param {string} emptyMessage
  * @returns {HTMLElement}
  */
-export function renderListOrEmptyMessage(
-  listClassName,
-  items,
-  renderItem,
-  emptyClassName,
-  emptyMessage,
-) {
-  return items.length > 0
-    ? h('ul', { className: listClassName }, ...items.map(renderItem))
-    : h('p', { className: emptyClassName }, emptyMessage)
+export function renderListOrEmptyMessage(listClassName, items, renderItem, emptyClassName, emptyMessage) {
+  return items.length > 0 ? h('ul', { className: listClassName }, ...items.map(renderItem)) : h('p', { className: emptyClassName }, emptyMessage)
 }
 
 /**
@@ -327,11 +283,7 @@ export function renderEmptyTableRow(colSpan, message) {
  * @returns {HTMLElement}
  */
 export function renderCountBadge(count, ariaLabel) {
-  return h(
-    'span',
-    { className: 'count-badge', 'aria-label': ariaLabel },
-    String(count),
-  )
+  return h('span', { className: 'count-badge', 'aria-label': ariaLabel }, String(count))
 }
 
 /**
@@ -344,20 +296,13 @@ export function renderCountBadge(count, ariaLabel) {
  * @param {(left: string, right: string) => number} [compareFn]
  * @returns {HTMLSelectElement}
  */
-export function renderFilterSelect(
-  ariaLabel,
-  placeholderLabel,
-  values,
-  compareFn,
-) {
+export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareFn) {
   return /** @type {HTMLSelectElement} */ (
     h(
       'select',
       { 'aria-label': ariaLabel },
       h('option', { value: '' }, placeholderLabel),
-      ...[...new Set(values)]
-        .sort(compareFn)
-        .map((value) => h('option', { value }, value)),
+      ...[...new Set(values)].sort(compareFn).map((value) => h('option', { value }, value)),
     )
   )
 }
@@ -412,16 +357,9 @@ export function renderDisclosure(className, summaryLabel, ...body) {
  *   on the `<summary>` element
  * @returns {HTMLDetailsElement}
  */
-export function renderLazyDisclosure(
-  className,
-  summaryContent,
-  bodyContainer,
-  populateBody,
-  options = {},
-) {
+export function renderLazyDisclosure(className, summaryContent, bodyContainer, populateBody, options = {}) {
   const initiallyOpen = options.open === true
-  const eagerContent =
-    options.eagerContent === undefined ? [] : [options.eagerContent].flat()
+  const eagerContent = options.eagerContent === undefined ? [] : [options.eagerContent].flat()
   let populated = false
   const populateOnce = () => {
     if (populated) return
@@ -433,13 +371,7 @@ export function renderLazyDisclosure(
     h(
       'details',
       { className, open: initiallyOpen },
-      h(
-        'summary',
-        options.summaryClassName
-          ? { className: options.summaryClassName }
-          : null,
-        ...[summaryContent].flat(),
-      ),
+      h('summary', options.summaryClassName ? { className: options.summaryClassName } : null, ...[summaryContent].flat()),
       ...eagerContent,
       bodyContainer,
     )
@@ -460,19 +392,8 @@ export function renderLazyDisclosure(
  * @param {string} fallbackMessage
  * @returns {HTMLElement}
  */
-export function renderListWithFallback(
-  className,
-  items,
-  renderItem,
-  fallbackMessage,
-) {
-  return h(
-    'ul',
-    { className },
-    items.length > 0
-      ? items.map((item) => h('li', null, renderItem(item)))
-      : [h('li', null, fallbackMessage)],
-  )
+export function renderListWithFallback(className, items, renderItem, fallbackMessage) {
+  return h('ul', { className }, items.length > 0 ? items.map((item) => h('li', null, renderItem(item))) : [h('li', null, fallbackMessage)])
 }
 
 /**
@@ -482,19 +403,8 @@ export function renderListWithFallback(
  * @param {{ href: string, icon: string, label: string, className?: string, labelTag?: 'span'|'strong' }} options
  * @returns {HTMLElement}
  */
-export function renderIdentityLink({
-  href,
-  icon,
-  label,
-  className,
-  labelTag = 'span',
-}) {
-  return h(
-    'a',
-    className ? { href, className } : { href },
-    octicon(icon),
-    h(labelTag, null, label),
-  )
+export function renderIdentityLink({ href, icon, label, className, labelTag = 'span' }) {
+  return h('a', className ? { href, className } : { href }, octicon(icon), h(labelTag, null, label))
 }
 
 /**
@@ -521,24 +431,11 @@ export function renderLegendSwatch(className) {
  * @param {Record<string, unknown>} [extraAttrs]
  * @returns {HTMLElement}
  */
-export function renderLegendList(
-  className,
-  items,
-  swatchClassName,
-  renderContent,
-  extraAttrs,
-) {
+export function renderLegendList(className, items, swatchClassName, renderContent, extraAttrs) {
   return h(
     'ul',
     { className, ...extraAttrs },
-    items.map((item, index) =>
-      h(
-        'li',
-        null,
-        renderLegendSwatch(swatchClassName(item, index)),
-        ...renderContent(item, index),
-      ),
-    ),
+    items.map((item, index) => h('li', null, renderLegendSwatch(swatchClassName(item, index)), ...renderContent(item, index))),
   )
 }
 
@@ -552,11 +449,7 @@ export function renderLegendList(
  * @returns {HTMLElement}
  */
 export function renderIconSpan(className, iconName, options = {}) {
-  return h(
-    'span',
-    options.ariaHidden ? { className, 'aria-hidden': 'true' } : { className },
-    octicon(iconName),
-  )
+  return h('span', options.ariaHidden ? { className, 'aria-hidden': 'true' } : { className }, octicon(iconName))
 }
 
 /**
@@ -592,9 +485,7 @@ export function renderCloseButton({ className, label, onClick }) {
  * @returns {{ dialog: HTMLDialogElement, open: () => void, close: () => void }}
  */
 export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
-  const dialog = /** @type {HTMLDialogElement} */ (
-    h('dialog', { className, 'aria-label': ariaLabel })
-  )
+  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', { className, 'aria-label': ariaLabel }))
   const open = () => {
     if (typeof dialog.showModal === 'function') {
       dialog.showModal()
@@ -623,11 +514,7 @@ export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
  * @param {{ expandedClass: string, onExpand?: (expanded: boolean) => void }} options
  * @returns {(expanded: boolean) => void} setExpanded
  */
-export function createExpandableToggle(
-  toggle,
-  panel,
-  { expandedClass, onExpand },
-) {
+export function createExpandableToggle(toggle, panel, { expandedClass, onExpand }) {
   /** @param {boolean} expanded */
   const setExpanded = (expanded) => {
     toggle.setAttribute('aria-expanded', String(expanded))
@@ -654,11 +541,7 @@ export function renderLabeledControl(label, control, options = {}) {
       'label',
       options.className ? { className: options.className } : null,
       options.prefix,
-      h(
-        'span',
-        options.visuallyHiddenLabel ? { className: 'sr-only' } : null,
-        label,
-      ),
+      h('span', options.visuallyHiddenLabel ? { className: 'sr-only' } : null, label),
       control,
     )
   )
@@ -701,18 +584,8 @@ export async function copyTextToClipboard(content) {
  * @returns {{ button: HTMLButtonElement, status: HTMLOutputElement, reset: () => void }}
  */
 export function createCopyControl(options) {
-  const {
-    getContent,
-    label,
-    buttonClassName,
-    statusClassName,
-    successText = 'Copied.',
-    failureText = 'Copy unavailable.',
-    trackState = false,
-  } = options
-  const status = /** @type {HTMLOutputElement} */ (
-    h('output', { className: statusClassName, 'aria-live': 'polite' })
-  )
+  const { getContent, label, buttonClassName, statusClassName, successText = 'Copied.', failureText = 'Copy unavailable.', trackState = false } = options
+  const status = /** @type {HTMLOutputElement} */ (h('output', { className: statusClassName, 'aria-live': 'polite' }))
   const button = /** @type {HTMLButtonElement} */ (
     h(
       'button',
@@ -756,12 +629,7 @@ export function createCopyControl(options) {
  * @param {IntersectionObserverInit} [observerOptions]
  * @returns {IntersectionObserver | null}
  */
-export function observeLoadMoreBoundary(
-  observerCtor,
-  boundaryElement,
-  onLoadMore,
-  observerOptions,
-) {
+export function observeLoadMoreBoundary(observerCtor, boundaryElement, onLoadMore, observerOptions) {
   if (typeof observerCtor !== 'function') return null
   const observer = new observerCtor((entries) => {
     if (entries.some((entry) => entry.isIntersecting)) onLoadMore()

@@ -27,9 +27,7 @@ export function processRows(data, operators) {
  * @returns {import('./table-summary-data.js').TableColumnSummary[]|Promise<import('./table-summary-data.js').TableColumnSummary[]>}
  */
 export function processTableSummaries(columns) {
-  return processRequest({ operation: 'summarize-table-columns', columns }, () =>
-    summarizeTableColumns(columns),
-  )
+  return processRequest({ operation: 'summarize-table-columns', columns }, () => summarizeTableColumns(columns))
 }
 
 /**
@@ -38,10 +36,7 @@ export function processTableSummaries(columns) {
  * @returns {import('./scatter-clustering.js').ScatterPoint[]|Promise<import('./scatter-clustering.js').ScatterPoint[]>}
  */
 export function processScatterPoints(points, limit) {
-  return processRequest(
-    { operation: 'cluster-scatter-points', data: points, limit },
-    () => clusterScatterPoints(points, limit),
-  )
+  return processRequest({ operation: 'cluster-scatter-points', data: points, limit }, () => clusterScatterPoints(points, limit))
 }
 
 /**
@@ -51,10 +46,7 @@ export function processScatterPoints(points, limit) {
  * @returns {Record<string, import('./presenter.js').LogicalSourceInput>|Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function processDataHealthSources(sources, context) {
-  return processRequest(
-    { operation: 'derive-data-health', sources, context },
-    () => deriveDataHealthSources(sources, context),
-  )
+  return processRequest({ operation: 'derive-data-health', sources, context }, () => deriveDataHealthSources(sources, context))
 }
 
 /**
@@ -85,10 +77,7 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context) {
         sourceNames,
         context,
       },
-      () =>
-        Promise.reject(
-          new Error('Live canonical dashboard loading requires a data worker.'),
-        ),
+      () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
       false,
     )
   )
@@ -104,10 +93,7 @@ export function loadCanonicalDashboardPage(sourceNames, context) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (
     processRequest(
       { operation: 'query-canonical-dashboard', sourceNames, context },
-      () =>
-        Promise.reject(
-          new Error('Live canonical dashboard queries require a data worker.'),
-        ),
+      () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
       false,
     )
   )
@@ -137,8 +123,7 @@ function processRequest(request, fallback, recoverWorkerError = true) {
 /** @returns {Worker | null} */
 function getWorker() {
   if (worker) return worker
-  if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:'))
-    return null
+  if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null
   worker = new Worker(new URL('./data-worker.js', import.meta.url), {
     type: 'module',
   })
@@ -146,13 +131,11 @@ function getWorker() {
     const request = pending.get(event.data?.id)
     if (!request) return
     pending.delete(event.data.id)
-    if (typeof event.data.error === 'string')
-      request.reject(new Error(event.data.error))
+    if (typeof event.data.error === 'string') request.reject(new Error(event.data.error))
     else request.resolve(event.data.data)
   })
   worker.addEventListener('error', (event) => {
-    for (const request of pending.values())
-      request.reject(new Error(event.message || 'Data worker failed.'))
+    for (const request of pending.values()) request.reject(new Error(event.message || 'Data worker failed.'))
     pending.clear()
     worker?.terminate()
     worker = null

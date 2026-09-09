@@ -12,44 +12,26 @@ const AIC_TO_USD = 0.01
  * @returns {Record<string, import('./presenter.js').LogicalSourceInput>}
  */
 export function deriveWorkflowSources(sources) {
-  const workflows = Array.isArray(sources.workflows?.rows)
-    ? sources.workflows.rows
-    : []
-  const runsAvailable =
-    sources.runs?.metadata?.availability !== 'unavailable' &&
-    Array.isArray(sources.runs?.rows)
+  const workflows = Array.isArray(sources.workflows?.rows) ? sources.workflows.rows : []
+  const runsAvailable = sources.runs?.metadata?.availability !== 'unavailable' && Array.isArray(sources.runs?.rows)
   const runs = runsAvailable ? sources.runs.rows : []
   const usage = Array.isArray(sources.usage?.rows) ? sources.usage.rows : []
-  const outcomes = Array.isArray(sources.outcomes?.rows)
-    ? sources.outcomes.rows
-    : []
-  const workflowRuns = summarizeWorkflowRuns(
-    workflows,
-    runsAvailable ? runs : null,
-  )
+  const outcomes = Array.isArray(sources.outcomes?.rows) ? sources.outcomes.rows : []
+  const workflowRuns = summarizeWorkflowRuns(workflows, runsAvailable ? runs : null)
   const workflowAic = summarizeWorkflowAic(workflows, usage)
   const usageMetadata = sources.usage?.metadata ?? unavailableMetadata()
   /** @param {Row} row */
-  const isPackaged = (row) =>
-    row['workflow-role'] !== 'standalone' && Boolean(text(row.package))
+  const isPackaged = (row) => row['workflow-role'] !== 'standalone' && Boolean(text(row.package))
   const packaged = workflows
     .filter(isPackaged)
-    .map((row) =>
-      derivePackagedWorkflow(row, workflowRuns.get(row), workflowAic.get(row)),
-    )
+    .map((row) => derivePackagedWorkflow(row, workflowRuns.get(row), workflowAic.get(row)))
     .sort(comparePackagedWorkflows)
   // Every row not captured above (including rows with an unrecognized or
   // missing workflow-role) is repository-owned; the two buckets must
   // together account for every row so no workflow is silently dropped.
   const standalone = workflows
     .filter((row) => !isPackaged(row))
-    .map((row) =>
-      deriveStandaloneWorkflow(
-        row,
-        workflowRuns.get(row),
-        workflowAic.get(row),
-      ),
-    )
+    .map((row) => deriveStandaloneWorkflow(row, workflowRuns.get(row), workflowAic.get(row)))
     .sort(compareStandaloneWorkflows)
   const packages = new Set(packaged.map((row) => text(row.package)))
   const metadata = sources.workflows?.metadata ?? unavailableMetadata()
@@ -62,11 +44,7 @@ export function deriveWorkflowSources(sources) {
           'workflow-role': text(row['workflow-role']) || 'standalone',
         }),
     )
-    .sort(
-      (left, right) =>
-        text(left.repository).localeCompare(text(right.repository)) ||
-        text(left.workflow).localeCompare(text(right.workflow)),
-    )
+    .sort((left, right) => text(left.repository).localeCompare(text(right.repository)) || text(left.workflow).localeCompare(text(right.workflow)))
 
   return {
     ...sources,
@@ -163,8 +141,7 @@ function summarizePackageInventory(workflows) {
     .map((rows) => {
       const packageId = text(rows[0]?.package)
       /** @param {string} field */
-      const values = (field) =>
-        [...new Set(rows.map((row) => text(row[field])).filter(Boolean))].sort()
+      const values = (field) => [...new Set(rows.map((row) => text(row[field])).filter(Boolean))].sort()
       /** @param {string} field */
       const total = (field) =>
         rows.reduce((sum, row) => {
@@ -182,27 +159,17 @@ function summarizePackageInventory(workflows) {
         registration: values('workflow-active').join(', '),
         runs: total('runs'),
         aic: total('aic'),
-        ...(rows[0]?.['package-link']
-          ? { 'package-link': rows[0]['package-link'] }
-          : {}),
+        ...(rows[0]?.['package-link'] ? { 'package-link': rows[0]['package-link'] } : {}),
       }
     })
-    .sort((left, right) =>
-      text(left['package-name']).localeCompare(text(right['package-name'])),
-    )
+    .sort((left, right) => text(left['package-name']).localeCompare(text(right['package-name'])))
 }
 
 /** @param {Row} row @returns {Row | null} */
 function deriveWorkflowRun(row) {
   const repository = qualifiedRepository(row)
   const workflow = text(row.workflow)
-  if (
-    !repository ||
-    repository.toLowerCase() === 'unknown' ||
-    !workflow ||
-    !text(row.run)
-  )
-    return null
+  if (!repository || repository.toLowerCase() === 'unknown' || !workflow || !text(row.run)) return null
   return {
     'workflow-route': `${repository}:${workflow}`,
     ...row,
@@ -213,8 +180,7 @@ function deriveWorkflowRun(row) {
 function deriveWorkflowReport(row) {
   const repository = text(row['runtime-repository']) || qualifiedRepository(row)
   const workflow = text(row.workflow)
-  if (!repository || repository.toLowerCase() === 'unknown' || !workflow)
-    return null
+  if (!repository || repository.toLowerCase() === 'unknown' || !workflow) return null
   return {
     'workflow-route': `${repository}:${workflow}`,
     ...deriveReport(row),
@@ -235,22 +201,12 @@ function derivePackageReport(row, workflows) {
 /** @param {Row} row */
 function deriveReport(row) {
   const safeOutput = text(row['safe-output'])
-  const sourceLink = [
-    'issue-link',
-    'pull-request-link',
-    'run-link',
-    'external-link',
-  ]
-    .map((field) => row[field])
-    .find(isPlainObject)
+  const sourceLink = ['issue-link', 'pull-request-link', 'run-link', 'external-link'].map((field) => row[field]).find(isPlainObject)
   return {
     'safe-output': safeOutput,
-    'outcome-title':
-      text(row['outcome-title']) || safeOutput || 'Untitled report',
-    'outcome-summary':
-      text(row['outcome-summary']) || 'No report summary was provided.',
-    'outcome-status':
-      text(row['outcome-status']) || text(row['outcome-state']) || 'unknown',
+    'outcome-title': text(row['outcome-title']) || safeOutput || 'Untitled report',
+    'outcome-summary': text(row['outcome-summary']) || 'No report summary was provided.',
+    'outcome-status': text(row['outcome-status']) || text(row['outcome-state']) || 'unknown',
     'rollout-mode': text(row['rollout-mode']) || 'unknown',
     engine: text(row.engine) || 'unknown',
     'engine-version': text(row['engine-version']) || 'unknown',
@@ -283,8 +239,7 @@ function summarizeModelUsage(usage) {
   const summaries = new Map()
   for (const row of usage) {
     const aic = number(row.aic)
-    const model =
-      text(row['resolved-model']) || text(row['requested-model']) || 'unknown'
+    const model = text(row['resolved-model']) || text(row['requested-model']) || 'unknown'
     const summary = summaries.get(model) ?? {
       model,
       'resolved-model': model,
@@ -339,9 +294,7 @@ function summarizeEngineUsage(usage) {
       'estimated-usd': 0,
     }
     if (version && version !== 'unknown') summary.versions.add(version)
-    summary.models.add(
-      text(row['resolved-model']) || text(row['requested-model']) || 'unknown',
-    )
+    summary.models.add(text(row['resolved-model']) || text(row['requested-model']) || 'unknown')
     summary.runs.add(runIdentity(row))
     summary.invocations += 1
     summary['total-aic'] += aic
@@ -404,11 +357,7 @@ function summarizeRuns(runs) {
       runs: summary.runs.size,
       ...(summary['run-link'] ? { 'run-link': summary['run-link'] } : {}),
     }))
-    .sort(
-      (left, right) =>
-        right.runs - left.runs ||
-        text(left.engine).localeCompare(text(right.engine)),
-    )
+    .sort((left, right) => right.runs - left.runs || text(left.engine).localeCompare(text(right.engine)))
 }
 
 /** @param {Row} outcome @param {Row[]} workflows */
@@ -418,10 +367,8 @@ function attributedPackage(outcome, workflows) {
   const workflow = workflows.find(
     (candidate) =>
       sameWorkflowScope(outcome, candidate) &&
-      (normalizeWorkflowIdentity(candidate.workflow) ===
-        normalizeWorkflowIdentity(outcome.workflow) ||
-        normalizeWorkflowIdentity(candidate['workflow-name']) ===
-          normalizeWorkflowIdentity(outcome['workflow-name'])),
+      (normalizeWorkflowIdentity(candidate.workflow) === normalizeWorkflowIdentity(outcome.workflow) ||
+        normalizeWorkflowIdentity(candidate['workflow-name']) === normalizeWorkflowIdentity(outcome['workflow-name'])),
   )
   return text(workflow?.package)
 }
@@ -433,12 +380,8 @@ function sameWorkflowScope(outcome, workflow) {
   const outcomeOrganization = text(outcome.organization).toLowerCase()
   const workflowOrganization = text(workflow.organization).toLowerCase()
   return (
-    (!outcomeRepository ||
-      !workflowRepository ||
-      outcomeRepository === workflowRepository) &&
-    (!outcomeOrganization ||
-      !workflowOrganization ||
-      outcomeOrganization === workflowOrganization)
+    (!outcomeRepository || !workflowRepository || outcomeRepository === workflowRepository) &&
+    (!outcomeOrganization || !workflowOrganization || outcomeOrganization === workflowOrganization)
   )
 }
 
@@ -452,12 +395,8 @@ function normalizeWorkflowIdentity(value) {
 /** @param {Row} row @param {number | undefined} runs @param {number | undefined} aic */
 function derivePackagedWorkflow(row, runs, aic) {
   const packageId = text(row.package)
-  const repositoryLink = isPlainObject(row['repository-link'])
-    ? row['repository-link']
-    : null
-  const packageTargetLink =
-    repositoryLink ??
-    (isPlainObject(row['workflow-link']) ? row['workflow-link'] : null)
+  const repositoryLink = isPlainObject(row['repository-link']) ? row['repository-link'] : null
+  const packageTargetLink = repositoryLink ?? (isPlainObject(row['workflow-link']) ? row['workflow-link'] : null)
   return {
     package: packageId,
     'package-name': text(row['package-name']) || titleCase(packageId),
@@ -474,9 +413,7 @@ function derivePackagedWorkflow(row, runs, aic) {
       'dashboard-href': `#page-package-insights?package=${encodeURIComponent(packageId)}`,
       'dashboard-label': `View ${text(row['package-name']) || titleCase(packageId)} package dashboard`,
     },
-    ...(row['repository-link']
-      ? { 'repository-link': row['repository-link'] }
-      : {}),
+    ...(row['repository-link'] ? { 'repository-link': row['repository-link'] } : {}),
     ...(row['workflow-link'] ? { 'workflow-link': row['workflow-link'] } : {}),
   }
 }
@@ -491,9 +428,7 @@ function deriveStandaloneWorkflow(row, runs, aic) {
     'workflow-active': text(row['workflow-active']) || 'unknown',
     ...(runs === undefined ? {} : { runs }),
     ...(aic === undefined ? {} : { aic }),
-    ...(row['repository-link']
-      ? { 'repository-link': row['repository-link'] }
-      : {}),
+    ...(row['repository-link'] ? { 'repository-link': row['repository-link'] } : {}),
     ...(row['workflow-link'] ? { 'workflow-link': row['workflow-link'] } : {}),
   }
 }
@@ -524,8 +459,7 @@ export function summarizeWorkflowAic(workflows, usage) {
   const totals = new Map()
   for (const observation of usage) {
     const aic = Number(observation.aic)
-    if (!Number.isFinite(aic) || aic < 0 || !text(observation.workflow))
-      continue
+    if (!Number.isFinite(aic) || aic < 0 || !text(observation.workflow)) continue
     const workflow = matchedWorkflow(workflows, observation)
     if (!workflow) continue
     totals.set(workflow, (totals.get(workflow) ?? 0) + aic)
@@ -536,10 +470,7 @@ export function summarizeWorkflowAic(workflows, usage) {
 /** @param {Row[]} workflows @param {Row} observation @returns {Row | undefined} */
 function matchedWorkflow(workflows, observation) {
   const candidates = workflows.filter(
-    (workflow) =>
-      normalizeWorkflowIdentity(workflow.workflow) ===
-        normalizeWorkflowIdentity(observation.workflow) &&
-      sameWorkflowScope(observation, workflow),
+    (workflow) => normalizeWorkflowIdentity(workflow.workflow) === normalizeWorkflowIdentity(observation.workflow) && sameWorkflowScope(observation, workflow),
   )
   return candidates.length === 1 ? candidates[0] : undefined
 }
@@ -555,36 +486,22 @@ function comparePackagedWorkflows(left, right) {
 
 /** @param {Row} left @param {Row} right */
 function compareStandaloneWorkflows(left, right) {
-  return (
-    text(left.repository).localeCompare(text(right.repository)) ||
-    text(left['workflow-name']).localeCompare(text(right['workflow-name']))
-  )
+  return text(left.repository).localeCompare(text(right.repository)) || text(left['workflow-name']).localeCompare(text(right['workflow-name']))
 }
 
 /** @param {Row} left @param {Row} right */
 function compareReports(left, right) {
-  return (
-    derivedReportTime(right) - derivedReportTime(left) ||
-    text(left['outcome-title']).localeCompare(text(right['outcome-title']))
-  )
+  return derivedReportTime(right) - derivedReportTime(left) || text(left['outcome-title']).localeCompare(text(right['outcome-title']))
 }
 
 /** @param {Row} left @param {Row} right */
 function compareRuns(left, right) {
-  return (
-    derivedRunTime(right) - derivedRunTime(left) ||
-    text(right.run).localeCompare(text(left.run), 'en', { numeric: true })
-  )
+  return derivedRunTime(right) - derivedRunTime(left) || text(right.run).localeCompare(text(left.run), 'en', { numeric: true })
 }
 
 /** @param {Row} left @param {Row} right */
 function compareUsageSummaries(left, right) {
-  return (
-    Number(right['total-aic']) - Number(left['total-aic']) ||
-    text(left.model ?? left.engine).localeCompare(
-      text(right.model ?? right.engine),
-    )
-  )
+  return Number(right['total-aic']) - Number(left['total-aic']) || text(left.model ?? left.engine).localeCompare(text(right.model ?? right.engine))
 }
 
 /** @param {Set<string>} values */
@@ -594,9 +511,7 @@ function joinValues(values) {
 
 /** @param {Row} row */
 function runIdentity(row) {
-  return [row.organization, row.repository, row.workflow, row.run]
-    .map(text)
-    .join(':')
+  return [row.organization, row.repository, row.workflow, row.run].map(text).join(':')
 }
 
 /** @param {unknown} value */
@@ -628,9 +543,7 @@ function compareVersions(left, right) {
 /** @param {string} part */
 function versionPart(part) {
   const numeric = Number(part)
-  return Number.isFinite(numeric)
-    ? { number: numeric, text: '' }
-    : { number: 0, text: part }
+  return Number.isFinite(numeric) ? { number: numeric, text: '' } : { number: 0, text: part }
 }
 
 /** @param {Row} row */

@@ -13,12 +13,7 @@ export function renderAnomalyReadiness(row) {
   return h(
     'div',
     { className: 'anomaly-readiness', role: 'note' },
-    h(
-      'span',
-      null,
-      octicon(stringValue(row.icon) || 'pulse'),
-      h('strong', null, stringValue(row.title)),
-    ),
+    h('span', null, octicon(stringValue(row.icon) || 'pulse'), h('strong', null, stringValue(row.title))),
     h('p', null, stringValue(row.detail)),
   )
 }

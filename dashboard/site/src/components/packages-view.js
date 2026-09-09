@@ -5,10 +5,7 @@
 import { h } from '../dom.js'
 import { formatNumber, formatPercent } from '../view-formatters.js'
 import { pluralSuffix, titleCase } from './count-formatters.js'
-import {
-  classifyUtilizationRatio,
-  isFailureConclusion,
-} from './run-classification.js'
+import { classifyUtilizationRatio, isFailureConclusion } from './run-classification.js'
 import {
   completenessCaveat,
   coverageWindowHours,
@@ -61,12 +58,9 @@ export function renderPackageSummary(sources, mode = 'all') {
   return h(
     'section',
     { className: 'package-summary', 'aria-labelledby': headingId },
-    renderPanelHeader(
-      headingId,
-      `${modeLabel} output by package`,
-      'Durable outputs and inventory health for each control-plane package.',
-      { className: 'package-summary-heading' },
-    ),
+    renderPanelHeader(headingId, `${modeLabel} output by package`, 'Durable outputs and inventory health for each control-plane package.', {
+      className: 'package-summary-heading',
+    }),
     h(
       'div',
       {
@@ -78,32 +72,13 @@ export function renderPackageSummary(sources, mode = 'all') {
       h(
         'table',
         { className: 'package-summary-table' },
-        h(
-          'caption',
-          { id: `${headingId}-caption` },
-          `${modeLabel} package summary`,
-        ),
-        h(
-          'thead',
-          null,
-          renderTableHeadRow([
-            'Package',
-            'Runs',
-            'Successful',
-            'Failed',
-            'Run warnings',
-            'Inventory warnings',
-            'AIC',
-            'Latest activity',
-          ]),
-        ),
+        h('caption', { id: `${headingId}-caption` }, `${modeLabel} package summary`),
+        h('thead', null, renderTableHeadRow(['Package', 'Runs', 'Successful', 'Failed', 'Run warnings', 'Inventory warnings', 'AIC', 'Latest activity'])),
         h(
           'tbody',
           null,
           ...(packages.length > 0
-            ? packages.map((entry) =>
-                renderPackageSummaryRow(entry, summaries.get(entry.key)),
-              )
+            ? packages.map((entry) => renderPackageSummaryRow(entry, summaries.get(entry.key)))
             : [renderEmptyTableRow(8, 'No packages discovered.')]),
         ),
       ),
@@ -125,35 +100,10 @@ function renderPackageSummaryRow(entry, summary) {
       h('td', null, formatNumber(summary?.runs ?? 0)),
       h('td', null, formatNumber(summary?.successful ?? 0)),
       h('td', null, formatNumber(summary?.failed ?? 0)),
-      h(
-        'td',
-        null,
-        summary?.warnings === null || summary?.warnings === undefined
-          ? '—'
-          : formatNumber(summary.warnings),
-      ),
-      h(
-        'td',
-        null,
-        summary?.inventoryWarnings === null ||
-          summary?.inventoryWarnings === undefined
-          ? '—'
-          : formatNumber(summary.inventoryWarnings),
-      ),
-      h(
-        'td',
-        null,
-        summary?.aic === null || summary?.aic === undefined
-          ? '—'
-          : formatAic(summary.aic),
-      ),
-      h(
-        'td',
-        null,
-        summary?.latestActivity
-          ? formatDate(summary.latestActivity)
-          : 'No activity yet',
-      ),
+      h('td', null, summary?.warnings === null || summary?.warnings === undefined ? '—' : formatNumber(summary.warnings)),
+      h('td', null, summary?.inventoryWarnings === null || summary?.inventoryWarnings === undefined ? '—' : formatNumber(summary.inventoryWarnings)),
+      h('td', null, summary?.aic === null || summary?.aic === undefined ? '—' : formatAic(summary.aic)),
+      h('td', null, summary?.latestActivity ? formatDate(summary.latestActivity) : 'No activity yet'),
     )
   )
 }
@@ -164,20 +114,9 @@ function renderPackageSummaryRow(entry, summary) {
  * @param {string} mode
  */
 function summarizePackageActivity(packages, sources, mode) {
-  const workflowDetails = new Map(
-    packages.flatMap((entry) =>
-      entry.workflows.map((row) => [
-        scopedEntityKey(row, 'workflow'),
-        entry.key,
-      ]),
-    ),
-  )
-  const findingsAvailable =
-    Boolean(sources.findings) &&
-    sources.findings?.metadata?.availability !== 'unavailable'
-  const usageAvailable =
-    Boolean(sources.usage) &&
-    sources.usage?.metadata?.availability !== 'unavailable'
+  const workflowDetails = new Map(packages.flatMap((entry) => entry.workflows.map((row) => [scopedEntityKey(row, 'workflow'), entry.key])))
+  const findingsAvailable = Boolean(sources.findings) && sources.findings?.metadata?.availability !== 'unavailable'
+  const usageAvailable = Boolean(sources.usage) && sources.usage?.metadata?.availability !== 'unavailable'
   const activity = packageActivityRuns(packages, sources, mode)
   const runDetails = new Map()
   const summaries = new Map(
@@ -215,18 +154,12 @@ function summarizePackageActivity(packages, sources, mode) {
     for (const row of rowsFor(sources, 'findings')) {
       const runKey = runIdentity(row)
       const run = runDetails.get(runKey)
-      const packageKey =
-        run?.packageKey ?? workflowDetails.get(scopedEntityKey(row, 'workflow'))
+      const packageKey = run?.packageKey ?? workflowDetails.get(scopedEntityKey(row, 'workflow'))
       const summary = packageKey ? summaries.get(packageKey) : null
       const findingMode = run?.mode ?? String(row['rollout-mode'] ?? 'unknown')
       if (!summary || (mode !== 'all' && findingMode !== mode)) continue
       updateLatestActivity(summary, row['observed-at'])
-      if (
-        row['finding-kind'] !== 'authored-warning' ||
-        !run ||
-        warningRuns.has(runKey)
-      )
-        continue
+      if (row['finding-kind'] !== 'authored-warning' || !run || warningRuns.has(runKey)) continue
       warningRuns.add(runKey)
       summary.warnings = (summary.warnings ?? 0) + 1
     }
@@ -238,8 +171,7 @@ function summarizePackageActivity(packages, sources, mode) {
       const summary = packageKey ? summaries.get(packageKey) : null
       if (!summary || !matchesMode(row, mode)) continue
       const aic = Number(row.aic)
-      if (Number.isFinite(aic) && aic >= 0)
-        summary.aic = (summary.aic ?? 0) + aic
+      if (Number.isFinite(aic) && aic >= 0) summary.aic = (summary.aic ?? 0) + aic
       updateLatestActivity(summary, row['observed-at'])
     }
   }
@@ -252,13 +184,9 @@ function summarizePackageActivity(packages, sources, mode) {
  * @returns {number | null}
  */
 function packageInventoryWarnings(entry) {
-  const explicitCount = entry.workflows
-    .map((row) => Number(row['package-inventory-warnings']))
-    .find(Number.isFinite)
+  const explicitCount = entry.workflows.map((row) => Number(row['package-inventory-warnings'])).find(Number.isFinite)
   if (explicitCount !== undefined) return Math.max(0, explicitCount)
-  const readiness = entry.workflows
-    .map((row) => row['inventory-ready'])
-    .filter((value) => typeof value === 'boolean')
+  const readiness = entry.workflows.map((row) => row['inventory-ready']).filter((value) => typeof value === 'boolean')
   if (readiness.includes(false)) return 1
   return readiness.length > 0 ? 0 : null
 }
@@ -268,15 +196,8 @@ function packageInventoryWarnings(entry) {
  * @param {...unknown} values
  */
 function updateLatestActivity(summary, ...values) {
-  const timestamp = Math.max(
-    ...values
-      .map((value) => Date.parse(String(value ?? '')))
-      .filter(Number.isFinite),
-  )
-  if (
-    Number.isFinite(timestamp) &&
-    (!summary.latestActivity || timestamp > summary.latestActivity.getTime())
-  ) {
+  const timestamp = Math.max(...values.map((value) => Date.parse(String(value ?? ''))).filter(Number.isFinite))
+  if (Number.isFinite(timestamp) && (!summary.latestActivity || timestamp > summary.latestActivity.getTime())) {
     summary.latestActivity = new Date(timestamp)
   }
 }
@@ -298,47 +219,22 @@ function matchesMode(row, mode) {
  * @param {string} mode
  */
 function packageActivityRuns(packages, sources, mode) {
-  const outcomesAvailable =
-    Boolean(sources.outcomes) &&
-    sources.outcomes?.metadata?.availability !== 'unavailable'
+  const outcomesAvailable = Boolean(sources.outcomes) && sources.outcomes?.metadata?.availability !== 'unavailable'
   const source = outcomesAvailable ? sources.outcomes : sources.runs
-  const rows = outcomesAvailable
-    ? rowsFor(sources, 'outcomes')
-    : rowsFor(sources, 'runs')
-  const windowStart = outcomesAvailable
-    ? outcomeWindowStart(source)
-    : Number.NEGATIVE_INFINITY
-  const workflowPackages = new Map(
-    packages.flatMap((entry) =>
-      entry.workflows.map((row) => [
-        scopedEntityKey(row, 'workflow'),
-        entry.key,
-      ]),
-    ),
-  )
+  const rows = outcomesAvailable ? rowsFor(sources, 'outcomes') : rowsFor(sources, 'runs')
+  const windowStart = outcomesAvailable ? outcomeWindowStart(source) : Number.NEGATIVE_INFINITY
+  const workflowPackages = new Map(packages.flatMap((entry) => entry.workflows.map((row) => [scopedEntityKey(row, 'workflow'), entry.key])))
   const runs = new Map()
 
   for (const row of rows) {
     const rolloutMode = String(row['rollout-mode'] ?? 'unknown')
-    if (
-      !matchesMode(row, mode) ||
-      (outcomesAvailable && !['review', 'live'].includes(rolloutMode))
-    )
-      continue
+    if (!matchesMode(row, mode) || (outcomesAvailable && !['review', 'live'].includes(rolloutMode))) continue
     const publishedAt = Date.parse(String(row['published-at'] ?? ''))
-    if (
-      outcomesAvailable &&
-      (!Number.isFinite(publishedAt) || publishedAt < windowStart)
-    )
-      continue
-    const packageKey = outcomesAvailable
-      ? packageKeyForOutcome(row, packages)
-      : workflowPackages.get(scopedEntityKey(row, 'workflow'))
+    if (outcomesAvailable && (!Number.isFinite(publishedAt) || publishedAt < windowStart)) continue
+    const packageKey = outcomesAvailable ? packageKeyForOutcome(row, packages) : workflowPackages.get(scopedEntityKey(row, 'workflow'))
     const runKey = runIdentity(row)
     if (!packageKey || !runKey) continue
-    const startedAt = outcomesAvailable
-      ? row['published-at']
-      : row['started-at']
+    const startedAt = outcomesAvailable ? row['published-at'] : row['started-at']
     const endedAt = outcomesAvailable ? row['observed-at'] : row['ended-at']
     const existing = runs.get(runKey)
     if (!existing) {
@@ -352,10 +248,7 @@ function packageActivityRuns(packages, sources, mode) {
       })
       continue
     }
-    if (
-      existing['run-conclusion'] === 'unknown' &&
-      row['run-conclusion'] !== 'unknown'
-    ) {
+    if (existing['run-conclusion'] === 'unknown' && row['run-conclusion'] !== 'unknown') {
       existing['run-conclusion'] = row['run-conclusion']
     }
     existing['started-at'] = earlierDate(existing['started-at'], startedAt)
@@ -367,11 +260,7 @@ function packageActivityRuns(packages, sources, mode) {
 
 /** @param {import('../presenter.js').LogicalSourceInput | undefined} source */
 function outcomeWindowStart(source) {
-  const asOf = Date.parse(
-    String(
-      source?.metadata?.['as-of'] ?? source?.metadata?.['retrieved-at'] ?? '',
-    ),
-  )
+  const asOf = Date.parse(String(source?.metadata?.['as-of'] ?? source?.metadata?.['retrieved-at'] ?? ''))
   if (!Number.isFinite(asOf)) return Number.NEGATIVE_INFINITY
   const start = new Date(asOf)
   start.setUTCHours(0, 0, 0, 0)
@@ -385,62 +274,32 @@ function outcomeWindowStart(source) {
 function packageKeyForOutcome(row, packages) {
   const packageId = String(row.package ?? '').toLowerCase()
   if (!packageId) return null
-  const candidates = packages.filter(
-    (entry) => entry.id.toLowerCase() === packageId,
-  )
-  const runtimeRepository = String(
-    row['runtime-repository'] ?? '',
-  ).toLowerCase()
-  const scoped = candidates.find(
-    (entry) =>
-      [entry.organization, entry.repository]
-        .filter(Boolean)
-        .join('/')
-        .toLowerCase() === runtimeRepository,
-  )
+  const candidates = packages.filter((entry) => entry.id.toLowerCase() === packageId)
+  const runtimeRepository = String(row['runtime-repository'] ?? '').toLowerCase()
+  const scoped = candidates.find((entry) => [entry.organization, entry.repository].filter(Boolean).join('/').toLowerCase() === runtimeRepository)
   return scoped?.key ?? (candidates.length === 1 ? candidates[0].key : null)
 }
 
 /** @param {Record<string, unknown>} row */
 function runIdentity(row) {
   const runLink = row['run-link']
-  if (
-    runLink &&
-    typeof runLink === 'object' &&
-    'href' in runLink &&
-    typeof runLink.href === 'string'
-  )
-    return runLink.href
+  if (runLink && typeof runLink === 'object' && 'href' in runLink && typeof runLink.href === 'string') return runLink.href
   const run = String(row.run ?? '')
   if (!run) return ''
-  const repository =
-    String(row['runtime-repository'] ?? '') ||
-    [row.organization, row.repository].filter(Boolean).join('/')
+  const repository = String(row['runtime-repository'] ?? '') || [row.organization, row.repository].filter(Boolean).join('/')
   return JSON.stringify([repository, run])
 }
 
 /** @param {unknown} left @param {unknown} right */
 function earlierDate(left, right) {
-  const values = [left, right].filter((value) =>
-    Number.isFinite(Date.parse(String(value ?? ''))),
-  )
-  return (
-    values.sort((a, b) => Date.parse(String(a)) - Date.parse(String(b)))[0] ??
-    left ??
-    right
-  )
+  const values = [left, right].filter((value) => Number.isFinite(Date.parse(String(value ?? ''))))
+  return values.sort((a, b) => Date.parse(String(a)) - Date.parse(String(b)))[0] ?? left ?? right
 }
 
 /** @param {unknown} left @param {unknown} right */
 function laterDate(left, right) {
-  const values = [left, right].filter((value) =>
-    Number.isFinite(Date.parse(String(value ?? ''))),
-  )
-  return (
-    values.sort((a, b) => Date.parse(String(b)) - Date.parse(String(a)))[0] ??
-    left ??
-    right
-  )
+  const values = [left, right].filter((value) => Number.isFinite(Date.parse(String(value ?? ''))))
+  return values.sort((a, b) => Date.parse(String(b)) - Date.parse(String(a)))[0] ?? left ?? right
 }
 
 /**
@@ -454,8 +313,7 @@ export function renderPackageUtilization(sources, mode = 'all') {
   const packages = summarizePackages(workflows)
   const utilization = summarizeUtilization(packages, usage, mode)
   const usageMetadata = sources.usage?.metadata
-  const available =
-    Boolean(sources.usage) && usageMetadata?.availability !== 'unavailable'
+  const available = Boolean(sources.usage) && usageMetadata?.availability !== 'unavailable'
   const completeness = usageMetadata?.completeness ?? 'unknown'
   const windowLabel = sourceWindowLabel(usageMetadata)
   const modeLabel = mode
@@ -476,14 +334,7 @@ export function renderPackageUtilization(sources, mode = 'all') {
       'div',
       { className: 'package-utilization-grid' },
       ...(packages.length > 0
-        ? packages.map((entry) =>
-            renderUtilizationCard(
-              entry,
-              utilization.get(entry.key),
-              available,
-              completeness,
-            ),
-          )
+        ? packages.map((entry) => renderUtilizationCard(entry, utilization.get(entry.key), available, completeness))
         : [renderEmptyMessage('No centrally managed packages were observed.')]),
     ),
   )
@@ -513,9 +364,7 @@ function renderUtilizationCard(entry, utilization, available, completeness) {
     ratio === null
       ? `${entry.name}: no utilization available`
       : `${entry.name}: ${formatAic(used)} of ${formatAic(allowed)} AI Credits used, ${formatPercent(ratio)}`
-  const scopeLabel = [entry.organization, entry.repository]
-    .filter(Boolean)
-    .join('/')
+  const scopeLabel = [entry.organization, entry.repository].filter(Boolean).join('/')
 
   return h(
     'article',
@@ -531,23 +380,10 @@ function renderUtilizationCard(entry, utilization, available, completeness) {
     h(
       'header',
       null,
-      h(
-        'span',
-        { className: 'package-utilization-identity' },
-        renderPackageIdentityLink(entry, 'strong'),
-        scopeLabel ? h('small', null, scopeLabel) : null,
-      ),
-      h(
-        'span',
-        { className: 'package-utilization-value' },
-        ratio === null ? '—' : formatPercent(ratio),
-      ),
+      h('span', { className: 'package-utilization-identity' }, renderPackageIdentityLink(entry, 'strong'), scopeLabel ? h('small', null, scopeLabel) : null),
+      h('span', { className: 'package-utilization-value' }, ratio === null ? '—' : formatPercent(ratio)),
     ),
-    h(
-      'div',
-      { className: 'utilization-track', role: 'img', 'aria-label': ariaLabel },
-      h('span', { style: `width: ${meterPercent.toFixed(2)}%` }),
-    ),
+    h('div', { className: 'utilization-track', role: 'img', 'aria-label': ariaLabel }, h('span', { style: `width: ${meterPercent.toFixed(2)}%` })),
     h('p', null, detail, coverage ? ` ${coverage}` : ''),
     h(
       'small',
@@ -572,32 +408,18 @@ export function renderRunTrend(sources, mode = 'all') {
   const heading = `${modeLabel} runs over time`
   const headingId = 'packages-trend-heading'
   if (!runsSource || runsSource.metadata?.availability === 'unavailable') {
-    return renderUnavailableRunTrend(
-      heading,
-      headingId,
-      'Package run data is unavailable.',
-    )
+    return renderUnavailableRunTrend(heading, headingId, 'Package run data is unavailable.')
   }
   const allRuns = activity.rows
   const trendDays = buildTrendDays(runsSource, allRuns)
   if (trendDays.length === 0) {
-    return renderUnavailableRunTrend(
-      heading,
-      headingId,
-      'Package run trend is unavailable because no reporting date was provided.',
-    )
+    return renderUnavailableRunTrend(heading, headingId, 'Package run trend is unavailable because no reporting date was provided.')
   }
   const windowStart = trendDays[0]?.getTime() ?? Number.NEGATIVE_INFINITY
-  const windowEnd =
-    (trendDays.at(-1)?.getTime() ?? Number.POSITIVE_INFINITY) +
-    DAY_IN_MILLISECONDS
+  const windowEnd = (trendDays.at(-1)?.getTime() ?? Number.POSITIVE_INFINITY) + DAY_IN_MILLISECONDS
   const runs = allRuns.filter((row) => {
     const startedAt = Date.parse(String(row['started-at'] ?? ''))
-    return (
-      Number.isFinite(startedAt) &&
-      startedAt >= windowStart &&
-      startedAt < windowEnd
-    )
+    return Number.isFinite(startedAt) && startedAt >= windowStart && startedAt < windowEnd
   })
   const series = {
     successful: cumulativeCounts(
@@ -613,15 +435,9 @@ export function renderRunTrend(sources, mode = 'all') {
       runs.filter((row) => row['run-conclusion'] === 'cancelled'),
     ),
   }
-  const maximum = Math.max(
-    1,
-    ...series.successful,
-    ...series.failed,
-    ...series.cancelled,
-  )
+  const maximum = Math.max(1, ...series.successful, ...series.failed, ...series.cancelled)
   const chartDescription = `Daily cumulative successful, failed, and cancelled ${modeLabel.toLowerCase()} package run counts.`
-  const coverage =
-    completenessCaveat(runsSource.metadata?.completeness, 'run') || null
+  const coverage = completenessCaveat(runsSource.metadata?.completeness, 'run') || null
 
   return h(
     'section',
@@ -633,19 +449,9 @@ export function renderRunTrend(sources, mode = 'all') {
         'div',
         null,
         h('h3', { id: headingId }, heading),
-        h(
-          'p',
-          null,
-          h('strong', null, formatNumber(runs.length)),
-          h('span', null, `as of ${formatDate(trendDays.at(-1))}`),
-        ),
+        h('p', null, h('strong', null, formatNumber(runs.length)), h('span', null, `as of ${formatDate(trendDays.at(-1))}`)),
       ),
-      h(
-        'span',
-        { className: 'package-trend-group' },
-        'Group by: ',
-        h('strong', null, 'Status'),
-      ),
+      h('span', { className: 'package-trend-group' }, 'Group by: ', h('strong', null, 'Status')),
     ),
     h(
       'div',
@@ -695,12 +501,7 @@ export function renderRunTrend(sources, mode = 'all') {
         }),
         ...renderTrendPoints(trendDays, series, maximum),
       ),
-      h(
-        'div',
-        { className: 'package-trend-axis' },
-        h('span', null, formatDate(trendDays[0], true)),
-        h('span', null, formatDate(trendDays.at(-1), true)),
-      ),
+      h('div', { className: 'package-trend-axis' }, h('span', null, formatDate(trendDays[0], true)), h('span', null, formatDate(trendDays.at(-1), true))),
     ),
     coverage ? h('p', { className: 'package-trend-coverage' }, coverage) : null,
   )
@@ -713,12 +514,7 @@ export function renderRunTrend(sources, mode = 'all') {
  * @returns {HTMLElement}
  */
 function renderUnavailableRunTrend(heading, headingId, message) {
-  return h(
-    'section',
-    { className: 'package-trend-panel', 'aria-labelledby': headingId },
-    renderPanelHeader(headingId, heading),
-    renderEmptyMessage(message),
-  )
+  return h('section', { className: 'package-trend-panel', 'aria-labelledby': headingId }, renderPanelHeader(headingId, heading), renderEmptyMessage(message))
 }
 
 /**
@@ -780,17 +576,8 @@ function renderTrendPoints(days, series, maximum) {
                 'aria-hidden': 'true',
               },
               h('rect', { width: 190, height: 92, rx: 6 }),
-              h(
-                'text',
-                { className: 'tooltip-date', x: 12, y: 20 },
-                formatDate(day, true),
-              ),
-              renderTooltipLine(
-                'successful',
-                'Successful',
-                values.successful,
-                42,
-              ),
+              h('text', { className: 'tooltip-date', x: 12, y: 20 }, formatDate(day, true)),
+              renderTooltipLine('successful', 'Successful', values.successful, 42),
               renderTooltipLine('failed', 'Failed', values.failed, 62),
               renderTooltipLine('cancelled', 'Cancelled', values.cancelled, 82),
             ),
@@ -814,17 +601,9 @@ function renderTooltipLine(status, label, value, y) {
       h(
         'g',
         null,
-        h(
-          'text',
-          { className: `tooltip-swatch tooltip-swatch-${status}`, x: 12, y },
-          status === 'successful' ? '—' : '---',
-        ),
+        h('text', { className: `tooltip-swatch tooltip-swatch-${status}`, x: 12, y }, status === 'successful' ? '—' : '---'),
         h('text', { className: 'tooltip-label', x: 28, y }, label),
-        h(
-          'text',
-          { className: 'tooltip-value', x: 178, y, 'text-anchor': 'end' },
-          String(value),
-        ),
+        h('text', { className: 'tooltip-value', x: 178, y, 'text-anchor': 'end' }, String(value)),
       )
     )
   )
@@ -849,38 +628,19 @@ function summarizePackages(workflows) {
       const firstRow = rows[0] ?? {}
       const uniqueWorkflowAllowances = new Map(
         rows
-          .filter(
-            (row) =>
-              typeof row.workflow === 'string' &&
-              isNonNegativeNumber(row['max-ai-credits']),
-          )
-          .map((row) => [
-            scopedEntityKey(row, 'workflow'),
-            /** @type {number} */ (row['max-ai-credits']),
-          ]),
+          .filter((row) => typeof row.workflow === 'string' && isNonNegativeNumber(row['max-ai-credits']))
+          .map((row) => [scopedEntityKey(row, 'workflow'), /** @type {number} */ (row['max-ai-credits'])]),
       )
-      const summedAllowance = [...uniqueWorkflowAllowances.values()].reduce(
-        (total, value) => total + value,
-        0,
-      )
+      const summedAllowance = [...uniqueWorkflowAllowances.values()].reduce((total, value) => total + value, 0)
       const id = String(firstRow.package)
       return {
         key,
         id,
-        name: String(
-          rows.find((row) => typeof row['package-name'] === 'string')?.[
-            'package-name'
-          ] ?? titleCase(id),
-        ),
-        icon: String(
-          rows.find((row) => typeof row['package-icon'] === 'string')?.[
-            'package-icon'
-          ] ?? 'package',
-        ),
+        name: String(rows.find((row) => typeof row['package-name'] === 'string')?.['package-name'] ?? titleCase(id)),
+        icon: String(rows.find((row) => typeof row['package-icon'] === 'string')?.['package-icon'] ?? 'package'),
         organization: String(firstRow.organization ?? ''),
         repository: String(firstRow.repository ?? ''),
-        completeAttemptAllowance:
-          uniqueWorkflowAllowances.size > 0 ? summedAllowance : null,
+        completeAttemptAllowance: uniqueWorkflowAllowances.size > 0 ? summedAllowance : null,
         workflows: rows,
       }
     })
@@ -918,10 +678,7 @@ function renderPackageIdentityLink(entry, nameTag) {
 function summarizeUtilization(packages, usage, mode) {
   const workflowDetails = new Map(
     packages.flatMap((entry) =>
-      entry.workflows.map((row) => [
-        scopedEntityKey(row, 'workflow'),
-        { packageKey: entry.key, allowance: Number(row['max-ai-credits']) },
-      ]),
+      entry.workflows.map((row) => [scopedEntityKey(row, 'workflow'), { packageKey: entry.key, allowance: Number(row['max-ai-credits']) }]),
     ),
   )
   /** @type {Map<string, { packageKey: string, used: number, allowance: number }>} */
@@ -933,17 +690,11 @@ function summarizeUtilization(packages, usage, mode) {
     if (!details || !Number.isFinite(aic) || aic < 0) continue
     const runId = String(row.run ?? row.invocation ?? '')
     if (!runId) continue
-    const key = JSON.stringify([
-      details.packageKey,
-      scopedEntityKey(row, row.run == null ? 'invocation' : 'run'),
-    ])
+    const key = JSON.stringify([details.packageKey, scopedEntityKey(row, row.run == null ? 'invocation' : 'run')])
     const run = runs.get(key) ?? {
       packageKey: details.packageKey,
       used: 0,
-      allowance:
-        Number.isFinite(details.allowance) && details.allowance > 0
-          ? details.allowance
-          : 0,
+      allowance: Number.isFinite(details.allowance) && details.allowance > 0 ? details.allowance : 0,
     }
     run.used += aic
     runs.set(key, run)
@@ -970,26 +721,13 @@ function summarizeUtilization(packages, usage, mode) {
  * @returns {Date[]}
  */
 function buildTrendDays(source, runs) {
-  const metadataDate = Date.parse(
-    String(
-      source?.metadata?.['as-of'] ?? source?.metadata?.['retrieved-at'] ?? '',
-    ),
-  )
-  const latestRunDate = Math.max(
-    ...runs
-      .map((row) => Date.parse(String(row['started-at'] ?? '')))
-      .filter(Number.isFinite),
-  )
-  const endTimestamp = Number.isFinite(metadataDate)
-    ? metadataDate
-    : latestRunDate
+  const metadataDate = Date.parse(String(source?.metadata?.['as-of'] ?? source?.metadata?.['retrieved-at'] ?? ''))
+  const latestRunDate = Math.max(...runs.map((row) => Date.parse(String(row['started-at'] ?? ''))).filter(Number.isFinite))
+  const endTimestamp = Number.isFinite(metadataDate) ? metadataDate : latestRunDate
   if (!Number.isFinite(endTimestamp)) return []
   const end = new Date(endTimestamp)
   end.setUTCHours(0, 0, 0, 0)
-  return Array.from(
-    { length: 30 },
-    (_, index) => new Date(end.getTime() - (29 - index) * DAY_IN_MILLISECONDS),
-  )
+  return Array.from({ length: 30 }, (_, index) => new Date(end.getTime() - (29 - index) * DAY_IN_MILLISECONDS))
 }
 
 /**
@@ -1000,9 +738,7 @@ function buildTrendDays(source, runs) {
 function cumulativeCounts(days, runs) {
   return days.map((day) => {
     const endOfDay = day.getTime() + DAY_IN_MILLISECONDS
-    return runs.filter(
-      (row) => Date.parse(String(row['started-at'])) < endOfDay,
-    ).length
+    return runs.filter((row) => Date.parse(String(row['started-at'])) < endOfDay).length
   })
 }
 
@@ -1012,12 +748,7 @@ function cumulativeCounts(days, runs) {
  * @returns {string}
  */
 function trendPoints(values, maximum) {
-  return values
-    .map(
-      (value, index) =>
-        `${58 + (index * 714) / 29},${200 - (value * 150) / maximum}`,
-    )
-    .join(' ')
+  return values.map((value, index) => `${58 + (index * 714) / 29},${200 - (value * 150) / maximum}`).join(' ')
 }
 
 /**
@@ -1038,12 +769,7 @@ function sourceWindowLabel(metadata) {
  * @returns {boolean}
  */
 function isPackageWorkflow(row) {
-  return (
-    typeof row.package === 'string' &&
-    row.package.length > 0 &&
-    (row['workflow-role'] === 'orchestrator' ||
-      row['workflow-role'] === 'worker')
-  )
+  return typeof row.package === 'string' && row.package.length > 0 && (row['workflow-role'] === 'orchestrator' || row['workflow-role'] === 'worker')
 }
 
 /**
@@ -1052,11 +778,7 @@ function isPackageWorkflow(row) {
  * @returns {string}
  */
 function scopedEntityKey(row, field) {
-  return JSON.stringify([
-    String(row.organization ?? ''),
-    String(row.repository ?? ''),
-    String(row[field] ?? ''),
-  ])
+  return JSON.stringify([String(row.organization ?? ''), String(row.repository ?? ''), String(row[field] ?? '')])
 }
 
 /**
@@ -1081,8 +803,7 @@ function formatAic(value) {
  * @returns {string}
  */
 function formatDate(value, dateOnly = false) {
-  if (!(value instanceof Date) || !Number.isFinite(value.getTime()))
-    return 'Unavailable'
+  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) return 'Unavailable'
   return dateOnly ? formatMediumUtcDate(value) : formatMediumUtcDateTime(value)
 }
 

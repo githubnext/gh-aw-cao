@@ -22,17 +22,9 @@ const dismissedCalloutIds = new Set()
  */
 export function renderSiteCallouts(callouts, sources) {
   if (!Array.isArray(callouts)) return null
-  const visibleCallouts = callouts.filter(
-    (callout) =>
-      !dismissedCalloutIds.has(callout.id) &&
-      matchesVisibility(callout['visible-when'], sources),
-  )
+  const visibleCallouts = callouts.filter((callout) => !dismissedCalloutIds.has(callout.id) && matchesVisibility(callout['visible-when'], sources))
   if (visibleCallouts.length === 0) return null
-  return h(
-    'section',
-    { className: 'site-callouts', 'aria-label': 'Dashboard notices' },
-    visibleCallouts.map(renderSiteCallout),
-  )
+  return h('section', { className: 'site-callouts', 'aria-label': 'Dashboard notices' }, visibleCallouts.map(renderSiteCallout))
 }
 
 /**
@@ -67,10 +59,7 @@ export function renderSiteCallout(callout) {
       'aria-describedby': descriptionId,
       'data-site-callout': callout.id,
     },
-    renderIconSpan(
-      'site-callout-icon',
-      typeof callout.icon === 'string' ? callout.icon : 'info',
-    ),
+    renderIconSpan('site-callout-icon', typeof callout.icon === 'string' ? callout.icon : 'info'),
     content,
     renderCloseButton({
       className: 'site-callout-dismiss',
@@ -91,7 +80,5 @@ export function renderSiteCallout(callout) {
  */
 function matchesVisibility(visibility, sources) {
   if (!visibility) return true
-  return (sources[visibility.source]?.rows ?? []).some(
-    (row) => row[visibility.field] === visibility.equals,
-  )
+  return (sources[visibility.source]?.rows ?? []).some((row) => row[visibility.field] === visibility.equals)
 }

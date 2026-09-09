@@ -22,12 +22,7 @@ function renderChange(row) {
   return h(
     'li',
     { className: 'configuration-action' },
-    h(
-      'div',
-      { className: 'configuration-action-summary' },
-      h('strong', null, String(row.action ?? 'Policy change')),
-      renderIntentAction(CHANGE_ACTION, row),
-    ),
+    h('div', { className: 'configuration-action-summary' }, h('strong', null, String(row.action ?? 'Policy change')), renderIntentAction(CHANGE_ACTION, row)),
     h(
       'dl',
       { className: 'configuration-action-details' },

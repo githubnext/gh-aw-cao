@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import {
-  renderWorkflowBadges,
-  workflowPackageMemberships,
-  workflowRole,
-} from '../../src/components/workflow-badges.js'
+import { renderWorkflowBadges, workflowPackageMemberships, workflowRole } from '../../src/components/workflow-badges.js'
 
 describe('workflow-badges', () => {
   it('renders the workflow role and sorted package memberships', () => {
@@ -19,20 +15,12 @@ describe('workflow-badges', () => {
     })
 
     expect(element.className).toBe('workflow-badges')
-    expect(
-      [...element.querySelectorAll('.workflow-badge')].map(
-        (badge) => badge.textContent,
-      ),
-    ).toEqual([
+    expect([...element.querySelectorAll('.workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Orchestrator',
       'Package · Ambient Context',
       'Package · Central Agentic Ops',
     ])
-    expect(
-      [...element.querySelectorAll('a')].map((badge) =>
-        badge.getAttribute('href'),
-      ),
-    ).toEqual([
+    expect([...element.querySelectorAll('a')].map((badge) => badge.getAttribute('href'))).toEqual([
       '#page-package-insights?package=ambient-context',
       '#page-package-insights?package=central-agentic-ops',
     ])
@@ -54,12 +42,8 @@ describe('workflow-badges', () => {
     )
 
     expect(element.className).toBe('repository-workflow-badges')
-    expect(element.querySelector('.workflow-badge-worker')?.textContent).toBe(
-      'Worker',
-    )
-    expect(element.querySelector('a')?.getAttribute('href')).toBe(
-      '#page-packages?package=maintenance',
-    )
+    expect(element.querySelector('.workflow-badge-worker')?.textContent).toBe('Worker')
+    expect(element.querySelector('a')?.getAttribute('href')).toBe('#page-packages?package=maintenance')
   })
 
   it('derives operation and unknown roles conservatively', () => {

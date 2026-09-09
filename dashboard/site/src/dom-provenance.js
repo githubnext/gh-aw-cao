@@ -18,18 +18,9 @@
  * @param {import('./presenter.js').PresentationDocument} document
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
-export function enableDashboardDomProvenance(
-  root,
-  document,
-  getBuiltInPagePayload,
-) {
+export function enableDashboardDomProvenance(root, document, getBuiltInPagePayload) {
   annotateDashboardDom(root, document, getBuiltInPagePayload)
-  const pagesById = new Map(
-    document.dashboard.pages.map((page, pageIndex) => [
-      page.id,
-      { page, pageIndex },
-    ]),
-  )
+  const pagesById = new Map(document.dashboard.pages.map((page, pageIndex) => [page.id, { page, pageIndex }]))
   const observer = new MutationObserver((mutations) => {
     const pagesToAnnotate = new Set()
     const provenanceRoots = []
@@ -79,10 +70,7 @@ function queueAffectedPageDom(element, pagesToAnnotate) {
  */
 function hasProvenanceBoundary(element) {
   return (
-    element.matches('[data-view-id], [data-section-id], [data-page-id]') ||
-    element.querySelector(
-      '[data-view-id], [data-section-id], [data-page-id]',
-    ) !== null
+    element.matches('[data-view-id], [data-section-id], [data-page-id]') || element.querySelector('[data-view-id], [data-section-id], [data-page-id]') !== null
   )
 }
 
@@ -91,21 +79,12 @@ function hasProvenanceBoundary(element) {
  * @param {Map<string, { page: import('./presenter.js').PresentableBuiltInPage | import('./presenter.js').PresentableCustomPage, pageIndex: number }>} pagesById
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
-function annotateRenderedPageDom(
-  renderedPage,
-  pagesById,
-  getBuiltInPagePayload,
-) {
+function annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload) {
   const pageId = renderedPage.getAttribute('data-page-id')
   if (!pageId) return
   const entry = pagesById.get(pageId)
   if (!entry) return
-  annotatePageDom(
-    renderedPage,
-    entry.page,
-    entry.pageIndex,
-    getBuiltInPagePayload,
-  )
+  annotatePageDom(renderedPage, entry.page, entry.pageIndex, getBuiltInPagePayload)
 }
 
 /**
@@ -132,11 +111,7 @@ function propagateDashboardDomProvenance(node) {
   if (node.hasAttribute('data-json-path')) return
   const owner = node.parentElement?.closest('[data-json-path]')
   if (!owner) return
-  annotateDomTree(
-    node,
-    /** @type {string} */ (owner.getAttribute('data-json-path')),
-    owner.getAttribute('data-js-view') ?? undefined,
-  )
+  annotateDomTree(node, /** @type {string} */ (owner.getAttribute('data-json-path')), owner.getAttribute('data-js-view') ?? undefined)
 }
 
 /**
@@ -147,34 +122,23 @@ function propagateDashboardDomProvenance(node) {
 function annotateDashboardDom(root, document, getBuiltInPagePayload) {
   annotateDomTree(root, '$.dashboard')
 
-  const callouts = Array.isArray(document.dashboard.callouts)
-    ? document.dashboard.callouts
-    : []
+  const callouts = Array.isArray(document.dashboard.callouts) ? document.dashboard.callouts : []
   for (const element of root.querySelectorAll('[data-site-callout]')) {
-    const index = callouts.findIndex(
-      (callout) => callout.id === element.getAttribute('data-site-callout'),
-    )
+    const index = callouts.findIndex((callout) => callout.id === element.getAttribute('data-site-callout'))
     if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`)
   }
 
-  const navLinks = [
-    ...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]'),
-  ]
+  const navLinks = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')]
   const pageElements = [...root.querySelectorAll('[data-page-id]')]
   document.dashboard.pages.forEach((page, pageIndex) => {
     const pagePath = `$.dashboard.pages[${pageIndex}]`
     for (const element of navLinks) {
-      if (
-        element.getAttribute('data-nav-page-id') === page.id ||
-        element.getAttribute('data-mobile-nav-page-id') === page.id
-      ) {
+      if (element.getAttribute('data-nav-page-id') === page.id || element.getAttribute('data-mobile-nav-page-id') === page.id) {
         annotateDomTree(element, pagePath)
       }
     }
 
-    const renderedPage = pageElements.find(
-      (element) => element.getAttribute('data-page-id') === page.id,
-    )
+    const renderedPage = pageElements.find((element) => element.getAttribute('data-page-id') === page.id)
     if (!renderedPage) return
     annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload)
   })
@@ -186,22 +150,14 @@ function annotateDashboardDom(root, document, getBuiltInPagePayload) {
  * @param {number} pageIndex
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
-export function annotatePageDom(
-  renderedPage,
-  page,
-  pageIndex,
-  getBuiltInPagePayload,
-) {
+export function annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload) {
   const pagePath = `$.dashboard.pages[${pageIndex}]`
   annotateDomTree(renderedPage, pagePath)
 
   const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page
-  const definitionPath =
-    page.kind === 'built-in' ? `${pagePath}.definition` : pagePath
+  const definitionPath = page.kind === 'built-in' ? `${pagePath}.definition` : pagePath
   const sections = Array.isArray(payload.sections) ? payload.sections : []
-  const sectionElements = [
-    ...renderedPage.querySelectorAll('[data-section-id]'),
-  ]
+  const sectionElements = [...renderedPage.querySelectorAll('[data-section-id]')]
   sections.forEach((section, sectionIndex) => {
     for (const element of sectionElements) {
       if (element.getAttribute('data-section-id') === section.id) {
@@ -214,16 +170,11 @@ export function annotatePageDom(
   const viewElements = [...renderedPage.querySelectorAll('[data-view-id]')]
   views.forEach((view, viewIndex) => {
     if (!isPlainObject(view)) return
-    const viewId =
-      typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`
+    const viewId = typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`
     for (const element of viewElements) {
       if (element.getAttribute('data-view-id') !== viewId) continue
       const viewRoot = element.closest('.custom-view') ?? element
-      annotateDomTree(
-        viewRoot,
-        `${definitionPath}.views[${viewIndex}]`,
-        typeof view.element === 'string' ? view.element : undefined,
-      )
+      annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, typeof view.element === 'string' ? view.element : undefined)
     }
   })
 }

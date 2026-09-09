@@ -2,10 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js'
 import { createCanonicalQueries } from '../../src/data/queries/index.js'
-import {
-  loadCanonicalViewSources,
-  queryCanonicalViewSources,
-} from '../../src/data/queries/view-sources.js'
+import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js'
 
 const metadata = {
   'as-of': '2026-09-09T05:00:00Z',
@@ -125,8 +122,7 @@ const sources = {
         'smell-name': 'Secret leak detected',
         'smell-category': 'trust-and-security',
         'smell-severity': 'high',
-        'smell-summary':
-          'Threat detection reported untrusted or unsafe agent behavior.',
+        'smell-summary': 'Threat detection reported untrusted or unsafe agent behavior.',
         'smell-evidence': 'credentials',
         'observed-at': '2026-09-09T04:01:00Z',
         'run-link': {
@@ -163,19 +159,12 @@ describe('canonical view sources', () => {
   it('queries only the canonical payload requested by a view', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true })
 
-    const projected = await queryCanonicalViewSources(
-      indexedDB,
-      sources,
-      metadata['artifact-generation'],
-      ['failed-runs'],
-    )
+    const projected = await queryCanonicalViewSources(indexedDB, sources, metadata['artifact-generation'], ['failed-runs'])
 
     expect(Object.keys(projected)).toEqual(['failed-runs'])
     expect(projected['failed-runs']).toMatchObject({
       source: 'failed-runs',
-      rows: [
-        { repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' },
-      ],
+      rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' },
     })
   })
@@ -183,12 +172,7 @@ describe('canonical view sources', () => {
   it('projects work items and security findings from canonical entities', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true })
 
-    const projected = await queryCanonicalViewSources(
-      indexedDB,
-      sources,
-      metadata['artifact-generation'],
-      ['work-items', 'security-findings'],
-    )
+    const projected = await queryCanonicalViewSources(indexedDB, sources, metadata['artifact-generation'], ['work-items', 'security-findings'])
 
     expect(Object.keys(projected)).toEqual(['work-items', 'security-findings'])
     expect(projected['work-items']).toMatchObject({
@@ -212,9 +196,7 @@ describe('canonical view sources', () => {
       metadata: { 'source-kind': 'canonical-query' },
     })
     const queries = createCanonicalQueries(indexedDB)
-    await expect(
-      queries.workItems.byLifecycleState('blocked'),
-    ).resolves.toEqual([
+    await expect(queries.workItems.byLifecycleState('blocked')).resolves.toEqual([
       expect.objectContaining({
         lifecycleState: 'blocked',
         workItemId: 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
@@ -312,8 +294,6 @@ describe('canonical view sources', () => {
   })
 
   it('rejects a generation that is not active and usable', async () => {
-    await expect(loadCanonicalViewSources(indexedDB, sources)).rejects.toThrow(
-      'Canonical generation generation-a is not active and usable',
-    )
+    await expect(loadCanonicalViewSources(indexedDB, sources)).rejects.toThrow('Canonical generation generation-a is not active and usable')
   })
 })

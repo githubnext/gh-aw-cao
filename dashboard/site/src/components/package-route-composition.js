@@ -5,10 +5,7 @@
 import { h } from '../dom.js'
 import { titleCase } from './count-formatters.js'
 import { createRouteBodyConfig } from './route-body-config.js'
-import {
-  PACKAGE_ROUTE_BODY_VALUES,
-  PACKAGE_ROUTE_VARIANT_VALUES,
-} from './route-body-specification.js'
+import { PACKAGE_ROUTE_BODY_VALUES, PACKAGE_ROUTE_VARIANT_VALUES } from './route-body-specification.js'
 import { renderPackageReadme } from './package-readme.js'
 import { renderWorkflowValueReport } from './workflow-runtime.js'
 
@@ -40,37 +37,24 @@ const PACKAGE_ROUTE_COMPOSITIONS = {
   insights: {
     rootClassName: 'package-insights',
     selectMessage: 'Select a package to view its operational value.',
-    description:
-      'Operational value attained by workers in the {packageName} package.',
+    description: 'Operational value attained by workers in the {packageName} package.',
     currentTab: 'insights',
     bodyRenderer: ({ context, workflows }) => {
-      const workers = workflows.filter(
-        (workflow) => workflow['workflow-role'] !== 'orchestrator',
-      )
+      const workers = workflows.filter((workflow) => workflow['workflow-role'] !== 'orchestrator')
       return h(
         'div',
         { className: 'package-insights-content' },
-        ...workers.map((workflow) =>
-          renderWorkflowValueReport(context, workflow),
-        ),
-        workers.length === 0
-          ? h(
-              'p',
-              { className: 'value-details-unavailable' },
-              'No worker workflows are configured for this package.',
-            )
-          : null,
+        ...workers.map((workflow) => renderWorkflowValueReport(context, workflow)),
+        workers.length === 0 ? h('p', { className: 'value-details-unavailable' }, 'No worker workflows are configured for this package.') : null,
       )
     },
   },
   workflows: {
     rootClassName: 'package-detail',
     selectMessage: 'Select a package to view its workflows.',
-    description:
-      'Orchestrator and worker workflows in the {packageName} package.',
+    description: 'Orchestrator and worker workflows in the {packageName} package.',
     currentTab: 'workflows',
-    bodyRenderer: ({ packageId, packageName, workflows }) =>
-      renderPackageReadme({ packageId, packageName, workflows }),
+    bodyRenderer: ({ packageId, packageName, workflows }) => renderPackageReadme({ packageId, packageName, workflows }),
   },
   dispatches: {
     rootClassName: 'package-dispatches',
@@ -98,9 +82,7 @@ export const PACKAGE_ROUTE_BODY_CONFIG = createRouteBodyConfig(
  * @returns {PackageRouteComposition}
  */
 export function packageRouteComposition(body) {
-  return /** @type {PackageRouteComposition} */ (
-    PACKAGE_ROUTE_BODY_CONFIG.composition(PACKAGE_ROUTE_COMPOSITIONS, body)
-  )
+  return /** @type {PackageRouteComposition} */ (PACKAGE_ROUTE_BODY_CONFIG.composition(PACKAGE_ROUTE_COMPOSITIONS, body))
 }
 
 /**
@@ -116,12 +98,7 @@ export function packageRouteVariant(body) {
  * @returns {body is PackageRouteBody}
  */
 export function isPackageRouteVariant(body) {
-  return (
-    typeof body === 'string' &&
-    PACKAGE_ROUTE_VARIANT_VALUES.includes(
-      /** @type {PackageRouteBody} */ (body),
-    )
-  )
+  return typeof body === 'string' && PACKAGE_ROUTE_VARIANT_VALUES.includes(/** @type {PackageRouteBody} */ (body))
 }
 
 /**
@@ -129,39 +106,21 @@ export function isPackageRouteVariant(body) {
  * @param {Array<Record<string, unknown>>} workflows
  */
 export function packageNameForRoute(packageId, workflows) {
-  return String(
-    workflows.find(
-      (workflow) => typeof workflow['package-name'] === 'string',
-    )?.['package-name'] ?? titleCase(packageId),
-  )
+  return String(workflows.find((workflow) => typeof workflow['package-name'] === 'string')?.['package-name'] ?? titleCase(packageId))
 }
 
 /** @param {Array<Record<string, unknown>>} workflows */
 export function packageModeForRoute(workflows) {
   const targetModes = workflows.flatMap((workflow) => {
-    const repository = [workflow.organization, workflow.repository]
-      .filter(Boolean)
-      .join('/')
-      .toLowerCase()
-    return (
-      Array.isArray(workflow['package-targets'])
-        ? workflow['package-targets']
-        : []
-    )
-      .filter(
-        (target) =>
-          String(target?.repository ?? '').toLowerCase() === repository,
-      )
+    const repository = [workflow.organization, workflow.repository].filter(Boolean).join('/').toLowerCase()
+    return (Array.isArray(workflow['package-targets']) ? workflow['package-targets'] : [])
+      .filter((target) => String(target?.repository ?? '').toLowerCase() === repository)
       .map((target) => String(target?.mode ?? '').toLowerCase())
   })
   if (targetModes.includes('live')) return 'live'
   if (targetModes.includes('review')) return 'review'
-  const orchestrator = workflows.find(
-    (workflow) => workflow['workflow-role'] === 'orchestrator',
-  )
-  const mode = String(
-    orchestrator?.['rollout-mode'] ?? workflows[0]?.['rollout-mode'] ?? '',
-  )
+  const orchestrator = workflows.find((workflow) => workflow['workflow-role'] === 'orchestrator')
+  const mode = String(orchestrator?.['rollout-mode'] ?? workflows[0]?.['rollout-mode'] ?? '')
   return mode === 'review' || mode === 'live' ? mode : ''
 }
 
@@ -171,7 +130,5 @@ export function packageModeForRoute(workflows) {
 export function normalizePackageRoute(value) {
   if (typeof value !== 'string') return ''
   const packageId = value.trim()
-  return /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})$/.test(packageId)
-    ? packageId
-    : ''
+  return /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,99})$/.test(packageId) ? packageId : ''
 }

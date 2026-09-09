@@ -22,9 +22,7 @@ function files(directory) {
 
 describe('gh-aw logs adapter', () => {
   it('converts agent, gateway, and firewall JSONL into one ordered operational session', () => {
-    const context = JSON.parse(
-      readFileSync(join(fixtureRoot, 'context.json'), 'utf8'),
-    )
+    const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'))
     const adapted = adaptGhAwLogs({ ...context, files: files(fixtureRoot) })
     const batch = normalize(adapted.observations, {
       generation: adapted.generation,
@@ -38,9 +36,7 @@ describe('gh-aw logs adapter', () => {
         kind: 'unified-operational-log',
       }),
     ])
-    expect(
-      batch.events.map((event) => [event.sequence, event.source, event.type]),
-    ).toEqual([
+    expect(batch.events.map((event) => [event.sequence, event.source, event.type])).toEqual([
       [0, 'agent', 'agent_turn'],
       [1, 'gateway', 'tool_call'],
       [2, 'agent', 'agent_tool_start'],
@@ -48,8 +44,6 @@ describe('gh-aw logs adapter', () => {
       [4, 'firewall', 'net_allowed'],
       [5, 'agent', 'assistant_message'],
     ])
-    expect(
-      batch.events.filter((event) => event.correlationId === 'call-1'),
-    ).toHaveLength(3)
+    expect(batch.events.filter((event) => event.correlationId === 'call-1')).toHaveLength(3)
   })
 })

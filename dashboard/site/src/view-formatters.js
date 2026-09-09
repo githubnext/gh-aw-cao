@@ -10,29 +10,16 @@
  * @param {{ name: string, symbol: string, significant: number, format?: string } | null} [unit]
  * @returns {string}
  */
-export function formatAggregateValue(
-  rows,
-  fieldName,
-  aggregate,
-  toText,
-  unit = null,
-) {
+export function formatAggregateValue(rows, fieldName, aggregate, toText, unit = null) {
   if (!fieldName) {
     return 'Unavailable'
   }
 
   if (aggregate === 'count') {
-    return formatNumber(
-      rows.filter((row) => row[fieldName] != null && row[fieldName] !== '')
-        .length,
-      unit,
-    )
+    return formatNumber(rows.filter((row) => row[fieldName] != null && row[fieldName] !== '').length, unit)
   }
   if (aggregate === 'distinct-count') {
-    return formatNumber(
-      new Set(rows.map((row) => toText(row[fieldName]))).size,
-      unit,
-    )
+    return formatNumber(new Set(rows.map((row) => toText(row[fieldName]))).size, unit)
   }
   if (aggregate === 'sum') {
     return formatNumber(
@@ -41,38 +28,19 @@ export function formatAggregateValue(
     )
   }
   if (aggregate === 'mean') {
-    const numericValues = rows
-      .map((row) => toNumber(row[fieldName]))
-      .filter((value) => Number.isFinite(value))
-    return numericValues.length > 0
-      ? formatNumber(
-          numericValues.reduce((total, value) => total + value, 0) /
-            numericValues.length,
-          unit,
-        )
-      : 'Unavailable'
+    const numericValues = rows.map((row) => toNumber(row[fieldName])).filter((value) => Number.isFinite(value))
+    return numericValues.length > 0 ? formatNumber(numericValues.reduce((total, value) => total + value, 0) / numericValues.length, unit) : 'Unavailable'
   }
   if (aggregate === 'min') {
-    const numericValues = rows
-      .map((row) => toNumber(row[fieldName]))
-      .filter((value) => Number.isFinite(value))
-    return numericValues.length > 0
-      ? formatNumber(Math.min(...numericValues), unit)
-      : 'Unavailable'
+    const numericValues = rows.map((row) => toNumber(row[fieldName])).filter((value) => Number.isFinite(value))
+    return numericValues.length > 0 ? formatNumber(Math.min(...numericValues), unit) : 'Unavailable'
   }
   if (aggregate === 'max') {
-    const numericValues = rows
-      .map((row) => toNumber(row[fieldName]))
-      .filter((value) => Number.isFinite(value))
-    return numericValues.length > 0
-      ? formatNumber(Math.max(...numericValues), unit)
-      : 'Unavailable'
+    const numericValues = rows.map((row) => toNumber(row[fieldName])).filter((value) => Number.isFinite(value))
+    return numericValues.length > 0 ? formatNumber(Math.max(...numericValues), unit) : 'Unavailable'
   }
   const value = rows[0]?.[fieldName]
-  return rows.length > 0 &&
-    unit &&
-    typeof value === 'number' &&
-    Number.isFinite(value)
+  return rows.length > 0 && unit && typeof value === 'number' && Number.isFinite(value)
     ? formatNumber(value, unit)
     : rows.length > 0
       ? toText(value)
@@ -101,11 +69,7 @@ export function stringOrFallback(value, fallback) {
  */
 export function formatString(value, format, fallback = 'unknown') {
   const text = stringOrFallback(value, fallback)
-  if (
-    format !== 'workflow-relative-path' ||
-    !text.startsWith('.github/workflows/')
-  )
-    return text
+  if (format !== 'workflow-relative-path' || !text.startsWith('.github/workflows/')) return text
   const formatted = text.slice('.github/workflows/'.length)
   return formatted || fallback
 }
@@ -146,8 +110,7 @@ export function toNumber(value) {
 export function formatNumber(value, unit = null, includeUnit = true) {
   if (unit && Number.isFinite(unit.significant) && unit.significant > 0) {
     const quotient = value / unit.significant
-    const rounded =
-      Math.sign(quotient) * Math.round(Math.abs(quotient)) * unit.significant
+    const rounded = Math.sign(quotient) * Math.round(Math.abs(quotient)) * unit.significant
     if (unit.format === 'duration') {
       return formatDurationSeconds(rounded)
     }
@@ -211,10 +174,7 @@ export function formatRelativeTime(value, relativeTo) {
             ? [86_400, 'day']
             : [604_800, 'week']
   const amount = Math.round(differenceSeconds / divisor)
-  return new Intl.RelativeTimeFormat('en', { numeric: 'always' }).format(
-    amount,
-    /** @type {Intl.RelativeTimeFormatUnit} */ (unit),
-  )
+  return new Intl.RelativeTimeFormat('en', { numeric: 'always' }).format(amount, /** @type {Intl.RelativeTimeFormatUnit} */ (unit))
 }
 
 /**
@@ -225,18 +185,10 @@ export function formatRelativeTime(value, relativeTo) {
  */
 export function formatCompactElapsedTime(value, relativeTo) {
   const valueMs = Date.parse(String(value ?? ''))
-  const relativeToMs =
-    relativeTo instanceof Date
-      ? relativeTo.getTime()
-      : typeof relativeTo === 'number'
-        ? relativeTo
-        : Date.parse(String(relativeTo ?? ''))
+  const relativeToMs = relativeTo instanceof Date ? relativeTo.getTime() : typeof relativeTo === 'number' ? relativeTo : Date.parse(String(relativeTo ?? ''))
   if (!Number.isFinite(valueMs) || !Number.isFinite(relativeToMs)) return ''
 
-  const elapsedSeconds = Math.max(
-    0,
-    Math.floor((relativeToMs - valueMs) / 1_000),
-  )
+  const elapsedSeconds = Math.max(0, Math.floor((relativeToMs - valueMs) / 1_000))
   const [divisor, unit] =
     elapsedSeconds < 60
       ? [1, 's']
@@ -255,16 +207,12 @@ export function formatCompactElapsedTime(value, relativeTo) {
  * @returns {number}
  */
 function fractionDigits(value) {
-  const [mantissa, exponentText = '0'] = value
-    .toString()
-    .toLowerCase()
-    .split('e')
+  const [mantissa, exponentText = '0'] = value.toString().toLowerCase().split('e')
   const fractionLength = mantissa.split('.')[1]?.length ?? 0
   return Math.min(100, Math.max(0, fractionLength - Number(exponentText)))
 }
 
-const TEMPLATE_TOKEN_PATTERN =
-  /\{\{([a-zA-Z0-9_-]+)(?::(suffix|word):([^:}]*):([^:}]*))?\}\}/g
+const TEMPLATE_TOKEN_PATTERN = /\{\{([a-zA-Z0-9_-]+)(?::(suffix|word):([^:}]*):([^:}]*))?\}\}/g
 
 /**
  * Renders a JSON-configurable copy template against a set of named values, so that
@@ -277,17 +225,14 @@ const TEMPLATE_TOKEN_PATTERN =
  * @returns {string}
  */
 export function renderTemplate(template, values) {
-  return template.replace(
-    TEMPLATE_TOKEN_PATTERN,
-    (match, name, mode, singular, plural) => {
-      const value = values[name]
-      if (mode === undefined) {
-        return value === undefined ? '' : String(value)
-      }
-      const isSingular = Number(value) === 1
-      return isSingular ? singular : plural
-    },
-  )
+  return template.replace(TEMPLATE_TOKEN_PATTERN, (match, name, mode, singular, plural) => {
+    const value = values[name]
+    if (mode === undefined) {
+      return value === undefined ? '' : String(value)
+    }
+    const isSingular = Number(value) === 1
+    return isSingular ? singular : plural
+  })
 }
 
 /**

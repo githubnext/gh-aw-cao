@@ -2,21 +2,17 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderExperimentDecisionSurfaceSection } from '../../src/components/experiment-decision-surface.js'
 import { renderExperimentsEvaluation } from '../../src/components/experiments-evaluation.js'
-import {
-  defaultExperimentsViewComposition,
-  experimentsViewCompositionForBody,
-} from '../../src/components/experiments-view-primitives.js'
+import { defaultExperimentsViewComposition, experimentsViewCompositionForBody } from '../../src/components/experiments-view-primitives.js'
 
-const metadata =
-  /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
-    'source-id': 'experiment-fixture',
-    'source-kind': 'fixture',
-    'as-of': '2026-09-05T12:00:00Z',
-    'retrieved-at': '2026-09-05T12:01:00Z',
-    completeness: 'complete',
-    freshness: 'fresh',
-    availability: 'available',
-  })
+const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
+  'source-id': 'experiment-fixture',
+  'source-kind': 'fixture',
+  'as-of': '2026-09-05T12:00:00Z',
+  'retrieved-at': '2026-09-05T12:01:00Z',
+  completeness: 'complete',
+  freshness: 'fresh',
+  availability: 'available',
+})
 
 /** @param {string} name @param {Array<Record<string, unknown>>} rows */
 const source = (name, rows) => ({ source: name, rows, metadata })
@@ -113,11 +109,7 @@ describe('experiments and evaluation', () => {
   })
 
   it('keeps decisions, observations, producers, runs, and evidence distinct', () => {
-    window.history.replaceState(
-      null,
-      '',
-      '/#page-experiments?experiment=routing-v3',
-    )
+    window.history.replaceState(null, '', '/#page-experiments?experiment=routing-v3')
     const runLink = {
       href: 'https://github.com/acme/tools/actions/runs/101',
       label: 'Open run 101',
@@ -237,11 +229,7 @@ describe('experiments and evaluation', () => {
           'exclusion-reason': 'eval missing',
         },
       ]),
-      runs: source('runs', [
-        { run: '100' },
-        { run: '101', 'run-conclusion': 'success', 'run-link': runLink },
-        { run: '102' },
-      ]),
+      runs: source('runs', [{ run: '100' }, { run: '101', 'run-conclusion': 'success', 'run-link': runLink }, { run: '102' }]),
     }
 
     const rendered = renderExperimentsEvaluation({
@@ -255,32 +243,14 @@ describe('experiments and evaluation', () => {
 
     expect(rendered.querySelector('.experiment-detail')).not.toBeNull()
     expect(rendered.textContent).toContain('PROMOTE')
-    expect(
-      rendered.querySelector('.experiment-metric-table')?.textContent,
-    ).toContain('hallucination')
-    expect(
-      rendered.querySelector('.experiment-metric-table')?.textContent,
-    ).toContain('-0.040 ▼')
-    expect(rendered.querySelector('.eval-outcome')?.textContent).toContain(
-      'Is the answer correct?',
-    )
-    expect(
-      rendered.querySelector('.eval-stacked-bar')?.getAttribute('aria-label'),
-    ).toContain('0 unknown or missing')
-    expect(
-      rendered
-        .querySelectorAll('.eval-stacked-bar')[1]
-        ?.getAttribute('aria-label'),
-    ).toContain('1 unknown or missing')
-    expect(
-      rendered.querySelector('.observation-quality')?.textContent,
-    ).toContain('grader missing')
-    expect(
-      rendered.querySelector('.run-evidence-table')?.textContent,
-    ).toContain('eval missing')
-    expect(
-      rendered.querySelector(`a[href="${evidenceLink.href}"]`),
-    ).not.toBeNull()
+    expect(rendered.querySelector('.experiment-metric-table')?.textContent).toContain('hallucination')
+    expect(rendered.querySelector('.experiment-metric-table')?.textContent).toContain('-0.040 ▼')
+    expect(rendered.querySelector('.eval-outcome')?.textContent).toContain('Is the answer correct?')
+    expect(rendered.querySelector('.eval-stacked-bar')?.getAttribute('aria-label')).toContain('0 unknown or missing')
+    expect(rendered.querySelectorAll('.eval-stacked-bar')[1]?.getAttribute('aria-label')).toContain('1 unknown or missing')
+    expect(rendered.querySelector('.observation-quality')?.textContent).toContain('grader missing')
+    expect(rendered.querySelector('.run-evidence-table')?.textContent).toContain('eval missing')
+    expect(rendered.querySelector(`a[href="${evidenceLink.href}"]`)).not.toBeNull()
     expect(rendered.textContent).not.toContain('successful experiment')
   })
 

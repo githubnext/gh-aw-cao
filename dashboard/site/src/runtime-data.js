@@ -18,9 +18,7 @@ const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'timed-out'])
  */
 export function deriveRuntimeSources(sources) {
   const model = buildExecutionModel(sources)
-  const runs = sources.runs
-    ? { ...sources.runs, rows: sources.runs.rows.map(withFailureDetail) }
-    : undefined
+  const runs = sources.runs ? { ...sources.runs, rows: sources.runs.rows.map(withFailureDetail) } : undefined
   const signals = []
   const dispatches = deriveDispatches(model)
   const dispatchActivationSummary = deriveDispatchActivationSummary(dispatches)
@@ -29,9 +27,7 @@ export function deriveRuntimeSources(sources) {
   const episodes = deriveEpisodes(model)
   const attributionGaps = deriveAttributionGaps(model)
 
-  for (const episode of model.episodes.filter((candidate) =>
-    FAILURE_CONCLUSIONS.has(text(candidate.run['run-conclusion'])),
-  )) {
+  for (const episode of model.episodes.filter((candidate) => FAILURE_CONCLUSIONS.has(text(candidate.run['run-conclusion'])))) {
     signals.push({
       priority: 0,
       count: 1,
@@ -46,14 +42,9 @@ export function deriveRuntimeSources(sources) {
     })
   }
 
-  for (const [workflowKey, runs] of groupRuns(
-    model.nonRootRuns.filter((run) =>
-      FAILURE_CONCLUSIONS.has(text(run['run-conclusion'])),
-    ),
-  )) {
+  for (const [workflowKey, runs] of groupRuns(model.nonRootRuns.filter((run) => FAILURE_CONCLUSIONS.has(text(run['run-conclusion']))))) {
     const workflow = model.workflows.get(workflowKey)
-    const retained =
-      model.runsByWorkflow.get(workflowKey)?.length ?? runs.length
+    const retained = model.runsByWorkflow.get(workflowKey)?.length ?? runs.length
     signals.push({
       priority: 0,
       count: runs.length,
@@ -62,21 +53,15 @@ export function deriveRuntimeSources(sources) {
       kind: 'Run failures',
       title: workflowName(workflow, runs[0]),
       detail: `${formatCount(runs.length)} of ${formatCount(retained)} retained runs failed`,
-      evidence:
-        retained > 0 ? formatPercent(runs.length / retained) : 'No denominator',
+      evidence: retained > 0 ? formatPercent(runs.length / retained) : 'No denominator',
       action: 'View evidence',
       'navigation-href': workflowHref(workflow, runs[0]),
     })
   }
 
-  for (const [workflowKey, runs] of groupRuns(
-    model.runs.filter(
-      (run) => text(run['run-conclusion']) === 'action-required',
-    ),
-  )) {
+  for (const [workflowKey, runs] of groupRuns(model.runs.filter((run) => text(run['run-conclusion']) === 'action-required'))) {
     const workflow = model.workflows.get(workflowKey)
-    const retained =
-      model.runsByWorkflow.get(workflowKey)?.length ?? runs.length
+    const retained = model.runsByWorkflow.get(workflowKey)?.length ?? runs.length
     signals.push({
       priority: 1,
       count: runs.length,
@@ -102,8 +87,7 @@ export function deriveRuntimeSources(sources) {
       detail: workerDispatchEvidenceGap(model.unattributedWorkerRuns.length),
       evidence: 'Causality unknown',
       action: 'View evidence',
-      'navigation-href':
-        '#page-runtime?section=runtime-worker-attribution-gaps-heading',
+      'navigation-href': '#page-runtime?section=runtime-worker-attribution-gaps-heading',
     })
   }
 
@@ -118,17 +102,11 @@ export function deriveRuntimeSources(sources) {
       detail: `${formatCountNoun(model.unattributedEpisodes.length, 'root episode has', 'root episodes have')} no correlated worker attempt or output`,
       evidence: 'Outcome unavailable',
       action: 'View evidence',
-      'navigation-href':
-        '#page-runtime?section=runtime-observed-root-episodes-heading',
+      'navigation-href': '#page-runtime?section=runtime-observed-root-episodes-heading',
     })
   }
 
-  signals.sort(
-    (left, right) =>
-      left.priority - right.priority ||
-      right.count - left.count ||
-      left.title.localeCompare(right.title),
-  )
+  signals.sort((left, right) => left.priority - right.priority || right.count - left.count || left.title.localeCompare(right.title))
   return {
     ...sources,
     ...(runs ? { runs } : {}),
@@ -138,8 +116,7 @@ export function deriveRuntimeSources(sources) {
         {
           icon: 'pulse',
           title: 'Statistical anomalies · not evaluated',
-          detail:
-            'The current window does not provide a representative historical baseline. Direct evidence remains visible without inferred anomaly labels.',
+          detail: 'The current window does not provide a representative historical baseline. Direct evidence remains visible without inferred anomaly labels.',
         },
       ],
       metadata: combinedMetadata(sources),
@@ -185,10 +162,7 @@ export function deriveRuntimeSources(sources) {
 /** @param {Row} run */
 function withFailureDetail(run) {
   if (text(run['failure-detail'])) return run
-  const detail =
-    text(run['failure-message']) ||
-    text(run['failure-step']) ||
-    (text(run.run) ? `Run ${text(run.run)}` : '')
+  const detail = text(run['failure-message']) || text(run['failure-step']) || (text(run.run) ? `Run ${text(run.run)}` : '')
   return detail ? { ...run, 'failure-detail': detail } : run
 }
 
@@ -198,10 +172,7 @@ function withFailureDetail(run) {
  * @returns {Row[]}
  */
 function deriveEpisodeSummary(model, runsMetadata) {
-  const windowHours = coverageHours(
-    runsMetadata?.['coverage-start'],
-    runsMetadata?.['coverage-end'],
-  )
+  const windowHours = coverageHours(runsMetadata?.['coverage-start'], runsMetadata?.['coverage-end'])
   return [
     { label: 'Root episodes', value: formatCount(model.episodes.length) },
     {
@@ -229,10 +200,7 @@ function deriveEpisodes(model) {
     workflow: workflowName(episode.workflow, episode.run),
     'started-at': episode.run['started-at'],
     duration: formatDuration(episode.duration),
-    status:
-      text(episode.run['run-conclusion']) ||
-      text(episode.run['run-status']) ||
-      'unknown',
+    status: text(episode.run['run-conclusion']) || text(episode.run['run-status']) || 'unknown',
     'control-transition': 'workflow_dispatch → root run',
     attribution: 'Root only',
     'run-link': episode.run['run-link'],
@@ -250,8 +218,7 @@ function deriveAttributionGaps(model) {
       run: run.run,
       'run-title': runTitle(run, workflow),
       workflow: workflowName(workflow, run),
-      status:
-        text(run['run-conclusion']) || text(run['run-status']) || 'unknown',
+      status: text(run['run-conclusion']) || text(run['run-status']) || 'unknown',
       'control-transition': 'worker dispatch → attribution unavailable',
       'reason-code': 'missing-root-correlation',
       evidence: 'No retained root correlation ID',
@@ -272,16 +239,9 @@ function deriveDispatches(model) {
       if (!workflow) return []
       const packaged = Boolean(text(workflow.package))
       const role = text(workflow['workflow-role'])
-      const classification = dispatchTypeClassification.find(
-        (rule) =>
-          rule.packaged === packaged &&
-          (rule.role === role || rule.role === '*'),
-      )
+      const classification = dispatchTypeClassification.find((rule) => rule.packaged === packaged && (rule.role === role || rule.role === '*'))
       const conclusion = text(run['run-conclusion'])
-      const status =
-        conclusion && conclusion !== 'unknown'
-          ? conclusion
-          : text(run['run-status']) || 'unknown'
+      const status = conclusion && conclusion !== 'unknown' ? conclusion : text(run['run-status']) || 'unknown'
       const statusDetail = dispatchStatusDetail(run, status)
       const repository = text(run.repository) || 'Unknown'
       return [
@@ -289,20 +249,13 @@ function deriveDispatches(model) {
           'started-at': run['started-at'],
           'dispatch-type': classification?.label ?? 'Standalone workflow',
           package: text(workflow.package),
-          'package-name':
-            text(workflow['package-name']) ||
-            text(workflow.package) ||
-            'Not packaged',
+          'package-name': text(workflow['package-name']) || text(workflow.package) || 'Not packaged',
           'workflow-name': workflowName(workflow, run),
           'run-title': runTitle(run, workflow),
-          'runtime-repository': text(run.organization)
-            ? `${text(run.organization)}/${repository}`
-            : repository,
+          'runtime-repository': text(run.organization) ? `${text(run.organization)}/${repository}` : repository,
           status,
           'status-detail': statusDetail,
-          ...(text(run['resource-reset-at'])
-            ? { 'status-detail-at': run['resource-reset-at'] }
-            : {}),
+          ...(text(run['resource-reset-at']) ? { 'status-detail-at': run['resource-reset-at'] } : {}),
           organization: run.organization,
           repository: run.repository,
           workflow: run.workflow,
@@ -312,11 +265,7 @@ function deriveDispatches(model) {
         },
       ]
     })
-    .sort(
-      (left, right) =>
-        Date.parse(text(right['started-at'])) -
-        Date.parse(text(left['started-at'])),
-    )
+    .sort((left, right) => Date.parse(text(right['started-at'])) - Date.parse(text(left['started-at'])))
 }
 
 /**
@@ -357,9 +306,7 @@ function dispatchStatusDetail(run, status) {
  */
 function deriveDispatchActivationSummary(dispatches) {
   const total = dispatches.length
-  const skipped = dispatches.filter(
-    (dispatch) => text(dispatch.status) === 'skipped',
-  ).length
+  const skipped = dispatches.filter((dispatch) => text(dispatch.status) === 'skipped').length
   const activated = total - skipped
   return [
     {
@@ -378,9 +325,7 @@ function deriveDispatchActivationSummary(dispatches) {
  * @returns {Row[]}
  */
 function derivePackageDispatchState(model, sources) {
-  const usageAvailable =
-    Boolean(sources.usage) &&
-    sources.usage?.metadata?.availability !== 'unavailable'
+  const usageAvailable = Boolean(sources.usage) && sources.usage?.metadata?.availability !== 'unavailable'
   const summaries = new Map()
   const workflowPackages = new Map()
   const dispatchRuns = new Set()
@@ -406,13 +351,9 @@ function derivePackageDispatchState(model, sources) {
     }
   }
 
-  for (const run of model.runs.filter(
-    (candidate) => text(candidate.event) === 'workflow_dispatch',
-  )) {
+  for (const run of model.runs.filter((candidate) => text(candidate.event) === 'workflow_dispatch')) {
     const workflow = model.workflows.get(runKey(run))
-    const summary = summaries.get(
-      workflow ? workflowPackages.get(runKey(workflow)) : '',
-    )
+    const summary = summaries.get(workflow ? workflowPackages.get(runKey(workflow)) : '')
     if (!workflow || !summary) continue
     summary['dispatch-runs'] += 1
     dispatchRuns.add(runIdentity(run))
@@ -436,10 +377,7 @@ function derivePackageDispatchState(model, sources) {
       const aic = Number(observation.aic)
       if (Number.isFinite(aic) && aic >= 0) summary.aic += aic
       addText(summary.agents, observation.engine)
-      addText(
-        summary.models,
-        observation['resolved-model'] || observation['requested-model'],
-      )
+      addText(summary.models, observation['resolved-model'] || observation['requested-model'])
     }
   }
 
@@ -456,9 +394,7 @@ function derivePackageDispatchState(model, sources) {
       agent: joinValues(summary.agents),
       model: joinValues(summary.models),
     }))
-    .sort((left, right) =>
-      text(left['package-name']).localeCompare(text(right['package-name'])),
-    )
+    .sort((left, right) => text(left['package-name']).localeCompare(text(right['package-name'])))
 }
 
 /** @param {Row} row */
@@ -499,33 +435,21 @@ function formatWorkerDispatches(workers) {
 export function buildExecutionModel(sources) {
   const workflowRows = rowsFor(sources, 'workflows')
   const runs = rowsFor(sources, 'runs')
-  const workflows = new Map(
-    workflowRows.map((workflow) => [runKey(workflow), workflow]),
-  )
+  const workflows = new Map(workflowRows.map((workflow) => [runKey(workflow), workflow]))
   const runsByWorkflow = groupRuns(runs)
-  const rootRuns = runs.filter(
-    (run) =>
-      text(workflows.get(runKey(run))?.['workflow-role']) === 'orchestrator',
-  )
-  const workerRuns = runs.filter(
-    (run) => text(workflows.get(runKey(run))?.['workflow-role']) === 'worker',
-  )
+  const rootRuns = runs.filter((run) => text(workflows.get(runKey(run))?.['workflow-role']) === 'orchestrator')
+  const workerRuns = runs.filter((run) => text(workflows.get(runKey(run))?.['workflow-role']) === 'worker')
   const episodes = rootRuns
     .map((run) => {
       const workflow = workflows.get(runKey(run))
       return {
         run,
         workflow,
-        packageName:
-          text(workflow?.['package-name']) || workflowName(workflow, run),
+        packageName: text(workflow?.['package-name']) || workflowName(workflow, run),
         duration: durationBetween(run['started-at'], run['ended-at']),
       }
     })
-    .sort(
-      (left, right) =>
-        Date.parse(text(right.run['started-at'])) -
-        Date.parse(text(left.run['started-at'])),
-    )
+    .sort((left, right) => Date.parse(text(right.run['started-at'])) - Date.parse(text(left.run['started-at'])))
 
   return {
     workflows,
@@ -534,10 +458,7 @@ export function buildExecutionModel(sources) {
     workerRuns,
     attributedWorkerRuns: [],
     unattributedWorkerRuns: workerRuns,
-    nonRootRuns: runs.filter(
-      (run) =>
-        text(workflows.get(runKey(run))?.['workflow-role']) !== 'orchestrator',
-    ),
+    nonRootRuns: runs.filter((run) => text(workflows.get(runKey(run))?.['workflow-role']) !== 'orchestrator'),
     episodes,
     unattributedEpisodes: episodes,
   }
@@ -558,41 +479,27 @@ export function groupRuns(rows) {
 
 /** @param {Row} run @param {Row | undefined} workflow */
 export function runTitle(run, workflow) {
-  return (
-    text(run['run-title']) ||
-    `Run ${text(run.run) || workflowName(workflow, run)}`
-  )
+  return text(run['run-title']) || `Run ${text(run.run) || workflowName(workflow, run)}`
 }
 
 /** @param {Row | undefined} workflow @param {Row | undefined} run */
 export function workflowName(workflow, run) {
-  return (
-    text(workflow?.['workflow-name']) ||
-    text(run?.workflow) ||
-    'Unknown workflow'
-  )
+  return text(workflow?.['workflow-name']) || text(run?.workflow) || 'Unknown workflow'
 }
 
 /** @param {Row | undefined} workflow @param {Row} run */
 export function packageOrWorkflowHref(workflow, run) {
   const packageId = text(workflow?.package)
-  return packageId
-    ? `#page-package-insights?package=${encodeURIComponent(packageId)}`
-    : workflowHref(workflow, run)
+  return packageId ? `#page-package-insights?package=${encodeURIComponent(packageId)}` : workflowHref(workflow, run)
 }
 
 /** @param {Row | undefined} workflow @param {Row} run */
 export function workflowHref(workflow, run) {
   const identity = workflow ?? run
-  const repository =
-    text(identity['runtime-repository']) || text(identity.repository)
-  const qualifiedRepository = repository.includes('/')
-    ? repository
-    : `${text(identity.organization)}/${repository}`.replace(/^\/|\/$/g, '')
+  const repository = text(identity['runtime-repository']) || text(identity.repository)
+  const qualifiedRepository = repository.includes('/') ? repository : `${text(identity.organization)}/${repository}`.replace(/^\/|\/$/g, '')
   const workflowPath = text(identity.workflow)
-  return qualifiedRepository && workflowPath
-    ? `#page-workflow-runtime?workflow=${encodeURIComponent(`${qualifiedRepository}:${workflowPath}`)}`
-    : null
+  return qualifiedRepository && workflowPath ? `#page-workflow-runtime?workflow=${encodeURIComponent(`${qualifiedRepository}:${workflowPath}`)}` : null
 }
 
 /** @param {unknown} start @param {unknown} end */

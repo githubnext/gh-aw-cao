@@ -40,12 +40,9 @@ export function classifyUtilizationRatio(ratio) {
       return rule.status
     }
   }
-  const lastRule =
-    packageAicUtilizationThresholds[packageAicUtilizationThresholds.length - 1]
+  const lastRule = packageAicUtilizationThresholds[packageAicUtilizationThresholds.length - 1]
   if (!lastRule) {
-    throw new Error(
-      'package-aic-utilization-thresholds.json must define at least one rule.',
-    )
+    throw new Error('package-aic-utilization-thresholds.json must define at least one rule.')
   }
   // Reachable only if every rule (including the last) declares a numeric `max`, which is a
   // misconfiguration: the last rule is expected to be an unbounded fallback with no `max`.

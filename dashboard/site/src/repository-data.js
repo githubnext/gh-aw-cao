@@ -30,10 +30,7 @@ const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'timed-out'])
 export function deriveRepositorySources(sources) {
   const runsAvailable = sources.runs?.metadata?.availability !== 'unavailable'
   const summaries = summarizeRepositories(sources)
-  const repositoryWorkflows = buildRepositoryWorkflowRows(
-    sources.workflows?.rows ?? [],
-    sources.usage?.rows ?? [],
-  )
+  const repositoryWorkflows = buildRepositoryWorkflowRows(sources.workflows?.rows ?? [], sources.usage?.rows ?? [])
   const workflowMetadata = sources.workflows?.metadata ?? unavailableMetadata()
 
   return {
@@ -58,18 +55,9 @@ export function deriveRepositorySources(sources) {
           : 'Unavailable',
         aic: summary.aic,
         status: repositoryStatus(summary),
-        ...(summary.repositoryLink
-          ? { 'repository-link': summary.repositoryLink }
-          : {}),
+        ...(summary.repositoryLink ? { 'repository-link': summary.repositoryLink } : {}),
       })),
-      metadata: combinedMetadata(sources, [
-        'repositories',
-        'workflows',
-        'runs',
-        'outcomes',
-        'usage',
-        'operational-values',
-      ]),
+      metadata: combinedMetadata(sources, ['repositories', 'workflows', 'runs', 'outcomes', 'usage', 'operational-values']),
     },
     'repository-detail-summary': {
       source: 'repository-detail-summary',
@@ -104,27 +92,17 @@ function buildRepositoryWorkflowRows(workflows, usage) {
     .map((workflow) => ({
       repository: qualifiedRepository(workflow),
       workflow: String(workflow.workflow ?? ''),
-      'workflow-name': String(
-        workflow['workflow-name'] ?? workflow.workflow ?? '',
-      ),
-      'workflow-role': titleCase(
-        String(workflow['workflow-role'] ?? 'unknown'),
-      ),
+      'workflow-name': String(workflow['workflow-name'] ?? workflow.workflow ?? ''),
+      'workflow-role': titleCase(String(workflow['workflow-role'] ?? 'unknown')),
       'package-name': String(workflow['package-name'] ?? ''),
       'rollout-mode': String(workflow['rollout-mode'] ?? 'unknown'),
       'workflow-active': String(workflow['workflow-active'] ?? 'unknown'),
       'observed-at': workflow['observed-at'],
       ...(workflowAic.has(workflow) ? { aic: workflowAic.get(workflow) } : {}),
-      ...(workflow['workflow-link']
-        ? { 'workflow-link': workflow['workflow-link'] }
-        : {}),
+      ...(workflow['workflow-link'] ? { 'workflow-link': workflow['workflow-link'] } : {}),
     }))
     .filter((workflow) => workflow.repository && workflow.workflow)
-    .sort(
-      (left, right) =>
-        left.repository.localeCompare(right.repository) ||
-        left['workflow-name'].localeCompare(right['workflow-name']),
-    )
+    .sort((left, right) => left.repository.localeCompare(right.repository) || left['workflow-name'].localeCompare(right['workflow-name']))
 }
 
 /** @param {Array<Record<string, unknown>>} workflows */
@@ -137,16 +115,9 @@ function buildRepositoryDetailSummaryRows(workflows) {
   }
   return [...grouped].map(([repository, rows]) => {
     const latestUpdate = rows
-      .map((/** @type {Record<string, unknown>} */ row) =>
-        String(row['observed-at'] ?? ''),
-      )
-      .filter((/** @type {string} */ value) =>
-        Number.isFinite(Date.parse(value)),
-      )
-      .sort(
-        (/** @type {string} */ left, /** @type {string} */ right) =>
-          Date.parse(right) - Date.parse(left),
-      )[0]
+      .map((/** @type {Record<string, unknown>} */ row) => String(row['observed-at'] ?? ''))
+      .filter((/** @type {string} */ value) => Number.isFinite(Date.parse(value)))
+      .sort((/** @type {string} */ left, /** @type {string} */ right) => Date.parse(right) - Date.parse(left))[0]
     return {
       repository,
       workflows: rows.length,
@@ -165,12 +136,7 @@ function buildRepositoryWorkflowStatusRows(workflows) {
   const counts = new Map()
   for (const workflow of workflows) {
     const repository = String(workflow.repository)
-    const status =
-      workflow['workflow-active'] === 'true'
-        ? 'Active'
-        : workflow['workflow-active'] === 'false'
-          ? 'Disabled'
-          : 'Unknown'
+    const status = workflow['workflow-active'] === 'true' ? 'Active' : workflow['workflow-active'] === 'false' ? 'Disabled' : 'Unknown'
     const key = `${repository}\0${status}`
     counts.set(key, {
       repository,
@@ -189,18 +155,9 @@ function buildRepositoryWorkflowUsageRows(usage) {
       workflow: String(row.workflow ?? ''),
       invocation: String(row.invocation ?? ''),
       aic: Number(row.aic),
-      ...(row['workflow-link']
-        ? { 'workflow-link': row['workflow-link'] }
-        : {}),
+      ...(row['workflow-link'] ? { 'workflow-link': row['workflow-link'] } : {}),
     }))
-    .filter(
-      (row) =>
-        row.repository &&
-        row.workflow &&
-        row.invocation &&
-        Number.isFinite(row.aic) &&
-        row.aic >= 0,
-    )
+    .filter((row) => row.repository && row.workflow && row.invocation && Number.isFinite(row.aic) && row.aic >= 0)
 }
 
 /**
@@ -208,13 +165,9 @@ function buildRepositoryWorkflowUsageRows(usage) {
  * @returns {Array<Record<string, unknown>>}
  */
 function buildRepositorySummaryRows(sources) {
-  const repositories = [
-    ...new Set(
-      (sources.repositories?.rows ?? [])
-        .map(qualifiedRepository)
-        .filter(Boolean),
-    ),
-  ].sort((left, right) => left.localeCompare(right))
+  const repositories = [...new Set((sources.repositories?.rows ?? []).map(qualifiedRepository).filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right),
+  )
   const runs = sources.runs
   const usage = sources.usage
   const windowHours = coverageHours(runs?.metadata)
@@ -256,8 +209,7 @@ export function summarizeRepositories(sources) {
     if (!repository) return null
     const existing = summaries.get(repository)
     if (existing) {
-      if (!existing.repositoryLink && row['repository-link'])
-        existing.repositoryLink = row['repository-link']
+      if (!existing.repositoryLink && row['repository-link']) existing.repositoryLink = row['repository-link']
       return existing
     }
     const summary = {
@@ -270,9 +222,7 @@ export function summarizeRepositories(sources) {
       failed: 0,
       actionRequired: 0,
       aic: 0,
-      ...(row['repository-link']
-        ? { repositoryLink: row['repository-link'] }
-        : {}),
+      ...(row['repository-link'] ? { repositoryLink: row['repository-link'] } : {}),
     }
     summaries.set(repository, summary)
     return summary
@@ -291,13 +241,7 @@ export function summarizeRepositories(sources) {
   }
   for (const row of sources['operational-values']?.rows ?? []) {
     const summary = ensure(row)
-    if (
-      !summary ||
-      !Number.isFinite(row['operational-value']) ||
-      !row.workflow ||
-      !row['evaluator-digest']
-    )
-      continue
+    if (!summary || !Number.isFinite(row['operational-value']) || !row.workflow || !row['evaluator-digest']) continue
     summary.evaluatedWorkflowKeys.add(String(row.workflow))
   }
 
@@ -324,12 +268,7 @@ export function summarizeRepositories(sources) {
     if (summary && Number.isFinite(row.aic)) summary.aic += Number(row.aic)
   }
 
-  return [...summaries.values()].sort(
-    (left, right) =>
-      right.failed - left.failed ||
-      right.runs - left.runs ||
-      left.repository.localeCompare(right.repository),
-  )
+  return [...summaries.values()].sort((left, right) => right.failed - left.failed || right.runs - left.runs || left.repository.localeCompare(right.repository))
 }
 
 /** @param {RepositorySummary} summary */
@@ -338,8 +277,7 @@ function repositoryStatus(summary) {
   if (summary.actionRequired > 0) return 'Approval required'
   if (summary.runs > 0) return 'No failures observed'
   if (summary.disabled > 0) return 'Disabled workflows'
-  if (summary.reports > 0 || summary.evaluatedWorkflowKeys.size > 0)
-    return 'Outcomes observed'
+  if (summary.reports > 0 || summary.evaluatedWorkflowKeys.size > 0) return 'Outcomes observed'
   return 'No recent activity'
 }
 
@@ -356,8 +294,7 @@ function qualifiedRepository(row) {
 function coverageHours(metadata) {
   const start = Date.parse(metadata?.['coverage-start'] ?? '')
   const end = Date.parse(metadata?.['coverage-end'] ?? '')
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
-    return null
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
   const hours = (end - start) / 3_600_000
   return Number.isInteger(hours) ? hours : null
 }
@@ -381,17 +318,12 @@ function unavailableMetadata() {
  * @returns {import('./presenter.js').SourceMetadata}
  */
 function combinedMetadata(sources, sourceNames) {
-  const metadata = sourceNames
-    .map((name) => sources[name]?.metadata)
-    .filter((value) => value !== undefined)
+  const metadata = sourceNames.map((name) => sources[name]?.metadata).filter((value) => value !== undefined)
   /** @param {'as-of'|'retrieved-at'} field */
   const latest = (field) =>
     metadata
       .map((value) => value?.[field])
-      .filter(
-        (value) =>
-          typeof value === 'string' && Number.isFinite(Date.parse(value)),
-      )
+      .filter((value) => typeof value === 'string' && Number.isFinite(Date.parse(value)))
       .sort((left, right) => Date.parse(right) - Date.parse(left))[0]
   return {
     'source-id': 'repository-activity-derived',
@@ -400,14 +332,12 @@ function combinedMetadata(sources, sourceNames) {
     'retrieved-at': latest('retrieved-at') ?? new Date(0).toISOString(),
     completeness: metadata.some((value) => value?.completeness === 'partial')
       ? 'partial'
-      : metadata.length > 0 &&
-          metadata.every((value) => value?.completeness === 'complete')
+      : metadata.length > 0 && metadata.every((value) => value?.completeness === 'complete')
         ? 'complete'
         : 'unknown',
     freshness: metadata.some((value) => value?.freshness === 'stale')
       ? 'stale'
-      : metadata.length > 0 &&
-          metadata.every((value) => value?.freshness === 'fresh')
+      : metadata.length > 0 && metadata.every((value) => value?.freshness === 'fresh')
         ? 'fresh'
         : 'unknown',
     availability: sources.repositories?.metadata?.availability ?? 'unavailable',

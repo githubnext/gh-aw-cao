@@ -6,16 +6,9 @@ import { h } from '../dom.js'
 import { octicon } from '../octicons.js'
 import { formatNumber, formatPercent } from '../view-formatters.js'
 import { renderStatusBadge } from './badge.js'
-import {
-  renderChartLegend,
-  renderChartWidget,
-  renderPieLegend,
-} from './chart-elements.js'
+import { renderChartLegend, renderChartWidget, renderPieLegend } from './chart-elements.js'
 import { findLink, renderExternalLinkOrFallback } from './link-content.js'
-import {
-  isApprovalConclusion,
-  isFailureConclusion,
-} from './run-classification.js'
+import { isApprovalConclusion, isFailureConclusion } from './run-classification.js'
 import {
   coverageWindowHours,
   formatUtcDateTime,
@@ -53,12 +46,7 @@ export function renderWorkflowRuntimeBody(context, workflow) {
   const runs = matchingRows(context, 'runs', repository, workflowPath)
   const usage = matchingRows(context, 'usage', repository, workflowPath)
 
-  return h(
-    'div',
-    null,
-    renderRuntimeMetrics(context, workflow, runs, usage),
-    renderWorkflowValueReport(context, workflow),
-  )
+  return h('div', null, renderRuntimeMetrics(context, workflow, runs, usage), renderWorkflowValueReport(context, workflow))
 }
 
 /**
@@ -68,18 +56,9 @@ export function renderWorkflowRuntimeBody(context, workflow) {
 export function renderWorkflowValueReport(context, workflow) {
   const repository = qualifiedRepository(workflow)
   const workflowPath = text(workflow.workflow)
-  const workflowName =
-    text(workflow['workflow-name']) || workflowPath || 'Unknown workflow'
-  const observations = latestEvaluatorObservations(
-    matchingRows(context, 'operational-values', repository, workflowPath),
-  )
-  return renderValueReport(
-    workflowName,
-    repository,
-    workflowPath,
-    observations,
-    context.sources['operational-values']?.metadata,
-  )
+  const workflowName = text(workflow['workflow-name']) || workflowPath || 'Unknown workflow'
+  const observations = latestEvaluatorObservations(matchingRows(context, 'operational-values', repository, workflowPath))
+  return renderValueReport(workflowName, repository, workflowPath, observations, context.sources['operational-values']?.metadata)
 }
 
 /**
@@ -94,18 +73,9 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
   const healthAvailable = runMetadata?.availability === 'available'
   const usageAvailable = usageMetadata?.availability === 'available'
   const health = summarizeRunHealth(runs)
-  const usageTotal = usage.reduce(
-    (total, row) => total + finiteNumber(row.aic),
-    0,
-  )
-  const usageMeasured =
-    usage.length > 0 || usageMetadata?.completeness === 'complete'
-  const registration =
-    text(workflow['workflow-active']) === 'true'
-      ? 'active'
-      : text(workflow['workflow-active']) === 'false'
-        ? 'disabled'
-        : 'unknown'
+  const usageTotal = usage.reduce((total, row) => total + finiteNumber(row.aic), 0)
+  const usageMeasured = usage.length > 0 || usageMetadata?.completeness === 'complete'
+  const registration = text(workflow['workflow-active']) === 'true' ? 'active' : text(workflow['workflow-active']) === 'false' ? 'disabled' : 'unknown'
 
   return h(
     'section',
@@ -116,17 +86,8 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
     h(
       'dl',
       { className: 'workflow-runtime-metrics' },
-      renderRunHealthMetric(
-        health,
-        healthAvailable,
-        coverageLabel(runMetadata),
-        recentMetricLabel('Run health', runMetadata),
-      ),
-      renderVitalStat(
-        'Registration',
-        registration,
-        'Current GitHub Actions state',
-      ),
+      renderRunHealthMetric(health, healthAvailable, coverageLabel(runMetadata), recentMetricLabel('Run health', runMetadata)),
+      renderVitalStat('Registration', registration, 'Current GitHub Actions state'),
       renderVitalStat(
         recentMetricLabel('AI Credits', usageMetadata),
         usageAvailable && usageMeasured
@@ -152,13 +113,7 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
  */
 function renderRunHealthMetric(health, available, coverage, label) {
   if (!available) {
-    return h(
-      'div',
-      { className: 'workflow-run-health' },
-      h('dt', null, label),
-      h('dd', null, '—'),
-      h('p', null, coverage),
-    )
+    return h('div', { className: 'workflow-run-health' }, h('dt', null, label), h('dd', null, '—'), h('p', null, coverage))
   }
   const entries = [
     ['Successful', health.successful],
@@ -188,17 +143,9 @@ function renderRunHealthMetric(health, available, coverage, label) {
         },
         'runs',
       ),
-      h(
-        'span',
-        { className: 'workflow-health-total' },
-        h('strong', null, formatNumber(health.total)),
-        h('small', null, 'runs'),
-      ),
+      h('span', { className: 'workflow-health-total' }, h('strong', null, formatNumber(health.total)), h('small', null, 'runs')),
     ),
-    renderPieLegend(
-      /** @type {Array<[string, number]>} */ (entries),
-      health.total,
-    ),
+    renderPieLegend(/** @type {Array<[string, number]>} */ (entries), health.total),
     h('p', null, coverage),
   )
 }
@@ -215,24 +162,11 @@ function renderRunHealthMetric(health, available, coverage, label) {
  * @param {string} [tagline]
  * @returns {HTMLElement}
  */
-function renderValueReportHeader(
-  headingId,
-  workflowName,
-  repository,
-  workflowPath,
-  trailing,
-  tagline,
-) {
+function renderValueReportHeader(headingId, workflowName, repository, workflowPath, trailing, tagline) {
   return h(
     'header',
     null,
-    h(
-      'div',
-      null,
-      h('h2', { id: headingId }, workflowName),
-      h('p', null, `${repository} - ${workflowPath}`),
-      tagline ? h('p', null, tagline) : null,
-    ),
+    h('div', null, h('h2', { id: headingId }, workflowName), h('p', null, `${repository} - ${workflowPath}`), tagline ? h('p', null, tagline) : null),
     trailing,
   )
 }
@@ -244,13 +178,7 @@ function renderValueReportHeader(
  * @param {Array<Record<string, unknown>>} observations
  * @param {import('../presenter.js').SourceMetadata | undefined} metadata
  */
-function renderValueReport(
-  workflowName,
-  repository,
-  workflowPath,
-  observations,
-  metadata,
-) {
+function renderValueReport(workflowName, repository, workflowPath, observations, metadata) {
   const headingId = `workflow-${slugify(workflowRouteValue(repository, workflowPath))}-value-heading`
   if (observations.length === 0) {
     const unavailable = metadata?.availability === 'unavailable'
@@ -260,58 +188,24 @@ function renderValueReport(
         className: 'value-report value-report-empty',
         'aria-labelledby': headingId,
       },
-      renderValueReportHeader(
-        headingId,
-        workflowName,
-        repository,
-        workflowPath,
-        renderStatusBadge(unavailable ? 'Unavailable' : 'Not evaluated'),
-      ),
+      renderValueReportHeader(headingId, workflowName, repository, workflowPath, renderStatusBadge(unavailable ? 'Unavailable' : 'Not evaluated')),
       h(
         'div',
         { className: 'value-empty' },
         octicon('graph'),
-        h(
-          'h3',
-          null,
-          unavailable
-            ? 'Operational-value evidence unavailable'
-            : 'No workflow observations yet',
-        ),
+        h('h3', null, unavailable ? 'Operational-value evidence unavailable' : 'No workflow observations yet'),
         unavailable
-          ? h(
-              'p',
-              null,
-              'Operational-value collection was unavailable for this dashboard refresh.',
-            )
-          : h(
-              'p',
-              null,
-              'Operational value will appear after this workflow publishes a valid ',
-              h('code', null, 'grader_results.json'),
-              '.',
-            ),
+          ? h('p', null, 'Operational-value collection was unavailable for this dashboard refresh.')
+          : h('p', null, 'Operational value will appear after this workflow publishes a valid ', h('code', null, 'grader_results.json'), '.'),
       ),
-      h(
-        'div',
-        { className: 'value-details-unavailable' },
-        'Run evidence unavailable',
-      ),
+      h('div', { className: 'value-details-unavailable' }, 'Run evidence unavailable'),
     )
   }
 
   const comparable = comparableObservations(observations)
   const latest = comparable.at(-1) ?? observations.at(-1) ?? {}
-  const matured = comparable.filter(
-    (row) => text(row['maturity-status']) === 'matured',
-  )
-  const matureAverage =
-    matured.length > 0
-      ? matured.reduce(
-          (total, row) => total + finiteNumber(row['operational-value']),
-          0,
-        ) / matured.length
-      : null
+  const matured = comparable.filter((row) => text(row['maturity-status']) === 'matured')
+  const matureAverage = matured.length > 0 ? matured.reduce((total, row) => total + finiteNumber(row['operational-value']), 0) / matured.length : null
   return h(
     'section',
     { className: 'value-report', 'aria-labelledby': headingId },
@@ -320,12 +214,7 @@ function renderValueReport(
       workflowName,
       repository,
       workflowPath,
-      h(
-        'div',
-        { className: 'value-score' },
-        h('strong', null, formatPercent(latest['operational-value'])),
-        h('span', null, 'Latest observation'),
-      ),
+      h('div', { className: 'value-score' }, h('strong', null, formatPercent(latest['operational-value'])), h('span', null, 'Latest observation')),
       "Run-scoped attainment from the workflow's frozen operational-value evaluator.",
     ),
     h(
@@ -342,10 +231,7 @@ function renderValueReport(
         renderVitalStat('Latest', formatPercent(latest['operational-value'])),
         renderVitalStat('Mature average', formatPercent(matureAverage)),
         renderVitalStat('Opportunities', formatNumber(comparable.length)),
-        renderVitalStat(
-          'Evaluator',
-          renderDigest(latest['evaluator-digest']) ?? 'Unavailable',
-        ),
+        renderVitalStat('Evaluator', renderDigest(latest['evaluator-digest']) ?? 'Unavailable'),
       ),
     ),
     renderDisclosure(
@@ -357,14 +243,7 @@ function renderValueReport(
         renderTitledBodySection(
           '',
           'Workflow observations',
-          [
-            h(
-              'p',
-              null,
-              'Missing, failed, and null grader results are excluded rather than scored as zero.',
-            ),
-            renderObservationTable(comparable),
-          ],
+          [h('p', null, 'Missing, failed, and null grader results are excluded rather than scored as zero.'), renderObservationTable(comparable)],
           {
             headingTag: 'h3',
           },
@@ -380,13 +259,7 @@ function renderValueReport(
  * @param {{ className: string, headingId: string, heading: string, description: string, body: Node[] }} options
  * @returns {HTMLElement}
  */
-function renderValueHistoryPanel({
-  className,
-  headingId,
-  heading,
-  description,
-  body,
-}) {
+function renderValueHistoryPanel({ className, headingId, heading, description, body }) {
   return h(
     'section',
     {
@@ -402,8 +275,7 @@ function renderValueHistoryPanel({
 function renderValueHistory(observations) {
   const diagnostics = diagnosticSeries(observations)
   const weekly = weeklyAttainment(observations)
-  const outcomeSeries =
-    diagnostics.length > 0 ? diagnostics : primaryChangeSeries(weekly)
+  const outcomeSeries = diagnostics.length > 0 ? diagnostics : primaryChangeSeries(weekly)
   const sections = []
   if (outcomeSeries.length > 0) {
     sections.push(
@@ -426,12 +298,7 @@ function renderValueHistory(observations) {
               h(
                 'strong',
                 {
-                  className:
-                    series.latestChange > 0
-                      ? 'value-gain'
-                      : series.latestChange < 0
-                        ? 'value-loss'
-                        : '',
+                  className: series.latestChange > 0 ? 'value-gain' : series.latestChange < 0 ? 'value-loss' : '',
                 },
                 formatPointChange(series.latestChange),
               ),
@@ -459,12 +326,8 @@ function renderValueHistory(observations) {
         className: 'value-attainment',
         headingId: 'value-attainment-heading',
         heading: 'Weekly operational attainment',
-        description:
-          'Weekly opportunity-adjusted values and their 4-week rolling mean; separate from outcome diagnostics.',
-        body: [
-          renderChartWidget('line', primaryPoints, primarySeries),
-          renderChartLegend(primarySeries, 'line'),
-        ],
+        description: 'Weekly opportunity-adjusted values and their 4-week rolling mean; separate from outcome diagnostics.',
+        body: [renderChartWidget('line', primaryPoints, primarySeries), renderChartLegend(primarySeries, 'line')],
       }),
     )
   }
@@ -490,23 +353,11 @@ function primaryChangeSeries(weekly) {
 
 /** @param {Array<{ name: string, points: Array<{ weekStart: string, change: number }>, latestChange: number }>} series */
 function renderOutcomeChangeChart(series) {
-  const allWeeks = [
-    ...new Set(
-      series.flatMap((item) => item.points.map((point) => point.weekStart)),
-    ),
-  ].sort()
-  const maximumChange = Math.max(
-    0.1,
-    ...series.flatMap((item) =>
-      item.points.map((point) => Math.abs(point.change)),
-    ),
-  )
+  const allWeeks = [...new Set(series.flatMap((item) => item.points.map((point) => point.weekStart)))].sort()
+  const maximumChange = Math.max(0.1, ...series.flatMap((item) => item.points.map((point) => Math.abs(point.change))))
   const extent = Math.min(1, Math.ceil(maximumChange * 10) / 10)
   /** @param {string} weekStart */
-  const xFor = (weekStart) =>
-    allWeeks.length < 2
-      ? 54
-      : 10 + (allWeeks.indexOf(weekStart) / (allWeeks.length - 1)) * 88
+  const xFor = (weekStart) => (allWeeks.length < 2 ? 54 : 10 + (allWeeks.indexOf(weekStart) / (allWeeks.length - 1)) * 88)
   /** @param {number} change */
   const yFor = (change) => 21 - (change / extent) * 17
   const grid = [-extent, 0, extent]
@@ -566,9 +417,7 @@ function renderOutcomeChangeChart(series) {
         return [
           h('polyline', {
             className: `diagnostic-series ${className}`,
-            points: coordinates
-              .map((point) => `${point.x},${point.y}`)
-              .join(' '),
+            points: coordinates.map((point) => `${point.x},${point.y}`).join(' '),
             fill: 'none',
           }),
           ...coordinates.map((point) =>
@@ -583,22 +432,13 @@ function renderOutcomeChangeChart(series) {
                 role: 'img',
                 'aria-label': `${item.name}, ${formatWeek(point.weekStart)}: ${formatPointChange(point.change)}`,
               },
-              h(
-                'title',
-                null,
-                `${item.name}, ${formatWeek(point.weekStart)}: ${formatPointChange(point.change)}`,
-              ),
+              h('title', null, `${item.name}, ${formatWeek(point.weekStart)}: ${formatPointChange(point.change)}`),
             ),
           ),
         ]
       }),
     ),
-    h(
-      'div',
-      { className: 'chart-axis' },
-      h('span', null, formatWeek(allWeeks[0])),
-      h('span', null, formatWeek(allWeeks.at(-1))),
-    ),
+    h('div', { className: 'chart-axis' }, h('span', null, formatWeek(allWeeks[0])), h('span', null, formatWeek(allWeeks.at(-1)))),
   )
 }
 
@@ -607,18 +447,13 @@ function diagnosticSeries(observations) {
   /** @type {Map<string, Record<string, unknown>>} */
   const definitions = new Map()
   for (const row of observations) {
-    for (const definition of Array.isArray(row['diagnostic-definitions'])
-      ? row['diagnostic-definitions']
-      : []) {
-      if (definition && text(definition.id))
-        definitions.set(text(definition.id), definition)
+    for (const definition of Array.isArray(row['diagnostic-definitions']) ? row['diagnostic-definitions'] : []) {
+      if (definition && text(definition.id)) definitions.set(text(definition.id), definition)
     }
   }
   if (definitions.size === 0) {
     for (const row of observations) {
-      for (const id of Object.keys(
-        isRecord(row.diagnostics) ? row.diagnostics : {},
-      )) {
+      for (const id of Object.keys(isRecord(row.diagnostics) ? row.diagnostics : {})) {
         definitions.set(id, {
           id,
           name: humanizeIdentifier(id),
@@ -629,11 +464,7 @@ function diagnosticSeries(observations) {
     }
   }
   return [...definitions.values()].flatMap((definition) => {
-    const weekly = weeklyDiagnostic(
-      observations,
-      text(definition.id),
-      text(definition.aggregation),
-    )
+    const weekly = weeklyDiagnostic(observations, text(definition.id), text(definition.aggregation))
     if (weekly.length === 0) return []
     const first = weekly[0].value
     const direction = text(definition.direction) === 'lower_is_better' ? -1 : 1
@@ -659,19 +490,14 @@ function weeklyDiagnostic(observations, metricId, aggregation) {
     .flatMap(([weekStart, rows]) => {
       /** @type {Array<{ value: number, observedAt: number }>} */
       const values = rows.flatMap((row) => {
-        const value = isRecord(row.diagnostics)
-          ? normalizedValue(row.diagnostics[metricId])
-          : null
+        const value = isRecord(row.diagnostics) ? normalizedValue(row.diagnostics[metricId]) : null
         return value === null ? [] : [{ value, observedAt: rowTime(row) }]
       })
       if (values.length === 0) return []
       const value =
         aggregation === 'mean'
-          ? values.reduce((total, item) => total + item.value, 0) /
-            values.length
-          : values
-              .toSorted((left, right) => left.observedAt - right.observedAt)
-              .at(-1)?.value
+          ? values.reduce((total, item) => total + item.value, 0) / values.length
+          : values.toSorted((left, right) => left.observedAt - right.observedAt).at(-1)?.value
       return value == null ? [] : [{ weekStart, value }]
     })
 }
@@ -687,21 +513,15 @@ function weeklyAttainment(observations) {
         if (value === null) continue
         const key = text(row['operational-case']) || `run:${text(row.run)}`
         const existing = opportunities.get(key)
-        if (!existing || rowTime(row) >= rowTime(existing))
-          opportunities.set(key, row)
+        if (!existing || rowTime(row) >= rowTime(existing)) opportunities.set(key, row)
       }
-      const values = [...opportunities.values()].map(
-        (row) =>
-          /** @type {number} */ (normalizedValue(row['operational-value'])),
-      )
+      const values = [...opportunities.values()].map((row) => /** @type {number} */ (normalizedValue(row['operational-value'])))
       return values.length === 0
         ? []
         : [
             {
               weekStart,
-              value:
-                values.reduce((total, value) => total + value, 0) /
-                values.length,
+              value: values.reduce((total, value) => total + value, 0) / values.length,
             },
           ]
     })
@@ -712,9 +532,7 @@ function groupObservationsByWeek(observations) {
   /** @type {Map<string, Array<Record<string, unknown>>>} */
   const groups = new Map()
   for (const row of observations) {
-    const weekStart = utcWeekStart(
-      row['requested-evidence-at'] ?? row['observed-at'],
-    )
+    const weekStart = utcWeekStart(row['requested-evidence-at'] ?? row['observed-at'])
     if (!weekStart) continue
     const rows = groups.get(weekStart) ?? []
     rows.push(row)
@@ -734,9 +552,7 @@ function utcWeekStart(value) {
 
 /** @param {Array<{ value: number }>} weekly @param {number} index */
 function rollingMean(weekly, index) {
-  const values = weekly
-    .slice(Math.max(0, index - 3), index + 1)
-    .map((week) => week.value)
+  const values = weekly.slice(Math.max(0, index - 3), index + 1).map((week) => week.value)
   return values.reduce((total, value) => total + value, 0) / values.length
 }
 
@@ -744,9 +560,7 @@ function rollingMean(weekly, index) {
 function normalizedValue(value) {
   if (value === null || value === undefined || value === '') return null
   const numeric = Number(value)
-  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 1
-    ? numeric
-    : null
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 1 ? numeric : null
 }
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -790,11 +604,7 @@ function renderObservationTable(observations) {
     h(
       'table',
       null,
-      h(
-        'thead',
-        null,
-        renderTableHeadRow(['Observed', 'Opportunity', 'Value', 'Evidence']),
-      ),
+      h('thead', null, renderTableHeadRow(['Observed', 'Opportunity', 'Value', 'Evidence'])),
       h(
         'tbody',
         null,
@@ -805,35 +615,14 @@ function renderObservationTable(observations) {
           return h(
             'tr',
             null,
-            h(
-              'th',
-              { scope: 'row' },
-              runLink
-                ? h(
-                    'a',
-                    { href: runLink.href, 'aria-label': runLink.label },
-                    observed,
-                  )
-                : observed,
-            ),
+            h('th', { scope: 'row' }, runLink ? h('a', { href: runLink.href, 'aria-label': runLink.label }, observed) : observed),
             h('td', null, text(row['operational-case']) || 'unknown'),
             h('td', null, formatPercent(row['operational-value'])),
             h(
               'td',
               null,
-              renderStatusBadge(
-                text(row['maturity-status']) === 'matured'
-                  ? 'Mature'
-                  : 'As of run',
-              ),
-              evidenceLink
-                ? h(
-                    'span',
-                    null,
-                    ' ',
-                    renderExternalLinkOrFallback(evidenceLink),
-                  )
-                : null,
+              renderStatusBadge(text(row['maturity-status']) === 'matured' ? 'Mature' : 'As of run'),
+              evidenceLink ? h('span', null, ' ', renderExternalLinkOrFallback(evidenceLink)) : null,
             ),
           )
         }),
@@ -844,42 +633,28 @@ function renderObservationTable(observations) {
 
 /** @param {Array<Record<string, unknown>>} observations */
 function comparableObservations(observations) {
-  const valid = observations.filter(
-    (row) =>
-      normalizedValue(row['operational-value']) !== null &&
-      text(row['operational-case']),
-  )
+  const valid = observations.filter((row) => normalizedValue(row['operational-value']) !== null && text(row['operational-case']))
 
   const opportunities = new Map()
   for (const row of valid) {
     const key = `${qualifiedRepository(row)}:${text(row['operational-case'])}`
     const existing = opportunities.get(key)
-    if (!existing || rowTime(row) >= rowTime(existing))
-      opportunities.set(key, row)
+    if (!existing || rowTime(row) >= rowTime(existing)) opportunities.set(key, row)
   }
-  return [...opportunities.values()].sort(
-    (left, right) => rowTime(left) - rowTime(right),
-  )
+  return [...opportunities.values()].sort((left, right) => rowTime(left) - rowTime(right))
 }
 
 /** @param {Array<Record<string, unknown>>} observations */
 function latestEvaluatorObservations(observations) {
   const valid = observations.filter((row) => text(row['evaluator-digest']))
-  const latestEvaluator = valid.toSorted(
-    (left, right) =>
-      evidenceAssignmentTime(right) - evidenceAssignmentTime(left),
-  )[0]?.['evaluator-digest']
+  const latestEvaluator = valid.toSorted((left, right) => evidenceAssignmentTime(right) - evidenceAssignmentTime(left))[0]?.['evaluator-digest']
   if (!latestEvaluator) return []
-  return valid
-    .filter((candidate) => candidate['evaluator-digest'] === latestEvaluator)
-    .sort((left, right) => rowTime(left) - rowTime(right))
+  return valid.filter((candidate) => candidate['evaluator-digest'] === latestEvaluator).sort((left, right) => rowTime(left) - rowTime(right))
 }
 
 /** @param {Record<string, unknown>} row */
 function evidenceAssignmentTime(row) {
-  const value = Date.parse(
-    text(row['requested-evidence-at'] ?? row['observed-at']),
-  )
+  const value = Date.parse(text(row['requested-evidence-at'] ?? row['observed-at']))
   return Number.isFinite(value) ? value : 0
 }
 
@@ -907,15 +682,9 @@ function summarizeRunHealth(runs) {
 
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function coverageLabel(metadata) {
-  if (metadata?.availability !== 'available')
-    return 'Actions run data unavailable'
+  if (metadata?.availability !== 'available') return 'Actions run data unavailable'
   const hours = coverageWindowHours(metadata)
-  const completeness =
-    metadata.completeness === 'complete'
-      ? 'Complete'
-      : metadata.completeness === 'partial'
-        ? 'Partial'
-        : 'Unknown'
+  const completeness = metadata.completeness === 'complete' ? 'Complete' : metadata.completeness === 'partial' ? 'Partial' : 'Unknown'
   return `${completeness}${hours ? ` ${hours}-hour` : ''} Actions run window`
 }
 
@@ -932,25 +701,18 @@ function recentMetricLabel(label, metadata) {
  * @param {string} workflow
  */
 function matchingRows(context, sourceName, repository, workflow) {
-  return rowsFor(context.sources, sourceName).filter((row) =>
-    matchesWorkflow(row, repository, workflow),
-  )
+  return rowsFor(context.sources, sourceName).filter((row) => matchesWorkflow(row, repository, workflow))
 }
 
 /** @param {Record<string, unknown>} row @param {string} repository @param {string} workflow */
 function matchesWorkflow(row, repository, workflow) {
-  return (
-    qualifiedRepository(row).toLowerCase() === repository.toLowerCase() &&
-    text(row.workflow) === workflow
-  )
+  return qualifiedRepository(row).toLowerCase() === repository.toLowerCase() && text(row.workflow) === workflow
 }
 
 /** @param {Record<string, unknown>} row */
 function qualifiedRepository(row) {
   const repository = text(row.repository)
-  return repository.includes('/')
-    ? repository
-    : `${text(row.organization)}/${repository}`.replace(/^\/|\/$/g, '')
+  return repository.includes('/') ? repository : `${text(row.organization)}/${repository}`.replace(/^\/|\/$/g, '')
 }
 
 /** @param {Record<string, unknown>} row */

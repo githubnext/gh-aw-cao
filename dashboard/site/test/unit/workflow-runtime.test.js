@@ -35,8 +35,7 @@ const workflow = {
     relation: 'workflow',
     href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
     label: 'View Multi-Device Docs Tester',
-    'dashboard-href':
-      '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
+    'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
     'dashboard-label': 'View Multi-Device Docs Tester workflow dashboard',
   },
 }
@@ -131,10 +130,7 @@ function context(overrides = {}) {
 }
 
 /** @param {HTMLElement} rendered @param {string} [value] */
-function selectWorkflow(
-  rendered,
-  value = 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md',
-) {
+function selectWorkflow(rendered, value = 'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md') {
   rendered.dispatchEvent(
     new CustomEvent('dashboard-route-change', {
       detail: { parameter: 'workflow', value },
@@ -171,84 +167,37 @@ describe('renderWorkflowRuntime', () => {
     const rendered = renderWorkflowRuntime(context())
     selectWorkflow(rendered)
 
-    expect(rendered.dataset.workflow).toBe(
-      'githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md',
-    )
-    expect(rendered.querySelector('.repository-tabs')?.textContent).toBe(
-      'InsightsReportsRuns',
-    )
-    expect(
-      rendered.querySelector('.repository-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Insights')
-    expect(
-      rendered
-        .querySelector('.repository-tabs a:last-child')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.dataset.workflow).toBe('githubnext/gh-aw-cao:.github/workflows/multi-device-docs-tester.md')
+    expect(rendered.querySelector('.repository-tabs')?.textContent).toBe('InsightsReportsRuns')
+    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights')
+    expect(rendered.querySelector('.repository-tabs a:last-child')?.getAttribute('href')).toBe(
       '#page-workflow-runs?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
     )
-    expect(
-      rendered
-        .querySelector('.repository-tabs a:nth-child(2)')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.repository-tabs a:nth-child(2)')?.getAttribute('href')).toBe(
       '#page-workflow-detail?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
     )
-    expect(
-      [...rendered.querySelectorAll('.workflow-badges .workflow-badge')].map(
-        (badge) => badge.textContent,
-      ),
-    ).toEqual([
+    expect([...rendered.querySelectorAll('.workflow-badges .workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Standalone',
       'Package · Central Agentic Ops',
       'Package · Testing',
     ])
-    expect(
-      [...rendered.querySelectorAll('.workflow-badges a')].map((badge) =>
-        badge.getAttribute('href'),
-      ),
-    ).toEqual([
+    expect([...rendered.querySelectorAll('.workflow-badges a')].map((badge) => badge.getAttribute('href'))).toEqual([
       '#page-package-insights?package=central-agentic-ops',
       '#page-package-insights?package=testing',
     ])
-    expect(
-      rendered.querySelector('.workflow-identity > a')?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('href')).toBe(
       'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md',
     )
-    expect(rendered.querySelector('.workflow-identity > a')?.textContent).toBe(
-      'View authored workflow',
-    )
-    expect(
-      rendered.querySelector('.workflow-identity > a')?.getAttribute('target'),
-    ).toBe('_blank')
-    expect(
-      rendered
-        .querySelector('.workflow-health-chart svg')
-        ?.getAttribute('aria-label'),
-    ).toContain('Successful 1, Failed 1')
-    expect(rendered.querySelector('.workflow-run-health dt')?.textContent).toBe(
-      'Run health (last 24h)',
-    )
-    expect(
-      rendered.querySelector('.workflow-runtime-metrics')?.textContent,
-    ).toContain('Complete 24-hour Actions run window')
-    expect(
-      rendered.querySelector('.workflow-runtime-metrics')?.textContent,
-    ).toContain('Registrationactive')
-    expect(
-      rendered.querySelector('.workflow-runtime-metrics')?.textContent,
-    ).toContain('AI Credits (last 24h)50.0 AIC')
-    expect(
-      rendered.querySelector('.workflow-runtime-metrics')?.textContent,
-    ).toContain('2 runs with AIC telemetry; Partial 24-hour Actions run window')
-    expect(
-      rendered.querySelector('.value-report-empty')?.textContent,
-    ).toContain('No workflow observations yet')
-    expect(
-      rendered.querySelector('.value-report-empty code')?.textContent,
-    ).toBe('grader_results.json')
+    expect(rendered.querySelector('.workflow-identity > a')?.textContent).toBe('View authored workflow')
+    expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('target')).toBe('_blank')
+    expect(rendered.querySelector('.workflow-health-chart svg')?.getAttribute('aria-label')).toContain('Successful 1, Failed 1')
+    expect(rendered.querySelector('.workflow-run-health dt')?.textContent).toBe('Run health (last 24h)')
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('Complete 24-hour Actions run window')
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('Registrationactive')
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('AI Credits (last 24h)50.0 AIC')
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('2 runs with AIC telemetry; Partial 24-hour Actions run window')
+    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('No workflow observations yet')
+    expect(rendered.querySelector('.value-report-empty code')?.textContent).toBe('grader_results.json')
   })
 
   it('does not present missing partial AI Credit coverage as measured zero usage', () => {
@@ -264,15 +213,11 @@ describe('renderWorkflowRuntime', () => {
     const rendered = renderWorkflowRuntime(context(sources))
     selectWorkflow(rendered)
 
-    const usageMetric = [
-      ...rendered.querySelectorAll('.workflow-runtime-metrics > div'),
-    ].find((metric) =>
+    const usageMetric = [...rendered.querySelectorAll('.workflow-runtime-metrics > div')].find((metric) =>
       metric.querySelector('dt')?.textContent?.startsWith('AI Credits'),
     )
     expect(usageMetric?.querySelector('dd')?.textContent).toBe('—')
-    expect(usageMetric?.querySelector('p')?.textContent).toBe(
-      '0 runs with AIC telemetry; Partial 24-hour Actions run window',
-    )
+    expect(usageMetric?.querySelector('p')?.textContent).toBe('0 runs with AIC telemetry; Partial 24-hour Actions run window')
   })
 
   it('renders retained operational-value observations and evidence', () => {
@@ -371,53 +316,21 @@ describe('renderWorkflowRuntime', () => {
 
     expect(rendered.querySelector('.value-report-empty')).toBeNull()
     expect(rendered.querySelector('.value-score')?.textContent).toContain('80%')
-    expect(rendered.querySelector('.value-chart')?.textContent).toContain(
-      'Mature average80%',
-    )
-    expect(rendered.querySelector('.value-chart')?.textContent).toContain(
-      'Opportunities1',
-    )
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
-      'Outcome change from first observation',
-    )
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
-      'Repository health+25.0 pts',
-    )
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
-      'Oversized file share+30.0 pts',
-    )
-    expect(
-      rendered.querySelector('.value-outcomes')?.textContent,
-    ).not.toContain('CurrentLines')
-    expect(
-      rendered.querySelector(
-        '.value-diagnostic-legend i.chart-series-1[aria-hidden="true"]',
-      ),
-    ).not.toBeNull()
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain(
-      'Weekly operational attainment',
-    )
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain(
-      '4-week rolling mean',
-    )
-    expect(
-      rendered.querySelector('.value-attainment .chart-axis')?.textContent,
-    ).toBe('Aug 24Aug 31')
-    expect(
-      rendered.querySelector('.value-attainment .primary-weekly'),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector('.value-attainment .primary-rolling'),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector('.value-details tbody')?.textContent,
-    ).toContain('docs-run-1')
+    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Mature average80%')
+    expect(rendered.querySelector('.value-chart')?.textContent).toContain('Opportunities1')
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation')
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Repository health+25.0 pts')
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Oversized file share+30.0 pts')
+    expect(rendered.querySelector('.value-outcomes')?.textContent).not.toContain('CurrentLines')
+    expect(rendered.querySelector('.value-diagnostic-legend i.chart-series-1[aria-hidden="true"]')).not.toBeNull()
+    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly operational attainment')
+    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('4-week rolling mean')
+    expect(rendered.querySelector('.value-attainment .chart-axis')?.textContent).toBe('Aug 24Aug 31')
+    expect(rendered.querySelector('.value-attainment .primary-weekly')).not.toBeNull()
+    expect(rendered.querySelector('.value-attainment .primary-rolling')).not.toBeNull()
+    expect(rendered.querySelector('.value-details tbody')?.textContent).toContain('docs-run-1')
     expect(rendered.querySelectorAll('.value-details tbody tr')).toHaveLength(1)
-    expect(
-      [...rendered.querySelectorAll('.value-details tbody a')].map((link) =>
-        link.getAttribute('href'),
-      ),
-    ).toEqual([
+    expect([...rendered.querySelectorAll('.value-details tbody a')].map((link) => link.getAttribute('href'))).toEqual([
       'https://github.com/githubnext/gh-aw-cao/actions/runs/2',
       'https://github.com/githubnext/gh-aw-cao/issues/1',
     ])
@@ -436,15 +349,9 @@ describe('renderWorkflowRuntime', () => {
     const rendered = renderWorkflowRuntime(context(sources))
     selectWorkflow(rendered)
 
-    expect(
-      rendered.querySelector('.value-report-empty')?.textContent,
-    ).toContain('Unavailable')
-    expect(
-      rendered.querySelector('.value-report-empty')?.textContent,
-    ).toContain('Operational-value evidence unavailable')
-    expect(
-      rendered.querySelector('.value-report-empty')?.textContent,
-    ).not.toContain('No workflow observations yet')
+    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Unavailable')
+    expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('Operational-value evidence unavailable')
+    expect(rendered.querySelector('.value-report-empty')?.textContent).not.toContain('No workflow observations yet')
   })
 
   it('reallocates page chrome and fails closed for invalid or missing routes', () => {
@@ -459,20 +366,14 @@ describe('renderWorkflowRuntime', () => {
     selectWorkflow(rendered)
     expect(detail).toEqual({
       title: 'Multi-Device Docs Tester',
-      description:
-        'Run health, AI Credit usage, and operational value for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
+      description: 'Run health, AI Credit usage, and operational value for .github/workflows/multi-device-docs-tester.md in githubnext/gh-aw-cao.',
       mode: 'review',
       navigationPage: 'packages',
     })
 
     selectWorkflow(rendered, '<invalid>')
-    expect(rendered.textContent).toBe(
-      'Select a workflow to inspect its runtime.',
-    )
-    selectWorkflow(
-      rendered,
-      'githubnext/gh-aw-cao:.github/workflows/missing.md',
-    )
+    expect(rendered.textContent).toBe('Select a workflow to inspect its runtime.')
+    selectWorkflow(rendered, 'githubnext/gh-aw-cao:.github/workflows/missing.md')
     expect(rendered.textContent).toBe('Workflow not found.')
   })
 
@@ -484,10 +385,7 @@ describe('renderWorkflowRuntime', () => {
     })
     selectWorkflow(rendered)
 
-    expect(
-      rendered.querySelector('.repository-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Insights')
+    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights')
     expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull()
   })
 
@@ -499,15 +397,8 @@ describe('renderWorkflowRuntime', () => {
     })
     selectWorkflow(rendered)
 
-    expect(
-      rendered.querySelector('.repository-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Insights')
-    expect(
-      rendered
-        .querySelector('.repository-tabs [aria-current="page"]')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.textContent).toBe('Insights')
+    expect(rendered.querySelector('.repository-tabs [aria-current="page"]')?.getAttribute('href')).toBe(
       '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fmulti-device-docs-tester.md',
     )
     expect(rendered.querySelector('.workflow-runtime-metrics')).not.toBeNull()

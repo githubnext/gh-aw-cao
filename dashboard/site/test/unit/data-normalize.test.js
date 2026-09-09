@@ -11,13 +11,7 @@ const generation = '2026-09-09T05:00:00.000Z'
  * @param {string} [source]
  * @returns {import('../../src/data/model/schema.js').CanonicalObservation}
  */
-function observation(
-  kind,
-  sourceId,
-  observedAt,
-  data,
-  source = 'dashboard-source',
-) {
+function observation(kind, sourceId, observedAt, data, source = 'dashboard-source') {
   return { kind, source, sourceId, observedAt, data }
 }
 
@@ -63,10 +57,7 @@ describe('canonical normalization', () => {
 
     const batch = normalize([first, first, rerun], { generation })
 
-    expect(batch.runs.map((run) => run.id)).toEqual([
-      'github:run:456:attempt:1',
-      'github:run:456:attempt:2',
-    ])
+    expect(batch.runs.map((run) => run.id)).toEqual(['github:run:456:attempt:1', 'github:run:456:attempt:2'])
   })
 
   it('orders heterogeneous session events independently of ingestion order', () => {

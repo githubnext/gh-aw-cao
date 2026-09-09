@@ -19,57 +19,17 @@ export const LANGUAGE_VERSION = '0.1.0'
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 
 export const ROOT_KEYS = ['language-version', 'dashboard']
-export const DASHBOARD_KEYS = [
-  'id',
-  'title',
-  'description',
-  'defaults',
-  'units',
-  'pages',
-  'github-url-base',
-  'repository',
-  'navigation',
-  'horizon',
-  'callouts',
-]
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts']
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip']
-export const SITE_CALLOUT_KEYS = [
-  'id',
-  'title',
-  'description',
-  'icon',
-  'navigation-page',
-  'visible-when',
-]
+export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when']
 export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals']
 export const TOOLTIP_KEYS = ['label', 'description', 'icon']
 export const DEFAULTS_KEYS = ['scope', 'time', 'filters']
 export const UNIT_DEFINITION_KEYS = ['name', 'symbol', 'significant', 'format']
 export const UNIT_FORMAT_VALUES = ['duration']
 export const NAVIGATION_SECTION_KEYS = ['label', 'pages', 'experimental']
-export const BUILT_IN_PAGE_KEYS = [
-  'id',
-  'kind',
-  'page',
-  'title',
-  'navigation-label',
-  'description',
-  'icon',
-  'class-name',
-  'definition',
-]
-export const CUSTOM_PAGE_KEYS = [
-  'id',
-  'kind',
-  'title',
-  'navigation-label',
-  'description',
-  'icon',
-  'class-name',
-  'route',
-  'views',
-  'sections',
-]
+export const BUILT_IN_PAGE_KEYS = ['id', 'kind', 'page', 'title', 'navigation-label', 'description', 'icon', 'class-name', 'definition']
+export const CUSTOM_PAGE_KEYS = ['id', 'kind', 'title', 'navigation-label', 'description', 'icon', 'class-name', 'route', 'views', 'sections']
 export const PAGE_ROUTE_KEYS = ['hash-query-parameter', 'navigation-page']
 
 export const VIEW_KEYS = [
@@ -95,27 +55,11 @@ export const VIEW_KEYS = [
   'title-link',
   'encoding',
 ]
-export const VIEW_DATA_KEYS = [
-  'source',
-  'sources',
-  'scope',
-  'time',
-  'filters',
-  'route-field',
-  'limit',
-  'order-by',
-  'source-metadata',
-]
+export const VIEW_DATA_KEYS = ['source', 'sources', 'scope', 'time', 'filters', 'route-field', 'limit', 'order-by', 'source-metadata']
 export const VIEW_ELEMENT_CONFIG_KEYS = ['body', 'sections']
 export const VIEW_TITLE_LINK_KEYS = ['href-field', 'identifier-field']
 export const CALLOUT_KEYS = ['label', 'icon']
-export const VIEW_MARK_VALUES = [
-  'metric',
-  'table',
-  'chart',
-  'element',
-  'callout',
-]
+export const VIEW_MARK_VALUES = ['metric', 'table', 'chart', 'element', 'callout']
 export const VIEW_ELEMENT_VALUES = [
   'domain-attention',
   'package-status-grid',
@@ -147,16 +91,7 @@ export const VIEW_ELEMENT_VALUES = [
   'insights-overview',
   'home-attention-summary',
 ]
-export const VIEW_CHART_VALUES = [
-  'bar',
-  'dot',
-  'heatmap',
-  'histogram',
-  'line',
-  'pie',
-  'scatter',
-  'swimlane',
-]
+export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane']
 export const VIEW_LAYOUT_VALUES = ['full', 'full-view', 'half', 'third']
 export const VIEW_DISCLOSURE_VALUES = ['essential', 'supplemental']
 export const VIEW_CONTROL_VALUES = ['interactive', 'static']
@@ -175,81 +110,18 @@ export const GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS = new Set([
   'evidence',
   'insights',
 ])
-export const VIEW_ENCODING_KEYS = [
-  'value',
-  'columns',
-  'x',
-  'y',
-  'color',
-  'reference',
-  'href',
-  'actions',
-]
-export const TABLE_ACTION_KEYS = [
-  'intent',
-  'presentation',
-  'icon',
-  'label',
-  'context',
-  'when',
-]
+export const VIEW_ENCODING_KEYS = ['value', 'columns', 'x', 'y', 'color', 'reference', 'href', 'actions']
+export const TABLE_ACTION_KEYS = ['intent', 'presentation', 'icon', 'label', 'context', 'when']
 export const TABLE_ACTION_PRESENTATION_VALUES = ['copy-prompt']
 export const TABLE_ACTION_WHEN_KEYS = ['field', 'equals']
 export const TREE_TABLE_KEYS = ['id-field', 'parent-field']
-export const FIELD_DEFINITION_KEYS = [
-  'field',
-  'type',
-  'aggregate',
-  'time-unit',
-  'title',
-  'as',
-  'display',
-  'filter',
-  'format',
-  'unit',
-]
-export const FIELD_TYPE_VALUES = [
-  'nominal',
-  'ordinal',
-  'quantitative',
-  'temporal',
-]
-export const FIELD_DISPLAY_VALUES = [
-  'text',
-  'status',
-  'grader-status',
-  'mode',
-  'active-state',
-  'label',
-  'digest',
-  'outcome-link',
-  'run-link',
-  'evidence-link',
-]
-export const FIELD_FORMAT_VALUES = [
-  'workflow-relative-path',
-  'workflow-run-url',
-]
-export const AGGREGATE_VALUES = [
-  'count',
-  'distinct-count',
-  'sum',
-  'mean',
-  'min',
-  'max',
-  'none',
-]
+export const FIELD_DEFINITION_KEYS = ['field', 'type', 'aggregate', 'time-unit', 'title', 'as', 'display', 'filter', 'format', 'unit']
+export const FIELD_TYPE_VALUES = ['nominal', 'ordinal', 'quantitative', 'temporal']
+export const FIELD_DISPLAY_VALUES = ['text', 'status', 'grader-status', 'mode', 'active-state', 'label', 'digest', 'outcome-link', 'run-link', 'evidence-link']
+export const FIELD_FORMAT_VALUES = ['workflow-relative-path', 'workflow-run-url']
+export const AGGREGATE_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max', 'none']
 export const TIME_UNIT_VALUES = ['hour', 'day', 'week', 'month']
-export const LINK_RELATION_VALUES = [
-  'organization',
-  'repository',
-  'workflow',
-  'run',
-  'issue',
-  'pull-request',
-  'evidence',
-  'external',
-]
+export const LINK_RELATION_VALUES = ['organization', 'repository', 'workflow', 'run', 'issue', 'pull-request', 'evidence', 'external']
 export const LINK_OBJECT_KEYS = ['relation', 'href', 'label']
 export const RELATION_LINK_FIELD_RELATIONS = {
   'organization-link': 'organization',
@@ -355,38 +227,13 @@ export const BUILT_IN_PAGE_VALUES = [
 
 export const BUILT_IN_PAGE_DEFINITION_KEYS = ['views', 'sections', 'data-state']
 
-export const BUILT_IN_PAGE_DATA_STATE_KEYS = [
-  'availability',
-  'completeness',
-  'freshness',
-]
-export const PAGE_SECTION_KEYS = [
-  'id',
-  'title',
-  'description',
-  'layout',
-  'views',
-  'count-source',
-  'count-label',
-]
+export const BUILT_IN_PAGE_DATA_STATE_KEYS = ['availability', 'completeness', 'freshness']
+export const PAGE_SECTION_KEYS = ['id', 'title', 'description', 'layout', 'views', 'count-source', 'count-label']
 export const PAGE_SECTION_LAYOUT_VALUES = ['full', 'wide', 'narrow']
 
 export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
-  overview: [
-    'repositories',
-    'workflows',
-    'runs',
-    'usage',
-    'findings',
-    'operational-values',
-  ],
-  organizations: [
-    'organizations',
-    'repositories',
-    'workflows',
-    'runs',
-    'usage',
-  ],
+  overview: ['repositories', 'workflows', 'runs', 'usage', 'findings', 'operational-values'],
+  organizations: ['organizations', 'repositories', 'workflows', 'runs', 'usage'],
   repositories: ['repository-activity'],
   packages: ['package-inventory'],
   workflows: ['workflow-inventory'],
@@ -395,11 +242,7 @@ export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
   graders: ['graders', 'grader-observations'],
   evals: ['evals', 'eval-observations'],
   usage: ['usage'],
-  'engines-models': [
-    'model-usage-summary',
-    'engine-usage-summary',
-    'run-aggregate-summary',
-  ],
+  'engines-models': ['model-usage-summary', 'engine-usage-summary', 'run-aggregate-summary'],
   'operational-value': ['operational-values'],
   findings: ['findings'],
 }
@@ -411,11 +254,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     runs: ['run-status', 'run-conclusion', 'repository', 'workflow'],
     usage: ['aic'],
     findings: ['observed-at', 'issue-link', 'pull-request-link', 'run-link'],
-    'operational-values': [
-      'operational-value',
-      'operational-value-definition',
-      'observed-at',
-    ],
+    'operational-values': ['operational-value', 'operational-value-definition', 'observed-at'],
   },
   organizations: {
     organizations: ['organization'],
@@ -425,40 +264,13 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     usage: ['aic'],
   },
   repositories: {
-    'repository-activity': [
-      'repository',
-      'workflows',
-      'reports',
-      'evaluated-workflows',
-      'runs',
-      'failure-summary',
-      'aic',
-      'status',
-    ],
+    'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status'],
   },
   packages: {
-    'package-inventory': [
-      'package-name',
-      'workflows',
-      'repositories',
-      'roles',
-      'modes',
-      'registration',
-      'runs',
-      'aic',
-    ],
+    'package-inventory': ['package-name', 'workflows', 'repositories', 'roles', 'modes', 'registration', 'runs', 'aic'],
   },
   workflows: {
-    'workflow-inventory': [
-      'package-name',
-      'repository',
-      'workflow',
-      'workflow-role',
-      'rollout-mode',
-      'workflow-active',
-      'aic',
-      'runs',
-    ],
+    'workflow-inventory': ['package-name', 'repository', 'workflow', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs'],
   },
   runs: {
     runs: [
@@ -485,14 +297,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
   },
   evals: {
     evals: ['eval'],
-    'eval-observations': [
-      'eval',
-      'run',
-      'eval-result',
-      'requested-model',
-      'resolved-model',
-      'observed-at',
-    ],
+    'eval-observations': ['eval', 'run', 'eval-result', 'requested-model', 'resolved-model', 'observed-at'],
   },
   usage: {
     usage: [
@@ -515,35 +320,9 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     ],
   },
   'engines-models': {
-    'model-usage-summary': [
-      'model',
-      'engine',
-      'requested-model',
-      'runs',
-      'invocations',
-      'total-aic',
-      'estimated-usd',
-      'pricing',
-    ],
-    'engine-usage-summary': [
-      'engine',
-      'runs',
-      'invocations',
-      'total-aic',
-      'estimated-usd',
-      'min-engine-version',
-      'max-engine-version',
-      'models',
-    ],
-    'run-aggregate-summary': [
-      'engine',
-      'engine-version',
-      'requested-model',
-      'resolved-model',
-      'run-conclusion',
-      'runs',
-      'run-link',
-    ],
+    'model-usage-summary': ['model', 'engine', 'requested-model', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'pricing'],
+    'engine-usage-summary': ['engine', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'min-engine-version', 'max-engine-version', 'models'],
+    'run-aggregate-summary': ['engine', 'engine-version', 'requested-model', 'resolved-model', 'run-conclusion', 'runs', 'run-link'],
   },
   'operational-value': {
     'operational-values': [
@@ -674,21 +453,8 @@ export const SOURCE_VALUES = [
 ]
 
 export const SOURCE_FIELDS = {
-  organizations: [
-    'organization',
-    'organization-name',
-    'observed-at',
-    'organization-link',
-  ],
-  repositories: [
-    'organization',
-    'repository',
-    'repository-name',
-    'rollout-mode',
-    'observed-at',
-    'organization-link',
-    'repository-link',
-  ],
+  organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
+  repositories: ['organization', 'repository', 'repository-name', 'rollout-mode', 'observed-at', 'organization-link', 'repository-link'],
   workflows: [
     'organization',
     'repository',
@@ -901,15 +667,7 @@ export const SOURCE_FIELDS = {
     'artifact-link',
     'trace-link',
   ],
-  graders: [
-    'grader',
-    'grader-name',
-    'role',
-    'direction',
-    'unit',
-    'threshold',
-    'observed-at',
-  ],
+  graders: ['grader', 'grader-name', 'role', 'direction', 'unit', 'threshold', 'observed-at'],
   'grader-observations': [
     'organization',
     'repository',
@@ -936,15 +694,7 @@ export const SOURCE_FIELDS = {
     'evidence-link',
     'grader-link',
   ],
-  evals: [
-    'eval',
-    'eval-name',
-    'eval-question',
-    'requested-model',
-    'role',
-    'direction',
-    'observed-at',
-  ],
+  evals: ['eval', 'eval-name', 'eval-question', 'requested-model', 'role', 'direction', 'observed-at'],
   'eval-observations': [
     'organization',
     'repository',
@@ -1155,15 +905,7 @@ export const SOURCE_FIELDS = {
     'run-link',
     'evidence-link',
   ],
-  'coverage-diagnostics': [
-    'kind',
-    'title',
-    'effect',
-    'technical-detail',
-    'endpoint',
-    'rate-limit-reset',
-    'snapshot-age-seconds',
-  ],
+  'coverage-diagnostics': ['kind', 'title', 'effect', 'technical-detail', 'endpoint', 'rate-limit-reset', 'snapshot-age-seconds'],
   'repository-coverage': ['label', 'value'],
   'data-health-summary': [
     'confidence',
@@ -1185,14 +927,7 @@ export const SOURCE_FIELDS = {
     'empty-cells',
     'external-link',
   ],
-  'data-health-domains': [
-    'domain',
-    'confidence',
-    'reason',
-    'required-sources',
-    'optional-sources',
-    'next-action',
-  ],
+  'data-health-domains': ['domain', 'confidence', 'reason', 'required-sources', 'optional-sources', 'next-action'],
   'data-health-collections': [
     'operation',
     'source',
@@ -1220,28 +955,8 @@ export const SOURCE_FIELDS = {
     'reason',
     'next-action',
   ],
-  'data-health-reconciliation': [
-    'relationship',
-    'expected',
-    'observed',
-    'missing',
-    'coverage',
-    'state',
-    'reason',
-    'affected-domain',
-    'next-action',
-  ],
-  'data-health-coverage': [
-    'area',
-    'expected',
-    'observed',
-    'missing',
-    'coverage-percent',
-    'state',
-    'reason',
-    'requested-horizon',
-    'observed-horizon',
-  ],
+  'data-health-reconciliation': ['relationship', 'expected', 'observed', 'missing', 'coverage', 'state', 'reason', 'affected-domain', 'next-action'],
+  'data-health-coverage': ['area', 'expected', 'observed', 'missing', 'coverage-percent', 'state', 'reason', 'requested-horizon', 'observed-horizon'],
   'data-health-sources': [
     'source',
     'source-id',
@@ -1262,48 +977,12 @@ export const SOURCE_FIELDS = {
     'freshness',
     'reason',
   ],
-  'data-health-fields': [
-    'source',
-    'field',
-    'types',
-    'rows',
-    'populated',
-    'empty',
-    'coverage',
-    'shape',
-  ],
-  'data-health-files': [
-    'file',
-    'source',
-    'size',
-    'display-size',
-    'rows',
-    'status',
-  ],
+  'data-health-fields': ['source', 'field', 'types', 'rows', 'populated', 'empty', 'coverage', 'shape'],
+  'data-health-files': ['file', 'source', 'size', 'display-size', 'rows', 'status'],
   'data-health-schema': ['source', 'schema'],
   'runtime-episode-summary': ['label', 'value'],
-  'runtime-episodes': [
-    'run',
-    'run-title',
-    'package',
-    'workflow',
-    'started-at',
-    'duration',
-    'status',
-    'control-transition',
-    'attribution',
-    'run-link',
-  ],
-  'runtime-attribution-gaps': [
-    'run',
-    'run-title',
-    'workflow',
-    'status',
-    'control-transition',
-    'reason-code',
-    'evidence',
-    'run-link',
-  ],
+  'runtime-episodes': ['run', 'run-title', 'package', 'workflow', 'started-at', 'duration', 'status', 'control-transition', 'attribution', 'run-link'],
+  'runtime-attribution-gaps': ['run', 'run-title', 'workflow', 'status', 'control-transition', 'reason-code', 'evidence', 'run-link'],
   outcomes: [
     'organization',
     'repository',
@@ -1467,13 +1146,7 @@ export const SOURCE_FIELDS = {
   ],
   'configuration-summary': ['status', 'count'],
   'configuration-policy': ['path', 'document', 'raw', 'diagnostics'],
-  'configuration-actions': [
-    'action',
-    'path',
-    'current',
-    'recommended',
-    'prompt',
-  ],
+  'configuration-actions': ['action', 'path', 'current', 'recommended', 'prompt'],
   'failed-runs': [
     'organization',
     'repository',
@@ -1488,27 +1161,10 @@ export const SOURCE_FIELDS = {
     'failure-detail',
     'run-link',
   ],
-  'overview-attention-domains': [
-    'domain',
-    'state',
-    'tone',
-    'icon',
-    'value',
-    'detail',
-    'href',
-    'priority',
-    'order',
-  ],
+  'overview-attention-domains': ['domain', 'state', 'tone', 'icon', 'value', 'detail', 'href', 'priority', 'order'],
   'readiness-activity': ['activity-hour', 'workflow-role', 'run-count'],
   'readiness-checks': ['check', 'readiness-state', 'detail'],
-  'readiness-observations': [
-    'signal',
-    'count',
-    'status',
-    'detail',
-    'latest-at',
-    'evidence-link',
-  ],
+  'readiness-observations': ['signal', 'count', 'status', 'detail', 'latest-at', 'evidence-link'],
   'readiness-summary': ['label', 'value'],
   'readiness-signals': [
     'priority',
@@ -1542,20 +1198,7 @@ export const SOURCE_FIELDS = {
     'external-link',
   ],
   'value-summary': ['label', 'value'],
-  'value-signals': [
-    'priority',
-    'count',
-    'tone',
-    'icon',
-    'kind',
-    'title',
-    'detail',
-    'evidence',
-    'action',
-    'navigation-page',
-    'run-link',
-    'external-link',
-  ],
+  'value-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-page', 'run-link', 'external-link'],
   'value-workflows': [
     'organization',
     'repository',
@@ -1574,31 +1217,9 @@ export const SOURCE_FIELDS = {
     'workflow-link',
   ],
   'cost-summary': ['label', 'value'],
-  'cost-signals': [
-    'priority',
-    'count',
-    'tone',
-    'icon',
-    'kind',
-    'title',
-    'detail',
-    'evidence',
-    'action',
-    'navigation-page',
-  ],
+  'cost-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-page'],
   'runtime-anomaly-readiness': ['icon', 'title', 'detail'],
-  'runtime-signals': [
-    'priority',
-    'count',
-    'tone',
-    'icon',
-    'kind',
-    'title',
-    'detail',
-    'evidence',
-    'action',
-    'navigation-href',
-  ],
+  'runtime-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-href'],
   dispatches: [
     'started-at',
     'dispatch-type',
@@ -1613,44 +1234,12 @@ export const SOURCE_FIELDS = {
     'run-link',
   ],
   'dispatch-activation-summary': ['label', 'value'],
-  'package-dispatch-state': [
-    'package',
-    'package-name',
-    'dispatch-runs',
-    'skipped',
-    'failed',
-    'succeeded',
-    'worker-dispatches',
-    'aic',
-    'agent',
-    'model',
-  ],
+  'package-dispatch-state': ['package', 'package-name', 'dispatch-runs', 'skipped', 'failed', 'succeeded', 'worker-dispatches', 'aic', 'agent', 'model'],
   'repository-summary': ['label', 'value', 'items'],
-  'repository-activity': [
-    'repository',
-    'workflows',
-    'reports',
-    'evaluated-workflows',
-    'runs',
-    'failure-summary',
-    'aic',
-    'status',
-    'repository-link',
-  ],
-  'repository-detail-summary': [
-    'repository',
-    'workflows',
-    'latest-update',
-    'external-link',
-  ],
+  'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status', 'repository-link'],
+  'repository-detail-summary': ['repository', 'workflows', 'latest-update', 'external-link'],
   'repository-workflow-status': ['repository', 'status', 'workflows'],
-  'repository-workflow-usage': [
-    'repository',
-    'workflow',
-    'invocation',
-    'aic',
-    'workflow-link',
-  ],
+  'repository-workflow-usage': ['repository', 'workflow', 'invocation', 'aic', 'workflow-link'],
   'repository-workflows': [
     'repository',
     'workflow',
@@ -1715,36 +1304,9 @@ export const SOURCE_FIELDS = {
     'observed-at',
     'external-link',
   ],
-  'model-usage-summary': [
-    'model',
-    'resolved-model',
-    'engine',
-    'requested-model',
-    'runs',
-    'invocations',
-    'total-aic',
-    'estimated-usd',
-    'pricing',
-  ],
-  'engine-usage-summary': [
-    'engine',
-    'runs',
-    'invocations',
-    'total-aic',
-    'estimated-usd',
-    'min-engine-version',
-    'max-engine-version',
-    'models',
-  ],
-  'run-aggregate-summary': [
-    'engine',
-    'engine-version',
-    'requested-model',
-    'resolved-model',
-    'run-conclusion',
-    'runs',
-    'run-link',
-  ],
+  'model-usage-summary': ['model', 'resolved-model', 'engine', 'requested-model', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'pricing'],
+  'engine-usage-summary': ['engine', 'runs', 'invocations', 'total-aic', 'estimated-usd', 'min-engine-version', 'max-engine-version', 'models'],
+  'run-aggregate-summary': ['engine', 'engine-version', 'requested-model', 'resolved-model', 'run-conclusion', 'runs', 'run-link'],
   'workflow-topology-summary': ['label', 'value'],
   'packaged-workflows': [
     'package',
@@ -1761,17 +1323,7 @@ export const SOURCE_FIELDS = {
     'repository-link',
     'workflow-link',
   ],
-  'standalone-workflows': [
-    'repository',
-    'workflow',
-    'workflow-name',
-    'rollout-mode',
-    'workflow-active',
-    'runs',
-    'aic',
-    'repository-link',
-    'workflow-link',
-  ],
+  'standalone-workflows': ['repository', 'workflow', 'workflow-name', 'rollout-mode', 'workflow-active', 'runs', 'aic', 'repository-link', 'workflow-link'],
   'work-items': [
     'work-item-id',
     'name',
@@ -1939,22 +1491,10 @@ export const SOURCE_FIELDS = {
 }
 
 export const ROLLOUT_MODE_VALUES = ['review', 'live', 'unknown']
-export const DETECTION_STATE_VALUES = [
-  'clean',
-  'threat',
-  'degraded',
-  'tooling-failure',
-  'skipped',
-  'unknown',
-]
+export const DETECTION_STATE_VALUES = ['clean', 'threat', 'degraded', 'tooling-failure', 'skipped', 'unknown']
 export const WORKFLOW_ACTIVE_VALUES = ['true', 'false', 'unknown']
 export const WORKFLOW_ROLE_VALUES = ['orchestrator', 'worker', 'standalone']
-export const RUN_STATUS_VALUES = [
-  'queued',
-  'in-progress',
-  'completed',
-  'unknown',
-]
+export const RUN_STATUS_VALUES = ['queued', 'in-progress', 'completed', 'unknown']
 export const RUN_CONCLUSION_VALUES = [
   'success',
   'failure',
@@ -1968,33 +1508,11 @@ export const RUN_CONCLUSION_VALUES = [
   'unknown',
 ]
 export const GRADER_STATUS_VALUES = ['pass', 'fail', 'error', 'unavailable']
-export const DISPATCH_STATUS_VALUES = [
-  ...RUN_CONCLUSION_VALUES,
-  ...RUN_STATUS_VALUES,
-]
+export const DISPATCH_STATUS_VALUES = [...RUN_CONCLUSION_VALUES, ...RUN_STATUS_VALUES]
 export const EVAL_RESULT_VALUES = ['YES', 'NO', 'UNKNOWN']
-export const OUTCOME_STATE_VALUES = [
-  'accepted',
-  'rejected',
-  'ignored',
-  'pending',
-  'lifecycle',
-  'lifecycle-close',
-]
-export const FINDING_STATUS_VALUES = [
-  'open',
-  'resolved',
-  'dismissed',
-  'unknown',
-]
-export const FINDING_SEVERITY_VALUES = [
-  'critical',
-  'high',
-  'medium',
-  'low',
-  'informational',
-  'unknown',
-]
+export const OUTCOME_STATE_VALUES = ['accepted', 'rejected', 'ignored', 'pending', 'lifecycle', 'lifecycle-close']
+export const FINDING_STATUS_VALUES = ['open', 'resolved', 'dismissed', 'unknown']
+export const FINDING_SEVERITY_VALUES = ['critical', 'high', 'medium', 'low', 'informational', 'unknown']
 
 export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   organizations: ['organization'],
@@ -2025,11 +1543,7 @@ export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   'runtime-attribution-gaps': ['run'],
   outcomes: ['safe-output'],
   findings: ['finding'],
-  'operational-values': [
-    'operational-value-definition',
-    'operational-case',
-    'run',
-  ],
+  'operational-values': ['operational-value-definition', 'operational-case', 'run'],
   'github-api-rate-limits': ['observation-id'],
   'github-api-collector-health': ['operation-execution-id', 'observed-at'],
   'repository-summary': ['label'],

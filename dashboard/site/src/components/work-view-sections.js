@@ -19,9 +19,7 @@ const WORK_VIEW_SECTION_RENDERERS = {
 export function isWorkViewSection(section) {
   return (
     typeof section === 'string' &&
-    WORK_VIEW_SECTION_KEYS.includes(
-      /** @type {typeof WORK_VIEW_SECTION_KEYS[number]} */ (section),
-    ) &&
+    WORK_VIEW_SECTION_KEYS.includes(/** @type {typeof WORK_VIEW_SECTION_KEYS[number]} */ (section)) &&
     Object.hasOwn(WORK_VIEW_SECTION_RENDERERS, section)
   )
 }
@@ -33,10 +31,6 @@ export function isWorkViewSection(section) {
  */
 export function workViewSectionRenderer(section, renderers) {
   if (!isWorkViewSection(section)) return null
-  const rendererName = /** @type {WorkViewRendererName} */ (
-    WORK_VIEW_SECTION_RENDERERS[section]
-  )
-  return rendererName && typeof renderers[rendererName] === 'function'
-    ? rendererName
-    : null
+  const rendererName = /** @type {WorkViewRendererName} */ (WORK_VIEW_SECTION_RENDERERS[section])
+  return rendererName && typeof renderers[rendererName] === 'function' ? rendererName : null
 }

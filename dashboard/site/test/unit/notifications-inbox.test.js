@@ -32,18 +32,10 @@ describe('notifications inbox large data', () => {
     const rendered = renderNotificationsInbox(notifications(5_000))
     document.body.append(rendered)
 
-    expect(
-      rendered.querySelector('.notifications-result-count')?.textContent,
-    ).toBe('5000 notifications')
-    expect(
-      rendered.querySelectorAll('.notification-item').length,
-    ).toBeGreaterThan(0)
-    expect(
-      rendered.querySelectorAll('.notification-item').length,
-    ).toBeLessThanOrEqual(24)
-    expect(
-      rendered.querySelector('[data-notifications-load-boundary]'),
-    ).not.toBeNull()
+    expect(rendered.querySelector('.notifications-result-count')?.textContent).toBe('5000 notifications')
+    expect(rendered.querySelectorAll('.notification-item').length).toBeGreaterThan(0)
+    expect(rendered.querySelectorAll('.notification-item').length).toBeLessThanOrEqual(24)
+    expect(rendered.querySelector('[data-notifications-load-boundary]')).not.toBeNull()
   })
 
   it('loads another bounded batch when the list boundary approaches the viewport', () => {
@@ -53,9 +45,7 @@ describe('notifications inbox large data', () => {
       constructor(callback) {
         intersect = () =>
           callback(
-            /** @type {IntersectionObserverEntry[]} */ (
-              /** @type {unknown} */ ([{ isIntersecting: true }])
-            ),
+            /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ isIntersecting: true }])),
             /** @type {IntersectionObserver} */ (/** @type {unknown} */ (this)),
           )
       }
@@ -74,15 +64,9 @@ describe('notifications inbox large data', () => {
     const initialCount = rendered.querySelectorAll('.notification-item').length
     intersect()
 
-    expect(
-      rendered.querySelectorAll('.notification-item').length,
-    ).toBeGreaterThan(initialCount)
-    expect(
-      rendered.querySelectorAll('.notification-item').length,
-    ).toBeLessThanOrEqual(initialCount * 2)
-    expect(
-      rendered.querySelector('[data-notifications-load-boundary]')?.textContent,
-    ).toContain(`Showing ${initialCount * 2} of 5000`)
+    expect(rendered.querySelectorAll('.notification-item').length).toBeGreaterThan(initialCount)
+    expect(rendered.querySelectorAll('.notification-item').length).toBeLessThanOrEqual(initialCount * 2)
+    expect(rendered.querySelector('[data-notifications-load-boundary]')?.textContent).toContain(`Showing ${initialCount * 2} of 5000`)
   })
 
   it('resets the render window when filtering a large result set', () => {
@@ -100,12 +84,8 @@ describe('notifications inbox large data', () => {
     }
 
     expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1)
-    expect(
-      rendered.querySelector('.notifications-result-count')?.textContent,
-    ).toBe('1 notification')
-    expect(
-      rendered.querySelector('[data-notifications-load-boundary]'),
-    ).toBeNull()
+    expect(rendered.querySelector('.notifications-result-count')?.textContent).toBe('1 notification')
+    expect(rendered.querySelector('[data-notifications-load-boundary]')).toBeNull()
   })
 
   it('preserves the current selection when loading another batch', () => {
@@ -116,26 +96,18 @@ describe('notifications inbox large data', () => {
     const rendered = renderNotificationsInbox(notifications(5_000))
     document.body.append(rendered)
 
-    const firstCheckbox = rendered.querySelector(
-      '.notification-item input[type="checkbox"]',
-    )
+    const firstCheckbox = rendered.querySelector('.notification-item input[type="checkbox"]')
     if (firstCheckbox instanceof HTMLInputElement) {
       firstCheckbox.checked = true
       firstCheckbox.dispatchEvent(new Event('change', { bubbles: true }))
     }
-    const bulkDone = rendered.querySelector(
-      '[aria-label="Mark selected as done"]',
-    )
+    const bulkDone = rendered.querySelector('[aria-label="Mark selected as done"]')
     expect(bulkDone?.hasAttribute('disabled')).toBe(false)
 
-    const loadMoreButton = rendered.querySelector(
-      '[data-notifications-load-boundary] button',
-    )
+    const loadMoreButton = rendered.querySelector('[data-notifications-load-boundary] button')
     if (loadMoreButton instanceof HTMLButtonElement) loadMoreButton.click()
 
-    const refreshedBulkDone = rendered.querySelector(
-      '[aria-label="Mark selected as done"]',
-    )
+    const refreshedBulkDone = rendered.querySelector('[aria-label="Mark selected as done"]')
     expect(refreshedBulkDone?.hasAttribute('disabled')).toBe(false)
   })
 
@@ -173,54 +145,31 @@ describe('notifications inbox large data', () => {
     ])
     document.body.append(rendered)
 
-    expect(
-      rendered.querySelector('.notifications-result-count')?.textContent,
-    ).toBe('2 notifications')
+    expect(rendered.querySelector('.notifications-result-count')?.textContent).toBe('2 notifications')
     expect(rendered.textContent).toContain('CI recovered')
-    expect(
-      rendered.querySelector(
-        'a[href="https://github.com/githubnext/repository/pull/42"]',
-      ),
-    ).not.toBeNull()
+    expect(rendered.querySelector('a[href="https://github.com/githubnext/repository/pull/42"]')).not.toBeNull()
 
-    const search = /** @type {HTMLInputElement} */ (
-      rendered.querySelector('[aria-label="Filter notifications"]')
-    )
+    const search = /** @type {HTMLInputElement} */ (rendered.querySelector('[aria-label="Filter notifications"]'))
     search.value = 'recovered'
     search.dispatchEvent(new Event('input'))
     expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1)
 
     search.value = ''
     search.dispatchEvent(new Event('input'))
-    const group = /** @type {HTMLSelectElement} */ (
-      rendered.querySelector('[aria-label="Group notifications"]')
-    )
+    const group = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Group notifications"]'))
     group.value = 'repository'
     group.dispatchEvent(new Event('change'))
-    expect(
-      [...rendered.querySelectorAll('.notifications-group-heading')].map(
-        (heading) => heading.textContent,
-      ),
-    ).toEqual(['githubnext/other', 'githubnext/repository'])
+    expect([...rendered.querySelectorAll('.notifications-group-heading')].map((heading) => heading.textContent)).toEqual([
+      'githubnext/other',
+      'githubnext/repository',
+    ])
 
-    const selectAll = /** @type {HTMLInputElement} */ (
-      rendered.querySelector('[aria-label="Select all notifications"]')
-    )
+    const selectAll = /** @type {HTMLInputElement} */ (rendered.querySelector('[aria-label="Select all notifications"]'))
     selectAll.click()
-    ;/** @type {HTMLButtonElement} */ (
-      rendered.querySelector('[aria-label="Mark selected as done"]')
-    ).click()
-    const stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.notifications',
-      ) ?? '{}',
-    )
+    ;/** @type {HTMLButtonElement} */ (rendered.querySelector('[aria-label="Mark selected as done"]')).click()
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.notifications') ?? '{}')
     expect(stored.done).toHaveLength(2)
-    expect(
-      stored.done.every((/** @type {string} */ id) =>
-        id.startsWith('notification-story:'),
-      ),
-    ).toBe(true)
+    expect(stored.done.every((/** @type {string} */ id) => id.startsWith('notification-story:'))).toBe(true)
   })
 
   it('preserves non-repository scope and uses the latest event for collapsed-story date grouping', () => {
@@ -255,17 +204,11 @@ describe('notifications inbox large data', () => {
     ])
     document.body.append(rendered)
 
-    expect(
-      rendered.querySelector('.notification-repository')?.textContent,
-    ).toBe('production')
-    const group = /** @type {HTMLSelectElement} */ (
-      rendered.querySelector('[aria-label="Group notifications"]')
-    )
+    expect(rendered.querySelector('.notification-repository')?.textContent).toBe('production')
+    const group = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Group notifications"]'))
     group.value = 'date'
     group.dispatchEvent(new Event('change'))
-    expect(
-      rendered.querySelector('.notifications-group-heading')?.textContent,
-    ).toBe('Today')
+    expect(rendered.querySelector('.notifications-group-heading')?.textContent).toBe('Today')
   })
 
   it('keeps the newest story when attention and operational events describe the same object', () => {
@@ -302,12 +245,8 @@ describe('notifications inbox large data', () => {
     document.body.append(rendered)
 
     expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1)
-    expect(
-      rendered.querySelector('.notifications-main')?.textContent,
-    ).toContain('Deployment failed')
-    expect(
-      rendered.querySelector('.notifications-main')?.textContent,
-    ).not.toContain('Review generated change')
+    expect(rendered.querySelector('.notifications-main')?.textContent).toContain('Deployment failed')
+    expect(rendered.querySelector('.notifications-main')?.textContent).not.toContain('Review generated change')
   })
 })
 
@@ -381,12 +320,8 @@ describe('catch up queue', () => {
 
     const stories = rendered.querySelectorAll('.home-catchup-story')
     expect(stories).toHaveLength(1)
-    expect(
-      rendered.querySelector('[aria-label^="Mark as done"]'),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector('[aria-label^="Save for later"]'),
-    ).not.toBeNull()
+    expect(rendered.querySelector('[aria-label^="Mark as done"]')).not.toBeNull()
+    expect(rendered.querySelector('[aria-label^="Save for later"]')).not.toBeNull()
   })
 
   it('removes a story from the queue once marked done and it does not return after a refresh', () => {
@@ -419,11 +354,7 @@ describe('catch up queue', () => {
 
     expect(rendered.querySelectorAll('.home-catchup-story')).toHaveLength(0)
 
-    const stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.catch-up-queue',
-      ) ?? '{}',
-    )
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}')
     expect(stored.later).toHaveLength(1)
     expect(stored.done).toEqual([])
   })
@@ -432,11 +363,7 @@ describe('catch up queue', () => {
     const rendered = renderNotificationsInbox([attentionRow()])
     document.body.append(rendered)
 
-    const stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.catch-up-queue',
-      ) ?? '{}',
-    )
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}')
     expect(stored.done ?? []).toEqual([])
     expect(stored.later ?? []).toEqual([])
     expect(rendered.querySelectorAll('.home-catchup-story')).toHaveLength(1)
@@ -446,77 +373,33 @@ describe('catch up queue', () => {
     const rendered = renderNotificationsInbox(catchUpRows())
     document.body.append(rendered)
 
-    expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(
-      1,
-    )
-    expect(
-      rendered.querySelectorAll('.home-story-rail .home-catchup-story'),
-    ).toHaveLength(2)
-    expect(
-      rendered.querySelector('.home-catchup-mobile > header span')?.textContent,
-    ).toBe('1 of 2')
-    expect(
-      rendered.querySelector('.home-catchup-classification')?.textContent,
-    ).toBe('Needs you')
-    expect(
-      rendered.querySelector('.home-catchup-mobile .home-origin-work'),
-    ).not.toBeNull()
-    expect(
-      rendered.querySelector('.home-catchup-mobile-link')?.getAttribute('href'),
-    ).toBe('https://github.com/githubnext/repository/actions/runs/42')
-    expect(
-      rendered.querySelector('.home-catchup-mobile-later')?.textContent,
-    ).toContain('Later')
-    expect(
-      rendered.querySelector('.home-catchup-mobile-done')?.textContent,
-    ).toContain('Done')
+    expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(1)
+    expect(rendered.querySelectorAll('.home-story-rail .home-catchup-story')).toHaveLength(2)
+    expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('1 of 2')
+    expect(rendered.querySelector('.home-catchup-classification')?.textContent).toBe('Needs you')
+    expect(rendered.querySelector('.home-catchup-mobile .home-origin-work')).not.toBeNull()
+    expect(rendered.querySelector('.home-catchup-mobile-link')?.getAttribute('href')).toBe('https://github.com/githubnext/repository/actions/runs/42')
+    expect(rendered.querySelector('.home-catchup-mobile-later')?.textContent).toContain('Later')
+    expect(rendered.querySelector('.home-catchup-mobile-done')?.textContent).toContain('Done')
   })
 
   it('swipes right for Done and left for Later while advancing progress', () => {
     const rendered = renderNotificationsInbox(catchUpRows())
     document.body.append(rendered)
 
-    swipe(
-      /** @type {Element} */ (
-        rendered.querySelector('.home-catchup-mobile-card')
-      ),
-      10,
-      90,
-    )
+    swipe(/** @type {Element} */ (rendered.querySelector('.home-catchup-mobile-card')), 10, 90)
 
-    expect(
-      rendered.querySelector('.home-catchup-mobile > header span')?.textContent,
-    ).toBe('2 of 2')
-    expect(
-      rendered.querySelector('.home-catchup-mobile-card')?.textContent,
-    ).toContain('Review agent configuration')
-    let stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.catch-up-queue',
-      ) ?? '{}',
-    )
+    expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('2 of 2')
+    expect(rendered.querySelector('.home-catchup-mobile-card')?.textContent).toContain('Review agent configuration')
+    let stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}')
     expect(stored.done).toHaveLength(1)
     expect(stored.later).toHaveLength(0)
 
-    swipe(
-      /** @type {Element} */ (
-        rendered.querySelector('.home-catchup-mobile-card')
-      ),
-      90,
-      10,
-    )
+    swipe(/** @type {Element} */ (rendered.querySelector('.home-catchup-mobile-card')), 90, 10)
 
-    expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(
-      0,
-    )
-    expect(
-      rendered.querySelector('.home-catchup-mobile')?.textContent,
-    ).toContain('✓ You are caught up')
-    stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.catch-up-queue',
-      ) ?? '{}',
-    )
+    expect(rendered.querySelectorAll('.home-catchup-mobile-card')).toHaveLength(0)
+    expect(rendered.querySelector('.home-catchup-mobile')?.textContent).toContain('✓ You are caught up')
+    stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}')
     expect(stored.done).toHaveLength(1)
     expect(stored.later).toHaveLength(1)
   })
@@ -526,29 +409,15 @@ describe('catch up queue', () => {
     const rendered = renderNotificationsInbox(rows)
     document.body.append(rendered)
 
-    ;/** @type {HTMLButtonElement} */ (
-      rendered.querySelector('.home-catchup-mobile-later')
-    ).click()
-    ;/** @type {HTMLButtonElement} */ (
-      rendered.querySelector('.home-catchup-mobile-done')
-    ).click()
+    ;/** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-later')).click()
+    ;/** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-done')).click()
 
-    expect(
-      rendered.querySelector('.home-catchup-mobile')?.textContent,
-    ).toContain('✓ You are caught up')
-    const notificationsLink = /** @type {HTMLAnchorElement} */ (
-      rendered.querySelector('.home-catchup-mobile a[href="#page-overview"]')
-    )
-    expect(notificationsLink.textContent).toContain(
-      'View Later in Notifications',
-    )
+    expect(rendered.querySelector('.home-catchup-mobile')?.textContent).toContain('✓ You are caught up')
+    const notificationsLink = /** @type {HTMLAnchorElement} */ (rendered.querySelector('.home-catchup-mobile a[href="#page-overview"]'))
+    expect(notificationsLink.textContent).toContain('View Later in Notifications')
     notificationsLink.click()
 
-    expect(
-      /** @type {HTMLInputElement} */ (
-        rendered.querySelector('[aria-label="Filter notifications"]')
-      ).value,
-    ).toBe('is:later')
+    expect(/** @type {HTMLInputElement} */ (rendered.querySelector('[aria-label="Filter notifications"]')).value).toBe('is:later')
     expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1)
     expect(rendered.textContent).toContain('Investigate failure')
     expect(rendered.textContent).not.toContain('Review agent configuration')
@@ -556,28 +425,16 @@ describe('catch up queue', () => {
     document.body.replaceChildren()
     const refreshed = renderNotificationsInbox(rows)
     document.body.append(refreshed)
-    expect(
-      refreshed.querySelector('.home-catchup-mobile')?.textContent,
-    ).toContain('✓ You are caught up')
+    expect(refreshed.querySelector('.home-catchup-mobile')?.textContent).toContain('✓ You are caught up')
     ;/** @type {HTMLButtonElement} */ (
-      [...refreshed.querySelectorAll('.notifications-state-tabs button')].find(
-        (button) => button.textContent === 'Later',
-      )
+      [...refreshed.querySelectorAll('.notifications-state-tabs button')].find((button) => button.textContent === 'Later')
     ).click()
     expect(refreshed.querySelectorAll('.notification-item')).toHaveLength(1)
-    expect(
-      refreshed.querySelector('.notification-content')?.getAttribute('href'),
-    ).toBe('https://github.com/githubnext/repository/actions/runs/42')
+    expect(refreshed.querySelector('.notification-content')?.getAttribute('href')).toBe('https://github.com/githubnext/repository/actions/runs/42')
 
-    ;/** @type {HTMLButtonElement} */ (
-      refreshed.querySelector('.notifications-main [aria-label="Mark as done"]')
-    ).click()
+    ;/** @type {HTMLButtonElement} */ (refreshed.querySelector('.notifications-main [aria-label="Mark as done"]')).click()
     expect(refreshed.querySelectorAll('.notification-item')).toHaveLength(0)
-    const stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.catch-up-queue',
-      ) ?? '{}',
-    )
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}')
     expect(stored.later).toEqual([])
     expect(stored.done).toHaveLength(2)
   })
@@ -614,23 +471,16 @@ describe('catch up queue', () => {
     document.body.append(rendered)
 
     ;/** @type {HTMLButtonElement} */ (
-      [...rendered.querySelectorAll('.notifications-state-tabs button')].find(
-        (button) => button.textContent === 'Later',
-      )
+      [...rendered.querySelectorAll('.notifications-state-tabs button')].find((button) => button.textContent === 'Later')
     ).click()
 
     expect(rendered.querySelectorAll('.notification-item')).toHaveLength(1)
     expect(rendered.textContent).toContain('Review generated change')
-    expect(
-      rendered.querySelector('.notification-content')?.getAttribute('href'),
-    ).toBe('https://github.com/githubnext/repository/issues/99')
+    expect(rendered.querySelector('.notification-content')?.getAttribute('href')).toBe('https://github.com/githubnext/repository/issues/99')
   })
 
   it('keeps every deferred operational-value story accessible when newer values arrive', () => {
-    const ids = ['workflow-a', 'workflow-b'].map(
-      (workflow) =>
-        `notification-story:githubnext%2Frepository:workflow:${workflow}`,
-    )
+    const ids = ['workflow-a', 'workflow-b'].map((workflow) => `notification-story:githubnext%2Frepository:workflow:${workflow}`)
     window.localStorage.setItem(
       'central-agentic-ops.dashboard.catch-up-queue',
       JSON.stringify({
@@ -665,23 +515,14 @@ describe('catch up queue', () => {
     })
     document.body.append(rendered)
 
-    const group = /** @type {HTMLSelectElement} */ (
-      rendered.querySelector('[aria-label="Group notifications"]')
-    )
+    const group = /** @type {HTMLSelectElement} */ (rendered.querySelector('[aria-label="Group notifications"]'))
     group.value = 'none'
     group.dispatchEvent(new Event('change'))
     expect(
-      new Set(
-        [...rendered.querySelectorAll('.notification-item input')].map(
-          (input) =>
-            /** @type {HTMLInputElement} */ (input).dataset.notificationId,
-        ),
-      ),
+      new Set([...rendered.querySelectorAll('.notification-item input')].map((input) => /** @type {HTMLInputElement} */ (input).dataset.notificationId)),
     ).toEqual(new Set(ids))
     ;/** @type {HTMLButtonElement} */ (
-      [...rendered.querySelectorAll('.notifications-state-tabs button')].find(
-        (button) => button.textContent === 'Later',
-      )
+      [...rendered.querySelectorAll('.notifications-state-tabs button')].find((button) => button.textContent === 'Later')
     ).click()
 
     expect(rendered.querySelectorAll('.notification-item')).toHaveLength(2)
@@ -693,32 +534,18 @@ describe('catch up queue', () => {
     const rendered = renderNotificationsInbox(catchUpRows())
     document.body.append(rendered)
 
-    const later = /** @type {HTMLButtonElement} */ (
-      rendered.querySelector('.home-catchup-mobile-later')
-    )
+    const later = /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-later'))
     later.focus()
     later.click()
-    expect(
-      rendered.querySelector('.home-catchup-mobile > header span')?.textContent,
-    ).toBe('2 of 2')
-    expect(document.activeElement).toBe(
-      rendered.querySelector('.home-catchup-mobile-later'),
-    )
+    expect(rendered.querySelector('.home-catchup-mobile > header span')?.textContent).toBe('2 of 2')
+    expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-later'))
 
-    const done = /** @type {HTMLButtonElement} */ (
-      rendered.querySelector('.home-catchup-mobile-done')
-    )
+    const done = /** @type {HTMLButtonElement} */ (rendered.querySelector('.home-catchup-mobile-done'))
     done.focus()
     done.click()
-    const stored = JSON.parse(
-      window.localStorage.getItem(
-        'central-agentic-ops.dashboard.catch-up-queue',
-      ) ?? '{}',
-    )
+    const stored = JSON.parse(window.localStorage.getItem('central-agentic-ops.dashboard.catch-up-queue') ?? '{}')
     expect(stored.later).toHaveLength(1)
     expect(stored.done).toHaveLength(1)
-    expect(document.activeElement).toBe(
-      rendered.querySelector('.home-catchup-mobile-progress'),
-    )
+    expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-progress'))
   })
 })

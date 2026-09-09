@@ -1,15 +1,6 @@
 export const CANONICAL_SCHEMA_VERSION = 5
 
-export const ENTITY_KINDS = /** @type {const} */ ([
-  'repository',
-  'workflow',
-  'run',
-  'job',
-  'session',
-  'event',
-  'work-item',
-  'finding',
-])
+export const ENTITY_KINDS = /** @type {const} */ (['repository', 'workflow', 'run', 'job', 'session', 'event', 'work-item', 'finding'])
 
 /** @typedef {typeof ENTITY_KINDS[number]} EntityKind */
 
@@ -57,8 +48,7 @@ export function requiredString(value, field) {
 export function canonicalTimestamp(value, field) {
   const input = requiredString(value, field)
   const milliseconds = Date.parse(input)
-  if (!Number.isFinite(milliseconds))
-    throw new TypeError(`${field} must be a valid timestamp`)
+  if (!Number.isFinite(milliseconds)) throw new TypeError(`${field} must be a valid timestamp`)
   return new Date(milliseconds).toISOString()
 }
 
@@ -71,9 +61,7 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
-  const workflowsById = new Map(
-    batch.workflows.map((record) => [record.id, record]),
-  )
+  const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]))
   const jobsById = new Map(batch.jobs.map((record) => [record.id, record]))
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
@@ -100,14 +88,8 @@ export function relationshipErrors(batch) {
   const requireReference = (record, field, collection) => {
     const id = String(record.id ?? '<unknown>')
     const reference = record[field]
-    if (
-      typeof reference !== 'string' ||
-      !reference ||
-      !ids[collection].has(reference)
-    ) {
-      errors.push(
-        `${id}.${field} does not reference an existing ${entityNames[collection]}`,
-      )
+    if (typeof reference !== 'string' || !reference || !ids[collection].has(reference)) {
+      errors.push(`${id}.${field} does not reference an existing ${entityNames[collection]}`)
     }
   }
 
@@ -119,9 +101,7 @@ export function relationshipErrors(batch) {
     requireReference(run, 'workflowId', 'workflows')
     const workflow = workflowsById.get(run.workflowId)
     if (workflow && workflow.repositoryId !== run.repositoryId) {
-      errors.push(
-        `${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`,
-      )
+      errors.push(`${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`)
     }
   }
   for (const job of batch.jobs) {
@@ -133,9 +113,7 @@ export function relationshipErrors(batch) {
       requireReference(session, 'jobId', 'jobs')
       const job = jobsById.get(session.jobId)
       if (job && job.runId !== session.runId) {
-        errors.push(
-          `${String(session.id ?? '<unknown>')}.jobId references a job from another run`,
-        )
+        errors.push(`${String(session.id ?? '<unknown>')}.jobId references a job from another run`)
       }
     }
   }

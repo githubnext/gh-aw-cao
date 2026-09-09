@@ -5,15 +5,8 @@
 import { h } from '../dom.js'
 import { processRows, processTableSummaries } from '../data-processor.js'
 import { formatCount } from './count-formatters.js'
-import {
-  renderReactiveTableSummaryRow,
-  renderTableSummaryRow,
-} from './table-summary.js'
-import {
-  renderEmptyTableRow,
-  renderLabeledControl,
-  observeLoadMoreBoundary,
-} from './ui-primitives.js'
+import { renderReactiveTableSummaryRow, renderTableSummaryRow } from './table-summary.js'
+import { renderEmptyTableRow, renderLabeledControl, observeLoadMoreBoundary } from './ui-primitives.js'
 
 /**
  * @typedef {{ key: string, label: string, allLabel?: string, columnIndex: number, always?: boolean }} TableFilterField
@@ -100,12 +93,7 @@ export function renderTableRegion(options) {
                   'data-table-facet': facet.key,
                   'data-table-column-index': String(facet.columnIndex),
                 },
-                h(
-                  'option',
-                  { value: '' },
-                  facet.allLabel ??
-                    `All ${facet.label.toLocaleLowerCase('en')}`,
-                ),
+                h('option', { value: '' }, facet.allLabel ?? `All ${facet.label.toLocaleLowerCase('en')}`),
                 ...facet.values.map((value) => h('option', { value }, value)),
               ),
               { className: 'table-filter-facet' },
@@ -114,12 +102,7 @@ export function renderTableRegion(options) {
           h(
             'output',
             { className: 'table-filter-result', 'aria-live': 'polite' },
-            formatResultCount(
-              Math.min(rowCount, pageSize),
-              rowCount,
-              resultNoun,
-              resultNounPlural,
-            ),
+            formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural),
           ),
         )
       : null,
@@ -128,18 +111,14 @@ export function renderTableRegion(options) {
       {
         className: 'table-scroll',
         tabIndex: 0,
-        ...(filterLabel
-          ? { role: 'region', 'aria-label': `${filterLabel} results` }
-          : {}),
+        ...(filterLabel ? { role: 'region', 'aria-label': `${filterLabel} results` } : {}),
       },
       h(
         'table',
         {
           className: tableClassName,
           ...(options.tableRole ? { role: options.tableRole } : {}),
-          ...(tableClassName === 'custom-table'
-            ? { 'data-custom-view-mark': 'table' }
-            : {}),
+          ...(tableClassName === 'custom-table' ? { 'data-custom-view-mark': 'table' } : {}),
         },
         h(
           'thead',
@@ -165,15 +144,9 @@ export function renderTableRegion(options) {
                 : h('th', { scope: 'col' }, cell),
             ),
           ),
-          summaryColumns.length > 0
-            ? renderDeferredTableSummaryRow(summaryColumns)
-            : null,
+          summaryColumns.length > 0 ? renderDeferredTableSummaryRow(summaryColumns) : null,
         ),
-        h(
-          'tbody',
-          null,
-          hasRows ? bodyRows : renderEmptyTableRow(colSpan, emptyMessage),
-        ),
+        h('tbody', null, hasRows ? bodyRows : renderEmptyTableRow(colSpan, emptyMessage)),
       ),
     ),
     interactive
@@ -236,9 +209,7 @@ function renderDeferredTableSummaryRow(columns) {
 function enableTableSort(region) {
   const body = region.querySelector('tbody')
   if (!(body instanceof HTMLTableSectionElement)) return
-  const headers = [...region.querySelectorAll('th[aria-sort]')].filter(
-    (header) => header instanceof HTMLTableCellElement,
-  )
+  const headers = [...region.querySelectorAll('th[aria-sort]')].filter((header) => header instanceof HTMLTableCellElement)
   let revision = 0
 
   for (const header of headers) {
@@ -246,10 +217,7 @@ function enableTableSort(region) {
     if (!(control instanceof HTMLButtonElement)) continue
     const columnIndex = Number(control.dataset.tableSort)
     control.addEventListener('click', () => {
-      const direction =
-        header.getAttribute('aria-sort') === 'ascending'
-          ? 'descending'
-          : 'ascending'
+      const direction = header.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending'
       const requestRevision = ++revision
       for (const other of headers) other.setAttribute('aria-sort', 'none')
       header.setAttribute('aria-sort', direction)
@@ -302,25 +270,14 @@ function enableTableFilter(region, options) {
   const input = region.querySelector('[data-table-filter]')
   const output = region.querySelector('.table-filter-result')
   const more = region.querySelector('[data-table-more]')
-  const facets = [...region.querySelectorAll('[data-table-facet]')].filter(
-    (facet) => facet instanceof HTMLSelectElement,
-  )
-  const currentRows = () =>
-    [...region.querySelectorAll('tbody > tr')].filter(
-      (row) => row instanceof HTMLTableRowElement,
-    )
-  if (
-    !(input instanceof HTMLInputElement) ||
-    !(output instanceof HTMLOutputElement) ||
-    !(more instanceof HTMLButtonElement)
-  )
-    return
+  const facets = [...region.querySelectorAll('[data-table-facet]')].filter((facet) => facet instanceof HTMLSelectElement)
+  const currentRows = () => [...region.querySelectorAll('tbody > tr')].filter((row) => row instanceof HTMLTableRowElement)
+  if (!(input instanceof HTMLInputElement) || !(output instanceof HTMLOutputElement) || !(more instanceof HTMLButtonElement)) return
 
   const window = region.ownerDocument.defaultView
   const parameters = new URLSearchParams(window?.location.search ?? '')
   /** @param {string} name */
-  const parameterName = (name) =>
-    options.filterId ? `${options.filterId}.${name}` : null
+  const parameterName = (name) => (options.filterId ? `${options.filterId}.${name}` : null)
   const queryParameter = parameterName('q')
   if (queryParameter) input.value = parameters.get(queryParameter) ?? ''
   for (const facet of facets) {
@@ -349,48 +306,28 @@ function enableTableFilter(region, options) {
       rows.map((row, index) => ({
         index,
         search: row.textContent ?? '',
-        ...Object.fromEntries(
-          [...row.cells].map((cell, columnIndex) => [
-            `column-${columnIndex}`,
-            cell.textContent?.trim() ?? '',
-          ]),
-        ),
+        ...Object.fromEntries([...row.cells].map((cell, columnIndex) => [`column-${columnIndex}`, cell.textContent?.trim() ?? ''])),
       })),
       [{ op: 'filter', search: { fields: ['search'], query }, predicates }],
     )
     applyProcessed(result, (processed) => {
       if (requestRevision !== revision) return
-      const matchedIndexes = new Set(
-        processed.map((item) => Number(item.index)),
-      )
+      const matchedIndexes = new Set(processed.map((item) => Number(item.index)))
       let shown = 0
       for (const [index, row] of rows.entries()) {
         const visible = matchedIndexes.has(index) && shown < limit
         row.hidden = !visible
         if (visible) shown += 1
       }
-      output.textContent = formatResultCount(
-        shown,
-        processed.length,
-        options.resultNoun,
-        options.resultNounPlural,
-      )
+      output.textContent = formatResultCount(shown, processed.length, options.resultNoun, options.resultNounPlural)
       more.hidden = shown >= processed.length
     })
   }
 
   const syncUrl = () => {
-    if (
-      !window ||
-      !options.filterId ||
-      !['http:', 'https:'].includes(window.location.protocol)
-    )
-      return
+    if (!window || !options.filterId || !['http:', 'https:'].includes(window.location.protocol)) return
     const currentParameters = new URLSearchParams(window.location.search)
-    const values = [
-      ['q', input.value.trim()],
-      ...facets.map((facet) => [facet.dataset.tableFacet ?? '', facet.value]),
-    ]
+    const values = [['q', input.value.trim()], ...facets.map((facet) => [facet.dataset.tableFacet ?? '', facet.value])]
     for (const [name, value] of values) {
       const key = parameterName(name)
       if (!key) continue
@@ -398,11 +335,7 @@ function enableTableFilter(region, options) {
       else currentParameters.delete(key)
     }
     const query = currentParameters.toString()
-    window.history.replaceState(
-      null,
-      '',
-      `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
-    )
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
   }
 
   for (const control of [input, ...facets]) {
@@ -412,9 +345,7 @@ function enableTableFilter(region, options) {
     })
   }
   const loadMore = () => {
-    limit = options.lazyList
-      ? limit + options.pageSize
-      : Number.POSITIVE_INFINITY
+    limit = options.lazyList ? limit + options.pageSize : Number.POSITIVE_INFINITY
     apply()
   }
   more.addEventListener('click', loadMore)
@@ -453,12 +384,7 @@ function applyProcessed(result, apply) {
  * @param {string} [noun]
  * @param {string} [pluralNoun]
  */
-function formatResultCount(
-  shown,
-  matched,
-  noun = 'result',
-  pluralNoun = `${noun}s`,
-) {
+function formatResultCount(shown, matched, noun = 'result', pluralNoun = `${noun}s`) {
   return `Showing ${formatCount(shown)} of ${formatCount(matched)} ${matched === 1 ? noun : pluralNoun}`
 }
 
@@ -472,22 +398,9 @@ function getTableFacets(bodyRows, filterFields, rowCount) {
   if (!Array.isArray(bodyRows)) return []
   return filterFields.flatMap((field) => {
     const values = [
-      ...new Set(
-        bodyRows
-          .map((row) =>
-            row instanceof HTMLTableRowElement
-              ? (row.cells[field.columnIndex]?.textContent?.trim() ?? '')
-              : '',
-          )
-          .filter(Boolean),
-      ),
+      ...new Set(bodyRows.map((row) => (row instanceof HTMLTableRowElement ? (row.cells[field.columnIndex]?.textContent?.trim() ?? '') : '')).filter(Boolean)),
     ].sort((left, right) => left.localeCompare(right))
-    return (values.length > 1 &&
-      values.length < rowCount &&
-      values.length <= 10) ||
-      (field.always && values.length > 0)
-      ? [{ ...field, values }]
-      : []
+    return (values.length > 1 && values.length < rowCount && values.length <= 10) || (field.always && values.length > 0) ? [{ ...field, values }] : []
   })
 }
 
@@ -499,19 +412,11 @@ function getBodyRowCount(bodyRows) {
   if (Array.isArray(bodyRows)) {
     return bodyRows.length
   }
-  if (
-    typeof bodyRows === 'object' &&
-    bodyRows !== null &&
-    'items' in bodyRows
-  ) {
+  if (typeof bodyRows === 'object' && bodyRows !== null && 'items' in bodyRows) {
     const keyedBodyRows = /** @type {{ items?: unknown[] }} */ (bodyRows)
     return Array.isArray(keyedBodyRows.items) ? keyedBodyRows.items.length : 0
   }
-  if (
-    typeof bodyRows === 'object' &&
-    bodyRows !== null &&
-    'length' in bodyRows
-  ) {
+  if (typeof bodyRows === 'object' && bodyRows !== null && 'length' in bodyRows) {
     const collection = /** @type {{ length?: number }} */ (bodyRows)
     return typeof collection.length === 'number' ? collection.length : 0
   }

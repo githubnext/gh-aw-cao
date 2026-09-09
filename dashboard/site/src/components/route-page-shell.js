@@ -61,10 +61,7 @@ export function createRoutePageShell(context, options) {
           detail: allocation,
         }),
       )
-      const tabs =
-        typeof options.tabs === 'function'
-          ? options.tabs({ routeValue, title })
-          : options.tabs
+      const tabs = typeof options.tabs === 'function' ? options.tabs({ routeValue, title }) : options.tabs
       return h(
         'div',
         null,

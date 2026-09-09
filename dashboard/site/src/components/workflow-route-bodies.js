@@ -18,8 +18,7 @@ import { renderWorkflowRuntimeBody } from './workflow-runtime.js'
 
 /** @type {Readonly<Record<WorkflowRouteBody, WorkflowRouteBodyRenderer | undefined>>} */
 export const WORKFLOW_ROUTE_BODY_RENDERERS = {
-  insights: ({ context, workflow }) =>
-    renderWorkflowRuntimeBody(context, workflow),
+  insights: ({ context, workflow }) => renderWorkflowRuntimeBody(context, workflow),
   reports: undefined,
   runs: undefined,
 }

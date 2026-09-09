@@ -22,21 +22,10 @@ import { clampPercent } from './count-formatters.js'
  * @param {number} [divisions]
  * @returns {HTMLElement}
  */
-export function renderWorkItemTimelineLane(
-  item,
-  extents,
-  index = 0,
-  divisions = 8,
-) {
-  const startOffset =
-    extents.duration > 0
-      ? ((item.startTime - extents.start) / extents.duration) * 100
-      : 0
+export function renderWorkItemTimelineLane(item, extents, index = 0, divisions = 8) {
+  const startOffset = extents.duration > 0 ? ((item.startTime - extents.start) / extents.duration) * 100 : 0
   const itemDuration = Math.max(item.stopTime - item.startTime, 60_000)
-  const width =
-    extents.duration > 0
-      ? Math.max(8, (itemDuration / extents.duration) * 100)
-      : 100
+  const width = extents.duration > 0 ? Math.max(8, (itemDuration / extents.duration) * 100) : 100
   const barStyle = `--work-start: ${clampPercent(startOffset).toFixed(2)}%; --work-width: ${Math.min(100, width).toFixed(2)}%;`
   const actor = actorLabel(item.actor)
   return h(
@@ -47,12 +36,7 @@ export function renderWorkItemTimelineLane(
       { className: 'work-roadmap-label' },
       h('span', { className: 'work-roadmap-index' }, String(index + 1)),
       renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-      h(
-        'span',
-        { className: 'work-roadmap-label-copy' },
-        h('strong', null, item.name),
-        h('small', null, `${item.repository} · ${item.owner}`),
-      ),
+      h('span', { className: 'work-roadmap-label-copy' }, h('strong', null, item.name), h('small', null, `${item.repository} · ${item.owner}`)),
     ),
     h(
       'div',
@@ -65,9 +49,7 @@ export function renderWorkItemTimelineLane(
         {
           className: `work-roadmap-bar${item.pointInTime ? ' work-roadmap-point' : ''} work-state-${item.state}`,
           style: barStyle,
-          title: item.pointInTime
-            ? `${item.name}: observed ${item.startedLabel}`
-            : `${item.name}: ${item.startedLabel} to ${item.stoppedLabel}`,
+          title: item.pointInTime ? `${item.name}: observed ${item.startedLabel}` : `${item.name}: ${item.startedLabel} to ${item.stoppedLabel}`,
         },
         h(
           'span',
@@ -76,11 +58,7 @@ export function renderWorkItemTimelineLane(
             title: safeOutputLabel(item.safeOutputKind),
             'aria-label': `Safe output: ${safeOutputLabel(item.safeOutputKind)}`,
           },
-          renderIconSpan(
-            'work-roadmap-primitive-icon',
-            safeOutputIcon(item.safeOutputKind),
-            { ariaHidden: true },
-          ),
+          renderIconSpan('work-roadmap-primitive-icon', safeOutputIcon(item.safeOutputKind), { ariaHidden: true }),
         ),
         h('strong', { className: 'work-roadmap-bar-title' }, item.name),
         h(
@@ -89,11 +67,7 @@ export function renderWorkItemTimelineLane(
             className: 'work-roadmap-actor',
             title: `Involved actor: ${actor}`,
           },
-          h(
-            'span',
-            { className: 'work-roadmap-avatar', 'aria-hidden': 'true' },
-            actorInitial(actor),
-          ),
+          h('span', { className: 'work-roadmap-avatar', 'aria-hidden': 'true' }, actorInitial(actor)),
           h('span', { className: 'work-roadmap-owner' }, actor),
         ),
       ),

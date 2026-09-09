@@ -24,9 +24,7 @@ describe('dashboard view transitions', () => {
 
   it('handles an expected abort when a transition is superseded', async () => {
     const update = vi.fn()
-    const ready = Promise.reject(
-      new DOMException('Transition was superseded', 'AbortError'),
-    )
+    const ready = Promise.reject(new DOMException('Transition was superseded', 'AbortError'))
     Object.defineProperty(document, 'startViewTransition', {
       configurable: true,
       value: vi.fn((callback) => {

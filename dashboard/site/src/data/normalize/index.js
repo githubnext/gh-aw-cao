@@ -1,10 +1,4 @@
-import {
-  jobId,
-  repositoryId,
-  runId,
-  sourceId,
-  workflowId,
-} from '../model/ids.js'
+import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js'
 import { canonicalTimestamp, requiredString } from '../model/schema.js'
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
@@ -24,10 +18,7 @@ const COLLECTIONS = {
  * @param {string} field
  */
 function requiredIdentifier(value, field) {
-  if (
-    (typeof value !== 'string' && typeof value !== 'number') ||
-    !String(value).trim()
-  ) {
+  if ((typeof value !== 'string' && typeof value !== 'number') || !String(value).trim()) {
     throw new TypeError(`${field} is required`)
   }
   return value
@@ -35,9 +26,7 @@ function requiredIdentifier(value, field) {
 
 /** @param {Record<string, unknown>} value */
 function withoutUndefined(value) {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, field]) => field !== undefined),
-  )
+  return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined))
 }
 
 /** @param {import('../model/schema.js').CanonicalObservation} observation */
@@ -46,27 +35,18 @@ function identityFor(observation) {
   if (typeof data.id === 'string' && data.id.trim()) return data.id.trim()
   switch (observation.kind) {
     case 'repository':
-      return repositoryId(
-        requiredIdentifier(data.githubId, 'repository.githubId'),
-      )
+      return repositoryId(requiredIdentifier(data.githubId, 'repository.githubId'))
     case 'workflow':
       return workflowId(requiredIdentifier(data.githubId, 'workflow.githubId'))
     case 'run':
-      return runId(
-        requiredIdentifier(data.githubRunId, 'run.githubRunId'),
-        requiredIdentifier(data.attempt, 'run.attempt'),
-      )
+      return runId(requiredIdentifier(data.githubRunId, 'run.githubRunId'), requiredIdentifier(data.attempt, 'run.attempt'))
     case 'job':
       return jobId(requiredIdentifier(data.githubJobId, 'job.githubJobId'))
     case 'session':
     case 'event':
     case 'work-item':
     case 'finding':
-      return sourceId(
-        observation.kind,
-        observation.source,
-        observation.sourceId,
-      )
+      return sourceId(observation.kind, observation.source, observation.sourceId)
   }
 }
 
@@ -109,18 +89,11 @@ function orderEvents(events) {
           const sameSource = left.source === right.source
           const leftSequence = Number(left.sourceSequence)
           const rightSequence = Number(right.sourceSequence)
-          if (
-            sameSource &&
-            Number.isFinite(leftSequence) &&
-            Number.isFinite(rightSequence)
-          ) {
+          if (sameSource && Number.isFinite(leftSequence) && Number.isFinite(rightSequence)) {
             const difference = leftSequence - rightSequence
             if (difference) return difference
           }
-          return (
-            String(left.timestamp).localeCompare(String(right.timestamp)) ||
-            String(left.id).localeCompare(String(right.id))
-          )
+          return String(left.timestamp).localeCompare(String(right.timestamp)) || String(left.id).localeCompare(String(right.id))
         })
         .map((event, sequence) => ({ ...event, sequence })),
     )
@@ -149,17 +122,11 @@ export function normalize(observations, options) {
     findings: new Map(),
   }
 
-  const sorted = [...observations].sort((left, right) =>
-    compareObservations(left, right, sourcePrecedence),
-  )
+  const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence))
   for (const observation of sorted) {
     const collection = COLLECTIONS[observation.kind]
-    if (!collection)
-      throw new TypeError(`Unsupported observation kind: ${observation.kind}`)
-    const observedAt = canonicalTimestamp(
-      observation.observedAt,
-      'observation.observedAt',
-    )
+    if (!collection) throw new TypeError(`Unsupported observation kind: ${observation.kind}`)
+    const observedAt = canonicalTimestamp(observation.observedAt, 'observation.observedAt')
     const id = identityFor(observation)
     const current = entities[collection].get(id) ?? {}
     entities[collection].set(id, {
@@ -180,9 +147,7 @@ export function normalize(observations, options) {
     Object.fromEntries(
       Object.entries(entities).map(([collection, records]) => [
         collection,
-        [...records.values()].sort((left, right) =>
-          String(left.id).localeCompare(String(right.id)),
-        ),
+        [...records.values()].sort((left, right) => String(left.id).localeCompare(String(right.id))),
       ]),
     )
   )

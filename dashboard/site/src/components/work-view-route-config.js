@@ -1,7 +1,4 @@
-import {
-  WORK_VIEW_BODY_VALUES,
-  workViewCompositionForBody,
-} from './work-view-primitives.js'
+import { WORK_VIEW_BODY_VALUES, workViewCompositionForBody } from './work-view-primitives.js'
 
 const WORK_ROUTE_PAGE_BY_BODY = /** @type {const} */ ({
   board: 'work',

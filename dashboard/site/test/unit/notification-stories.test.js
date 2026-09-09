@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildCatchUpQueue,
-  normalizeNotificationStories,
-} from '../../src/notification-stories.js'
+import { buildCatchUpQueue, normalizeNotificationStories } from '../../src/notification-stories.js'
 
 const pullRequestLink = {
   relation: 'pull-request',
@@ -53,9 +50,7 @@ describe('notification story normalization', () => {
     ]
 
     expect(normalizeNotificationStories(events)).toEqual(expected)
-    expect(normalizeNotificationStories([...events].reverse())).toEqual(
-      expected,
-    )
+    expect(normalizeNotificationStories([...events].reverse())).toEqual(expected)
   })
 
   it.each([
@@ -71,36 +66,33 @@ describe('notification story normalization', () => {
       storyTitle: 'review completed',
       objectType: 'pull-request',
     },
-  ])(
-    'collapses $initialTitle and $terminalTitle into $storyTitle',
-    ({ initialTitle, terminalTitle, storyTitle, objectType }) => {
-      const events = [
-        {
-          'event-id': 'initial',
-          title: initialTitle,
-          repository: 'octo/widgets',
-          objectType,
-          objectId: '42',
-          timestamp: '2026-09-08T01:00:00Z',
-        },
-        {
-          'event-id': 'terminal',
-          title: terminalTitle,
-          detail: 'The transition finished successfully.',
-          repository: 'octo/widgets',
-          objectType,
-          objectId: '42',
-          timestamp: '2026-09-08T02:00:00Z',
-        },
-      ]
-
-      expect(normalizeNotificationStories(events)[0]).toMatchObject({
-        title: storyTitle,
+  ])('collapses $initialTitle and $terminalTitle into $storyTitle', ({ initialTitle, terminalTitle, storyTitle, objectType }) => {
+    const events = [
+      {
+        'event-id': 'initial',
+        title: initialTitle,
+        repository: 'octo/widgets',
+        objectType,
+        objectId: '42',
+        timestamp: '2026-09-08T01:00:00Z',
+      },
+      {
+        'event-id': 'terminal',
+        title: terminalTitle,
         detail: 'The transition finished successfully.',
-        contributingRawEventIds: ['initial', 'terminal'],
-      })
-    },
-  )
+        repository: 'octo/widgets',
+        objectType,
+        objectId: '42',
+        timestamp: '2026-09-08T02:00:00Z',
+      },
+    ]
+
+    expect(normalizeNotificationStories(events)[0]).toMatchObject({
+      title: storyTitle,
+      detail: 'The transition finished successfully.',
+      contributingRawEventIds: ['initial', 'terminal'],
+    })
+  })
 
   it('keeps a failure actionable when it is the latest state', () => {
     const events = [
@@ -160,9 +152,7 @@ describe('notification story normalization', () => {
       },
     ]
 
-    expect(normalizeNotificationStories(events)[0]?.title).toBe(
-      'deployment succeeded',
-    )
+    expect(normalizeNotificationStories(events)[0]?.title).toBe('deployment succeeded')
   })
 
   it('does not replace security finding titles with transition summaries', () => {
@@ -228,15 +218,10 @@ describe('notification story normalization', () => {
 
     const firstStory = normalizeNotificationStories(firstRefresh)[0]
     const refreshedStories = normalizeNotificationStories(secondRefresh)
-    const refreshedStory = refreshedStories.find(
-      (story) => story.objectId === '9001',
-    )
+    const refreshedStory = refreshedStories.find((story) => story.objectId === '9001')
 
     expect(refreshedStory?.id).toBe(firstStory.id)
-    expect(refreshedStory?.contributingRawEventIds).toEqual([
-      'run-completed',
-      'run-started',
-    ])
+    expect(refreshedStory?.contributingRawEventIds).toEqual(['run-completed', 'run-started'])
     expect(refreshedStories).toHaveLength(2)
     expect(new Set(refreshedStories.map((story) => story.id)).size).toBe(2)
   })
@@ -282,10 +267,7 @@ describe('notification story normalization', () => {
     ])
 
     expect(stories).toHaveLength(2)
-    expect(stories.map((story) => story.title).sort()).toEqual([
-      'Production deployment',
-      'Staging deployment',
-    ])
+    expect(stories.map((story) => story.title).sort()).toEqual(['Production deployment', 'Staging deployment'])
     expect(new Set(stories.map((story) => story.id)).size).toBe(2)
   })
 
@@ -322,38 +304,15 @@ describe('notification story normalization', () => {
     ])
 
     expect(stories).toHaveLength(3)
-    expect(
-      stories.find((story) => story.objectType === 'issue')
-        ?.contributingRawEventIds,
-    ).toEqual(['1', '2'])
-    expect(
-      stories
-        .filter((story) => story.objectType === 'security-finding')
-        .map((story) => story.objectId),
-    ).toEqual(['code-scanning:7', 'secret-scanning:7'])
+    expect(stories.find((story) => story.objectType === 'issue')?.contributingRawEventIds).toEqual(['1', '2'])
+    expect(stories.filter((story) => story.objectType === 'security-finding').map((story) => story.objectId)).toEqual(['code-scanning:7', 'secret-scanning:7'])
   })
 
   it.each([
-    [
-      'mention',
-      { classification: 'mention', title: 'You were mentioned' },
-      'needs_you',
-    ],
-    [
-      'review request',
-      { 'signal-type': 'review', title: 'Review requested' },
-      'needs_you',
-    ],
-    [
-      'assignment',
-      { 'event-type': 'assignment', title: 'Issue assigned' },
-      'needs_you',
-    ],
-    [
-      'unresolved failure',
-      { 'run-conclusion': 'failure', title: 'CI failed' },
-      'needs_you',
-    ],
+    ['mention', { classification: 'mention', title: 'You were mentioned' }, 'needs_you'],
+    ['review request', { 'signal-type': 'review', title: 'Review requested' }, 'needs_you'],
+    ['assignment', { 'event-type': 'assignment', title: 'Issue assigned' }, 'needs_you'],
+    ['unresolved failure', { 'run-conclusion': 'failure', title: 'CI failed' }, 'needs_you'],
     [
       'security finding',
       {
@@ -372,16 +331,8 @@ describe('notification story normalization', () => {
       },
       'needs_you',
     ],
-    [
-      'resolved update',
-      { classification: 'status-update', title: 'CI recovered' },
-      'update',
-    ],
-    [
-      'passive information',
-      { classification: 'operational-value', title: 'Value measured' },
-      'fyi',
-    ],
+    ['resolved update', { classification: 'status-update', title: 'CI recovered' }, 'update'],
+    ['passive information', { classification: 'operational-value', title: 'Value measured' }, 'fyi'],
   ])('classifies %s stories', (_name, event, classification) => {
     expect(
       normalizeNotificationStories([
@@ -458,14 +409,8 @@ describe('notification story normalization', () => {
     ]
     const expectedIds = ['1', '2', '3', '5', '4', '6']
 
-    expect(
-      normalizeNotificationStories(events).map((story) => story.objectId),
-    ).toEqual(expectedIds)
-    expect(
-      normalizeNotificationStories([...events].reverse()).map(
-        (story) => story.objectId,
-      ),
-    ).toEqual(expectedIds)
+    expect(normalizeNotificationStories(events).map((story) => story.objectId)).toEqual(expectedIds)
+    expect(normalizeNotificationStories([...events].reverse()).map((story) => story.objectId)).toEqual(expectedIds)
   })
 })
 
@@ -489,10 +434,7 @@ describe('catch up queue construction', () => {
       later: ['story-b'],
     }
 
-    const { queue, size } = buildCatchUpQueue(
-      [storyA, storyB, storyC],
-      previous,
-    )
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous)
 
     expect(queue).toEqual(['story-c'])
     expect(size).toBe(3)
@@ -506,10 +448,7 @@ describe('catch up queue construction', () => {
       later: [],
     }
 
-    const { queue, size } = buildCatchUpQueue(
-      [storyA, storyB, storyC],
-      previous,
-    )
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous)
 
     expect(queue).toEqual(['story-b', 'story-a', 'story-c'])
     expect(size).toBe(3)
@@ -523,10 +462,7 @@ describe('catch up queue construction', () => {
       later: [],
     }
 
-    const { queue, size } = buildCatchUpQueue(
-      [storyA, storyB, storyC],
-      previous,
-    )
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous)
 
     expect(queue).toEqual(['story-b', 'story-c'])
     expect(size).toBe(3)
@@ -540,10 +476,7 @@ describe('catch up queue construction', () => {
       later: ['story-b'],
     }
 
-    const { queue, size } = buildCatchUpQueue(
-      [storyA, storyB, storyC],
-      previous,
-    )
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous)
 
     expect(queue).toEqual(['story-c'])
     expect(size).toBe(3)
@@ -558,10 +491,7 @@ describe('catch up queue construction', () => {
       later: ['story-b'],
     }
 
-    const { queue, size } = buildCatchUpQueue(
-      [storyA, storyB, storyC],
-      previous,
-    )
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous)
 
     expect(queue).toEqual(['story-c'])
     expect(size).toBe(3)
@@ -575,10 +505,7 @@ describe('catch up queue construction', () => {
       later: ['story-b'],
     }
 
-    const { queue, size } = buildCatchUpQueue(
-      [storyA, storyB, storyC],
-      previous,
-    )
+    const { queue, size } = buildCatchUpQueue([storyA, storyB, storyC], previous)
 
     expect(queue).toEqual(['story-c'])
     expect(size).toBe(3)

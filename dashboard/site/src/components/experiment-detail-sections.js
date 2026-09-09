@@ -5,17 +5,8 @@
 import { h } from '../dom.js'
 import { octicon } from '../octicons.js'
 import { renderExperimentBadge } from './badge.js'
-import {
-  computeObservationCoverage,
-  countBy,
-  formatCoveragePercent,
-} from './count-formatters.js'
-import {
-  renderExperimentEffect,
-  renderExperimentSection,
-  numericObservation,
-  safeExperimentLink,
-} from './experiment-view-primitives.js'
+import { computeObservationCoverage, countBy, formatCoveragePercent } from './count-formatters.js'
+import { renderExperimentEffect, renderExperimentSection, numericObservation, safeExperimentLink } from './experiment-view-primitives.js'
 import { renderDisclosure } from './ui-primitives.js'
 
 const UNKNOWN = '—'
@@ -25,12 +16,7 @@ const UNKNOWN = '—'
  * @returns {HTMLElement}
  */
 function partialState(message) {
-  return h(
-    'div',
-    { className: 'experiment-partial', role: 'status' },
-    octicon('info'),
-    h('span', null, message),
-  )
+  return h('div', { className: 'experiment-partial', role: 'status' }, octicon('info'), h('span', null, message))
 }
 
 /**
@@ -40,14 +26,7 @@ function partialState(message) {
  */
 function renderEvidenceLink(value, label) {
   const link = safeExperimentLink(value)
-  return link
-    ? h(
-        'a',
-        { href: link.href, title: link.label || label },
-        label,
-        octicon('link-external'),
-      )
-    : h('span', null, label || UNKNOWN)
+  return link ? h('a', { href: link.href, title: link.label || label }, label, octicon('link-external')) : h('span', null, label || UNKNOWN)
 }
 
 /**
@@ -67,11 +46,7 @@ function formatMetric(value, unit) {
  * @returns {string}
  */
 function text(value) {
-  return typeof value === 'string'
-    ? value.trim()
-    : value == null
-      ? ''
-      : String(value)
+  return typeof value === 'string' ? value.trim() : value == null ? '' : String(value)
 }
 
 /**
@@ -84,12 +59,7 @@ function renderMetricComparisonSection(metrics, experiment) {
     id: 'metric-comparison-title',
     title: 'Variant × metric comparison',
     description: `${experiment.control} compared with ${experiment.candidate}; arrows account for metric direction.`,
-    emptyState:
-      metrics.length === 0
-        ? partialState(
-            'Assignments exist, but no grader or eval observations are available.',
-          )
-        : null,
+    emptyState: metrics.length === 0 ? partialState('Assignments exist, but no grader or eval observations are available.') : null,
     renderContent: () =>
       h(
         'div',
@@ -103,17 +73,9 @@ function renderMetricComparisonSection(metrics, experiment) {
             h(
               'tr',
               null,
-              ...[
-                'Role',
-                'Metric',
-                'Source',
-                'Direction',
-                experiment.control,
-                experiment.candidate,
-                'Δ normalized',
-                'Usable / excluded',
-                'Threshold',
-              ].map((label) => h('th', { scope: 'col' }, label)),
+              ...['Role', 'Metric', 'Source', 'Direction', experiment.control, experiment.candidate, 'Δ normalized', 'Usable / excluded', 'Threshold'].map(
+                (label) => h('th', { scope: 'col' }, label),
+              ),
             ),
           ),
           h(
@@ -123,32 +85,15 @@ function renderMetricComparisonSection(metrics, experiment) {
               h(
                 'tr',
                 null,
-                h(
-                  'td',
-                  null,
-                  renderExperimentBadge(
-                    metric.role,
-                    metric.role === 'GUARDRAIL' ? 'attention' : 'neutral',
-                  ),
-                ),
+                h('td', null, renderExperimentBadge(metric.role, metric.role === 'GUARDRAIL' ? 'attention' : 'neutral')),
                 h('th', { scope: 'row' }, metric.identifier),
                 h('td', null, metric.sourceType),
                 h('td', null, metric.direction.replaceAll('_', ' ')),
                 h('td', null, formatMetric(metric.controlValue, metric.unit)),
                 h('td', null, formatMetric(metric.candidateValue, metric.unit)),
                 h('td', null, renderExperimentEffect(metric.normalizedEffect)),
-                h(
-                  'td',
-                  null,
-                  `${metric.controlN + metric.candidateN} / ${metric.excluded}`,
-                ),
-                h(
-                  'td',
-                  null,
-                  metric.threshold === null
-                    ? UNKNOWN
-                    : formatMetric(metric.threshold, metric.unit),
-                ),
+                h('td', null, `${metric.controlN + metric.candidateN} / ${metric.excluded}`),
+                h('td', null, metric.threshold === null ? UNKNOWN : formatMetric(metric.threshold, metric.unit)),
               ),
             ),
           ),
@@ -179,21 +124,9 @@ function renderEvalBar(label, rows) {
         role: 'img',
         'aria-label': `${label}: ${yes} yes, ${no} no, ${unknown} unknown or missing`,
       },
-      h(
-        'span',
-        { className: 'yes', style: `width:${(yes / total) * 100}%` },
-        yes ? `YES ${yes}` : '',
-      ),
-      h(
-        'span',
-        { className: 'no', style: `width:${(no / total) * 100}%` },
-        no ? `NO ${no}` : '',
-      ),
-      h(
-        'span',
-        { className: 'unknown', style: `width:${(unknown / total) * 100}%` },
-        unknown ? `? ${unknown}` : '',
-      ),
+      h('span', { className: 'yes', style: `width:${(yes / total) * 100}%` }, yes ? `YES ${yes}` : ''),
+      h('span', { className: 'no', style: `width:${(no / total) * 100}%` }, no ? `NO ${no}` : ''),
+      h('span', { className: 'unknown', style: `width:${(unknown / total) * 100}%` }, unknown ? `? ${unknown}` : ''),
     ),
   )
 }
@@ -208,22 +141,14 @@ function renderEvalOutcomesSection(metrics, experiment) {
     id: 'eval-outcomes-title',
     title: 'Eval outcomes',
     description: 'Unknown and missing answers remain separate from NO.',
-    emptyState:
-      metrics.length === 0
-        ? partialState(
-            'No eval observations are available for this experiment.',
-          )
-        : null,
+    emptyState: metrics.length === 0 ? partialState('No eval observations are available for this experiment.') : null,
     renderContent: () =>
       h(
         'div',
         { className: 'eval-outcome-list' },
         ...metrics.map((metric) => {
-          const matching = /** @type {Array<Record<string, any>>} */ (
-            experiment.observations
-          ).filter(
-            (row) =>
-              row.sourceType === 'eval' && row.identifier === metric.identifier,
+          const matching = /** @type {Array<Record<string, any>>} */ (experiment.observations).filter(
+            (row) => row.sourceType === 'eval' && row.identifier === metric.identifier,
           )
           return h(
             'article',
@@ -235,11 +160,7 @@ function renderEvalOutcomesSection(metrics, experiment) {
                 'div',
                 null,
                 h('strong', null, metric.question || metric.identifier),
-                h(
-                  'span',
-                  null,
-                  `${metric.identifier} · ${metric.candidateN + metric.controlN} usable · ${metric.excluded} excluded`,
-                ),
+                h('span', null, `${metric.identifier} · ${metric.candidateN + metric.controlN} usable · ${metric.excluded} excluded`),
               ),
               renderExperimentEffect(metric.normalizedEffect),
             ),
@@ -266,12 +187,7 @@ function renderGraderDiagnosticsSection(metrics) {
     id: 'grader-diagnostics-title',
     title: 'Grader regressions',
     description: 'Largest direction-aware regressions are ranked first.',
-    emptyState:
-      metrics.length === 0
-        ? partialState(
-            'No grader regressions are present in the available observations.',
-          )
-        : null,
+    emptyState: metrics.length === 0 ? partialState('No grader regressions are present in the available observations.') : null,
     renderContent: () =>
       h(
         'ol',
@@ -280,18 +196,11 @@ function renderGraderDiagnosticsSection(metrics) {
           h(
             'li',
             null,
-            h(
-              'span',
-              { className: 'grader-rank-icon', 'aria-hidden': 'true' },
-              metric.regression ? octicon('arrow-down') : octicon('arrow-up'),
-            ),
+            h('span', { className: 'grader-rank-icon', 'aria-hidden': 'true' }, metric.regression ? octicon('arrow-down') : octicon('arrow-up')),
             h('strong', null, metric.identifier),
             h('span', null, renderExperimentEffect(metric.normalizedEffect)),
             h('span', null, `N ${metric.controlN + metric.candidateN}`),
-            renderExperimentBadge(
-              metric.role,
-              metric.regression ? 'danger' : 'neutral',
-            ),
+            renderExperimentBadge(metric.role, metric.regression ? 'danger' : 'neutral'),
           ),
         ),
       ),
@@ -303,29 +212,18 @@ function renderGraderDiagnosticsSection(metrics) {
  * @returns {HTMLElement}
  */
 function renderObservationQualitySection(experiment) {
-  const observations = /** @type {Array<Record<string, any>>} */ (
-    experiment.observations
-  )
-  const assignments = /** @type {Array<Record<string, any>>} */ (
-    experiment.assignments
-  )
+  const observations = /** @type {Array<Record<string, any>>} */ (experiment.observations)
+  const assignments = /** @type {Array<Record<string, any>>} */ (experiment.assignments)
   const reasons = countBy(
     observations.filter((observation) => !observation.included),
-    (observation) =>
-      observation.exclusionReason || `${observation.sourceType} missing`,
+    (observation) => observation.exclusionReason || `${observation.sourceType} missing`,
   )
-  const assignedRuns = new Set(
-    assignments.map((row) => text(row.run)).filter(Boolean),
-  ).size
-  const coverage = computeObservationCoverage(
-    experiment.usable,
-    experiment.excluded,
-  )
+  const assignedRuns = new Set(assignments.map((row) => text(row.run)).filter(Boolean)).size
+  const coverage = computeObservationCoverage(experiment.usable, experiment.excluded)
   return renderExperimentSection({
     id: 'observation-quality-title',
     title: 'Observation quality and exclusions',
-    description:
-      'Coverage is calculated from observations, not successful workflow executions.',
+    description: 'Coverage is calculated from observations, not successful workflow executions.',
     className: 'observation-quality',
     renderContent: () =>
       h(
@@ -336,22 +234,13 @@ function renderObservationQualitySection(experiment) {
               'div',
               { className: 'experiment-warning', role: 'note' },
               octicon('alert'),
-              h(
-                'span',
-                null,
-                'Large effects require caution because usable observation coverage is below 90%.',
-              ),
+              h('span', null, 'Large effects require caution because usable observation coverage is below 90%.'),
             )
           : null,
         h(
           'div',
           { className: 'exclusion-flow' },
-          h(
-            'div',
-            null,
-            h('span', null, 'Assigned runs'),
-            h('strong', null, String(assignedRuns)),
-          ),
+          h('div', null, h('span', null, 'Assigned runs'), h('strong', null, String(assignedRuns))),
           h(
             'div',
             null,
@@ -359,24 +248,8 @@ function renderObservationQualitySection(experiment) {
             h('strong', null, String(experiment.usable)),
             h('small', null, formatCoveragePercent(coverage)),
           ),
-          h(
-            'div',
-            null,
-            h('span', null, 'Excluded'),
-            h('strong', null, String(experiment.excluded)),
-          ),
-          h(
-            'ul',
-            null,
-            ...[...reasons].map(([reason, count]) =>
-              h(
-                'li',
-                null,
-                h('span', null, reason),
-                h('strong', null, String(count)),
-              ),
-            ),
-          ),
+          h('div', null, h('span', null, 'Excluded'), h('strong', null, String(experiment.excluded))),
+          h('ul', null, ...[...reasons].map(([reason, count]) => h('li', null, h('span', null, reason), h('strong', null, String(count))))),
         ),
       ),
   })
@@ -392,25 +265,13 @@ function renderEvidenceActions(row) {
     ['Workflow execution', row.run['run-link']],
     ['Artifacts', row.assignment['artifact-link']],
     ['Trace', row.assignment['trace-link']],
-    .../** @type {Array<Record<string, any>>} */ (row.observations).map(
-      (observation) => [
-        observation.sourceType === 'eval' ? 'Eval' : 'Grader',
-        observation.evidenceLink,
-      ],
-    ),
+    .../** @type {Array<Record<string, any>>} */ (row.observations).map((observation) => [
+      observation.sourceType === 'eval' ? 'Eval' : 'Grader',
+      observation.evidenceLink,
+    ]),
   ].filter(([, value]) => safeExperimentLink(value))
   return links.length
-    ? renderDisclosure(
-        'evidence-menu',
-        'Open evidence',
-        h(
-          'ul',
-          null,
-          ...links.map(([label, value]) =>
-            h('li', null, renderEvidenceLink(value, label)),
-          ),
-        ),
-      )
+    ? renderDisclosure('evidence-menu', 'Open evidence', h('ul', null, ...links.map(([label, value]) => h('li', null, renderEvidenceLink(value, label)))))
     : h('span', { className: 'muted' }, 'Unavailable')
 }
 
@@ -420,34 +281,20 @@ function renderEvidenceActions(row) {
  * @returns {HTMLElement}
  */
 function renderRunEvidenceSection(model, experiment) {
-  const assignments = /** @type {Array<Record<string, any>>} */ (
-    experiment.assignments
-  )
-  const experimentObservations = /** @type {Array<Record<string, any>>} */ (
-    experiment.observations
-  )
+  const assignments = /** @type {Array<Record<string, any>>} */ (experiment.assignments)
+  const experimentObservations = /** @type {Array<Record<string, any>>} */ (experiment.observations)
   const rows = assignments.map((assignment) => {
     const run = model.runById.get(text(assignment.run)) ?? {}
-    const observations = experimentObservations.filter(
-      (observation) => text(observation.run) === text(assignment.run),
-    )
-    const primary = observations.find(
-      (observation) => observation.identifier === experiment.primaryId,
-    )
-    const guardrails = observations.filter(
-      (observation) => observation.role === 'GUARDRAIL',
-    )
-    const evals = observations.filter(
-      (observation) => observation.sourceType === 'eval',
-    )
+    const observations = experimentObservations.filter((observation) => text(observation.run) === text(assignment.run))
+    const primary = observations.find((observation) => observation.identifier === experiment.primaryId)
+    const guardrails = observations.filter((observation) => observation.role === 'GUARDRAIL')
+    const evals = observations.filter((observation) => observation.sourceType === 'eval')
     const included = observations.some((observation) => observation.included)
     const reason = [
       ...new Set(
         [
           text(assignment['exclusion-reason']),
-          ...observations
-            .filter((observation) => !observation.included)
-            .map((observation) => observation.exclusionReason),
+          ...observations.filter((observation) => !observation.included).map((observation) => observation.exclusionReason),
         ].filter(Boolean),
       ),
     ].join(', ')
@@ -465,14 +312,8 @@ function renderRunEvidenceSection(model, experiment) {
   return renderExperimentSection({
     id: 'run-evidence-title',
     title: 'Run evidence',
-    description:
-      'Inspect assignments, observations, exclusions, and retained supporting evidence.',
-    emptyState:
-      rows.length === 0
-        ? partialState(
-            'Experiment configured, but no assignments are available.',
-          )
-        : null,
+    description: 'Inspect assignments, observations, exclusions, and retained supporting evidence.',
+    emptyState: rows.length === 0 ? partialState('Experiment configured, but no assignments are available.') : null,
     renderContent: () =>
       h(
         'div',
@@ -486,16 +327,7 @@ function renderRunEvidenceSection(model, experiment) {
             h(
               'tr',
               null,
-              ...[
-                'Run',
-                'Variant',
-                'Primary',
-                'Guardrails',
-                'Evals',
-                'Included',
-                'Reason',
-                'Evidence',
-              ].map((label) => h('th', { scope: 'col' }, label)),
+              ...['Run', 'Variant', 'Primary', 'Guardrails', 'Evals', 'Included', 'Reason', 'Evidence'].map((label) => h('th', { scope: 'col' }, label)),
             ),
           ),
           h(
@@ -505,50 +337,20 @@ function renderRunEvidenceSection(model, experiment) {
               h(
                 'tr',
                 null,
-                h(
-                  'th',
-                  { scope: 'row' },
-                  renderEvidenceLink(
-                    row.run['run-link'],
-                    text(row.assignment.run),
-                  ),
-                ),
+                h('th', { scope: 'row' }, renderEvidenceLink(row.run['run-link'], text(row.assignment.run))),
                 h('td', null, text(row.assignment.variant) || UNKNOWN),
-                h(
-                  'td',
-                  null,
-                  row.primary
-                    ? formatMetric(
-                        numericObservation(row.primary),
-                        row.primary.unit,
-                      )
-                    : UNKNOWN,
-                ),
+                h('td', null, row.primary ? formatMetric(numericObservation(row.primary), row.primary.unit) : UNKNOWN),
                 h(
                   'td',
                   null,
                   row.guardrails.length
                     ? renderExperimentBadge(
-                        row.guardrails.some(
-                          (observation) => !observation.included,
-                        )
-                          ? 'Review'
-                          : `${row.guardrails.length}/${row.guardrails.length}`,
-                        row.guardrails.some(
-                          (observation) => !observation.included,
-                        )
-                          ? 'danger'
-                          : 'success',
+                        row.guardrails.some((observation) => !observation.included) ? 'Review' : `${row.guardrails.length}/${row.guardrails.length}`,
+                        row.guardrails.some((observation) => !observation.included) ? 'danger' : 'success',
                       )
                     : UNKNOWN,
                 ),
-                h(
-                  'td',
-                  null,
-                  row.evals.length
-                    ? `${row.evals.filter((observation) => observation.included).length}/${row.evals.length}`
-                    : UNKNOWN,
-                ),
+                h('td', null, row.evals.length ? `${row.evals.filter((observation) => observation.included).length}/${row.evals.length}` : UNKNOWN),
                 h('td', null, row.included ? 'Yes' : 'No'),
                 h('td', null, row.reason || UNKNOWN),
                 h('td', null, renderEvidenceActions(row)),
@@ -566,25 +368,11 @@ function renderRunEvidenceSection(model, experiment) {
  * @returns {HTMLElement}
  */
 export function renderExperimentDetailSection(section, context) {
-  if (section === 'metric-comparison')
-    return renderMetricComparisonSection(
-      context.metrics ?? [],
-      context.experiment ?? {},
-    )
-  if (section === 'eval-outcomes')
-    return renderEvalOutcomesSection(
-      context.metrics ?? [],
-      context.experiment ?? {},
-    )
-  if (section === 'grader-diagnostics')
-    return renderGraderDiagnosticsSection(context.metrics ?? [])
-  if (section === 'observation-quality')
-    return renderObservationQualitySection(context.experiment ?? {})
-  if (section === 'run-evidence')
-    return renderRunEvidenceSection(
-      context.model ?? { runById: new Map() },
-      context.experiment ?? {},
-    )
+  if (section === 'metric-comparison') return renderMetricComparisonSection(context.metrics ?? [], context.experiment ?? {})
+  if (section === 'eval-outcomes') return renderEvalOutcomesSection(context.metrics ?? [], context.experiment ?? {})
+  if (section === 'grader-diagnostics') return renderGraderDiagnosticsSection(context.metrics ?? [])
+  if (section === 'observation-quality') return renderObservationQualitySection(context.experiment ?? {})
+  if (section === 'run-evidence') return renderRunEvidenceSection(context.model ?? { runById: new Map() }, context.experiment ?? {})
   throw new Error(
     `Unknown experiment detail section: "${section}". Expected one of: metric-comparison, eval-outcomes, grader-diagnostics, observation-quality, run-evidence`,
   )

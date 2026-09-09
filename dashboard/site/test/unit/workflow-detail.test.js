@@ -43,8 +43,7 @@ function context(pageId = 'workflow-detail') {
               relation: 'workflow',
               href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
               label: 'View Ambient Context',
-              'dashboard-href':
-                '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
+              'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
               'dashboard-label': 'View Ambient Context workflow dashboard',
             },
           },
@@ -121,66 +120,34 @@ describe('renderWorkflowDetail', () => {
       }),
     )
 
-    expect(rendered.dataset.workflow).toBe(
-      'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
-    )
-    expect(rendered.querySelector('.workflow-tabs')?.textContent).toBe(
-      'InsightsReportsRuns',
-    )
-    expect(
-      rendered.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Reports')
-    expect(
-      rendered
-        .querySelector('.workflow-tabs a:first-child')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.dataset.workflow).toBe('githubnext/gh-aw-cao:.github/workflows/ambient-context.md')
+    expect(rendered.querySelector('.workflow-tabs')?.textContent).toBe('InsightsReportsRuns')
+    expect(rendered.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Reports')
+    expect(rendered.querySelector('.workflow-tabs a:first-child')?.getAttribute('href')).toBe(
       '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
     )
-    expect(
-      rendered
-        .querySelector('.workflow-tabs a:last-child')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.workflow-tabs a:last-child')?.getAttribute('href')).toBe(
       '#page-workflow-runs?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
     )
-    expect(
-      [...rendered.querySelectorAll('.workflow-identity .workflow-badge')].map(
-        (badge) => badge.textContent,
-      ),
-    ).toEqual([
+    expect([...rendered.querySelectorAll('.workflow-identity .workflow-badge')].map((badge) => badge.textContent)).toEqual([
       'Orchestrator',
       'Package · Ambient Context',
       'Package · Central Agentic Ops',
     ])
-    expect(
-      [
-        ...rendered.querySelectorAll(
-          '.workflow-identity .workflow-badge-operation',
-        ),
-      ].map((badge) => badge.getAttribute('href')),
-    ).toEqual([
+    expect([...rendered.querySelectorAll('.workflow-identity .workflow-badge-operation')].map((badge) => badge.getAttribute('href'))).toEqual([
       '#page-package-insights?package=ambient-context',
       '#page-package-insights?package=central-agentic-ops',
     ])
-    expect(
-      rendered.querySelector('.workflow-identity > a')?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('href')).toBe(
       'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
     )
-    expect(rendered.querySelector('.workflow-identity > a')?.textContent).toBe(
-      'View authored workflow',
-    )
-    expect(
-      rendered.querySelector('.workflow-identity > a')?.getAttribute('target'),
-    ).toBe('_blank')
+    expect(rendered.querySelector('.workflow-identity > a')?.textContent).toBe('View authored workflow')
+    expect(rendered.querySelector('.workflow-identity > a')?.getAttribute('target')).toBe('_blank')
     expect(rendered.textContent).not.toContain('Open report')
     expect(allocation).toHaveBeenCalledOnce()
     expect(allocation.mock.calls[0][0].detail).toEqual({
       title: 'Ambient Context',
-      description:
-        'Durable reports produced by .github/workflows/ambient-context.md in githubnext/gh-aw-cao.',
+      description: 'Durable reports produced by .github/workflows/ambient-context.md in githubnext/gh-aw-cao.',
       mode: 'review',
       navigationPage: 'repositories',
       breadcrumbs: [
@@ -212,20 +179,11 @@ describe('renderWorkflowDetail', () => {
       }),
     )
 
-    expect(
-      rendered.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Runs')
-    expect(
-      rendered
-        .querySelector('.workflow-tabs a:nth-child(2)')
-        ?.getAttribute('href'),
-    ).toBe(
+    expect(rendered.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Runs')
+    expect(rendered.querySelector('.workflow-tabs a:nth-child(2)')?.getAttribute('href')).toBe(
       '#page-workflow-detail?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
     )
-    expect(allocation.mock.calls[0][0].detail.description).toBe(
-      'Observed runs for .github/workflows/ambient-context.md in githubnext/gh-aw-cao.',
-    )
+    expect(allocation.mock.calls[0][0].detail.description).toBe('Observed runs for .github/workflows/ambient-context.md in githubnext/gh-aw-cao.')
   })
 
   it('uses declarative route view ids to choose the runs composition', () => {
@@ -244,10 +202,7 @@ describe('renderWorkflowDetail', () => {
       }),
     )
 
-    expect(
-      rendered.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Runs')
+    expect(rendered.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Runs')
   })
 
   it('uses the declarative route view id instead of page identity', () => {
@@ -267,10 +222,7 @@ describe('renderWorkflowDetail', () => {
       }),
     )
 
-    expect(
-      rendered.querySelector('.workflow-tabs [aria-current="page"]')
-        ?.textContent,
-    ).toBe('Runs')
+    expect(rendered.querySelector('.workflow-tabs [aria-current="page"]')?.textContent).toBe('Runs')
   })
 
   it('reuses the shared route page shell for workflow tabs and chrome', () => {

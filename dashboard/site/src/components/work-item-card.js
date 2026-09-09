@@ -29,11 +29,7 @@ export function renderWorkItemCard(item) {
       'header',
       null,
       renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-      h(
-        'strong',
-        null,
-        renderLinkedValue(item.name, item.evidenceLink ?? null),
-      ),
+      h('strong', null, renderLinkedValue(item.name, item.evidenceLink ?? null)),
       h(
         'span',
         {
@@ -48,36 +44,15 @@ export function renderWorkItemCard(item) {
     h(
       'div',
       { className: 'work-card-labels', 'aria-label': 'Work labels' },
-      ...(item.packageName
-        ? [
-            h(
-              'span',
-              { className: 'work-card-label work-card-label-package' },
-              item.packageName,
-            ),
-          ]
-        : []),
-      ...(item.workType && item.workType !== 'unknown'
-        ? [
-            h(
-              'span',
-              { className: 'work-card-label work-card-label-role' },
-              item.workType,
-            ),
-          ]
-        : []),
+      ...(item.packageName ? [h('span', { className: 'work-card-label work-card-label-package' }, item.packageName)] : []),
+      ...(item.workType && item.workType !== 'unknown' ? [h('span', { className: 'work-card-label work-card-label-role' }, item.workType)] : []),
     ),
     h(
       'dl',
       null,
       renderDlRow('Owner', item.owner),
       renderDlRow(item.timeLabel, item.startedLabel),
-      ...(item.timeLabel === 'Observed'
-        ? []
-        : [
-            renderDlRow('Stopped', item.stoppedLabel),
-            renderDlRow('Duration', item.durationLabel),
-          ]),
+      ...(item.timeLabel === 'Observed' ? [] : [renderDlRow('Stopped', item.stoppedLabel), renderDlRow('Duration', item.durationLabel)]),
     ),
   )
 }

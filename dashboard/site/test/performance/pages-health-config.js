@@ -9,12 +9,7 @@ export const profiles = [
     id: 'mobile',
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,
-    lighthouse: [
-      '--screenEmulation.mobile=true',
-      '--screenEmulation.width=390',
-      '--screenEmulation.height=844',
-      '--screenEmulation.deviceScaleFactor=3',
-    ],
+    lighthouse: ['--screenEmulation.mobile=true', '--screenEmulation.width=390', '--screenEmulation.height=844', '--screenEmulation.deviceScaleFactor=3'],
   },
   {
     id: 'low-bandwidth',
@@ -44,12 +39,8 @@ export const profiles = [
  * @returns {string[]}
  */
 export function dashboardPageIds(dashboard) {
-  const pages =
-    /** @type {{ dashboard?: { pages?: Array<{ id?: unknown }> } }} */ (
-      dashboard
-    )?.dashboard?.pages
-  if (!Array.isArray(pages))
-    throw new Error('dashboard.json does not declare dashboard.pages')
+  const pages = /** @type {{ dashboard?: { pages?: Array<{ id?: unknown }> } }} */ (dashboard)?.dashboard?.pages
+  if (!Array.isArray(pages)) throw new Error('dashboard.json does not declare dashboard.pages')
   /** @type {string[]} */
   const ids = []
   for (const page of pages) {

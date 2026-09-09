@@ -63,9 +63,7 @@ describe('canonical entity relationships', () => {
     expect(relationshipErrors(batch)).toEqual([])
     expect(batch).toMatchObject({
       repositories: [{ id: 'github:repository:1' }],
-      workflows: [
-        { id: 'github:workflow:2', repositoryId: 'github:repository:1' },
-      ],
+      workflows: [{ id: 'github:workflow:2', repositoryId: 'github:repository:1' }],
       runs: [
         {
           id: 'github:run:3:attempt:1',

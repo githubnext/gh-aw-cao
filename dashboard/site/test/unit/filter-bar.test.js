@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  HORIZON_FILTER_STORAGE_KEY,
-  relativeTimeWindow,
-  renderFilterBar,
-} from '../../src/components/filter-bar.js'
+import { HORIZON_FILTER_STORAGE_KEY, relativeTimeWindow, renderFilterBar } from '../../src/components/filter-bar.js'
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -32,53 +28,33 @@ describe('time-window filter bar', () => {
 
     expect(onChange).not.toHaveBeenCalled()
 
-    const select = /** @type {HTMLSelectElement} */ (
-      filterBar.querySelector('[aria-label="Time window"]')
-    )
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'))
     select.value = '6h'
     select.dispatchEvent(new Event('change'))
-    expect(onChange).toHaveBeenLastCalledWith(
-      new Map([['mode', ['review', 'live', 'unknown']]]),
-      {
-        range: '6h',
-        start: '2026-09-04T06:00:00.000Z',
-        end: '2026-09-04T12:00:00.000Z',
-      },
-    )
+    expect(onChange).toHaveBeenLastCalledWith(new Map([['mode', ['review', 'live', 'unknown']]]), {
+      range: '6h',
+      start: '2026-09-04T06:00:00.000Z',
+      end: '2026-09-04T12:00:00.000Z',
+    })
 
-    const start = /** @type {HTMLInputElement} */ (
-      filterBar.querySelector('[aria-label="Window start time"]')
-    )
-    const end = /** @type {HTMLInputElement} */ (
-      filterBar.querySelector('[aria-label="Window stop time"]')
-    )
+    const start = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Window start time"]'))
+    const end = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Window stop time"]'))
     start.value = '2026-09-04T08:00'
     end.value = '2026-09-04T10:00'
     start.dispatchEvent(new Event('change'))
-    ;[...filterBar.querySelectorAll('button')]
-      .find((button) => button.textContent === 'Apply')
-      ?.click()
+    ;[...filterBar.querySelectorAll('button')].find((button) => button.textContent === 'Apply')?.click()
 
     const selected = onChange.mock.calls.at(-1)?.[1]
     expect(selected.range).toBe('custom')
-    expect(Date.parse(selected.end) - Date.parse(selected.start)).toBe(
-      2 * 3_600_000,
-    )
-    expect(
-      JSON.parse(
-        window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}',
-      ),
-    ).toMatchObject({
+    expect(Date.parse(selected.end) - Date.parse(selected.start)).toBe(2 * 3_600_000)
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({
       range: 'custom',
       modes: ['review', 'live', 'unknown'],
     })
   })
 
   it('keeps filters interactive when localStorage is unavailable', async () => {
-    const storageDescriptor = Object.getOwnPropertyDescriptor(
-      window,
-      'localStorage',
-    )
+    const storageDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       value: undefined,
@@ -92,14 +68,10 @@ describe('time-window filter bar', () => {
       document.body.append(filterBar)
       await Promise.resolve()
 
-      const select = /** @type {HTMLSelectElement} */ (
-        filterBar.querySelector('[aria-label="Time window"]')
-      )
+      const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'))
       select.value = '6h'
       select.dispatchEvent(new Event('change'))
-      const filterInput = /** @type {HTMLInputElement} */ (
-        filterBar.querySelector('[aria-label="Current filters"]')
-      )
+      const filterInput = /** @type {HTMLInputElement} */ (filterBar.querySelector('[aria-label="Current filters"]'))
       filterInput.value = 'repository:gh-aw-cao'
       filterInput.dispatchEvent(new Event('input'))
 
@@ -117,8 +89,7 @@ describe('time-window filter bar', () => {
         )
       })
     } finally {
-      if (storageDescriptor)
-        Object.defineProperty(window, 'localStorage', storageDescriptor)
+      if (storageDescriptor) Object.defineProperty(window, 'localStorage', storageDescriptor)
     }
   })
 
@@ -140,9 +111,7 @@ describe('time-window filter bar', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
     expect(filterBar.classList.contains('filter-bar-expanded')).toBe(true)
 
-    filterBar.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
-    )
+    filterBar.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(filterBar.classList.contains('filter-bar-expanded')).toBe(false)
     expect(document.activeElement).toBe(toggle)
@@ -159,14 +128,10 @@ describe('time-window filter bar', () => {
 
     const modes = [...first.querySelectorAll('.mode-filter-control input')]
     ;/** @type {HTMLInputElement} */ (modes[1]).click()
-    const select = /** @type {HTMLSelectElement} */ (
-      first.querySelector('[aria-label="Time window"]')
-    )
+    const select = /** @type {HTMLSelectElement} */ (first.querySelector('[aria-label="Time window"]'))
     select.value = '6h'
     select.dispatchEvent(new Event('change'))
-    const filterInput = /** @type {HTMLInputElement} */ (
-      first.querySelector('[aria-label="Current filters"]')
-    )
+    const filterInput = /** @type {HTMLInputElement} */ (first.querySelector('[aria-label="Current filters"]'))
     filterInput.value = 'repository:gh-aw-cao'
     filterInput.dispatchEvent(new Event('input'))
 
@@ -178,21 +143,13 @@ describe('time-window filter bar', () => {
     document.body.append(second)
     await Promise.resolve()
 
-    expect(
-      /** @type {HTMLSelectElement | null} */ (
-        second.querySelector('[aria-label="Time window"]')
-      )?.value,
-    ).toBe('6h')
-    expect(
-      /** @type {HTMLInputElement | null} */ (
-        second.querySelector('[aria-label="Current filters"]')
-      )?.value,
-    ).toBe('repository:gh-aw-cao')
-    expect(
-      [...second.querySelectorAll('.mode-filter-control input')].map(
-        (input) => /** @type {HTMLInputElement} */ (input).checked,
-      ),
-    ).toEqual([true, false, true])
+    expect(/** @type {HTMLSelectElement | null} */ (second.querySelector('[aria-label="Time window"]'))?.value).toBe('6h')
+    expect(/** @type {HTMLInputElement | null} */ (second.querySelector('[aria-label="Current filters"]'))?.value).toBe('repository:gh-aw-cao')
+    expect([...second.querySelectorAll('.mode-filter-control input')].map((input) => /** @type {HTMLInputElement} */ (input).checked)).toEqual([
+      true,
+      false,
+      true,
+    ])
     expect(secondChange).toHaveBeenLastCalledWith(
       new Map([
         ['repository', ['gh-aw-cao']],
@@ -215,18 +172,11 @@ describe('time-window filter bar', () => {
         ['mode', []],
       ]),
     )
-    expect(
-      JSON.parse(
-        window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}',
-      ).modes,
-    ).toEqual([])
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}').modes).toEqual([])
   })
 
   it('falls back to default modes when persisted modes array contains only invalid entries', async () => {
-    window.localStorage.setItem(
-      HORIZON_FILTER_STORAGE_KEY,
-      JSON.stringify({ range: '24h', modes: ['corrupted_mode', 'invalid'] }),
-    )
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range: '24h', modes: ['corrupted_mode', 'invalid'] }))
     const onChange = vi.fn()
     const filterBar = renderFilterBar(onChange, {
       defaultRange: '24h',

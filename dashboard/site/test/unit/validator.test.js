@@ -1,15 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import {
-  validateDashboardDocument,
-  validateLogicalSources,
-} from '../../src/validator.js'
+import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js'
 import { packageDashboardSources } from '../package-dashboard-documents.js'
 
-const authoritativeDashboardSource = readFileSync(
-  `${process.cwd()}/dashboard.json`,
-  'utf8',
-)
+const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
@@ -46,19 +40,9 @@ describe('dashboard document validation', () => {
 
   it('defines Overview child pages with exact attention filters and GitHub evidence links', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const pages = Object.fromEntries(
-      document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [
-        page.id,
-        page,
-      ]),
-    )
+    const pages = Object.fromEntries(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]))
 
-    for (const pageId of [
-      'overview-failed-runs',
-      'overview-blocked-work',
-      'overview-awaiting-review',
-      'overview-security-findings',
-    ]) {
+    for (const pageId of ['overview-failed-runs', 'overview-blocked-work', 'overview-awaiting-review', 'overview-security-findings']) {
       expect(pages[pageId].route).toEqual({ 'navigation-page': 'overview' })
       expect(pages[pageId].views).toHaveLength(1)
       expect(pages[pageId].views[0].mark).toBe('table')
@@ -70,12 +54,7 @@ describe('dashboard document validation', () => {
       data: {
         source: 'failed-runs',
         filters: {
-          'run-conclusion': [
-            'failure',
-            'startup-failure',
-            'stale',
-            'timed-out',
-          ],
+          'run-conclusion': ['failure', 'startup-failure', 'stale', 'timed-out'],
         },
       },
       encoding: {
@@ -107,9 +86,7 @@ describe('dashboard document validation', () => {
         ],
       },
     })
-    expect(
-      pages['overview-blocked-work'].views[0].encoding.href,
-    ).toBeUndefined()
+    expect(pages['overview-blocked-work'].views[0].encoding.href).toBeUndefined()
     expect(pages['overview-awaiting-review'].views[0]).toMatchObject({
       data: { source: 'work-items', filters: { 'lifecycle-state': 'review' } },
       encoding: {
@@ -125,9 +102,7 @@ describe('dashboard document validation', () => {
         ],
       },
     })
-    expect(
-      pages['overview-awaiting-review'].views[0].encoding.href,
-    ).toBeUndefined()
+    expect(pages['overview-awaiting-review'].views[0].encoding.href).toBeUndefined()
     expect(pages['overview-security-findings'].views[0]).toMatchObject({
       data: { source: 'security-findings' },
       encoding: {
@@ -143,16 +118,12 @@ describe('dashboard document validation', () => {
         ],
       },
     })
-    expect(
-      pages['overview-security-findings'].views[0].encoding.href,
-    ).toBeUndefined()
+    expect(pages['overview-security-findings'].views[0].encoding.href).toBeUndefined()
   })
 
   it('accepts the GitHub API full-view lazy-list table', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const apiPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'github-api',
-    )
+    const apiPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api')
 
     expect(apiPage.views).toEqual([
       expect.objectContaining({
@@ -173,21 +144,13 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource)
     const experimentalIds = new Set(
       document.dashboard.navigation
-        .filter(
-          (/** @type {{ experimental?: boolean }} */ section) =>
-            section.experimental,
-        )
+        .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
         .flatMap((/** @type {{ pages: string[] }} */ section) => section.pages),
     )
 
-    for (const page of document.dashboard.pages.filter(
-      (/** @type {{ id: string }} */ candidate) =>
-        experimentalIds.has(candidate.id),
-    )) {
+    for (const page of document.dashboard.pages.filter((/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id))) {
       const definition = page.definition ?? page
-      const editableViews = (definition.views ?? []).filter(
-        (/** @type {{ locked?: boolean }} */ view) => view.locked !== true,
-      )
+      const editableViews = (definition.views ?? []).filter((/** @type {{ locked?: boolean }} */ view) => view.locked !== true)
       if (editableViews.length === 0) continue
       expect(definition.sections, page.id).toBeUndefined()
       expect(editableViews, page.id).toHaveLength(1)
@@ -204,14 +167,8 @@ describe('dashboard document validation', () => {
   it('accepts canonical route body values and rejects non-canonical config.body values', () => {
     const document = JSON.parse(authoritativeDashboardSource)
     const workflowRouteView = document.dashboard.pages
-      .find(
-        (/** @type {{ id: string, views: Array<any> }} */ page) =>
-          page.id === 'workflow-detail',
-      )
-      .views.find(
-        (/** @type {{ id: string }} */ view) =>
-          view.id === 'workflow-reports-route',
-      )
+      .find((/** @type {{ id: string, views: Array<any> }} */ page) => page.id === 'workflow-detail')
+      .views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-reports-route')
 
     expect(workflowRouteView).toMatchObject({
       mark: 'element',
@@ -226,8 +183,7 @@ describe('dashboard document validation', () => {
     expect(rejected.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          message:
-            'workflow-route-page config.body must use one canonical route body value.',
+          message: 'workflow-route-page config.body must use one canonical route body value.',
         }),
       ]),
     )
@@ -235,15 +191,8 @@ describe('dashboard document validation', () => {
 
   it('defines firewall as one full-view lazy domain table', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const firewall = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'firewall',
-    )
-    expect(
-      document.dashboard.navigation.find(
-        (/** @type {{ label: string }} */ section) =>
-          section.label === 'Explore',
-      ).pages,
-    ).toContain('firewall')
+    const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall')
+    expect(document.dashboard.navigation.find((/** @type {{ label: string }} */ section) => section.label === 'Explore').pages).toContain('firewall')
     expect(firewall.sections).toBeUndefined()
     expect(firewall.views).toHaveLength(1)
     const [domains] = firewall.views
@@ -316,15 +265,8 @@ describe('dashboard document validation', () => {
 
   it('defines MCP diagnostics in a dedicated Explore page', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const mcps = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'mcps',
-    )
-    expect(
-      document.dashboard.navigation.find(
-        (/** @type {{ label: string }} */ section) =>
-          section.label === 'Explore',
-      ).pages,
-    ).toContain('mcps')
+    const mcps = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'mcps')
+    expect(document.dashboard.navigation.find((/** @type {{ label: string }} */ section) => section.label === 'Explore').pages).toContain('mcps')
     expect(mcps).toMatchObject({
       kind: 'custom',
       'navigation-label': 'MCPs',
@@ -343,11 +285,7 @@ describe('dashboard document validation', () => {
       ],
     })
     expect(mcps.views).toHaveLength(1)
-    expect(
-      mcps.views[0].encoding.columns.map(
-        (/** @type {{ field: string }} */ column) => column.field,
-      ),
-    ).toEqual([
+    expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-server',
       'mcp-tool',
       'mcp-server-version',
@@ -365,15 +303,8 @@ describe('dashboard document validation', () => {
 
   it('defines detection results as a full-view lazy table in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const detection = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'detection',
-    )
-    expect(
-      document.dashboard.navigation.find(
-        (/** @type {{ label: string }} */ section) =>
-          section.label === 'Explore',
-      ).pages,
-    ).toContain('detection')
+    const detection = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'detection')
+    expect(document.dashboard.navigation.find((/** @type {{ label: string }} */ section) => section.label === 'Explore').pages).toContain('detection')
     expect(detection.views).toHaveLength(1)
     expect(detection).not.toHaveProperty('sections')
     expect(detection.views[0]).toMatchObject({
@@ -388,11 +319,7 @@ describe('dashboard document validation', () => {
         'order-by': [{ field: 'observed-at', direction: 'desc' }],
       },
     })
-    expect(
-      detection.views[0].encoding.columns.map(
-        (/** @type {{ field: string }} */ column) => column.field,
-      ),
-    ).toEqual([
+    expect(detection.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'detection-state',
       'detection-signal',
       'inspection-warning',
@@ -414,16 +341,9 @@ describe('dashboard document validation', () => {
 
   it('defines safe-output diagnostics as one full-view lazy table in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const safeOutputs = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'safe-outputs',
-    )
+    const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs')
 
-    expect(
-      document.dashboard.navigation.find(
-        (/** @type {{ label: string }} */ section) =>
-          section.label === 'Explore',
-      ).pages,
-    ).toContain('safe-outputs')
+    expect(document.dashboard.navigation.find((/** @type {{ label: string }} */ section) => section.label === 'Explore').pages).toContain('safe-outputs')
     expect(safeOutputs.views).toHaveLength(1)
     expect(safeOutputs.views[0]).toMatchObject({
       id: 'safe-output-diagnostics',
@@ -449,27 +369,15 @@ describe('dashboard document validation', () => {
 
   it('validates declarative table intents without author-defined context templating', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const runsPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runs',
-    )
-    const runsView = runsPage.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-table',
-    )
-    const detailsView = runsPage.views.find(
-      (/** @type {{ id: string }} */ view) =>
-        view.id === 'workflow-run-details',
-    )
+    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runs')
+    const runsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-table')
+    const detailsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-run-details')
     const runsPageIndex = document.dashboard.pages.indexOf(runsPage)
     expect(runsView).toMatchObject({
       description: expect.any(String),
       controls: 'static',
       encoding: {
-        columns: [
-          { field: 'run' },
-          { field: 'run-status' },
-          { field: 'run-conclusion' },
-          { field: 'rollout-mode' },
-        ],
+        columns: [{ field: 'run' }, { field: 'run-status' }, { field: 'run-conclusion' }, { field: 'rollout-mode' }],
       },
     })
 
@@ -478,14 +386,8 @@ describe('dashboard document validation', () => {
       controls: 'static',
       description: expect.any(String),
     })
-    expect(detailsView.description).toContain(
-      'after the run-status table answers the current state',
-    )
-    expect(
-      detailsView.encoding.columns.map(
-        (/** @type {{ field: string }} */ column) => column.field,
-      ),
-    ).toEqual([
+    expect(detailsView.description).toContain('after the run-status table answers the current state')
+    expect(detailsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'run',
       'run-title',
       'event',
@@ -501,17 +403,7 @@ describe('dashboard document validation', () => {
         presentation: 'copy-prompt',
         icon: 'search',
         label: 'Investigate',
-        context: [
-          'run',
-          'run-title',
-          'repository',
-          'workflow',
-          'run-conclusion',
-          'failure-job',
-          'failure-message',
-          'failure-step',
-          'run-link',
-        ],
+        context: ['run', 'run-title', 'repository', 'workflow', 'run-conclusion', 'failure-job', 'failure-message', 'failure-step', 'run-link'],
         when: { field: 'run-conclusion', equals: 'failure' },
       },
     ])
@@ -562,43 +454,22 @@ describe('dashboard document validation', () => {
 
   it('defines workflow route composition through a reusable workflow-route-page element', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const reportsPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'workflow-detail',
-    )
-    const runsPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runs',
-    )
-    const runtimePage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime',
-    )
+    const reportsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-detail')
+    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runs')
+    const runtimePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime')
 
-    expect(
-      reportsPage.views.find(
-        (/** @type {{ id: string }} */ view) =>
-          view.id === 'workflow-reports-route',
-      ),
-    ).toMatchObject({
+    expect(reportsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-reports-route')).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
       config: { body: 'reports' },
     })
 
-    expect(
-      runsPage.views.find(
-        (/** @type {{ id: string }} */ view) =>
-          view.id === 'workflow-runs-route',
-      ),
-    ).toMatchObject({
+    expect(runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-route')).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
       config: { body: 'runs' },
     })
-    expect(
-      runtimePage.views.find(
-        (/** @type {{ id: string }} */ view) =>
-          view.id === 'workflow-runtime-route',
-      ),
-    ).toMatchObject({
+    expect(runtimePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runtime-route')).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
       config: { body: 'insights' },
@@ -644,21 +515,13 @@ dashboard:
 
   it('defines packages, workflows, and runs as declarative full-view lazy tables', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const packagesPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'packages',
-    )
-    const workflowsPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'workflows',
-    )
-    const runsPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'runs',
-    )
+    const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages')
+    const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows')
+    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs')
 
     const packagesView = packagesPage.definition.views[0]
     const workflowsView = workflowsPage.definition.views[0]
-    const runsView = runsPage.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source',
-    )
+    const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source')
     for (const view of [packagesView, workflowsView, runsView]) {
       expect(view).toMatchObject({
         mark: 'table',
@@ -1006,12 +869,7 @@ dashboard:
 
   it('defines work-project-view composition through canonical body values', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const pages = new Map(
-      document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [
-        page.id,
-        page,
-      ]),
-    )
+    const pages = new Map(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]))
 
     expect(pages.get('work')?.views[0]).toMatchObject({
       mark: 'element',
@@ -1033,9 +891,7 @@ dashboard:
 
   it('defines experiments as a full-view interactive lazy-list table', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const experimentsPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'experiments',
-    )
+    const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments')
 
     expect(experimentsPage.definition.views).toHaveLength(1)
     expect(experimentsPage.definition.views[0]).toMatchObject({
@@ -1057,9 +913,7 @@ dashboard:
 
   it('DLS-VIEW-005 accepts automatically binned histograms and rejects ambiguous histogram channels', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const costPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'cost',
-    )
+    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost')
     const histogram = /** @type {any} */ ({
       id: 'cost-per-run-distribution',
       data: { source: 'usage' },
@@ -1097,9 +951,7 @@ dashboard:
 
   it('DLS-VIEW-005 accepts bounded heatmaps and rejects invalid axes, values, and limits', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const performance = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'performance',
-    )
+    const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance')
     const heatmap = {
       id: 'job-duration-by-job-runner',
       data: { source: 'job-performance', limit: 100 },
@@ -1155,49 +1007,21 @@ dashboard:
   })
 
   it('keeps one focused custom dashboard for every operation package', () => {
-    const documents = packageDashboardSources.map((source) =>
-      JSON.parse(source),
-    )
-    const packagePageIds = [
-      'aw-doctor-dashboard',
-      'dependabot-dashboard',
-      'uk-ai-advisory-dashboard',
-      'eu-cra-compliance-dashboard',
-      'optimization-dashboard',
-    ]
+    const documents = packageDashboardSources.map((source) => JSON.parse(source))
+    const packagePageIds = ['aw-doctor-dashboard', 'dependabot-dashboard', 'uk-ai-advisory-dashboard', 'eu-cra-compliance-dashboard', 'optimization-dashboard']
     expect(documents).toHaveLength(packagePageIds.length)
     for (const pageId of packagePageIds) {
-      const document = documents.find(
-        (candidate) => candidate.dashboard.pages[0].id === pageId,
-      )
+      const document = documents.find((candidate) => candidate.dashboard.pages[0].id === pageId)
       if (!document) throw new Error(`Missing package dashboard page ${pageId}`)
       const page = document.dashboard.pages[0]
-      expect(document.dashboard.navigation).toEqual([
-        { label: 'Package operations', experimental: true, pages: [pageId] },
-      ])
+      expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', experimental: true, pages: [pageId] }])
       expect(page).toMatchObject({ kind: 'custom' })
       expect(page.views).toHaveLength(4)
-      const tables = page.views.filter(
-        (/** @type {{ mark?: string }} */ view) => view.mark === 'table',
-      )
-      expect(
-        tables.filter(
-          (/** @type {{ disclosure?: string }} */ view) =>
-            view.disclosure === 'essential',
-        ),
-      ).toHaveLength(1)
-      expect(
-        tables.filter(
-          (/** @type {{ disclosure?: string }} */ view) =>
-            view.disclosure === 'supplemental',
-        ),
-      ).toHaveLength(tables.length - 1)
-      const sources = page.views.map(
-        (/** @type {{ data: { source: string } }} */ view) => view.data.source,
-      )
-      expect(sources.sort()).toEqual(
-        ['operational-values', 'operational-values', 'outcomes', 'runs'].sort(),
-      )
+      const tables = page.views.filter((/** @type {{ mark?: string }} */ view) => view.mark === 'table')
+      expect(tables.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'essential')).toHaveLength(1)
+      expect(tables.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental')).toHaveLength(tables.length - 1)
+      const sources = page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source)
+      expect(sources.sort()).toEqual(['operational-values', 'operational-values', 'outcomes', 'runs'].sort())
     }
   })
 
@@ -1205,48 +1029,31 @@ dashboard:
     const builtInDocument = JSON.parse(authoritativeDashboardSource)
     const builtInRunView = builtInDocument.dashboard.pages
       .find((/** @type {{ id: string }} */ page) => page.id === 'runs')
-      .definition.views.find(
-        (/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source',
-      )
+      .definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source')
     const awMaintenanceDocument = packageDashboardSources
       .map((source) => JSON.parse(source))
       .find((document) => document.dashboard.id === 'aw-doctor-dashboard')
-    const runView = awMaintenanceDocument.dashboard.pages[0].views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'aw-doctor-runs',
-    )
+    const runView = awMaintenanceDocument.dashboard.pages[0].views.find((/** @type {{ id: string }} */ view) => view.id === 'aw-doctor-runs')
 
     expect(runView).toMatchObject({
       mark: 'table',
       controls: 'interactive',
       encoding: {
         href: builtInRunView.encoding.href,
-        columns: builtInRunView.encoding.columns.filter(
-          (/** @type {{ field: string }} */ column) =>
-            column.field !== 'engine-version',
-        ),
+        columns: builtInRunView.encoding.columns.filter((/** @type {{ field: string }} */ column) => column.field !== 'engine-version'),
       },
     })
-    expect(runView.description).toContain(
-      'which AW Doctor failures need attention first',
-    )
-    expect(
-      runView.encoding.columns.some(
-        (/** @type {{ field: string }} */ column) =>
-          column.field === 'engine-version',
-      ),
-    ).toBe(false)
+    expect(runView.description).toContain('which AW Doctor failures need attention first')
+    expect(runView.encoding.columns.some((/** @type {{ field: string }} */ column) => column.field === 'engine-version')).toBe(false)
   })
 
   it('validates source-free JSON callouts with canonical icons', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const costPage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'cost',
-    )
+    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost')
     const callout = /** @type {any} */ ({
       id: 'cost-evaluation-boundary',
       title: 'Budget and anomaly verdicts unavailable',
-      description:
-        'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
+      description: 'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
       mark: 'callout',
       callout: { label: 'Evaluation boundary', icon: 'meter' },
     })
@@ -1256,15 +1063,12 @@ dashboard:
       callout: { label: 'Evaluation boundary', icon: 'meter' },
     })
     expect(callout.description).toContain('partial AI Credit telemetry')
-    const valuePage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'operational-value',
-    )
+    const valuePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value')
     expect(valuePage).toBeDefined()
     const valueCallout = {
       id: 'experiment-evidence-boundary',
       title: 'Experiment comparisons unavailable',
-      description:
-        'Experiment evidence cannot be established from partial AI Credit telemetry.',
+      description: 'Experiment evidence cannot be established from partial AI Credit telemetry.',
       mark: 'callout',
       callout: { label: 'Experiment evidence boundary', icon: 'beaker' },
     }
@@ -1300,14 +1104,10 @@ dashboard:
     expect(accepted.ok).toBe(true)
 
     const obsoleteConfiguration = JSON.parse(authoritativeDashboardSource)
-    const costPage = obsoleteConfiguration.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'cost',
-    )
+    const costPage = obsoleteConfiguration.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost')
     costPage['filter-bar'] = { filters: [] }
 
-    const rejected = validateDashboardDocument(
-      JSON.stringify(obsoleteConfiguration),
-    )
+    const rejected = validateDashboardDocument(JSON.stringify(obsoleteConfiguration))
     expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
       expect(rejected.errors).toContainEqual(
@@ -1372,8 +1172,7 @@ dashboard:
       expect(rejected.errors).toContainEqual(
         expect.objectContaining({
           path: '$.dashboard.pages[0].sections',
-          message:
-            'layout sections must reference every page view exactly once and preserve view order.',
+          message: 'layout sections must reference every page view exactly once and preserve view order.',
         }),
       )
     }
@@ -1381,9 +1180,7 @@ dashboard:
 
   it('DLS-VIEW-026 accepts custom page route and navigation allocation and rejects malformed declarations', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const repositoryPageIndex = document.dashboard.pages.findIndex(
-      (/** @type {{ id: string }} */ page) => page.id === 'repository-detail',
-    )
+    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail')
     const repositoryPage = document.dashboard.pages[repositoryPageIndex]
     expect(repositoryPage.route).toEqual({
       'hash-query-parameter': 'repository',
@@ -1393,9 +1190,7 @@ dashboard:
     repositoryPage.route = { 'navigation-page': 'repositories' }
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
     repositoryPage.route = { 'navigation-page': 'missing-page' }
-    const missingNavigationPage = validateDashboardDocument(
-      JSON.stringify(document),
-    )
+    const missingNavigationPage = validateDashboardDocument(JSON.stringify(document))
     expect(missingNavigationPage.ok).toBe(false)
     if (!missingNavigationPage.ok) {
       expect(missingNavigationPage.errors).toContainEqual(
@@ -1406,16 +1201,13 @@ dashboard:
       )
     }
     repositoryPage.route = { 'navigation-page': 'repository-detail' }
-    const selfNavigationPage = validateDashboardDocument(
-      JSON.stringify(document),
-    )
+    const selfNavigationPage = validateDashboardDocument(JSON.stringify(document))
     expect(selfNavigationPage.ok).toBe(false)
     if (!selfNavigationPage.ok) {
       expect(selfNavigationPage.errors).toContainEqual(
         expect.objectContaining({
           code: 'DLS-E003',
-          message:
-            'route navigation-page must reference a different dashboard page.',
+          message: 'route navigation-page must reference a different dashboard page.',
         }),
       )
     }
@@ -1452,8 +1244,7 @@ dashboard:
         expect.objectContaining({
           code: 'DLS-E003',
           path: `$.dashboard.pages[${repositoryPageIndex}].route`,
-          message:
-            'route must declare hash-query-parameter or navigation-page.',
+          message: 'route must declare hash-query-parameter or navigation-page.',
         }),
       )
     }
@@ -1472,9 +1263,7 @@ dashboard:
     }
 
     repositoryPage.route = { 'hash-query-parameter': 'repository' }
-    const builtInPage = document.dashboard.pages.find(
-      (/** @type {{ kind: string }} */ page) => page.kind === 'built-in',
-    )
+    const builtInPage = document.dashboard.pages.find((/** @type {{ kind: string }} */ page) => page.kind === 'built-in')
     builtInPage.route = { 'hash-query-parameter': 'repository' }
     const builtInRoute = validateDashboardDocument(JSON.stringify(document))
     expect(builtInRoute.ok).toBe(false)
@@ -1490,16 +1279,9 @@ dashboard:
 
   it('DLS-VIEW-030 validates route fields against the selected logical source', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const repositoryPageIndex = document.dashboard.pages.findIndex(
-      (/** @type {{ id: string }} */ page) => page.id === 'repository-detail',
-    )
+    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail')
     const repositoryPage = document.dashboard.pages[repositoryPageIndex]
-    expect(
-      repositoryPage.views.every(
-        (/** @type {{ data: { 'route-field'?: string } }} */ view) =>
-          view.data['route-field'] === 'repository',
-      ),
-    ).toBe(true)
+    expect(repositoryPage.views.every((/** @type {{ data: { 'route-field'?: string } }} */ view) => view.data['route-field'] === 'repository')).toBe(true)
 
     repositoryPage.views[0].data['route-field'] = 'missing-field'
     const invalid = validateDashboardDocument(JSON.stringify(document))
@@ -1517,12 +1299,8 @@ dashboard:
 
   it('DLS-VIEW-031 validates JSON-configured title links against one selected source', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const outcomePage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'outcome-detail',
-    )
-    const outcomeView = outcomePage.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'outcome-record',
-    )
+    const outcomePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'outcome-detail')
+    const outcomeView = outcomePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'outcome-record')
     expect(outcomeView['title-link']).toEqual({
       'href-field': 'external-link',
       'identifier-field': 'outcome-number',
@@ -1560,46 +1338,36 @@ dashboard:
   it('validates dashboard.navigation references declared pages at most once', () => {
     const withUnknownPage = JSON.parse(authoritativeDashboardSource)
     withUnknownPage.dashboard.navigation[2].pages.push('does-not-exist')
-    const unknownPageResult = validateDashboardDocument(
-      JSON.stringify(withUnknownPage),
-    )
+    const unknownPageResult = validateDashboardDocument(JSON.stringify(withUnknownPage))
     expect(unknownPageResult.ok).toBe(false)
     if (!unknownPageResult.ok) {
       expect(unknownPageResult.errors).toContainEqual(
         expect.objectContaining({
-          message:
-            'navigation section page must reference a declared dashboard page id.',
+          message: 'navigation section page must reference a declared dashboard page id.',
         }),
       )
     }
 
     const withDuplicatePage = JSON.parse(authoritativeDashboardSource)
     withDuplicatePage.dashboard.navigation[1].pages.push('overview')
-    const duplicatePageResult = validateDashboardDocument(
-      JSON.stringify(withDuplicatePage),
-    )
+    const duplicatePageResult = validateDashboardDocument(JSON.stringify(withDuplicatePage))
     expect(duplicatePageResult.ok).toBe(false)
     if (!duplicatePageResult.ok) {
       expect(duplicatePageResult.errors).toContainEqual(
         expect.objectContaining({
-          message:
-            'each dashboard page may appear in only one navigation section.',
+          message: 'each dashboard page may appear in only one navigation section.',
         }),
       )
     }
 
     const withMissingCoverage = JSON.parse(authoritativeDashboardSource)
     withMissingCoverage.dashboard.navigation[2].pages.pop()
-    const missingCoverageResult = validateDashboardDocument(
-      JSON.stringify(withMissingCoverage),
-    )
+    const missingCoverageResult = validateDashboardDocument(JSON.stringify(withMissingCoverage))
     expect(missingCoverageResult.ok).toBe(true)
 
     const withInvalidNavigationLabel = JSON.parse(authoritativeDashboardSource)
     withInvalidNavigationLabel.dashboard.pages[0]['navigation-label'] = 42
-    const invalidNavigationLabelResult = validateDashboardDocument(
-      JSON.stringify(withInvalidNavigationLabel),
-    )
+    const invalidNavigationLabelResult = validateDashboardDocument(JSON.stringify(withInvalidNavigationLabel))
     expect(invalidNavigationLabelResult.ok).toBe(false)
     if (!invalidNavigationLabelResult.ok) {
       expect(invalidNavigationLabelResult.errors).toContainEqual(
@@ -1611,9 +1379,7 @@ dashboard:
 
     const withUnknownKey = JSON.parse(authoritativeDashboardSource)
     withUnknownKey.dashboard.navigation[0].icon = 'server'
-    const unknownKeyResult = validateDashboardDocument(
-      JSON.stringify(withUnknownKey),
-    )
+    const unknownKeyResult = validateDashboardDocument(JSON.stringify(withUnknownKey))
     expect(unknownKeyResult.ok).toBe(false)
     if (!unknownKeyResult.ok) {
       expect(unknownKeyResult.errors).toContainEqual(
@@ -1625,9 +1391,7 @@ dashboard:
 
     const withInvalidExperimental = JSON.parse(authoritativeDashboardSource)
     withInvalidExperimental.dashboard.navigation[0].experimental = 'true'
-    const invalidExperimentalResult = validateDashboardDocument(
-      JSON.stringify(withInvalidExperimental),
-    )
+    const invalidExperimentalResult = validateDashboardDocument(JSON.stringify(withInvalidExperimental))
     expect(invalidExperimentalResult.ok).toBe(false)
     if (!invalidExperimentalResult.ok) {
       expect(invalidExperimentalResult.errors).toContainEqual(
@@ -1640,16 +1404,12 @@ dashboard:
 
     const withoutLabel = JSON.parse(authoritativeDashboardSource)
     delete withoutLabel.dashboard.navigation[0].label
-    const withoutLabelResult = validateDashboardDocument(
-      JSON.stringify(withoutLabel),
-    )
+    const withoutLabelResult = validateDashboardDocument(JSON.stringify(withoutLabel))
     expect(withoutLabelResult.ok).toBe(true)
 
     const withEmptyLabel = JSON.parse(authoritativeDashboardSource)
     withEmptyLabel.dashboard.navigation[0].label = ''
-    const withEmptyLabelResult = validateDashboardDocument(
-      JSON.stringify(withEmptyLabel),
-    )
+    const withEmptyLabelResult = validateDashboardDocument(JSON.stringify(withEmptyLabel))
     expect(withEmptyLabelResult.ok).toBe(false)
     if (!withEmptyLabelResult.ok) {
       expect(withEmptyLabelResult.errors).toContainEqual(
@@ -1703,15 +1463,10 @@ dashboard:
       )
     }
 
-    const disclosed = overloaded.replace(
-      '        - id: metric-five\n',
-      '        - id: metric-five\n          disclosure: supplemental\n',
-    )
+    const disclosed = overloaded.replace('        - id: metric-five\n', '        - id: metric-five\n          disclosure: supplemental\n')
     expect(validateDashboardDocument(disclosed).ok).toBe(true)
 
-    const nonCanonical = validateDashboardDocument(
-      disclosed.replace('disclosure: supplemental', 'disclosure: hidden'),
-    )
+    const nonCanonical = validateDashboardDocument(disclosed.replace('disclosure: supplemental', 'disclosure: hidden'))
     expect(nonCanonical.ok).toBe(false)
     if (!nonCanonical.ok) {
       expect(nonCanonical.errors).toContainEqual(
@@ -1772,13 +1527,8 @@ dashboard:
     )
     expect(validateDashboardDocument(supplementalElement).ok).toBe(true)
 
-    const primaryElementWithLabel = supplementalElement.replace(
-      '          disclosure: supplemental\n',
-      '',
-    )
-    const primaryElementResult = validateDashboardDocument(
-      primaryElementWithLabel,
-    )
+    const primaryElementWithLabel = supplementalElement.replace('          disclosure: supplemental\n', '')
+    const primaryElementResult = validateDashboardDocument(primaryElementWithLabel)
     expect(primaryElementResult.ok).toBe(false)
     if (!primaryElementResult.ok) {
       expect(primaryElementResult.errors).toContainEqual(
@@ -1789,12 +1539,7 @@ dashboard:
       )
     }
 
-    const emptyLabel = validateDashboardDocument(
-      accepted.replace(
-        'disclosure-label: Supporting table',
-        'disclosure-label: ""',
-      ),
-    )
+    const emptyLabel = validateDashboardDocument(accepted.replace('disclosure-label: Supporting table', 'disclosure-label: ""'))
     expect(emptyLabel.ok).toBe(false)
     if (!emptyLabel.ok) {
       expect(emptyLabel.errors).toContainEqual(
@@ -1819,10 +1564,7 @@ dashboard:
       )
     }
 
-    const locked = source.replace(
-      '        - id: supporting-table\n',
-      '        - id: supporting-table\n          locked: true\n',
-    )
+    const locked = source.replace('        - id: supporting-table\n', '        - id: supporting-table\n          locked: true\n')
     expect(validateDashboardDocument(locked).ok).toBe(true)
   })
 
@@ -1848,22 +1590,10 @@ dashboard:
             columns: [{ field: run, type: nominal }]
 `
 
-    for (const pageId of [
-      'overview',
-      'agent',
-      'agents',
-      'work',
-      'evidence',
-      'insights',
-    ]) {
-      expect(
-        validateDashboardDocument(source.replace('id: home', `id: ${pageId}`))
-          .ok,
-      ).toBe(true)
+    for (const pageId of ['overview', 'agent', 'agents', 'work', 'evidence', 'insights']) {
+      expect(validateDashboardDocument(source.replace('id: home', `id: ${pageId}`)).ok).toBe(true)
     }
-    expect(
-      validateDashboardDocument(source.replace('id: home', 'id: summary')).ok,
-    ).toBe(false)
+    expect(validateDashboardDocument(source.replace('id: home', 'id: summary')).ok).toBe(false)
   })
 
   it('DLS-VIEW-038 rejects nested view boxes while ignoring SVG chart internals', () => {
@@ -1923,10 +1653,7 @@ dashboard:
       )
     }
 
-    const malformedNestedViews = source.replace(
-      '          views: []',
-      '          views: {}',
-    )
+    const malformedNestedViews = source.replace('          views: []', '          views: {}')
     const malformedResult = validateDashboardDocument(malformedNestedViews)
     expect(malformedResult.ok).toBe(false)
     if (!malformedResult.ok) {
@@ -1944,10 +1671,7 @@ dashboard:
       )
     }
 
-    const locked = source.replace(
-      '        - id: primary-table\n',
-      '        - id: primary-table\n          locked: true\n',
-    )
+    const locked = source.replace('        - id: primary-table\n', '        - id: primary-table\n          locked: true\n')
     expect(validateDashboardDocument(locked).ok).toBe(true)
   })
 
@@ -2018,10 +1742,7 @@ dashboard:
       )
     }
 
-    const withHttp = baseDocument.replace(
-      '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  github-url-base: http://github.example.com\n',
-    )
+    const withHttp = baseDocument.replace('  title: Agentic Operations\n', '  title: Agentic Operations\n  github-url-base: http://github.example.com\n')
     const rejectedHttp = validateDashboardDocument(withHttp)
     expect(rejectedHttp.ok).toBe(false)
     if (!rejectedHttp.ok) {
@@ -2050,12 +1771,7 @@ dashboard:
 
     expect(validateDashboardDocument(withHorizon).ok).toBe(true)
 
-    const missingDescription = validateDashboardDocument(
-      withHorizon.replace(
-        '      description: Explains the resolved data window.\n',
-        '',
-      ),
-    )
+    const missingDescription = validateDashboardDocument(withHorizon.replace('      description: Explains the resolved data window.\n', ''))
     expect(missingDescription.ok).toBe(false)
     if (!missingDescription.ok) {
       expect(missingDescription.errors).toContainEqual(
@@ -2066,12 +1782,7 @@ dashboard:
       )
     }
 
-    const unknownField = validateDashboardDocument(
-      withHorizon.replace(
-        '      description:',
-        '      placement: top\n      description:',
-      ),
-    )
+    const unknownField = validateDashboardDocument(withHorizon.replace('      description:', '      placement: top\n      description:'))
     expect(unknownField.ok).toBe(false)
     if (!unknownField.ok) {
       expect(unknownField.errors).toContainEqual(
@@ -2111,12 +1822,7 @@ dashboard:
     )
     expect(validateDashboardDocument(withCallout).ok).toBe(true)
 
-    const invalidNavigation = validateDashboardDocument(
-      withCallout.replace(
-        '      navigation-page: custom-summary',
-        '      navigation-page: missing-page',
-      ),
-    )
+    const invalidNavigation = validateDashboardDocument(withCallout.replace('      navigation-page: custom-summary', '      navigation-page: missing-page'))
     expect(invalidNavigation.ok).toBe(false)
     if (!invalidNavigation.ok) {
       expect(invalidNavigation.errors).toContainEqual(
@@ -2127,9 +1833,7 @@ dashboard:
       )
     }
 
-    const invalidField = validateDashboardDocument(
-      withCallout.replace('        field: kind', '        field: missing'),
-    )
+    const invalidField = validateDashboardDocument(withCallout.replace('        field: kind', '        field: missing'))
     expect(invalidField.ok).toBe(false)
     if (!invalidField.ok) {
       expect(invalidField.errors).toContainEqual(
@@ -2140,9 +1844,7 @@ dashboard:
       )
     }
 
-    const invalidIcon = validateDashboardDocument(
-      withCallout.replace('      icon: alert', '      icon: not-an-octicon'),
-    )
+    const invalidIcon = validateDashboardDocument(withCallout.replace('      icon: alert', '      icon: not-an-octicon'))
     expect(invalidIcon.ok).toBe(false)
     if (!invalidIcon.ok) {
       expect(invalidIcon.errors).toContainEqual(
@@ -2154,10 +1856,7 @@ dashboard:
     }
 
     const duplicateId = validateDashboardDocument(
-      withCallout.replace(
-        '  callouts:\n',
-        '  callouts:\n    - id: partial-data\n      title: Another notice\n      description: Another description.\n',
-      ),
+      withCallout.replace('  callouts:\n', '  callouts:\n    - id: partial-data\n      title: Another notice\n      description: Another description.\n'),
     )
     expect(duplicateId.ok).toBe(false)
     if (!duplicateId.ok) {
@@ -2180,17 +1879,11 @@ dashboard:
       '',
     )
 
-    const withRepository = baseDocument.replace(
-      '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: octo-org/agentic-operations\n',
-    )
+    const withRepository = baseDocument.replace('  title: Agentic Operations\n', '  title: Agentic Operations\n  repository: octo-org/agentic-operations\n')
     const accepted = validateDashboardDocument(withRepository)
     expect(accepted.ok).toBe(true)
 
-    const withoutOwner = baseDocument.replace(
-      '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: agentic-operations\n',
-    )
+    const withoutOwner = baseDocument.replace('  title: Agentic Operations\n', '  title: Agentic Operations\n  repository: agentic-operations\n')
     const rejectedMissingOwner = validateDashboardDocument(withoutOwner)
     expect(rejectedMissingOwner.ok).toBe(false)
     if (!rejectedMissingOwner.ok) {
@@ -2202,10 +1895,7 @@ dashboard:
       )
     }
 
-    const withBlank = baseDocument.replace(
-      '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: ""\n',
-    )
+    const withBlank = baseDocument.replace('  title: Agentic Operations\n', '  title: Agentic Operations\n  repository: ""\n')
     const rejectedBlank = validateDashboardDocument(withBlank)
     expect(rejectedBlank.ok).toBe(false)
     if (!rejectedBlank.ok) {
@@ -2236,8 +1926,7 @@ dashboard:
       '  title: Agentic Operations\n',
       '  title: Agentic Operations\n  repository: "octo-org/agentic..operations"\n',
     )
-    const rejectedConsecutiveDots =
-      validateDashboardDocument(withConsecutiveDots)
+    const rejectedConsecutiveDots = validateDashboardDocument(withConsecutiveDots)
     expect(rejectedConsecutiveDots.ok).toBe(false)
     if (!rejectedConsecutiveDots.ok) {
       expect(rejectedConsecutiveDots.errors).toContainEqual(
@@ -2250,28 +1939,20 @@ dashboard:
   })
 
   it('DLS-DOC-001 rejects multiple YAML documents with DLS-E002', () => {
-    const result = validateDashboardDocument(
-      `${validDocument}\n---\n${validDocument}`,
-    )
+    const result = validateDashboardDocument(`${validDocument}\n---\n${validDocument}`)
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E002', path: '$' }),
-      ])
+      expect(result.errors).toEqual([expect.objectContaining({ code: 'DLS-E002', path: '$' })])
     }
   })
 
   it('DLS-DOC-001 DLS-SAFE-001 rejects invalid YAML syntax with DLS-E001', () => {
-    const result = validateDashboardDocument(
-      'language-version: "0.1.0"\ndashboard: [unterminated',
-    )
+    const result = validateDashboardDocument('language-version: "0.1.0"\ndashboard: [unterminated')
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E001', path: '$' }),
-      ])
+      expect(result.errors).toEqual([expect.objectContaining({ code: 'DLS-E001', path: '$' })])
     }
   })
 
@@ -2306,9 +1987,7 @@ dashboard:
   })
 
   it('DLS-DOC-003 DLS-DOC-006 rejects non-canonical language-version with DLS-E005', () => {
-    const result = validateDashboardDocument(
-      validDocument.replace('"0.1.0"', '"0.1"'),
-    )
+    const result = validateDashboardDocument(validDocument.replace('"0.1.0"', '"0.1"'))
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -2567,26 +2246,22 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "organizations" definition must include at least one view for source "repositories".',
+            message: 'built-in page "organizations" definition must include at least one view for source "repositories".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "organizations" definition must include at least one view for source "workflows".',
+            message: 'built-in page "organizations" definition must include at least one view for source "workflows".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "organizations" definition must include at least one view for source "runs".',
+            message: 'built-in page "organizations" definition must include at least one view for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "organizations" definition must include at least one view for source "usage".',
+            message: 'built-in page "organizations" definition must include at least one view for source "usage".',
           }),
         ]),
       )
@@ -2659,9 +2334,7 @@ dashboard:
 
   it('DLS-PAGE-001 accepts a non-empty built-in page title that differs from the canonical default', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const operations = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'operations',
-    )
+    const operations = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operations')
     operations.title = 'Fleet Operations'
     const result = validateDashboardDocument(JSON.stringify(document))
 
@@ -2720,8 +2393,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition',
-            message:
-              'built-in page "runs" requires declarative definitions for source "runs".',
+            message: 'built-in page "runs" requires declarative definitions for source "runs".',
           }),
         ]),
       )
@@ -2745,8 +2417,7 @@ dashboard:
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
-            message:
-              'built-in page "packages" requires declarative definitions for source "package-inventory".',
+            message: 'built-in page "packages" requires declarative definitions for source "package-inventory".',
           }),
         ]),
       )
@@ -2787,50 +2458,42 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "organization" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "organization" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "repository" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "repository" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "workflow" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "workflow" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "rollout-mode" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "rollout-mode" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "engine" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "engine" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "requested-model" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "requested-model" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "resolved-model" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "resolved-model" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "runs" definition must expose field "started-at" for source "runs".',
+            message: 'built-in page "runs" definition must expose field "started-at" for source "runs".',
           }),
         ]),
       )
@@ -2903,26 +2566,22 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "overview" definition must expose field "issue-link" for source "findings".',
+            message: 'built-in page "overview" definition must expose field "issue-link" for source "findings".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "overview" definition must expose field "pull-request-link" for source "findings".',
+            message: 'built-in page "overview" definition must expose field "pull-request-link" for source "findings".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "overview" definition must expose field "run-link" for source "findings".',
+            message: 'built-in page "overview" definition must expose field "run-link" for source "findings".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message:
-              'built-in page "overview" definition must expose field "operational-value-definition" for source "operational-values".',
+            message: 'built-in page "overview" definition must expose field "operational-value-definition" for source "operational-values".',
           }),
         ]),
       )
@@ -2970,8 +2629,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state',
-            message:
-              'built-in page definition must expose independent availability, completeness, and freshness state.',
+            message: 'built-in page definition must expose independent availability, completeness, and freshness state.',
           }),
         ]),
       )
@@ -3028,20 +2686,17 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.availability',
-            message:
-              'built-in page definition must expose independent availability state with canonical boolean true.',
+            message: 'built-in page definition must expose independent availability state with canonical boolean true.',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.completeness',
-            message:
-              'built-in page definition must expose independent completeness state with canonical boolean true.',
+            message: 'built-in page definition must expose independent completeness state with canonical boolean true.',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.freshness',
-            message:
-              'built-in page definition must expose independent freshness state with canonical boolean true.',
+            message: 'built-in page definition must expose independent freshness state with canonical boolean true.',
           }),
         ]),
       )
@@ -4297,10 +3952,7 @@ dashboard:
     expect(validateDashboardDocument(elementDocument).ok).toBe(true)
 
     const emptyIntent = validateDashboardDocument(
-      elementDocument.replace(
-        'intent: Help operators identify workflow states that require attention.',
-        'intent: ""',
-      ),
+      elementDocument.replace('intent: Help operators identify workflow states that require attention.', 'intent: ""'),
     )
     expect(emptyIntent.ok).toBe(false)
     if (!emptyIntent.ok) {
@@ -4354,15 +4006,9 @@ dashboard:
           element: summary-grid
 `
     expect(validateDashboardDocument(lockedDocument).ok).toBe(true)
-    expect(
-      validateDashboardDocument(
-        lockedDocument.replace('locked: true', 'locked: false'),
-      ).ok,
-    ).toBe(true)
+    expect(validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: false')).ok).toBe(true)
 
-    const invalid = validateDashboardDocument(
-      lockedDocument.replace('locked: true', 'locked: fixed'),
-    )
+    const invalid = validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: fixed'))
     expect(invalid.ok).toBe(false)
     if (!invalid.ok) {
       expect(invalid.errors).toContainEqual(
@@ -5008,8 +4654,7 @@ dashboard:
   })
 
   it('DLS-LINK-001 DLS-SAFE-004 DLS-DATA-001 rejects invalid source-metadata provenance and data-state values with DLS-E012', () => {
-    const invalidMetadataLink =
-      validateDashboardDocument(`language-version: "0.1.0"
+    const invalidMetadataLink = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: invalid-source-metadata
   title: Invalid Source Metadata
@@ -5177,9 +4822,7 @@ dashboard:
           }),
         ]),
       )
-      expect(
-        result.errors.map((error) => error.message).join('\n'),
-      ).not.toContain('ghp_secretToken123456789')
+      expect(result.errors.map((error) => error.message).join('\n')).not.toContain('ghp_secretToken123456789')
     }
   })
 
@@ -5365,23 +5008,11 @@ dashboard:
 
   it('accepts unbucketed categorical swimlanes and rejects quantitative or aggregated lanes', () => {
     const document = JSON.parse(authoritativeDashboardSource)
-    const overview = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'operations',
-    )
-    const overviewSwimlane = overview.definition.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'overview-run-health',
-    )
-    const workflowRuntime = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime',
-    )
-    const swimlane = workflowRuntime.views.find(
-      (/** @type {{ id: string }} */ view) =>
-        view.id === 'workflow-runtime-health',
-    )
-    const routeChrome = workflowRuntime.views.find(
-      (/** @type {{ id: string, element?: string }} */ view) =>
-        view.id === 'workflow-runtime-route',
-    )
+    const overview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operations')
+    const overviewSwimlane = overview.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'overview-run-health')
+    const workflowRuntime = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime')
+    const swimlane = workflowRuntime.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runtime-health')
+    const routeChrome = workflowRuntime.views.find((/** @type {{ id: string, element?: string }} */ view) => view.id === 'workflow-runtime-route')
 
     expect(overviewSwimlane).toMatchObject({
       chart: 'swimlane',

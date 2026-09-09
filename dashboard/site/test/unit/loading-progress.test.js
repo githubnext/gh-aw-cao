@@ -14,9 +14,7 @@ describe('loading progress', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
     startLoadingProgress(document)
-    const bar = /** @type {HTMLElement | null} */ (
-      document.querySelector('.loading-progress')
-    )
+    const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'))
     const positions = []
 
     for (let index = 0; index < 20; index += 1) {
@@ -26,9 +24,7 @@ describe('loading progress', () => {
 
     expect(positions[0]).toBeGreaterThan(0.08)
     expect(positions.every((position) => position < 0.94)).toBe(true)
-    expect(positions).toEqual(
-      [...positions].sort((left, right) => left - right),
-    )
+    expect(positions).toEqual([...positions].sort((left, right) => left - right))
   })
 
   it('keeps a shimmer animation running while progress waits to complete', () => {
@@ -37,12 +33,8 @@ describe('loading progress', () => {
     startLoadingProgress(document)
     vi.advanceTimersByTime(60_000)
 
-    const styles = document.querySelector(
-      'style[data-loading-progress-styles]',
-    )?.textContent
-    expect(styles).toContain(
-      'animation: loading-progress-shimmer 1.2s ease-in-out infinite',
-    )
+    const styles = document.querySelector('style[data-loading-progress-styles]')?.textContent
+    expect(styles).toContain('animation: loading-progress-shimmer 1.2s ease-in-out infinite')
     expect(styles).toContain('@keyframes loading-progress-shimmer')
     expect(styles).toContain('from {\n    transform: translateX(-100%);')
   })
@@ -51,9 +43,7 @@ describe('loading progress', () => {
     vi.useFakeTimers()
     const progress = startLoadingProgress(document)
     const secondProgress = startLoadingProgress(document)
-    const bar = /** @type {HTMLElement | null} */ (
-      document.querySelector('.loading-progress')
-    )
+    const bar = /** @type {HTMLElement | null} */ (document.querySelector('.loading-progress'))
 
     progress.complete()
     progress.complete()
@@ -63,8 +53,6 @@ describe('loading progress', () => {
     expect(bar?.style.transform).toBe('scaleX(1)')
     vi.advanceTimersByTime(240)
     expect(document.querySelectorAll('.loading-progress')).toHaveLength(0)
-    expect(
-      document.querySelectorAll('style[data-loading-progress-styles]'),
-    ).toHaveLength(1)
+    expect(document.querySelectorAll('style[data-loading-progress-styles]')).toHaveLength(1)
   })
 })

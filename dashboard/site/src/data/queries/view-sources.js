@@ -12,11 +12,7 @@ import { createCanonicalQueries } from './index.js'
  */
 function projectionMetadata(sources, sourceName, projectionName, available) {
   const input =
-    sources[sourceName] && typeof sources[sourceName] === 'object'
-      ? /** @type {{ metadata?: Record<string, unknown> }} */ (
-          sources[sourceName]
-        )
-      : {}
+    sources[sourceName] && typeof sources[sourceName] === 'object' ? /** @type {{ metadata?: Record<string, unknown> }} */ (sources[sourceName]) : {}
   const metadata = input.metadata ?? {}
   const asOf = typeof metadata['as-of'] === 'string' ? metadata['as-of'] : ''
   return /** @type {import('../../presenter.js').SourceMetadata} */ ({
@@ -24,20 +20,10 @@ function projectionMetadata(sources, sourceName, projectionName, available) {
     'source-id': projectionName,
     'source-kind': 'canonical-query',
     'as-of': asOf,
-    'retrieved-at':
-      typeof metadata['retrieved-at'] === 'string'
-        ? metadata['retrieved-at']
-        : asOf,
+    'retrieved-at': typeof metadata['retrieved-at'] === 'string' ? metadata['retrieved-at'] : asOf,
     availability: available ? 'available' : 'unavailable',
-    completeness:
-      available &&
-      ['complete', 'partial'].includes(String(metadata.completeness))
-        ? metadata.completeness
-        : 'unknown',
-    freshness:
-      available && ['fresh', 'stale'].includes(String(metadata.freshness))
-        ? metadata.freshness
-        : 'unknown',
+    completeness: available && ['complete', 'partial'].includes(String(metadata.completeness)) ? metadata.completeness : 'unknown',
+    freshness: available && ['fresh', 'stale'].includes(String(metadata.freshness)) ? metadata.freshness : 'unknown',
   })
 }
 
@@ -70,14 +56,7 @@ function normalizedKey(value) {
 
 /** @param {Record<string, unknown>} run */
 function runKey(run) {
-  return [
-    run.organization ?? run.owner,
-    run.repository,
-    run.run ?? run.githubRunId,
-    run['run-attempt'] ?? run.attempt ?? 1,
-  ]
-    .map(normalizedKey)
-    .join(':')
+  return [run.organization ?? run.owner, run.repository, run.run ?? run.githubRunId, run['run-attempt'] ?? run.attempt ?? 1].map(normalizedKey).join(':')
 }
 
 /** @param {Record<string, unknown>} run @param {Map<string, Record<string, unknown>>} publishedRuns */
@@ -107,9 +86,7 @@ function projectedRun(run, publishedRuns) {
 
 /** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
 function runsSource(runs, sources) {
-  const publishedRuns = new Map(
-    sourceRows(sources.runs).map((run) => [runKey(run), run]),
-  )
+  const publishedRuns = new Map(sourceRows(sources.runs).map((run) => [runKey(run), run]))
   return {
     source: 'runs',
     rows: runs.map((run) => projectedRun(run, publishedRuns)),
@@ -120,19 +97,12 @@ function runsSource(runs, sources) {
 /** @param {Record<string, unknown>[]} repositories @param {Record<string, unknown>} sources */
 function repositoriesSource(repositories, sources) {
   const publishedRepositories = new Map(
-    sourceRows(sources.repositories).map((repository) => [
-      [repository.organization, repository.repository]
-        .map(normalizedKey)
-        .join(':'),
-      repository,
-    ]),
+    sourceRows(sources.repositories).map((repository) => [[repository.organization, repository.repository].map(normalizedKey).join(':'), repository]),
   )
   return {
     source: 'repositories',
     rows: repositories.map((repository) => ({
-      ...(publishedRepositories.get(
-        [repository.owner, repository.name].map(normalizedKey).join(':'),
-      ) ?? {}),
+      ...(publishedRepositories.get([repository.owner, repository.name].map(normalizedKey).join(':')) ?? {}),
       organization: repository.owner,
       repository: repository.name,
       'repository-name': repository.name,
@@ -152,33 +122,19 @@ function repositoriesSource(repositories, sources) {
  */
 function workflowsSource(workflows, repositoriesById, sources) {
   const publishedWorkflows = new Map(
-    sourceRows(sources.workflows).map((workflow) => [
-      [workflow.organization, workflow.repository, workflow.workflow]
-        .map(normalizedKey)
-        .join(':'),
-      workflow,
-    ]),
+    sourceRows(sources.workflows).map((workflow) => [[workflow.organization, workflow.repository, workflow.workflow].map(normalizedKey).join(':'), workflow]),
   )
   return {
     source: 'workflows',
     rows: workflows.map((workflow) => {
       const repository = repositoriesById.get(workflow.repositoryId) ?? {}
       return {
-        ...(publishedWorkflows.get(
-          [repository.owner, repository.name, workflow.path]
-            .map(normalizedKey)
-            .join(':'),
-        ) ?? {}),
+        ...(publishedWorkflows.get([repository.owner, repository.name, workflow.path].map(normalizedKey).join(':')) ?? {}),
         organization: repository.owner,
         repository: repository.name,
         workflow: workflow.path,
         'workflow-name': workflow.name,
-        'workflow-active':
-          workflow.state === 'active'
-            ? 'true'
-            : workflow.state === 'disabled'
-              ? 'false'
-              : 'unknown',
+        'workflow-active': workflow.state === 'active' ? 'true' : workflow.state === 'disabled' ? 'false' : 'unknown',
         'observed-at': workflow.observedAt,
         'gh-aw-version': workflow.ghAwVersion,
         'gh-aw-current-version': workflow.ghAwCurrentVersion,
@@ -198,15 +154,7 @@ function workflowsSource(workflows, repositoriesById, sources) {
 function jobsSource(jobs, runsById, sources) {
   const publishedJobs = new Map(
     sourceRows(sources['job-performance']).map((job) => [
-      [
-        job.organization,
-        job.repository,
-        job.run,
-        job['run-attempt'] ?? 1,
-        job['job-id'],
-      ]
-        .map(normalizedKey)
-        .join(':'),
+      [job.organization, job.repository, job.run, job['run-attempt'] ?? 1, job['job-id']].map(normalizedKey).join(':'),
       job,
     ]),
   )
@@ -215,17 +163,7 @@ function jobsSource(jobs, runsById, sources) {
     rows: jobs.map((job) => {
       const run = runsById.get(job.runId) ?? {}
       return {
-        ...(publishedJobs.get(
-          [
-            run.owner,
-            run.repository,
-            run.githubRunId,
-            run.attempt ?? 1,
-            job.githubJobId,
-          ]
-            .map(normalizedKey)
-            .join(':'),
-        ) ?? {}),
+        ...(publishedJobs.get([run.owner, run.repository, run.githubRunId, run.attempt ?? 1, job.githubJobId].map(normalizedKey).join(':')) ?? {}),
         organization: run.owner,
         repository: run.repository,
         workflow: run.workflowPath,
@@ -248,12 +186,7 @@ function jobsSource(jobs, runsById, sources) {
         'run-link': job.runLink,
       }
     }),
-    metadata: projectionMetadata(
-      sources,
-      'job-performance',
-      'job-performance',
-      true,
-    ),
+    metadata: projectionMetadata(sources, 'job-performance', 'job-performance', true),
   }
 }
 
@@ -322,12 +255,7 @@ function securityFindingsSource(findings, sources) {
       'workflow-link': finding.workflowLink,
       'run-link': finding.runLink,
     })),
-    metadata: projectionMetadata(
-      sources,
-      'security-findings',
-      'security-findings',
-      true,
-    ),
+    metadata: projectionMetadata(sources, 'security-findings', 'security-findings', true),
   }
 }
 
@@ -336,9 +264,7 @@ function sourceRows(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return []
   const rows = /** @type {{ rows?: unknown }} */ (source).rows
   return Array.isArray(rows)
-    ? rows
-        .filter((row) => row && typeof row === 'object' && !Array.isArray(row))
-        .map((row) => /** @type {Record<string, unknown>} */ (row))
+    ? rows.filter((row) => row && typeof row === 'object' && !Array.isArray(row)).map((row) => /** @type {Record<string, unknown>} */ (row))
     : []
 }
 
@@ -347,9 +273,7 @@ function namedLogicalSources(sources) {
   return Object.fromEntries(
     Object.entries(sources).map(([sourceName, value]) => [
       sourceName,
-      value && typeof value === 'object' && !Array.isArray(value)
-        ? { source: sourceName, ...value }
-        : value,
+      value && typeof value === 'object' && !Array.isArray(value) ? { source: sourceName, ...value } : value,
     ]),
   )
 }
@@ -359,11 +283,7 @@ function namedLogicalSources(sources) {
  * @param {Record<string, unknown>} sources
  * @param {{ ingest?: boolean, storage?: StorageManager }} [options]
  */
-export async function loadCanonicalViewSources(
-  indexedDB,
-  sources,
-  options = {},
-) {
+export async function loadCanonicalViewSources(indexedDB, sources, options = {}) {
   const generation = dashboardSourceGeneration(sources)
   if (options.ingest) {
     await ingestDashboardSources(indexedDB, sources, {
@@ -382,11 +302,7 @@ export async function loadCanonicalViewSources(
  * @param {Record<string, unknown>} logicalSources
  * @param {string} generation
  */
-export async function projectCanonicalViewSources(
-  indexedDB,
-  logicalSources,
-  generation,
-) {
+export async function projectCanonicalViewSources(indexedDB, logicalSources, generation) {
   return {
     ...namedLogicalSources(logicalSources),
     ...(await queryCanonicalViewSources(indexedDB, logicalSources, generation, [
@@ -409,60 +325,35 @@ export async function projectCanonicalViewSources(
  * @param {string} generation
  * @param {string[]} sourceNames
  */
-export async function queryCanonicalViewSources(
-  indexedDB,
-  logicalSources,
-  generation,
-  sourceNames,
-) {
+export async function queryCanonicalViewSources(indexedDB, logicalSources, generation, sourceNames) {
   if (!(await activeGenerationIsUsable(indexedDB, generation))) {
-    throw new Error(
-      `Canonical generation ${generation} is not active and usable`,
-    )
+    throw new Error(`Canonical generation ${generation} is not active and usable`)
   }
-  if (
-    !Array.isArray(sourceNames) ||
-    sourceNames.some((name) => typeof name !== 'string')
-  ) {
-    throw new TypeError(
-      'Canonical view source names must be an array of strings.',
-    )
+  if (!Array.isArray(sourceNames) || sourceNames.some((name) => typeof name !== 'string')) {
+    throw new TypeError('Canonical view source names must be an array of strings.')
   }
   const requested = new Set(sourceNames)
   const queries = createCanonicalQueries(indexedDB)
-  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings] =
-    await Promise.all([
-      requested.has('repositories') || requested.has('workflows')
-        ? queries.repositories.list()
-        : [],
-      requested.has('workflows') ? queries.workflows.list() : [],
-      requested.has('runs') || requested.has('job-performance')
-        ? queries.runs.list()
-        : [],
-      requested.has('job-performance') ? queries.jobs.list() : [],
-      requested.has('failed-runs') ? queries.runs.recentFailures() : [],
-      requested.has('work-items') ? queries.workItems.list() : [],
-      requested.has('security-findings') ? queries.findings.list() : [],
-    ])
-  const repositoriesById = new Map(
-    repositories.map((repository) => [repository.id, repository]),
-  )
+  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings] = await Promise.all([
+    requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
+    requested.has('workflows') ? queries.workflows.list() : [],
+    requested.has('runs') || requested.has('job-performance') ? queries.runs.list() : [],
+    requested.has('job-performance') ? queries.jobs.list() : [],
+    requested.has('failed-runs') ? queries.runs.recentFailures() : [],
+    requested.has('work-items') ? queries.workItems.list() : [],
+    requested.has('security-findings') ? queries.findings.list() : [],
+  ])
+  const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]))
   const runsById = new Map(runs.map((run) => [run.id, run]))
   const sources = namedLogicalSources(logicalSources)
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {}
-  if (requested.has('repositories'))
-    projected.repositories = repositoriesSource(repositories, sources)
-  if (requested.has('workflows'))
-    projected.workflows = workflowsSource(workflows, repositoriesById, sources)
-  if (requested.has('job-performance'))
-    projected['job-performance'] = jobsSource(jobs, runsById, sources)
+  if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources)
+  if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources)
+  if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources)
   if (requested.has('runs')) projected.runs = runsSource(runs, sources)
-  if (requested.has('failed-runs'))
-    projected['failed-runs'] = failedRunsSource(failedRuns, sources)
-  if (requested.has('work-items'))
-    projected['work-items'] = workItemsSource(workItems, sources)
-  if (requested.has('security-findings'))
-    projected['security-findings'] = securityFindingsSource(findings, sources)
+  if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources)
+  if (requested.has('work-items')) projected['work-items'] = workItemsSource(workItems, sources)
+  if (requested.has('security-findings')) projected['security-findings'] = securityFindingsSource(findings, sources)
   return projected
 }

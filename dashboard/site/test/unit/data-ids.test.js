@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  jobId,
-  repositoryId,
-  runId,
-  sourceId,
-  workflowId,
-} from '../../src/data/model/ids.js'
+import { jobId, repositoryId, runId, sourceId, workflowId } from '../../src/data/model/ids.js'
 
 describe('canonical data identities', () => {
   it('uses immutable GitHub IDs rather than renameable labels', () => {
@@ -20,18 +14,12 @@ describe('canonical data identities', () => {
   })
 
   it('derives stable source-coordinate identities without random values', () => {
-    expect(sourceId('session', 'gh-aw-log', 'run-12/job-4')).toBe(
-      'session:gh-aw-log:run-12%2Fjob-4',
-    )
+    expect(sourceId('session', 'gh-aw-log', 'run-12/job-4')).toBe('session:gh-aw-log:run-12%2Fjob-4')
   })
 
   it('rejects missing IDs and invalid run attempts', () => {
     expect(() => repositoryId(' ')).toThrow('repository ID is required')
-    expect(() => runId(123, 0)).toThrow(
-      'Run attempt must be a positive integer',
-    )
-    expect(() => sourceId('event', '', '42')).toThrow(
-      'event source and coordinate are required',
-    )
+    expect(() => runId(123, 0)).toThrow('Run attempt must be a positive integer')
+    expect(() => sourceId('event', '', '42')).toThrow('event source and coordinate are required')
   })
 })

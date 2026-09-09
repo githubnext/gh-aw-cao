@@ -35,16 +35,8 @@ export async function ingestGhAwLogDirectory(contextPath, logDirectory) {
   })
   const queries = createCanonicalQueries(indexedDB)
   const runs = await queries.runs.list()
-  const sessions = (
-    await Promise.all(
-      runs.map((run) => queries.sessions.forRun(String(run.id))),
-    )
-  ).flat()
-  const events = (
-    await Promise.all(
-      sessions.map((session) => queries.events.forSession(String(session.id))),
-    )
-  ).flat()
+  const sessions = (await Promise.all(runs.map((run) => queries.sessions.forRun(String(run.id))))).flat()
+  const events = (await Promise.all(sessions.map((session) => queries.events.forSession(String(session.id))))).flat()
   return { result, runs, sessions, events }
 }
 
@@ -53,21 +45,13 @@ async function main() {
   if (!contextPath || !logDirectory) {
     throw new Error('Usage: ingest-gh-aw-logs.mjs CONTEXT_JSON LOG_DIRECTORY')
   }
-  const output = await ingestGhAwLogDirectory(
-    path.resolve(contextPath),
-    path.resolve(logDirectory),
-  )
+  const output = await ingestGhAwLogDirectory(path.resolve(contextPath), path.resolve(logDirectory))
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`)
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch((error) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.stack : String(error)}\n`,
-    )
+    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
     process.exitCode = 1
   })
 }

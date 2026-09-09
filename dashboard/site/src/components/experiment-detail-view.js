@@ -9,15 +9,9 @@ import { decisionTone, metricSummaries } from './experiment-view-primitives.js'
  * @returns {HTMLElement}
  */
 export function renderExperimentDetailView(model, experimentId) {
-  const experiment = model.experiments.find(
-    (candidate) => candidate.id === experimentId,
-  )
+  const experiment = model.experiments.find((candidate) => candidate.id === experimentId)
   if (!experiment) return h('div')
-  const metrics = metricSummaries(
-    experiment.observations,
-    experiment.control,
-    experiment.candidate,
-  )
+  const metrics = metricSummaries(experiment.observations, experiment.control, experiment.candidate)
   const evalMetrics = metrics.filter((metric) => metric.sourceType === 'eval')
   const graderRegressions = metrics
     .filter((metric) => metric.sourceType === 'grader' && metric.regression)
@@ -31,16 +25,8 @@ export function renderExperimentDetailView(model, experimentId) {
     h(
       'div',
       { className: 'experiment-selection-heading' },
-      h(
-        'div',
-        null,
-        h('span', null, 'Selected experiment'),
-        h('h2', null, experiment.name),
-      ),
-      renderExperimentBadge(
-        experiment.decision,
-        decisionTone(experiment.decision),
-      ),
+      h('div', null, h('span', null, 'Selected experiment'), h('h2', null, experiment.name)),
+      renderExperimentBadge(experiment.decision, decisionTone(experiment.decision)),
     ),
     renderExperimentDetailSection('metric-comparison', { metrics, experiment }),
     renderExperimentDetailSection('eval-outcomes', {

@@ -1,13 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 
-test('DLS-CONF-004 reactive DOM nodes render stable keyed output in browser', async ({
-  page,
-}) => {
-  const domSource = readFileSync(
-    new URL('../../src/dom.js', import.meta.url),
-    'utf8',
-  )
+test('DLS-CONF-004 reactive DOM nodes render stable keyed output in browser', async ({ page }) => {
+  const domSource = readFileSync(new URL('../../src/dom.js', import.meta.url), 'utf8')
   const domModuleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(domSource)}`
 
   await page.setContent(`
@@ -26,8 +21,6 @@ test('DLS-CONF-004 reactive DOM nodes render stable keyed output in browser', as
     </script>
   `)
 
-  await expect(
-    page.getByRole('heading', { name: 'Reactive core' }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Reactive core' })).toBeVisible()
   await expect(page.locator('#list a')).toHaveText(['Run 2', 'Run 1'])
 })

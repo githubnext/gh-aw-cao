@@ -49,8 +49,7 @@ function context() {
               relation: 'workflow',
               href: 'https://github.com/octo/repo/blob/main/daily.md',
               label: 'View workflow',
-              'dashboard-href':
-                '#page-workflow-runtime?workflow=octo%2Frepo%3A.github%2Fworkflows%2Fdaily.md',
+              'dashboard-href': '#page-workflow-runtime?workflow=octo%2Frepo%3A.github%2Fworkflows%2Fdaily.md',
               'dashboard-label': 'View workflow dashboard',
             },
             'external-link': {
@@ -82,39 +81,19 @@ describe('outcome detail', () => {
     )
 
     expect(rendered.dataset.outcome).toBe('outcome-1')
-    expect(rendered.querySelector('.markdown-body')?.textContent).toContain(
-      'SummaryPassedChecksunsafe',
-    )
+    expect(rendered.querySelector('.markdown-body')?.textContent).toContain('SummaryPassedChecksunsafe')
     expect(rendered.querySelector('.markdown-body script')).toBeNull()
-    expect(
-      rendered.querySelector('.markdown-body a')?.hasAttribute('href'),
-    ).toBe(false)
-    expect(
-      rendered.querySelector('.markdown-body a')?.hasAttribute('onclick'),
-    ).toBe(false)
-    expect(
-      rendered.querySelector('.markdown-body th')?.getAttribute('scope'),
-    ).toBe('colgroup')
+    expect(rendered.querySelector('.markdown-body a')?.hasAttribute('href')).toBe(false)
+    expect(rendered.querySelector('.markdown-body a')?.hasAttribute('onclick')).toBe(false)
+    expect(rendered.querySelector('.markdown-body th')?.getAttribute('scope')).toBe('colgroup')
     expect(rendered.querySelector('.status')?.textContent).toBe('Closed')
-    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain(
-      'DispositionLifecycle Close',
-    )
-    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain(
-      'WarningWarning',
-    )
+    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain('DispositionLifecycle Close')
+    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain('WarningWarning')
     expect(rendered.querySelector('.mode-badge')?.textContent).toBe('Live')
-    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain(
-      'Pull Request',
-    )
-    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain(
-      'Daily review',
-    )
+    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain('Pull Request')
+    expect(rendered.querySelector('.outcome-meta')?.textContent).toContain('Daily review')
     expect(rendered.querySelectorAll('.outcome-meta a')).toHaveLength(3)
-    expect(
-      rendered
-        .querySelector('.outcome-meta a[href^="#page-workflow-runtime"]')
-        ?.hasAttribute('target'),
-    ).toBe(false)
+    expect(rendered.querySelector('.outcome-meta a[href^="#page-workflow-runtime"]')?.hasAttribute('target')).toBe(false)
     expect(allocation).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: {
@@ -147,9 +126,7 @@ describe('outcome detail', () => {
     const metadataSection = renderOutcomeDetailSection(outcome, 'metadata')
 
     expect(discussion?.className).toBe('discussion-post')
-    expect(discussion?.querySelector('.markdown-body')?.textContent).toContain(
-      'SummaryPassedChecksunsafe',
-    )
+    expect(discussion?.querySelector('.markdown-body')?.textContent).toContain('SummaryPassedChecksunsafe')
     expect(metadataSection?.className).toBe('outcome-meta')
     expect(metadataSection?.textContent).toContain('DispositionLifecycle Close')
     expect(metadataSection?.querySelectorAll('a')).toHaveLength(3)

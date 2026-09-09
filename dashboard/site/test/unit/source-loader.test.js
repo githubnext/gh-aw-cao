@@ -13,39 +13,21 @@ describe('dashboard source loader', () => {
       await Promise.resolve()
       active -= 1
       if (pathname.endsWith('/sources/manifest.json')) {
-        return new Response(
-          JSON.stringify({ version: 1, sources: ['runs', 'outcomes'] }),
-        )
+        return new Response(JSON.stringify({ version: 1, sources: ['runs', 'outcomes'] }))
       }
       const name = pathname.endsWith('/runs.json') ? 'runs' : 'outcomes'
-      return new Response(
-        JSON.stringify({ source: name, rows: [{ id: name }] }),
-      )
+      return new Response(JSON.stringify({ source: name, rows: [{ id: name }] }))
     })
 
-    await expect(
-      loadDashboardSources(
-        fetchSource,
-        'https://example.test/cao/sources.json',
-      ),
-    ).resolves.toEqual({
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).resolves.toEqual({
       runs: { source: 'runs', rows: [{ id: 'runs' }] },
       outcomes: { source: 'outcomes', rows: [{ id: 'outcomes' }] },
     })
     expect(maximumActive).toBe(1)
     expect(fetchSource.mock.calls).toEqual([
-      [
-        new URL('https://example.test/cao/sources/manifest.json'),
-        { cache: 'no-store' },
-      ],
-      [
-        new URL('https://example.test/cao/sources/runs.json'),
-        { cache: 'no-store' },
-      ],
-      [
-        new URL('https://example.test/cao/sources/outcomes.json'),
-        { cache: 'no-store' },
-      ],
+      [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources/runs.json'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources/outcomes.json'), { cache: 'no-store' }],
     ])
   })
 
@@ -53,9 +35,7 @@ describe('dashboard source loader', () => {
     const generation = 'a'.repeat(64)
     const fetchSource = vi.fn(async (input) =>
       new URL(String(input)).pathname.endsWith('/sources/manifest.json')
-        ? new Response(
-            JSON.stringify({ version: 1, generation, sources: ['runs'] }),
-          )
+        ? new Response(JSON.stringify({ version: 1, generation, sources: ['runs'] }))
         : new Response(
             JSON.stringify({
               source: 'runs',
@@ -65,12 +45,7 @@ describe('dashboard source loader', () => {
           ),
     )
 
-    await expect(
-      loadDashboardSources(
-        fetchSource,
-        'https://example.test/cao/sources.json',
-      ),
-    ).rejects.toThrow(
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).rejects.toThrow(
       'Dashboard source runs does not match the source manifest generation.',
     )
   })
@@ -79,24 +54,14 @@ describe('dashboard source loader', () => {
     const fetchSource = vi.fn(async (input) =>
       new URL(String(input)).pathname.endsWith('/sources/manifest.json')
         ? new Response('', { status: 404 })
-        : new Response(
-            JSON.stringify({ workflows: { source: 'workflows', rows: [] } }),
-          ),
+        : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })),
     )
 
-    await expect(
-      loadDashboardSources(
-        fetchSource,
-        'https://example.test/cao/sources.json',
-      ),
-    ).resolves.toEqual({
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).resolves.toEqual({
       workflows: { source: 'workflows', rows: [] },
     })
     expect(fetchSource.mock.calls).toEqual([
-      [
-        new URL('https://example.test/cao/sources/manifest.json'),
-        { cache: 'no-store' },
-      ],
+      [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
       ['https://example.test/cao/sources.json', { cache: 'no-store' }],
     ])
   })
@@ -105,17 +70,10 @@ describe('dashboard source loader', () => {
     const fetchSource = vi.fn(async (input) =>
       new URL(String(input)).pathname.endsWith('/sources/manifest.json')
         ? new Response('', { status: 503 })
-        : new Response(
-            JSON.stringify({ workflows: { source: 'workflows', rows: [] } }),
-          ),
+        : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })),
     )
 
-    await expect(
-      loadDashboardSources(
-        fetchSource,
-        'https://example.test/cao/sources.json',
-      ),
-    ).rejects.toThrow('Unable to load dashboard source manifest: 503')
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).rejects.toThrow('Unable to load dashboard source manifest: 503')
     expect(fetchSource).toHaveBeenCalledTimes(1)
   })
 
@@ -126,12 +84,7 @@ describe('dashboard source loader', () => {
         : new Response('', { status: 503 }),
     )
 
-    await expect(
-      loadDashboardSources(
-        fetchSource,
-        'https://example.test/cao/sources.json',
-      ),
-    ).rejects.toThrow('Unable to load dashboard source runs: 503')
+    await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).rejects.toThrow('Unable to load dashboard source runs: 503')
     expect(fetchSource).toHaveBeenCalledTimes(2)
   })
 })

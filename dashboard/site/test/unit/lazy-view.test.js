@@ -1,11 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  disconnectLazyViews,
-  enableLazyViews,
-  renderLazyView,
-  trackViewTransition,
-} from '../../src/components/lazy-view.js'
+import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from '../../src/components/lazy-view.js'
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -88,19 +83,11 @@ describe('lazy dashboard views', () => {
     enableLazyViews(document.body)
 
     expect(lazyView.getAttribute('data-lazy-view')).toBe('')
-    expect(
-      lazyView.style.getPropertyValue('--dashboard-lazy-view-min-height'),
-    ).toBe('320px')
-    expect(
-      lazyView.querySelector('.dashboard-lazy-view-skeleton'),
-    ).not.toBeNull()
+    expect(lazyView.style.getPropertyValue('--dashboard-lazy-view-min-height')).toBe('320px')
+    expect(lazyView.querySelector('.dashboard-lazy-view-skeleton')).not.toBeNull()
     expect(render).not.toHaveBeenCalled()
     callback(
-      /** @type {IntersectionObserverEntry[]} */ (
-        /** @type {unknown} */ ([
-          { target: lazyView, isIntersecting: true, intersectionRatio: 1 },
-        ])
-      ),
+      /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ target: lazyView, isIntersecting: true, intersectionRatio: 1 }])),
       /** @type {IntersectionObserver} */ ({}),
     )
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce())
@@ -125,9 +112,7 @@ describe('lazy dashboard views', () => {
     })
     const scroller = document.createElement('main')
     scroller.className = 'dashboard-prototype'
-    vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(
-      /** @type {DOMRect} */ ({ bottom: 600 }),
-    )
+    vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(/** @type {DOMRect} */ ({ bottom: 600 }))
     const root = document.createElement('section')
     const render = vi.fn(() => document.createElement('article'))
     const lazyView = renderLazyView({ label: 'Skipped chart', render })
@@ -176,11 +161,7 @@ describe('lazy dashboard views', () => {
     enableLazyViews(document.body)
 
     callback(
-      /** @type {IntersectionObserverEntry[]} */ (
-        /** @type {unknown} */ ([
-          { target: lazyView, isIntersecting: true, intersectionRatio: 1 },
-        ])
-      ),
+      /** @type {IntersectionObserverEntry[]} */ (/** @type {unknown} */ ([{ target: lazyView, isIntersecting: true, intersectionRatio: 1 }])),
       /** @type {IntersectionObserver} */ ({}),
     )
     await Promise.resolve()
@@ -319,9 +300,7 @@ describe('lazy dashboard views', () => {
     releases[0]()
     await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(2))
     releases[1]()
-    await vi.waitFor(() =>
-      expect(document.body.querySelectorAll('article')).toHaveLength(2),
-    )
+    await vi.waitFor(() => expect(document.body.querySelectorAll('article')).toHaveLength(2))
     expect(concurrent).toBe(1)
   })
 })

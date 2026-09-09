@@ -37,13 +37,8 @@ export function createRouteView(options) {
     const normalizedValue = typeof routeValue === 'string' ? routeValue : ''
     root.dataset[options.datasetKey] = normalizedValue
     const unavailable = options.isUnavailable?.() ?? false
-    const hasSelection = options.hasSelection
-      ? options.hasSelection(normalizedValue)
-      : normalizedValue.trim().length > 0
-    const matched =
-      unavailable || !hasSelection
-        ? null
-        : options.renderMatched(normalizedValue)
+    const hasSelection = options.hasSelection ? options.hasSelection(normalizedValue) : normalizedValue.trim().length > 0
+    const matched = unavailable || !hasSelection ? null : options.renderMatched(normalizedValue)
     const message = unavailable
       ? (options.unavailableMessage ?? options.selectMessage)
       : matched
@@ -55,11 +50,7 @@ export function createRouteView(options) {
   }
 
   root.addEventListener('dashboard-route-change', (event) => {
-    if (
-      !(event instanceof CustomEvent) ||
-      event.detail?.parameter !== options.routeParameter
-    )
-      return
+    if (!(event instanceof CustomEvent) || event.detail?.parameter !== options.routeParameter) return
     render(event.detail.value)
   })
   render('')

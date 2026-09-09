@@ -1,15 +1,5 @@
-import {
-  jobId,
-  repositoryId,
-  runId,
-  sourceId,
-  workflowId,
-} from '../model/ids.js'
-import {
-  canonicalTimestamp,
-  ENTITY_KINDS,
-  requiredString,
-} from '../model/schema.js'
+import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js'
+import { canonicalTimestamp, ENTITY_KINDS, requiredString } from '../model/schema.js'
 
 export const SQL_EXPORT_CONTRACT = 'gh-aw-cao.dashboard-sql-export'
 export const SQL_EXPORT_VERSION = 1
@@ -24,10 +14,7 @@ function objectValue(value, field) {
 
 /** @param {unknown} value @param {string} field */
 function identifier(value, field) {
-  if (
-    (typeof value !== 'string' && typeof value !== 'number') ||
-    !String(value).trim()
-  ) {
+  if ((typeof value !== 'string' && typeof value !== 'number') || !String(value).trim()) {
     throw new TypeError(`${field} is required`)
   }
   return String(value).trim()
@@ -36,8 +23,7 @@ function identifier(value, field) {
 /** @param {unknown} value @param {string} field */
 function positiveInteger(value, field) {
   const number = Number(value)
-  if (!Number.isInteger(number) || number < 1)
-    throw new TypeError(`${field} must be a positive integer`)
+  if (!Number.isInteger(number) || number < 1) throw new TypeError(`${field} must be a positive integer`)
   return number
 }
 
@@ -59,45 +45,23 @@ export function adaptSqlExport(input) {
     throw new TypeError(`SQL export contract must be ${SQL_EXPORT_CONTRACT}`)
   }
   if (document.schema_version !== SQL_EXPORT_VERSION) {
-    throw new TypeError(
-      `Unsupported SQL export schema version: ${String(document.schema_version)}`,
-    )
+    throw new TypeError(`Unsupported SQL export schema version: ${String(document.schema_version)}`)
   }
-  const generation = requiredString(
-    document.generation,
-    'SQL export generation',
-  )
-  const exportedAt = canonicalTimestamp(
-    document.exported_at,
-    'SQL export exported_at',
-  )
+  const generation = requiredString(document.generation, 'SQL export generation')
+  const exportedAt = canonicalTimestamp(document.exported_at, 'SQL export exported_at')
   const source = `sql:${requiredString(document.source, 'SQL export source')}`
-  if (!Array.isArray(document.rows))
-    throw new TypeError('SQL export rows must be an array')
+  if (!Array.isArray(document.rows)) throw new TypeError('SQL export rows must be an array')
 
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = []
   for (const [index, candidate] of document.rows.entries()) {
     const row = objectValue(candidate, `SQL export row ${index}`)
-    const kind = requiredString(
-      row.entity_kind,
-      `SQL export row ${index}.entity_kind`,
-    )
-    if (
-      !ENTITY_KINDS.includes(
-        /** @type {import('../model/schema.js').EntityKind} */ (kind),
-      )
-    ) {
+    const kind = requiredString(row.entity_kind, `SQL export row ${index}.entity_kind`)
+    if (!ENTITY_KINDS.includes(/** @type {import('../model/schema.js').EntityKind} */ (kind))) {
       throw new TypeError(`Unsupported SQL export entity kind: ${kind}`)
     }
-    const sourceRecordId = requiredString(
-      row.source_id,
-      `SQL export row ${index}.source_id`,
-    )
-    const observedAt = canonicalTimestamp(
-      row.observed_at ?? exportedAt,
-      `SQL export row ${index}.observed_at`,
-    )
+    const sourceRecordId = requiredString(row.source_id, `SQL export row ${index}.source_id`)
+    const observedAt = canonicalTimestamp(row.observed_at ?? exportedAt, `SQL export row ${index}.observed_at`)
     /** @type {Record<string, unknown>} */
     let data
 
@@ -106,10 +70,7 @@ export function adaptSqlExport(input) {
         const owner = requiredString(row.repository_owner, 'repository_owner')
         const name = requiredString(row.repository_name, 'repository_name')
         data = {
-          githubId: identifier(
-            row.github_repository_id,
-            'github_repository_id',
-          ),
+          githubId: identifier(row.github_repository_id, 'github_repository_id'),
           owner,
           name,
           fullName: `${owner}/${name}`,
@@ -120,9 +81,7 @@ export function adaptSqlExport(input) {
       case 'workflow':
         data = {
           githubId: identifier(row.github_workflow_id, 'github_workflow_id'),
-          repositoryId: repositoryId(
-            identifier(row.github_repository_id, 'github_repository_id'),
-          ),
+          repositoryId: repositoryId(identifier(row.github_repository_id, 'github_repository_id')),
           name: requiredString(row.workflow_name, 'workflow_name'),
           path: requiredString(row.workflow_path, 'workflow_path'),
           state: optionalString(row.workflow_state) ?? 'unknown',
@@ -134,12 +93,8 @@ export function adaptSqlExport(input) {
         data = {
           githubRunId,
           attempt,
-          repositoryId: repositoryId(
-            identifier(row.github_repository_id, 'github_repository_id'),
-          ),
-          workflowId: workflowId(
-            identifier(row.github_workflow_id, 'github_workflow_id'),
-          ),
+          repositoryId: repositoryId(identifier(row.github_repository_id, 'github_repository_id')),
+          workflowId: workflowId(identifier(row.github_workflow_id, 'github_workflow_id')),
           event: optionalString(row.run_event) ?? 'unknown',
           status: optionalString(row.run_status) ?? 'unknown',
           conclusion: optionalString(row.run_conclusion) ?? null,
@@ -154,10 +109,7 @@ export function adaptSqlExport(input) {
       case 'job':
         data = {
           githubJobId: identifier(row.github_job_id, 'github_job_id'),
-          runId: runId(
-            identifier(row.github_run_id, 'github_run_id'),
-            positiveInteger(row.run_attempt, 'run_attempt'),
-          ),
+          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
           name: requiredString(row.job_name, 'job_name'),
           status: optionalString(row.job_status) ?? 'unknown',
           conclusion: optionalString(row.job_conclusion) ?? null,
@@ -169,14 +121,8 @@ export function adaptSqlExport(input) {
         const sessionId = sourceId('session', source, sourceRecordId)
         data = {
           id: sessionId,
-          runId: runId(
-            identifier(row.github_run_id, 'github_run_id'),
-            positiveInteger(row.run_attempt, 'run_attempt'),
-          ),
-          jobId:
-            row.github_job_id === undefined || row.github_job_id === null
-              ? undefined
-              : jobId(identifier(row.github_job_id, 'github_job_id')),
+          runId: runId(identifier(row.github_run_id, 'github_run_id'), positiveInteger(row.run_attempt, 'run_attempt')),
+          jobId: row.github_job_id === undefined || row.github_job_id === null ? undefined : jobId(identifier(row.github_job_id, 'github_job_id')),
           kind: requiredString(row.session_kind, 'session_kind'),
           status: optionalString(row.session_status) ?? 'unknown',
           startedAt: optionalString(row.session_started_at) ?? null,
@@ -188,30 +134,19 @@ export function adaptSqlExport(input) {
         if (
           row.source_sequence !== undefined &&
           row.source_sequence !== null &&
-          (!Number.isInteger(Number(row.source_sequence)) ||
-            Number(row.source_sequence) < 0)
+          (!Number.isInteger(Number(row.source_sequence)) || Number(row.source_sequence) < 0)
         ) {
           throw new TypeError('source_sequence must be a non-negative integer')
         }
         data = {
-          sessionId: sourceId(
-            'session',
-            source,
-            requiredString(row.session_source_id, 'session_source_id'),
-          ),
-          timestamp: canonicalTimestamp(
-            row.event_timestamp ?? observedAt,
-            'event_timestamp',
-          ),
+          sessionId: sourceId('session', source, requiredString(row.session_source_id, 'session_source_id')),
+          timestamp: canonicalTimestamp(row.event_timestamp ?? observedAt, 'event_timestamp'),
           source: requiredString(row.event_source, 'event_source'),
           type: requiredString(row.event_type, 'event_type'),
           summary: optionalString(row.event_summary),
           correlationId: optionalString(row.correlation_id),
           payloadRef: optionalString(row.payload_ref),
-          sourceSequence:
-            row.source_sequence === undefined || row.source_sequence === null
-              ? undefined
-              : Number(row.source_sequence),
+          sourceSequence: row.source_sequence === undefined || row.source_sequence === null ? undefined : Number(row.source_sequence),
         }
         break
       default:

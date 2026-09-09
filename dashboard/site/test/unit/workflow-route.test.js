@@ -1,26 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import {
-  parseWorkflowRoute,
-  workflowRouteValue,
-} from '../../src/components/workflow-route.js'
+import { parseWorkflowRoute, workflowRouteValue } from '../../src/components/workflow-route.js'
 import { selectConfigBody } from '../../src/components/route-body-composition.js'
 import { createRouteBodyConfig } from '../../src/components/route-body-config.js'
-import {
-  WORKFLOW_ROUTE_BODY_VALUES,
-  WORKFLOW_ROUTE_PAGE_BODY_VALUES,
-} from '../../src/components/route-body-specification.js'
+import { WORKFLOW_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_PAGE_BODY_VALUES } from '../../src/components/route-body-specification.js'
 
 describe('workflow-route helpers', () => {
   it('formats and parses valid workflow routes', () => {
-    const value = workflowRouteValue(
-      'githubnext/gh-aw-cao',
-      '.github/workflows/ambient-context.md',
-    )
+    const value = workflowRouteValue('githubnext/gh-aw-cao', '.github/workflows/ambient-context.md')
 
-    expect(value).toBe(
-      'githubnext/gh-aw-cao:.github/workflows/ambient-context.md',
-    )
+    expect(value).toBe('githubnext/gh-aw-cao:.github/workflows/ambient-context.md')
     expect(parseWorkflowRoute(value)).toEqual({
       repository: 'githubnext/gh-aw-cao',
       workflow: '.github/workflows/ambient-context.md',
@@ -32,21 +21,9 @@ describe('workflow-route helpers', () => {
     expect(parseWorkflowRoute('')).toBeNull()
     expect(parseWorkflowRoute('githubnext/gh-aw-cao')).toBeNull()
     expect(parseWorkflowRoute('<invalid>')).toBeNull()
-    expect(
-      parseWorkflowRoute(
-        'githubnext/gh-aw-cao:.github/workflows/../ambient-context.md',
-      ),
-    ).toBeNull()
-    expect(
-      parseWorkflowRoute(
-        'githubnext/gh-aw-cao:.github/workflows/ambient-context.yml',
-      ),
-    ).toBeNull()
-    expect(
-      parseWorkflowRoute(
-        `githubnext/gh-aw-cao:.github/workflows/ambient-context.md${String.fromCharCode(10)}`,
-      ),
-    ).toBeNull()
+    expect(parseWorkflowRoute('githubnext/gh-aw-cao:.github/workflows/../ambient-context.md')).toBeNull()
+    expect(parseWorkflowRoute('githubnext/gh-aw-cao:.github/workflows/ambient-context.yml')).toBeNull()
+    expect(parseWorkflowRoute(`githubnext/gh-aw-cao:.github/workflows/ambient-context.md${String.fromCharCode(10)}`)).toBeNull()
   })
 
   it('normalizes declarative workflow route bodies with a shared fallback contract', () => {
@@ -65,18 +42,11 @@ describe('workflow-route helpers', () => {
   })
 
   it('reuses canonical route body selection helpers across declarative route elements', () => {
-    const config = createRouteBodyConfig(
-      /** @type {const} */ (['reports', 'runs']),
-      'reports',
-    )
+    const config = createRouteBodyConfig(/** @type {const} */ (['reports', 'runs']), 'reports')
 
     expect(config.body('runs')).toBe('runs')
     expect(config.body('invalid')).toBe('reports')
-    expect(
-      config.composition({ reports: 'report-view', runs: 'runs-view' }, 'runs'),
-    ).toBe('runs-view')
-    expect(
-      config.composition({ reports: 'report-view', runs: 'runs-view' }, null),
-    ).toBe('report-view')
+    expect(config.composition({ reports: 'report-view', runs: 'runs-view' }, 'runs')).toBe('runs-view')
+    expect(config.composition({ reports: 'report-view', runs: 'runs-view' }, null)).toBe('report-view')
   })
 })

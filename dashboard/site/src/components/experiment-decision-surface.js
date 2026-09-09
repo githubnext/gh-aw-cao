@@ -98,19 +98,12 @@ export function renderExperimentDecisionSurface(context, callbacks) {
  * @returns {HTMLElement}
  */
 export function renderExperimentDecisionSurfaceSection(section, renderers) {
-  if (section === 'overview')
-    return renderers.renderOverview(renderers.experiments)
+  if (section === 'overview') return renderers.renderOverview(renderers.experiments)
   if (section === 'table') {
-    return renderers.renderTable(
-      renderers.experiments,
-      renderers.selectedExperiment,
-      renderers.onSelect,
-    )
+    return renderers.renderTable(renderers.experiments, renderers.selectedExperiment, renderers.onSelect)
   }
   if (section === 'detail') {
-    return renderers.experiments.length === 0
-      ? renderers.renderNoMatches()
-      : renderers.renderDetail(renderers.model, renderers.selectedExperiment)
+    return renderers.experiments.length === 0 ? renderers.renderNoMatches() : renderers.renderDetail(renderers.model, renderers.selectedExperiment)
   }
   return renderers.renderNoMatches()
 }
@@ -123,30 +116,12 @@ export function buildExperimentDecisionModel(sources) {
   const evalDefinitions = rowsFor(sources, 'evals')
   const runs = rowsFor(sources, 'runs')
   /** @type {Map<string, Row>} */
-  const assignmentByRun = new Map(
-    assignments.map((row) => [text(row.run), row]),
-  )
+  const assignmentByRun = new Map(assignments.map((row) => [text(row.run), row]))
   const runById = new Map(runs.map((row) => [text(row.run), row]))
-  const graderById = new Map(
-    graderDefinitions.map((row) => [text(row.grader), row]),
-  )
+  const graderById = new Map(graderDefinitions.map((row) => [text(row.grader), row]))
   const evalById = new Map(evalDefinitions.map((row) => [text(row.eval), row]))
-  const graders = rowsFor(sources, 'grader-observations').map((row) =>
-    normalizeObservation(
-      row,
-      assignmentByRun,
-      graderById.get(text(row.grader)),
-      'grader',
-    ),
-  )
-  const evals = rowsFor(sources, 'eval-observations').map((row) =>
-    normalizeObservation(
-      row,
-      assignmentByRun,
-      evalById.get(text(row.eval)),
-      'eval',
-    ),
-  )
+  const graders = rowsFor(sources, 'grader-observations').map((row) => normalizeObservation(row, assignmentByRun, graderById.get(text(row.grader)), 'grader'))
+  const evals = rowsFor(sources, 'eval-observations').map((row) => normalizeObservation(row, assignmentByRun, evalById.get(text(row.eval)), 'eval'))
   const experimentIds = new Set(
     [
       ...experimentRows.map((row) => text(row.experiment)),
@@ -155,9 +130,7 @@ export function buildExperimentDecisionModel(sources) {
       ...evals.map((row) => row.experiment),
     ].filter(Boolean),
   )
-  const definitionById = new Map(
-    experimentRows.map((row) => [text(row.experiment), row]),
-  )
+  const definitionById = new Map(experimentRows.map((row) => [text(row.experiment), row]))
   const experiments = [...experimentIds]
     .map((id) =>
       summarizeExperiment({
@@ -168,10 +141,7 @@ export function buildExperimentDecisionModel(sources) {
         evals: evals.filter((row) => row.experiment === id),
       }),
     )
-    .sort(
-      (left, right) =>
-        left.priority - right.priority || left.name.localeCompare(right.name),
-    )
+    .sort((left, right) => left.priority - right.priority || left.name.localeCompare(right.name))
 
   return {
     experiments,
@@ -194,10 +164,7 @@ export function buildExperimentDecisionModel(sources) {
 function normalizeObservation(row, assignmentByRun, definition, sourceType) {
   const assignment = assignmentByRun.get(text(row.run)) ?? {}
   const identifier = text(sourceType === 'grader' ? row.grader : row.eval)
-  const result =
-    sourceType === 'grader'
-      ? finite(row.value)
-      : normalizeEvalResult(row['eval-result'] ?? row.result)
+  const result = sourceType === 'grader' ? finite(row.value) : normalizeEvalResult(row['eval-result'] ?? row.result)
   return {
     ...row,
     experiment: text(row.experiment || assignment.experiment),
@@ -206,25 +173,14 @@ function normalizeObservation(row, assignmentByRun, definition, sourceType) {
     sourceType,
     result,
     role: upper(row.role || definition?.role || 'SECONDARY'),
-    direction: text(
-      row.direction || definition?.direction || 'higher_is_better',
-    ),
-    unit: text(
-      row.unit ||
-        definition?.unit ||
-        (sourceType === 'eval' ? 'answer' : 'raw'),
-    ),
+    direction: text(row.direction || definition?.direction || 'higher_is_better'),
+    unit: text(row.unit || definition?.unit || (sourceType === 'eval' ? 'answer' : 'raw')),
     question: text(row.question || (definition && definition['eval-question'])),
     threshold: finite(row.threshold ?? definition?.threshold),
     included: includedObservation(row) && includedAssignment(assignment),
-    exclusionReason: text(
-      row['exclusion-reason'] || row.reason || assignment['exclusion-reason'],
-    ),
+    exclusionReason: text(row['exclusion-reason'] || row.reason || assignment['exclusion-reason']),
     observedAt: text(row['observed-at']),
-    evidenceLink:
-      safeExperimentLink(row['evidence-link']) ||
-      safeExperimentLink(row['grader-link']) ||
-      safeExperimentLink(row['eval-link']),
+    evidenceLink: safeExperimentLink(row['evidence-link']) || safeExperimentLink(row['grader-link']) || safeExperimentLink(row['eval-link']),
   }
 }
 
@@ -235,30 +191,11 @@ function normalizeObservation(row, assignmentByRun, definition, sourceType) {
 function summarizeExperiment(input) {
   const { id, definition, assignments, graders, evals } = input
   const observations = [...graders, ...evals]
-  const variants = [
-    ...new Set(assignments.map((row) => text(row.variant)).filter(Boolean)),
-  ]
-  const control = text(
-    definition['control-variant'] ||
-      variants.find((variant) => /control|baseline/i.test(variant)) ||
-      variants[0] ||
-      'control',
-  )
-  const candidate = text(
-    definition['candidate-variant'] ||
-      variants.find((variant) => variant !== control) ||
-      variants[1] ||
-      'candidate',
-  )
-  const primaryId = text(
-    definition['primary-metric'] ||
-      observations.find((observation) => observation.role === 'PRIMARY')
-        ?.identifier,
-  )
-  const primary = observations.filter(
-    (observation) =>
-      observation.identifier === primaryId && observation.included,
-  )
+  const variants = [...new Set(assignments.map((row) => text(row.variant)).filter(Boolean))]
+  const control = text(definition['control-variant'] || variants.find((variant) => /control|baseline/i.test(variant)) || variants[0] || 'control')
+  const candidate = text(definition['candidate-variant'] || variants.find((variant) => variant !== control) || variants[1] || 'candidate')
+  const primaryId = text(definition['primary-metric'] || observations.find((observation) => observation.role === 'PRIMARY')?.identifier)
+  const primary = observations.filter((observation) => observation.identifier === primaryId && observation.included)
   const controlValues = primary
     .filter((observation) => observation.variant === control)
     .map(numericObservation)
@@ -267,28 +204,15 @@ function summarizeExperiment(input) {
     .filter((observation) => observation.variant === candidate)
     .map(numericObservation)
     .filter(Number.isFinite)
-  const rawEffect =
-    finite(definition.effect) ??
-    difference(mean(candidateValues), mean(controlValues))
-  const direction =
-    primary[0]?.direction || text(definition.direction || 'higher_is_better')
-  const normalizedEffect =
-    finite(definition['normalized-effect']) ??
-    normalizeEffect(rawEffect, direction)
-  const guardrails = metricSummaries(observations, control, candidate).filter(
-    (metric) => metric.role === 'GUARDRAIL',
-  )
+  const rawEffect = finite(definition.effect) ?? difference(mean(candidateValues), mean(controlValues))
+  const direction = primary[0]?.direction || text(definition.direction || 'higher_is_better')
+  const normalizedEffect = finite(definition['normalized-effect']) ?? normalizeEffect(rawEffect, direction)
+  const guardrails = metricSummaries(observations, control, candidate).filter((metric) => metric.role === 'GUARDRAIL')
   const regressingGuardrails = guardrails.filter((metric) => metric.regression)
-  const usable = observations.filter(
-    (observation) => observation.included,
-  ).length
+  const usable = observations.filter((observation) => observation.included).length
   const excluded = observations.length - usable
-  const readiness = upper(
-    definition.readiness || definition.state || 'COLLECTING',
-  )
-  const decision = upper(
-    definition.decision || (readiness === 'READY' ? 'INCONCLUSIVE' : readiness),
-  )
+  const readiness = upper(definition.readiness || definition.state || 'COLLECTING')
+  const decision = upper(definition.decision || (readiness === 'READY' ? 'INCONCLUSIVE' : readiness))
   const lastObservation =
     observations
       .map((observation) => observation.observedAt)
@@ -305,34 +229,21 @@ function summarizeExperiment(input) {
     control,
     candidate,
     primaryId: primaryId || '—',
-    primarySource:
-      primary[0]?.sourceType || text(definition['primary-source']) || '—',
-    controlN: primary.filter((observation) => observation.variant === control)
-      .length,
-    candidateN: primary.filter(
-      (observation) => observation.variant === candidate,
-    ).length,
+    primarySource: primary[0]?.sourceType || text(definition['primary-source']) || '—',
+    controlN: primary.filter((observation) => observation.variant === control).length,
+    candidateN: primary.filter((observation) => observation.variant === candidate).length,
     usable,
     excluded,
     readiness,
     decision,
     normalizedEffect,
-    evidenceStrength: text(
-      definition['evidence-strength'] || readinessLabel(readiness),
-    ),
+    evidenceStrength: text(definition['evidence-strength'] || readinessLabel(readiness)),
     guardrailCount: guardrails.length,
     regressingGuardrails,
     lastObservation,
     observations,
     assignments,
-    priority:
-      regressingGuardrails.length > 0
-        ? 0
-        : readiness === 'READY'
-          ? 1
-          : readiness === 'COLLECTING'
-            ? 2
-            : 3,
+    priority: regressingGuardrails.length > 0 ? 0 : readiness === 'READY' ? 1 : readiness === 'COLLECTING' ? 2 : 3,
   }
 }
 
@@ -344,22 +255,15 @@ function normalizeEvalResult(value) {
 
 /** @param {Row} row */
 function includedObservation(row) {
-  if (row.included === false || text(row.included).toLowerCase() === 'no')
-    return false
+  if (row.included === false || text(row.included).toLowerCase() === 'no') return false
   if (row['exclusion-reason']) return false
   const status = upper(row.status || 'complete')
-  return !['MISSING', 'EXCLUDED', 'UNAVAILABLE', 'ERROR', 'FAILED'].includes(
-    status,
-  )
+  return !['MISSING', 'EXCLUDED', 'UNAVAILABLE', 'ERROR', 'FAILED'].includes(status)
 }
 
 /** @param {Row} assignment */
 function includedAssignment(assignment) {
-  if (
-    assignment.included === false ||
-    text(assignment.included).toLowerCase() === 'no'
-  )
-    return false
+  if (assignment.included === false || text(assignment.included).toLowerCase() === 'no') return false
   return !text(assignment['exclusion-reason'])
 }
 
@@ -381,9 +285,7 @@ function readinessLabel(readiness) {
  * @returns {string[]}
  */
 function distinct(rows, key) {
-  return [...new Set(rows.map((row) => text(row[key])).filter(Boolean))].sort(
-    (left, right) => left.localeCompare(right),
-  )
+  return [...new Set(rows.map((row) => text(row[key])).filter(Boolean))].sort((left, right) => left.localeCompare(right))
 }
 
 /** @param {string} range */
@@ -400,8 +302,7 @@ function rangeStart(range) {
  * @returns {ExperimentFilters}
  */
 export function initialExperimentFilters(model) {
-  const win =
-    typeof globalThis.window !== 'undefined' ? globalThis.window : null
+  const win = typeof globalThis.window !== 'undefined' ? globalThis.window : null
   const hash = win?.location?.hash || ''
   const params = new URLSearchParams(hash.split('?')[1] || '')
   const filters = /** @type {ExperimentFilters} */ ({
@@ -416,8 +317,7 @@ export function initialExperimentFilters(model) {
     metric: params.get('metric') || '',
     range: params.get('range') || '30d',
   })
-  if (!filters.experiment && model.experiments[0]?.id)
-    filters.experiment = model.experiments[0].id
+  if (!filters.experiment && model.experiments[0]?.id) filters.experiment = model.experiments[0].id
   return filters
 }
 
@@ -430,45 +330,22 @@ export function initialExperimentFilters(model) {
 export function renderExperimentFilters(model, filters, onChange) {
   /** @type {Array<[string, string, string[]]>} */
   const controls = [
-    [
-      'organization',
-      'Organization',
-      distinct(model.experiments, 'organization'),
-    ],
+    ['organization', 'Organization', distinct(model.experiments, 'organization')],
     ['repository', 'Repository', distinct(model.experiments, 'repository')],
     ['package', 'Package', distinct(model.experiments, 'package')],
     ['workflow', 'Workflow / agent', distinct(model.experiments, 'workflow')],
     ['experiment', 'Experiment', model.experiments.map((item) => item.id)],
     ['state', 'State', distinct(model.experiments, 'readiness')],
-    [
-      'variant',
-      'Variant',
-      [
-        ...new Set(
-          model.experiments.flatMap((item) => [item.control, item.candidate]),
-        ),
-      ],
-    ],
+    ['variant', 'Variant', [...new Set(model.experiments.flatMap((item) => [item.control, item.candidate]))]],
     ['source', 'Metric source', ['grader', 'eval']],
-    [
-      'metric',
-      'Grader / eval',
-      [
-        ...new Set(
-          [...model.graders, ...model.evals]
-            .map((row) => row.identifier)
-            .filter(Boolean),
-        ),
-      ],
-    ],
+    ['metric', 'Grader / eval', [...new Set([...model.graders, ...model.evals].map((row) => row.identifier).filter(Boolean))]],
   ]
   return h(
     'form',
     {
       className: 'experiment-filters',
       'aria-label': 'Experiments and evaluation filters',
-      onsubmit: /** @param {SubmitEvent} event */ (event) =>
-        event.preventDefault(),
+      onsubmit: /** @param {SubmitEvent} event */ (event) => event.preventDefault(),
     },
     ...controls.map(([key, label, values]) =>
       h(
@@ -481,16 +358,12 @@ export function renderExperimentFilters(model, filters, onChange) {
             name: key,
             'aria-label': label,
             onchange: /** @param {Event} event */ (event) => {
-              filters[key] = /** @type {HTMLSelectElement} */ (
-                event.currentTarget
-              ).value
+              filters[key] = /** @type {HTMLSelectElement} */ (event.currentTarget).value
               onChange()
             },
           },
           h('option', { value: '' }, `All ${label.toLowerCase()}`),
-          ...values.map((value) =>
-            h('option', { value, selected: filters[key] === value }, value),
-          ),
+          ...values.map((value) => h('option', { value, selected: filters[key] === value }, value)),
         ),
       ),
     ),
@@ -504,9 +377,7 @@ export function renderExperimentFilters(model, filters, onChange) {
           name: 'range',
           'aria-label': 'Date range',
           onchange: /** @param {Event} event */ (event) => {
-            filters.range = /** @type {HTMLSelectElement} */ (
-              event.currentTarget
-            ).value
+            filters.range = /** @type {HTMLSelectElement} */ (event.currentTarget).value
             onChange()
           },
         },
@@ -515,9 +386,7 @@ export function renderExperimentFilters(model, filters, onChange) {
           ['30d', 'Last 30 days'],
           ['90d', 'Last 90 days'],
           ['all', 'All recorded'],
-        ].map(([value, label]) =>
-          h('option', { value, selected: filters.range === value }, label),
-        ),
+        ].map(([value, label]) => h('option', { value, selected: filters.range === value }, label)),
       ),
     ),
   )
@@ -532,39 +401,15 @@ export function filterExperimentRows(experiments, filters) {
   const since = rangeStart(filters.range)
   const sinceTime = since ? Date.parse(since) : NaN
   return experiments.filter((experiment) => {
-    if (
-      filters.organization &&
-      experiment.organization !== filters.organization
-    )
-      return false
-    if (filters.repository && experiment.repository !== filters.repository)
-      return false
+    if (filters.organization && experiment.organization !== filters.organization) return false
+    if (filters.repository && experiment.repository !== filters.repository) return false
     if (filters.package && experiment.package !== filters.package) return false
-    if (filters.workflow && experiment.workflow !== filters.workflow)
-      return false
+    if (filters.workflow && experiment.workflow !== filters.workflow) return false
     if (filters.experiment && experiment.id !== filters.experiment) return false
     if (filters.state && experiment.readiness !== filters.state) return false
-    if (
-      filters.variant &&
-      ![experiment.control, experiment.candidate].includes(filters.variant)
-    )
-      return false
-    if (
-      filters.source &&
-      !experiment.observations.some(
-        (/** @type {Row} */ observation) =>
-          observation.sourceType === filters.source,
-      )
-    )
-      return false
-    if (
-      filters.metric &&
-      !experiment.observations.some(
-        (/** @type {Row} */ observation) =>
-          observation.identifier === filters.metric,
-      )
-    )
-      return false
+    if (filters.variant && ![experiment.control, experiment.candidate].includes(filters.variant)) return false
+    if (filters.source && !experiment.observations.some((/** @type {Row} */ observation) => observation.sourceType === filters.source)) return false
+    if (filters.metric && !experiment.observations.some((/** @type {Row} */ observation) => observation.identifier === filters.metric)) return false
     if (!Number.isNaN(sinceTime) && experiment.lastObservation) {
       const obsTime = Date.parse(experiment.lastObservation)
       if (!Number.isNaN(obsTime) && obsTime < sinceTime) return false
@@ -578,33 +423,18 @@ export function filterExperimentRows(experiments, filters) {
  * @param {string} selectedExperiment
  * @param {string} pageId
  */
-export function syncExperimentDecisionDeepLink(
-  filters,
-  selectedExperiment,
-  pageId,
-) {
-  const win =
-    typeof globalThis.window !== 'undefined' ? globalThis.window : null
-  if (
-    !win ||
-    !win.location ||
-    !['http:', 'https:'].includes(win.location.protocol)
-  )
-    return
+export function syncExperimentDecisionDeepLink(filters, selectedExperiment, pageId) {
+  const win = typeof globalThis.window !== 'undefined' ? globalThis.window : null
+  if (!win || !win.location || !['http:', 'https:'].includes(win.location.protocol)) return
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(filters)) {
-    if (value && !(key === 'experiment' && selectedExperiment))
-      params.set(key, value)
+    if (value && !(key === 'experiment' && selectedExperiment)) params.set(key, value)
   }
   if (selectedExperiment) {
     params.set('experiment', selectedExperiment)
   }
   const query = params.toString()
-  win.history.replaceState(
-    null,
-    '',
-    `${win.location.pathname}${win.location.search}#page-${encodeURIComponent(pageId)}${query ? `?${query}` : ''}`,
-  )
+  win.history.replaceState(null, '', `${win.location.pathname}${win.location.search}#page-${encodeURIComponent(pageId)}${query ? `?${query}` : ''}`)
 }
 
 /** @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources @returns {HTMLElement} */

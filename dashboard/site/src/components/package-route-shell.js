@@ -4,11 +4,7 @@
 
 import { rowsFor } from './source-rows.js'
 import { createRoutePageShell } from './route-page-shell.js'
-import {
-  normalizePackageRoute,
-  packageModeForRoute,
-  packageNameForRoute,
-} from './package-route-composition.js'
+import { normalizePackageRoute, packageModeForRoute, packageNameForRoute } from './package-route-composition.js'
 
 /**
  * @typedef {{
@@ -42,8 +38,7 @@ export function renderPackageRouteShell(context, config) {
     selectMessage: config.selectMessage,
     notFoundMessage: 'Package not found.',
     unavailableMessage: 'Package data is unavailable.',
-    isUnavailable: () =>
-      context.sources.workflows?.metadata?.availability === 'unavailable',
+    isUnavailable: () => context.sources.workflows?.metadata?.availability === 'unavailable',
     hasSelection: (routeValue) => normalizePackageRoute(routeValue).length > 0,
     currentTab: config.currentTab,
     tabListClassName: 'package-tabs',
@@ -51,11 +46,7 @@ export function renderPackageRouteShell(context, config) {
     tabs: ({ routeValue }) => packageTabs(routeValue),
     renderMatched: (routeValue) => {
       const packageId = normalizePackageRoute(routeValue)
-      const workflows = allWorkflows.filter(
-        (workflow) =>
-          packageId &&
-          String(workflow.package).toLowerCase() === packageId.toLowerCase(),
-      )
+      const workflows = allWorkflows.filter((workflow) => packageId && String(workflow.package).toLowerCase() === packageId.toLowerCase())
       if (workflows.length === 0) {
         return null
       }

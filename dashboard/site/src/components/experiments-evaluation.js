@@ -34,10 +34,6 @@ export function renderExperimentsEvaluation(context) {
     renderTable: renderExperimentTableView,
     renderDetail: renderExperimentDetailView,
     renderNoMatches: () =>
-      renderExperimentEmptyState(
-        null,
-        'No experiments match the selected filters.',
-        'Clear one or more filters to restore the decision view.',
-      ),
+      renderExperimentEmptyState(null, 'No experiments match the selected filters.', 'Clear one or more filters to restore the decision view.'),
   })
 }

@@ -3,21 +3,10 @@ import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chromium } from '@playwright/test'
-import {
-  dashboardPageIds,
-  lighthouseArguments,
-  profiles,
-  routeUrl,
-} from './pages-health-config.js'
+import { dashboardPageIds, lighthouseArguments, profiles, routeUrl } from './pages-health-config.js'
 
 const siteRoot = resolve(fileURLToPath(new URL('../..', import.meta.url)))
-const lighthouseCli = join(
-  siteRoot,
-  'node_modules',
-  'lighthouse',
-  'cli',
-  'index.js',
-)
+const lighthouseCli = join(siteRoot, 'node_modules', 'lighthouse', 'cli', 'index.js')
 const defaultSiteUrl = 'https://githubnext.github.io/gh-aw-cao/cao/'
 const defaultOutputRoot = resolve(siteRoot, 'test-results', 'pages-health')
 
@@ -30,11 +19,7 @@ function run(command, args, options = {}) {
         resolvePromise()
         return
       }
-      reject(
-        new Error(
-          `${command} exited with ${signal ? `signal ${signal}` : `code ${code}`}`,
-        ),
-      )
+      reject(new Error(`${command} exited with ${signal ? `signal ${signal}` : `code ${code}`}`))
     })
   })
 }
@@ -71,12 +56,9 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
   const visitedViews = []
 
   page.on('console', (message) => {
-    if (message.type() === 'error')
-      errors.push({ type: 'console', message: message.text() })
+    if (message.type() === 'error') errors.push({ type: 'console', message: message.text() })
   })
-  page.on('pageerror', (error) =>
-    errors.push({ type: 'page', message: error.message }),
-  )
+  page.on('pageerror', (error) => errors.push({ type: 'page', message: error.message }))
   page.on('requestfailed', (request) => {
     errors.push({
       type: 'request',
@@ -98,11 +80,9 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     const activePage = page.locator(`[data-page-id="${pageId}"]`)
     await activePage.waitFor({ state: 'visible', timeout: 30_000 })
-    await activePage
-      .locator('details.view-disclosure')
-      .evaluateAll((disclosures) => {
-        for (const disclosure of disclosures) disclosure.open = true
-      })
+    await activePage.locator('details.view-disclosure').evaluateAll((disclosures) => {
+      for (const disclosure of disclosures) disclosure.open = true
+    })
     const views = activePage.locator('[data-view-id]')
     const viewCount = await views.count()
     for (let index = 0; index < viewCount; index += 1) {
@@ -111,13 +91,9 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
       visitedViews.push(await view.getAttribute('data-view-id'))
       await page.waitForTimeout(50)
     }
-    const missingViews = expectedViews.filter(
-      (viewId) => !visitedViews.includes(viewId),
-    )
+    const missingViews = expectedViews.filter((viewId) => !visitedViews.includes(viewId))
     if (missingViews.length > 0) {
-      throw new Error(
-        `did not render declared views: ${missingViews.join(', ')}`,
-      )
+      throw new Error(`did not render declared views: ${missingViews.join(', ')}`)
     }
     await page.evaluate(async () => {
       const root = document.scrollingElement
@@ -125,9 +101,7 @@ async function visitPage(browser, siteUrl, pageId, expectedViews, profile) {
       const step = Math.max(window.innerHeight, 1)
       for (let top = 0; top < root.scrollHeight; top += step) {
         window.scrollTo(0, top)
-        await new Promise((resolvePromise) =>
-          requestAnimationFrame(resolvePromise),
-        )
+        await new Promise((resolvePromise) => requestAnimationFrame(resolvePromise))
       }
       window.scrollTo(0, root.scrollHeight)
     })
@@ -155,13 +129,9 @@ async function auditPage(siteUrl, pageId, profile, directory, chromePath) {
   const outputPath = join(directory, 'lighthouse.report.json')
   const url = routeUrl(siteUrl, pageId)
   try {
-    await run(
-      process.execPath,
-      lighthouseArguments(lighthouseCli, url, outputPath, profile),
-      {
-        env: { ...process.env, CHROME_PATH: chromePath },
-      },
-    )
+    await run(process.execPath, lighthouseArguments(lighthouseCli, url, outputPath, profile), {
+      env: { ...process.env, CHROME_PATH: chromePath },
+    })
     const lhr = JSON.parse(await readFile(outputPath, 'utf8'))
     return {
       pageId,
@@ -183,16 +153,13 @@ async function auditPage(siteUrl, pageId, profile, directory, chromePath) {
 
 async function loadDashboard(siteUrl) {
   const response = await fetch(new URL('dashboard.json', siteUrl))
-  if (!response.ok)
-    throw new Error(`dashboard.json returned HTTP ${response.status}`)
+  if (!response.ok) throw new Error(`dashboard.json returned HTTP ${response.status}`)
   return response.json()
 }
 
 async function main() {
   const siteUrl = new URL(process.env.PAGES_HEALTH_URL || defaultSiteUrl).href
-  const outputRoot = resolve(
-    process.env.PAGES_HEALTH_OUTPUT_DIR || defaultOutputRoot,
-  )
+  const outputRoot = resolve(process.env.PAGES_HEALTH_OUTPUT_DIR || defaultOutputRoot)
   await access(lighthouseCli)
   await rm(outputRoot, { force: true, recursive: true })
   await mkdir(outputRoot, { recursive: true })
@@ -200,15 +167,9 @@ async function main() {
   const dashboard = await loadDashboard(siteUrl)
   const pageIds = dashboardPageIds(dashboard)
   const declaredViews = Object.fromEntries(
-    dashboard.dashboard.pages.map((page) => [
-      page.id,
-      Array.isArray(page.views)
-        ? page.views.map((view, index) => view?.id || `view-${index + 1}`)
-        : [],
-    ]),
+    dashboard.dashboard.pages.map((page) => [page.id, Array.isArray(page.views) ? page.views.map((view, index) => view?.id || `view-${index + 1}`) : []]),
   )
-  const chromePath =
-    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath()
+  const chromePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || chromium.executablePath()
   await access(chromePath)
   const browser = await chromium.launch({
     executablePath: chromePath,
@@ -223,20 +184,8 @@ async function main() {
       for (const pageId of pageIds) {
         const directory = join(outputRoot, profile.id, pageId)
         await mkdir(directory, { recursive: true })
-        const navigation = await visitPage(
-          browser,
-          siteUrl,
-          pageId,
-          declaredViews[pageId],
-          profile,
-        )
-        const lighthouse = await auditPage(
-          siteUrl,
-          pageId,
-          profile,
-          directory,
-          chromePath,
-        )
+        const navigation = await visitPage(browser, siteUrl, pageId, declaredViews[pageId], profile)
+        const lighthouse = await auditPage(siteUrl, pageId, profile, directory, chromePath)
         profileResult.pages.push({ pageId, navigation, lighthouse })
       }
       results.push(profileResult)
@@ -250,21 +199,14 @@ async function main() {
     siteUrl,
     declaredPages: pageIds,
     declaredViews,
-    methodology:
-      'Every declared page and rendered view scrolled with Playwright; cold Lighthouse performance audit per page and profile',
+    methodology: 'Every declared page and rendered view scrolled with Playwright; cold Lighthouse performance audit per page and profile',
     profiles: results,
   }
-  await writeFile(
-    join(outputRoot, 'summary.json'),
-    `${JSON.stringify(summary, null, 2)}\n`,
-  )
+  await writeFile(join(outputRoot, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)
   console.log(`Pages health evidence: ${outputRoot}`)
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.stack : error)
     process.exitCode = 1

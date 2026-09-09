@@ -6,8 +6,7 @@ function source(rows) {
   return /** @type {import('../../src/presenter.js').LogicalSourceInput} */ ({
     source: 'workflows',
     rows,
-    metadata:
-      /** @type {import('../../src/presenter.js').SourceMetadata} */ ({}),
+    metadata: /** @type {import('../../src/presenter.js').SourceMetadata} */ ({}),
   })
 }
 

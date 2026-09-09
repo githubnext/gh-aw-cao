@@ -6,9 +6,7 @@ import { relationshipErrors } from '../../src/data/model/schema.js'
 import { normalize } from '../../src/data/normalize/index.js'
 
 function fixture() {
-  return JSON.parse(
-    readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'),
-  )
+  return JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'))
 }
 
 describe('SQL export adapter', () => {
@@ -20,12 +18,8 @@ describe('SQL export adapter', () => {
 
     expect(relationshipErrors(batch)).toEqual([])
     expect(batch).toMatchObject({
-      repositories: [
-        { id: 'github:repository:101', fullName: 'githubnext/gh-aw-cao' },
-      ],
-      workflows: [
-        { id: 'github:workflow:202', repositoryId: 'github:repository:101' },
-      ],
+      repositories: [{ id: 'github:repository:101', fullName: 'githubnext/gh-aw-cao' }],
+      workflows: [{ id: 'github:workflow:202', repositoryId: 'github:repository:101' }],
       runs: [
         {
           id: 'github:run:303:attempt:1',
@@ -49,8 +43,6 @@ describe('SQL export adapter', () => {
   })
 
   it('rejects unknown schema versions', () => {
-    expect(() => adaptSqlExport({ ...fixture(), schema_version: 2 })).toThrow(
-      'Unsupported SQL export schema version: 2',
-    )
+    expect(() => adaptSqlExport({ ...fixture(), schema_version: 2 })).toThrow('Unsupported SQL export schema version: 2')
   })
 })

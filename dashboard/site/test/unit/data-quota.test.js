@@ -1,17 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  activateGeneration,
-  DATABASE_NAME,
-  generationState,
-  stageCanonicalBatch,
-} from '../../src/data/storage/indexeddb.js'
-import {
-  inspectStorage,
-  reclaimExpendableGenerations,
-  requestPersistentStorage,
-  withQuotaRecovery,
-} from '../../src/data/storage/quota.js'
+import { activateGeneration, DATABASE_NAME, generationState, stageCanonicalBatch } from '../../src/data/storage/indexeddb.js'
+import { inspectStorage, reclaimExpendableGenerations, requestPersistentStorage, withQuotaRecovery } from '../../src/data/storage/quota.js'
 import { normalize } from '../../src/data/normalize/index.js'
 
 /** @param {string} generation */
@@ -47,38 +37,26 @@ describe('canonical storage quota recovery', () => {
     await activateGeneration(indexedDB, 'generation-a')
     await stageCanonicalBatch(indexedDB, batch('generation-b'), 'generation-b')
     await activateGeneration(indexedDB, 'generation-b')
-    await stageCanonicalBatch(
-      indexedDB,
-      batch('generation-failed'),
-      'generation-failed',
-    )
+    await stageCanonicalBatch(indexedDB, batch('generation-failed'), 'generation-failed')
     const database = await new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME)
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
     const transaction = database.transaction('meta', 'readwrite')
-    transaction
-      .objectStore('meta')
-      .put({ key: 'generation:generation-failed', state: 'failed' })
+    transaction.objectStore('meta').put({ key: 'generation:generation-failed', state: 'failed' })
     await new Promise((resolve) => {
       transaction.oncomplete = resolve
     })
     database.close()
 
-    await expect(reclaimExpendableGenerations(indexedDB)).resolves.toEqual([
-      'generation-failed',
-      'generation-a',
-    ])
+    await expect(reclaimExpendableGenerations(indexedDB)).resolves.toEqual(['generation-failed', 'generation-a'])
     expect(await generationState(indexedDB, 'generation-a')).toBeNull()
     expect(await generationState(indexedDB, 'generation-b')).toBe('complete')
   })
 
   it('retries once after quota recovery', async () => {
-    const operation = vi
-      .fn()
-      .mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'))
-      .mockResolvedValue('written')
+    const operation = vi.fn().mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError')).mockResolvedValue('written')
     const reclaim = vi.fn().mockResolvedValue(undefined)
 
     await expect(withQuotaRecovery(operation, reclaim)).resolves.toBe('written')

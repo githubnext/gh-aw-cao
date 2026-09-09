@@ -45,9 +45,7 @@ describe('ui primitives', () => {
     })
 
     expect(rendered.className).toBe('section-heading')
-    expect(rendered.querySelector('.scope-kicker')?.textContent).toBe(
-      'Current decision window',
-    )
+    expect(rendered.querySelector('.scope-kicker')?.textContent).toBe('Current decision window')
     expect(rendered.querySelector('h2')?.id).toBe('overview-heading')
     expect(rendered.querySelector('h2')?.textContent).toBe('Overview')
     expect(rendered.querySelector('p')?.textContent).toBe('Daily status')
@@ -61,28 +59,18 @@ describe('ui primitives', () => {
       title: 'Orchestrator and workers',
     })
 
-    expect(rendered.querySelector('h3')?.textContent).toBe(
-      'Orchestrator and workers',
-    )
+    expect(rendered.querySelector('h3')?.textContent).toBe('Orchestrator and workers')
     expect(rendered.querySelector('strong')).toBeNull()
   })
 
   it('renders shared vital stats with and without detail text', () => {
-    const withDetail = renderVitalStat(
-      'Root episodes',
-      4,
-      'observed orchestrator runs',
-    )
+    const withDetail = renderVitalStat('Root episodes', 4, 'observed orchestrator runs')
     const withoutDetail = renderVitalStat('Measured AIC', '—')
 
-    expect(withDetail.textContent).toBe(
-      'Root episodes4observed orchestrator runs',
-    )
+    expect(withDetail.textContent).toBe('Root episodes4observed orchestrator runs')
     expect(withDetail.querySelector('dt')?.textContent).toBe('Root episodes')
     expect(withDetail.querySelector('dd')?.textContent).toBe('4')
-    expect(withDetail.querySelector('p')?.textContent).toBe(
-      'observed orchestrator runs',
-    )
+    expect(withDetail.querySelector('p')?.textContent).toBe('observed orchestrator runs')
     expect(withoutDetail.textContent).toBe('Measured AIC—')
     expect(withoutDetail.querySelector('p')).toBeNull()
   })
@@ -93,10 +81,7 @@ describe('ui primitives', () => {
     expect(row.querySelector('dd')?.textContent).toBe('Fresh')
     expect(row.querySelector('p')?.textContent).toBe('Updated moments ago')
 
-    const compositeTerm = renderDlRow(
-      [document.createTextNode('!'), 'Label'],
-      'Value',
-    )
+    const compositeTerm = renderDlRow([document.createTextNode('!'), 'Label'], 'Value')
     expect(compositeTerm.querySelector('dt')?.textContent).toBe('!Label')
     expect(compositeTerm.querySelector('p')).toBeNull()
   })
@@ -117,16 +102,8 @@ describe('ui primitives', () => {
 
     expect(headRow.tagName).toBe('TR')
     expect(headCells).toHaveLength(3)
-    expect(Array.from(headCells).map((cell) => cell.textContent)).toEqual([
-      'Package',
-      'Runs',
-      'Failed',
-    ])
-    expect(
-      Array.from(headCells).every(
-        (cell) => cell.getAttribute('scope') === 'col',
-      ),
-    ).toBe(true)
+    expect(Array.from(headCells).map((cell) => cell.textContent)).toEqual(['Package', 'Runs', 'Failed'])
+    expect(Array.from(headCells).every((cell) => cell.getAttribute('scope') === 'col')).toBe(true)
   })
 
   it('renders accessible tooltip semantics around arbitrary rich content', () => {
@@ -138,46 +115,26 @@ describe('ui primitives', () => {
       content: document.createElement('strong'),
     })
 
-    expect(
-      tooltip.querySelector('.tooltip-trigger')?.getAttribute('aria-label'),
-    ).toBe('Example details')
-    expect(
-      tooltip
-        .querySelector('.tooltip-trigger')
-        ?.getAttribute('aria-describedby'),
-    ).toBe('example-tooltip')
-    expect(
-      tooltip.querySelector('.tooltip-content')?.getAttribute('role'),
-    ).toBe('tooltip')
-    expect(tooltip.querySelector('.tooltip-description')?.textContent).toBe(
-      'Additional context.',
-    )
+    expect(tooltip.querySelector('.tooltip-trigger')?.getAttribute('aria-label')).toBe('Example details')
+    expect(tooltip.querySelector('.tooltip-trigger')?.getAttribute('aria-describedby')).toBe('example-tooltip')
+    expect(tooltip.querySelector('.tooltip-content')?.getAttribute('role')).toBe('tooltip')
+    expect(tooltip.querySelector('.tooltip-description')?.textContent).toBe('Additional context.')
     expect(tooltip.querySelector('.tooltip-content strong')).not.toBeNull()
   })
 
   it('formats UTC date-time text and preserves the unavailable fallback', () => {
-    expect(formatUtcDateTime('2026-08-30T10:00:00Z')).toBe(
-      'Aug 30, 2026, 10:00 AM',
-    )
+    expect(formatUtcDateTime('2026-08-30T10:00:00Z')).toBe('Aug 30, 2026, 10:00 AM')
     expect(formatUtcDateTime('not-a-date')).toBe('Time unavailable')
   })
 
   it('formats a Date or millisecond timestamp as medium-date, short-time UTC text', () => {
-    expect(formatMediumUtcDateTime(new Date('2026-08-30T10:00:00Z'))).toBe(
-      'Aug 30, 2026, 10:00 AM',
-    )
-    expect(formatMediumUtcDateTime(Date.parse('2026-08-30T10:00:00Z'))).toBe(
-      'Aug 30, 2026, 10:00 AM',
-    )
+    expect(formatMediumUtcDateTime(new Date('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026, 10:00 AM')
+    expect(formatMediumUtcDateTime(Date.parse('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026, 10:00 AM')
   })
 
   it('formats a Date or millisecond timestamp as medium-date-only UTC text', () => {
-    expect(formatMediumUtcDate(new Date('2026-08-30T10:00:00Z'))).toBe(
-      'Aug 30, 2026',
-    )
-    expect(formatMediumUtcDate(Date.parse('2026-08-30T10:00:00Z'))).toBe(
-      'Aug 30, 2026',
-    )
+    expect(formatMediumUtcDate(new Date('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026')
+    expect(formatMediumUtcDate(Date.parse('2026-08-30T10:00:00Z'))).toBe('Aug 30, 2026')
   })
 
   it('formats a Date, timestamp, or date string as a short local date', () => {
@@ -217,12 +174,8 @@ describe('ui primitives', () => {
   })
 
   it('builds a completeness caveat sentence for a named subject', () => {
-    expect(completenessCaveat('partial', 'usage')).toBe(
-      'Partial usage coverage.',
-    )
-    expect(completenessCaveat('unknown', 'run')).toBe(
-      'Run coverage is unknown.',
-    )
+    expect(completenessCaveat('partial', 'usage')).toBe('Partial usage coverage.')
+    expect(completenessCaveat('unknown', 'run')).toBe('Run coverage is unknown.')
     expect(completenessCaveat('complete', 'usage')).toBe('')
     expect(completenessCaveat(undefined, 'usage')).toBe('')
   })
@@ -244,49 +197,23 @@ describe('ui primitives', () => {
   })
 
   it('renders the shared list-with-fallback pattern for populated and empty item sets', () => {
-    const populated = renderListWithFallback(
-      'my-list',
-      [1, 2],
-      (value) => `item ${value}`,
-      'No items.',
-    )
+    const populated = renderListWithFallback('my-list', [1, 2], (value) => `item ${value}`, 'No items.')
     expect(populated.tagName).toBe('UL')
     expect(populated.className).toBe('my-list')
-    expect(
-      [...populated.querySelectorAll('li')].map((li) => li.textContent),
-    ).toEqual(['item 1', 'item 2'])
+    expect([...populated.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['item 1', 'item 2'])
 
-    const empty = renderListWithFallback(
-      'my-list',
-      [],
-      (value) => `item ${value}`,
-      'No items.',
-    )
+    const empty = renderListWithFallback('my-list', [], (value) => `item ${value}`, 'No items.')
     expect(empty.querySelectorAll('li')).toHaveLength(1)
     expect(empty.textContent).toBe('No items.')
   })
 
   it('renders the shared list-or-empty-message pattern for populated and empty item sets', () => {
-    const populated = renderListOrEmptyMessage(
-      'my-list',
-      [1, 2],
-      (value) => h('li', null, `item ${value}`),
-      'my-empty',
-      'No items.',
-    )
+    const populated = renderListOrEmptyMessage('my-list', [1, 2], (value) => h('li', null, `item ${value}`), 'my-empty', 'No items.')
     expect(populated.tagName).toBe('UL')
     expect(populated.className).toBe('my-list')
-    expect(
-      [...populated.querySelectorAll('li')].map((li) => li.textContent),
-    ).toEqual(['item 1', 'item 2'])
+    expect([...populated.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['item 1', 'item 2'])
 
-    const empty = renderListOrEmptyMessage(
-      'my-list',
-      [],
-      (value) => h('li', null, `item ${value}`),
-      'my-empty',
-      'No items.',
-    )
+    const empty = renderListOrEmptyMessage('my-list', [], (value) => h('li', null, `item ${value}`), 'my-empty', 'No items.')
     expect(empty.tagName).toBe('P')
     expect(empty.className).toBe('my-empty')
     expect(empty.textContent).toBe('No items.')
@@ -335,9 +262,7 @@ describe('ui primitives', () => {
     expect(rendered.tagName).toBe('SPAN')
     expect(rendered.className).toBe('signal-icon')
     expect(rendered.hasAttribute('aria-hidden')).toBe(false)
-    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain(
-      '#octicon-check-circle',
-    )
+    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-check-circle')
   })
 
   it('renders the shared icon span with aria-hidden when requested', () => {
@@ -346,9 +271,7 @@ describe('ui primitives', () => {
     })
 
     expect(rendered.getAttribute('aria-hidden')).toBe('true')
-    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain(
-      '#octicon-x-circle',
-    )
+    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-x-circle')
   })
 
   it('renders the shared close/dismiss icon button with matching title and aria-label text', () => {
@@ -364,9 +287,7 @@ describe('ui primitives', () => {
     expect(rendered.className).toBe('site-callout-dismiss')
     expect(rendered.getAttribute('title')).toBe('Dismiss Notice')
     expect(rendered.getAttribute('aria-label')).toBe('Dismiss Notice')
-    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain(
-      '#octicon-x',
-    )
+    expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-x')
   })
 
   it('renders the shared identity link with an icon, label element, and optional class name', () => {
@@ -379,13 +300,9 @@ describe('ui primitives', () => {
     })
 
     expect(withStrong.tagName).toBe('A')
-    expect(withStrong.getAttribute('href')).toBe(
-      '#page-package-insights?package=self-care',
-    )
+    expect(withStrong.getAttribute('href')).toBe('#page-package-insights?package=self-care')
     expect(withStrong.className).toBe('package-status-identity')
-    expect(withStrong.querySelector('svg use')?.getAttribute('href')).toContain(
-      '#octicon-package',
-    )
+    expect(withStrong.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-package')
     expect(withStrong.querySelector('strong')?.textContent).toBe('SelfCare')
 
     const withDefaultLabelTag = renderIdentityLink({
@@ -395,9 +312,7 @@ describe('ui primitives', () => {
     })
 
     expect(withDefaultLabelTag.className).toBe('')
-    expect(withDefaultLabelTag.querySelector('span')?.textContent).toBe(
-      'Dashboard',
-    )
+    expect(withDefaultLabelTag.querySelector('span')?.textContent).toBe('Dashboard')
   })
 
   it('identifies plain objects while rejecting arrays and null', () => {
@@ -438,9 +353,7 @@ describe('ui primitives', () => {
     })
 
     expect(rendered.textContent).toBe('Filter rows')
-    expect(rendered.querySelector('span')?.classList.contains('sr-only')).toBe(
-      true,
-    )
+    expect(rendered.querySelector('span')?.classList.contains('sr-only')).toBe(true)
     expect(rendered.querySelector('input')).toBe(input)
   })
 
@@ -544,42 +457,18 @@ describe('ui primitives', () => {
   })
 
   it('renders a filter select with a placeholder option and sorted, de-duplicated values', () => {
-    const select = renderFilterSelect(
-      'Filter operations by owner',
-      'All owners',
-      ['bravo', 'Bravo', 'alpha', 'bravo'],
-    )
+    const select = renderFilterSelect('Filter operations by owner', 'All owners', ['bravo', 'Bravo', 'alpha', 'bravo'])
 
     expect(select.getAttribute('aria-label')).toBe('Filter operations by owner')
     const options = [...select.querySelectorAll('option')]
-    expect(options.map((option) => option.value)).toEqual([
-      '',
-      'Bravo',
-      'alpha',
-      'bravo',
-    ])
-    expect(options.map((option) => option.textContent)).toEqual([
-      'All owners',
-      'Bravo',
-      'alpha',
-      'bravo',
-    ])
+    expect(options.map((option) => option.value)).toEqual(['', 'Bravo', 'alpha', 'bravo'])
+    expect(options.map((option) => option.textContent)).toEqual(['All owners', 'Bravo', 'alpha', 'bravo'])
   })
 
   it('renders a filter select with a caller-provided sort comparator', () => {
-    const select = renderFilterSelect(
-      'Filter by owner',
-      'Owner',
-      ['bravo', 'Bravo', 'alpha'],
-      (left, right) => left.localeCompare(right),
-    )
+    const select = renderFilterSelect('Filter by owner', 'Owner', ['bravo', 'Bravo', 'alpha'], (left, right) => left.localeCompare(right))
 
-    expect([...select.options].map((option) => option.value)).toEqual([
-      '',
-      'alpha',
-      'bravo',
-      'Bravo',
-    ])
+    expect([...select.options].map((option) => option.value)).toEqual(['', 'alpha', 'bravo', 'Bravo'])
   })
 
   it('renders a search input with a shared placeholder and aria-label', () => {

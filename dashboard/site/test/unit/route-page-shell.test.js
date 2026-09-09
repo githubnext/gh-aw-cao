@@ -61,9 +61,7 @@ describe('createRoutePageShell', () => {
     )
 
     expect(rendered.dataset.workflow).toBe('demo')
-    expect(
-      rendered.querySelector('.shared-tabs [aria-current="page"]')?.textContent,
-    ).toBe('Reports')
+    expect(rendered.querySelector('.shared-tabs [aria-current="page"]')?.textContent).toBe('Reports')
     expect(rendered.querySelector('.matched-content')?.textContent).toBe('demo')
     expect(allocation).toHaveBeenCalledOnce()
     expect(allocation.mock.calls[0][0].detail).toEqual({

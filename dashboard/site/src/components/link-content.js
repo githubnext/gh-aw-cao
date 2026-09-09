@@ -32,26 +32,15 @@ export function findFirstLink(rows, field) {
  */
 export function findLink(row, field) {
   const candidate = row[field]
-  if (
-    !isPlainObject(candidate) ||
-    typeof candidate.href !== 'string' ||
-    typeof candidate.label !== 'string'
-  ) {
+  if (!isPlainObject(candidate) || typeof candidate.href !== 'string' || typeof candidate.label !== 'string') {
     return null
   }
   if (!isSafeHttpsUrl(candidate.href) || candidate.label.trim().length === 0) {
     return null
   }
-  const dashboardHref =
-    typeof candidate['dashboard-href'] === 'string' &&
-    candidate['dashboard-href'].startsWith('#page-')
-      ? candidate['dashboard-href']
-      : null
+  const dashboardHref = typeof candidate['dashboard-href'] === 'string' && candidate['dashboard-href'].startsWith('#page-') ? candidate['dashboard-href'] : null
   const dashboardLabel =
-    typeof candidate['dashboard-label'] === 'string' &&
-    candidate['dashboard-label'].trim().length > 0
-      ? candidate['dashboard-label']
-      : candidate.label
+    typeof candidate['dashboard-label'] === 'string' && candidate['dashboard-label'].trim().length > 0 ? candidate['dashboard-label'] : candidate.label
   return dashboardHref
     ? {
         href: dashboardHref,
@@ -113,11 +102,8 @@ export function renderWorkflowRunUrl(value) {
   if (typeof value !== 'string') return null
   try {
     const url = new URL(value)
-    const match = url.pathname.match(
-      /^\/[^/]+\/[^/]+\/actions\/runs\/([1-9]\d*)\/?$/,
-    )
-    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match)
-      return null
+    const match = url.pathname.match(/^\/[^/]+\/[^/]+\/actions\/runs\/([1-9]\d*)\/?$/)
+    if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !match) return null
     return renderExternalLink({ href: url.href, label: match[1] })
   } catch {
     return null
@@ -130,12 +116,7 @@ export function renderWorkflowRunUrl(value) {
  */
 export function renderExternalLink(link) {
   const external = isExternalLink(link)
-  return h(
-    'a',
-    safeLinkAnchorAttrs(link, external),
-    link.label,
-    ...(external ? [octicon('external-link')] : []),
-  )
+  return h('a', safeLinkAnchorAttrs(link, external), link.label, ...(external ? [octicon('external-link')] : []))
 }
 
 /**
@@ -145,16 +126,8 @@ export function renderExternalLink(link) {
  * @param {unknown} [fallback] Content rendered when no safe link is available.
  * @returns {HTMLElement | unknown}
  */
-export function renderExternalLinkOrFallback(
-  link,
-  labelOverride,
-  fallback = null,
-) {
-  return link
-    ? renderExternalLink(
-        labelOverride ? { ...link, label: labelOverride } : link,
-      )
-    : fallback
+export function renderExternalLinkOrFallback(link, labelOverride, fallback = null) {
+  return link ? renderExternalLink(labelOverride ? { ...link, label: labelOverride } : link) : fallback
 }
 
 /**
@@ -166,14 +139,7 @@ export function renderExternalLinkOrFallback(
  */
 export function renderWorkflowRunLink(row, label, trailingContent) {
   const link = findLink(row, 'run-link')
-  return link
-    ? h(
-        'a',
-        safeLinkAnchorAttrs(link, isExternalLink(link)),
-        label,
-        trailingContent,
-      )
-    : label
+  return link ? h('a', safeLinkAnchorAttrs(link, isExternalLink(link)), label, trailingContent) : label
 }
 
 /**
@@ -186,14 +152,10 @@ export function resolveTitleLink(row, config) {
   if (!isPlainObject(config)) return null
   const hrefField = config['href-field']
   const identifierField = config['identifier-field']
-  if (typeof hrefField !== 'string' || typeof identifierField !== 'string')
-    return null
+  if (typeof hrefField !== 'string' || typeof identifierField !== 'string') return null
   const link = findLink(row, hrefField)
   const value = row[identifierField]
-  const identifier =
-    typeof value === 'string' || typeof value === 'number'
-      ? String(value).trim()
-      : ''
+  const identifier = typeof value === 'string' || typeof value === 'number' ? String(value).trim() : ''
   if (!link || identifier.length === 0 || identifier.length > 100) return null
   return {
     href: link.externalHref ?? link.href,
@@ -208,8 +170,7 @@ export function resolveTitleLink(row, config) {
  * @returns {string | HTMLElement}
  */
 export function renderOutcomeLink(row, label) {
-  const outcomeId =
-    typeof row['safe-output'] === 'string' ? row['safe-output'].trim() : ''
+  const outcomeId = typeof row['safe-output'] === 'string' ? row['safe-output'].trim() : ''
   return outcomeId && outcomeId.length <= 700
     ? h(
         'a',

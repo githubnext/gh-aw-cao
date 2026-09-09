@@ -6,9 +6,7 @@ describe('createRouteView', () => {
   it('renders select, not-found, and matched states while updating route dataset', () => {
     const matched = document.createElement('section')
     matched.textContent = 'Matched content'
-    const renderMatched = vi.fn((routeValue) =>
-      routeValue === 'known' ? matched : null,
-    )
+    const renderMatched = vi.fn((routeValue) => (routeValue === 'known' ? matched : null))
 
     const view = createRouteView({
       rootClassName: 'example-route-view',

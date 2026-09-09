@@ -36,11 +36,7 @@ describe('reactive core', () => {
   })
 
   it('DLS-CONF-004 builds DOM trees with text and attributes', () => {
-    const button = h(
-      'button',
-      { className: 'primary', dataset: { viewId: 'summary' }, type: 'button' },
-      'Open dashboard',
-    )
+    const button = h('button', { className: 'primary', dataset: { viewId: 'summary' }, type: 'button' }, 'Open dashboard')
 
     expect(button.tagName).toBe('BUTTON')
     expect(button.getAttribute('class')).toBe('primary')
@@ -59,19 +55,12 @@ describe('reactive core', () => {
 
     const list = keyed(
       items,
-      (item) =>
-        h(
-          'span',
-          { 'data-id': /** @type {{ id: string }} */ (item).id },
-          /** @type {{ label: string }} */ (item).label,
-        ),
+      (item) => h('span', { 'data-id': /** @type {{ id: string }} */ (item).id }, /** @type {{ label: string }} */ (item).label),
       (item) => /** @type {{ id: string }} */ (item).id,
     )
 
     host.append(h('div', null, list))
-    expect(
-      [...host.querySelectorAll('span')].map((node) => node.textContent),
-    ).toEqual(['Alpha', 'Beta', 'Gamma'])
+    expect([...host.querySelectorAll('span')].map((node) => node.textContent)).toEqual(['Alpha', 'Beta', 'Gamma'])
 
     items = [
       { id: 'c', label: 'Gamma' },

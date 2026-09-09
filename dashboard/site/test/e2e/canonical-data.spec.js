@@ -8,9 +8,7 @@ const databaseName = 'gh-aw-cao-dashboard-data'
 
 function ghAwLogInput() {
   const fixtureRoot = join(siteRoot, 'test', 'fixtures', 'gh-aw-logs')
-  const context = JSON.parse(
-    readFileSync(join(fixtureRoot, 'context.json'), 'utf8'),
-  )
+  const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'))
   const paths = [
     'run-303/mcp-logs/gateway.jsonl',
     'run-303/sandbox/firewall/audit/audit.jsonl',
@@ -153,9 +151,7 @@ test.beforeEach(async ({ context, page }) => {
     const filePath = join(siteRoot, pathname)
     if (existsSync(filePath)) {
       await route.fulfill({
-        contentType: pathname.endsWith('.json')
-          ? 'application/json'
-          : 'application/javascript',
+        contentType: pathname.endsWith('.json') ? 'application/json' : 'application/javascript',
         body: readFileSync(filePath),
       })
     } else {
@@ -177,22 +173,17 @@ test.beforeEach(async ({ context, page }) => {
   )
 })
 
-test('native IndexedDB activates and retains a canonical generation across reload', async ({
-  page,
-}) => {
+test('native IndexedDB activates and retains a canonical generation across reload', async ({ page }) => {
   const sources = canonicalSources()
 
   const first = await page.evaluate(async (sourceDocument) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`
     const queriesUrl = `${location.origin}/src/data/queries/index.js`
-    const [{ ingestDashboardSources }, { createCanonicalQueries }] =
-      await Promise.all([import(coordinatorUrl), import(queriesUrl)])
+    const [{ ingestDashboardSources }, { createCanonicalQueries }] = await Promise.all([import(coordinatorUrl), import(queriesUrl)])
     const result = await ingestDashboardSources(indexedDB, sourceDocument)
     const queries = createCanonicalQueries(indexedDB)
     const repositories = await queries.repositories.list()
-    const workflows = await queries.workflows.forRepository(
-      String(repositories[0].id),
-    )
+    const workflows = await queries.workflows.forRepository(String(repositories[0].id))
     const runs = await queries.runs.forWorkflow(String(workflows[0].id))
     const jobs = await queries.jobs.forRun(String(runs[0].id))
     return { result, repositories, workflows, runs, jobs }
@@ -214,9 +205,7 @@ test('native IndexedDB activates and retains a canonical generation across reloa
     const queries = createCanonicalQueries(indexedDB)
     return queries.runs.recentFailures()
   })
-  expect(retained).toEqual([
-    expect.objectContaining({ id: 'github:run:12345:attempt:2' }),
-  ])
+  expect(retained).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })])
 
   const viewSources = await page.evaluate(async (sourceDocument) => {
     const viewSourcesUrl = `${location.origin}/src/data/queries/view-sources.js`
@@ -280,19 +269,12 @@ test('native IndexedDB activates and retains a canonical generation across reloa
   ])
 })
 
-test('data worker returns only the canonical payload requested by a view', async ({
-  page,
-}) => {
+test('data worker returns only the canonical payload requested by a view', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`
-    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } =
-      await import(processorUrl)
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl)
     const context = { githubUrlBase: 'https://github.com', pages: [] }
-    const initial = await loadCanonicalDashboardSources(
-      `${location.origin}/sources.json`,
-      ['failed-runs'],
-      context,
-    )
+    const initial = await loadCanonicalDashboardSources(`${location.origin}/sources.json`, ['failed-runs'], context)
     const navigated = await loadCanonicalDashboardPage(['failed-runs'], context)
     return { initial, navigated }
   })
@@ -301,31 +283,19 @@ test('data worker returns only the canonical payload requested by a view', async
     expect(Object.keys(payload)).toEqual(['failed-runs'])
     expect(payload['failed-runs']).toMatchObject({
       source: 'failed-runs',
-      rows: [
-        { repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' },
-      ],
+      rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' },
     })
   }
 })
 
-test('data worker queries canonical work items and security findings', async ({
-  page,
-}) => {
+test('data worker queries canonical work items and security findings', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`
-    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } =
-      await import(processorUrl)
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl)
     const context = { githubUrlBase: 'https://github.com', pages: [] }
-    await loadCanonicalDashboardSources(
-      `${location.origin}/sources.json`,
-      ['work-items'],
-      context,
-    )
-    return loadCanonicalDashboardPage(
-      ['work-items', 'security-findings'],
-      context,
-    )
+    await loadCanonicalDashboardSources(`${location.origin}/sources.json`, ['work-items'], context)
+    return loadCanonicalDashboardPage(['work-items', 'security-findings'], context)
   })
 
   expect(Object.keys(result)).toEqual(['work-items', 'security-findings'])
@@ -349,14 +319,11 @@ test('data worker queries canonical work items and security findings', async ({
   })
 })
 
-test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', async ({
-  page,
-}) => {
+test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', async ({ page }) => {
   const result = await page.evaluate(async (input) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`
     const queriesUrl = `${location.origin}/src/data/queries/index.js`
-    const [{ ingestGhAwLogsGeneration }, { createCanonicalQueries }] =
-      await Promise.all([import(coordinatorUrl), import(queriesUrl)])
+    const [{ ingestGhAwLogsGeneration }, { createCanonicalQueries }] = await Promise.all([import(coordinatorUrl), import(queriesUrl)])
     const ingestion = await ingestGhAwLogsGeneration(indexedDB, input)
     const queries = createCanonicalQueries(indexedDB)
     const runs = await queries.runs.list()
@@ -371,13 +338,7 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
   })
   expect(result.runs[0].id).toBe('github:run:303:attempt:1')
   expect(result.sessions[0].kind).toBe('unified-operational-log')
-  expect(
-    result.events.map((/** @type {Record<string, unknown>} */ event) => [
-      event.sequence,
-      event.source,
-      event.type,
-    ]),
-  ).toEqual([
+  expect(result.events.map((/** @type {Record<string, unknown>} */ event) => [event.sequence, event.source, event.type])).toEqual([
     [0, 'agent', 'agent_turn'],
     [1, 'gateway', 'tool_call'],
     [2, 'agent', 'agent_tool_start'],
@@ -387,17 +348,12 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
   ])
 })
 
-test('deletion rebuilds derived state and replacement retires the previous generation', async ({
-  page,
-}) => {
+test('deletion rebuilds derived state and replacement retires the previous generation', async ({ page }) => {
   const result = await page.evaluate(
     async ({ firstSources, replacementSources, name }) => {
       const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`
       const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`
-      const [{ ingestDashboardSources }, storage] = await Promise.all([
-        import(coordinatorUrl),
-        import(storageUrl),
-      ])
+      const [{ ingestDashboardSources }, storage] = await Promise.all([import(coordinatorUrl), import(storageUrl)])
       await ingestDashboardSources(indexedDB, firstSources)
       await new Promise((resolve, reject) => {
         const request = indexedDB.deleteDatabase(name)
@@ -405,10 +361,7 @@ test('deletion rebuilds derived state and replacement retires the previous gener
         request.onerror = () => reject(request.error)
       })
       const rebuilt = await ingestDashboardSources(indexedDB, firstSources)
-      const replaced = await ingestDashboardSources(
-        indexedDB,
-        replacementSources,
-      )
+      const replaced = await ingestDashboardSources(indexedDB, replacementSources)
       return {
         rebuilt,
         replaced,
@@ -431,9 +384,7 @@ test('deletion rebuilds derived state and replacement retires the previous gener
   })
 })
 
-test('corrupt and interrupted staging never replace active data', async ({
-  page,
-}) => {
+test('corrupt and interrupted staging never replace active data', async ({ page }) => {
   const activeSources = canonicalSources('generation-a', '101')
   const interruptedSources = canonicalSources('generation-c', '303')
   const beforeReload = await page.evaluate(
@@ -442,12 +393,7 @@ test('corrupt and interrupted staging never replace active data', async ({
       const adapterUrl = `${location.origin}/src/data/adapters/dashboard-sources.js`
       const normalizeUrl = `${location.origin}/src/data/normalize/index.js`
       const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`
-      const [
-        { ingestDashboardSources },
-        { adaptDashboardSources },
-        { normalize },
-        storage,
-      ] = await Promise.all([
+      const [{ ingestDashboardSources }, { adaptDashboardSources }, { normalize }, storage] = await Promise.all([
         import(coordinatorUrl),
         import(adapterUrl),
         import(normalizeUrl),
@@ -462,9 +408,7 @@ test('corrupt and interrupted staging never replace active data', async ({
         generation: 'generation-b',
       })
       await storage.stageCanonicalBatch(indexedDB, invalid, 'generation-b')
-      await storage
-        .activateGeneration(indexedDB, 'generation-b')
-        .catch(() => undefined)
+      await storage.activateGeneration(indexedDB, 'generation-b').catch(() => undefined)
 
       const adapted = adaptDashboardSources(interrupted)
       const batch = normalize(adapted.observations, {
@@ -473,21 +417,15 @@ test('corrupt and interrupted staging never replace active data', async ({
       await storage
         .stageCanonicalBatch(indexedDB, batch, adapted.generation, {
           batchSize: 1,
-          onBatchCommitted: (
-            /** @type {{ committedBatches: number }} */ progress,
-          ) => {
-            if (progress.committedBatches === 1)
-              throw new Error('terminate before activation')
+          onBatchCommitted: (/** @type {{ committedBatches: number }} */ progress) => {
+            if (progress.committedBatches === 1) throw new Error('terminate before activation')
           },
         })
         .catch(() => undefined)
       return {
         active: await storage.activeGeneration(indexedDB),
         corruptState: await storage.generationState(indexedDB, 'generation-b'),
-        interruptedState: await storage.generationState(
-          indexedDB,
-          'generation-c',
-        ),
+        interruptedState: await storage.generationState(indexedDB, 'generation-c'),
       }
     },
     { active: activeSources, interrupted: interruptedSources },
@@ -503,10 +441,7 @@ test('corrupt and interrupted staging never replace active data', async ({
   const afterReload = await page.evaluate(async (sources) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`
     const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`
-    const [{ ingestDashboardSources }, storage] = await Promise.all([
-      import(coordinatorUrl),
-      import(storageUrl),
-    ])
+    const [{ ingestDashboardSources }, storage] = await Promise.all([import(coordinatorUrl), import(storageUrl)])
     const resumed = await ingestDashboardSources(indexedDB, sources)
     return { resumed, active: await storage.activeGeneration(indexedDB) }
   }, interruptedSources)

@@ -54,10 +54,7 @@ export function renderWorkflowRouteShell(context, config) {
       const route = parseWorkflowRoute(routeValue)
       const workflow = route
         ? workflows.find(
-            (candidate) =>
-              qualifiedRepository(candidate).toLowerCase() ===
-                route.repository.toLowerCase() &&
-              text(candidate.workflow) === route.workflow,
+            (candidate) => qualifiedRepository(candidate).toLowerCase() === route.repository.toLowerCase() && text(candidate.workflow) === route.workflow,
           )
         : null
       if (!workflow || !route) return null
@@ -79,24 +76,14 @@ export function renderWorkflowRouteShell(context, config) {
 function workflowRouteAllocation(config, route, workflow, title) {
   return {
     title,
-    description: config.description
-      .replace('{workflow}', text(workflow.workflow))
-      .replace('{repository}', route.repository),
-    ...(['review', 'live'].includes(text(workflow['rollout-mode']))
-      ? { mode: text(workflow['rollout-mode']) }
-      : {}),
-    navigationPage:
-      config.navigationPage === 'packages' && workflow.package
-        ? 'packages'
-        : 'repositories',
+    description: config.description.replace('{workflow}', text(workflow.workflow)).replace('{repository}', route.repository),
+    ...(['review', 'live'].includes(text(workflow['rollout-mode'])) ? { mode: text(workflow['rollout-mode']) } : {}),
+    navigationPage: config.navigationPage === 'packages' && workflow.package ? 'packages' : 'repositories',
     ...(config.breadcrumbs
       ? {
           breadcrumbs: config.breadcrumbs.map((crumb) => ({
             label: crumb.label.replace('{repository}', route.repository),
-            href: crumb.href.replace(
-              '{repository-encoded}',
-              encodeURIComponent(route.repository),
-            ),
+            href: crumb.href.replace('{repository-encoded}', encodeURIComponent(route.repository)),
           })),
         }
       : {}),
@@ -141,12 +128,7 @@ function workflowTab(pageId, label, icon, workflowQuery) {
  * @param {Record<string, unknown>} workflow
  */
 function renderWorkflowContent(context, config, route, workflow) {
-  return h(
-    'div',
-    { className: config.contentClassName },
-    renderWorkflowIdentity(workflow),
-    config.bodyRenderer?.({ context, route, workflow }) ?? null,
-  )
+  return h('div', { className: config.contentClassName }, renderWorkflowIdentity(workflow), config.bodyRenderer?.({ context, route, workflow }) ?? null)
 }
 
 /** @param {Record<string, unknown>} row */
@@ -154,16 +136,10 @@ function qualifiedRepository(row) {
   const repository = text(row.repository)
   if (repository.includes('/')) return repository
   const organization = text(row.organization)
-  return organization && repository
-    ? `${organization}/${repository}`
-    : repository
+  return organization && repository ? `${organization}/${repository}` : repository
 }
 
 /** @param {Record<string, unknown>} workflow */
 function workflowName(workflow) {
-  return (
-    text(workflow['workflow-name']) ||
-    text(workflow.workflow) ||
-    'Unknown workflow'
-  )
+  return text(workflow['workflow-name']) || text(workflow.workflow) || 'Unknown workflow'
 }

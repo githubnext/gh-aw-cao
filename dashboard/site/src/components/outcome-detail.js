@@ -23,9 +23,7 @@ export function renderOutcomeDetail(context) {
     notFoundMessage: 'Outcome not found.',
     renderMatched: (routeValue) => {
       const outcomeId = routeValue.trim()
-      const outcome = outcomes.find(
-        (row) => String(row['safe-output']) === outcomeId,
-      )
+      const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId)
       if (!outcome) {
         return null
       }
@@ -53,9 +51,7 @@ function renderOutcome(outcome) {
   return h(
     'div',
     { className: 'outcome-view' },
-    ...['discussion', 'metadata']
-      .map((body) => renderOutcomeDetailSection(outcome, body))
-      .filter((section) => section !== null),
+    ...['discussion', 'metadata'].map((body) => renderOutcomeDetailSection(outcome, body)).filter((section) => section !== null),
   )
 }
 
@@ -64,9 +60,7 @@ function outcomeDescription(outcome) {
   return [
     text(outcome['workflow-name']) || text(outcome.workflow),
     titleCase(text(outcome['outcome-category'])),
-    titleCase(
-      text(outcome['outcome-status']) || text(outcome['outcome-state']),
-    ),
+    titleCase(text(outcome['outcome-status']) || text(outcome['outcome-state'])),
   ]
     .filter(Boolean)
     .join(' · ')

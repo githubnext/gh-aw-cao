@@ -9,49 +9,23 @@ import { octicon, agenticWorkflowMark } from './octicons.js'
 import { renderStatusBadge } from './components/badge.js'
 import { renderDataStateMetrics } from './components/data-state.js'
 import { titleCase } from './components/count-formatters.js'
-import {
-  formatMediumUtcDateTime,
-  renderEmptyMessage,
-  renderLabeledSpan,
-} from './components/ui-primitives.js'
-import {
-  customViewAvailabilityMessage,
-  renderCustomViewStateDetails,
-  renderLayoutSectionChrome,
-  renderPageSection,
-} from './components/view-chrome.js'
+import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js'
+import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js'
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js'
 import { findLink } from './components/link-content.js'
-import {
-  elementHandlesEmptyRows,
-  renderUiElement,
-  renderUiElementAsync,
-} from './components/ui-elements.js'
+import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js'
 import { renderDataView } from './components/data-view.js'
 import { renderFilterBar } from './components/filter-bar.js'
 import { renderSiteCallouts } from './components/site-callout.js'
-import {
-  disconnectLazyViews,
-  enableLazyViews,
-  renderLazyView,
-  trackViewTransition,
-} from './components/lazy-view.js'
+import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js'
 import { processDataHealthSources, processRows } from './data-processor.js'
 import { deriveOverviewSources } from './overview-data.js'
 import { deriveRepositorySources } from './repository-data.js'
 import { deriveRuntimeSources } from './runtime-data.js'
 import { deriveWorkflowSources } from './workflow-data.js'
 import { deriveDataHealthCalloutSources } from './data-health.js'
-import {
-  dashboardHorizonHours,
-  formatDashboardHorizon,
-  formatDashboardHorizonHours,
-  resolveDashboardHorizon,
-} from './horizon.js'
-import {
-  deriveDashboardLinkSources,
-  deriveEntityLinkSources,
-} from './inferred-sources.js'
+import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js'
+import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js'
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -106,12 +80,9 @@ import {
  */
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com'
-const REFRESH_CONTROL_DESCRIPTION =
-  'Reload the dashboard to refresh cached data'
-const REFRESH_WORKFLOW_DESCRIPTION =
-  'Open the dashboard workflow on GitHub Actions'
-const SIDEBAR_COLLAPSED_STORAGE_KEY =
-  'central-agentic-ops.dashboard.sidebar-collapsed'
+const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data'
+const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions'
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed'
 const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme'
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights'])
 
@@ -120,17 +91,9 @@ const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights'])
  * @param {() => void} update
  */
 export function updateWithViewTransition(document, update) {
-  const transitionDocument =
-    /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown> } | void }} */ (
-      document
-    )
-  const prefersReducedMotion =
-    document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')
-      ?.matches ?? false
-  if (
-    typeof transitionDocument.startViewTransition !== 'function' ||
-    prefersReducedMotion
-  ) {
+  const transitionDocument = /** @type {Document & { startViewTransition?: (update: () => void) => { ready?: Promise<unknown> } | void }} */ (document)
+  const prefersReducedMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+  if (typeof transitionDocument.startViewTransition !== 'function' || prefersReducedMotion) {
     update()
     return
   }
@@ -139,28 +102,24 @@ export function updateWithViewTransition(document, update) {
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
-const BUILT_IN_PAGE_PAYLOADS =
-  /** @type {Record<string, PresentableCustomPage>} */ (
-    Object.fromEntries(
-      builtInDashboard.dashboard.pages
-        .filter((page) => page.kind === 'built-in')
-        .map((page) => [
-          page.page,
-          {
-            id: page.id,
-            kind: 'custom',
-            title: page.title,
-            description: 'description' in page ? page.description : undefined,
-            'class-name': 'class-name' in page ? page['class-name'] : undefined,
-            views: page.definition?.views ?? [],
-            sections:
-              page.definition && 'sections' in page.definition
-                ? page.definition.sections
-                : undefined,
-          },
-        ]),
-    )
+const BUILT_IN_PAGE_PAYLOADS = /** @type {Record<string, PresentableCustomPage>} */ (
+  Object.fromEntries(
+    builtInDashboard.dashboard.pages
+      .filter((page) => page.kind === 'built-in')
+      .map((page) => [
+        page.page,
+        {
+          id: page.id,
+          kind: 'custom',
+          title: page.title,
+          description: 'description' in page ? page.description : undefined,
+          'class-name': 'class-name' in page ? page['class-name'] : undefined,
+          views: page.definition?.views ?? [],
+          sections: page.definition && 'sections' in page.definition ? page.definition.sections : undefined,
+        },
+      ]),
   )
+)
 
 /**
  * @param {PresentableBuiltInPage} page
@@ -186,9 +145,7 @@ function getBuiltInPagePayload(page) {
  * @returns {string[]}
  */
 export function dashboardPageSourceNames(document, pageId) {
-  const page = document.dashboard.pages.find(
-    (candidate) => candidate.id === pageId,
-  )
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId)
   if (!page) return []
   const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page
   const names = new Set()
@@ -196,12 +153,10 @@ export function dashboardPageSourceNames(document, pageId) {
     for (const sourceName of getViewSources(view)) names.add(sourceName)
   }
   for (const section of payload.sections ?? []) {
-    if (typeof section['count-source'] === 'string')
-      names.add(section['count-source'])
+    if (typeof section['count-source'] === 'string') names.add(section['count-source'])
   }
   for (const callout of document.dashboard.callouts ?? []) {
-    if (typeof callout['visible-when']?.source === 'string')
-      names.add(callout['visible-when'].source)
+    if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source)
   }
   return [...names]
 }
@@ -214,67 +169,34 @@ export function renderDashboard(input) {
   const { document, sources: rawSources, viewer = null } = input
   const pages = document.dashboard.pages
   const horizonRange = resolveDashboardHorizon(document.dashboard)
-  const hasData = Object.values(rawSources).some(
-    (source) => Array.isArray(source?.rows) && source.rows.length > 0,
-  )
+  const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0)
   const dataHorizon = resolveDataHorizon(rawSources)
   const githubUrlBase =
-    typeof document.dashboard['github-url-base'] === 'string' &&
-    document.dashboard['github-url-base'].length > 0
+    typeof document.dashboard['github-url-base'] === 'string' && document.dashboard['github-url-base'].length > 0
       ? document.dashboard['github-url-base']
       : DEFAULT_GITHUB_URL_BASE
   const dashboardRepository =
-    typeof document.dashboard.repository === 'string' &&
-    document.dashboard.repository.length > 0
-      ? document.dashboard.repository
-      : null
+    typeof document.dashboard.repository === 'string' && document.dashboard.repository.length > 0 ? document.dashboard.repository : null
   const derivedSources = input.prepared
     ? rawSources
     : deriveDashboardLinkSources(
-        deriveRuntimeSources(
-          deriveRepositorySources(
-            deriveOverviewSources(
-              deriveWorkflowSources(
-                deriveEntityLinkSources(rawSources, githubUrlBase),
-              ),
-            ),
-          ),
-        ),
+        deriveRuntimeSources(deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(deriveEntityLinkSources(rawSources, githubUrlBase))))),
         { githubUrlBase, pages },
       )
-  const dataHealthSources = input.prepared
-    ? {}
-    : deriveDataHealthCalloutSources(rawSources)
+  const dataHealthSources = input.prepared ? {} : deriveDataHealthCalloutSources(rawSources)
   const sources = {
     ...derivedSources,
-    ...Object.fromEntries(
-      Object.entries(dataHealthSources).filter(([name]) =>
-        name.startsWith('data-health-'),
-      ),
-    ),
+    ...Object.fromEntries(Object.entries(dataHealthSources).filter(([name]) => name.startsWith('data-health-'))),
   }
   const orgName = inferOrganizationName(sources) || 'GitHub'
   const sidebarTitle = dashboardRepository?.split('/').at(-1) || orgName
-  const evaluatedAt =
-    dataHorizon?.end ?? latestRetrievedAt(sources) ?? new Date().toISOString()
-  const dashboardDefaults = resolveDashboardDefaults(
-    document.dashboard.defaults,
-    horizonRange,
-    evaluatedAt,
-  )
+  const evaluatedAt = dataHorizon?.end ?? latestRetrievedAt(sources) ?? new Date().toISOString()
+  const dashboardDefaults = resolveDashboardDefaults(document.dashboard.defaults, horizonRange, evaluatedAt)
 
   const styleEl = h('style', null, getPrimerStyles())
-  const skipLink = h(
-    'a',
-    { href: '#main-content', className: 'skip-link' },
-    'Skip to main content',
-  )
+  const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content')
 
-  const sidebar = renderSidebar(
-    pages,
-    sidebarTitle,
-    document.dashboard.navigation,
-  )
+  const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation)
   const mainContent = renderMainContent(
     document,
     pages,
@@ -291,18 +213,10 @@ export function renderDashboard(input) {
   )
 
   const appShell = h('div', { className: 'app-shell' }, sidebar, mainContent)
-  const root = h(
-    'div',
-    { className: 'dashboard-root' },
-    styleEl,
-    skipLink,
-    appShell,
-  )
-  void enableDashboardDomProvenanceWhenDebugging(root, document).catch(
-    (error) => {
-      root.dataset.domProvenanceError = String(error?.message ?? error)
-    },
-  )
+  const root = h('div', { className: 'dashboard-root' }, styleEl, skipLink, appShell)
+  void enableDashboardDomProvenanceWhenDebugging(root, document).catch((error) => {
+    root.dataset.domProvenanceError = String(error?.message ?? error)
+  })
   enableSidebarToggle(root)
   enableThemeToggle(root)
   enableMobileNavigationMenu(root)
@@ -315,26 +229,14 @@ export function renderDashboard(input) {
       const page = pages[pageIndex]
       if (!page) return null
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) =>
-        renderPage(
-          page,
-          pageSources,
-          isPlainObject(document.dashboard.units)
-            ? document.dashboard.units
-            : {},
-          dashboardDefaults,
-        )
+      const render = (pageSources) => renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults)
       if (input.loadPageSources) {
         return input.loadPageSources(pageId).then(render)
       }
       /** @param {Record<string, LogicalSourceInput>} resolved */
       const withDataHealth = (resolved) => ({
         ...derivedSources,
-        ...Object.fromEntries(
-          Object.entries(resolved).filter(([name]) =>
-            name.startsWith('data-health-'),
-          ),
-        ),
+        ...Object.fromEntries(Object.entries(resolved).filter(([name]) => name.startsWith('data-health-'))),
       })
       const dataHealth =
         pageId === 'data-health'
@@ -351,19 +253,12 @@ export function renderDashboard(input) {
             : render(sources)
       /** @param {HTMLElement} rendered */
       const annotate = (rendered) => {
-        void annotateLazyPageDomWhenDebugging(
-          root,
-          rendered,
-          page,
-          pageIndex,
-        ).catch((error) => {
+        void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
           root.dataset.domProvenanceError = String(error?.message ?? error)
         })
         return rendered
       }
-      return renderedPage instanceof Promise
-        ? renderedPage.then(annotate)
-        : annotate(renderedPage)
+      return renderedPage instanceof Promise ? renderedPage.then(annotate) : annotate(renderedPage)
     },
     sidebar.dataset.defaultPageId,
   )
@@ -406,12 +301,7 @@ function isDomProvenanceDebugRequested(root) {
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @param {number} pageIndex
  */
-async function annotateLazyPageDomWhenDebugging(
-  root,
-  renderedPage,
-  page,
-  pageIndex,
-) {
+async function annotateLazyPageDomWhenDebugging(root, renderedPage, page, pageIndex) {
   if (!isDomProvenanceDebugRequested(root)) return
   const { annotatePageDom } = await import('./dom-provenance.js')
   annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload)
@@ -425,10 +315,7 @@ function inferOrganizationName(sources) {
   for (const source of Object.values(sources)) {
     if (Array.isArray(source?.rows)) {
       for (const row of source.rows) {
-        if (
-          typeof row?.organization === 'string' &&
-          row.organization.length > 0
-        ) {
+        if (typeof row?.organization === 'string' && row.organization.length > 0) {
           return row.organization
         }
       }
@@ -459,9 +346,7 @@ function renderSidebar(pages, title, navigation) {
           }))
           .filter((section) => section.pages.length > 0)
       : [{ label: undefined, experimental: false, pages: primaryPages }]
-  const experimentalPages = configuredSections
-    .filter((section) => section.experimental)
-    .flatMap((section) => section.pages)
+  const experimentalPages = configuredSections.filter((section) => section.experimental).flatMap((section) => section.pages)
   const navigationSections = [
     ...configuredSections.filter((section) => !section.experimental),
     ...(experimentalPages.length > 0
@@ -474,14 +359,10 @@ function renderSidebar(pages, title, navigation) {
         ]
       : []),
   ]
-  const firstPageId =
-    navigationSections.find((section) => !section.experimental)?.pages[0]?.id ??
-    pages[0]?.id
+  const firstPageId = navigationSections.find((section) => !section.experimental)?.pages[0]?.id ?? pages[0]?.id
   const mainSectionIndex = Math.max(
     0,
-    navigationSections.findIndex(
-      (section) => section.label?.toLowerCase() === 'main',
-    ),
+    navigationSections.findIndex((section) => section.label?.toLowerCase() === 'main'),
   )
   let navigationPageIndex = 0
   return h(
@@ -526,12 +407,7 @@ function renderSidebar(pages, title, navigation) {
       ...navigationSections.flatMap((section, sectionIndex) => {
         const items = section.pages.map((page) => {
           const pageIndex = navigationPageIndex++
-          return renderNavItem(
-            page,
-            page.id === firstPageId,
-            pageIndex >= 6,
-            pageIndex >= 5,
-          )
+          return renderNavItem(page, page.id === firstPageId, pageIndex >= 6, pageIndex >= 5)
         })
         return typeof section.label === 'string' && section.label.length > 0
           ? [
@@ -539,11 +415,7 @@ function renderSidebar(pages, title, navigation) {
                 'details',
                 {
                   className: 'nav-section',
-                  open:
-                    sectionIndex === mainSectionIndex ||
-                    ['investigate', 'insights'].includes(
-                      section.label?.toLowerCase() ?? '',
-                    ),
+                  open: sectionIndex === mainSectionIndex || ['investigate', 'insights'].includes(section.label?.toLowerCase() ?? ''),
                 },
                 h(
                   'summary',
@@ -562,11 +434,7 @@ function renderSidebar(pages, title, navigation) {
       h(
         'details',
         { className: 'mobile-nav-menu' },
-        h(
-          'summary',
-          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
-          octicon('three-bars'),
-        ),
+        h('summary', { role: 'button', 'aria-label': 'Select view', title: 'Select view' }, octicon('three-bars')),
         h(
           'div',
           { className: 'mobile-nav-menu-list' },
@@ -582,9 +450,7 @@ function renderSidebar(pages, title, navigation) {
                   ),
                 ]
               : []),
-            ...section.pages.map((page) =>
-              renderMobileNavItem(page, page.id === firstPageId),
-            ),
+            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId)),
           ]),
         ),
       ),
@@ -599,12 +465,7 @@ function renderSidebar(pages, title, navigation) {
  * @param {boolean} [narrowMobileOverflow]
  * @returns {HTMLElement}
  */
-function renderNavItem(
-  page,
-  isActive,
-  mobileOverflow = false,
-  narrowMobileOverflow = false,
-) {
+function renderNavItem(page, isActive, mobileOverflow = false, narrowMobileOverflow = false) {
   const iconName = getPageIcon(page)
   const title = getPageNavigationTitle(page)
 
@@ -648,8 +509,7 @@ function renderMobileNavItem(page, isActive) {
  * @returns {string}
  */
 function getPageNavigationTitle(page) {
-  return typeof page['navigation-label'] === 'string' &&
-    page['navigation-label'].length > 0
+  return typeof page['navigation-label'] === 'string' && page['navigation-label'].length > 0
     ? page['navigation-label']
     : typeof page.title === 'string' && page.title.length > 0
       ? page.title
@@ -663,11 +523,7 @@ function getPageNavigationTitle(page) {
 function enableSidebarToggle(root) {
   const appShell = root.querySelector('.app-shell')
   const toggle = root.querySelector('.sidebar-toggle')
-  if (
-    !(appShell instanceof HTMLElement) ||
-    !(toggle instanceof HTMLButtonElement)
-  )
-    return
+  if (!(appShell instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return
 
   /** @param {boolean} collapsed */
   const setCollapsed = (collapsed) => {
@@ -676,17 +532,12 @@ function enableSidebarToggle(root) {
     toggle.setAttribute('aria-label', label)
     toggle.setAttribute('aria-expanded', String(!collapsed))
     toggle.setAttribute('title', label)
-    toggle.replaceChildren(
-      octicon(collapsed ? 'sidebar-collapse' : 'sidebar-expand'),
-    )
+    toggle.replaceChildren(octicon(collapsed ? 'sidebar-collapse' : 'sidebar-expand'))
   }
 
   let collapsed = false
   try {
-    collapsed =
-      globalThis.window?.localStorage?.getItem(
-        SIDEBAR_COLLAPSED_STORAGE_KEY,
-      ) === 'true'
+    collapsed = globalThis.window?.localStorage?.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
   } catch {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
@@ -696,10 +547,7 @@ function enableSidebarToggle(root) {
     collapsed = !collapsed
     setCollapsed(collapsed)
     try {
-      globalThis.window?.localStorage?.setItem(
-        SIDEBAR_COLLAPSED_STORAGE_KEY,
-        String(collapsed),
-      )
+      globalThis.window?.localStorage?.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed))
     } catch {
       // The display mode still works for the current page when storage is unavailable.
     }
@@ -730,12 +578,7 @@ function enableThemeToggle(root) {
   let theme = 'system'
   try {
     const savedTheme = view?.localStorage.getItem(THEME_STORAGE_KEY)
-    if (
-      savedTheme === 'system' ||
-      savedTheme === 'light' ||
-      savedTheme === 'dark'
-    )
-      theme = savedTheme
+    if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme
   } catch {
     // Storage can be unavailable in embedded or privacy-restricted contexts.
   }
@@ -743,8 +586,7 @@ function enableThemeToggle(root) {
 
   for (const toggle of toggles) {
     toggle.addEventListener('click', () => {
-      const theme =
-        toggle instanceof HTMLElement ? toggle.dataset.themeValue : undefined
+      const theme = toggle instanceof HTMLElement ? toggle.dataset.themeValue : undefined
       if (theme !== 'system' && theme !== 'light' && theme !== 'dark') return
       setTheme(theme)
       try {
@@ -759,11 +601,7 @@ function enableThemeToggle(root) {
   if (!(menu instanceof HTMLDetailsElement)) return
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
-    if (
-      event.target.closest('.account-menu-settings') ||
-      !event.target.closest('.account-menu')
-    )
-      menu.removeAttribute('open')
+    if (event.target.closest('.account-menu-settings') || !event.target.closest('.account-menu')) menu.removeAttribute('open')
   })
   menu.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return
@@ -782,10 +620,7 @@ function enableMobileNavigationMenu(root) {
 
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
-    if (
-      event.target.closest('[data-mobile-nav-page-id]') ||
-      !event.target.closest('.mobile-nav-menu')
-    ) {
+    if (event.target.closest('[data-mobile-nav-page-id]') || !event.target.closest('.mobile-nav-menu')) {
       menu.removeAttribute('open')
     }
   })
@@ -808,13 +643,7 @@ function enableResponsiveReportActions(root) {
   const desktopSlot = actions?.parentElement
   const view = root.ownerDocument.defaultView
   const media = view?.matchMedia?.('(max-width: 700px)')
-  if (
-    !(actions instanceof HTMLElement) ||
-    !(mobileSlot instanceof HTMLElement) ||
-    !desktopSlot ||
-    !media
-  )
-    return
+  if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return
 
   const placeActions = () => {
     const destination = media.matches ? mobileSlot : desktopSlot
@@ -861,17 +690,12 @@ function renderMainContent(
   effectiveState,
   viewer,
 ) {
-  const initialPage =
-    pages.find((page) => page.id !== 'configuration') ?? pages[0]
+  const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0]
   const overviewPage = pages.find((page) => page.id === 'overview')
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : ''
   const initialPageDescription = initialPage?.description
-  const initialPageHref = initialPage
-    ? `#page-${encodeURIComponent(initialPage.id)}`
-    : '#main-content'
-  const overviewPageHref = overviewPage
-    ? `#page-${encodeURIComponent(overviewPage.id)}`
-    : initialPageHref
+  const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content'
+  const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref
   const settingsPage = pages.find((page) => page.id === 'configuration')
   return h(
     'div',
@@ -902,11 +726,7 @@ function renderMainContent(
           h(
             'div',
             { className: 'title-area' },
-            h(
-              'h1',
-              { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' },
-              initialPageTitle,
-            ),
+            h('h1', { id: 'page-title', tabIndex: -1, 'data-breadcrumb-page': '' }, initialPageTitle),
             h('a', {
               className: 'title-link',
               'data-page-title-link': '',
@@ -931,15 +751,7 @@ function renderMainContent(
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(
-            document.dashboard,
-            dashboardDefaults,
-            horizonRange,
-            evaluatedAt,
-            hasData,
-            dataHorizon,
-            effectiveState,
-          ),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState),
           dashboardRepository
             ? h(
                 'a',
@@ -958,15 +770,9 @@ function renderMainContent(
             h(
               'summary',
               {
-                className: viewer?.avatarUrl
-                  ? 'account-menu-avatar'
-                  : 'account-menu-avatar account-menu-icon',
-                'aria-label': viewer
-                  ? `Open account menu for ${viewer.name || viewer.login}`
-                  : 'Open account menu',
-                title: viewer
-                  ? `${viewer.name || viewer.login} (${viewer.login})`
-                  : 'Open account menu',
+                className: viewer?.avatarUrl ? 'account-menu-avatar' : 'account-menu-avatar account-menu-icon',
+                'aria-label': viewer ? `Open account menu for ${viewer.name || viewer.login}` : 'Open account menu',
+                title: viewer ? `${viewer.name || viewer.login} (${viewer.login})` : 'Open account menu',
               },
               viewer?.avatarUrl
                 ? h('img', {
@@ -1056,16 +862,8 @@ function renderMainContent(
         'div',
         { className: 'report-footer-status' },
         h('span', null, 'Last updated'),
-        h(
-          'time',
-          { dateTime: evaluatedAt },
-          `${formatReportDate(evaluatedAt)} UTC`,
-        ),
-        h(
-          'span',
-          { className: 'report-footer-provenance' },
-          '· Generated deterministically from dashboard data.',
-        ),
+        h('time', { dateTime: evaluatedAt }, `${formatReportDate(evaluatedAt)} UTC`),
+        h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.'),
       ),
       dashboardRepository
         ? h(
@@ -1105,15 +903,7 @@ function renderMainContent(
  * @param {DataState} effectiveState
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(
-  dashboard,
-  dashboardDefaults,
-  horizonRange,
-  evaluatedAt,
-  hasData,
-  dataHorizon,
-  effectiveState,
-) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState) {
   if (!hasData) {
     return h(
       'span',
@@ -1127,32 +917,18 @@ function renderDashboardHorizon(
 
   const horizon = dashboard.horizon
   const label = horizon?.label || 'Horizon'
-  const duration = dataHorizon
-    ? formatDashboardHorizonHours(dataHorizon.hours)
-    : formatDashboardHorizon(horizonRange)
+  const duration = dataHorizon ? formatDashboardHorizonHours(dataHorizon.hours) : formatDashboardHorizon(horizonRange)
   const start =
     dataHorizon?.start ??
-    (isPlainObject(dashboardDefaults.time) &&
-    typeof dashboardDefaults.time.start === 'string'
+    (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.start === 'string'
       ? dashboardDefaults.time.start
-      : new Date(
-          new Date(evaluatedAt).getTime() -
-            dashboardHorizonHours(horizonRange) * 3_600_000,
-        ).toISOString())
+      : new Date(new Date(evaluatedAt).getTime() - dashboardHorizonHours(horizonRange) * 3_600_000).toISOString())
   const end =
-    dataHorizon?.end ??
-    (isPlainObject(dashboardDefaults.time) &&
-    typeof dashboardDefaults.time.end === 'string'
-      ? dashboardDefaults.time.end
-      : evaluatedAt)
+    dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string' ? dashboardDefaults.time.end : evaluatedAt)
   const completeness = effectiveState?.completeness ?? 'unknown'
   const freshness = effectiveState?.freshness ?? 'unknown'
   const qualityState =
-    completeness === 'complete' && freshness === 'fresh'
-      ? 'success'
-      : completeness === 'unknown' || freshness === 'unknown'
-        ? 'muted'
-        : 'attention'
+    completeness === 'complete' && freshness === 'fresh' ? 'success' : completeness === 'unknown' || freshness === 'unknown' ? 'muted' : 'attention'
 
   return h(
     'div',
@@ -1182,11 +958,7 @@ function renderDashboardHorizon(
           role: 'tooltip',
         },
         h('strong', null, duration),
-        h(
-          'span',
-          null,
-          `${label} · Completeness ${completeness} · Freshness ${freshness}`,
-        ),
+        h('span', null, `${label} · Completeness ${completeness} · Freshness ${freshness}`),
         h('span', {
           className: `horizon-tooltip-quality status-${qualityState}`,
           'aria-hidden': 'true',
@@ -1200,23 +972,12 @@ function renderDashboardHorizon(
         role: 'group',
         'aria-label': 'Horizon details',
       },
-      h(
-        'span',
-        { className: 'horizon-details-description' },
-        horizon?.tooltip.description ??
-          'Evidence coverage and data quality for this dashboard.',
-      ),
+      h('span', { className: 'horizon-details-description' }, horizon?.tooltip.description ?? 'Evidence coverage and data quality for this dashboard.'),
       h(
         'span',
         { className: 'horizon-details-values' },
-        renderLabeledSpan(
-          'Start',
-          h('time', { dateTime: start }, `${formatReportDate(start)} UTC`),
-        ),
-        renderLabeledSpan(
-          'End',
-          h('time', { dateTime: end }, `${formatReportDate(end)} UTC`),
-        ),
+        renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
+        renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
         renderLabeledSpan('Duration', duration),
         h(
           'span',
@@ -1225,18 +986,8 @@ function renderDashboardHorizon(
             role: 'group',
             'aria-label': 'Data status',
           },
-          h(
-            'span',
-            null,
-            h('span', { className: 'horizon-status-label' }, 'Completeness'),
-            renderStatusBadge(completeness),
-          ),
-          h(
-            'span',
-            null,
-            h('span', { className: 'horizon-status-label' }, 'Freshness'),
-            renderStatusBadge(freshness),
-          ),
+          h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(completeness)),
+          h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(freshness)),
         ),
       ),
     ),
@@ -1256,10 +1007,7 @@ function resolveDataHorizon(sources) {
       start: Date.parse(source.metadata?.['coverage-start'] ?? ''),
       end: Date.parse(source.metadata?.['coverage-end'] ?? ''),
     }))
-    .filter(
-      ({ start, end }) =>
-        Number.isFinite(start) && Number.isFinite(end) && end > start,
-    )
+    .filter(({ start, end }) => Number.isFinite(start) && Number.isFinite(end) && end > start)
   if (windows.length === 0) return null
 
   const start = Math.max(...windows.map((window) => window.start))
@@ -1282,10 +1030,7 @@ function latestRetrievedAt(sources) {
   return (
     Object.values(sources)
       .map((source) => source?.metadata?.['retrieved-at'])
-      .filter(
-        (value) =>
-          typeof value === 'string' && Number.isFinite(Date.parse(value)),
-      )
+      .filter((value) => typeof value === 'string' && Number.isFinite(Date.parse(value)))
       .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null
   )
 }
@@ -1304,19 +1049,9 @@ function formatReportDate(value) {
  */
 function renderPagePlaceholder(page) {
   const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page
-  const pageClassName =
-    typeof payload['class-name'] === 'string' &&
-    payload['class-name'].length > 0
-      ? ` ${payload['class-name']}`
-      : ''
-  const routeParameter =
-    typeof payload.route?.['hash-query-parameter'] === 'string'
-      ? payload.route['hash-query-parameter']
-      : undefined
-  const routeNavigationPage =
-    typeof payload.route?.['navigation-page'] === 'string'
-      ? payload.route['navigation-page']
-      : undefined
+  const pageClassName = typeof payload['class-name'] === 'string' && payload['class-name'].length > 0 ? ` ${payload['class-name']}` : ''
+  const routeParameter = typeof payload.route?.['hash-query-parameter'] === 'string' ? payload.route['hash-query-parameter'] : undefined
+  const routeNavigationPage = typeof payload.route?.['navigation-page'] === 'string' ? payload.route['navigation-page'] : undefined
   return h('section', {
     className: `dashboard-page${pageClassName}`,
     id: `page-${page.id}`,
@@ -1377,41 +1112,20 @@ function renderPage(page, sources, units, dashboardDefaults) {
  * @param {boolean} [withFilterBar]
  * @returns {HTMLElement}
  */
-function renderCustomPage(
-  page,
-  title,
-  sources,
-  units,
-  dashboardDefaults,
-  withFilterBar = true,
-) {
-  const effectiveDashboardDefaults = inventoryPage(page.id)
-    ? { ...dashboardDefaults, time: undefined }
-    : dashboardDefaults
-  const views = Array.isArray(page.views)
-    ? page.views.map((view) =>
-        applyDashboardDefaults(view, effectiveDashboardDefaults),
-      )
-    : []
+function renderCustomPage(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
+  const effectiveDashboardDefaults = inventoryPage(page.id) ? { ...dashboardDefaults, time: undefined } : dashboardDefaults
+  const views = Array.isArray(page.views) ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults)) : []
   const sections = Array.isArray(page.sections) ? page.sections : []
   const standaloneCalloutViewIds = new Set(
     sections.flatMap((section) => {
       if (!Array.isArray(section.views) || section.views.length !== 1) return []
       const viewId = section.views[0]
-      const view = views.find(
-        (candidate) => isPlainObject(candidate) && candidate.id === viewId,
-      )
+      const view = views.find((candidate) => isPlainObject(candidate) && candidate.id === viewId)
       return isPlainObject(view) && view.mark === 'callout' ? [viewId] : []
     }),
   )
-  const routeParameter =
-    typeof page.route?.['hash-query-parameter'] === 'string'
-      ? page.route['hash-query-parameter']
-      : undefined
-  const routeNavigationPage =
-    typeof page.route?.['navigation-page'] === 'string'
-      ? page.route['navigation-page']
-      : undefined
+  const routeParameter = typeof page.route?.['hash-query-parameter'] === 'string' ? page.route['hash-query-parameter'] : undefined
+  const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string' ? page.route['navigation-page'] : undefined
   /** @type {Map<string, LogicalSourceInput>} */
   const pageSources = new Map()
   for (const view of views) {
@@ -1422,36 +1136,17 @@ function renderCustomPage(
     }
   }
   const renderedViews = views.map((view, index) => {
-    const viewId =
-      isPlainObject(view) && typeof view.id === 'string' ? view.id : ''
-    const headingTag =
-      sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3'
-    const layout =
-      isPlainObject(view) && typeof view.layout === 'string'
-        ? view.layout
-        : 'full'
-    const disclosure =
-      isPlainObject(view) && view.disclosure === 'supplemental'
-        ? 'supplemental'
-        : 'essential'
+    const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : ''
+    const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3'
+    const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full'
+    const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential'
     const isRouteView = Boolean(
       routeParameter &&
       isPlainObject(view) &&
-      (view.mark === 'element' ||
-        typeof view.element === 'string' ||
-        (isPlainObject(view.data) &&
-          typeof view.data['route-field'] === 'string')),
+      (view.mark === 'element' || typeof view.element === 'string' || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')),
     )
     const render = () => {
-      const rendered = renderCustomView(
-        page.id,
-        view,
-        index,
-        sources,
-        units,
-        headingTag,
-        routeParameter,
-      )
+      const rendered = renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter)
       suppressSupplementalTableHeading(rendered, view, index)
       if (disclosure === 'essential') {
         rendered.classList.add('custom-view')
@@ -1461,9 +1156,7 @@ function renderCustomPage(
       return rendered
     }
     const rendered =
-      isRouteView ||
-      index === 0 ||
-      (isPlainObject(view) && view.mark === 'callout')
+      isRouteView || index === 0 || (isPlainObject(view) && view.mark === 'callout')
         ? render()
         : renderLazyView({
             label: getViewTitle(view, index),
@@ -1498,27 +1191,13 @@ function renderCustomPage(
     )
   })
   const renderedViewsById = new Map(
-    views.map((view, index) => [
-      isPlainObject(view) && typeof view.id === 'string'
-        ? view.id
-        : `view-${index + 1}`,
-      renderedViews[index],
-    ]),
+    views.map((view, index) => [isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`, renderedViews[index]]),
   )
   const renderedContent =
     sections.length > 0
-      ? h(
-          'div',
-          { className: 'page-layout-grid' },
-          ...sections.map((section) =>
-            renderLayoutSection(page.id, section, renderedViewsById, sources),
-          ),
-        )
+      ? h('div', { className: 'page-layout-grid' }, ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources)))
       : h('div', { className: 'custom-view-grid' }, ...renderedViews)
-  const pageClassName =
-    typeof page['class-name'] === 'string' && page['class-name'].length > 0
-      ? ` ${page['class-name']}`
-      : ''
+  const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0 ? ` ${page['class-name']}` : ''
 
   /** @type {HTMLElement} */
   let root
@@ -1532,65 +1211,36 @@ function renderCustomPage(
               sources,
               filters,
               page.id === 'readiness' ? undefined : timeWindow,
-              page.id === 'readiness'
-                ? new Set(['runs', 'findings', 'outcomes'])
-                : new Set(pageSources.keys()),
+              page.id === 'readiness' ? new Set(['runs', 'findings', 'outcomes']) : new Set(pageSources.keys()),
             )
             /** @type {(filteredSources: Record<string, LogicalSourceInput>) => void} */
             const apply = (filteredSources) => {
               if (revision !== filterRevision) return
-              const pageFilteredSources =
-                page.id === 'readiness'
-                  ? completedRunSources(filteredSources)
-                  : filteredSources
+              const pageFilteredSources = page.id === 'readiness' ? completedRunSources(filteredSources) : filteredSources
               const effectiveSources =
                 page.id === 'readiness'
                   ? deriveOverviewSources(pageFilteredSources, {
                       readinessWindow: timeWindow,
                     })
                   : pageFilteredSources
-              void renderCustomPageAsync(
-                page,
-                title,
-                effectiveSources,
-                units,
-                dashboardDefaults,
-                false,
-              )
+              void renderCustomPageAsync(page, title, effectiveSources, units, dashboardDefaults, false)
                 .then((replacement) => {
                   if (revision !== filterRevision) return
-                  const detailsState = [
-                    ...root.querySelectorAll('details'),
-                  ].map((details) => details.open)
-                  ;[...replacement.querySelectorAll('details')].forEach(
-                    (details, index) => {
-                      if (detailsState[index] !== undefined)
-                        details.open = detailsState[index]
-                    },
-                  )
+                  const detailsState = [...root.querySelectorAll('details')].map((details) => details.open)
+                  ;[...replacement.querySelectorAll('details')].forEach((details, index) => {
+                    if (detailsState[index] !== undefined) details.open = detailsState[index]
+                  })
                   root.replaceChildren(...replacement.children)
                   enableLazyViews(root)
-                  dispatchPageRoute(
-                    root,
-                    root.dataset.routeParameter ?? '',
-                    root.dataset.routeValue ?? '',
-                  )
+                  dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '')
                 })
                 .catch(() => {})
             }
             result.then(apply).catch(() => {})
           },
           {
-            defaultRange:
-              isPlainObject(dashboardDefaults.time) &&
-              typeof dashboardDefaults.time.range === 'string'
-                ? dashboardDefaults.time.range
-                : '1w',
-            referenceEnd: latestSourceCoverageEnd(
-              page.id === 'readiness'
-                ? [sources.runs, sources.findings, sources.outcomes]
-                : [...pageSources.values()],
-            ),
+            defaultRange: isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.range === 'string' ? dashboardDefaults.time.range : '1w',
+            referenceEnd: latestSourceCoverageEnd(page.id === 'readiness' ? [sources.runs, sources.findings, sources.outcomes] : [...pageSources.values()]),
           },
         )
       : null
@@ -1610,10 +1260,7 @@ function renderCustomPage(
     filterBar,
     renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
-      ? [
-          renderHiddenDataStateMetrics(summarizeDataState(pageSources)),
-          renderedContent,
-        ]
+      ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')]),
   )
   return root
@@ -1629,9 +1276,7 @@ function completedRunSources(sources) {
     ...sources,
     runs: {
       ...sources.runs,
-      rows: sources.runs.rows.filter(
-        (row) => String(row['run-status']) === 'completed',
-      ),
+      rows: sources.runs.rows.filter((row) => String(row['run-status']) === 'completed'),
     },
   }
 }
@@ -1643,27 +1288,15 @@ function completedRunSources(sources) {
  * @param {Set<string>} [timeSourceNames]
  * @returns {Promise<Record<string, LogicalSourceInput>>}
  */
-async function filterDashboardSources(
-  sources,
-  filters,
-  timeWindow,
-  timeSourceNames,
-) {
+async function filterDashboardSources(sources, filters, timeWindow, timeSourceNames) {
   const entries = await Promise.all(
     Object.entries(sources).map(async ([name, source]) => {
-      if (!Array.isArray(source?.rows) || source.rows.length === 0)
-        return [name, source]
+      if (!Array.isArray(source?.rows) || source.rows.length === 0) return [name, source]
       const predicates = [...filters].flatMap(([configuredField, values]) => {
-        const field =
-          configuredField === 'mode' ? 'rollout-mode' : configuredField
-        return source.rows.some((row) => Object.hasOwn(row, field))
-          ? [{ field, in: values }]
-          : []
+        const field = configuredField === 'mode' ? 'rollout-mode' : configuredField
+        return source.rows.some((row) => Object.hasOwn(row, field)) ? [{ field, in: values }] : []
       })
-      let rows =
-        predicates.length === 0
-          ? source.rows
-          : await processRows(source.rows, [{ op: 'filter', predicates }])
+      let rows = predicates.length === 0 ? source.rows : await processRows(source.rows, [{ op: 'filter', predicates }])
       if (timeWindow && timeSourceNames?.has(name)) {
         rows = rows.filter((row) => rowMatchesTime(row, timeWindow))
       }
@@ -1680,15 +1313,8 @@ async function filterDashboardSources(
  */
 function latestSourceCoverageEnd(sources) {
   return sources
-    .flatMap((source) => [
-      source?.metadata?.['coverage-end'],
-      source?.metadata?.['as-of'],
-      source?.metadata?.['retrieved-at'],
-    ])
-    .filter(
-      (value) =>
-        typeof value === 'string' && Number.isFinite(Date.parse(value)),
-    )
+    .flatMap((source) => [source?.metadata?.['coverage-end'], source?.metadata?.['as-of'], source?.metadata?.['retrieved-at']])
+    .filter((value) => typeof value === 'string' && Number.isFinite(Date.parse(value)))
     .map(String)
     .toSorted((left, right) => Date.parse(right) - Date.parse(left))[0]
 }
@@ -1702,9 +1328,7 @@ function resolveViewContextDetails(view, sources) {
   const sourceName = getViewSources(view)[0] ?? null
   if (!sourceName) return ['Source unavailable.']
   const sourceInput = sources[sourceName]
-  return sourceInput && Array.isArray(sourceInput.rows)
-    ? []
-    : [`Source unavailable: ${sourceName}`]
+  return sourceInput && Array.isArray(sourceInput.rows) ? [] : [`Source unavailable: ${sourceName}`]
 }
 
 /**
@@ -1712,9 +1336,7 @@ function resolveViewContextDetails(view, sources) {
  * @returns {string}
  */
 function getPageTitle(page) {
-  return typeof page.title === 'string' && page.title.length > 0
-    ? page.title
-    : titleCase(page.id)
+  return typeof page.title === 'string' && page.title.length > 0 ? page.title : titleCase(page.id)
 }
 
 /**
@@ -1736,12 +1358,8 @@ function renderHiddenDataStateMetrics(effectiveState) {
  */
 function renderLayoutSection(pageId, section, renderedViews, sources) {
   const headingId = `${pageId}-${section.id}-layout-heading`
-  const countSource = section['count-source']
-    ? sources[section['count-source']]
-    : null
-  const count = Array.isArray(countSource?.rows)
-    ? countSource.rows.length
-    : null
+  const countSource = section['count-source'] ? sources[section['count-source']] : null
+  const count = Array.isArray(countSource?.rows) ? countSource.rows.length : null
   const sectionViews = section.views.map(
     (viewId) =>
       renderedViews.get(viewId) ??
@@ -1749,10 +1367,7 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
         'data-missing-view-id': viewId,
       }),
   )
-  if (
-    sectionViews.length === 1 &&
-    sectionViews[0].classList.contains('dashboard-callout')
-  ) {
+  if (sectionViews.length === 1 && sectionViews[0].classList.contains('dashboard-callout')) {
     sectionViews[0].setAttribute('data-section-id', section.id)
     sectionViews[0].setAttribute('data-section-layout', section.layout)
     return sectionViews[0]
@@ -1778,67 +1393,44 @@ function renderLayoutSection(pageId, section, renderedViews, sources) {
  * @param {(pageId: string) => HTMLElement | Promise<HTMLElement> | null} [renderPageById]
  * @param {string} [defaultPageId]
  */
-export function enableDashboardPageNavigation(
-  root,
-  dashboardTitle = '',
-  renderPageById,
-  defaultPageId = '',
-) {
-  const pages = [...root.querySelectorAll('.dashboard-page')].filter(
-    (page) => page instanceof HTMLElement,
-  )
+export function enableDashboardPageNavigation(root, dashboardTitle = '', renderPageById, defaultPageId = '') {
+  const pages = [...root.querySelectorAll('.dashboard-page')].filter((page) => page instanceof HTMLElement)
   /** @type {Map<string, { details: boolean[], scrollTop: number }>} */
   const pageState = new Map()
   let activePageId = ''
   let activationRevision = 0
   const overviewPage = pages.find((page) => page.dataset.pageId === 'overview')
-  const links = [
-    ...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]'),
-  ].filter((link) => link instanceof HTMLAnchorElement)
+  const links = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')].filter((link) => link instanceof HTMLAnchorElement)
   const breadcrumbPage = root.querySelector('[data-breadcrumb-page]')
   const breadcrumbRoot = root.querySelector('[data-breadcrumb-root]')
   const breadcrumbDashboard = root.querySelector('[data-breadcrumb-dashboard]')
   const pageTitle = root.querySelector('#page-title')
   const pageTitleLink = root.querySelector('[data-page-title-link]')
-  const pageDescription = root.querySelector(
-    '.overview-header [data-page-description]',
-  )
+  const pageDescription = root.querySelector('.overview-header [data-page-description]')
   const pageMode = root.querySelector('[data-page-mode]')
   const reportActions = root.querySelector('.report-actions')
   const pageScroller = root.querySelector('main.dashboard-prototype')
   /** @param {HTMLElement | undefined} page */
   const syncFullViewMode = (page) => {
-    const fullView = page?.querySelector(
-      '.custom-view[data-view-layout="full-view"]',
-    )
+    const fullView = page?.querySelector('.custom-view[data-view-layout="full-view"]')
     root.classList.toggle('dashboard-full-view', Boolean(fullView))
     if (!fullView) root.classList.remove('dashboard-full-view-scrolled')
   }
-  const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map(
-    (link) => ({
-      label: link?.textContent ?? '',
-      href:
-        link instanceof HTMLAnchorElement
-          ? (link.getAttribute('href') ?? '')
-          : '',
-      hidden: link instanceof HTMLElement ? link.hidden : false,
-    }),
-  )
+  const defaultBreadcrumbs = [breadcrumbRoot, breadcrumbDashboard].map((link) => ({
+    label: link?.textContent ?? '',
+    href: link instanceof HTMLAnchorElement ? (link.getAttribute('href') ?? '') : '',
+    hidden: link instanceof HTMLElement ? link.hidden : false,
+  }))
   if (pages.length === 0 || links.length === 0) {
     return
   }
 
   root.addEventListener('dashboard-route-allocation', (event) => {
-    if (!(event instanceof CustomEvent) || !(event.target instanceof Element))
-      return
+    if (!(event instanceof CustomEvent) || !(event.target instanceof Element)) return
     const page = event.target.closest('.dashboard-page')
     if (!(page instanceof HTMLElement) || page.hidden) return
-    const title =
-      typeof event.detail?.title === 'string' ? event.detail.title.trim() : ''
-    const description =
-      typeof event.detail?.description === 'string'
-        ? event.detail.description.trim()
-        : ''
+    const title = typeof event.detail?.title === 'string' ? event.detail.title.trim() : ''
+    const description = typeof event.detail?.description === 'string' ? event.detail.description.trim() : ''
     if (title) {
       if (breadcrumbPage) breadcrumbPage.textContent = title
       if (pageTitle) pageTitle.textContent = title
@@ -1847,18 +1439,10 @@ export function enableDashboardPageNavigation(
     renderPageTitleLink(pageTitleLink, event.detail?.titleLink)
     const hasAllocatedBreadcrumbs = Array.isArray(event.detail?.breadcrumbs)
     const breadcrumbs = hasAllocatedBreadcrumbs ? event.detail.breadcrumbs : []
-    for (const [index, link] of [
-      breadcrumbRoot,
-      breadcrumbDashboard,
-    ].entries()) {
+    for (const [index, link] of [breadcrumbRoot, breadcrumbDashboard].entries()) {
       const breadcrumb = breadcrumbs[index]
       if (!(link instanceof HTMLAnchorElement)) continue
-      if (
-        !breadcrumb ||
-        typeof breadcrumb.label !== 'string' ||
-        typeof breadcrumb.href !== 'string' ||
-        !breadcrumb.href.startsWith('#page-')
-      ) {
+      if (!breadcrumb || typeof breadcrumb.label !== 'string' || typeof breadcrumb.href !== 'string' || !breadcrumb.href.startsWith('#page-')) {
         if (hasAllocatedBreadcrumbs) link.hidden = true
         continue
       }
@@ -1870,15 +1454,9 @@ export function enableDashboardPageNavigation(
       pageDescription.textContent = description
       pageDescription.removeAttribute('hidden')
     }
-    const mode =
-      event.detail?.mode === 'review' || event.detail?.mode === 'live'
-        ? event.detail.mode
-        : ''
+    const mode = event.detail?.mode === 'review' || event.detail?.mode === 'live' ? event.detail.mode : ''
     renderPageMode(pageMode, mode)
-    const navigationPage =
-      typeof event.detail?.navigationPage === 'string'
-        ? event.detail.navigationPage
-        : ''
+    const navigationPage = typeof event.detail?.navigationPage === 'string' ? event.detail.navigationPage : ''
     if (navigationPage && availableIds.has(navigationPage)) {
       updateNavigationLinks(links, navigationPage)
     }
@@ -1891,15 +1469,11 @@ export function enableDashboardPageNavigation(
     try {
       const route = hash.slice('#page-'.length)
       const queryIndex = route.indexOf('?')
-      const pageId = decodeURIComponent(
-        queryIndex === -1 ? route : route.slice(0, queryIndex),
-      )
+      const pageId = decodeURIComponent(queryIndex === -1 ? route : route.slice(0, queryIndex))
       if (!availableIds.has(pageId)) return null
       return {
         pageId,
-        parameters: new URLSearchParams(
-          queryIndex === -1 ? '' : route.slice(queryIndex + 1),
-        ),
+        parameters: new URLSearchParams(queryIndex === -1 ? '' : route.slice(queryIndex + 1)),
       }
     } catch {
       return null
@@ -1927,11 +1501,7 @@ export function enableDashboardPageNavigation(
    * @param {URLSearchParams} [parameters]
    * @param {boolean} [deferPopulation]
    */
-  const activate = (
-    pageId,
-    parameters = new URLSearchParams(),
-    deferPopulation = false,
-  ) => {
+  const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
     const revision = ++activationRevision
     const dashboardHorizon = root.querySelector('.dashboard-horizon')
     let activeFilterBar = root.querySelector('.report-actions > .filter-bar')
@@ -1942,20 +1512,12 @@ export function enableDashboardPageNavigation(
       const filterBar = page?.querySelector('.filter-bar')
       if (dashboardHorizon && filterBar && reportActions) {
         filterBar.prepend(dashboardHorizon)
-        const horizonDetails =
-          dashboardHorizon.querySelector('.horizon-details')
-        const tuningControls = filterBar.querySelector(
-          '.filter-tuning-controls',
-        )
-        if (horizonDetails && tuningControls)
-          tuningControls.append(horizonDetails)
+        const horizonDetails = dashboardHorizon.querySelector('.horizon-details')
+        const tuningControls = filterBar.querySelector('.filter-tuning-controls')
+        if (horizonDetails && tuningControls) tuningControls.append(horizonDetails)
         reportActions.prepend(filterBar)
         activeFilterBar = filterBar
-      } else if (
-        dashboardHorizon &&
-        reportActions &&
-        !reportActions.contains(dashboardHorizon)
-      ) {
+      } else if (dashboardHorizon && reportActions && !reportActions.contains(dashboardHorizon)) {
         reportActions.prepend(dashboardHorizon)
       }
     }
@@ -1964,44 +1526,31 @@ export function enableDashboardPageNavigation(
      */
     const restoreScroll = (page) => {
       const sectionId = parameters.get('section')?.trim()
-      const section = sectionId
-        ? root.ownerDocument.getElementById(sectionId)
-        : null
+      const section = sectionId ? root.ownerDocument.getElementById(sectionId) : null
       if (section && page?.contains(section)) {
         section.scrollIntoView?.()
       } else if (pageState.has(pageId)) {
         const scrollTop = pageState.get(pageId)?.scrollTop ?? 0
         const scrollingElement =
-          pageScroller instanceof HTMLElement
-            ? pageScroller
-            : (root.ownerDocument.scrollingElement ??
-              root.ownerDocument.documentElement)
+          pageScroller instanceof HTMLElement ? pageScroller : (root.ownerDocument.scrollingElement ?? root.ownerDocument.documentElement)
         scrollingElement.scrollTop = scrollTop
       }
     }
     let populationDeferred = false
     if (activePageId && activePageId !== pageId) {
-      const activePage = pages.find(
-        (candidate) => candidate.dataset.pageId === activePageId,
-      )
+      const activePage = pages.find((candidate) => candidate.dataset.pageId === activePageId)
       if (activePage) {
-        const horizonDetails =
-          activeFilterBar?.querySelector('.horizon-details')
-        if (dashboardHorizon && horizonDetails)
-          dashboardHorizon.append(horizonDetails)
-        if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon))
-          dashboardHorizon.remove()
+        const horizonDetails = activeFilterBar?.querySelector('.horizon-details')
+        if (dashboardHorizon && horizonDetails) dashboardHorizon.append(horizonDetails)
+        if (dashboardHorizon && activeFilterBar?.contains(dashboardHorizon)) dashboardHorizon.remove()
         activeFilterBar?.remove()
         activeFilterBar = null
         pageState.set(activePageId, {
-          details: [...activePage.querySelectorAll('details')].map(
-            (details) => details.open,
-          ),
+          details: [...activePage.querySelectorAll('details')].map((details) => details.open),
           scrollTop:
             pageScroller instanceof HTMLElement
               ? pageScroller.scrollTop
-              : (root.ownerDocument.scrollingElement?.scrollTop ??
-                root.ownerDocument.documentElement.scrollTop),
+              : (root.ownerDocument.scrollingElement?.scrollTop ?? root.ownerDocument.documentElement.scrollTop),
         })
         disconnectLazyViews(activePage)
         activePage.replaceChildren()
@@ -2010,9 +1559,7 @@ export function enableDashboardPageNavigation(
       }
     }
     activePageId = pageId
-    const pageIndex = pages.findIndex(
-      (candidate) => candidate.dataset.pageId === pageId,
-    )
+    const pageIndex = pages.findIndex((candidate) => candidate.dataset.pageId === pageId)
     const pendingPage = pages[pageIndex]
     if (pendingPage?.hasAttribute('data-page-pending')) {
       const populate = () => {
@@ -2023,19 +1570,11 @@ export function enableDashboardPageNavigation(
         if (!rendered) return
         /** @param {HTMLElement} renderedPage */
         const replacePage = (renderedPage) => {
-          if (
-            revision !== activationRevision ||
-            activePageId !== pageId ||
-            !currentPage.parentNode
-          )
-            return
+          if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return
           const detailsState = pageState.get(pageId)?.details ?? []
-          ;[...renderedPage.querySelectorAll('details')].forEach(
-            (details, index) => {
-              if (detailsState[index] !== undefined)
-                details.open = detailsState[index]
-            },
-          )
+          ;[...renderedPage.querySelectorAll('details')].forEach((details, index) => {
+            if (detailsState[index] !== undefined) details.open = detailsState[index]
+          })
           renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? ''
           currentPage.replaceWith(renderedPage)
           pages[pageIndex] = renderedPage
@@ -2043,11 +1582,7 @@ export function enableDashboardPageNavigation(
           placeDashboardHorizon(renderedPage)
           syncFullViewMode(renderedPage)
           if (deferPopulation) {
-            dispatchPageRoute(
-              renderedPage,
-              renderedPage.dataset.routeParameter ?? '',
-              renderedPage.dataset.routeValue,
-            )
+            dispatchPageRoute(renderedPage, renderedPage.dataset.routeParameter ?? '', renderedPage.dataset.routeValue)
             restoreScroll(renderedPage)
           }
         }
@@ -2055,12 +1590,7 @@ export function enableDashboardPageNavigation(
           pendingPage.replaceChildren(renderPageSkeleton())
           pendingPage.setAttribute('aria-busy', 'true')
           void rendered.then(replacePage).catch(() => {
-            if (
-              revision !== activationRevision ||
-              activePageId !== pageId ||
-              !currentPage.parentNode
-            )
-              return
+            if (revision !== activationRevision || activePageId !== pageId || !currentPage.parentNode) return
             currentPage.replaceChildren(
               renderEmptyMessage('Unable to load this page.', {
                 role: 'alert',
@@ -2081,10 +1611,7 @@ export function enableDashboardPageNavigation(
         populate()
       }
     }
-    for (const [index, link] of [
-      breadcrumbRoot,
-      breadcrumbDashboard,
-    ].entries()) {
+    for (const [index, link] of [breadcrumbRoot, breadcrumbDashboard].entries()) {
       if (!(link instanceof HTMLAnchorElement)) continue
       link.hidden = defaultBreadcrumbs[index].hidden
       link.textContent = defaultBreadcrumbs[index].label
@@ -2098,10 +1625,7 @@ export function enableDashboardPageNavigation(
       const isActive = page.dataset.pageId === pageId
       page.hidden = !isActive
     }
-    if (
-      breadcrumbDashboard instanceof HTMLAnchorElement &&
-      pageId === overviewPage?.dataset.pageId
-    ) {
+    if (breadcrumbDashboard instanceof HTMLAnchorElement && pageId === overviewPage?.dataset.pageId) {
       breadcrumbDashboard.hidden = true
     }
     updateNavigationLinks(links, pageId)
@@ -2110,23 +1634,17 @@ export function enableDashboardPageNavigation(
     syncFullViewMode(page)
     const routeNavigationPage = page?.dataset.routeNavigationPage
     if (routeNavigationPage && availableIds.has(routeNavigationPage)) {
-      const navigationLink = links.find(
-        (link) => getNavigationPageId(link) === routeNavigationPage,
-      )
+      const navigationLink = links.find((link) => getNavigationPageId(link) === routeNavigationPage)
       updateNavigationLinks(links, routeNavigationPage)
       if (breadcrumbRoot instanceof HTMLAnchorElement && navigationLink) {
         breadcrumbRoot.hidden = false
-        breadcrumbRoot.textContent =
-          navigationLink.textContent ?? routeNavigationPage
+        breadcrumbRoot.textContent = navigationLink.textContent ?? routeNavigationPage
         breadcrumbRoot.href = `#page-${routeNavigationPage}`
       }
-      if (breadcrumbDashboard instanceof HTMLAnchorElement)
-        breadcrumbDashboard.hidden = true
+      if (breadcrumbDashboard instanceof HTMLAnchorElement) breadcrumbDashboard.hidden = true
     }
     const routeParameter = page?.dataset.routeParameter
-    const routeValue = routeParameter
-      ? (parameters.get(routeParameter)?.trim() ?? '')
-      : ''
+    const routeValue = routeParameter ? (parameters.get(routeParameter)?.trim() ?? '') : ''
     if (page) page.dataset.routeValue = routeValue
     const title = routeValue || page?.dataset.pageTitle || ''
     const description = page?.dataset.pageDescription ?? ''
@@ -2138,41 +1656,24 @@ export function enableDashboardPageNavigation(
       pageDescription.textContent = description
       pageDescription.toggleAttribute('hidden', description.length === 0)
     }
-    const requestedMode =
-      pageId === 'packages'
-        ? new URLSearchParams(
-            root.ownerDocument.defaultView?.location.search ?? '',
-          ).get('mode')
-        : ''
-    renderPageMode(
-      pageMode,
-      requestedMode === 'review' || requestedMode === 'live'
-        ? requestedMode
-        : '',
-    )
-    if (page && !populationDeferred)
-      dispatchPageRoute(page, routeParameter ?? '', routeValue)
+    const requestedMode = pageId === 'packages' ? new URLSearchParams(root.ownerDocument.defaultView?.location.search ?? '').get('mode') : ''
+    renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '')
+    if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue)
     if (!populationDeferred) restoreScroll(page)
   }
 
   const initialRoute = routeFromHash()
-  const initialPageId = availableIds.has(defaultPageId)
-    ? defaultPageId
-    : (pages[0].dataset.pageId ?? '')
+  const initialPageId = availableIds.has(defaultPageId) ? defaultPageId : (pages[0].dataset.pageId ?? '')
   activate(initialRoute?.pageId ?? initialPageId, initialRoute?.parameters)
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
-    const link = event.target.closest(
-      '[data-nav-page-id], [data-mobile-nav-page-id]',
-    )
+    const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]')
     if (!(link instanceof HTMLAnchorElement)) return
     event.preventDefault()
     const pageId = getNavigationPageId(link)
     if (!pageId || !availableIds.has(pageId)) return
     root.ownerDocument.defaultView?.history.pushState(null, '', link.href)
-    updateWithViewTransition(root.ownerDocument, () =>
-      activate(pageId, routeFromHash()?.parameters, true),
-    )
+    updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true))
     if (pageTitle instanceof HTMLElement) pageTitle.focus()
   })
 
@@ -2180,19 +1681,10 @@ export function enableDashboardPageNavigation(
   root.addEventListener(
     'scroll',
     (event) => {
-      if (
-        !root.classList.contains('dashboard-full-view') ||
-        !(event.target instanceof Element)
-      )
-        return
-      const scroll = event.target.closest(
-        '.custom-view[data-view-layout="full-view"] .table-scroll',
-      )
+      if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return
+      const scroll = event.target.closest('.custom-view[data-view-layout="full-view"] .table-scroll')
       if (scroll === event.target) {
-        root.classList.toggle(
-          'dashboard-full-view-scrolled',
-          event.target.scrollTop > 0,
-        )
+        root.classList.toggle('dashboard-full-view-scrolled', event.target.scrollTop > 0)
       }
     },
     true,
@@ -2204,9 +1696,7 @@ export function enableDashboardPageNavigation(
     }
     const route = routeFromHash()
     if (route) {
-      updateWithViewTransition(root.ownerDocument, () =>
-        activate(route.pageId, route.parameters, true),
-      )
+      updateWithViewTransition(root.ownerDocument, () => activate(route.pageId, route.parameters, true))
       if (pageTitle instanceof HTMLElement) pageTitle.focus()
     }
   }
@@ -2273,43 +1763,20 @@ function getNavigationPageId(link) {
  * @param {boolean} [withFilterBar]
  * @returns {Promise<HTMLElement>}
  */
-async function renderCustomPageAsync(
-  page,
-  title,
-  sources,
-  units,
-  dashboardDefaults,
-  withFilterBar = true,
-) {
-  const effectiveDashboardDefaults = inventoryPage(page.id)
-    ? { ...dashboardDefaults, time: undefined }
-    : dashboardDefaults
-  const views = Array.isArray(page.views)
-    ? page.views.map((view) =>
-        applyDashboardDefaults(view, effectiveDashboardDefaults),
-      )
-    : []
+async function renderCustomPageAsync(page, title, sources, units, dashboardDefaults, withFilterBar = true) {
+  const effectiveDashboardDefaults = inventoryPage(page.id) ? { ...dashboardDefaults, time: undefined } : dashboardDefaults
+  const views = Array.isArray(page.views) ? page.views.map((view) => applyDashboardDefaults(view, effectiveDashboardDefaults)) : []
   const sections = Array.isArray(page.sections) ? page.sections : []
   const standaloneCalloutViewIds = new Set(
     sections.flatMap((section) => {
       if (!Array.isArray(section.views) || section.views.length !== 1) return []
       const viewId = section.views[0]
-      const candidate = views.find(
-        (entry) => isPlainObject(entry) && entry.id === viewId,
-      )
-      return isPlainObject(candidate) && candidate.mark === 'callout'
-        ? [viewId]
-        : []
+      const candidate = views.find((entry) => isPlainObject(entry) && entry.id === viewId)
+      return isPlainObject(candidate) && candidate.mark === 'callout' ? [viewId] : []
     }),
   )
-  const routeParameter =
-    typeof page.route?.['hash-query-parameter'] === 'string'
-      ? page.route['hash-query-parameter']
-      : undefined
-  const routeNavigationPage =
-    typeof page.route?.['navigation-page'] === 'string'
-      ? page.route['navigation-page']
-      : undefined
+  const routeParameter = typeof page.route?.['hash-query-parameter'] === 'string' ? page.route['hash-query-parameter'] : undefined
+  const routeNavigationPage = typeof page.route?.['navigation-page'] === 'string' ? page.route['navigation-page'] : undefined
   const pageSources = new Map()
   for (const view of views) {
     for (const sourceName of getViewSources(view)) {
@@ -2318,24 +1785,13 @@ async function renderCustomPageAsync(
   }
   const renderedViews = await Promise.all(
     views.map(async (view, index) => {
-      const viewId =
-        isPlainObject(view) && typeof view.id === 'string' ? view.id : ''
-      const headingTag =
-        sections.length > 0 && !standaloneCalloutViewIds.has(viewId)
-          ? 'h4'
-          : 'h3'
-      const layout =
-        isPlainObject(view) && typeof view.layout === 'string'
-          ? view.layout
-          : 'full'
-      const disclosure =
-        isPlainObject(view) && view.disclosure === 'supplemental'
-          ? 'supplemental'
-          : 'essential'
+      const viewId = isPlainObject(view) && typeof view.id === 'string' ? view.id : ''
+      const headingTag = sections.length > 0 && !standaloneCalloutViewIds.has(viewId) ? 'h4' : 'h3'
+      const layout = isPlainObject(view) && typeof view.layout === 'string' ? view.layout : 'full'
+      const disclosure = isPlainObject(view) && view.disclosure === 'supplemental' ? 'supplemental' : 'essential'
       const render = async () => {
         const rendered =
-          isPlainObject(view) &&
-          (view.mark === 'element' || typeof view.element === 'string')
+          isPlainObject(view) && (view.mark === 'element' || typeof view.element === 'string')
             ? await renderElementViewAsync(
                 page.id,
                 getViewTitle(view, index),
@@ -2345,15 +1801,7 @@ async function renderCustomPageAsync(
                 headingTag,
                 routeParameter,
               )
-            : renderCustomView(
-                page.id,
-                view,
-                index,
-                sources,
-                units,
-                headingTag,
-                routeParameter,
-              )
+            : renderCustomView(page.id, view, index, sources, units, headingTag, routeParameter)
         suppressSupplementalTableHeading(rendered, view, index)
         if (disclosure === 'essential') {
           rendered.classList.add('custom-view')
@@ -2366,17 +1814,10 @@ async function renderCustomPageAsync(
       const isRouteView = Boolean(
         routeParameter &&
         isPlainObject(view) &&
-        (view.mark === 'element' ||
-          typeof view.element === 'string' ||
-          (isPlainObject(view.data) &&
-            typeof view.data['route-field'] === 'string')),
+        (view.mark === 'element' || typeof view.element === 'string' || (isPlainObject(view.data) && typeof view.data['route-field'] === 'string')),
       )
       const rendered =
-        index === 0 ||
-        isRouteView ||
-        (isPlainObject(view) &&
-          (view.locked === true || view.mark === 'callout')) ||
-        TOP_LEVEL_VIEW_PAGE_IDS.has(page.id)
+        index === 0 || isRouteView || (isPlainObject(view) && (view.locked === true || view.mark === 'callout')) || TOP_LEVEL_VIEW_PAGE_IDS.has(page.id)
           ? await render()
           : renderLazyView({
               label: getViewTitle(view, index),
@@ -2409,31 +1850,14 @@ async function renderCustomPageAsync(
     }),
   )
   const renderedViewsById = new Map(
-    views.map((view, index) => [
-      isPlainObject(view) && typeof view.id === 'string'
-        ? view.id
-        : `view-${index + 1}`,
-      renderedViews[index],
-    ]),
+    views.map((view, index) => [isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`, renderedViews[index]]),
   )
   const renderedContent =
     sections.length > 0
-      ? h(
-          'div',
-          { className: 'page-layout-grid' },
-          ...sections.map((section) =>
-            renderLayoutSection(page.id, section, renderedViewsById, sources),
-          ),
-        )
+      ? h('div', { className: 'page-layout-grid' }, ...sections.map((section) => renderLayoutSection(page.id, section, renderedViewsById, sources)))
       : h('div', { className: 'custom-view-grid' }, ...renderedViews)
-  const pageClassName =
-    typeof page['class-name'] === 'string' && page['class-name'].length > 0
-      ? ` ${page['class-name']}`
-      : ''
-  const filterBar = withFilterBar
-    ? renderCustomPage(page, title, sources, units, dashboardDefaults, true)
-        .firstElementChild
-    : null
+  const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0 ? ` ${page['class-name']}` : ''
+  const filterBar = withFilterBar ? renderCustomPage(page, title, sources, units, dashboardDefaults, true).firstElementChild : null
   return h(
     'section',
     {
@@ -2450,10 +1874,7 @@ async function renderCustomPageAsync(
     ...(filterBar ? [filterBar] : []),
     renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
-      ? [
-          renderHiddenDataStateMetrics(summarizeDataState(pageSources)),
-          renderedContent,
-        ]
+      ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')]),
   )
 }
@@ -2464,10 +1885,7 @@ async function renderCustomPageAsync(
  * @returns {HTMLElement | null}
  */
 function renderFirewallDataWarning(pageId, sources) {
-  if (
-    pageId !== 'firewall' ||
-    sources['firewall-observations']?.metadata?.availability === 'available'
-  ) {
+  if (pageId !== 'firewall' || sources['firewall-observations']?.metadata?.availability === 'available') {
     return null
   }
   return h(
@@ -2481,29 +1899,15 @@ function renderFirewallDataWarning(pageId, sources) {
       'div',
       { className: 'dashboard-callout-heading' },
       octicon('alert'),
-      h(
-        'div',
-        null,
-        h('span', { className: 'scope-kicker' }, 'Data warning'),
-        h('h3', null, 'Firewall data is corrupted'),
-      ),
+      h('div', null, h('span', { className: 'scope-kicker' }, 'Data warning'), h('h3', null, 'Firewall data is corrupted')),
     ),
-    h(
-      'p',
-      null,
-      'Firewall evidence is unavailable. Refresh the dashboard data before relying on this view.',
-    ),
+    h('p', null, 'Firewall evidence is unavailable. Refresh the dashboard data before relying on this view.'),
   )
 }
 
 /** @param {string} pageId */
 function inventoryPage(pageId) {
-  return (
-    pageId === 'agents' ||
-    pageId === 'work' ||
-    pageId === 'work-tasks' ||
-    pageId === 'work-roadmap'
-  )
+  return pageId === 'agents' || pageId === 'work' || pageId === 'work-tasks' || pageId === 'work-roadmap'
 }
 
 /**
@@ -2515,11 +1919,7 @@ function renderPageMode(pageMode, mode) {
   pageMode.replaceChildren()
   pageMode.className = `mode-indicator${mode ? ` mode-${mode}` : ''}`
   pageMode.hidden = !mode
-  if (mode)
-    pageMode.append(
-      octicon(mode === 'review' ? 'beaker' : 'rocket'),
-      titleCase(mode),
-    )
+  if (mode) pageMode.append(octicon(mode === 'review' ? 'beaker' : 'rocket'), titleCase(mode))
 }
 
 /**
@@ -2551,26 +1951,21 @@ function inferAvailability(rows) {
 function summarizeDataState(pageSources) {
   const sourceInputs = [...pageSources.values()]
   const metadata = sourceInputs.map((source) => source.metadata)
-  const availabilities = sourceInputs.map(
-    (source) => source.metadata.availability ?? inferAvailability(source.rows),
-  )
+  const availabilities = sourceInputs.map((source) => source.metadata.availability ?? inferAvailability(source.rows))
   return {
     availability: availabilities.includes('unavailable')
       ? 'unavailable'
-      : availabilities.length === 0 ||
-          availabilities.every((value) => value === 'empty')
+      : availabilities.length === 0 || availabilities.every((value) => value === 'empty')
         ? 'empty'
         : 'available',
     completeness: metadata.some((value) => value.completeness === 'partial')
       ? 'partial'
-      : metadata.length > 0 &&
-          metadata.every((value) => value.completeness === 'complete')
+      : metadata.length > 0 && metadata.every((value) => value.completeness === 'complete')
         ? 'complete'
         : 'unknown',
     freshness: metadata.some((value) => value.freshness === 'stale')
       ? 'stale'
-      : metadata.length > 0 &&
-          metadata.every((value) => value.freshness === 'fresh')
+      : metadata.length > 0 && metadata.every((value) => value.freshness === 'fresh')
         ? 'fresh'
         : 'unknown',
   }
@@ -2586,59 +1981,23 @@ function summarizeDataState(pageSources) {
  * @param {string} [routeParameter]
  * @returns {HTMLElement}
  */
-function renderCustomView(
-  pageId,
-  view,
-  index,
-  sources,
-  units,
-  headingTag = 'h3',
-  routeParameter,
-) {
+function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3', routeParameter) {
   const fallbackTitle = `View ${index + 1}`
   if (!isPlainObject(view)) {
-    return renderCustomViewState(
-      pageId,
-      fallbackTitle,
-      null,
-      'unavailable',
-      ['Invalid custom view definition.'],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, fallbackTitle, null, 'unavailable', ['Invalid custom view definition.'], headingTag)
   }
 
   const title = getViewTitle(view, index)
 
-  if (
-    routeParameter &&
-    isPlainObject(view.data) &&
-    typeof view.data['route-field'] === 'string' &&
-    view.mark !== 'element'
-  ) {
-    return renderRouteScopedDataView(
-      pageId,
-      view,
-      index,
-      sources,
-      units,
-      headingTag,
-      routeParameter,
-    )
+  if (routeParameter && isPlainObject(view.data) && typeof view.data['route-field'] === 'string' && view.mark !== 'element') {
+    return renderRouteScopedDataView(pageId, view, index, sources, units, headingTag, routeParameter)
   }
 
   /** @type {string[]} */
   const contextDetails = []
 
   if (view.mark === 'element') {
-    return renderElementView(
-      pageId,
-      title,
-      view,
-      sources,
-      contextDetails,
-      headingTag,
-      routeParameter,
-    )
+    return renderElementView(pageId, title, view, sources, contextDetails, headingTag, routeParameter)
   }
   if (view.mark === 'callout') {
     return renderCalloutView(pageId, view, title, headingTag)
@@ -2646,89 +2005,45 @@ function renderCustomView(
 
   const sourceName = getViewSources(view)[0] ?? null
   if (!sourceName) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      null,
-      'unavailable',
-      ['Source unavailable.'],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, title, null, 'unavailable', ['Source unavailable.'], headingTag)
   }
 
   const sourceInput = sources[sourceName]
   if (!sourceInput || !Array.isArray(sourceInput.rows)) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      sourceName,
-      'unavailable',
-      [`Source unavailable: ${sourceName}`],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, title, sourceName, 'unavailable', [`Source unavailable: ${sourceName}`], headingTag)
   }
 
   const filteredRows = filterRowsForView(sourceInput.rows, view.data)
   const metadata = sourceInput.metadata
-  const state =
-    sourceInput.metadata?.availability ?? inferAvailability(filteredRows)
-  const emptyMessage =
-    typeof view['empty-message'] === 'string'
-      ? view['empty-message']
-      : undefined
+  const state = sourceInput.metadata?.availability ?? inferAvailability(filteredRows)
+  const emptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : undefined
 
   if (state !== 'available' && !(state === 'empty' && view.mark === 'table')) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      sourceName,
-      state,
-      contextDetails,
-      headingTag,
-      state === 'empty' ? emptyMessage : undefined,
-    )
+    return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag, state === 'empty' ? emptyMessage : undefined)
   }
 
   if (filteredRows.length === 0 && view.mark !== 'table') {
-    return renderCustomViewState(
-      pageId,
-      title,
-      sourceName,
-      'empty',
-      contextDetails,
-      headingTag,
-      emptyMessage,
-    )
+    return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage)
   }
 
-  const rendered = renderDataView(
-    typeof view.mark === 'string' ? view.mark : '',
-    {
-      pageId,
-      title,
-      view,
-      sourceName,
-      rows: filteredRows,
-      metadata,
-      contextDetails,
-      headingTag,
-      units,
-      prepareTableRows,
-      buildChartPoints,
-      prepareChartPoints,
-      toText,
-    },
-  )
-  if (rendered) return rendered
-
-  return renderCustomViewState(
+  const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {
     pageId,
     title,
+    view,
     sourceName,
-    'unavailable',
-    [...contextDetails, 'Unsupported view mark.'],
+    rows: filteredRows,
+    metadata,
+    contextDetails,
     headingTag,
-  )
+    units,
+    prepareTableRows,
+    buildChartPoints,
+    prepareChartPoints,
+    toText,
+  })
+  if (rendered) return rendered
+
+  return renderCustomViewState(pageId, title, sourceName, 'unavailable', [...contextDetails, 'Unsupported view mark.'], headingTag)
 }
 
 /**
@@ -2756,11 +2071,7 @@ function renderCalloutView(pageId, view, title, headingTag) {
       h(
         'div',
         null,
-        h(
-          'span',
-          { className: 'scope-kicker' },
-          typeof definition.label === 'string' ? definition.label : 'Note',
-        ),
+        h('span', { className: 'scope-kicker' }, typeof definition.label === 'string' ? definition.label : 'Note'),
         h(headingTag, { id: headingId }, title),
       ),
     ),
@@ -2777,17 +2088,8 @@ function renderCalloutView(pageId, view, title, headingTag) {
  * @param {'h3'|'h4'} headingTag
  * @param {string} routeParameter
  */
-function renderRouteScopedDataView(
-  pageId,
-  view,
-  index,
-  sources,
-  units,
-  headingTag,
-  routeParameter,
-) {
-  const sourceName =
-    typeof view.data?.source === 'string' ? view.data.source : ''
+function renderRouteScopedDataView(pageId, view, index, sources, units, headingTag, routeParameter) {
+  const sourceName = typeof view.data?.source === 'string' ? view.data.source : ''
   const routeField = String(view.data?.['route-field'] ?? '')
   const root = h('div', {
     'data-route-view': '',
@@ -2802,12 +2104,7 @@ function renderRouteScopedDataView(
     const source = sources[sourceName]
     const routeRows =
       source && Array.isArray(source.rows)
-        ? source.rows.filter(
-            (row) =>
-              selected.length > 0 &&
-              String(row[routeField] ?? '').toLowerCase() ===
-                selected.toLowerCase(),
-          )
+        ? source.rows.filter((row) => selected.length > 0 && String(row[routeField] ?? '').toLowerCase() === selected.toLowerCase())
         : []
     if (view.chart === 'swimlane' && selected.length > 0) {
       const workflowExists =
@@ -2815,14 +2112,8 @@ function renderRouteScopedDataView(
         sources.workflows.rows.some((row) => {
           const repositoryName = String(row.repository ?? '').trim()
           const repository =
-            repositoryName.includes('/') ||
-            !String(row.organization ?? '').trim()
-              ? repositoryName
-              : `${String(row.organization).trim()}/${repositoryName}`
-          return (
-            `${repository}:${String(row.workflow ?? '').trim()}`.toLowerCase() ===
-            selected.toLowerCase()
-          )
+            repositoryName.includes('/') || !String(row.organization ?? '').trim() ? repositoryName : `${String(row.organization).trim()}/${repositoryName}`
+          return `${repository}:${String(row.workflow ?? '').trim()}`.toLowerCase() === selected.toLowerCase()
         })
       if (!workflowExists) {
         root.replaceChildren(
@@ -2841,20 +2132,13 @@ function renderRouteScopedDataView(
       const intervalRows = filterRowsForView(routeRows, dataWithoutFilters)
       const visibleRows = filterRowsForView(routeRows, data)
       if (visibleRows.length === 0) {
-        const filteredEmpty =
-          intervalRows.length > 0 &&
-          isPlainObject(data.filters) &&
-          Object.keys(data.filters).length > 0
+        const filteredEmpty = intervalRows.length > 0 && isPlainObject(data.filters) && Object.keys(data.filters).length > 0
         root.replaceChildren(
           renderSwimlaneRouteState(
             pageId,
             getViewTitle(view, index),
-            filteredEmpty
-              ? 'No runs match the current filters.'
-              : 'No workflow runs in this period',
-            filteredEmpty
-              ? 'Clear filters'
-              : 'Try increasing the time horizon.',
+            filteredEmpty ? 'No runs match the current filters.' : 'No workflow runs in this period',
+            filteredEmpty ? 'Clear filters' : 'Try increasing the time horizon.',
             headingTag,
           ),
         )
@@ -2871,23 +2155,12 @@ function renderRouteScopedDataView(
             },
           }
         : sources
-    const rendered = renderCustomView(
-      pageId,
-      scopedView,
-      index,
-      scopedSources,
-      units,
-      headingTag,
-    )
+    const rendered = renderCustomView(pageId, scopedView, index, scopedSources, units, headingTag)
     suppressSupplementalTableHeading(rendered, view, index)
     root.replaceChildren(rendered)
   }
   root.addEventListener('dashboard-route-change', (event) => {
-    if (
-      !(event instanceof CustomEvent) ||
-      event.detail?.parameter !== routeParameter
-    )
-      return
+    if (!(event instanceof CustomEvent) || event.detail?.parameter !== routeParameter) return
     render(event.detail.value)
   })
   render('')
@@ -2901,13 +2174,7 @@ function renderRouteScopedDataView(
  * @param {string} detail
  * @param {'h3'|'h4'} headingTag
  */
-function renderSwimlaneRouteState(
-  pageId,
-  title,
-  stateTitle,
-  detail,
-  headingTag,
-) {
+function renderSwimlaneRouteState(pageId, title, stateTitle, detail, headingTag) {
   return renderPageSection(
     pageId,
     title,
@@ -2933,11 +2200,7 @@ function renderSwimlaneRouteState(
  */
 function getViewTitle(view, index) {
   if (isPlainObject(view)) {
-    if (
-      view.disclosure === 'supplemental' &&
-      typeof view['disclosure-label'] === 'string' &&
-      view['disclosure-label'].length > 0
-    ) {
+    if (view.disclosure === 'supplemental' && typeof view['disclosure-label'] === 'string' && view['disclosure-label'].length > 0) {
       return view['disclosure-label']
     }
 
@@ -2957,15 +2220,8 @@ function getViewTitle(view, index) {
  * @param {number} index
  */
 function suppressSupplementalTableHeading(rendered, view, index) {
-  if (
-    !isPlainObject(view) ||
-    view.mark !== 'table' ||
-    view.disclosure !== 'supplemental'
-  )
-    return
-  const section = rendered.matches('.page-section')
-    ? rendered
-    : rendered.querySelector('.page-section')
+  if (!isPlainObject(view) || view.mark !== 'table' || view.disclosure !== 'supplemental') return
+  const section = rendered.matches('.page-section') ? rendered : rendered.querySelector('.page-section')
   if (!(section instanceof HTMLElement)) return
   section.querySelector(':scope > h3, :scope > h4')?.remove()
   section.removeAttribute('aria-labelledby')
@@ -2982,27 +2238,12 @@ function suppressSupplementalTableHeading(rendered, view, index) {
  * @param {string} [routeParameter]
  * @returns {HTMLElement}
  */
-function renderElementView(
-  pageId,
-  title,
-  view,
-  sources,
-  contextDetails,
-  headingTag,
-  routeParameter,
-) {
+function renderElementView(pageId, title, view, sources, contextDetails, headingTag, routeParameter) {
   const elementName = typeof view.element === 'string' ? view.element : ''
   const sourceNames = getViewSources(view)
   const viewData = isPlainObject(view.data) ? view.data : undefined
   if (sourceNames.length === 0) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      null,
-      'unavailable',
-      [...contextDetails, 'No sources declared for element view.'],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag)
   }
 
   const selectedSources = Object.fromEntries(
@@ -3011,21 +2252,15 @@ function renderElementView(
       const preserveAgentEvidence =
         pageId === 'overview' &&
         elementName === 'signal-list' &&
-        (sourceName === 'workflows' ||
-          sourceName === 'agent-assignments' ||
-          sourceName === 'security-observations')
-      const preservePackageInventory =
-        elementName === 'package-route' && sourceName === 'workflows'
+        (sourceName === 'workflows' || sourceName === 'agent-assignments' || sourceName === 'security-observations')
+      const preservePackageInventory = elementName === 'package-route' && sourceName === 'workflows'
       return source && Array.isArray(source.rows)
         ? [
             [
               sourceName,
               {
                 ...source,
-                rows:
-                  preserveAgentEvidence || preservePackageInventory
-                    ? source.rows
-                    : filterRowsForView(source.rows, viewData),
+                rows: preserveAgentEvidence || preservePackageInventory ? source.rows : filterRowsForView(source.rows, viewData),
               },
             ],
           ]
@@ -3037,82 +2272,37 @@ function renderElementView(
     const sourceName = sourceNames[0]
     const source = selectedSources[sourceName]
     if (!source) {
-      return renderCustomViewState(
-        pageId,
-        title,
-        sourceName,
-        'unavailable',
-        contextDetails,
-        headingTag,
-      )
+      return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag)
     }
-    const state =
-      source.metadata?.availability ?? inferAvailability(source.rows)
-    if (
-      state !== 'available' &&
-      !(state === 'empty' && elementHandlesEmptyRows(elementName))
-    ) {
-      return renderCustomViewState(
-        pageId,
-        title,
-        sourceName,
-        state,
-        contextDetails,
-        headingTag,
-      )
+    const state = source.metadata?.availability ?? inferAvailability(source.rows)
+    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
+      return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag)
     }
     if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
-      return renderCustomViewState(
-        pageId,
-        title,
-        sourceName,
-        'empty',
-        contextDetails,
-        headingTag,
-      )
+      return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag)
     }
   }
 
   const rendered = renderUiElement(elementName, {
     pageId,
     title,
-    description:
-      typeof view.description === 'string' ? view.description : undefined,
+    description: typeof view.description === 'string' ? view.description : undefined,
     sourceNames,
     sources: selectedSources,
     contextDetails,
     scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
-    titleLink: isPlainObject(view['title-link'])
-      ? view['title-link']
-      : undefined,
+    titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
     headingTag,
   })
   if (!rendered) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      null,
-      'unavailable',
-      [...contextDetails, 'Unsupported UI element.'],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag)
   }
-  return [
-    'summary-grid',
-    'readiness-verdict',
-    'data-health-domain-list',
-  ].includes(elementName)
-    ? renderPageSection(
-        pageId,
-        title,
-        [rendered],
-        headingTag,
-        typeof view.description === 'string' ? view.description : undefined,
-      )
+  return ['summary-grid', 'readiness-verdict', 'data-health-domain-list'].includes(elementName)
+    ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered
 }
 
@@ -3126,40 +2316,18 @@ function renderElementView(
  * @param {string} [routeParameter]
  * @returns {Promise<HTMLElement>}
  */
-async function renderElementViewAsync(
-  pageId,
-  title,
-  view,
-  sources,
-  contextDetails,
-  headingTag,
-  routeParameter,
-) {
+async function renderElementViewAsync(pageId, title, view, sources, contextDetails, headingTag, routeParameter) {
   const elementName = typeof view.element === 'string' ? view.element : ''
   const sourceNames = getViewSources(view)
   const viewData = isPlainObject(view.data) ? view.data : undefined
   if (sourceNames.length === 0) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      null,
-      'unavailable',
-      [...contextDetails, 'No sources declared for element view.'],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag)
   }
 
   const selectedSources = Object.fromEntries(
     sourceNames.flatMap((sourceName) => {
       const source = sources[sourceName]
-      return source && Array.isArray(source.rows)
-        ? [
-            [
-              sourceName,
-              { ...source, rows: filterRowsForView(source.rows, viewData) },
-            ],
-          ]
-        : []
+      return source && Array.isArray(source.rows) ? [[sourceName, { ...source, rows: filterRowsForView(source.rows, viewData) }]] : []
     }),
   )
 
@@ -3167,55 +2335,27 @@ async function renderElementViewAsync(
     const sourceName = sourceNames[0]
     const source = selectedSources[sourceName]
     if (!source) {
-      return renderCustomViewState(
-        pageId,
-        title,
-        sourceName,
-        'unavailable',
-        contextDetails,
-        headingTag,
-      )
+      return renderCustomViewState(pageId, title, sourceName, 'unavailable', contextDetails, headingTag)
     }
-    const state =
-      source.metadata?.availability ?? inferAvailability(source.rows)
-    if (
-      state !== 'available' &&
-      !(state === 'empty' && elementHandlesEmptyRows(elementName))
-    ) {
-      return renderCustomViewState(
-        pageId,
-        title,
-        sourceName,
-        state,
-        contextDetails,
-        headingTag,
-      )
+    const state = source.metadata?.availability ?? inferAvailability(source.rows)
+    if (state !== 'available' && !(state === 'empty' && elementHandlesEmptyRows(elementName))) {
+      return renderCustomViewState(pageId, title, sourceName, state, contextDetails, headingTag)
     }
     if (source.rows.length === 0 && !elementHandlesEmptyRows(elementName)) {
-      return renderCustomViewState(
-        pageId,
-        title,
-        sourceName,
-        'empty',
-        contextDetails,
-        headingTag,
-      )
+      return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag)
     }
   }
 
   const rendered = await renderUiElementAsync(elementName, {
     pageId,
     title,
-    description:
-      typeof view.description === 'string' ? view.description : undefined,
+    description: typeof view.description === 'string' ? view.description : undefined,
     sourceNames,
     sources: selectedSources,
     contextDetails,
     scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
     time: isPlainObject(viewData?.time) ? viewData.time : undefined,
-    titleLink: isPlainObject(view['title-link'])
-      ? view['title-link']
-      : undefined,
+    titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
     routeParameter,
     viewId: typeof view.id === 'string' ? view.id : undefined,
     elementConfig: isPlainObject(view.config) ? view.config : undefined,
@@ -3226,39 +2366,23 @@ async function renderElementViewAsync(
     renderUiElement(elementName, {
       pageId,
       title,
-      description:
-        typeof view.description === 'string' ? view.description : undefined,
+      description: typeof view.description === 'string' ? view.description : undefined,
       sourceNames,
       sources: selectedSources,
       contextDetails,
       scope: isPlainObject(viewData?.scope) ? viewData.scope : undefined,
       time: isPlainObject(viewData?.time) ? viewData.time : undefined,
-      titleLink: isPlainObject(view['title-link'])
-        ? view['title-link']
-        : undefined,
+      titleLink: isPlainObject(view['title-link']) ? view['title-link'] : undefined,
       routeParameter,
       viewId: typeof view.id === 'string' ? view.id : undefined,
       elementConfig: isPlainObject(view.config) ? view.config : undefined,
       headingTag,
     })
   if (!syncRendered) {
-    return renderCustomViewState(
-      pageId,
-      title,
-      null,
-      'unavailable',
-      [...contextDetails, 'Unsupported UI element.'],
-      headingTag,
-    )
+    return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag)
   }
   return ['summary-grid', 'readiness-verdict'].includes(elementName)
-    ? renderPageSection(
-        pageId,
-        title,
-        [syncRendered],
-        headingTag,
-        typeof view.description === 'string' ? view.description : undefined,
-      )
+    ? renderPageSection(pageId, title, [syncRendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : syncRendered
 }
 
@@ -3296,24 +2420,12 @@ function renderPageTitleLink(target, candidate) {
  * @param {string} [message]
  * @returns {HTMLElement}
  */
-function renderCustomViewState(
-  pageId,
-  title,
-  sourceName,
-  availability,
-  contextDetails,
-  headingTag = 'h3',
-  message,
-) {
+function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message) {
   return renderPageSection(
     pageId,
     title,
     [
-      h(
-        'p',
-        { 'data-view-availability': availability },
-        message ?? customViewAvailabilityMessage(availability),
-      ),
+      h('p', { 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
       ...renderCustomViewStateDetails(sourceName, contextDetails),
     ],
     headingTag,
@@ -3338,29 +2450,17 @@ function renderCustomViewState(
  * @returns {Array<Record<string, unknown>>}
  */
 function prepareTableRows(rows, columns, dataConfig) {
-  const aggregateColumns = columns.filter(
-    (column) => typeof column.aggregate === 'string',
-  )
-  let prepared =
-    aggregateColumns.length > 0 ? aggregateTableRows(rows, columns) : [...rows]
+  const aggregateColumns = columns.filter((column) => typeof column.aggregate === 'string')
+  let prepared = aggregateColumns.length > 0 ? aggregateTableRows(rows, columns) : [...rows]
   const orderBy = /** @type {TableField[]} */ (
     isPlainObject(dataConfig) && Array.isArray(dataConfig['order-by'])
-      ? dataConfig['order-by'].filter(
-          (item) => isPlainObject(item) && typeof item.field === 'string',
-        )
+      ? dataConfig['order-by'].filter((item) => isPlainObject(item) && typeof item.field === 'string')
       : []
   )
   if (orderBy.length > 0) {
-    prepared.sort((left, right) =>
-      compareOrderedRows(left, right, orderBy, columns),
-    )
+    prepared.sort((left, right) => compareOrderedRows(left, right, orderBy, columns))
   }
-  const limit =
-    isPlainObject(dataConfig) &&
-    Number.isInteger(dataConfig.limit) &&
-    dataConfig.limit > 0
-      ? dataConfig.limit
-      : null
+  const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0 ? dataConfig.limit : null
   return limit === null ? prepared : prepared.slice(0, limit)
 }
 
@@ -3370,9 +2470,7 @@ function prepareTableRows(rows, columns, dataConfig) {
  * @returns {Array<Record<string, unknown>>}
  */
 function aggregateTableRows(rows, columns) {
-  const dimensions = columns.filter(
-    (column) => typeof column.aggregate !== 'string',
-  )
+  const dimensions = columns.filter((column) => typeof column.aggregate !== 'string')
   /** @type {Map<string, Array<Record<string, unknown>>>} */
   const groups = new Map()
   for (const row of rows) {
@@ -3382,19 +2480,10 @@ function aggregateTableRows(rows, columns) {
     groups.set(key, group)
   }
   return [...groups.values()].map((group) => {
-    const output = Object.fromEntries(
-      dimensions.map((column) => [column.field, group[0]?.[column.field]]),
-    )
-    for (const column of columns.filter(
-      (candidate) => typeof candidate.aggregate === 'string',
-    )) {
-      const outputField =
-        typeof column.as === 'string' ? column.as : column.field
-      output[outputField] = aggregateTableValue(
-        group,
-        column.field,
-        column.aggregate,
-      )
+    const output = Object.fromEntries(dimensions.map((column) => [column.field, group[0]?.[column.field]]))
+    for (const column of columns.filter((candidate) => typeof candidate.aggregate === 'string')) {
+      const outputField = typeof column.as === 'string' ? column.as : column.field
+      output[outputField] = aggregateTableValue(group, column.field, column.aggregate)
     }
     return output
   })
@@ -3407,22 +2496,14 @@ function aggregateTableRows(rows, columns) {
  * @returns {number | string}
  */
 function aggregateTableValue(rows, field, aggregate) {
-  const present = rows
-    .map((row) => row[field])
-    .filter((value) => value != null && value !== '')
+  const present = rows.map((row) => row[field]).filter((value) => value != null && value !== '')
   if (aggregate === 'count') return present.length
   if (aggregate === 'distinct-count') return new Set(present.map(toText)).size
   const values = present.map(toNumber)
-  if (aggregate === 'sum')
-    return values.reduce((total, value) => total + value, 0)
-  if (aggregate === 'mean')
-    return values.length > 0
-      ? values.reduce((total, value) => total + value, 0) / values.length
-      : 'Unavailable'
-  if (aggregate === 'min')
-    return values.length > 0 ? Math.min(...values) : 'Unavailable'
-  if (aggregate === 'max')
-    return values.length > 0 ? Math.max(...values) : 'Unavailable'
+  if (aggregate === 'sum') return values.reduce((total, value) => total + value, 0)
+  if (aggregate === 'mean') return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : 'Unavailable'
+  if (aggregate === 'min') return values.length > 0 ? Math.min(...values) : 'Unavailable'
+  if (aggregate === 'max') return values.length > 0 ? Math.max(...values) : 'Unavailable'
   return present[0] == null ? 'Unavailable' : toText(present[0])
 }
 
@@ -3435,20 +2516,11 @@ function aggregateTableValue(rows, field, aggregate) {
  */
 function compareOrderedRows(left, right, orderBy, columns) {
   for (const ordering of orderBy) {
-    const comparison = compareTableValues(
-      left[ordering.field],
-      right[ordering.field],
-    )
-    if (comparison !== 0)
-      return ordering.direction === 'desc' ? -comparison : comparison
+    const comparison = compareTableValues(left[ordering.field], right[ordering.field])
+    if (comparison !== 0) return ordering.direction === 'desc' ? -comparison : comparison
   }
-  for (const column of columns.filter(
-    (candidate) => typeof candidate.aggregate !== 'string',
-  )) {
-    const comparison = compareTableValues(
-      left[column.field],
-      right[column.field],
-    )
+  for (const column of columns.filter((candidate) => typeof candidate.aggregate !== 'string')) {
+    const comparison = compareTableValues(left[column.field], right[column.field])
     if (comparison !== 0) return comparison
   }
   return 0
@@ -3483,11 +2555,8 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
       y: y ? toNumber(row[y.field]) : 0,
       category: y ? formatString(row[y.field], y.format) : 'unknown',
       color: color ? formatString(row[color.field], color.format) : null,
-      highlighted:
-        typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
-      link: hrefField
-        ? findLink(row, /** @type {LinkFieldName} */ (hrefField))
-        : null,
+      highlighted: typeof row['in-window'] === 'boolean' ? row['in-window'] : null,
+      link: hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null,
       source: row,
     }))
   }
@@ -3498,9 +2567,7 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
     const rawXValue = x ? toText(row[x.field]) : 'unknown'
     const rawColorValue = color ? toText(row[color.field]) : null
     const xValue = x ? formatString(row[x.field], x.format) : 'unknown'
-    const colorValue = color
-      ? formatString(row[color.field], color.format)
-      : null
+    const colorValue = color ? formatString(row[color.field], color.format) : null
     const key = JSON.stringify([rawXValue, rawColorValue])
     const group = groups.get(key) ?? {
       x: xValue,
@@ -3510,9 +2577,7 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
       source: row,
     }
     group.values.push(y ? row[y.field] : null)
-    const link = hrefField
-      ? findLink(row, /** @type {LinkFieldName} */ (hrefField))
-      : null
+    const link = hrefField ? findLink(row, /** @type {LinkFieldName} */ (hrefField)) : null
     if (link) group.links.push(link)
     groups.set(key, group)
   }
@@ -3520,19 +2585,13 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
     const numericValues = group.values.map(toNumber)
     let value = 0
     if (aggregate === 'count') {
-      value = group.values.filter(
-        (candidate) => candidate != null && candidate !== '',
-      ).length
+      value = group.values.filter((candidate) => candidate != null && candidate !== '').length
     } else if (aggregate === 'distinct-count') {
       value = new Set(group.values.map(toText)).size
     } else if (aggregate === 'sum') {
       value = numericValues.reduce((total, candidate) => total + candidate, 0)
     } else if (aggregate === 'mean') {
-      value =
-        numericValues.length > 0
-          ? numericValues.reduce((total, candidate) => total + candidate, 0) /
-            numericValues.length
-          : 0
+      value = numericValues.length > 0 ? numericValues.reduce((total, candidate) => total + candidate, 0) / numericValues.length : 0
     } else if (aggregate === 'min') {
       value = numericValues.length > 0 ? Math.min(...numericValues) : 0
     } else if (aggregate === 'max') {
@@ -3546,10 +2605,7 @@ function buildChartPoints(pageId, title, rows, x, y, color, hrefField) {
       category: toText(group.values[0]),
       color: group.color,
       highlighted: null,
-      link:
-        distinctLinks.size === 1
-          ? (distinctLinks.values().next().value ?? null)
-          : null,
+      link: distinctLinks.size === 1 ? (distinctLinks.values().next().value ?? null) : null,
       source: group.source,
     }
   })
@@ -3568,36 +2624,19 @@ function prepareChartPoints(points, x, y, color, dataConfig) {
   const prepared = [...points]
   const orderBy =
     isPlainObject(dataConfig) && Array.isArray(dataConfig['order-by'])
-      ? dataConfig['order-by'].filter(
-          (item) => isPlainObject(item) && typeof item.field === 'string',
-        )
+      ? dataConfig['order-by'].filter((item) => isPlainObject(item) && typeof item.field === 'string')
       : []
   prepared.sort((left, right) => {
     for (const item of orderBy) {
-      const comparison = compareTableValues(
-        chartPointOutputValue(left, item.field, x, y, color),
-        chartPointOutputValue(right, item.field, x, y, color),
-      )
-      if (comparison !== 0)
-        return item.direction === 'desc' ? -comparison : comparison
+      const comparison = compareTableValues(chartPointOutputValue(left, item.field, x, y, color), chartPointOutputValue(right, item.field, x, y, color))
+      if (comparison !== 0) return item.direction === 'desc' ? -comparison : comparison
     }
-    const xComparison = compareTableValues(
-      chartPointOutputValue(left, x?.field, x, y, color),
-      chartPointOutputValue(right, x?.field, x, y, color),
-    )
+    const xComparison = compareTableValues(chartPointOutputValue(left, x?.field, x, y, color), chartPointOutputValue(right, x?.field, x, y, color))
     return xComparison !== 0
       ? xComparison
-      : compareTableValues(
-          chartPointOutputValue(left, color?.field, x, y, color),
-          chartPointOutputValue(right, color?.field, x, y, color),
-        )
+      : compareTableValues(chartPointOutputValue(left, color?.field, x, y, color), chartPointOutputValue(right, color?.field, x, y, color))
   })
-  const limit =
-    isPlainObject(dataConfig) &&
-    Number.isInteger(dataConfig.limit) &&
-    dataConfig.limit > 0
-      ? dataConfig.limit
-      : null
+  const limit = isPlainObject(dataConfig) && Number.isInteger(dataConfig.limit) && dataConfig.limit > 0 ? dataConfig.limit : null
   return limit === null ? prepared : prepared.slice(0, limit)
 }
 
@@ -3611,17 +2650,10 @@ function prepareChartPoints(points, x, y, color, dataConfig) {
  */
 function chartPointOutputValue(point, field, x, y, color) {
   if (typeof field !== 'string') return null
-  if (field === x?.field || field === x?.as)
-    return point.source?.[x.field] ?? point.x
-  const yOutput =
-    typeof y?.as === 'string'
-      ? y.as
-      : typeof y?.aggregate === 'string'
-        ? `${y.aggregate}-${y.field}`
-        : y?.field
+  if (field === x?.field || field === x?.as) return point.source?.[x.field] ?? point.x
+  const yOutput = typeof y?.as === 'string' ? y.as : typeof y?.aggregate === 'string' ? `${y.aggregate}-${y.field}` : y?.field
   if (field === y?.field || field === yOutput) return point.y
-  if (field === color?.field || field === color?.as)
-    return point.source?.[color.field] ?? point.color
+  if (field === color?.field || field === color?.as) return point.source?.[color.field] ?? point.color
   return null
 }
 
@@ -3641,28 +2673,13 @@ function filterRowsForView(rows, dataConfig) {
 
   let filteredRows = rows
   if (isPlainObject(dataConfig?.scope)) {
-    filteredRows = filteredRows.filter((row) =>
-      rowMatchesScope(
-        row,
-        /** @type {Record<string, unknown>} */ (dataConfig.scope),
-      ),
-    )
+    filteredRows = filteredRows.filter((row) => rowMatchesScope(row, /** @type {Record<string, unknown>} */ (dataConfig.scope)))
   }
   if (isPlainObject(dataConfig?.time)) {
-    filteredRows = filteredRows.filter((row) =>
-      rowMatchesTime(
-        row,
-        /** @type {Record<string, unknown>} */ (dataConfig.time),
-      ),
-    )
+    filteredRows = filteredRows.filter((row) => rowMatchesTime(row, /** @type {Record<string, unknown>} */ (dataConfig.time)))
   }
   if (isPlainObject(dataConfig?.filters)) {
-    filteredRows = filteredRows.filter((row) =>
-      rowMatchesFilters(
-        row,
-        /** @type {Record<string, unknown>} */ (dataConfig.filters),
-      ),
-    )
+    filteredRows = filteredRows.filter((row) => rowMatchesFilters(row, /** @type {Record<string, unknown>} */ (dataConfig.filters)))
   }
   return filteredRows
 }
@@ -3695,8 +2712,7 @@ function applyDashboardDefaults(view, dashboardDefaults) {
  */
 function resolveViewTime(time, dashboardTime) {
   if (!isPlainObject(time) || typeof time.range !== 'string') return time
-  if (!isPlainObject(dashboardTime) || typeof dashboardTime.end !== 'string')
-    return time
+  if (!isPlainObject(dashboardTime) || typeof dashboardTime.end !== 'string') return time
   const evaluatedAt = Date.parse(dashboardTime.end)
   if (!Number.isFinite(evaluatedAt)) return time
   let hours
@@ -3720,9 +2736,7 @@ function resolveViewTime(time, dashboardTime) {
 function resolveDashboardDefaults(defaults, horizonRange, evaluatedAt) {
   const configured = isPlainObject(defaults) ? defaults : {}
   const evaluatedAtMs = Date.parse(evaluatedAt)
-  const start = new Date(
-    evaluatedAtMs - dashboardHorizonHours(horizonRange) * 3_600_000,
-  ).toISOString()
+  const start = new Date(evaluatedAtMs - dashboardHorizonHours(horizonRange) * 3_600_000).toISOString()
   return {
     ...configured,
     time: { start, end: evaluatedAt },
@@ -3770,8 +2784,7 @@ function rowMatchesTime(row, time) {
     return false
   }
 
-  const start =
-    typeof time.start === 'string' ? Date.parse(time.start) : Number.NaN
+  const start = typeof time.start === 'string' ? Date.parse(time.start) : Number.NaN
   const end = typeof time.end === 'string' ? Date.parse(time.end) : Number.NaN
   if (Number.isFinite(start) && rowInstant < start) {
     return false
@@ -3808,9 +2821,7 @@ function rowMatchesFilters(row, filters) {
   for (const [fieldName, expected] of Object.entries(filters)) {
     const value = row[fieldName]
     if (Array.isArray(expected)) {
-      if (
-        !expected.some((candidate) => valuesEqualForFilter(value, candidate))
-      ) {
+      if (!expected.some((candidate) => valuesEqualForFilter(value, candidate))) {
         return false
       }
       continue
@@ -3847,16 +2858,12 @@ function toText(value) {
  */
 export function enableDashboardKeyboardNavigation(root) {
   root.addEventListener('keydown', (event) => {
-    if (!(event instanceof KeyboardEvent) || !(event.target instanceof Element))
-      return
+    if (!(event instanceof KeyboardEvent) || !(event.target instanceof Element)) return
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
     const section = event.target.closest('.dashboard-page .page-section')
     const page = section?.closest('.dashboard-page')
-    if (!(section instanceof HTMLElement) || !(page instanceof HTMLElement))
-      return
-    const sections = [...page.querySelectorAll('.page-section')].filter(
-      (candidate) => candidate instanceof HTMLElement,
-    )
+    if (!(section instanceof HTMLElement) || !(page instanceof HTMLElement)) return
+    const sections = [...page.querySelectorAll('.page-section')].filter((candidate) => candidate instanceof HTMLElement)
     const delta = event.key === 'ArrowDown' ? 1 : -1
     const nextSection = sections[sections.indexOf(section) + delta]
     if (!nextSection) return

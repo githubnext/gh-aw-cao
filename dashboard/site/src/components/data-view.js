@@ -7,31 +7,12 @@ import { octicon } from '../octicons.js'
 import { formatAggregateValue, formatRelativeTime } from '../view-formatters.js'
 import { formatCount, titleCase } from './count-formatters.js'
 import { renderCellDisplay } from './cell-display.js'
-import {
-  listChartSeries,
-  pieChartEntries,
-  renderChartLegend,
-  renderPieLegend,
-  renderChartWidget,
-} from './chart-elements.js'
-import {
-  findFirstLink,
-  findLink,
-  renderExternalLink,
-  renderLinkedValue,
-  renderOutcomeLink,
-  renderWorkflowRunLink,
-} from './link-content.js'
+import { listChartSeries, pieChartEntries, renderChartLegend, renderPieLegend, renderChartWidget } from './chart-elements.js'
+import { findFirstLink, findLink, renderExternalLink, renderLinkedValue, renderOutcomeLink, renderWorkflowRunLink } from './link-content.js'
 import { createEntityAwareCellRenderer } from './linked-text.js'
 import { renderTableRegion } from './table-region.js'
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js'
-import {
-  renderCloseButton,
-  isPlainObject,
-  isSafeHttpsUrl,
-  createCopyControl,
-  createModalDialog,
-} from './ui-primitives.js'
+import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog } from './ui-primitives.js'
 import { processScatterPoints } from '../data-processor.js'
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js'
 
@@ -100,41 +81,14 @@ export function renderDataView(mark, context) {
 
 /** @param {DataViewContext} context */
 function renderMetricView(context) {
-  const {
-    pageId,
-    title,
-    view,
-    rows,
-    metadata,
-    contextDetails,
-    headingTag,
-    toText,
-    units = {},
-  } = context
-  const valueDefinition =
-    isPlainObject(view.encoding) && isPlainObject(view.encoding.value)
-      ? view.encoding.value
-      : null
-  const fieldName =
-    typeof valueDefinition?.field === 'string' ? valueDefinition.field : null
-  const aggregate =
-    typeof valueDefinition?.aggregate === 'string'
-      ? valueDefinition.aggregate
-      : 'none'
-  const hrefDefinition =
-    isPlainObject(view.encoding) && isPlainObject(view.encoding.href)
-      ? view.encoding.href
-      : null
-  const hrefField =
-    typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, toText, units = {} } = context
+  const valueDefinition = isPlainObject(view.encoding) && isPlainObject(view.encoding.value) ? view.encoding.value : null
+  const fieldName = typeof valueDefinition?.field === 'string' ? valueDefinition.field : null
+  const aggregate = typeof valueDefinition?.aggregate === 'string' ? valueDefinition.aggregate : 'none'
+  const hrefDefinition = isPlainObject(view.encoding) && isPlainObject(view.encoding.href) ? view.encoding.href : null
+  const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null
   const link = hrefField ? findFirstLink(rows, hrefField) : null
-  const valueText = formatAggregateValue(
-    rows,
-    fieldName,
-    aggregate,
-    toText,
-    fieldUnit(valueDefinition, units),
-  )
+  const valueText = formatAggregateValue(rows, fieldName, aggregate, toText, fieldUnit(valueDefinition, units))
   const content = [
     ...renderViewSectionChrome(metadata, contextDetails),
     h(
@@ -154,41 +108,17 @@ function renderMetricView(context) {
 
 /** @param {DataViewContext} context */
 function renderTableView(context) {
-  const {
-    pageId,
-    title,
-    view,
-    rows,
-    metadata,
-    contextDetails,
-    headingTag,
-    prepareTableRows,
-    toText,
-    units = {},
-  } = context
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, prepareTableRows, toText, units = {} } = context
   const columns = /** @type {TableField[]} */ (
     isPlainObject(view.encoding) && Array.isArray(view.encoding.columns)
-      ? view.encoding.columns.filter(
-          (column) => isPlainObject(column) && typeof column.field === 'string',
-        )
+      ? view.encoding.columns.filter((column) => isPlainObject(column) && typeof column.field === 'string')
       : []
   )
-  const hrefDefinition =
-    isPlainObject(view.encoding) && isPlainObject(view.encoding.href)
-      ? view.encoding.href
-      : null
-  const hrefField =
-    typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null
+  const hrefDefinition = isPlainObject(view.encoding) && isPlainObject(view.encoding.href) ? view.encoding.href : null
+  const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null
   const tableRows = prepareTableRows(rows, columns, view.data)
-  const tree =
-    isPlainObject(view.tree) &&
-    typeof view.tree['id-field'] === 'string' &&
-    typeof view.tree['parent-field'] === 'string'
-      ? view.tree
-      : null
-  const displayedRows = tree
-    ? arrangeTreeRows(tableRows, tree['id-field'], tree['parent-field'])
-    : tableRows.map((row) => ({ row, depth: 0 }))
+  const tree = isPlainObject(view.tree) && typeof view.tree['id-field'] === 'string' && typeof view.tree['parent-field'] === 'string' ? view.tree : null
+  const displayedRows = tree ? arrangeTreeRows(tableRows, tree['id-field'], tree['parent-field']) : tableRows.map((row) => ({ row, depth: 0 }))
   const actions = tableActions(view)
   const renderCellValue = createEntityAwareCellRenderer(
     ENTITY_LINK_FIELDS,
@@ -209,22 +139,15 @@ function renderTableView(context) {
       'tr',
       {
         'data-custom-row-key': `${pageId}-${title}-${rowIndex}`,
-        ...(tree
-          ? { 'aria-level': String(depth + 1), 'data-tree-row': '' }
-          : {}),
+        ...(tree ? { 'aria-level': String(depth + 1), 'data-tree-row': '' } : {}),
       },
       ...actions.map((action) =>
         actionMatches(action, row)
-          ? h(
-              'td',
-              { className: 'table-intent-action' },
-              renderIntentAction(action, row),
-            )
+          ? h('td', { className: 'table-intent-action' }, renderIntentAction(action, row))
           : h('td', { className: 'table-intent-action' }),
       ),
       ...columns.map((column, columnIndex) => {
-        const outputField =
-          typeof column.as === 'string' ? column.as : column.field
+        const outputField = typeof column.as === 'string' ? column.as : column.field
         const cellAttributes = {
           'data-field': outputField,
           ...(outputField === 'status-detail'
@@ -244,18 +167,12 @@ function renderTableView(context) {
                 : column.display === 'run-link'
                   ? renderWorkflowRunLink(row, toText(row[outputField]))
                   : column.display === 'evidence-link'
-                    ? renderLinkedValue(
-                        toText(row[outputField]),
-                        findLink(row, 'evidence-link'),
-                      )
+                    ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
                     : column.display === 'outcome-link'
                       ? renderOutcomeLink(row, toText(row[outputField]))
                       : renderCellValue(column, row[outputField], row)
         /** @param {string | HTMLElement} content */
-        const constrainOutputEvidence = (content) =>
-          column.display === 'outcome-link'
-            ? h('span', { className: 'table-output-evidence' }, content)
-            : content
+        const constrainOutputEvidence = (content) => (column.display === 'outcome-link' ? h('span', { className: 'table-output-evidence' }, content) : content)
         /** @param {string | HTMLElement} content */
         const renderCellContent = (content) =>
           columnIndex === 0 && tree
@@ -273,14 +190,8 @@ function renderTableView(context) {
             return h('td', cellAttributes, renderCellContent(value))
           }
           const outputEvidenceText = toText(row[outputField])
-          const linkedValue = renderLinkedValue(
-            column.display === 'outcome-link' ? outputEvidenceText : value,
-            findLink(row, hrefField),
-          )
-          if (
-            column.display === 'outcome-link' &&
-            linkedValue instanceof HTMLElement
-          ) {
+          const linkedValue = renderLinkedValue(column.display === 'outcome-link' ? outputEvidenceText : value, findLink(row, hrefField))
+          if (column.display === 'outcome-link' && linkedValue instanceof HTMLElement) {
             linkedValue.title = outputEvidenceText
           }
           return h('td', cellAttributes, renderCellContent(linkedValue))
@@ -300,10 +211,7 @@ function renderTableView(context) {
         tableClassName: 'custom-table',
         tableRole: tree ? 'treegrid' : undefined,
         regionClassName: interactive ? undefined : 'table-region-static',
-        emptyMessage:
-          typeof view['empty-message'] === 'string'
-            ? view['empty-message']
-            : 'No rows available.',
+        emptyMessage: typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.',
         colSpan: Math.max(columns.length + actions.length, 1),
         headCells: [...actions.map(() => 'Action'), ...columns.map(fieldTitle)],
         unsortableColumns: actions.map((_, index) => index),
@@ -312,16 +220,12 @@ function renderTableView(context) {
             ? [
                 ...actions.map(() => ({ label: 'Action', values: [] })),
                 ...columns.map((column) => {
-                  const outputField =
-                    typeof column.as === 'string' ? column.as : column.field
+                  const outputField = typeof column.as === 'string' ? column.as : column.field
                   return {
                     field: outputField,
                     label: fieldTitle(column),
                     type: String(column.type ?? ''),
-                    display:
-                      typeof column.display === 'string'
-                        ? column.display
-                        : undefined,
+                    display: typeof column.display === 'string' ? column.display : undefined,
                     values: tableRows.map((row) => row[outputField]),
                   }
                 }),
@@ -330,8 +234,7 @@ function renderTableView(context) {
         filterLabel: interactive ? `Filter ${title}` : undefined,
         filterId: typeof view.id === 'string' ? view.id : `${pageId}-table`,
         filterFields: columns.flatMap((column, columnIndex) =>
-          column.filter !== false &&
-          ['nominal', 'ordinal'].includes(String(column.type))
+          column.filter !== false && ['nominal', 'ordinal'].includes(String(column.type))
             ? [
                 {
                   key: typeof column.as === 'string' ? column.as : column.field,
@@ -387,8 +290,7 @@ function arrangeTreeRows(rows, idField, parentField) {
     if (visited.has(row)) return
     visited.add(row)
     result.push({ row, depth })
-    for (const child of children.get(String(row[idField] ?? '')) || [])
-      append(child, depth + 1)
+    for (const child of children.get(String(row[idField] ?? '')) || []) append(child, depth + 1)
   }
   for (const row of roots) append(row, 0)
   for (const row of rows) append(row, 0)
@@ -412,71 +314,22 @@ function renderStatusDetail(row, view, toText) {
 
 /** @param {DataViewContext} context */
 function renderChartView(context) {
-  const {
-    pageId,
-    title,
-    view,
-    rows,
-    metadata,
-    contextDetails,
-    headingTag,
-    buildChartPoints,
-    prepareChartPoints,
-  } = context
+  const { pageId, title, view, rows, metadata, contextDetails, headingTag, buildChartPoints, prepareChartPoints } = context
   const encoding = isPlainObject(view.encoding) ? view.encoding : null
-  const x =
-    isPlainObject(encoding?.x) && typeof encoding.x.field === 'string'
-      ? encoding.x
-      : null
-  const y =
-    isPlainObject(encoding?.y) && typeof encoding.y.field === 'string'
-      ? encoding.y
-      : null
-  const color =
-    isPlainObject(encoding?.color) && typeof encoding.color.field === 'string'
-      ? encoding.color
-      : null
-  const reference =
-    isPlainObject(encoding?.reference) &&
-    typeof encoding.reference.field === 'string'
-      ? encoding.reference
-      : null
-  const href =
-    isPlainObject(encoding?.href) && typeof encoding.href.field === 'string'
-      ? encoding.href
-      : null
-  const chartType =
-    typeof view.chart === 'string'
-      ? view.chart
-      : x?.type === 'temporal'
-        ? 'line'
-        : 'bar'
+  const x = isPlainObject(encoding?.x) && typeof encoding.x.field === 'string' ? encoding.x : null
+  const y = isPlainObject(encoding?.y) && typeof encoding.y.field === 'string' ? encoding.y : null
+  const color = isPlainObject(encoding?.color) && typeof encoding.color.field === 'string' ? encoding.color : null
+  const reference = isPlainObject(encoding?.reference) && typeof encoding.reference.field === 'string' ? encoding.reference : null
+  const href = isPlainObject(encoding?.href) && typeof encoding.href.field === 'string' ? encoding.href : null
+  const chartType = typeof view.chart === 'string' ? view.chart : x?.type === 'temporal' ? 'line' : 'bar'
   const value = chartType === 'heatmap' ? color : y
   const series = chartType === 'heatmap' ? y : color
-  const points = prepareChartPoints(
-    buildChartPoints(
-      pageId,
-      title,
-      rows,
-      x,
-      value,
-      series,
-      href?.field ?? null,
-    ),
-    x,
-    value,
-    series,
-    view.data,
-  )
-  const description =
-    typeof view.description === 'string' && view.description.length > 0
-      ? h('p', { className: 'view-description' }, view.description)
-      : null
+  const points = prepareChartPoints(buildChartPoints(pageId, title, rows, x, value, series, href?.field ?? null), x, value, series, view.data)
+  const description = typeof view.description === 'string' && view.description.length > 0 ? h('p', { className: 'view-description' }, view.description) : null
   /** @param {ChartPoint[]} renderedPoints */
   const renderVisualization = (renderedPoints) => {
     const chartSeries = listChartSeries(renderedPoints)
-    const pieSummary =
-      chartType === 'pie' ? pieChartEntries(renderedPoints) : null
+    const pieSummary = chartType === 'pie' ? pieChartEntries(renderedPoints) : null
     const chartWidget = renderChartWidget(
       chartType,
       renderedPoints,
@@ -484,15 +337,10 @@ function renderChartView(context) {
       pieSummary,
       value ? fieldTitle(value) : 'Total',
       value ? fieldUnit(value, context.units ?? {}) : null,
-      isPlainObject(view.data) && isPlainObject(view.data.time)
-        ? view.data.time
-        : null,
+      isPlainObject(view.data) && isPlainObject(view.data.time) ? view.data.time : null,
       reference?.field ?? null,
     )
-    const chartLegend =
-      color && !['heatmap', 'pie', 'swimlane'].includes(chartType)
-        ? renderChartLegend(chartSeries, chartType)
-        : null
+    const chartLegend = color && !['heatmap', 'pie', 'swimlane'].includes(chartType) ? renderChartLegend(chartSeries, chartType) : null
     return {
       chartContent: [
         ...(chartLegend && chartType !== 'scatter' ? [chartLegend] : []),
@@ -502,12 +350,7 @@ function renderChartView(context) {
                 'div',
                 { className: 'pie-chart-layout' },
                 chartWidget,
-                renderPieLegend(
-                  pieSummary.entries,
-                  pieSummary.total,
-                  chartCategoryLinks(renderedPoints),
-                  y ? fieldUnit(y, context.units ?? {}) : null,
-                ),
+                renderPieLegend(pieSummary.entries, pieSummary.total, chartCategoryLinks(renderedPoints), y ? fieldUnit(y, context.units ?? {}) : null),
               ),
             ]
           : [chartWidget]),
@@ -519,15 +362,13 @@ function renderChartView(context) {
   const clustering =
     chartType === 'scatter' && points.length > MAX_RENDERED_SCATTER_POINTS
       ? processScatterPoints(
-          points.map(
-            ({ key, x: pointX, y: pointY, color: pointColor, link }) => ({
-              key,
-              x: pointX,
-              y: pointY,
-              color: pointColor,
-              link,
-            }),
-          ),
+          points.map(({ key, x: pointX, y: pointY, color: pointColor, link }) => ({
+            key,
+            x: pointX,
+            y: pointY,
+            color: pointColor,
+            link,
+          })),
           MAX_RENDERED_SCATTER_POINTS,
         )
       : points
@@ -552,9 +393,7 @@ function renderChartView(context) {
     [
       ...(description ? [description] : []),
       ...renderViewSectionChrome(metadata, contextDetails),
-      ...(pending
-        ? [/** @type {HTMLElement} */ (visualization)]
-        : (initial?.chartContent ?? [])),
+      ...(pending ? [/** @type {HTMLElement} */ (visualization)] : (initial?.chartContent ?? [])),
     ],
     headingTag,
   )
@@ -566,21 +405,11 @@ function renderChartView(context) {
       })
       .catch(() => {
         visualization?.replaceWith(
-          h(
-            'div',
-            { className: 'chart-widget scatter-chart-widget', role: 'status' },
-            'Unable to prepare this scatter visualization.',
-          ),
+          h('div', { className: 'chart-widget scatter-chart-widget', role: 'status' }, 'Unable to prepare this scatter visualization.'),
         )
       })
   } else if (chartType === 'pie') {
-    section.append(
-      h(
-        'div',
-        { className: 'pie-chart-card' },
-        ...Array.from(section.children),
-      ),
-    )
+    section.append(h('div', { className: 'pie-chart-card' }, ...Array.from(section.children)))
   }
   section.classList.add('chart-view', `chart-view-${chartType}`)
   return section
@@ -588,15 +417,10 @@ function renderChartView(context) {
 
 /** @param {Record<string, unknown>} fieldDefinition */
 function fieldTitle(fieldDefinition) {
-  if (
-    typeof fieldDefinition.title === 'string' &&
-    fieldDefinition.title.length > 0
-  ) {
+  if (typeof fieldDefinition.title === 'string' && fieldDefinition.title.length > 0) {
     return fieldDefinition.title
   }
-  return typeof fieldDefinition.field === 'string'
-    ? titleCase(fieldDefinition.field)
-    : 'Field'
+  return typeof fieldDefinition.field === 'string' ? titleCase(fieldDefinition.field) : 'Field'
 }
 
 /**
@@ -605,10 +429,7 @@ function fieldTitle(fieldDefinition) {
  * @returns {{ name: string, symbol: string, significant: number } | null}
  */
 function fieldUnit(fieldDefinition, units) {
-  return isPlainObject(fieldDefinition) &&
-    typeof fieldDefinition.unit === 'string'
-    ? (units[fieldDefinition.unit] ?? null)
-    : null
+  return isPlainObject(fieldDefinition) && typeof fieldDefinition.unit === 'string' ? (units[fieldDefinition.unit] ?? null) : null
 }
 
 /** @param {Array<{ x: string, link: { href: string, label: string } | null }>} points */
@@ -693,12 +514,7 @@ export function renderIntentAction(action, row) {
       }),
     ),
     h('pre', { className: 'table-intent-preview' }, content),
-    h(
-      'footer',
-      { className: 'table-intent-dialog-footer' },
-      status,
-      copyButton,
-    ),
+    h('footer', { className: 'table-intent-dialog-footer' }, status, copyButton),
   )
   triggerButton = /** @type {HTMLButtonElement} */ (
     h(
@@ -727,7 +543,5 @@ function intentValue(value) {
   if (isPlainObject(value) && typeof value.href === 'string') {
     return isSafeHttpsUrl(value.href) ? value.href : undefined
   }
-  return ['string', 'number', 'boolean'].includes(typeof value)
-    ? /** @type {string | number | boolean} */ (value)
-    : undefined
+  return ['string', 'number', 'boolean'].includes(typeof value) ? /** @type {string | number | boolean} */ (value) : undefined
 }

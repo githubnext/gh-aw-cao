@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import {
-  deriveDataHealthSources,
-  evidenceConfidence,
-} from '../../src/data-health.js'
+import { deriveDataHealthSources, evidenceConfidence } from '../../src/data-health.js'
 
-const metadata =
-  /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
-    'source-id': 'fixture',
-    'source-kind': 'fixture',
-    'as-of': '2026-09-03T12:00:00Z',
-    'retrieved-at': '2026-09-03T12:01:00Z',
-    completeness: 'complete',
-    freshness: 'fresh',
-    availability: 'available',
-  })
+const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
+  'source-id': 'fixture',
+  'source-kind': 'fixture',
+  'as-of': '2026-09-03T12:00:00Z',
+  'retrieved-at': '2026-09-03T12:01:00Z',
+  completeness: 'complete',
+  freshness: 'fresh',
+  availability: 'available',
+})
 
 /** @param {string} name @param {Array<Record<string, any>>} rows @param {Record<string, any>} [overrides] @returns {any} */
 function source(name, rows, overrides = {}) {
@@ -60,9 +56,7 @@ function completeSources() {
     outcomes: source('outcomes', [run]),
     findings: source('findings', []),
     'operational-values': source('operational-values', []),
-    'configuration-policy': source('configuration-policy', [
-      { path: '.github/workflows/cao.json' },
-    ]),
+    'configuration-policy': source('configuration-policy', [{ path: '.github/workflows/cao.json' }]),
     'configuration-summary': source('configuration-summary', []),
     'configuration-actions': source('configuration-actions', []),
   }
@@ -110,12 +104,9 @@ describe('data health confidence', () => {
       },
       'unknown',
     ],
-  ])(
-    'keeps availability, completeness, and freshness independent: %j',
-    (state, expected) => {
-      expect(evidenceConfidence(state)).toBe(expected)
-    },
-  )
+  ])('keeps availability, completeness, and freshness independent: %j', (state, expected) => {
+    expect(evidenceConfidence(state)).toBe(expected)
+  })
 
   it('trusts complete, fresh, compatible, reconciled critical evidence', () => {
     const derived = deriveDataHealthSources(completeSources())
@@ -125,36 +116,25 @@ describe('data health confidence', () => {
       completeness: 'complete',
       freshness: 'fresh',
     })
-    expect(
-      derived['data-health-domains'].rows.every(
-        (row) => row.confidence === 'trusted',
-      ),
-    ).toBe(true)
+    expect(derived['data-health-domains'].rows.every((row) => row.confidence === 'trusted')).toBe(true)
   })
 
   it('reports critical collection failure as insufficient and stale partial evidence as degraded', () => {
     const failed = completeSources()
     failed.runs.metadata.availability = 'unavailable'
     failed.runs.metadata['failure-class'] = 'rate-limit'
-    expect(
-      deriveDataHealthSources(failed)['data-health-summary'].rows[0].confidence,
-    ).toBe('insufficient')
+    expect(deriveDataHealthSources(failed)['data-health-summary'].rows[0].confidence).toBe('insufficient')
 
     const stale = completeSources()
     stale.usage.metadata.freshness = 'stale'
     stale.usage.metadata.completeness = 'partial'
-    expect(
-      deriveDataHealthSources(stale)['data-health-summary'].rows[0].confidence,
-    ).toBe('degraded')
+    expect(deriveDataHealthSources(stale)['data-health-summary'].rows[0].confidence).toBe('degraded')
   })
 
   it('keeps missing critical scope and state unknown', () => {
     const sources = completeSources()
     sources.repositories.metadata.completeness = 'unknown'
-    expect(
-      deriveDataHealthSources(sources)['data-health-summary'].rows[0]
-        .confidence,
-    ).toBe('unknown')
+    expect(deriveDataHealthSources(sources)['data-health-summary'].rows[0].confidence).toBe('unknown')
   })
 })
 
@@ -180,15 +160,9 @@ describe('coverage and collection provenance', () => {
     ]
     const derived = deriveDataHealthSources(sources)
     const summary = derived['data-health-summary'].rows[0]
-    const attempts = derived['data-health-fields'].rows.find(
-      (item) => item.source === 'runs' && item.field === 'attempts',
-    )
-    const conclusion = derived['data-health-fields'].rows.find(
-      (item) => item.source === 'runs' && item.field === 'conclusion',
-    )
-    const runsFile = derived['data-health-files'].rows.find(
-      (item) => item.source === 'runs',
-    )
+    const attempts = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'attempts')
+    const conclusion = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'conclusion')
+    const runsFile = derived['data-health-files'].rows.find((item) => item.source === 'runs')
 
     expect(summary).toMatchObject({
       sources: Object.keys(sources).length,
@@ -218,12 +192,8 @@ describe('coverage and collection provenance', () => {
       status: 'available',
     })
     expect(runsFile?.size).toBeGreaterThan(0)
-    expect(runsFile?.['display-size']).toMatch(
-      /^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/,
-    )
-    const fileSizes = /** @type {number[]} */ (
-      derived['data-health-files'].rows.map((row) => row.size)
-    )
+    expect(runsFile?.['display-size']).toMatch(/^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/)
+    const fileSizes = /** @type {number[]} */ (derived['data-health-files'].rows.map((row) => row.size))
     expect(fileSizes).toEqual(fileSizes.toSorted((left, right) => right - left))
     expect(summary['total-size']).toMatch(/^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/)
   })
@@ -232,9 +202,7 @@ describe('coverage and collection provenance', () => {
     const sources = completeSources()
     sources.workflows.metadata['coverage-expected'] = 100
     sources.workflows.metadata['coverage-observed'] = 99
-    const row = deriveDataHealthSources(sources)[
-      'data-health-coverage'
-    ].rows.find((item) => item.area === 'Workflows')
+    const row = deriveDataHealthSources(sources)['data-health-coverage'].rows.find((item) => item.area === 'Workflows')
     expect(row).toMatchObject({
       expected: 100,
       observed: 99,
@@ -247,9 +215,7 @@ describe('coverage and collection provenance', () => {
   it('never presents an unknown denominator as complete or 100%', () => {
     const sources = completeSources()
     delete sources.repositories.metadata['coverage-expected']
-    const row = deriveDataHealthSources(sources)[
-      'data-health-coverage'
-    ].rows.find((item) => item.area === 'Repositories')
+    const row = deriveDataHealthSources(sources)['data-health-coverage'].rows.find((item) => item.area === 'Repositories')
     expect(row).toMatchObject({
       expected: 'Unknown',
       missing: 'Unknown',
@@ -263,11 +229,7 @@ describe('coverage and collection provenance', () => {
     sources.runs.rows = []
     sources.runs.metadata['run-records-expected'] = 0
     sources.runs.metadata['run-records-observed'] = 0
-    let row = /** @type {any} */ (
-      deriveDataHealthSources(sources)['data-health-coverage'].rows.find(
-        (item) => item.area === 'Runs',
-      )
-    )
+    let row = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-coverage'].rows.find((item) => item.area === 'Runs'))
     expect(row).toMatchObject({
       expected: 0,
       observed: 0,
@@ -277,11 +239,7 @@ describe('coverage and collection provenance', () => {
 
     sources.runs.metadata.availability = 'unavailable'
     delete sources.runs.metadata['coverage-observed']
-    row = /** @type {any} */ (
-      deriveDataHealthSources(sources)['data-health-collections'].rows.find(
-        (item) => item.source === 'runs',
-      )
-    )
+    row = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-collections'].rows.find((item) => item.source === 'runs'))
     expect(row.state).toBe('failed')
   })
 
@@ -294,11 +252,7 @@ describe('coverage and collection provenance', () => {
       'coverage-end': '2026-09-03T12:00:00Z',
       'collector-completed-at': '2026-09-03T12:01:00Z',
     })
-    const row = /** @type {any} */ (
-      deriveDataHealthSources(sources)['data-health-coverage'].rows.find(
-        (item) => item.area === 'Usage telemetry',
-      )
-    )
+    const row = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-coverage'].rows.find((item) => item.area === 'Usage telemetry'))
     expect(row.state).toBe('unknown')
     expect(row.reason).toContain('horizon')
   })
@@ -313,9 +267,7 @@ describe('coverage and collection provenance', () => {
       'fallback-used': true,
       'snapshot-age-seconds': 7200,
     })
-    const row = deriveDataHealthSources(sources)[
-      'data-health-collections'
-    ].rows.find((item) => item.source === 'runs')
+    const row = deriveDataHealthSources(sources)['data-health-collections'].rows.find((item) => item.source === 'runs')
     expect(row).toMatchObject({
       state: 'partial',
       'failure-class': 'rate-limit',
@@ -345,16 +297,8 @@ describe('producer compatibility and reconciliation', () => {
       { ...base, workflow: 'unsupported', 'gh-aw-version': '1.0.0' },
       { ...base, workflow: 'unknown' },
     ]
-    const rows = /** @type {Array<Record<string, any>>} */ (
-      deriveDataHealthSources(sources)['data-health-compatibility'].rows
-    )
-    expect(
-      rows.map((row) => [
-        row.workflow.split(':').at(-1),
-        row.compatibility,
-        row['missing-field-class'],
-      ]),
-    ).toEqual([
+    const rows = /** @type {Array<Record<string, any>>} */ (deriveDataHealthSources(sources)['data-health-compatibility'].rows)
+    expect(rows.map((row) => [row.workflow.split(':').at(-1), row.compatibility, row['missing-field-class']])).toEqual([
       ['current', 'compatible', 'none'],
       ['legacy', 'limited', 'expected'],
       ['unsupported', 'unsupported', 'none'],
@@ -365,9 +309,7 @@ describe('producer compatibility and reconciliation', () => {
   it('marks required fields missing from a current producer as unexpected', () => {
     const sources = completeSources()
     delete sources.workflows.rows[0]['gh-aw-metadata']
-    expect(
-      deriveDataHealthSources(sources)['data-health-compatibility'].rows[0],
-    ).toMatchObject({
+    expect(deriveDataHealthSources(sources)['data-health-compatibility'].rows[0]).toMatchObject({
       compatibility: 'limited',
       'missing-fields': 'gh-aw-metadata',
       'missing-field-class': 'unexpected',
@@ -377,9 +319,7 @@ describe('producer compatibility and reconciliation', () => {
   it('detects silent stable-identifier gaps and preserves unknown denominators', () => {
     const sources = completeSources()
     sources.usage.rows = []
-    let row = deriveDataHealthSources(sources)[
-      'data-health-reconciliation'
-    ].rows.find((item) => item.relationship === 'Runs → usage')
+    let row = deriveDataHealthSources(sources)['data-health-reconciliation'].rows.find((item) => item.relationship === 'Runs → usage')
     expect(row).toMatchObject({
       expected: 1,
       observed: 0,
@@ -389,9 +329,7 @@ describe('producer compatibility and reconciliation', () => {
     })
 
     sources.runs.metadata.completeness = 'unknown'
-    row = deriveDataHealthSources(sources)[
-      'data-health-reconciliation'
-    ].rows.find((item) => item.relationship === 'Runs → usage')
+    row = deriveDataHealthSources(sources)['data-health-reconciliation'].rows.find((item) => item.relationship === 'Runs → usage')
     expect(row).toMatchObject({
       expected: 'Unknown',
       coverage: 'Unknown',
@@ -421,11 +359,7 @@ describe('data shape preview', () => {
         extra: true,
       },
     ]
-    const schema = /** @type {any} */ (
-      deriveDataHealthSources(sources)['data-health-schema'].rows.find(
-        (item) => item.source === 'runs',
-      )
-    )
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'))
     expect(schema.source).toBe('runs')
     expect(schema.schema).toContain('attempts: number | string')
     expect(schema.schema).toContain('labels: string[]')
@@ -441,11 +375,7 @@ describe('data shape preview', () => {
     })
     cyclicRow.self = cyclicRow
     sources.runs.rows = [cyclicRow]
-    const schema = /** @type {any} */ (
-      deriveDataHealthSources(sources)['data-health-schema'].rows.find(
-        (item) => item.source === 'runs',
-      )
-    )
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'))
     expect(schema.schema).toContain('self: (circular)')
   })
 
@@ -453,23 +383,15 @@ describe('data shape preview', () => {
     const sources = completeSources()
     const shared = { retries: 1 }
     sources.runs.rows = [{ shared }, { shared }]
-    const expectedSize = new TextEncoder().encode(
-      JSON.stringify(sources.runs),
-    ).length
-    const file = deriveDataHealthSources(sources)[
-      'data-health-files'
-    ].rows.find((item) => item.source === 'runs')
+    const expectedSize = new TextEncoder().encode(JSON.stringify(sources.runs)).length
+    const file = deriveDataHealthSources(sources)['data-health-files'].rows.find((item) => item.source === 'runs')
     expect(file?.size).toBe(expectedSize)
   })
 
   it('reports an empty-object shape when a source has no cached rows', () => {
     const sources = completeSources()
     sources.runs.rows = []
-    const schema = /** @type {any} */ (
-      deriveDataHealthSources(sources)['data-health-schema'].rows.find(
-        (item) => item.source === 'runs',
-      )
-    )
+    const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'))
     expect(schema.schema).toBe('{}')
   })
 })
@@ -489,8 +411,7 @@ describe('CAO Activity debugging link', () => {
 
   it('omits the activity link when repository context is unavailable', () => {
     const sources = completeSources()
-    const summary =
-      deriveDataHealthSources(sources)['data-health-summary'].rows[0]
+    const summary = deriveDataHealthSources(sources)['data-health-summary'].rows[0]
     expect(summary['external-link']).toBeNull()
   })
 

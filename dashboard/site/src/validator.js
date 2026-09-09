@@ -148,13 +148,7 @@ export function validateDashboardDocument(source) {
 
   const root = document.toJS({ mapAsMap: false })
   if (!isPlainObject(root)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidDocumentShape,
-        'Dashboard document must contain exactly one YAML document whose root is a mapping.',
-        '$',
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidDocumentShape, 'Dashboard document must contain exactly one YAML document whose root is a mapping.', '$'))
     return { ok: false, errors }
   }
 
@@ -163,21 +157,11 @@ export function validateDashboardDocument(source) {
   validateLanguageVersion(root['language-version'], errors)
   const dashboard = root.dashboard
   if (!isPlainObject(dashboard)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'dashboard must be a mapping.',
-        '$.dashboard',
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'dashboard must be a mapping.', '$.dashboard'))
     return { ok: false, errors }
   }
 
-  validateDashboard(
-    dashboard,
-    getValueNodeByKey(document.contents, 'dashboard'),
-    errors,
-  )
+  validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors)
 
   if (errors.length > 0) {
     return { ok: false, errors }
@@ -205,13 +189,7 @@ export function validateLogicalSources(sources) {
   const workflowRows = sources.workflows?.rows
   if (workflowRows === undefined) return { ok: true, errors: [] }
   if (!Array.isArray(workflowRows)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'workflows.rows must be a sequence.',
-        '$.sources.workflows.rows',
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'workflows.rows must be a sequence.', '$.sources.workflows.rows'))
     return { ok: false, errors }
   }
 
@@ -220,24 +198,14 @@ export function validateLogicalSources(sources) {
   for (const [index, candidate] of workflowRows.entries()) {
     const path = `$.sources.workflows.rows[${index}]`
     if (!isPlainObject(candidate)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'Each workflows row must be a mapping.',
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'Each workflows row must be a mapping.', path))
       continue
     }
 
     const role = candidate['workflow-role']
     if (typeof role !== 'string' || !WORKFLOW_ROLE_VALUES.includes(role)) {
       errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'workflow-role must use orchestrator, worker, or standalone.',
-          `${path}.workflow-role`,
-        ),
+        createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'workflow-role must use orchestrator, worker, or standalone.', `${path}.workflow-role`),
       )
     }
 
@@ -245,48 +213,20 @@ export function validateLogicalSources(sources) {
     const hasPackage = typeof packageId === 'string' && packageId.length > 0
     if ((role === 'orchestrator' || role === 'worker') && !hasPackage) {
       errors.push(
-        createError(
-          ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-          'An orchestrator or worker workflow must identify its package.',
-          `${path}.package`,
-        ),
+        createError(ERROR_CODES.invalidEntityRelationshipOrSourceGrain, 'An orchestrator or worker workflow must identify its package.', `${path}.package`),
       )
     }
     if (role === 'standalone' && packageId != null) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-          'A standalone workflow must not identify a package.',
-          `${path}.package`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidEntityRelationshipOrSourceGrain, 'A standalone workflow must not identify a package.', `${path}.package`))
     }
 
     const packageIcon = candidate['package-icon']
-    if (
-      packageIcon !== undefined &&
-      (typeof packageIcon !== 'string' ||
-        !PAGE_ICON_VALUES.includes(packageIcon))
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'package-icon must name a canonical Octicon.',
-          `${path}.package-icon`,
-        ),
-      )
+    if (packageIcon !== undefined && (typeof packageIcon !== 'string' || !PAGE_ICON_VALUES.includes(packageIcon))) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'package-icon must name a canonical Octicon.', `${path}.package-icon`))
     }
 
-    validateNonNegativeSourceMeasure(
-      candidate['max-ai-credits'],
-      `${path}.max-ai-credits`,
-      errors,
-    )
-    validateNonNegativeSourceMeasure(
-      candidate['package-aic-allowance'],
-      `${path}.package-aic-allowance`,
-      errors,
-    )
+    validateNonNegativeSourceMeasure(candidate['max-ai-credits'], `${path}.max-ai-credits`, errors)
+    validateNonNegativeSourceMeasure(candidate['package-aic-allowance'], `${path}.package-aic-allowance`, errors)
 
     if (hasPackage && (role === 'orchestrator' || role === 'worker')) {
       const key = sourceEntityKey(candidate, 'package')
@@ -299,26 +239,13 @@ export function validateLogicalSources(sources) {
   for (const rows of packageRows.values()) {
     const workflowAllowances = new Map(
       rows
-        .filter(
-          ({ row }) =>
-            typeof row.workflow === 'string' &&
-            isNonNegativeFiniteNumber(row['max-ai-credits']),
-        )
-        .map(({ row }) => [
-          sourceEntityKey(row, 'workflow'),
-          /** @type {number} */ (row['max-ai-credits']),
-        ]),
+        .filter(({ row }) => typeof row.workflow === 'string' && isNonNegativeFiniteNumber(row['max-ai-credits']))
+        .map(({ row }) => [sourceEntityKey(row, 'workflow'), /** @type {number} */ (row['max-ai-credits'])]),
     )
-    const expectedAllowance = [...workflowAllowances.values()].reduce(
-      (total, value) => total + value,
-      0,
-    )
+    const expectedAllowance = [...workflowAllowances.values()].reduce((total, value) => total + value, 0)
     for (const { row, index } of rows) {
       const allowance = row['package-aic-allowance']
-      if (
-        isNonNegativeFiniteNumber(allowance) &&
-        !numbersEqual(allowance, expectedAllowance)
-      ) {
+      if (isNonNegativeFiniteNumber(allowance) && !numbersEqual(allowance, expectedAllowance)) {
         errors.push(
           createError(
             ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
@@ -341,13 +268,7 @@ export function validateLogicalSources(sources) {
 function validateNonNegativeSourceMeasure(value, path, errors) {
   if (value == null) return
   if (!isNonNegativeFiniteNumber(value)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
-        'Configured AI Credit limits must be finite non-negative numbers.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidEntityRelationshipOrSourceGrain, 'Configured AI Credit limits must be finite non-negative numbers.', path))
   }
 }
 
@@ -365,11 +286,7 @@ function isNonNegativeFiniteNumber(value) {
  * @returns {string}
  */
 function sourceEntityKey(row, field) {
-  return JSON.stringify([
-    String(row.organization ?? ''),
-    String(row.repository ?? ''),
-    String(row[field] ?? ''),
-  ])
+  return JSON.stringify([String(row.organization ?? ''), String(row.repository ?? ''), String(row[field] ?? '')])
 }
 
 /**
@@ -378,10 +295,7 @@ function sourceEntityKey(row, field) {
  * @returns {boolean}
  */
 function numbersEqual(left, right) {
-  return (
-    Math.abs(left - right) <=
-    Number.EPSILON * Math.max(1, Math.abs(left), Math.abs(right))
-  )
+  return Math.abs(left - right) <= Number.EPSILON * Math.max(1, Math.abs(left), Math.abs(right))
 }
 
 /**
@@ -396,36 +310,18 @@ function parseDocuments(source, errors) {
       merge: false,
     })
     if (documents.some((document) => document.errors.length > 0)) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidYamlSyntax,
-          'Dashboard document must be valid YAML 1.2.',
-          '$',
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidYamlSyntax, 'Dashboard document must be valid YAML 1.2.', '$'))
       return null
     }
 
     if (documents.length !== 1) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidDocumentShape,
-          'Dashboard document must contain exactly one YAML document.',
-          '$',
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidDocumentShape, 'Dashboard document must contain exactly one YAML document.', '$'))
       return null
     }
 
     return documents
   } catch {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidYamlSyntax,
-        'Dashboard document must be valid YAML 1.2.',
-        '$',
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidYamlSyntax, 'Dashboard document must be valid YAML 1.2.', '$'))
     return null
   }
 }
@@ -436,23 +332,13 @@ function parseDocuments(source, errors) {
  */
 function validateLanguageVersion(value, errors) {
   if (typeof value !== 'string') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'language-version must be the quoted string "0.1.0".',
-        '$.language-version',
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'language-version must be the quoted string "0.1.0".', '$.language-version'))
     return
   }
 
   if (value !== LANGUAGE_VERSION) {
     errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'language-version must use the exact canonical value "0.1.0".',
-        '$.language-version',
-      ),
+      createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'language-version must use the exact canonical value "0.1.0".', '$.language-version'),
     )
   }
 }
@@ -465,57 +351,26 @@ function validateLanguageVersion(value, errors) {
 function validateDashboard(dashboard, dashboardNode, errors) {
   validateObjectKeys(dashboardNode, DASHBOARD_KEYS, '$.dashboard', errors)
 
-  validateRequiredIdentifier(
-    dashboard.id,
-    '$.dashboard.id',
-    'dashboard id',
-    errors,
-  )
+  validateRequiredIdentifier(dashboard.id, '$.dashboard.id', 'dashboard id', errors)
   validateStringField(dashboard.title, '$.dashboard.title', true, errors)
-  validateOptionalStringField(
-    dashboard.description,
-    '$.dashboard.description',
-    errors,
-  )
+  validateOptionalStringField(dashboard.description, '$.dashboard.description', errors)
 
   if (dashboard.horizon !== undefined) {
     if (!isPlainObject(dashboard.horizon)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'horizon must be a mapping.',
-          '$.dashboard.horizon',
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'horizon must be a mapping.', '$.dashboard.horizon'))
     } else {
-      validateObjectKeys(
-        getValueNodeByKey(dashboardNode, 'horizon'),
-        DASHBOARD_HORIZON_KEYS,
-        '$.dashboard.horizon',
-        errors,
-      )
-      validateStringField(
-        dashboard.horizon.label,
-        '$.dashboard.horizon.label',
-        true,
-        errors,
-      )
+      validateObjectKeys(getValueNodeByKey(dashboardNode, 'horizon'), DASHBOARD_HORIZON_KEYS, '$.dashboard.horizon', errors)
+      validateStringField(dashboard.horizon.label, '$.dashboard.horizon.label', true, errors)
       validateTooltip(
         dashboard.horizon.tooltip,
-        getValueNodeByKey(
-          getValueNodeByKey(dashboardNode, 'horizon'),
-          'tooltip',
-        ),
+        getValueNodeByKey(getValueNodeByKey(dashboardNode, 'horizon'), 'tooltip'),
         '$.dashboard.horizon.tooltip',
         errors,
       )
     }
   }
 
-  if (
-    dashboard['github-url-base'] !== undefined &&
-    !isSafeGithubUrlBase(dashboard['github-url-base'])
-  ) {
+  if (dashboard['github-url-base'] !== undefined && !isSafeGithubUrlBase(dashboard['github-url-base'])) {
     errors.push(
       createError(
         ERROR_CODES.missingOrInvalidRequiredField,
@@ -525,10 +380,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     )
   }
 
-  if (
-    dashboard.repository !== undefined &&
-    !isSafeRepositorySlug(dashboard.repository)
-  ) {
+  if (dashboard.repository !== undefined && !isSafeRepositorySlug(dashboard.repository)) {
     errors.push(
       createError(
         ERROR_CODES.missingOrInvalidRequiredField,
@@ -540,70 +392,29 @@ function validateDashboard(dashboard, dashboardNode, errors) {
 
   if (dashboard.defaults !== undefined) {
     if (!isPlainObject(dashboard.defaults)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'defaults must be a mapping.',
-          '$.dashboard.defaults',
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'defaults must be a mapping.', '$.dashboard.defaults'))
     } else {
       const defaultsNode = getValueNodeByKey(dashboardNode, 'defaults')
-      validateObjectKeys(
-        defaultsNode,
-        DEFAULTS_KEYS,
-        '$.dashboard.defaults',
-        errors,
-      )
-      validateContext(
-        defaultsNode,
-        dashboard.defaults,
-        '$.dashboard.defaults',
-        errors,
-      )
+      validateObjectKeys(defaultsNode, DEFAULTS_KEYS, '$.dashboard.defaults', errors)
+      validateContext(defaultsNode, dashboard.defaults, '$.dashboard.defaults', errors)
     }
   }
 
-  const unitIds = validateUnits(
-    dashboard.units,
-    getValueNodeByKey(dashboardNode, 'units'),
-    errors,
-  )
-  validateSiteCallouts(
-    dashboard.callouts,
-    getValueNodeByKey(dashboardNode, 'callouts'),
-    errors,
-  )
+  const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors)
+  validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors)
 
   if (!Array.isArray(dashboard.pages) || dashboard.pages.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'pages must be a non-empty sequence.',
-        '$.dashboard.pages',
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'pages must be a non-empty sequence.', '$.dashboard.pages'))
     return
   }
 
   /** @type {Set<string>} */
   const pageIds = new Set()
   dashboard.pages.forEach((page, index) => {
-    validatePage(
-      page,
-      getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index),
-      `$.dashboard.pages[${index}]`,
-      pageIds,
-      errors,
-    )
+    validatePage(page, getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors)
   })
   dashboard.pages.forEach((page, index) => {
-    if (
-      !isPlainObject(page) ||
-      !isPlainObject(page.route) ||
-      typeof page.route['navigation-page'] !== 'string'
-    )
-      return
+    if (!isPlainObject(page) || !isPlainObject(page.route) || typeof page.route['navigation-page'] !== 'string') return
     const navigationPage = page.route['navigation-page']
     if (!IDENTIFIER_PATTERN.test(navigationPage)) return
     if (navigationPage === page.id) {
@@ -626,15 +437,8 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   })
   if (Array.isArray(dashboard.callouts)) {
     dashboard.callouts.forEach((callout, index) => {
-      if (
-        !isPlainObject(callout) ||
-        typeof callout['navigation-page'] !== 'string'
-      )
-        return
-      if (
-        IDENTIFIER_PATTERN.test(callout['navigation-page']) &&
-        !pageIds.has(callout['navigation-page'])
-      ) {
+      if (!isPlainObject(callout) || typeof callout['navigation-page'] !== 'string') return
+      if (IDENTIFIER_PATTERN.test(callout['navigation-page']) && !pageIds.has(callout['navigation-page'])) {
         errors.push(
           createError(
             ERROR_CODES.missingOrInvalidRequiredField,
@@ -648,12 +452,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   validateUnitReferences(dashboard.pages, unitIds, errors)
 
   if (dashboard.navigation !== undefined) {
-    validateNavigation(
-      dashboard.navigation,
-      getValueNodeByKey(dashboardNode, 'navigation'),
-      pageIds,
-      errors,
-    )
+    validateNavigation(dashboard.navigation, getValueNodeByKey(dashboardNode, 'navigation'), pageIds, errors)
   }
 
   /**
@@ -664,13 +463,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   function validateSiteCallouts(callouts, calloutsNode, errors) {
     if (callouts === undefined) return
     if (!Array.isArray(callouts) || callouts.length === 0) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'callouts must be a non-empty sequence.',
-          '$.dashboard.callouts',
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'callouts must be a non-empty sequence.', '$.dashboard.callouts'))
       return
     }
     const calloutIds = new Set()
@@ -678,62 +471,26 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       const path = `$.dashboard.callouts[${index}]`
       const calloutNode = getSequenceItemNode(calloutsNode, index)
       if (!isPlainObject(callout)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'callout must be a mapping.',
-            path,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'callout must be a mapping.', path))
         return
       }
       validateObjectKeys(calloutNode, SITE_CALLOUT_KEYS, path, errors)
       validateRequiredIdentifier(callout.id, `${path}.id`, 'callout id', errors)
       if (typeof callout.id === 'string' && calloutIds.has(callout.id)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'callout id must be unique within dashboard.callouts.',
-            `${path}.id`,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'callout id must be unique within dashboard.callouts.', `${path}.id`))
       } else if (typeof callout.id === 'string') {
         calloutIds.add(callout.id)
       }
       validateStringField(callout.title, `${path}.title`, true, errors)
-      validateStringField(
-        callout.description,
-        `${path}.description`,
-        true,
-        errors,
-      )
+      validateStringField(callout.description, `${path}.description`, true, errors)
       validateOptionalStringField(callout.icon, `${path}.icon`, errors)
       if (callout['navigation-page'] !== undefined) {
-        validateRequiredIdentifier(
-          callout['navigation-page'],
-          `${path}.navigation-page`,
-          'navigation-page',
-          errors,
-        )
+        validateRequiredIdentifier(callout['navigation-page'], `${path}.navigation-page`, 'navigation-page', errors)
       }
-      if (
-        typeof callout.icon === 'string' &&
-        !PAGE_ICON_VALUES.includes(callout.icon)
-      ) {
-        errors.push(
-          createError(
-            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'callout icon must use one canonical icon value.',
-            `${path}.icon`,
-          ),
-        )
+      if (typeof callout.icon === 'string' && !PAGE_ICON_VALUES.includes(callout.icon)) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'callout icon must use one canonical icon value.', `${path}.icon`))
       }
-      validateSiteCalloutVisibility(
-        callout['visible-when'],
-        getValueNodeByKey(calloutNode, 'visible-when'),
-        `${path}.visible-when`,
-        errors,
-      )
+      validateSiteCalloutVisibility(callout['visible-when'], getValueNodeByKey(calloutNode, 'visible-when'), `${path}.visible-when`, errors)
     })
   }
 
@@ -743,50 +500,23 @@ function validateDashboard(dashboard, dashboardNode, errors) {
    * @param {string} path
    * @param {ValidationError[]} errors
    */
-  function validateSiteCalloutVisibility(
-    visibility,
-    visibilityNode,
-    path,
-    errors,
-  ) {
+  function validateSiteCalloutVisibility(visibility, visibilityNode, path, errors) {
     if (visibility === undefined) return
     if (!isPlainObject(visibility)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'visible-when must be a mapping.',
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'visible-when must be a mapping.', path))
       return
     }
-    validateObjectKeys(
-      visibilityNode,
-      SITE_CALLOUT_VISIBILITY_KEYS,
-      path,
-      errors,
-    )
+    validateObjectKeys(visibilityNode, SITE_CALLOUT_VISIBILITY_KEYS, path, errors)
     validateStringField(visibility.source, `${path}.source`, true, errors)
-    if (
-      typeof visibility.source === 'string' &&
-      !SOURCE_VALUES.includes(visibility.source)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'visible-when source must use one canonical source name.',
-          `${path}.source`,
-        ),
-      )
+    if (typeof visibility.source === 'string' && !SOURCE_VALUES.includes(visibility.source)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'visible-when source must use one canonical source name.', `${path}.source`))
     }
     validateStringField(visibility.field, `${path}.field`, true, errors)
     if (
       typeof visibility.source === 'string' &&
       SOURCE_VALUES.includes(visibility.source) &&
       typeof visibility.field === 'string' &&
-      !SOURCE_FIELDS[
-        /** @type {keyof typeof SOURCE_FIELDS} */ (visibility.source)
-      ]?.includes(visibility.field)
+      !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (visibility.source)]?.includes(visibility.field)
     ) {
       errors.push(
         createError(
@@ -796,17 +526,8 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         ),
       )
     }
-    if (
-      !Object.hasOwn(visibility, 'equals') ||
-      ['object', 'function', 'symbol'].includes(typeof visibility.equals)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'visible-when equals must be a scalar.',
-          `${path}.equals`,
-        ),
-      )
+    if (!Object.hasOwn(visibility, 'equals') || ['object', 'function', 'symbol'].includes(typeof visibility.equals)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'visible-when equals must be a scalar.', `${path}.equals`))
     }
   }
 
@@ -821,11 +542,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     if (units === undefined) return unitIds
     if (!isPlainObject(units) || Object.keys(units).length === 0) {
       errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'units must be a non-empty mapping of unit identifiers to definitions.',
-          '$.dashboard.units',
-        ),
+        createError(ERROR_CODES.missingOrInvalidRequiredField, 'units must be a non-empty mapping of unit identifiers to definitions.', '$.dashboard.units'),
       )
       return unitIds
     }
@@ -833,73 +550,28 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     for (const [unitId, definition] of Object.entries(units)) {
       const path = `$.dashboard.units.${unitId}`
       if (!IDENTIFIER_PATTERN.test(unitId)) {
-        errors.push(
-          createError(
-            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'unit identifiers must use canonical kebab-case.',
-            path,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'unit identifiers must use canonical kebab-case.', path))
       } else {
         unitIds.add(unitId)
       }
       if (!isPlainObject(definition)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'unit definitions must be mappings.',
-            path,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'unit definitions must be mappings.', path))
         continue
       }
 
-      validateObjectKeys(
-        getValueNodeByKey(unitsNode, unitId),
-        UNIT_DEFINITION_KEYS,
-        path,
-        errors,
-      )
+      validateObjectKeys(getValueNodeByKey(unitsNode, unitId), UNIT_DEFINITION_KEYS, path, errors)
       validateStringField(definition.name, `${path}.name`, true, errors)
       validateStringField(definition.symbol, `${path}.symbol`, true, errors)
-      if (
-        typeof definition.significant !== 'number' ||
-        !Number.isFinite(definition.significant) ||
-        definition.significant <= 0
-      ) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'unit significant must be a finite positive number.',
-            `${path}.significant`,
-          ),
-        )
+      if (typeof definition.significant !== 'number' || !Number.isFinite(definition.significant) || definition.significant <= 0) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'unit significant must be a finite positive number.', `${path}.significant`))
       }
       if (definition.format !== undefined) {
         validateStringField(definition.format, `${path}.format`, true, errors)
-        if (
-          typeof definition.format === 'string' &&
-          !UNIT_FORMAT_VALUES.includes(definition.format)
-        ) {
-          errors.push(
-            createError(
-              ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-              'unit format must use one canonical unit format value.',
-              `${path}.format`,
-            ),
-          )
+        if (typeof definition.format === 'string' && !UNIT_FORMAT_VALUES.includes(definition.format)) {
+          errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'unit format must use one canonical unit format value.', `${path}.format`))
         }
-        if (
-          definition.format === 'duration' &&
-          (definition.symbol !== 's' || definition.significant !== 1)
-        ) {
-          errors.push(
-            createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              'duration units must use symbol "s" and significant 1.',
-              path,
-            ),
-          )
+        if (definition.format === 'duration' && (definition.symbol !== 's' || definition.significant !== 1)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'duration units must use symbol "s" and significant 1.', path))
         }
       }
     }
@@ -914,34 +586,19 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   function validateUnitReferences(pages, unitIds, errors) {
     pages.forEach((page, pageIndex) => {
       if (!isPlainObject(page)) return
-      const views =
-        page.kind === 'built-in' && isPlainObject(page.definition)
-          ? page.definition.views
-          : page.views
+      const views = page.kind === 'built-in' && isPlainObject(page.definition) ? page.definition.views : page.views
       if (!Array.isArray(views)) return
-      const viewsPath =
-        page.kind === 'built-in'
-          ? `$.dashboard.pages[${pageIndex}].definition.views`
-          : `$.dashboard.pages[${pageIndex}].views`
+      const viewsPath = page.kind === 'built-in' ? `$.dashboard.pages[${pageIndex}].definition.views` : `$.dashboard.pages[${pageIndex}].views`
       views.forEach((view, viewIndex) => {
         if (!isPlainObject(view) || !isPlainObject(view.encoding)) return
         for (const [channel, value] of Object.entries(view.encoding)) {
-          const definitions =
-            channel === 'columns' && Array.isArray(value) ? value : [value]
+          const definitions = channel === 'columns' && Array.isArray(value) ? value : [value]
           definitions.forEach((definition, definitionIndex) => {
-            if (!isPlainObject(definition) || definition.unit === undefined)
-              return
+            if (!isPlainObject(definition) || definition.unit === undefined) return
             const path = `${viewsPath}[${viewIndex}].encoding.${channel}${channel === 'columns' ? `[${definitionIndex}]` : ''}.unit`
-            if (
-              typeof definition.unit === 'string' &&
-              !unitIds.has(definition.unit)
-            ) {
+            if (typeof definition.unit === 'string' && !unitIds.has(definition.unit)) {
               errors.push(
-                createError(
-                  ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-                  'unit must reference a unit declared by dashboard.units.',
-                  path,
-                ),
+                createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'unit must reference a unit declared by dashboard.units.', path),
               )
             }
           })
@@ -959,30 +616,15 @@ function validateDashboard(dashboard, dashboardNode, errors) {
  */
 function validateTooltip(tooltip, tooltipNode, path, errors) {
   if (!isPlainObject(tooltip)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'tooltip must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'tooltip must be a mapping.', path))
     return
   }
   validateObjectKeys(tooltipNode, TOOLTIP_KEYS, path, errors)
   validateStringField(tooltip.label, `${path}.label`, true, errors)
   validateStringField(tooltip.description, `${path}.description`, true, errors)
   validateOptionalStringField(tooltip.icon, `${path}.icon`, errors)
-  if (
-    typeof tooltip.icon === 'string' &&
-    !PAGE_ICON_VALUES.includes(tooltip.icon)
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'tooltip icon must use one canonical icon value.',
-        `${path}.icon`,
-      ),
-    )
+  if (typeof tooltip.icon === 'string' && !PAGE_ICON_VALUES.includes(tooltip.icon)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'tooltip icon must use one canonical icon value.', `${path}.icon`))
   }
 }
 
@@ -995,13 +637,7 @@ function validateTooltip(tooltip, tooltipNode, path, errors) {
 function validateNavigation(navigation, navigationNode, pageIds, errors) {
   const path = '$.dashboard.navigation'
   if (!Array.isArray(navigation) || navigation.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'navigation must be a non-empty sequence of sidebar sections.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation must be a non-empty sequence of sidebar sections.', path))
     return
   }
 
@@ -1011,43 +647,19 @@ function validateNavigation(navigation, navigationNode, pageIds, errors) {
     const sectionPath = `${path}[${index}]`
     const sectionNode = getSequenceItemNode(navigationNode, index)
     if (!isPlainObject(section)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'navigation section must be a mapping.',
-          sectionPath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation section must be a mapping.', sectionPath))
       return
     }
 
-    validateObjectKeys(
-      sectionNode,
-      NAVIGATION_SECTION_KEYS,
-      sectionPath,
-      errors,
-    )
+    validateObjectKeys(sectionNode, NAVIGATION_SECTION_KEYS, sectionPath, errors)
     validateOptionalStringField(section.label, `${sectionPath}.label`, errors)
     if (section.label === '') {
       errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'navigation section label must be a non-empty string when present.',
-          `${sectionPath}.label`,
-        ),
+        createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation section label must be a non-empty string when present.', `${sectionPath}.label`),
       )
     }
-    if (
-      section.experimental !== undefined &&
-      typeof section.experimental !== 'boolean'
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'navigation section experimental must be a boolean.',
-          `${sectionPath}.experimental`,
-        ),
-      )
+    if (section.experimental !== undefined && typeof section.experimental !== 'boolean') {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation section experimental must be a boolean.', `${sectionPath}.experimental`))
     }
 
     if (!Array.isArray(section.pages) || section.pages.length === 0) {
@@ -1064,23 +676,11 @@ function validateNavigation(navigation, navigationNode, pageIds, errors) {
     section.pages.forEach((pageId, pageIndex) => {
       const pageIdPath = `${sectionPath}.pages[${pageIndex}]`
       if (typeof pageId !== 'string' || !pageIds.has(pageId)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'navigation section page must reference a declared dashboard page id.',
-            pageIdPath,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'navigation section page must reference a declared dashboard page id.', pageIdPath))
         return
       }
       if (referencedPageIds.has(pageId)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'each dashboard page may appear in only one navigation section.',
-            pageIdPath,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'each dashboard page may appear in only one navigation section.', pageIdPath))
       }
       referencedPageIds.add(pageId)
     })
@@ -1096,69 +696,33 @@ function validateNavigation(navigation, navigationNode, pageIds, errors) {
  */
 function validatePage(page, pageNode, path, pageIds, errors) {
   if (!isPlainObject(page)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'page must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page must be a mapping.', path))
     return
   }
 
   validateStringField(page.kind, `${path}.kind`, true, errors)
   if (typeof page.kind === 'string' && !PAGE_KIND_VALUES.includes(page.kind)) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'kind must be exactly "built-in" or "custom".',
-        `${path}.kind`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'kind must be exactly "built-in" or "custom".', `${path}.kind`))
   }
 
   validateRequiredIdentifier(page.id, `${path}.id`, 'page id', errors)
   if (typeof page.id === 'string') {
     if (pageIds.has(page.id)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'page id must be unique within dashboard.pages.',
-          `${path}.id`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'page id must be unique within dashboard.pages.', `${path}.id`))
     }
     pageIds.add(page.id)
   }
 
   validateOptionalStringField(page.title, `${path}.title`, errors)
-  validateOptionalStringField(
-    page['navigation-label'],
-    `${path}.navigation-label`,
-    errors,
-  )
+  validateOptionalStringField(page['navigation-label'], `${path}.navigation-label`, errors)
   validateOptionalStringField(page.description, `${path}.description`, errors)
   if (page['class-name'] !== undefined) {
-    validateRequiredIdentifier(
-      page['class-name'],
-      `${path}.class-name`,
-      'page class name',
-      errors,
-    )
+    validateRequiredIdentifier(page['class-name'], `${path}.class-name`, 'page class name', errors)
   }
   if (page.icon !== undefined) {
     validateStringField(page.icon, `${path}.icon`, true, errors)
-    if (
-      typeof page.icon === 'string' &&
-      !PAGE_ICON_VALUES.includes(page.icon)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'icon must use one canonical page icon value.',
-          `${path}.icon`,
-        ),
-      )
+    if (typeof page.icon === 'string' && !PAGE_ICON_VALUES.includes(page.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'icon must use one canonical page icon value.', `${path}.icon`))
     }
   }
   if (page.kind === 'built-in') {
@@ -1173,12 +737,7 @@ function validatePage(page, pageNode, path, pageIds, errors) {
     return
   }
 
-  validateObjectKeys(
-    pageNode,
-    [...BUILT_IN_PAGE_KEYS, ...CUSTOM_PAGE_KEYS],
-    path,
-    errors,
-  )
+  validateObjectKeys(pageNode, [...BUILT_IN_PAGE_KEYS, ...CUSTOM_PAGE_KEYS], path, errors)
 }
 
 /**
@@ -1188,17 +747,8 @@ function validatePage(page, pageNode, path, pageIds, errors) {
  */
 function validateBuiltInPage(page, path, errors) {
   validateStringField(page.page, `${path}.page`, true, errors)
-  if (
-    typeof page.page === 'string' &&
-    !BUILT_IN_PAGE_VALUES.includes(page.page)
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'page must use one of the canonical built-in page names.',
-        `${path}.page`,
-      ),
-    )
+  if (typeof page.page === 'string' && !BUILT_IN_PAGE_VALUES.includes(page.page)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'page must use one of the canonical built-in page names.', `${path}.page`))
     return
   }
 
@@ -1207,25 +757,14 @@ function validateBuiltInPage(page, path, errors) {
   }
 
   if (page.title === '') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'built-in page title must be a non-empty string when present.',
-        `${path}.title`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'built-in page title must be a non-empty string when present.', `${path}.title`))
   }
 
   if (errors.some((error) => error.path.startsWith(path))) {
     return
   }
 
-  validateBuiltInPageContent(
-    /** @type {keyof typeof BUILT_IN_PAGE_REQUIRED_SOURCES} */ (page.page),
-    page,
-    path,
-    errors,
-  )
+  validateBuiltInPageContent(/** @type {keyof typeof BUILT_IN_PAGE_REQUIRED_SOURCES} */ (page.page), page, path, errors)
 }
 
 /**
@@ -1269,45 +808,21 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
 
   if (!Array.isArray(definition.views) || definition.views.length === 0) {
     errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'built-in page definition must contain a non-empty views sequence.',
-        `${path}.definition.views`,
-      ),
+      createError(ERROR_CODES.missingOrInvalidRequiredField, 'built-in page definition must contain a non-empty views sequence.', `${path}.definition.views`),
     )
     return
   }
 
-  validatePageSections(
-    definition.sections,
-    definition.views,
-    `${path}.definition.sections`,
-    'built-in page definition',
-    'definition view',
-    errors,
-  )
-  validateProgressiveDisclosure(
-    definition.views,
-    `${path}.definition.views`,
-    errors,
-  )
-  validateGraphicalLayout(
-    definition.views,
-    `${path}.definition.views`,
-    errors,
-    pageName,
-  )
+  validatePageSections(definition.sections, definition.views, `${path}.definition.sections`, 'built-in page definition', 'definition view', errors)
+  validateProgressiveDisclosure(definition.views, `${path}.definition.views`, errors)
+  validateGraphicalLayout(definition.views, `${path}.definition.views`, errors, pageName)
 
   /** @type {Map<string, Set<string>>} */
   const sourceFieldCoverage = new Map()
   for (const [index, view] of definition.views.entries()) {
     if (!isPlainObject(view)) {
       errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'built-in page definition view must be a mapping.',
-          `${path}.definition.views[${index}]`,
-        ),
+        createError(ERROR_CODES.missingOrInvalidRequiredField, 'built-in page definition view must be a mapping.', `${path}.definition.views[${index}]`),
       )
       continue
     }
@@ -1326,85 +841,40 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
 
     const viewPath = `${path}.definition.views[${index}]`
     if (view.element !== undefined && view.mark !== 'element') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'element is allowed only when mark is "element".',
-          `${viewPath}.element`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'element is allowed only when mark is "element".', `${viewPath}.element`))
     }
     if (view.mark === 'element') {
-      if (
-        typeof view.element !== 'string' ||
-        !VIEW_ELEMENT_VALUES.includes(view.element)
-      ) {
-        errors.push(
-          createError(
-            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'element must use one canonical UI element value.',
-            `${viewPath}.element`,
-          ),
-        )
+      if (typeof view.element !== 'string' || !VIEW_ELEMENT_VALUES.includes(view.element)) {
+        errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'element must use one canonical UI element value.', `${viewPath}.element`))
       }
       if (!Array.isArray(data.sources) || data.sources.length === 0) {
         errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'element views must declare a non-empty data.sources sequence.',
-            `${viewPath}.data.sources`,
-          ),
+          createError(ERROR_CODES.missingOrInvalidRequiredField, 'element views must declare a non-empty data.sources sequence.', `${viewPath}.data.sources`),
         )
         continue
       }
       if (data.source !== undefined) {
         errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'element views must use data.sources instead of data.source.',
-            `${viewPath}.data.source`,
-          ),
+          createError(ERROR_CODES.missingOrInvalidRequiredField, 'element views must use data.sources instead of data.source.', `${viewPath}.data.source`),
         )
       }
       if (view.encoding !== undefined) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'element views must not declare encoding.',
-            `${viewPath}.encoding`,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'element views must not declare encoding.', `${viewPath}.encoding`))
       }
       const seenSources = new Set()
       for (const sourceName of data.sources) {
-        if (
-          typeof sourceName !== 'string' ||
-          !SOURCE_VALUES.includes(sourceName)
-        ) {
+        if (typeof sourceName !== 'string' || !SOURCE_VALUES.includes(sourceName)) {
           errors.push(
-            createError(
-              ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-              'source must use one canonical Section 5.1 source name.',
-              `${viewPath}.data.sources`,
-            ),
+            createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'source must use one canonical Section 5.1 source name.', `${viewPath}.data.sources`),
           )
           continue
         }
         if (seenSources.has(sourceName)) {
-          errors.push(
-            createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              'sources must not contain duplicate source names.',
-              `${viewPath}.data.sources`,
-            ),
-          )
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'sources must not contain duplicate source names.', `${viewPath}.data.sources`))
         }
         seenSources.add(sourceName)
         const coverageSource = sourceName
-        sourceFieldCoverage.set(
-          coverageSource,
-          new Set(getBuiltInRequiredFields(pageName, coverageSource)),
-        )
+        sourceFieldCoverage.set(coverageSource, new Set(getBuiltInRequiredFields(pageName, coverageSource)))
       }
       continue
     }
@@ -1425,10 +895,7 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       sourceFieldCoverage.set(coverageSource, new Set())
     }
 
-    collectBuiltInDefinitionFieldCoverage(
-      view.encoding,
-      sourceFieldCoverage.get(coverageSource),
-    )
+    collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(coverageSource))
   }
 
   for (const sourceName of BUILT_IN_PAGE_REQUIRED_SOURCES[pageName]) {
@@ -1467,23 +934,10 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
  * @param {string} viewLabel
  * @param {ValidationError[]} errors
  */
-function validatePageSections(
-  sections,
-  views,
-  sectionsPath,
-  ownerLabel,
-  viewLabel,
-  errors,
-) {
+function validatePageSections(sections, views, sectionsPath, ownerLabel, viewLabel, errors) {
   if (sections === undefined) return
   if (!Array.isArray(sections) || sections.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        `${ownerLabel} sections must be a non-empty sequence.`,
-        sectionsPath,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `${ownerLabel} sections must be a non-empty sequence.`, sectionsPath))
     return
   }
 
@@ -1499,70 +953,28 @@ function validatePageSections(
   sections.forEach((section, index) => {
     const sectionPath = `${sectionsPath}[${index}]`
     if (!isPlainObject(section)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'built-in page layout section must be a mapping.',
-          sectionPath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'built-in page layout section must be a mapping.', sectionPath))
       return
     }
     for (const key of Object.keys(section)) {
       if (!PAGE_SECTION_KEYS.includes(key)) {
-        errors.push(
-          createError(
-            ERROR_CODES.unknownOrDuplicateKey,
-            `Unknown key "${key}" is not allowed at ${sectionPath}.`,
-            `${sectionPath}.${key}`,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed at ${sectionPath}.`, `${sectionPath}.${key}`))
       }
     }
-    validateRequiredIdentifier(
-      section.id,
-      `${sectionPath}.id`,
-      'layout section id',
-      errors,
-    )
+    validateRequiredIdentifier(section.id, `${sectionPath}.id`, 'layout section id', errors)
     if (typeof section.id === 'string') {
       if (sectionIds.has(section.id)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'layout section id must be unique within definition.sections.',
-            `${sectionPath}.id`,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'layout section id must be unique within definition.sections.', `${sectionPath}.id`))
       }
       sectionIds.add(section.id)
     }
     validateOptionalStringField(section.title, `${sectionPath}.title`, errors)
-    validateOptionalStringField(
-      section.description,
-      `${sectionPath}.description`,
-      errors,
-    )
-    if (
-      section['count-source'] !== undefined ||
-      section['count-label'] !== undefined
-    ) {
-      validateSource(
-        section['count-source'],
-        `${sectionPath}.count-source`,
-        errors,
-      )
-      validateStringField(
-        section['count-label'],
-        `${sectionPath}.count-label`,
-        true,
-        errors,
-      )
+    validateOptionalStringField(section.description, `${sectionPath}.description`, errors)
+    if (section['count-source'] !== undefined || section['count-label'] !== undefined) {
+      validateSource(section['count-source'], `${sectionPath}.count-source`, errors)
+      validateStringField(section['count-label'], `${sectionPath}.count-label`, true, errors)
     }
-    if (
-      typeof section.layout !== 'string' ||
-      !PAGE_SECTION_LAYOUT_VALUES.includes(section.layout)
-    ) {
+    if (typeof section.layout !== 'string' || !PAGE_SECTION_LAYOUT_VALUES.includes(section.layout)) {
       errors.push(
         createError(
           ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -1572,35 +984,17 @@ function validatePageSections(
       )
     }
     if (!Array.isArray(section.views) || section.views.length === 0) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'layout section must reference at least one view.',
-          `${sectionPath}.views`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'layout section must reference at least one view.', `${sectionPath}.views`))
       return
     }
     section.views.forEach((viewId, viewIndex) => {
       const viewPath = `${sectionPath}.views[${viewIndex}]`
       if (typeof viewId !== 'string' || !declaredViewIds.includes(viewId)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            `layout section view must reference a declared ${viewLabel} id.`,
-            viewPath,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `layout section view must reference a declared ${viewLabel} id.`, viewPath))
         return
       }
       if (referencedViewIdSet.has(viewId)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            `each ${viewLabel} may appear in only one layout section.`,
-            viewPath,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `each ${viewLabel} may appear in only one layout section.`, viewPath))
       }
       referencedViewIds.push(viewId)
       referencedViewIdSet.add(viewId)
@@ -1629,9 +1023,7 @@ function getBuiltInRequiredFields(pageName, sourceName) {
     return []
   }
 
-  return /** @type {string[]} */ (
-    pageFields[/** @type {keyof typeof pageFields} */ (sourceName)]
-  )
+  return /** @type {string[]} */ (pageFields[/** @type {keyof typeof pageFields} */ (sourceName)])
 }
 
 /**
@@ -1642,13 +1034,7 @@ function getBuiltInRequiredFields(pageName, sourceName) {
 function validateBuiltInPageDefinitionKeys(definition, path, errors) {
   for (const key of Object.keys(definition)) {
     if (!BUILT_IN_PAGE_DEFINITION_KEYS.includes(key)) {
-      errors.push(
-        createError(
-          ERROR_CODES.unknownOrDuplicateKey,
-          `Unknown key "${key}" is not allowed at ${path}.definition.`,
-          `${path}.definition.${key}`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed at ${path}.definition.`, `${path}.definition.${key}`))
     }
   }
 }
@@ -1673,13 +1059,7 @@ function validateBuiltInPageDataState(dataState, path, errors) {
 
   for (const key of Object.keys(dataState)) {
     if (!BUILT_IN_PAGE_DATA_STATE_KEYS.includes(key)) {
-      errors.push(
-        createError(
-          ERROR_CODES.unknownOrDuplicateKey,
-          `Unknown key "${key}" is not allowed at ${dataStatePath}.`,
-          `${dataStatePath}.${key}`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed at ${dataStatePath}.`, `${dataStatePath}.${key}`))
     }
   }
 
@@ -1721,10 +1101,7 @@ function collectBuiltInDefinitionFieldCoverage(encoding, coveredFields) {
  * @param {Set<string>} coveredFields
  */
 function collectFieldDefinitionCoverage(fieldDefinition, coveredFields) {
-  if (
-    !isPlainObject(fieldDefinition) ||
-    typeof fieldDefinition.field !== 'string'
-  ) {
+  if (!isPlainObject(fieldDefinition) || typeof fieldDefinition.field !== 'string') {
     return
   }
 
@@ -1738,76 +1115,30 @@ function collectFieldDefinitionCoverage(fieldDefinition, coveredFields) {
  * @param {ValidationError[]} errors
  */
 function validateCustomPage(page, pageNode, path, errors) {
-  if (
-    page.title === undefined &&
-    typeof page.id === 'string' &&
-    !IDENTIFIER_PATTERN.test(page.id)
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'custom page title default requires a canonical page id.',
-        `${path}.id`,
-      ),
-    )
+  if (page.title === undefined && typeof page.id === 'string' && !IDENTIFIER_PATTERN.test(page.id)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'custom page title default requires a canonical page id.', `${path}.id`))
   }
 
   if (page.route !== undefined) {
     const routePath = `${path}.route`
     if (!isPlainObject(page.route)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'route must be a mapping.',
-          routePath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'route must be a mapping.', routePath))
     } else {
-      validateObjectKeys(
-        getValueNodeByKey(pageNode, 'route'),
-        PAGE_ROUTE_KEYS,
-        routePath,
-        errors,
-      )
-      if (
-        page.route['hash-query-parameter'] === undefined &&
-        page.route['navigation-page'] === undefined
-      ) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'route must declare hash-query-parameter or navigation-page.',
-            routePath,
-          ),
-        )
+      validateObjectKeys(getValueNodeByKey(pageNode, 'route'), PAGE_ROUTE_KEYS, routePath, errors)
+      if (page.route['hash-query-parameter'] === undefined && page.route['navigation-page'] === undefined) {
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'route must declare hash-query-parameter or navigation-page.', routePath))
       }
       if (page.route['hash-query-parameter'] !== undefined) {
-        validateRequiredIdentifier(
-          page.route['hash-query-parameter'],
-          `${routePath}.hash-query-parameter`,
-          'route hash query parameter',
-          errors,
-        )
+        validateRequiredIdentifier(page.route['hash-query-parameter'], `${routePath}.hash-query-parameter`, 'route hash query parameter', errors)
       }
       if (page.route['navigation-page'] !== undefined) {
-        validateRequiredIdentifier(
-          page.route['navigation-page'],
-          `${routePath}.navigation-page`,
-          'route navigation page',
-          errors,
-        )
+        validateRequiredIdentifier(page.route['navigation-page'], `${routePath}.navigation-page`, 'route navigation page', errors)
       }
     }
   }
 
   if (!Array.isArray(page.views) || page.views.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'custom pages must contain a non-empty views sequence.',
-        `${path}.views`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'custom pages must contain a non-empty views sequence.', `${path}.views`))
     return
   }
 
@@ -1815,29 +1146,11 @@ function validateCustomPage(page, pageNode, path, errors) {
   const viewIds = new Set()
   const viewsNode = getValueNodeByKey(pageNode, 'views')
   page.views.forEach((view, index) => {
-    validateView(
-      view,
-      getSequenceItemNode(viewsNode, index),
-      `${path}.views[${index}]`,
-      viewIds,
-      errors,
-    )
+    validateView(view, getSequenceItemNode(viewsNode, index), `${path}.views[${index}]`, viewIds, errors)
   })
   validateProgressiveDisclosure(page.views, `${path}.views`, errors)
-  validatePageSections(
-    page.sections,
-    page.views,
-    `${path}.sections`,
-    'custom page',
-    'page view',
-    errors,
-  )
-  validateGraphicalLayout(
-    page.views,
-    `${path}.views`,
-    errors,
-    typeof page.id === 'string' ? page.id : undefined,
-  )
+  validatePageSections(page.sections, page.views, `${path}.sections`, 'custom page', 'page view', errors)
+  validateGraphicalLayout(page.views, `${path}.views`, errors, typeof page.id === 'string' ? page.id : undefined)
 }
 
 /**
@@ -1849,351 +1162,135 @@ function validateCustomPage(page, pageNode, path, errors) {
  */
 function validateView(view, viewNode, path, viewIds, errors) {
   if (!isPlainObject(view)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'view must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'view must be a mapping.', path))
     return
   }
 
-  if (
-    view.title === undefined &&
-    typeof view.id === 'string' &&
-    !IDENTIFIER_PATTERN.test(view.id)
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'view title default requires a canonical view id.',
-        `${path}.id`,
-      ),
-    )
+  if (view.title === undefined && typeof view.id === 'string' && !IDENTIFIER_PATTERN.test(view.id)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'view title default requires a canonical view id.', `${path}.id`))
   }
 
-  validateObjectKeys(
-    viewNode,
-    view.mark === 'chart' ? VIEW_KEYS : [...VIEW_KEYS, 'views'],
-    path,
-    errors,
-  )
+  validateObjectKeys(viewNode, view.mark === 'chart' ? VIEW_KEYS : [...VIEW_KEYS, 'views'], path, errors)
   validateRequiredIdentifier(view.id, `${path}.id`, 'view id', errors)
   if (typeof view.id === 'string') {
     if (viewIds.has(view.id)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'view id must be unique within page.views.',
-          `${path}.id`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'view id must be unique within page.views.', `${path}.id`))
     }
     viewIds.add(view.id)
   }
 
   validateOptionalStringField(view.title, `${path}.title`, errors)
-  validateStringField(
-    view['disclosure-label'],
-    `${path}.disclosure-label`,
-    false,
-    errors,
-  )
-  if (
-    view['disclosure-label'] !== undefined &&
-    view.disclosure !== 'supplemental'
-  ) {
+  validateStringField(view['disclosure-label'], `${path}.disclosure-label`, false, errors)
+  if (view['disclosure-label'] !== undefined && view.disclosure !== 'supplemental') {
     errors.push(
-      createError(
-        ERROR_CODES.invalidProgressiveDisclosureConfiguration,
-        'disclosure-label is allowed only on supplemental views.',
-        `${path}.disclosure-label`,
-      ),
+      createError(ERROR_CODES.invalidProgressiveDisclosureConfiguration, 'disclosure-label is allowed only on supplemental views.', `${path}.disclosure-label`),
     )
   }
   validateOptionalStringField(view.description, `${path}.description`, errors)
   if (view.locked !== undefined && typeof view.locked !== 'boolean') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'locked must be a boolean.',
-        `${path}.locked`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'locked must be a boolean.', `${path}.locked`))
   }
   if (view.intent !== undefined) {
     validateStringField(view.intent, `${path}.intent`, true, errors)
     if (view.mark !== 'element') {
-      errors.push(
-        createError(
-          ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit,
-          'intent is allowed only when mark is "element".',
-          `${path}.intent`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit, 'intent is allowed only when mark is "element".', `${path}.intent`))
     }
   }
-  validateCallout(
-    view.callout,
-    getValueNodeByKey(viewNode, 'callout'),
-    view.mark,
-    view.title,
-    view.description,
-    `${path}.callout`,
-    errors,
-  )
+  validateCallout(view.callout, getValueNodeByKey(viewNode, 'callout'), view.mark, view.title, view.description, `${path}.callout`, errors)
   if (view['empty-message'] !== undefined) {
-    validateStringField(
-      view['empty-message'],
-      `${path}.empty-message`,
-      true,
-      errors,
-    )
+    validateStringField(view['empty-message'], `${path}.empty-message`, true, errors)
   }
 
   if (view.controls !== undefined) {
     validateStringField(view.controls, `${path}.controls`, true, errors)
-    if (
-      typeof view.controls === 'string' &&
-      !VIEW_CONTROL_VALUES.includes(view.controls)
-    ) {
+    if (typeof view.controls === 'string' && !VIEW_CONTROL_VALUES.includes(view.controls)) {
       errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'controls must use one canonical interactive or static value.',
-          `${path}.controls`,
-        ),
+        createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'controls must use one canonical interactive or static value.', `${path}.controls`),
       )
     }
     if (view.mark !== 'table') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'controls is allowed only when mark is "table".',
-          `${path}.controls`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'controls is allowed only when mark is "table".', `${path}.controls`))
     }
   }
 
   if (view['lazy-list'] !== undefined) {
     if (typeof view['lazy-list'] !== 'boolean') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'lazy-list must be a boolean.',
-          `${path}.lazy-list`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'lazy-list must be a boolean.', `${path}.lazy-list`))
     }
-    if (
-      view.mark !== 'table' ||
-      (view['lazy-list'] === true && view.controls === 'static')
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'lazy-list is allowed only on interactive table views.',
-          `${path}.lazy-list`,
-        ),
-      )
+    if (view.mark !== 'table' || (view['lazy-list'] === true && view.controls === 'static')) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'lazy-list is allowed only on interactive table views.', `${path}.lazy-list`))
     }
   }
 
   if (view['column-summaries'] !== undefined) {
     if (typeof view['column-summaries'] !== 'boolean') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'column-summaries must be a boolean.',
-          `${path}.column-summaries`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'column-summaries must be a boolean.', `${path}.column-summaries`))
     }
     if (view.mark !== 'table') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'column-summaries is allowed only when mark is "table".',
-          `${path}.column-summaries`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'column-summaries is allowed only when mark is "table".', `${path}.column-summaries`))
     }
   }
 
   if (view.tree !== undefined) {
     const treePath = `${path}.tree`
     if (!isPlainObject(view.tree)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'tree must be a mapping.',
-          treePath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'tree must be a mapping.', treePath))
     } else {
-      validateObjectKeys(
-        getValueNodeByKey(viewNode, 'tree'),
-        TREE_TABLE_KEYS,
-        treePath,
-        errors,
-      )
-      validateRequiredIdentifier(
-        view.tree['id-field'],
-        `${treePath}.id-field`,
-        'tree id field',
-        errors,
-      )
-      validateRequiredIdentifier(
-        view.tree['parent-field'],
-        `${treePath}.parent-field`,
-        'tree parent field',
-        errors,
-      )
-      const treeSource =
-        isPlainObject(view.data) && typeof view.data.source === 'string'
-          ? view.data.source
-          : null
-      const sourceFields = treeSource
-        ? SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (treeSource)]
-        : null
+      validateObjectKeys(getValueNodeByKey(viewNode, 'tree'), TREE_TABLE_KEYS, treePath, errors)
+      validateRequiredIdentifier(view.tree['id-field'], `${treePath}.id-field`, 'tree id field', errors)
+      validateRequiredIdentifier(view.tree['parent-field'], `${treePath}.parent-field`, 'tree parent field', errors)
+      const treeSource = isPlainObject(view.data) && typeof view.data.source === 'string' ? view.data.source : null
+      const sourceFields = treeSource ? SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (treeSource)] : null
       for (const field of [view.tree['id-field'], view.tree['parent-field']]) {
-        if (
-          typeof field === 'string' &&
-          sourceFields &&
-          !sourceFields.includes(field)
-        ) {
-          errors.push(
-            createError(
-              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-              'tree fields must be declared by data.source.',
-              treePath,
-            ),
-          )
+        if (typeof field === 'string' && sourceFields && !sourceFields.includes(field)) {
+          errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'tree fields must be declared by data.source.', treePath))
         }
       }
       if (view.tree['id-field'] === view.tree['parent-field']) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'tree id-field and parent-field must be different.',
-            treePath,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'tree id-field and parent-field must be different.', treePath))
       }
     }
     if (view.mark !== 'table') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'tree is allowed only when mark is "table".',
-          treePath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'tree is allowed only when mark is "table".', treePath))
     }
     if (view.controls !== 'static') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'tree tables must use static controls to preserve hierarchy.',
-          `${path}.controls`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'tree tables must use static controls to preserve hierarchy.', `${path}.controls`))
     }
   }
 
-  if (
-    view['empty-message'] !== undefined &&
-    !['chart', 'table'].includes(String(view.mark))
-  ) {
+  if (view['empty-message'] !== undefined && !['chart', 'table'].includes(String(view.mark))) {
     errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'empty-message is allowed only when mark is "chart" or "table".',
-        `${path}.empty-message`,
-      ),
+      createError(ERROR_CODES.missingOrInvalidRequiredField, 'empty-message is allowed only when mark is "chart" or "table".', `${path}.empty-message`),
     )
   }
 
-  validateTitleLink(
-    view['title-link'],
-    getValueNodeByKey(viewNode, 'title-link'),
-    view.mark,
-    view.data,
-    `${path}.title-link`,
-    errors,
-  )
+  validateTitleLink(view['title-link'], getValueNodeByKey(viewNode, 'title-link'), view.mark, view.data, `${path}.title-link`, errors)
 
   validateStringField(view.mark, `${path}.mark`, true, errors)
   if (typeof view.mark === 'string' && !VIEW_MARK_VALUES.includes(view.mark)) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'mark must use one canonical custom-view mark value.',
-        `${path}.mark`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'mark must use one canonical custom-view mark value.', `${path}.mark`))
   }
 
   if (view.element !== undefined) {
     validateStringField(view.element, `${path}.element`, true, errors)
-    if (
-      typeof view.element === 'string' &&
-      !VIEW_ELEMENT_VALUES.includes(view.element)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'element must use one canonical UI element value.',
-          `${path}.element`,
-        ),
-      )
+    if (typeof view.element === 'string' && !VIEW_ELEMENT_VALUES.includes(view.element)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'element must use one canonical UI element value.', `${path}.element`))
     }
     if (view.mark !== 'element') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'element is allowed only when mark is "element".',
-          `${path}.element`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'element is allowed only when mark is "element".', `${path}.element`))
     }
   } else if (view.mark === 'element') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'element views must name one canonical UI element.',
-        `${path}.element`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'element views must name one canonical UI element.', `${path}.element`))
   }
 
   if (view.config !== undefined) {
     if (!isPlainObject(view.config)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'config must be a mapping.',
-          `${path}.config`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'config must be a mapping.', `${path}.config`))
     } else if (view.mark !== 'element') {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'config is allowed only when mark is "element".',
-          `${path}.config`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'config is allowed only when mark is "element".', `${path}.config`))
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config')
-      validateObjectKeys(
-        configNode,
-        VIEW_ELEMENT_CONFIG_KEYS,
-        `${path}.config`,
-        errors,
-      )
+      validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors)
       if (
         (view.element === 'workflow-route' ||
           view.element === 'workflow-route-page' ||
@@ -2203,15 +1300,9 @@ function validateView(view, viewNode, path, viewIds, errors) {
           view.element === 'work-project-view') &&
         view.config.body !== undefined
       ) {
-        validateStringField(
-          view.config.body,
-          `${path}.config.body`,
-          true,
-          errors,
-        )
+        validateStringField(view.config.body, `${path}.config.body`, true, errors)
         const allowedBodies =
-          view.element === 'workflow-route' ||
-          view.element === 'workflow-route-page'
+          view.element === 'workflow-route' || view.element === 'workflow-route-page'
             ? WORKFLOW_ROUTE_BODY_VALUES
             : view.element === 'package-route'
               ? PACKAGE_ROUTE_BODY_VALUES
@@ -2220,10 +1311,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
                 : view.element === 'work-project-view'
                   ? WORK_VIEW_BODY_VALUES
                   : OUTCOME_DETAIL_SECTION_BODY_VALUES
-        if (
-          typeof view.config.body === 'string' &&
-          !allowedBodies.includes(view.config.body)
-        ) {
+        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
           errors.push(
             createError(
               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2241,39 +1329,17 @@ function validateView(view, viewNode, path, viewIds, errors) {
           ),
         )
       }
-      if (
-        (view.element === 'experiments-evaluation' ||
-          view.element === 'work-project-view') &&
-        view.config.sections !== undefined
-      ) {
-        if (
-          !Array.isArray(view.config.sections) ||
-          view.config.sections.length === 0
-        ) {
+      if ((view.element === 'experiments-evaluation' || view.element === 'work-project-view') && view.config.sections !== undefined) {
+        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
           errors.push(
-            createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              `${view.element} config.sections must be a non-empty list.`,
-              `${path}.config.sections`,
-            ),
+            createError(ERROR_CODES.missingOrInvalidRequiredField, `${view.element} config.sections must be a non-empty list.`, `${path}.config.sections`),
           )
         } else {
           for (let index = 0; index < view.config.sections.length; index += 1) {
             const section = view.config.sections[index]
-            validateStringField(
-              section,
-              `${path}.config.sections[${index}]`,
-              true,
-              errors,
-            )
-            const allowedSections =
-              view.element === 'work-project-view'
-                ? WORK_VIEW_BODY_VALUES
-                : EXPERIMENTS_VIEW_BODY_VALUES
-            if (
-              typeof section === 'string' &&
-              !allowedSections.includes(section)
-            ) {
+            validateStringField(section, `${path}.config.sections[${index}]`, true, errors)
+            const allowedSections = view.element === 'work-project-view' ? WORK_VIEW_BODY_VALUES : EXPERIMENTS_VIEW_BODY_VALUES
+            if (typeof section === 'string' && !allowedSections.includes(section)) {
               errors.push(
                 createError(
                   ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2298,42 +1364,18 @@ function validateView(view, viewNode, path, viewIds, errors) {
 
   if (view.chart !== undefined) {
     validateStringField(view.chart, `${path}.chart`, true, errors)
-    if (
-      typeof view.chart === 'string' &&
-      !VIEW_CHART_VALUES.includes(view.chart)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'chart must use one canonical chart widget value.',
-          `${path}.chart`,
-        ),
-      )
+    if (typeof view.chart === 'string' && !VIEW_CHART_VALUES.includes(view.chart)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'chart must use one canonical chart widget value.', `${path}.chart`))
     }
     if (view.mark !== 'chart') {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'chart is allowed only when mark is "chart".',
-          `${path}.chart`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'chart is allowed only when mark is "chart".', `${path}.chart`))
     }
   }
 
   if (view.layout !== undefined) {
     validateStringField(view.layout, `${path}.layout`, true, errors)
-    if (
-      typeof view.layout === 'string' &&
-      !VIEW_LAYOUT_VALUES.includes(view.layout)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'layout must use one canonical structural layout hint.',
-          `${path}.layout`,
-        ),
-      )
+    if (typeof view.layout === 'string' && !VIEW_LAYOUT_VALUES.includes(view.layout)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'layout must use one canonical structural layout hint.', `${path}.layout`))
     }
   }
 
@@ -2341,22 +1383,10 @@ function validateView(view, viewNode, path, viewIds, errors) {
   let sourceName = null
   if (view.mark === 'callout') {
     if (view.data !== undefined) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'callout views must not declare data.',
-          `${path}.data`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'callout views must not declare data.', `${path}.data`))
     }
   } else if (!isPlainObject(view.data)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'data must be a mapping.',
-        `${path}.data`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'data must be a mapping.', `${path}.data`))
   } else {
     const dataNode = getValueNodeByKey(viewNode, 'data')
     validateObjectKeys(dataNode, VIEW_DATA_KEYS, `${path}.data`, errors)
@@ -2364,35 +1394,17 @@ function validateView(view, viewNode, path, viewIds, errors) {
       validateSourceSequence(view.data.sources, `${path}.data.sources`, errors)
       if (view.data.source !== undefined) {
         errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'element views must use data.sources instead of data.source.',
-            `${path}.data.source`,
-          ),
+          createError(ERROR_CODES.missingOrInvalidRequiredField, 'element views must use data.sources instead of data.source.', `${path}.data.source`),
         )
       }
-      for (const key of [
-        'limit',
-        'order-by',
-        'source-metadata',
-        'route-field',
-      ]) {
+      for (const key of ['limit', 'order-by', 'source-metadata', 'route-field']) {
         if (view.data[key] !== undefined) {
-          errors.push(
-            createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              `element views must not declare data.${key}.`,
-              `${path}.data.${key}`,
-            ),
-          )
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `element views must not declare data.${key}.`, `${path}.data.${key}`))
         }
       }
     } else {
       validateSource(view.data.source, `${path}.data.source`, errors)
-      if (
-        typeof view.data.source === 'string' &&
-        SOURCE_VALUES.includes(view.data.source)
-      ) {
+      if (typeof view.data.source === 'string' && SOURCE_VALUES.includes(view.data.source)) {
         sourceName = view.data.source
       }
       if (view.data.sources !== undefined) {
@@ -2405,18 +1417,11 @@ function validateView(view, viewNode, path, viewIds, errors) {
         )
       }
       if (view.data['route-field'] !== undefined) {
-        validateStringField(
-          view.data['route-field'],
-          `${path}.data.route-field`,
-          true,
-          errors,
-        )
+        validateStringField(view.data['route-field'], `${path}.data.route-field`, true, errors)
         if (
           sourceName &&
           typeof view.data['route-field'] === 'string' &&
-          !SOURCE_FIELDS[
-            /** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)
-          ]?.includes(view.data['route-field'])
+          !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(view.data['route-field'])
         ) {
           errors.push(
             createError(
@@ -2432,18 +1437,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
   }
 
   validateSemanticFieldLiterals(view.data, `${path}.data`, errors)
-  validateDatasetMetadata(
-    getValueNodeByKey(viewNode, 'data'),
-    view.data,
-    `${path}.data`,
-    errors,
-  )
-  if (
-    view.chart === 'heatmap' &&
-    (!isPlainObject(view.data) ||
-      !Number.isInteger(view.data.limit) ||
-      Number(view.data.limit) > 100)
-  ) {
+  validateDatasetMetadata(getValueNodeByKey(viewNode, 'data'), view.data, `${path}.data`, errors)
+  if (view.chart === 'heatmap' && (!isPlainObject(view.data) || !Number.isInteger(view.data.limit) || Number(view.data.limit) > 100)) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -2452,24 +1447,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
       ),
     )
   }
-  validateEncoding(
-    getValueNodeByKey(viewNode, 'encoding'),
-    view.encoding,
-    view.mark,
-    view.chart,
-    sourceName,
-    view.data,
-    path,
-    errors,
-  )
-  validateTableActions(
-    view.encoding,
-    getValueNodeByKey(viewNode, 'encoding'),
-    view.mark,
-    sourceName,
-    `${path}.encoding.actions`,
-    errors,
-  )
+  validateEncoding(getValueNodeByKey(viewNode, 'encoding'), view.encoding, view.mark, view.chart, sourceName, view.data, path, errors)
+  validateTableActions(view.encoding, getValueNodeByKey(viewNode, 'encoding'), view.mark, sourceName, `${path}.encoding.actions`, errors)
 }
 
 /**
@@ -2480,92 +1459,37 @@ function validateView(view, viewNode, path, viewIds, errors) {
  * @param {string} path
  * @param {ValidationError[]} errors
  */
-function validateTableActions(
-  encoding,
-  encodingNode,
-  mark,
-  sourceName,
-  path,
-  errors,
-) {
+function validateTableActions(encoding, encodingNode, mark, sourceName, path, errors) {
   if (!isPlainObject(encoding) || encoding.actions === undefined) return
   if (mark !== 'table') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'actions is allowed only when mark is "table".',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'actions is allowed only when mark is "table".', path))
     return
   }
   if (!Array.isArray(encoding.actions) || encoding.actions.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'actions must be a non-empty sequence.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'actions must be a non-empty sequence.', path))
     return
   }
   encoding.actions.forEach((action, index) => {
     const actionPath = `${path}[${index}]`
-    const actionNode = getSequenceItemNode(
-      getValueNodeByKey(encodingNode, 'actions'),
-      index,
-    )
+    const actionNode = getSequenceItemNode(getValueNodeByKey(encodingNode, 'actions'), index)
     if (!isPlainObject(action)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'action must be a mapping.',
-          actionPath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action must be a mapping.', actionPath))
       return
     }
     validateObjectKeys(actionNode, TABLE_ACTION_KEYS, actionPath, errors)
     validateStringField(action.intent, `${actionPath}.intent`, true, errors)
-    validateStringField(
-      action.presentation,
-      `${actionPath}.presentation`,
-      true,
-      errors,
-    )
-    if (
-      typeof action.presentation === 'string' &&
-      !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'action presentation must be copy-prompt.',
-          `${actionPath}.presentation`,
-        ),
-      )
+    validateStringField(action.presentation, `${actionPath}.presentation`, true, errors)
+    if (typeof action.presentation === 'string' && !TABLE_ACTION_PRESENTATION_VALUES.includes(action.presentation)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action presentation must be copy-prompt.', `${actionPath}.presentation`))
     }
     validateStringField(action.icon, `${actionPath}.icon`, true, errors)
-    if (
-      typeof action.icon === 'string' &&
-      !PAGE_ICON_VALUES.includes(action.icon)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'action icon must use one canonical icon value.',
-          `${actionPath}.icon`,
-        ),
-      )
+    if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'action icon must use one canonical icon value.', `${actionPath}.icon`))
     }
     validateStringField(action.label, `${actionPath}.label`, true, errors)
     if (!Array.isArray(action.context) || action.context.length === 0) {
       errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'action context must be a non-empty sequence of source fields.',
-          `${actionPath}.context`,
-        ),
+        createError(ERROR_CODES.missingOrInvalidRequiredField, 'action context must be a non-empty sequence of source fields.', `${actionPath}.context`),
       )
     } else {
       const contextFields = new Set()
@@ -2574,60 +1498,27 @@ function validateTableActions(
         validateStringField(field, fieldPath, true, errors)
         if (typeof field !== 'string') return
         if (contextFields.has(field)) {
-          errors.push(
-            createError(
-              ERROR_CODES.missingOrInvalidRequiredField,
-              'action context fields must be unique.',
-              fieldPath,
-            ),
-          )
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action context fields must be unique.', fieldPath))
         }
         contextFields.add(field)
-        if (
-          sourceName &&
-          !SOURCE_FIELDS[
-            /** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)
-          ]?.includes(field)
-        ) {
+        if (sourceName && !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(field)) {
           errors.push(
-            createError(
-              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-              'action context field must be declared by data.source.',
-              fieldPath,
-            ),
+            createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'action context field must be declared by data.source.', fieldPath),
           )
         }
       })
     }
     if (action.when === undefined) return
     if (!isPlainObject(action.when)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'action when must be a mapping.',
-          `${actionPath}.when`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action when must be a mapping.', `${actionPath}.when`))
       return
     }
-    validateObjectKeys(
-      getValueNodeByKey(actionNode, 'when'),
-      TABLE_ACTION_WHEN_KEYS,
-      `${actionPath}.when`,
-      errors,
-    )
-    validateStringField(
-      action.when.field,
-      `${actionPath}.when.field`,
-      true,
-      errors,
-    )
+    validateObjectKeys(getValueNodeByKey(actionNode, 'when'), TABLE_ACTION_WHEN_KEYS, `${actionPath}.when`, errors)
+    validateStringField(action.when.field, `${actionPath}.when.field`, true, errors)
     if (
       typeof action.when.field === 'string' &&
       sourceName &&
-      !SOURCE_FIELDS[
-        /** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)
-      ]?.includes(action.when.field)
+      !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(action.when.field)
     ) {
       errors.push(
         createError(
@@ -2637,17 +1528,8 @@ function validateTableActions(
         ),
       )
     }
-    if (
-      !Object.hasOwn(action.when, 'equals') ||
-      ['object', 'function', 'symbol'].includes(typeof action.when.equals)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'action when equals must be a scalar.',
-          `${actionPath}.when.equals`,
-        ),
-      )
+    if (!Object.hasOwn(action.when, 'equals') || ['object', 'function', 'symbol'].includes(typeof action.when.equals)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action when equals must be a scalar.', `${actionPath}.when.equals`))
     }
   })
 }
@@ -2661,59 +1543,25 @@ function validateTableActions(
  * @param {string} path
  * @param {ValidationError[]} errors
  */
-function validateCallout(
-  callout,
-  calloutNode,
-  mark,
-  title,
-  description,
-  path,
-  errors,
-) {
+function validateCallout(callout, calloutNode, mark, title, description, path, errors) {
   if (mark !== 'callout') {
     if (callout !== undefined) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'callout is allowed only when mark is "callout".',
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'callout is allowed only when mark is "callout".', path))
     }
     return
   }
   if (!isPlainObject(callout)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'callout views must contain a callout mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'callout views must contain a callout mapping.', path))
     return
   }
   validateObjectKeys(calloutNode, CALLOUT_KEYS, path, errors)
   validateStringField(callout.label, `${path}.label`, true, errors)
   validateStringField(callout.icon, `${path}.icon`, true, errors)
-  if (
-    typeof callout.icon === 'string' &&
-    !PAGE_ICON_VALUES.includes(callout.icon)
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'callout icon must use one canonical icon value.',
-        `${path}.icon`,
-      ),
-    )
+  if (typeof callout.icon === 'string' && !PAGE_ICON_VALUES.includes(callout.icon)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'callout icon must use one canonical icon value.', `${path}.icon`))
   }
   validateStringField(title, path.replace(/\.callout$/, '.title'), true, errors)
-  validateStringField(
-    description,
-    path.replace(/\.callout$/, '.description'),
-    true,
-    errors,
-  )
+  validateStringField(description, path.replace(/\.callout$/, '.description'), true, errors)
 }
 
 /**
@@ -2727,54 +1575,23 @@ function validateCallout(
 function validateTitleLink(titleLink, titleLinkNode, mark, data, path, errors) {
   if (titleLink === undefined) return
   if (!isPlainObject(titleLink)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'title-link must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'title-link must be a mapping.', path))
     return
   }
   validateObjectKeys(titleLinkNode, VIEW_TITLE_LINK_KEYS, path, errors)
-  validateStringField(
-    titleLink['href-field'],
-    `${path}.href-field`,
-    true,
-    errors,
-  )
-  validateStringField(
-    titleLink['identifier-field'],
-    `${path}.identifier-field`,
-    true,
-    errors,
-  )
+  validateStringField(titleLink['href-field'], `${path}.href-field`, true, errors)
+  validateStringField(titleLink['identifier-field'], `${path}.identifier-field`, true, errors)
   if (mark !== 'element') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'title-link is allowed only when mark is "element".',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'title-link is allowed only when mark is "element".', path))
     return
   }
   if (!isPlainObject(data) || !Array.isArray(data.sources)) return
   const hrefField = titleLink['href-field']
   const identifierField = titleLink['identifier-field']
   if (typeof hrefField === 'string' && !LINK_FIELD_NAMES.includes(hrefField)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidLinkReference,
-        'title-link href-field must name a relation-specific link field.',
-        `${path}.href-field`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidLinkReference, 'title-link href-field must name a relation-specific link field.', `${path}.href-field`))
   }
-  if (
-    typeof identifierField === 'string' &&
-    LINK_FIELD_NAMES.includes(identifierField)
-  ) {
+  if (typeof identifierField === 'string' && LINK_FIELD_NAMES.includes(identifierField)) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -2783,26 +1600,15 @@ function validateTitleLink(titleLink, titleLinkNode, mark, data, path, errors) {
       ),
     )
   }
-  if (typeof hrefField !== 'string' || typeof identifierField !== 'string')
-    return
+  if (typeof hrefField !== 'string' || typeof identifierField !== 'string') return
   const hasCompatibleSource = data.sources.some(
     (sourceName) =>
       typeof sourceName === 'string' &&
-      SOURCE_FIELDS[
-        /** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)
-      ]?.includes(hrefField) &&
-      SOURCE_FIELDS[
-        /** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)
-      ]?.includes(identifierField),
+      SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(hrefField) &&
+      SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(identifierField),
   )
   if (!hasCompatibleSource) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidLinkReference,
-        'title-link fields must be declared by the same selected source.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidLinkReference, 'title-link fields must be declared by the same selected source.', path))
   }
 }
 
@@ -2815,16 +1621,8 @@ function validateProgressiveDisclosure(views, path, errors) {
   const validViews = views.filter(isPlainObject)
   for (const [index, view] of views.entries()) {
     if (isPlainObject(view)) {
-      validateDisclosureValue(
-        view.disclosure,
-        `${path}[${index}].disclosure`,
-        errors,
-      )
-      if (
-        view.disclosure === 'supplemental' &&
-        view.mark === 'table' &&
-        Object.hasOwn(view, 'title')
-      ) {
+      validateDisclosureValue(view.disclosure, `${path}[${index}].disclosure`, errors)
+      if (view.disclosure === 'supplemental' && view.mark === 'table' && Object.hasOwn(view, 'title')) {
         errors.push(
           createError(
             ERROR_CODES.invalidProgressiveDisclosureConfiguration,
@@ -2840,9 +1638,7 @@ function validateProgressiveDisclosure(views, path, errors) {
     return
   }
 
-  const essentialCount = validViews.filter(
-    (view) => view.disclosure === undefined || view.disclosure === 'essential',
-  ).length
+  const essentialCount = validViews.filter((view) => view.disclosure === undefined || view.disclosure === 'essential').length
   if (essentialCount < 1 || essentialCount > MAX_ESSENTIAL_VIEWS_PER_PAGE) {
     errors.push(
       createError(
@@ -2861,15 +1657,9 @@ function validateProgressiveDisclosure(views, path, errors) {
  * @param {string | undefined} pageId
  */
 function validateGraphicalLayout(views, viewsPath, errors, pageId) {
-  if (pageId !== undefined && GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS.has(pageId))
-    return
+  if (pageId !== undefined && GRAPHICAL_LAYOUT_EXEMPT_PAGE_IDS.has(pageId)) return
   const validViews = views.filter(isPlainObject)
-  const defaultOpenTables = validViews.filter(
-    (view) =>
-      view.locked !== true &&
-      view.mark === 'table' &&
-      view.disclosure !== 'supplemental',
-  )
+  const defaultOpenTables = validViews.filter((view) => view.locked !== true && view.mark === 'table' && view.disclosure !== 'supplemental')
   for (const table of defaultOpenTables.slice(1)) {
     const index = views.indexOf(table)
     errors.push(
@@ -2882,19 +1672,9 @@ function validateGraphicalLayout(views, viewsPath, errors, pageId) {
   }
 
   for (const [index, view] of views.entries()) {
-    if (
-      !isPlainObject(view) ||
-      view.locked === true ||
-      view.mark === 'chart' ||
-      !Object.hasOwn(view, 'views')
-    )
-      continue
+    if (!isPlainObject(view) || view.locked === true || view.mark === 'chart' || !Object.hasOwn(view, 'views')) continue
     errors.push(
-      createError(
-        ERROR_CODES.invalidGraphicalNesting,
-        'Views are top-level boxes and must not contain nested views.',
-        `${viewsPath}[${index}].views`,
-      ),
+      createError(ERROR_CODES.invalidGraphicalNesting, 'Views are top-level boxes and must not contain nested views.', `${viewsPath}[${index}].views`),
     )
   }
 }
@@ -2908,17 +1688,8 @@ function validateDisclosureValue(disclosure, path, errors) {
   if (disclosure === undefined) {
     return
   }
-  if (
-    typeof disclosure !== 'string' ||
-    !VIEW_DISCLOSURE_VALUES.includes(disclosure)
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'disclosure must be exactly "essential" or "supplemental".',
-        path,
-      ),
-    )
+  if (typeof disclosure !== 'string' || !VIEW_DISCLOSURE_VALUES.includes(disclosure)) {
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'disclosure must be exactly "essential" or "supplemental".', path))
   }
 }
 
@@ -2930,13 +1701,7 @@ function validateDisclosureValue(disclosure, path, errors) {
 function validateSource(source, path, errors) {
   validateStringField(source, path, true, errors)
   if (typeof source === 'string' && !SOURCE_VALUES.includes(source)) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'source must use one canonical Section 5.1 source name.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'source must use one canonical Section 5.1 source name.', path))
   }
 }
 
@@ -2947,13 +1712,7 @@ function validateSource(source, path, errors) {
  */
 function validateSourceSequence(sources, path, errors) {
   if (!Array.isArray(sources) || sources.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'sources must be a non-empty sequence of canonical source names.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'sources must be a non-empty sequence of canonical source names.', path))
     return
   }
   const seen = new Set()
@@ -2961,13 +1720,7 @@ function validateSourceSequence(sources, path, errors) {
     validateSource(source, `${path}[${index}]`, errors)
     if (typeof source === 'string') {
       if (seen.has(source)) {
-        errors.push(
-          createError(
-            ERROR_CODES.missingOrInvalidRequiredField,
-            'sources must not contain duplicate source names.',
-            `${path}[${index}]`,
-          ),
-        )
+        errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'sources must not contain duplicate source names.', `${path}[${index}]`))
       }
       seen.add(source)
     }
@@ -2994,31 +1747,11 @@ function validateSemanticFieldLiterals(data, path, errors) {
  * @param {ValidationError[]} errors
  */
 function validateContext(contextNode, context, path, errors) {
-  validateScope(
-    getValueNodeByKey(contextNode, 'scope'),
-    context.scope,
-    `${path}.scope`,
-    errors,
-  )
-  validateTime(
-    getValueNodeByKey(contextNode, 'time'),
-    context.time,
-    `${path}.time`,
-    errors,
-  )
-  validateFilters(
-    getValueNodeByKey(contextNode, 'filters'),
-    context.filters,
-    `${path}.filters`,
-    errors,
-  )
+  validateScope(getValueNodeByKey(contextNode, 'scope'), context.scope, `${path}.scope`, errors)
+  validateTime(getValueNodeByKey(contextNode, 'time'), context.time, `${path}.time`, errors)
+  validateFilters(getValueNodeByKey(contextNode, 'filters'), context.filters, `${path}.filters`, errors)
   validateLimit(context.limit, `${path}.limit`, errors)
-  validateOrderBy(
-    getValueNodeByKey(contextNode, 'order-by'),
-    context['order-by'],
-    `${path}.order-by`,
-    errors,
-  )
+  validateOrderBy(getValueNodeByKey(contextNode, 'order-by'), context['order-by'], `${path}.order-by`, errors)
 }
 
 /**
@@ -3033,13 +1766,7 @@ function validateScope(scopeNode, scope, path, errors) {
   }
 
   if (!isPlainObject(scope)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'scope must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'scope must be a mapping.', path))
     return
   }
 
@@ -3047,12 +1774,7 @@ function validateScope(scopeNode, scope, path, errors) {
   for (const key of SCOPE_KEYS) {
     const value = scope[key]
     if (value !== undefined) {
-      validateNonEmptyStringSequence(
-        value,
-        `${path}.${key}`,
-        `${key} must be a non-empty sequence of non-empty strings.`,
-        errors,
-      )
+      validateNonEmptyStringSequence(value, `${path}.${key}`, `${key} must be a non-empty sequence of non-empty strings.`, errors)
     }
   }
 }
@@ -3069,13 +1791,7 @@ function validateTime(timeNode, time, path, errors) {
   }
 
   if (!isPlainObject(time)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'time must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time must be a mapping.', path))
     return
   }
 
@@ -3087,61 +1803,26 @@ function validateTime(timeNode, time, path, errors) {
 
   if (range !== undefined) {
     if (typeof range !== 'string' || !/^[1-9][0-9]*(h|d|w)$/.test(range)) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'time.range must match ^[1-9][0-9]*(h|d|w)$.',
-          `${path}.range`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time.range must match ^[1-9][0-9]*(h|d|w)$.', `${path}.range`))
     }
 
     if (start !== undefined || end !== undefined) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'time.range must not appear with time.start or time.end.',
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time.range must not appear with time.start or time.end.', path))
     }
     return
   }
 
   if (start !== undefined && !isRfc3339Timestamp(start)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'time.start must be an RFC 3339 timestamp.',
-        `${path}.start`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time.start must be an RFC 3339 timestamp.', `${path}.start`))
   }
 
   if (end !== undefined && !isRfc3339Timestamp(end)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'time.end must be an RFC 3339 timestamp.',
-        `${path}.end`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time.end must be an RFC 3339 timestamp.', `${path}.end`))
   }
 
-  if (
-    typeof start === 'string' &&
-    typeof end === 'string' &&
-    isRfc3339Timestamp(start) &&
-    isRfc3339Timestamp(end)
-  ) {
+  if (typeof start === 'string' && typeof end === 'string' && isRfc3339Timestamp(start) && isRfc3339Timestamp(end)) {
     if (Date.parse(start) >= Date.parse(end)) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'time.start must precede time.end.',
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time.start must precede time.end.', path))
     }
   }
 }
@@ -3158,13 +1839,7 @@ function validateFilters(filtersNode, filters, path, errors) {
   }
 
   if (!isPlainObject(filters)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'filters must be a mapping.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'filters must be a mapping.', path))
     return
   }
 
@@ -3182,13 +1857,7 @@ function validateFilters(filtersNode, filters, path, errors) {
 function validateFilterValue(value, path, errors) {
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'filter sequences must be non-empty.',
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'filter sequences must be non-empty.', path))
       return
     }
 
@@ -3228,13 +1897,7 @@ function validateLimit(limit, path, errors) {
   }
 
   if (typeof limit !== 'number' || !Number.isInteger(limit) || limit <= 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'limit must be a positive integer.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'limit must be a positive integer.', path))
   }
 }
 
@@ -3250,13 +1913,7 @@ function validateOrderBy(orderByNode, orderBy, path, errors) {
   }
 
   if (!Array.isArray(orderBy) || orderBy.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'order-by must be a non-empty sequence.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'order-by must be a non-empty sequence.', path))
     return
   }
 
@@ -3264,28 +1921,14 @@ function validateOrderBy(orderByNode, orderBy, path, errors) {
     const clausePath = `${path}[${index}]`
     const clauseNode = getSequenceItemNode(orderByNode, index)
     if (!isPlainObject(clause)) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'order-by entries must be mappings.',
-          clausePath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'order-by entries must be mappings.', clausePath))
       continue
     }
 
     validateObjectKeys(clauseNode, ORDER_BY_KEYS, clausePath, errors)
     validateStringField(clause.field, `${clausePath}.field`, true, errors)
-    validateStringField(
-      clause.direction,
-      `${clausePath}.direction`,
-      true,
-      errors,
-    )
-    if (
-      typeof clause.direction === 'string' &&
-      !ORDER_DIRECTION_VALUES.includes(clause.direction)
-    ) {
+    validateStringField(clause.direction, `${clausePath}.direction`, true, errors)
+    if (typeof clause.direction === 'string' && !ORDER_DIRECTION_VALUES.includes(clause.direction)) {
       errors.push(
         createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3307,17 +1950,10 @@ function validateFilterLiteralSet(filters, path, errors) {
     return
   }
 
-  for (const [field, allowedValues] of Object.entries(
-    SEMANTIC_FILTER_VALUE_SETS,
-  )) {
+  for (const [field, allowedValues] of Object.entries(SEMANTIC_FILTER_VALUE_SETS)) {
     const value = filters[field]
     if (value !== undefined) {
-      validateEnumeratedFilterValue(
-        value,
-        allowedValues,
-        `${path}.${field}`,
-        errors,
-      )
+      validateEnumeratedFilterValue(value, allowedValues, `${path}.${field}`, errors)
     }
   }
 }
@@ -3340,13 +1976,7 @@ function validateDatasetMetadata(dataNode, data, path, errors) {
 
   const metadataPath = `${path}.source-metadata`
   if (!isPlainObject(metadata)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
-        'source-metadata must be a mapping when provided.',
-        metadataPath,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata, 'source-metadata must be a mapping when provided.', metadataPath))
     return
   }
 
@@ -3355,38 +1985,21 @@ function validateDatasetMetadata(dataNode, data, path, errors) {
   const metadataNode = getValueNodeByKey(dataNode, 'source-metadata')
   validateObjectKeys(metadataNode, DATASET_METADATA_KEYS, metadataPath, errors)
 
-  for (const key of [
-    'source-id',
-    'source-kind',
-    'as-of',
-    'retrieved-at',
-    'completeness',
-    'freshness',
-  ]) {
+  for (const key of ['source-id', 'source-kind', 'as-of', 'retrieved-at', 'completeness', 'freshness']) {
     validateStringField(metadata[key], `${metadataPath}.${key}`, true, errors)
   }
 
   for (const key of ['coverage-start', 'coverage-end']) {
     if (metadata[key] !== undefined && !isRfc3339Timestamp(metadata[key])) {
       errors.push(
-        createError(
-          ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
-          `${key} must be an RFC 3339 timestamp when provided.`,
-          `${metadataPath}.${key}`,
-        ),
+        createError(ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata, `${key} must be an RFC 3339 timestamp when provided.`, `${metadataPath}.${key}`),
       )
     }
   }
 
   for (const key of ['as-of', 'retrieved-at']) {
     if (metadata[key] !== undefined && !isRfc3339Timestamp(metadata[key])) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
-          `${key} must be an RFC 3339 timestamp.`,
-          `${metadataPath}.${key}`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata, `${key} must be an RFC 3339 timestamp.`, `${metadataPath}.${key}`))
     }
   }
 
@@ -3395,53 +2008,22 @@ function validateDatasetMetadata(dataNode, data, path, errors) {
     typeof metadata['coverage-end'] === 'string' &&
     isRfc3339Timestamp(metadata['coverage-start']) &&
     isRfc3339Timestamp(metadata['coverage-end']) &&
-    Date.parse(metadata['coverage-start']) >=
-      Date.parse(metadata['coverage-end'])
+    Date.parse(metadata['coverage-start']) >= Date.parse(metadata['coverage-end'])
   ) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
-        'coverage-start must precede coverage-end.',
-        metadataPath,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata, 'coverage-start must precede coverage-end.', metadataPath))
   }
 
-  validateEnumeratedMetadataValue(
-    metadata.completeness,
-    DATASET_COMPLETENESS_VALUES,
-    `${metadataPath}.completeness`,
-    'completeness',
-    errors,
-  )
-  validateEnumeratedMetadataValue(
-    metadata.freshness,
-    DATASET_FRESHNESS_VALUES,
-    `${metadataPath}.freshness`,
-    'freshness',
-    errors,
-  )
+  validateEnumeratedMetadataValue(metadata.completeness, DATASET_COMPLETENESS_VALUES, `${metadataPath}.completeness`, 'completeness', errors)
+  validateEnumeratedMetadataValue(metadata.freshness, DATASET_FRESHNESS_VALUES, `${metadataPath}.freshness`, 'freshness', errors)
 
   if (metadata['provenance-link'] !== undefined) {
-    validateLinkObject(
-      metadata['provenance-link'],
-      `${metadataPath}.provenance-link`,
-      'provenance-link',
-      errors,
-      {
-        code: ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
-      },
-    )
+    validateLinkObject(metadata['provenance-link'], `${metadataPath}.provenance-link`, 'provenance-link', errors, {
+      code: ERROR_CODES.missingRequiredProvenanceOrDataStateMetadata,
+    })
   }
 
   if (metadata.availability !== undefined) {
-    validateEnumeratedMetadataValue(
-      metadata.availability,
-      DATASET_AVAILABILITY_VALUES,
-      `${metadataPath}.availability`,
-      'availability',
-      errors,
-    )
+    validateEnumeratedMetadataValue(metadata.availability, DATASET_AVAILABILITY_VALUES, `${metadataPath}.availability`, 'availability', errors)
   }
 }
 
@@ -3455,59 +2037,27 @@ function validateDatasetMetadata(dataNode, data, path, errors) {
  * @param {string} viewPath
  * @param {ValidationError[]} errors
  */
-function validateEncoding(
-  encodingNode,
-  encoding,
-  mark,
-  chart,
-  sourceName,
-  data,
-  viewPath,
-  errors,
-) {
+function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data, viewPath, errors) {
   if (mark === 'element' || mark === 'callout') {
     if (encoding !== undefined) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          `${mark} views must not declare encoding.`,
-          `${viewPath}.encoding`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `${mark} views must not declare encoding.`, `${viewPath}.encoding`))
     }
     return
   }
 
   if (!isPlainObject(encoding)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'encoding must be a mapping.',
-        `${viewPath}.encoding`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'encoding must be a mapping.', `${viewPath}.encoding`))
     return
   }
 
-  validateObjectKeys(
-    encodingNode,
-    VIEW_ENCODING_KEYS,
-    `${viewPath}.encoding`,
-    errors,
-  )
+  validateObjectKeys(encodingNode, VIEW_ENCODING_KEYS, `${viewPath}.encoding`, errors)
 
   /** @type {Map<string, string>} */
   const aggregateOutputIds = new Map()
   const markValue = typeof mark === 'string' ? mark : null
-  const displayForbiddenChannels =
-    markValue === 'table'
-      ? ['href']
-      : ['value', 'x', 'y', 'color', 'reference', 'href']
+  const displayForbiddenChannels = markValue === 'table' ? ['href'] : ['value', 'x', 'y', 'color', 'reference', 'href']
   for (const channel of displayForbiddenChannels) {
-    if (
-      isPlainObject(encoding[channel]) &&
-      encoding[channel].display !== undefined
-    ) {
+    if (isPlainObject(encoding[channel]) && encoding[channel].display !== undefined) {
       errors.push(
         createError(
           ERROR_CODES.missingOrInvalidRequiredField,
@@ -3517,15 +2067,9 @@ function validateEncoding(
       )
     }
   }
-  const filterForbiddenChannels =
-    markValue === 'table'
-      ? ['href']
-      : ['value', 'x', 'y', 'color', 'reference', 'href']
+  const filterForbiddenChannels = markValue === 'table' ? ['href'] : ['value', 'x', 'y', 'color', 'reference', 'href']
   for (const channel of filterForbiddenChannels) {
-    if (
-      isPlainObject(encoding[channel]) &&
-      encoding[channel].filter !== undefined
-    ) {
+    if (isPlainObject(encoding[channel]) && encoding[channel].filter !== undefined) {
       errors.push(
         createError(
           ERROR_CODES.missingOrInvalidRequiredField,
@@ -3537,44 +2081,15 @@ function validateEncoding(
   }
 
   if (markValue === 'metric') {
-    validateMetricEncoding(
-      encodingNode,
-      encoding,
-      sourceName,
-      `${viewPath}.encoding`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateMetricEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors)
   } else if (markValue === 'table') {
-    validateTableEncoding(
-      encodingNode,
-      encoding,
-      sourceName,
-      `${viewPath}.encoding`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateTableEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors)
   } else if (markValue === 'chart') {
-    validateChartEncoding(
-      encodingNode,
-      encoding,
-      chart,
-      sourceName,
-      `${viewPath}.encoding`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateChartEncoding(encodingNode, encoding, chart, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors)
     validateChartWidget(encoding, chart, viewPath, errors)
   }
 
-  validateOrderByReferences(
-    data,
-    encoding,
-    aggregateOutputIds,
-    sourceName,
-    viewPath,
-    errors,
-  )
+  validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors)
 }
 
 /**
@@ -3587,12 +2102,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
   if (chart === undefined) {
     return
   }
-  if (
-    ['dot', 'line', 'scatter'].includes(String(chart)) &&
-    isPlainObject(encoding.x) &&
-    encoding.x.type !== undefined &&
-    encoding.x.type !== 'temporal'
-  ) {
+  if (['dot', 'line', 'scatter'].includes(String(chart)) && isPlainObject(encoding.x) && encoding.x.type !== undefined && encoding.x.type !== 'temporal') {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3610,12 +2120,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
       ),
     )
   }
-  if (
-    chart === 'pie' &&
-    isPlainObject(encoding.x) &&
-    encoding.x.type !== undefined &&
-    !['nominal', 'ordinal'].includes(String(encoding.x.type))
-  ) {
+  if (chart === 'pie' && isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal'].includes(String(encoding.x.type))) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3624,12 +2129,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
       ),
     )
   }
-  if (
-    chart === 'histogram' &&
-    isPlainObject(encoding.x) &&
-    encoding.x.type !== undefined &&
-    !['nominal', 'ordinal'].includes(String(encoding.x.type))
-  ) {
+  if (chart === 'histogram' && isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal'].includes(String(encoding.x.type))) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3653,11 +2153,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
   }
   if (chart === 'heatmap') {
     for (const channel of ['x', 'y']) {
-      if (
-        isPlainObject(encoding[channel]) &&
-        encoding[channel].type !== undefined &&
-        !['nominal', 'ordinal'].includes(String(encoding[channel].type))
-      ) {
+      if (isPlainObject(encoding[channel]) && encoding[channel].type !== undefined && !['nominal', 'ordinal'].includes(String(encoding[channel].type))) {
         errors.push(
           createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3668,18 +2164,9 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
       }
     }
     if (!isPlainObject(encoding.color)) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'heatmap charts must encode quantitative color.',
-          `${viewPath}.encoding.color`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'heatmap charts must encode quantitative color.', `${viewPath}.encoding.color`))
     } else {
-      if (
-        encoding.color.type !== undefined &&
-        encoding.color.type !== 'quantitative'
-      ) {
+      if (encoding.color.type !== undefined && encoding.color.type !== 'quantitative') {
         errors.push(
           createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3688,10 +2175,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
           ),
         )
       }
-      if (
-        encoding.color.aggregate === undefined ||
-        encoding.color.aggregate === 'none'
-      ) {
+      if (encoding.color.aggregate === undefined || encoding.color.aggregate === 'none') {
         errors.push(
           createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3703,11 +2187,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
     }
   }
   if (chart === 'swimlane') {
-    if (
-      isPlainObject(encoding.x) &&
-      encoding.x.type !== undefined &&
-      encoding.x.type !== 'temporal'
-    ) {
+    if (isPlainObject(encoding.x) && encoding.x.type !== undefined && encoding.x.type !== 'temporal') {
       errors.push(
         createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3725,11 +2205,7 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
         ),
       )
     }
-    if (
-      isPlainObject(encoding.y) &&
-      encoding.y.aggregate !== undefined &&
-      encoding.y.aggregate !== 'none'
-    ) {
+    if (isPlainObject(encoding.y) && encoding.y.aggregate !== undefined && encoding.y.aggregate !== 'none') {
       errors.push(
         createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3749,26 +2225,10 @@ function validateChartWidget(encoding, chart, viewPath, errors) {
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
  */
-function validateMetricEncoding(
-  encodingNode,
-  encoding,
-  sourceName,
-  path,
-  aggregateOutputIds,
-  errors,
-) {
-  validateRequiredFieldDefinition(
-    getValueNodeByKey(encodingNode, 'value'),
-    encoding.value,
-    sourceName,
-    `${path}.value`,
-    aggregateOutputIds,
-    errors,
-  )
+function validateMetricEncoding(encodingNode, encoding, sourceName, path, aggregateOutputIds, errors) {
+  validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'value'), encoding.value, sourceName, `${path}.value`, aggregateOutputIds, errors)
 
-  const valueFieldDefinition = isPlainObject(encoding.value)
-    ? encoding.value
-    : null
+  const valueFieldDefinition = isPlainObject(encoding.value) ? encoding.value : null
   if (valueFieldDefinition && valueFieldDefinition['time-unit'] !== undefined) {
     errors.push(
       createError(
@@ -3779,11 +2239,7 @@ function validateMetricEncoding(
     )
   }
 
-  if (
-    valueFieldDefinition &&
-    valueFieldDefinition.type !== undefined &&
-    valueFieldDefinition.type !== 'quantitative'
-  ) {
+  if (valueFieldDefinition && valueFieldDefinition.type !== undefined && valueFieldDefinition.type !== 'quantitative') {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3795,25 +2251,12 @@ function validateMetricEncoding(
 
   for (const forbiddenChannel of ['columns', 'x', 'y', 'color']) {
     if (encoding[forbiddenChannel] !== undefined) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          `metric views must not encode ${forbiddenChannel}.`,
-          `${path}.${forbiddenChannel}`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `metric views must not encode ${forbiddenChannel}.`, `${path}.${forbiddenChannel}`))
     }
   }
 
   if (encoding.href !== undefined) {
-    validateHrefFieldDefinition(
-      getValueNodeByKey(encodingNode, 'href'),
-      encoding.href,
-      sourceName,
-      `${path}.href`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateHrefFieldDefinition(getValueNodeByKey(encodingNode, 'href'), encoding.href, sourceName, `${path}.href`, aggregateOutputIds, errors)
   }
 }
 
@@ -3825,57 +2268,24 @@ function validateMetricEncoding(
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
  */
-function validateTableEncoding(
-  encodingNode,
-  encoding,
-  sourceName,
-  path,
-  aggregateOutputIds,
-  errors,
-) {
+function validateTableEncoding(encodingNode, encoding, sourceName, path, aggregateOutputIds, errors) {
   if (!Array.isArray(encoding.columns) || encoding.columns.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'table views must encode a non-empty columns sequence.',
-        `${path}.columns`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'table views must encode a non-empty columns sequence.', `${path}.columns`))
   } else {
     const columnsNode = getValueNodeByKey(encodingNode, 'columns')
     for (const [index, column] of encoding.columns.entries()) {
-      validateFieldDefinition(
-        getSequenceItemNode(columnsNode, index),
-        column,
-        sourceName,
-        `${path}.columns[${index}]`,
-        aggregateOutputIds,
-        errors,
-      )
+      validateFieldDefinition(getSequenceItemNode(columnsNode, index), column, sourceName, `${path}.columns[${index}]`, aggregateOutputIds, errors)
     }
   }
 
   for (const forbiddenChannel of ['value', 'x', 'y', 'color']) {
     if (encoding[forbiddenChannel] !== undefined) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          `table views must not encode ${forbiddenChannel}.`,
-          `${path}.${forbiddenChannel}`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `table views must not encode ${forbiddenChannel}.`, `${path}.${forbiddenChannel}`))
     }
   }
 
   if (encoding.href !== undefined) {
-    validateHrefFieldDefinition(
-      getValueNodeByKey(encodingNode, 'href'),
-      encoding.href,
-      sourceName,
-      `${path}.href`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateHrefFieldDefinition(getValueNodeByKey(encodingNode, 'href'), encoding.href, sourceName, `${path}.href`, aggregateOutputIds, errors)
   }
 }
 
@@ -3888,37 +2298,11 @@ function validateTableEncoding(
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
  */
-function validateChartEncoding(
-  encodingNode,
-  encoding,
-  chart,
-  sourceName,
-  path,
-  aggregateOutputIds,
-  errors,
-) {
-  validateRequiredFieldDefinition(
-    getValueNodeByKey(encodingNode, 'x'),
-    encoding.x,
-    sourceName,
-    `${path}.x`,
-    aggregateOutputIds,
-    errors,
-  )
-  validateRequiredFieldDefinition(
-    getValueNodeByKey(encodingNode, 'y'),
-    encoding.y,
-    sourceName,
-    `${path}.y`,
-    aggregateOutputIds,
-    errors,
-  )
+function validateChartEncoding(encodingNode, encoding, chart, sourceName, path, aggregateOutputIds, errors) {
+  validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'x'), encoding.x, sourceName, `${path}.x`, aggregateOutputIds, errors)
+  validateRequiredFieldDefinition(getValueNodeByKey(encodingNode, 'y'), encoding.y, sourceName, `${path}.y`, aggregateOutputIds, errors)
 
-  if (
-    isPlainObject(encoding.x) &&
-    encoding.x.type !== undefined &&
-    !['nominal', 'ordinal', 'temporal'].includes(String(encoding.x.type))
-  ) {
+  if (isPlainObject(encoding.x) && encoding.x.type !== undefined && !['nominal', 'ordinal', 'temporal'].includes(String(encoding.x.type))) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3929,68 +2313,30 @@ function validateChartEncoding(
   }
 
   if (isPlainObject(encoding.x) && encoding.x['time-unit'] !== undefined) {
-    const xFieldName =
-      typeof encoding.x.field === 'string' ? encoding.x.field : null
+    const xFieldName = typeof encoding.x.field === 'string' ? encoding.x.field : null
     const xType = typeof encoding.x.type === 'string' ? encoding.x.type : null
-    if (
-      xType !== 'temporal' &&
-      (!xFieldName || !TEMPORAL_FIELD_NAMES.includes(xFieldName))
-    ) {
+    if (xType !== 'temporal' && (!xFieldName || !TEMPORAL_FIELD_NAMES.includes(xFieldName))) {
       errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'chart x time-unit requires a temporal field.',
-          `${path}.x.time-unit`,
-        ),
+        createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'chart x time-unit requires a temporal field.', `${path}.x.time-unit`),
       )
     }
   }
 
   if (encoding.value !== undefined) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'chart views must not encode value.',
-        `${path}.value`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'chart views must not encode value.', `${path}.value`))
   }
 
   if (encoding.columns !== undefined) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'chart views must not encode columns.',
-        `${path}.columns`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'chart views must not encode columns.', `${path}.columns`))
   }
 
   if (encoding.color !== undefined) {
-    validateFieldDefinition(
-      getValueNodeByKey(encodingNode, 'color'),
-      encoding.color,
-      sourceName,
-      `${path}.color`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateFieldDefinition(getValueNodeByKey(encodingNode, 'color'), encoding.color, sourceName, `${path}.color`, aggregateOutputIds, errors)
   }
 
   if (encoding.reference !== undefined) {
-    validateFieldDefinition(
-      getValueNodeByKey(encodingNode, 'reference'),
-      encoding.reference,
-      sourceName,
-      `${path}.reference`,
-      aggregateOutputIds,
-      errors,
-    )
-    if (
-      isPlainObject(encoding.reference) &&
-      encoding.reference.type !== undefined &&
-      encoding.reference.type !== 'quantitative'
-    ) {
+    validateFieldDefinition(getValueNodeByKey(encodingNode, 'reference'), encoding.reference, sourceName, `${path}.reference`, aggregateOutputIds, errors)
+    if (isPlainObject(encoding.reference) && encoding.reference.type !== undefined && encoding.reference.type !== 'quantitative') {
       errors.push(
         createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -3999,10 +2345,7 @@ function validateChartEncoding(
         ),
       )
     }
-    if (
-      isPlainObject(encoding.reference) &&
-      encoding.reference.aggregate !== undefined
-    ) {
+    if (isPlainObject(encoding.reference) && encoding.reference.aggregate !== undefined) {
       errors.push(
         createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -4014,32 +2357,19 @@ function validateChartEncoding(
   }
 
   if (encoding.href !== undefined) {
-    validateHrefFieldDefinition(
-      getValueNodeByKey(encodingNode, 'href'),
-      encoding.href,
-      sourceName,
-      `${path}.href`,
-      aggregateOutputIds,
-      errors,
-    )
+    validateHrefFieldDefinition(getValueNodeByKey(encodingNode, 'href'), encoding.href, sourceName, `${path}.href`, aggregateOutputIds, errors)
   }
 
   if (isPlainObject(encoding.x) && encoding.x.aggregate !== undefined) {
     errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'chart x encoding must not declare an aggregate.',
-        `${path}.x.aggregate`,
-      ),
+      createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'chart x encoding must not declare an aggregate.', `${path}.x.aggregate`),
     )
   }
 
   if (
     isPlainObject(encoding.y) &&
     encoding.y.type !== undefined &&
-    (['heatmap', 'swimlane'].includes(String(chart))
-      ? !['nominal', 'ordinal'].includes(String(encoding.y.type))
-      : encoding.y.type !== 'quantitative')
+    (['heatmap', 'swimlane'].includes(String(chart)) ? !['nominal', 'ordinal'].includes(String(encoding.y.type)) : encoding.y.type !== 'quantitative')
   ) {
     errors.push(
       createError(
@@ -4052,28 +2382,13 @@ function validateChartEncoding(
     )
   }
 
-  const xType =
-    isPlainObject(encoding.x) && typeof encoding.x.type === 'string'
-      ? encoding.x.type
-      : null
-  const xFieldName =
-    isPlainObject(encoding.x) && typeof encoding.x.field === 'string'
-      ? encoding.x.field
-      : null
-  const xIsTemporal =
-    xType === 'temporal' ||
-    (xType === null &&
-      xFieldName !== null &&
-      TEMPORAL_FIELD_NAMES.includes(xFieldName))
-  const xHasTimeUnit =
-    isPlainObject(encoding.x) && encoding.x['time-unit'] !== undefined
+  const xType = isPlainObject(encoding.x) && typeof encoding.x.type === 'string' ? encoding.x.type : null
+  const xFieldName = isPlainObject(encoding.x) && typeof encoding.x.field === 'string' ? encoding.x.field : null
+  const xIsTemporal = xType === 'temporal' || (xType === null && xFieldName !== null && TEMPORAL_FIELD_NAMES.includes(xFieldName))
+  const xHasTimeUnit = isPlainObject(encoding.x) && encoding.x['time-unit'] !== undefined
   const expectedDefault = xIsTemporal ? 'line' : 'bar'
 
-  if (
-    expectedDefault === 'line' &&
-    !['dot', 'scatter', 'swimlane'].includes(String(chart)) &&
-    !xHasTimeUnit
-  ) {
+  if (expectedDefault === 'line' && !['dot', 'scatter', 'swimlane'].includes(String(chart)) && !xHasTimeUnit) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -4092,33 +2407,13 @@ function validateChartEncoding(
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
  */
-function validateRequiredFieldDefinition(
-  fieldNode,
-  fieldDefinition,
-  sourceName,
-  path,
-  aggregateOutputIds,
-  errors,
-) {
+function validateRequiredFieldDefinition(fieldNode, fieldDefinition, sourceName, path, aggregateOutputIds, errors) {
   if (fieldDefinition === undefined) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        `${path.split('.').at(-1)} is required.`,
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `${path.split('.').at(-1)} is required.`, path))
     return
   }
 
-  validateFieldDefinition(
-    fieldNode,
-    fieldDefinition,
-    sourceName,
-    path,
-    aggregateOutputIds,
-    errors,
-  )
+  validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, aggregateOutputIds, errors)
 }
 
 /**
@@ -4129,22 +2424,9 @@ function validateRequiredFieldDefinition(
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
  */
-function validateFieldDefinition(
-  fieldNode,
-  fieldDefinition,
-  sourceName,
-  path,
-  aggregateOutputIds,
-  errors,
-) {
+function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, aggregateOutputIds, errors) {
   if (!isPlainObject(fieldDefinition)) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'field definitions must be mappings.',
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'field definitions must be mappings.', path))
     return
   }
 
@@ -4154,93 +2436,39 @@ function validateFieldDefinition(
   if (fieldDefinition.unit !== undefined) {
     validateStringField(fieldDefinition.unit, `${path}.unit`, true, errors)
   }
-  if (
-    fieldDefinition.filter !== undefined &&
-    typeof fieldDefinition.filter !== 'boolean'
-  ) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'filter must be a boolean.',
-        `${path}.filter`,
-      ),
-    )
+  if (fieldDefinition.filter !== undefined && typeof fieldDefinition.filter !== 'boolean') {
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'filter must be a boolean.', `${path}.filter`))
   }
 
   const aggregate = fieldDefinition.aggregate ?? 'none'
   if (fieldDefinition.aggregate !== undefined) {
-    validateStringField(
-      fieldDefinition.aggregate,
-      `${path}.aggregate`,
-      true,
-      errors,
-    )
-    if (
-      typeof fieldDefinition.aggregate === 'string' &&
-      !AGGREGATE_VALUES.includes(fieldDefinition.aggregate)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'aggregate must use one canonical aggregate value.',
-          `${path}.aggregate`,
-        ),
-      )
+    validateStringField(fieldDefinition.aggregate, `${path}.aggregate`, true, errors)
+    if (typeof fieldDefinition.aggregate === 'string' && !AGGREGATE_VALUES.includes(fieldDefinition.aggregate)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'aggregate must use one canonical aggregate value.', `${path}.aggregate`))
     }
   }
 
   if (fieldDefinition.type !== undefined) {
     validateStringField(fieldDefinition.type, `${path}.type`, true, errors)
-    if (
-      typeof fieldDefinition.type === 'string' &&
-      !FIELD_TYPE_VALUES.includes(fieldDefinition.type)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'type must use one canonical field type.',
-          `${path}.type`,
-        ),
-      )
+    if (typeof fieldDefinition.type === 'string' && !FIELD_TYPE_VALUES.includes(fieldDefinition.type)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'type must use one canonical field type.', `${path}.type`))
     }
   }
 
   if (fieldDefinition.display !== undefined) {
-    validateStringField(
-      fieldDefinition.display,
-      `${path}.display`,
-      true,
-      errors,
-    )
-    if (
-      typeof fieldDefinition.display === 'string' &&
-      !FIELD_DISPLAY_VALUES.includes(fieldDefinition.display)
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'display must use one canonical field display value.',
-          `${path}.display`,
-        ),
-      )
+    validateStringField(fieldDefinition.display, `${path}.display`, true, errors)
+    if (typeof fieldDefinition.display === 'string' && !FIELD_DISPLAY_VALUES.includes(fieldDefinition.display)) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'display must use one canonical field display value.', `${path}.display`))
     }
   }
 
   if (fieldDefinition.format !== undefined) {
     validateStringField(fieldDefinition.format, `${path}.format`, true, errors)
-    const format =
-      typeof fieldDefinition.format === 'string' ? fieldDefinition.format : null
+    const format = typeof fieldDefinition.format === 'string' ? fieldDefinition.format : null
     if (format !== null && !FIELD_FORMAT_VALUES.includes(format)) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'format must use one canonical field format value.',
-          `${path}.format`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'format must use one canonical field format value.', `${path}.format`))
     }
-    const fieldName =
-      typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
+    const fieldName = typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
     const intrinsicallyNominalOrOrdinal =
       fieldName !== null &&
       !LINK_FIELD_NAMES.includes(fieldName) &&
@@ -4251,16 +2479,11 @@ function validateFieldDefinition(
     if (
       format !== null &&
       FIELD_FORMAT_VALUES.includes(format) &&
-      ((typeof fieldDefinition.type === 'string' &&
-        !['nominal', 'ordinal'].includes(fieldDefinition.type)) ||
+      ((typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type)) ||
         (fieldDefinition.type === undefined && !intrinsicallyNominalOrOrdinal))
     ) {
       errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          `${format} format requires a nominal or ordinal field.`,
-          `${path}.format`,
-        ),
+        createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, `${format} format requires a nominal or ordinal field.`, `${path}.format`),
       )
     }
     if (format === 'workflow-run-url' && !path.includes('.columns[')) {
@@ -4275,23 +2498,9 @@ function validateFieldDefinition(
   }
 
   if (fieldDefinition['time-unit'] !== undefined) {
-    validateStringField(
-      fieldDefinition['time-unit'],
-      `${path}.time-unit`,
-      true,
-      errors,
-    )
-    if (
-      typeof fieldDefinition['time-unit'] === 'string' &&
-      !TIME_UNIT_VALUES.includes(fieldDefinition['time-unit'])
-    ) {
-      errors.push(
-        createError(
-          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-          'time-unit must use one canonical time unit.',
-          `${path}.time-unit`,
-        ),
-      )
+    validateStringField(fieldDefinition['time-unit'], `${path}.time-unit`, true, errors)
+    if (typeof fieldDefinition['time-unit'] === 'string' && !TIME_UNIT_VALUES.includes(fieldDefinition['time-unit'])) {
+      errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, 'time-unit must use one canonical time unit.', `${path}.time-unit`))
     }
   }
 
@@ -4299,64 +2508,36 @@ function validateFieldDefinition(
     validateStringField(fieldDefinition.as, `${path}.as`, true, errors)
     if (aggregate === 'none') {
       errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'field definitions with aggregate none must not include as.',
-          `${path}.as`,
-        ),
+        createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'field definitions with aggregate none must not include as.', `${path}.as`),
       )
     }
   }
 
   if (fieldDefinition['time-unit'] !== undefined) {
-    const fieldName =
-      typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
+    const fieldName = typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
     if (!fieldName || !TEMPORAL_FIELD_NAMES.includes(fieldName)) {
       errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'time-unit may be used only with a temporal field.',
-          `${path}.time-unit`,
-        ),
+        createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'time-unit may be used only with a temporal field.', `${path}.time-unit`),
       )
     }
   }
 
-  const fieldName =
-    typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
+  const fieldName = typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
   if (fieldName && sourceName) {
-    const sourceFields =
-      SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]
+    const sourceFields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]
     if (!sourceFields.includes(fieldName)) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          'field must exist in the selected source.',
-          `${path}.field`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'field must exist in the selected source.', `${path}.field`))
     }
   }
 
-  if (
-    fieldName &&
-    typeof aggregate === 'string' &&
-    AGGREGATE_VALUES.includes(aggregate)
-  ) {
+  if (fieldName && typeof aggregate === 'string' && AGGREGATE_VALUES.includes(aggregate)) {
     validateAggregateCompatibility(fieldName, aggregate, path, errors)
     if (aggregate !== 'none') {
-      const outputId =
-        typeof fieldDefinition.as === 'string'
-          ? fieldDefinition.as
-          : `${aggregate}-${fieldName}`
+      const outputId = typeof fieldDefinition.as === 'string' ? fieldDefinition.as : `${aggregate}-${fieldName}`
       const existingPath = aggregateOutputIds.get(outputId)
       if (existingPath) {
         errors.push(
-          createError(
-            ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-            'aggregate output identifiers must be unique within a view.',
-            path,
-          ),
+          createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'aggregate output identifiers must be unique within a view.', path),
         )
       } else {
         aggregateOutputIds.set(outputId, path)
@@ -4373,41 +2554,20 @@ function validateFieldDefinition(
  * @param {Map<string, string>} aggregateOutputIds
  * @param {ValidationError[]} errors
  */
-function validateHrefFieldDefinition(
-  fieldNode,
-  fieldDefinition,
-  sourceName,
-  path,
-  aggregateOutputIds,
-  errors,
-) {
-  validateFieldDefinition(
-    fieldNode,
-    fieldDefinition,
-    sourceName,
-    path,
-    aggregateOutputIds,
-    errors,
-  )
+function validateHrefFieldDefinition(fieldNode, fieldDefinition, sourceName, path, aggregateOutputIds, errors) {
+  validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, aggregateOutputIds, errors)
 
   if (!isPlainObject(fieldDefinition)) {
     return
   }
 
-  const fieldName =
-    typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
+  const fieldName = typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null
   if (!fieldName) {
     return
   }
 
   if (!LINK_FIELD_NAMES.includes(fieldName)) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidLinkReference,
-        'href.field must reference exactly one relation-specific link field.',
-        `${path}.field`,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidLinkReference, 'href.field must reference exactly one relation-specific link field.', `${path}.field`))
   }
 }
 
@@ -4420,18 +2580,11 @@ function validateHrefFieldDefinition(
 function validateAggregateCompatibility(fieldName, aggregate, path, errors) {
   if (aggregate === 'sum' && !ADDITIVE_MEASURE_FIELDS.includes(fieldName)) {
     errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        'sum is allowed only for raw-token measures and aic.',
-        `${path}.aggregate`,
-      ),
+      createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'sum is allowed only for raw-token measures and aic.', `${path}.aggregate`),
     )
   }
 
-  if (
-    NON_ADDITIVE_MEASURE_FIELDS.includes(fieldName) &&
-    !['none', 'mean', 'min', 'max'].includes(aggregate)
-  ) {
+  if (NON_ADDITIVE_MEASURE_FIELDS.includes(fieldName) && !['none', 'mean', 'min', 'max'].includes(aggregate)) {
     errors.push(
       createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -4450,40 +2603,18 @@ function validateAggregateCompatibility(fieldName, aggregate, path, errors) {
  * @param {string} viewPath
  * @param {ValidationError[]} errors
  */
-function validateOrderByReferences(
-  data,
-  encoding,
-  aggregateOutputIds,
-  sourceName,
-  viewPath,
-  errors,
-) {
+function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceName, viewPath, errors) {
   if (!isPlainObject(data) || !Array.isArray(data['order-by']) || !sourceName) {
     return
   }
 
-  const sourceFieldSet = new Set(
-    SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)],
-  )
-  const entityIdSet = new Set(
-    SOURCE_ENTITY_IDENTIFIER_FIELDS[
-      /** @type {keyof typeof SOURCE_ENTITY_IDENTIFIER_FIELDS} */ (sourceName)
-    ] ?? [],
-  )
+  const sourceFieldSet = new Set(SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)])
+  const entityIdSet = new Set(SOURCE_ENTITY_IDENTIFIER_FIELDS[/** @type {keyof typeof SOURCE_ENTITY_IDENTIFIER_FIELDS} */ (sourceName)] ?? [])
   const unaggregatedOutputFields = new Set()
   if (isPlainObject(encoding)) {
-    const definitions = [
-      encoding.x,
-      encoding.y,
-      encoding.color,
-      ...(Array.isArray(encoding.columns) ? encoding.columns : []),
-    ]
+    const definitions = [encoding.x, encoding.y, encoding.color, ...(Array.isArray(encoding.columns) ? encoding.columns : [])]
     for (const definition of definitions) {
-      if (
-        isPlainObject(definition) &&
-        typeof definition.field === 'string' &&
-        (definition.aggregate === undefined || definition.aggregate === 'none')
-      ) {
+      if (isPlainObject(definition) && typeof definition.field === 'string' && (definition.aggregate === undefined || definition.aggregate === 'none')) {
         unaggregatedOutputFields.add(definition.field)
       }
     }
@@ -4514,10 +2645,7 @@ function validateOrderByReferences(
       continue
     }
 
-    if (
-      !matchesSourceField ||
-      (!unaggregatedOutputFields.has(fieldName) && !entityIdSet.has(fieldName))
-    ) {
+    if (!matchesSourceField || (!unaggregatedOutputFields.has(fieldName) && !entityIdSet.has(fieldName))) {
       errors.push(
         createError(
           ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -4571,13 +2699,7 @@ function validateEnumeratedFilterValue(value, allowedValues, path, errors) {
  * @param {string} label
  * @param {ValidationError[]} errors
  */
-function validateEnumeratedMetadataValue(
-  value,
-  allowedValues,
-  path,
-  label,
-  errors,
-) {
+function validateEnumeratedMetadataValue(value, allowedValues, path, label, errors) {
   if (typeof value !== 'string') {
     return
   }
@@ -4603,13 +2725,7 @@ function validateEnumeratedMetadataValue(
 function validateLinkObject(value, path, fieldLabel, errors, options = {}) {
   const code = options.code ?? ERROR_CODES.invalidLinkReference
   if (!isPlainObject(value)) {
-    errors.push(
-      createError(
-        code,
-        `${fieldLabel} must be a Section 9.1 link object.`,
-        path,
-      ),
-    )
+    errors.push(createError(code, `${fieldLabel} must be a Section 9.1 link object.`, path))
     return
   }
 
@@ -4618,41 +2734,16 @@ function validateLinkObject(value, path, fieldLabel, errors, options = {}) {
   validateStringField(value.href, `${path}.href`, true, errors)
   validateStringField(value.label, `${path}.label`, true, errors)
 
-  if (
-    typeof value.relation === 'string' &&
-    !LINK_RELATION_VALUES.includes(value.relation)
-  ) {
-    errors.push(
-      createError(
-        code,
-        'link relation must use one canonical Section 9.1 relation value.',
-        `${path}.relation`,
-      ),
-    )
+  if (typeof value.relation === 'string' && !LINK_RELATION_VALUES.includes(value.relation)) {
+    errors.push(createError(code, 'link relation must use one canonical Section 9.1 relation value.', `${path}.relation`))
   }
 
-  if (
-    options.relation &&
-    typeof value.relation === 'string' &&
-    value.relation != options.relation
-  ) {
-    errors.push(
-      createError(
-        code,
-        `${fieldLabel} relation must be exactly "${options.relation}".`,
-        `${path}.relation`,
-      ),
-    )
+  if (options.relation && typeof value.relation === 'string' && value.relation != options.relation) {
+    errors.push(createError(code, `${fieldLabel} relation must be exactly "${options.relation}".`, `${path}.relation`))
   }
 
   if (typeof value.href === 'string' && !isSafeHttpsUrl(value.href)) {
-    errors.push(
-      createError(
-        code,
-        'link href must be an absolute HTTPS URL without embedded credentials.',
-        `${path}.href`,
-      ),
-    )
+    errors.push(createError(code, 'link href must be an absolute HTTPS URL without embedded credentials.', `${path}.href`))
   }
 }
 
@@ -4667,9 +2758,7 @@ function isSafeHttpsUrl(value) {
 
   try {
     const url = new URL(value)
-    return (
-      url.protocol === 'https:' && url.username === '' && url.password === ''
-    )
+    return url.protocol === 'https:' && url.username === '' && url.password === ''
   } catch {
     return false
   }
@@ -4706,11 +2795,7 @@ function isSafeRepositorySlug(value) {
   }
 
   const [owner, name] = segments
-  return (
-    REPOSITORY_OWNER_PATTERN.test(owner) &&
-    REPOSITORY_NAME_PATTERN.test(name) &&
-    !name.includes('..')
-  )
+  return REPOSITORY_OWNER_PATTERN.test(owner) && REPOSITORY_NAME_PATTERN.test(name) && !name.includes('..')
 }
 
 /**
@@ -4781,13 +2866,7 @@ const SEMANTIC_FILTER_VALUE_SETS = {
 function validateRequiredIdentifier(value, path, label, errors) {
   validateStringField(value, path, true, errors)
   if (typeof value === 'string' && !IDENTIFIER_PATTERN.test(value)) {
-    errors.push(
-      createError(
-        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        `${label} must match ^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$.`,
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.nonCanonicalVocabularyOrIdentifier, `${label} must match ^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$.`, path))
   }
 }
 
@@ -4800,25 +2879,13 @@ function validateRequiredIdentifier(value, path, label, errors) {
 function validateStringField(value, path, required, errors) {
   if (value === undefined) {
     if (required) {
-      errors.push(
-        createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          `${path.split('.').at(-1)} is required and must be a non-empty string.`,
-          path,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `${path.split('.').at(-1)} is required and must be a non-empty string.`, path))
     }
     return
   }
 
   if (typeof value !== 'string' || value.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        `${path.split('.').at(-1)} must be a non-empty string.`,
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `${path.split('.').at(-1)} must be a non-empty string.`, path))
   }
 }
 
@@ -4833,13 +2900,7 @@ function validateOptionalStringField(value, path, errors) {
   }
 
   if (typeof value !== 'string') {
-    errors.push(
-      createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        `${path.split('.').at(-1)} must be a string.`,
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, `${path.split('.').at(-1)} must be a string.`, path))
   }
 }
 
@@ -4851,25 +2912,13 @@ function validateOptionalStringField(value, path, errors) {
  */
 function validateNonEmptyStringSequence(value, path, message, errors) {
   if (!Array.isArray(value) || value.length === 0) {
-    errors.push(
-      createError(
-        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        message,
-        path,
-      ),
-    )
+    errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, message, path))
     return
   }
 
   for (const [index, item] of value.entries()) {
     if (typeof item !== 'string' || item.length === 0) {
-      errors.push(
-        createError(
-          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-          message,
-          `${path}[${index}]`,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, message, `${path}[${index}]`))
     }
   }
 }
@@ -4883,8 +2932,7 @@ function isRfc3339Timestamp(value) {
     return false
   }
 
-  const rfc3339Pattern =
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+  const rfc3339Pattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
   if (!rfc3339Pattern.test(value)) {
     return false
   }
@@ -4914,25 +2962,13 @@ function validateObjectKeys(node, allowedKeys, path, errors) {
 
     const keyPath = `${path}.${key}`
     if (seen.has(key)) {
-      errors.push(
-        createError(
-          ERROR_CODES.unknownOrDuplicateKey,
-          `Duplicate key "${key}" is not allowed.`,
-          keyPath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Duplicate key "${key}" is not allowed.`, keyPath))
       continue
     }
     seen.set(key, 1)
 
     if (!allowedKeys.includes(key)) {
-      errors.push(
-        createError(
-          ERROR_CODES.unknownOrDuplicateKey,
-          `Unknown key "${key}" is not allowed at ${path}.`,
-          keyPath,
-        ),
-      )
+      errors.push(createError(ERROR_CODES.unknownOrDuplicateKey, `Unknown key "${key}" is not allowed at ${path}.`, keyPath))
     }
   }
 }
@@ -5007,11 +3043,7 @@ function getValueNodeByKey(mappingNode, key) {
  * @returns {unknown}
  */
 function getSequenceItemNode(sequenceNode, index) {
-  if (
-    !sequenceNode ||
-    typeof sequenceNode !== 'object' ||
-    !('items' in sequenceNode)
-  ) {
+  if (!sequenceNode || typeof sequenceNode !== 'object' || !('items' in sequenceNode)) {
     return undefined
   }
 

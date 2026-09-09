@@ -77,10 +77,7 @@ export function state(initialValue) {
       return current
     },
     set(value) {
-      const next =
-        typeof value === 'function'
-          ? /** @type {(current: T) => T} */ (value)(current)
-          : value
+      const next = typeof value === 'function' ? /** @type {(current: T) => T} */ (value)(current) : value
       if (Object.is(current, next)) {
         return current
       }

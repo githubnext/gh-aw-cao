@@ -14,14 +14,8 @@ const debugSecretPatterns = [
  * @param {string} traceId
  */
 function debugCopilotMessage(role, content, traceId) {
-  const redacted = debugSecretPatterns.reduce(
-    (value, pattern) => value.replace(pattern, '[REDACTED]'),
-    content,
-  )
-  console.debug(
-    '[dashboard-copilot]',
-    JSON.stringify({ traceId, role, content: redacted }),
-  )
+  const redacted = debugSecretPatterns.reduce((value, pattern) => value.replace(pattern, '[REDACTED]'), content)
+  console.debug('[dashboard-copilot]', JSON.stringify({ traceId, role, content: redacted }))
 }
 
 /**
@@ -30,10 +24,7 @@ function debugCopilotMessage(role, content, traceId) {
  * @param {string} traceId
  */
 function debugCopilotUpdate(message, details = {}, traceId) {
-  console.debug(
-    '[dashboard-copilot]',
-    JSON.stringify({ traceId, message, details }),
-  )
+  console.debug('[dashboard-copilot]', JSON.stringify({ traceId, message, details }))
 }
 
 /**
@@ -52,9 +43,7 @@ function browserTrace(socket, event, traceId, details = {}) {
   }
   console.debug('[dashboard-trace]', JSON.stringify(entry))
   if (socket.readyState === 1) {
-    socket.send(
-      JSON.stringify({ type: 'browser.trace', traceId, event, details }),
-    )
+    socket.send(JSON.stringify({ type: 'browser.trace', traceId, event, details }))
   }
 }
 
@@ -118,28 +107,21 @@ export function renderCopilotPrompt(socket) {
       h('div', { className: 'dashboard-copilot-message-content' }, content),
     )
     conversation.append(message)
-    const contentElement = /** @type {HTMLElement | null} */ (
-      message.querySelector('.dashboard-copilot-message-content')
-    )
+    const contentElement = /** @type {HTMLElement | null} */ (message.querySelector('.dashboard-copilot-message-content'))
     scrollConversation()
     return contentElement
   }
   const reuseLatestReasoningMessage = () => {
     const previous = conversation.lastElementChild
-    if (!previous?.classList.contains('dashboard-copilot-message-reasoning'))
-      return null
-    return /** @type {HTMLElement | null} */ (
-      previous.querySelector('.dashboard-copilot-message-content')
-    )
+    if (!previous?.classList.contains('dashboard-copilot-message-reasoning')) return null
+    return /** @type {HTMLElement | null} */ (previous.querySelector('.dashboard-copilot-message-content'))
   }
   /** @param {string} content */
   const appendStatusMessage = (content) => {
     if (!content.trim()) return
     const previous = conversation.lastElementChild
     if (previous?.classList.contains('dashboard-copilot-message-update')) {
-      const previousContent = previous.querySelector(
-        '.dashboard-copilot-message-content',
-      )
+      const previousContent = previous.querySelector('.dashboard-copilot-message-content')
       if (previousContent) previousContent.textContent = content
     } else {
       appendAssistantMessage(content, 'update')
@@ -153,9 +135,7 @@ export function renderCopilotPrompt(socket) {
     if (!sessionActive) return
     sessionActive = false
     if (socket.readyState === 1) {
-      socket.send(
-        JSON.stringify({ type: 'copilot.stop', traceId: activeTraceId }),
-      )
+      socket.send(JSON.stringify({ type: 'copilot.stop', traceId: activeTraceId }))
       browserTrace(socket, 'copilot.stop.sent', activeTraceId)
     }
   }
@@ -168,9 +148,7 @@ export function renderCopilotPrompt(socket) {
     const label = active ? 'Cancel request' : 'Send message'
     sendButton.title = label
     sendButton.setAttribute('aria-label', label)
-    sendButton.replaceChildren(
-      octicon(active ? 'square-fill' : 'paper-airplane'),
-    )
+    sendButton.replaceChildren(octicon(active ? 'square-fill' : 'paper-airplane'))
     sendButton.disabled = socket.readyState !== 1
   }
   const cancelSession = () => {
@@ -192,17 +170,9 @@ export function renderCopilotPrompt(socket) {
         className: 'dashboard-copilot-prompt',
         'aria-labelledby': 'dashboard-copilot-title',
       },
-      h(
-        'h2',
-        { id: 'dashboard-copilot-title', className: 'sr-only' },
-        'Modify this view',
-      ),
+      h('h2', { id: 'dashboard-copilot-title', className: 'sr-only' }, 'Modify this view'),
       conversation,
-      h(
-        'div',
-        { className: 'dashboard-copilot-composer' },
-        h('div', { className: 'dashboard-copilot-input' }, input, sendButton),
-      ),
+      h('div', { className: 'dashboard-copilot-composer' }, h('div', { className: 'dashboard-copilot-input' }, input, sendButton)),
       toolbarStatus,
     )
   )
@@ -215,37 +185,21 @@ export function renderCopilotPrompt(socket) {
     setSessionActive(false)
     sendButton.disabled = true
     toolbarStatus.textContent = 'Copilot connection closed.'
-    if (activeTraceId)
-      browserTrace(socket, 'copilot.socket.closed', activeTraceId)
+    if (activeTraceId) browserTrace(socket, 'copilot.socket.closed', activeTraceId)
   })
   socket.addEventListener('message', (event) => {
     const streamEvent = JSON.parse(String(event.data))
     if (!streamEvent?.type) return
-    if (
-      streamEvent.traceId &&
-      activeTraceId &&
-      streamEvent.traceId !== activeTraceId
-    )
-      return
+    if (streamEvent.traceId && activeTraceId && streamEvent.traceId !== activeTraceId) return
     if (streamEvent.type === 'stopped') {
       toolbarStatus.textContent = 'Session stopped.'
       setSessionActive(false)
       return
     }
     if (!sessionActive) return
-    if (
-      streamEvent.type === 'debug' &&
-      typeof streamEvent.message === 'string'
-    ) {
-      debugCopilotUpdate(
-        streamEvent.message,
-        streamEvent.details,
-        activeTraceId,
-      )
-    } else if (
-      streamEvent.type === 'assistant-delta' &&
-      typeof streamEvent.content === 'string'
-    ) {
+    if (streamEvent.type === 'debug' && typeof streamEvent.message === 'string') {
+      debugCopilotUpdate(streamEvent.message, streamEvent.details, activeTraceId)
+    } else if (streamEvent.type === 'assistant-delta' && typeof streamEvent.content === 'string') {
       if (!streamEvent.content.trim() && !assistantContent) return
       if (!assistantContent) {
         assistantContent = appendAssistantMessage(streamEvent.content)
@@ -254,27 +208,18 @@ export function renderCopilotPrompt(socket) {
       }
       assistantResponse += streamEvent.content
       scrollConversation()
-    } else if (
-      streamEvent.type === 'assistant-message' &&
-      typeof streamEvent.content === 'string'
-    ) {
+    } else if (streamEvent.type === 'assistant-message' && typeof streamEvent.content === 'string') {
       if (!streamEvent.content.trim()) return
-      if (!assistantContent)
-        assistantContent = appendAssistantMessage(streamEvent.content)
+      if (!assistantContent) assistantContent = appendAssistantMessage(streamEvent.content)
       else assistantContent.textContent = streamEvent.content
       assistantResponse = streamEvent.content
       scrollConversation()
       debugCopilotMessage('assistant', assistantResponse, activeTraceId)
       assistantContent = null
-    } else if (
-      streamEvent.type === 'reasoning-delta' &&
-      typeof streamEvent.content === 'string'
-    ) {
+    } else if (streamEvent.type === 'reasoning-delta' && typeof streamEvent.content === 'string') {
       if (!streamEvent.content.trim() && !reasoningContent) return
       if (!reasoningContent || activeReasoningId !== streamEvent.reasoningId) {
-        reasoningContent =
-          reuseLatestReasoningMessage() ??
-          appendAssistantMessage(streamEvent.content, 'reasoning')
+        reasoningContent = reuseLatestReasoningMessage() ?? appendAssistantMessage(streamEvent.content, 'reasoning')
         activeReasoningId = streamEvent.reasoningId ?? ''
         if (reasoningContent?.textContent === streamEvent.content) {
           scrollConversation()
@@ -283,15 +228,10 @@ export function renderCopilotPrompt(socket) {
       }
       if (reasoningContent) reasoningContent.textContent += streamEvent.content
       scrollConversation()
-    } else if (
-      streamEvent.type === 'reasoning-message' &&
-      typeof streamEvent.content === 'string'
-    ) {
+    } else if (streamEvent.type === 'reasoning-message' && typeof streamEvent.content === 'string') {
       if (!streamEvent.content.trim()) return
       if (!reasoningContent || activeReasoningId !== streamEvent.reasoningId) {
-        reasoningContent =
-          reuseLatestReasoningMessage() ??
-          appendAssistantMessage(streamEvent.content, 'reasoning')
+        reasoningContent = reuseLatestReasoningMessage() ?? appendAssistantMessage(streamEvent.content, 'reasoning')
         if (reasoningContent) reasoningContent.textContent = streamEvent.content
       } else {
         reasoningContent.textContent = streamEvent.content
@@ -299,23 +239,13 @@ export function renderCopilotPrompt(socket) {
       reasoningContent = null
       activeReasoningId = ''
       scrollConversation()
-    } else if (
-      streamEvent.type === 'status' &&
-      typeof streamEvent.message === 'string'
-    ) {
+    } else if (streamEvent.type === 'status' && typeof streamEvent.message === 'string') {
       appendStatusMessage(streamEvent.message)
-    } else if (
-      streamEvent.type === 'tool-refused' &&
-      typeof streamEvent.message === 'string'
-    ) {
+    } else if (streamEvent.type === 'tool-refused' && typeof streamEvent.message === 'string') {
       if (!streamEvent.message.trim()) return
       appendAssistantMessage(streamEvent.message, 'refusal')
       toolbarStatus.textContent = 'A tool was refused; Copilot is continuing.'
-      debugCopilotUpdate(
-        streamEvent.message,
-        streamEvent.details,
-        activeTraceId,
-      )
+      debugCopilotUpdate(streamEvent.message, streamEvent.details, activeTraceId)
     } else if (streamEvent.type === 'reloaded') {
       toolbarStatus.textContent = 'Updated.'
       browserTrace(socket, 'copilot.preview.confirmed', activeTraceId, {
@@ -325,18 +255,11 @@ export function renderCopilotPrompt(socket) {
       toolbarStatus.textContent = 'Updated.'
       setSessionActive(false)
       input.focus()
-      debugCopilotUpdate(
-        'Dashboard view update stream completed.',
-        {},
-        activeTraceId,
-      )
+      debugCopilotUpdate('Dashboard view update stream completed.', {}, activeTraceId)
       browserTrace(socket, 'copilot.request.completed', activeTraceId, {
         view: activeViewName,
       })
-    } else if (
-      streamEvent.type === 'error' &&
-      typeof streamEvent.message === 'string'
-    ) {
+    } else if (streamEvent.type === 'error' && typeof streamEvent.message === 'string') {
       toolbarStatus.textContent = streamEvent.message
       const recovery =
         streamEvent.details?.phase === 'hot-reload'
@@ -344,20 +267,8 @@ export function renderCopilotPrompt(socket) {
             ? 'The previous dashboard is still available.'
             : 'The previous dashboard could not be fully restored.'
           : ''
-      const errorLog =
-        typeof streamEvent.details?.errorLog === 'string'
-          ? streamEvent.details.errorLog.trim()
-          : ''
-      appendAssistantMessage(
-        [
-          streamEvent.message,
-          recovery,
-          errorLog ? `Error log:\n${errorLog}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-        'error',
-      )
+      const errorLog = typeof streamEvent.details?.errorLog === 'string' ? streamEvent.details.errorLog.trim() : ''
+      appendAssistantMessage([streamEvent.message, recovery, errorLog ? `Error log:\n${errorLog}` : ''].filter(Boolean).join('\n\n'), 'error')
       setSessionActive(false)
       console.error('Copilot dashboard update failed.', {
         traceId: activeTraceId,
@@ -370,19 +281,12 @@ export function renderCopilotPrompt(socket) {
   form.addEventListener('submit', (event) => {
     event.preventDefault()
     if (socket.readyState !== 1 || sessionActive) return
-    const activeView = document.querySelector(
-      '[data-nav-page-id][aria-current=page]',
-    )
+    const activeView = document.querySelector('[data-nav-page-id][aria-current=page]')
     const view =
-      activeView?.getAttribute('aria-label') ||
-      activeView?.getAttribute('data-nav-page-id') ||
-      location.hash.match(/^#page-([^?]+)/)?.[1] ||
-      'overview'
+      activeView?.getAttribute('aria-label') || activeView?.getAttribute('data-nav-page-id') || location.hash.match(/^#page-([^?]+)/)?.[1] || 'overview'
     activeViewName = view
     const request = input.value
-    activeTraceId =
-      globalThis.crypto?.randomUUID?.() ||
-      `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    activeTraceId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`
     debugCopilotMessage('user', request, activeTraceId)
     assistantResponse = ''
     assistantContent = null

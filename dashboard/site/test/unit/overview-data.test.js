@@ -141,8 +141,7 @@ describe('overview attention', () => {
             'run-status': 'completed',
             'run-conclusion': 'failure',
             'failure-message': 'Readiness smoke test failed',
-            'run-link':
-              'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+            'run-link': 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
           },
         ],
       },
@@ -326,11 +325,7 @@ describe('overview attention', () => {
       ]),
     )
     expect(sources['readiness-observations'].rows).toHaveLength(5)
-    expect(
-      sources['readiness-signals'].rows.filter(
-        (row) => row.kind === 'Runtime regression',
-      ),
-    ).toHaveLength(2)
+    expect(sources['readiness-signals'].rows.filter((row) => row.kind === 'Runtime regression')).toHaveLength(2)
     expect(sources['readiness-checks'].rows).toContainEqual(
       expect.objectContaining({
         check: 'Outputs',
@@ -370,8 +365,7 @@ describe('overview attention', () => {
     expect(sources['readiness-checks'].rows[0]).toEqual({
       check: 'Engine activity',
       'readiness-state': 'Blocked',
-      detail:
-        'No completed control-plane runs were observed in the current window.',
+      detail: 'No completed control-plane runs were observed in the current window.',
     })
     expect(sources['readiness-summary'].rows).toContainEqual({
       label: 'Engine activity',
@@ -424,12 +418,8 @@ describe('overview attention', () => {
       label: 'Engine activity',
       value: '1 completed runs observed · 0 failed',
     })
-    expect(sources['readiness-signals'].rows).not.toContainEqual(
-      expect.objectContaining({ kind: 'Run pending' }),
-    )
-    expect(sources['readiness-activity'].rows).toEqual([
-      expect.objectContaining({ 'run-count': 1 }),
-    ])
+    expect(sources['readiness-signals'].rows).not.toContainEqual(expect.objectContaining({ kind: 'Run pending' }))
+    expect(sources['readiness-activity'].rows).toEqual([expect.objectContaining({ 'run-count': 1 })])
   })
 
   it('blocks on unresolved role joins without rendering unattributed observations', () => {
@@ -489,9 +479,7 @@ describe('overview attention', () => {
         count: 2,
       }),
     )
-    expect(
-      sources['readiness-observations'].rows.map((row) => row.signal),
-    ).not.toContain(expect.stringContaining('Unattributed'))
+    expect(sources['readiness-observations'].rows.map((row) => row.signal)).not.toContain(expect.stringContaining('Unattributed'))
   })
 
   it('summarizes recent package dispatch states', () => {
@@ -638,8 +626,7 @@ describe('overview attention', () => {
 
   it('promotes GitHub API capacity admission blocks with retry guidance', () => {
     const workflow = '.github/workflows/self-care.md'
-    const officialGuidance =
-      'https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api'
+    const officialGuidance = 'https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api'
     const sources = deriveOverviewSources({
       workflows: source('workflows', [
         {
@@ -676,9 +663,7 @@ describe('overview attention', () => {
         detail: expect.stringContaining('approximately 1.08 hours'),
       }),
     )
-    expect(sources['overview-attention'].rows).not.toContainEqual(
-      expect.objectContaining({ title: '1 failed run' }),
-    )
+    expect(sources['overview-attention'].rows).not.toContainEqual(expect.objectContaining({ title: '1 failed run' }))
     expect(sources['overview-attention-domains'].rows).toContainEqual(
       expect.objectContaining({
         state: 'Act now',
@@ -761,18 +746,10 @@ describe('overview attention', () => {
     })
 
     expect(sources['attention-signals'].rows).toHaveLength(4)
-    expect(
-      sources['attention-signals'].rows.map((row) => row['navigation-page']),
-    ).toEqual(['work', 'agents', 'insights', 'insights'])
-    expect(
-      sources['attention-signals'].rows.map((row) => row.objective),
-    ).not.toContain('Scheduled work')
-    expect(
-      sources['attention-signals'].rows.map((row) => row.objective),
-    ).not.toContain('Healthy agent')
-    expect(
-      sources['attention-signals'].rows.map((row) => row.objective),
-    ).not.toContain('Accepted claim')
+    expect(sources['attention-signals'].rows.map((row) => row['navigation-page'])).toEqual(['work', 'agents', 'insights', 'insights'])
+    expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Scheduled work')
+    expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Healthy agent')
+    expect(sources['attention-signals'].rows.map((row) => row.objective)).not.toContain('Accepted claim')
   })
 })
 

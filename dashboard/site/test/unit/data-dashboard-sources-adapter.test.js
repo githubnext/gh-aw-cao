@@ -139,9 +139,7 @@ describe('current dashboard source adapter', () => {
   })
 
   it('rejects source documents without generation metadata', () => {
-    expect(() =>
-      adaptDashboardSources({ repositories: { rows: [], metadata: {} } }),
-    ).toThrow('dashboard source generation is required')
+    expect(() => adaptDashboardSources({ repositories: { rows: [], metadata: {} } })).toThrow('dashboard source generation is required')
   })
 
   it('rejects source documents containing multiple artifact generations', () => {
@@ -156,9 +154,7 @@ describe('current dashboard source adapter', () => {
       },
     }
 
-    expect(() => adaptDashboardSources(sources)).toThrow(
-      'Dashboard sources contain multiple artifact generations',
-    )
+    expect(() => adaptDashboardSources(sources)).toThrow('Dashboard sources contain multiple artifact generations')
   })
 
   it('joins published transaction logs to canonical runs and jobs', () => {

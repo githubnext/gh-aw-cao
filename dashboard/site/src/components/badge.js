@@ -68,18 +68,9 @@ export function renderStatusBadge(status) {
   ) {
     statusClass = 'status-attention'
   } else if (
-    [
-      'failure',
-      'failed',
-      'rejected',
-      'danger',
-      'unavailable',
-      'insufficient',
-      'critical',
-      'timed-out',
-      'startup-failure',
-      'needs attention',
-    ].includes(normalized)
+    ['failure', 'failed', 'rejected', 'danger', 'unavailable', 'insufficient', 'critical', 'timed-out', 'startup-failure', 'needs attention'].includes(
+      normalized,
+    )
   ) {
     statusClass = 'status-danger'
   }
@@ -94,12 +85,7 @@ export function renderStatusBadge(status) {
 export function renderGraderStatusBadge(status) {
   const text = stringOrFallback(status, 'unavailable')
   const normalized = text.toLowerCase()
-  const statusClass =
-    normalized === 'pass'
-      ? 'status-success'
-      : ['fail', 'error'].includes(normalized)
-        ? 'status-danger'
-        : 'status-attention'
+  const statusClass = normalized === 'pass' ? 'status-success' : ['fail', 'error'].includes(normalized) ? 'status-danger' : 'status-attention'
   return renderStatusSpan(statusClass, text)
 }
 
@@ -111,11 +97,7 @@ export function renderGraderStatusBadge(status) {
  * @returns {string}
  */
 export function modeBadgeClassName(normalizedMode) {
-  return normalizedMode === 'live'
-    ? 'mode-live'
-    : normalizedMode === 'review'
-      ? 'mode-review'
-      : ''
+  return normalizedMode === 'live' ? 'mode-live' : normalizedMode === 'review' ? 'mode-review' : ''
 }
 
 /**
@@ -141,11 +123,7 @@ export function renderExperimentBadge(label, tone) {
   return h(
     'span',
     { className: `experiment-badge experiment-badge-${tone}` },
-    tone === 'danger'
-      ? octicon('alert-fill')
-      : tone === 'success'
-        ? octicon('check-circle-fill')
-        : null,
+    tone === 'danger' ? octicon('alert-fill') : tone === 'success' ? octicon('check-circle-fill') : null,
     label,
   )
 }

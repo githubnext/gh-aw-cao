@@ -2,25 +2,15 @@ import 'fake-indexeddb/auto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import {
-  ingestDashboardSources,
-  ingestGhAwLogsGeneration,
-  ingestSqlExportGeneration,
-} from '../../src/data/ingest/coordinator.js'
+import { ingestDashboardSources, ingestGhAwLogsGeneration, ingestSqlExportGeneration } from '../../src/data/ingest/coordinator.js'
 import { createCanonicalQueries } from '../../src/data/queries/index.js'
-import {
-  activeGenerationMetadata,
-  DATABASE_NAME,
-  openCanonicalDatabase,
-} from '../../src/data/storage/indexeddb.js'
+import { activeGenerationMetadata, DATABASE_NAME, openCanonicalDatabase } from '../../src/data/storage/indexeddb.js'
 
 const metadata = {
   'as-of': '2026-09-09T05:00:00Z',
   'artifact-generation': 'generation-a',
 }
-const sqlExport = JSON.parse(
-  readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'),
-)
+const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'))
 const sources = {
   repositories: {
     rows: [
@@ -95,17 +85,13 @@ describe('canonical source ingestion and queries', () => {
     })
     const queries = createCanonicalQueries(indexedDB)
     const repositories = await queries.repositories.list()
-    const workflows = await queries.workflows.forRepository(
-      String(repositories[0].id),
-    )
+    const workflows = await queries.workflows.forRepository(String(repositories[0].id))
     const runs = await queries.runs.forWorkflow(String(workflows[0].id))
     const jobs = await queries.jobs.forRun(String(runs[0].id))
 
     expect(repositories).toHaveLength(1)
     expect(workflows).toHaveLength(1)
-    expect(runs).toEqual([
-      expect.objectContaining({ id: 'github:run:12345:attempt:2' }),
-    ])
+    expect(runs).toEqual([expect.objectContaining({ id: 'github:run:12345:attempt:2' })])
     expect(jobs).toEqual([expect.objectContaining({ id: 'github:job:67890' })])
     expect(await queries.runs.recentFailures()).toHaveLength(1)
   })
@@ -122,27 +108,19 @@ describe('canonical source ingestion and queries', () => {
   it('fully replaces the active generation with a complete SQL export', async () => {
     await ingestDashboardSources(indexedDB, sources)
 
-    await expect(
-      ingestSqlExportGeneration(indexedDB, sqlExport),
-    ).resolves.toEqual({
+    await expect(ingestSqlExportGeneration(indexedDB, sqlExport)).resolves.toEqual({
       generation: 'warehouse-2026-09-09-05',
       activated: true,
     })
 
     const queries = createCanonicalQueries(indexedDB)
-    expect(await queries.runs.list()).toEqual([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' }),
-    ])
+    expect(await queries.runs.list()).toEqual([expect.objectContaining({ id: 'github:run:303:attempt:1' })])
     expect(await queries.sessions.forRun('github:run:303:attempt:1')).toEqual([
       expect.objectContaining({
         id: 'session:sql%3Aenterprise-warehouse:session-505',
       }),
     ])
-    expect(
-      await queries.events.forSession(
-        'session:sql%3Aenterprise-warehouse:session-505',
-      ),
-    ).toHaveLength(2)
+    expect(await queries.events.forSession('session:sql%3Aenterprise-warehouse:session-505')).toHaveLength(2)
     await expect(activeGenerationMetadata(indexedDB)).resolves.toEqual({
       generation: 'warehouse-2026-09-09-05',
       canonicalSchemaVersion: 5,
@@ -175,8 +153,7 @@ describe('canonical source ingestion and queries', () => {
       files: [
         {
           path: 'sandbox/agent/logs/copilot-session-state/session-505/events.jsonl',
-          content:
-            '{"type":"user.message","timestamp":"2026-09-09T04:00:01Z","data":{}}\n',
+          content: '{"type":"user.message","timestamp":"2026-09-09T04:00:01Z","data":{}}\n',
         },
       ],
     }
@@ -187,15 +164,9 @@ describe('canonical source ingestion and queries', () => {
     })
     const queries = createCanonicalQueries(indexedDB)
     const activeRuns = await queries.runs.list()
-    const activeSessions = await queries.sessions.forRun(
-      'github:run:303:attempt:1',
-    )
-    expect(activeRuns).toEqual([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' }),
-    ])
-    expect(
-      await queries.events.forSession(String(activeSessions[0].id)),
-    ).toEqual([
+    const activeSessions = await queries.sessions.forRun('github:run:303:attempt:1')
+    expect(activeRuns).toEqual([expect.objectContaining({ id: 'github:run:303:attempt:1' })])
+    expect(await queries.events.forSession(String(activeSessions[0].id))).toEqual([
       expect.objectContaining({
         source: 'agent',
         type: 'agent_turn',
@@ -218,9 +189,7 @@ describe('canonical source ingestion and queries', () => {
       },
     })
 
-    await expect(
-      ingestDashboardSources(indexedDB, sources, { storage }),
-    ).resolves.toMatchObject({
+    await expect(ingestDashboardSources(indexedDB, sources, { storage })).resolves.toMatchObject({
       generation: 'generation-a',
       activated: true,
     })
@@ -231,9 +200,7 @@ describe('canonical source ingestion and queries', () => {
     await ingestDashboardSources(indexedDB, sources)
     const database = await openCanonicalDatabase(indexedDB)
     const transaction = database.transaction('meta', 'readwrite')
-    transaction
-      .objectStore('meta')
-      .put({ key: 'activeGeneration', value: 'generation-a' })
+    transaction.objectStore('meta').put({ key: 'activeGeneration', value: 'generation-a' })
     await new Promise((resolve) => {
       transaction.oncomplete = resolve
     })

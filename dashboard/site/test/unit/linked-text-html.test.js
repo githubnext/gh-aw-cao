@@ -75,21 +75,11 @@ describe('linked text refactor behavior preservation', () => {
     })
 
     expect(rendered.outerHTML).toContain('id="workflows-workflows-heading"')
-    expect(
-      rendered.querySelectorAll('[data-page-name="workflows"] tbody tr'),
-    ).toHaveLength(2)
-    const packageLink = rendered.querySelector(
-      'a[href="#page-package-insights?package=dependabot"]',
-    )
+    expect(rendered.querySelectorAll('[data-page-name="workflows"] tbody tr')).toHaveLength(2)
+    const packageLink = rendered.querySelector('a[href="#page-package-insights?package=dependabot"]')
     expect(packageLink?.textContent).toBe('Dependabot')
-    expect(packageLink?.getAttribute('aria-label')).toBe(
-      'View Dependabot package dashboard',
-    )
-    expect(rendered.outerHTML).toContain(
-      'href="#page-repository-detail?repository=github%2Ftarget-service"',
-    )
-    expect(rendered.outerHTML).toContain(
-      'href="#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml"',
-    )
+    expect(packageLink?.getAttribute('aria-label')).toBe('View Dependabot package dashboard')
+    expect(rendered.outerHTML).toContain('href="#page-repository-detail?repository=github%2Ftarget-service"')
+    expect(rendered.outerHTML).toContain('href="#page-workflow-runtime?workflow=github%2Ftarget-service%3A.github%2Fworkflows%2Fci.yml"')
   })
 })

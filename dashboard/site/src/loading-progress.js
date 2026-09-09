@@ -79,10 +79,7 @@ export function startLoadingProgress(document) {
     const burst = MIN_BURST + Math.random() * BURST_VARIANCE
     progress += (MAX_PROGRESS - progress) * burst
     bar.style.transform = `scaleX(${progress})`
-    timer = window.setTimeout(
-      advance,
-      MIN_DELAY + Math.random() * DELAY_VARIANCE,
-    )
+    timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE)
   }
 
   bar.style.transform = `scaleX(${progress})`

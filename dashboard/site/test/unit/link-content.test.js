@@ -38,12 +38,7 @@ describe('link content helpers', () => {
   })
 
   it('DLS-SAFE-004 finds only safe https links with non-empty labels', () => {
-    expect(
-      findLink(
-        { link: { href: 'https://example.com/run/4', label: 'Run 4' } },
-        'link',
-      ),
-    ).toEqual({
+    expect(findLink({ link: { href: 'https://example.com/run/4', label: 'Run 4' } }, 'link')).toEqual({
       href: 'https://example.com/run/4',
       label: 'Run 4',
     })
@@ -58,18 +53,8 @@ describe('link content helpers', () => {
         'link',
       ),
     ).toBeNull()
-    expect(
-      findLink(
-        { link: { href: 'ftp://example.com/run/2', label: 'FTP Run' } },
-        'link',
-      ),
-    ).toBeNull()
-    expect(
-      findLink(
-        { link: { href: 'https://example.com/run/3', label: '   ' } },
-        'link',
-      ),
-    ).toBeNull()
+    expect(findLink({ link: { href: 'ftp://example.com/run/2', label: 'FTP Run' } }, 'link')).toBeNull()
+    expect(findLink({ link: { href: 'https://example.com/run/3', label: '   ' } }, 'link')).toBeNull()
     expect(findLink({ link: 'https://example.com/run/4' }, 'link')).toBeNull()
   })
 
@@ -92,8 +77,7 @@ describe('link content helpers', () => {
         'repository-link': {
           href: 'https://github.com/octo-org/platform',
           label: 'View octo-org/platform on GitHub',
-          'dashboard-href':
-            '#page-repository-detail?repository=octo-org%2Fplatform',
+          'dashboard-href': '#page-repository-detail?repository=octo-org%2Fplatform',
           'dashboard-label': 'View octo-org/platform repository dashboard',
         },
       },
@@ -105,9 +89,7 @@ describe('link content helpers', () => {
       label: 'View octo-org/platform repository dashboard',
       externalHref: 'https://github.com/octo-org/platform',
     })
-    const anchor = renderExternalLink(
-      /** @type {NonNullable<typeof link>} */ (link),
-    )
+    const anchor = renderExternalLink(/** @type {NonNullable<typeof link>} */ (link))
     expect(anchor.getAttribute('target')).toBeNull()
     expect(anchor.getAttribute('rel')).toBeNull()
     expect(anchor.querySelector('.octicon-external-link')).toBeNull()
@@ -116,9 +98,7 @@ describe('link content helpers', () => {
   it('DLS-SAFE-010 renders labeled external links and optional linked value content', () => {
     const link = { href: 'https://example.com/run/4', label: 'Run 4' }
     const anchor = renderExternalLink(link)
-    const linkedValue = /** @type {HTMLElement} */ (
-      renderLinkedValue('Summary', link)
-    )
+    const linkedValue = /** @type {HTMLElement} */ (renderLinkedValue('Summary', link))
     const plainValue = renderLinkedValue('Summary', null)
 
     expect(anchor.getAttribute('href')).toBe('https://example.com/run/4')
@@ -134,10 +114,7 @@ describe('link content helpers', () => {
   })
 
   it('builds shared external anchor attributes for raw href/label pairs', () => {
-    const attrs = externalAnchorAttrs(
-      'https://github.com/octo-org/platform',
-      'View source',
-    )
+    const attrs = externalAnchorAttrs('https://github.com/octo-org/platform', 'View source')
 
     expect(attrs).toEqual({
       href: 'https://github.com/octo-org/platform',
@@ -160,9 +137,7 @@ describe('link content helpers', () => {
       )
     )
 
-    expect(linked.getAttribute('href')).toBe(
-      'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
-    )
+    expect(linked.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/42')
     expect(linked.getAttribute('target')).toBe('_blank')
     expect(linked.getAttribute('rel')).toBe('noopener noreferrer')
     expect(linked.getAttribute('aria-label')).toBe('Run 42')
@@ -196,13 +171,9 @@ describe('link content helpers', () => {
   })
 
   it('renders durable-output titles as encoded dashboard links with a plain-text fallback', () => {
-    const linked = /** @type {HTMLElement} */ (
-      renderOutcomeLink({ 'safe-output': 'issue/42' }, 'Issue 42')
-    )
+    const linked = /** @type {HTMLElement} */ (renderOutcomeLink({ 'safe-output': 'issue/42' }, 'Issue 42'))
 
-    expect(linked.getAttribute('href')).toBe(
-      '#page-outcome-detail?outcome=issue%2F42',
-    )
+    expect(linked.getAttribute('href')).toBe('#page-outcome-detail?outcome=issue%2F42')
     expect(linked.textContent).toBe('Issue 42')
     expect(renderOutcomeLink({}, 'Unavailable')).toBe('Unavailable')
   })
@@ -210,20 +181,14 @@ describe('link content helpers', () => {
   it('renderExternalLinkOrFallback renders a labeled external link or falls back when no link exists', () => {
     const link = { href: 'https://example.com/run/4', label: 'Run 4' }
 
-    const withOverride = /** @type {HTMLElement} */ (
-      renderExternalLinkOrFallback(link, 'View run')
-    )
+    const withOverride = /** @type {HTMLElement} */ (renderExternalLinkOrFallback(link, 'View run'))
     expect(withOverride.getAttribute('aria-label')).toBe('View run')
     expect(withOverride.textContent).toContain('View run')
 
-    const withoutOverride = /** @type {HTMLElement} */ (
-      renderExternalLinkOrFallback(link)
-    )
+    const withoutOverride = /** @type {HTMLElement} */ (renderExternalLinkOrFallback(link))
     expect(withoutOverride.getAttribute('aria-label')).toBe('Run 4')
 
-    expect(renderExternalLinkOrFallback(null, 'View run', 'Unavailable')).toBe(
-      'Unavailable',
-    )
+    expect(renderExternalLinkOrFallback(null, 'View run', 'Unavailable')).toBe('Unavailable')
     expect(renderExternalLinkOrFallback(null)).toBeNull()
   })
 })

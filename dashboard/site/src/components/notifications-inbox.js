@@ -1,24 +1,16 @@
 import { h } from '../dom.js'
 import { octicon } from '../octicons.js'
 import { formatClockDuration } from '../view-formatters.js'
-import {
-  buildCatchUpQueue,
-  normalizeNotificationStories,
-} from '../notification-stories.js'
+import { buildCatchUpQueue, normalizeNotificationStories } from '../notification-stories.js'
 import { findLink } from './link-content.js'
 import { smellMark } from './agent-marketplace-view.js'
 import { renderLazyInfiniteList } from './lazy-infinite-list.js'
 import { formatRoundedPercent } from './count-formatters.js'
-import {
-  createExpandableToggle,
-  renderLazyDisclosure,
-  renderSearchInput,
-} from './ui-primitives.js'
+import { createExpandableToggle, renderLazyDisclosure, renderSearchInput } from './ui-primitives.js'
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications'
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up'
-const CATCH_UP_QUEUE_STORAGE_KEY =
-  'central-agentic-ops.dashboard.catch-up-queue'
+const CATCH_UP_QUEUE_STORAGE_KEY = 'central-agentic-ops.dashboard.catch-up-queue'
 const DAY_MILLISECONDS = 86_400_000
 const ESTIMATED_NOTIFICATION_HEIGHT = 62
 const MINIMUM_NOTIFICATION_BATCH = 12
@@ -29,19 +21,13 @@ function notificationBatchSize() {
   const viewportHeight = Number(globalThis.window?.innerHeight) || 768
   return Math.max(
     MINIMUM_NOTIFICATION_BATCH,
-    Math.min(
-      MAXIMUM_NOTIFICATION_BATCH,
-      Math.ceil(viewportHeight / ESTIMATED_NOTIFICATION_HEIGHT) +
-        NOTIFICATION_OVERSCAN,
-    ),
+    Math.min(MAXIMUM_NOTIFICATION_BATCH, Math.ceil(viewportHeight / ESTIMATED_NOTIFICATION_HEIGHT) + NOTIFICATION_OVERSCAN),
   )
 }
 
 function readState() {
   try {
-    const stored = JSON.parse(
-      globalThis.window?.localStorage.getItem(STORAGE_KEY) ?? '{}',
-    )
+    const stored = JSON.parse(globalThis.window?.localStorage.getItem(STORAGE_KEY) ?? '{}')
     return {
       read: new Set(Array.isArray(stored.read) ? stored.read : []),
       saved: new Set(Array.isArray(stored.saved) ? stored.saved : []),
@@ -71,10 +57,7 @@ function writeState(state) {
 /** @returns {{ queue: string[], size: number, seen: Set<string>, done: Set<string>, later: Set<string> }} */
 function readCatchUpQueueState() {
   try {
-    const stored = JSON.parse(
-      globalThis.window?.localStorage.getItem(CATCH_UP_QUEUE_STORAGE_KEY) ??
-        '{}',
-    )
+    const stored = JSON.parse(globalThis.window?.localStorage.getItem(CATCH_UP_QUEUE_STORAGE_KEY) ?? '{}')
     return {
       queue: Array.isArray(stored.queue) ? stored.queue : [],
       size: Number(stored.size) || 0,
@@ -125,19 +108,12 @@ function markCatchUpStoriesDone(ids) {
 
 /** @param {Record<string, unknown>} row */
 function rowId(row) {
-  return String(
-    row.id || row['attention-signal-id'] || `${row.scope}:${row.objective}`,
-  )
+  return String(row.id || row['attention-signal-id'] || `${row.scope}:${row.objective}`)
 }
 
 /** @param {Record<string, unknown>} row */
 function rowStateIds(row) {
-  return [
-    rowId(row),
-    ...(Array.isArray(row.contributingRawEventIds)
-      ? row.contributingRawEventIds.map(String)
-      : []),
-  ]
+  return [rowId(row), ...(Array.isArray(row.contributingRawEventIds) ? row.contributingRawEventIds.map(String) : [])]
 }
 
 /** @param {Set<string>} values @param {Record<string, unknown>} row */
@@ -154,21 +130,14 @@ function setRowState(values, row, active) {
 /** @param {Record<string, unknown>} row */
 function repository(row) {
   const normalizedRepository = String(row.repository || '')
-  if (/^[^/\s]+\/[^/\s]+$/.test(normalizedRepository))
-    return normalizedRepository
+  if (/^[^/\s]+\/[^/\s]+$/.test(normalizedRepository)) return normalizedRepository
   const scope = String(row.scope || '')
   if (/^[^/\s]+\/[^/\s]+$/.test(scope)) return scope
-  const link =
-    findLink(row, 'repository-link') ??
-    findLink(row, 'evidence-link') ??
-    findLink(row, 'run-link') ??
-    findLink(row, 'external-link')
+  const link = findLink(row, 'repository-link') ?? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link')
   try {
     const url = new URL(link?.href || '')
     const [owner, name] = url.pathname.split('/').filter(Boolean)
-    return url.hostname === 'github.com' && owner && name
-      ? `${owner}/${name}`
-      : ''
+    return url.hostname === 'github.com' && owner && name ? `${owner}/${name}` : ''
   } catch {
     return ''
   }
@@ -182,12 +151,9 @@ function scopeLabel(row) {
 /** @param {Record<string, unknown>} row */
 function age(row) {
   const seconds = Number(row['age-seconds'])
-  if (Number.isFinite(seconds))
-    return `${formatClockDuration(seconds * 1000)} ago`
+  if (Number.isFinite(seconds)) return `${formatClockDuration(seconds * 1000)} ago`
   const timestamp = Number(row.timestamp)
-  return Number.isFinite(timestamp) && timestamp > 0
-    ? `${formatClockDuration(Math.max(0, Date.now() - timestamp))} ago`
-    : 'Recently'
+  return Number.isFinite(timestamp) && timestamp > 0 ? `${formatClockDuration(Math.max(0, Date.now() - timestamp))} ago` : 'Recently'
 }
 
 /** @param {Record<string, unknown>} row */
@@ -236,10 +202,8 @@ function matchesQuery(row, query, state, catchUpState) {
       if (token === 'is:read') return hasRowState(state.read, row)
       if (token === 'is:saved') return hasRowState(state.saved, row)
       if (token === 'is:done') return hasRowState(state.done, row)
-      if (token === 'is:later')
-        return catchUpState.later.has(id) && !catchUpState.done.has(id)
-      if (token.startsWith('repo:'))
-        return repository(row).toLowerCase().includes(token.slice(5))
+      if (token === 'is:later') return catchUpState.later.has(id) && !catchUpState.done.has(id)
+      if (token.startsWith('repo:')) return repository(row).toLowerCase().includes(token.slice(5))
       if (token.startsWith('actor:'))
         return String(row['expected-actor'] || '')
           .toLowerCase()
@@ -256,27 +220,16 @@ function inboxStories(rows, sources) {
   const now = Date.now()
   const preparedAttention = rows.map((row) => ({
     ...row,
-    ...(!row.timestamp &&
-    !row['observed-at'] &&
-    Number.isFinite(Number(row['age-seconds']))
-      ? { timestamp: now - Number(row['age-seconds']) * 1000 }
-      : {}),
+    ...(!row.timestamp && !row['observed-at'] && Number.isFinite(Number(row['age-seconds'])) ? { timestamp: now - Number(row['age-seconds']) * 1000 } : {}),
   }))
   const rawRows = new Map(rows.map((row) => [rowId(row), row]))
   const events = [
     ...preparedAttention,
     ...outcomeStoryEvents(sources.outcomes ?? []),
-    ...operationalValueStoryEvents(
-      (sources.operationalValues ?? []).filter(
-        (row) => row['maturity-status'] === 'matured',
-      ),
-    ),
+    ...operationalValueStoryEvents((sources.operationalValues ?? []).filter((row) => row['maturity-status'] === 'matured')),
   ]
   return normalizeNotificationStories(events).map((story) => {
-    const representative =
-      story.contributingRawEventIds
-        .map((id) => rawRows.get(id))
-        .find((row) => row !== undefined) ?? {}
+    const representative = story.contributingRawEventIds.map((id) => rawRows.get(id)).find((row) => row !== undefined) ?? {}
     return {
       ...representative,
       ...story,
@@ -306,51 +259,20 @@ export function renderNotificationsInbox(rows, sources = {}) {
     items: () => currentVisible,
     batchSize: notificationBatchSize(),
     renderItems: (renderedRows) => {
-      if (group.value === 'cause')
-        return renderCauseGroups(
-          renderedRows,
-          state,
-          selected,
-          bulkDone,
-          render,
-        )
-      const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (
-        new Map()
-      )
+      if (group.value === 'cause') return renderCauseGroups(renderedRows, state, selected, bulkDone, render)
+      const groups = /** @type {Map<string, Record<string, unknown>[]>} */ (new Map())
       for (const row of renderedRows) {
-        const label =
-          group.value === 'date'
-            ? dateGroup(row)
-            : group.value === 'repository'
-              ? repository(row)
-              : ''
+        const label = group.value === 'date' ? dateGroup(row) : group.value === 'repository' ? repository(row) : ''
         const entries = groups.get(label) || []
         entries.push(row)
         groups.set(label, entries)
       }
       return [...groups].flatMap(([label, entries]) => {
-        const entriesList = h(
-          'ul',
-          { className: 'notifications-group' },
-          ...entries.map((row) =>
-            renderNotification(row, state, selected, bulkDone, render),
-          ),
-        )
-        return label
-          ? [
-              h('h3', { className: 'notifications-group-heading' }, label),
-              entriesList,
-            ]
-          : [entriesList]
+        const entriesList = h('ul', { className: 'notifications-group' }, ...entries.map((row) => renderNotification(row, state, selected, bulkDone, render)))
+        return label ? [h('h3', { className: 'notifications-group-heading' }, label), entriesList] : [entriesList]
       })
     },
-    renderEmpty: () =>
-      h(
-        'div',
-        { className: 'notifications-empty' },
-        octicon('check-circle'),
-        h('strong', null, 'All caught up'),
-      ),
+    renderEmpty: () => h('div', { className: 'notifications-empty' }, octicon('check-circle'), h('strong', null, 'All caught up')),
     afterRender: () => syncSelection(),
   })
   const list = lazyList.element
@@ -378,9 +300,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
       h('option', { value: 'none' }, 'No grouping'),
     )
   )
-  const selectAll = /** @type {HTMLInputElement} */ (
-    h('input', { type: 'checkbox', 'aria-label': 'Select all notifications' })
-  )
+  const selectAll = /** @type {HTMLInputElement} */ (h('input', { type: 'checkbox', 'aria-label': 'Select all notifications' }))
   const bulkDone = /** @type {HTMLButtonElement} */ (
     h(
       'button',
@@ -395,27 +315,19 @@ export function renderNotificationsInbox(rows, sources = {}) {
     )
   )
   syncSelection = () => {
-    for (const checkbox of list.querySelectorAll(
-      '.notification-item input[type="checkbox"]',
-    )) {
+    for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
       if (!(checkbox instanceof HTMLInputElement)) continue
       const notificationId = checkbox.dataset.notificationId
-      checkbox.checked =
-        notificationId !== undefined && selected.has(notificationId)
+      checkbox.checked = notificationId !== undefined && selected.has(notificationId)
     }
   }
 
   /** @param {boolean} [resetWindow] */
   render = (resetWindow = true) => {
     const catchUpState = readCatchUpQueueState()
-    let visible = stories.filter(
-      (row) =>
-        !catchUpState.done.has(rowId(row)) &&
-        matchesQuery(row, search.value, state, catchUpState),
-    )
+    let visible = stories.filter((row) => !catchUpState.done.has(rowId(row)) && matchesQuery(row, search.value, state, catchUpState))
     visible = [...visible].sort((left, right) => {
-      if (sort.value === 'priority')
-        return Number(left.priority || 99) - Number(right.priority || 99)
+      if (sort.value === 'priority') return Number(left.priority || 99) - Number(right.priority || 99)
       const leftTimestamp = Number(left.timestamp) || 0
       const rightTimestamp = Number(right.timestamp) || 0
       const delta = rightTimestamp - leftTimestamp
@@ -447,8 +359,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     {
       type: 'button',
       onClick: () => {
-        search.value =
-          `${search.value.replace(stateQuery, '').trim()} is:unread`.trim()
+        search.value = `${search.value.replace(stateQuery, '').trim()} is:unread`.trim()
         render()
       },
     },
@@ -459,8 +370,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     {
       type: 'button',
       onClick: () => {
-        search.value =
-          `${search.value.replace(stateQuery, '').trim()} is:later`.trim()
+        search.value = `${search.value.replace(stateQuery, '').trim()} is:later`.trim()
         render()
       },
     },
@@ -469,43 +379,21 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const advancedFilters = h(
     'div',
     { className: 'notifications-advanced-filters' },
-    h(
-      'label',
-      { className: 'notifications-search' },
-      octicon('search'),
-      search,
-    ),
-    h(
-      'label',
-      { className: 'notifications-select' },
-      h('span', null, 'Sort by:'),
-      sort,
-    ),
-    h(
-      'label',
-      { className: 'notifications-select' },
-      h('span', null, 'Group by:'),
-      group,
-    ),
+    h('label', { className: 'notifications-search' }, octicon('search'), search),
+    h('label', { className: 'notifications-select' }, h('span', null, 'Sort by:'), sort),
+    h('label', { className: 'notifications-select' }, h('span', null, 'Group by:'), group),
   )
   const filterToggle = h(
     'button',
     {
       type: 'button',
       className: 'notifications-filter-toggle',
-      onClick: () =>
-        setFiltersExpanded(
-          filterToggle.getAttribute('aria-expanded') !== 'true',
-        ),
+      onClick: () => setFiltersExpanded(filterToggle.getAttribute('aria-expanded') !== 'true'),
     },
     octicon('filter'),
     h('span', null, 'Filters'),
   )
-  const setFiltersExpanded = createExpandableToggle(
-    filterToggle,
-    advancedFilters,
-    { expandedClass: 'is-expanded' },
-  )
+  const setFiltersExpanded = createExpandableToggle(filterToggle, advancedFilters, { expandedClass: 'is-expanded' })
   search.addEventListener('input', () => render())
   sort.addEventListener('change', () => render())
   group.addEventListener('change', () => render())
@@ -514,9 +402,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     if (selectAll.checked) {
       for (const row of currentVisible) selected.add(rowId(row))
     }
-    for (const checkbox of list.querySelectorAll(
-      '.notification-item input[type="checkbox"]',
-    )) {
+    for (const checkbox of list.querySelectorAll('.notification-item input[type="checkbox"]')) {
       if (!(checkbox instanceof HTMLInputElement)) continue
       checkbox.checked = selectAll.checked
     }
@@ -533,20 +419,8 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const main = h(
     'div',
     { className: 'notifications-main' },
-    h(
-      'div',
-      { className: 'notifications-toolbar' },
-      h('div', { className: 'notifications-state-tabs' }, all, unread, later),
-      filterToggle,
-      advancedFilters,
-    ),
-    h(
-      'div',
-      { className: 'notifications-selection-bar' },
-      h('label', null, selectAll, h('span', null, 'Select all')),
-      count,
-      bulkDone,
-    ),
+    h('div', { className: 'notifications-toolbar' }, h('div', { className: 'notifications-state-tabs' }, all, unread, later), filterToggle, advancedFilters),
+    h('div', { className: 'notifications-selection-bar' }, h('label', null, selectAll, h('span', null, 'Select all')), count, bulkDone),
     list,
   )
   const showNotifications = (query = '') => {
@@ -580,15 +454,8 @@ function causeKey(row) {
 /** @param {Record<string, unknown>} row */
 function isHighPriority(row) {
   const consequence = String(row['consequence-tier'] || '').toLowerCase()
-  const priority =
-    row.priority === null || row.priority === undefined || row.priority === ''
-      ? Number.NaN
-      : Number(row.priority)
-  return (
-    consequence === 'critical' ||
-    consequence === 'high' ||
-    (Number.isFinite(priority) && priority <= 1)
-  )
+  const priority = row.priority === null || row.priority === undefined || row.priority === '' ? Number.NaN : Number(row.priority)
+  return consequence === 'critical' || consequence === 'high' || (Number.isFinite(priority) && priority <= 1)
 }
 
 /**
@@ -609,12 +476,7 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
     entries.push(row)
     byCause.set(key, entries)
   }
-  const priorityRows = [
-    ...urgentRows,
-    ...clusterableRows.filter(
-      (row) => (byCause.get(causeKey(row))?.length ?? 0) === 1,
-    ),
-  ]
+  const priorityRows = [...urgentRows, ...clusterableRows.filter((row) => (byCause.get(causeKey(row))?.length ?? 0) === 1)]
   const repeated = [...byCause.values()].filter((entries) => entries.length > 1)
   const content = []
   if (priorityRows.length > 0) {
@@ -625,9 +487,7 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
           className: 'notifications-group notifications-priority-group',
           'aria-label': 'Priority and unique notifications',
         },
-        ...priorityRows.map((row) =>
-          renderNotification(row, state, selected, bulkDone, render),
-        ),
+        ...priorityRows.map((row) => renderNotification(row, state, selected, bulkDone, render)),
       ),
     )
   }
@@ -638,38 +498,17 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
     const cluster = renderLazyDisclosure(
       'notifications-cause-cluster',
       [
-        h(
-          'span',
-          { className: 'notification-kind' },
-          first?.['signal-type'] === 'agent-smell'
-            ? smellMark()
-            : octicon(String(first?.icon || 'issue')),
-        ),
+        h('span', { className: 'notification-kind' }, first?.['signal-type'] === 'agent-smell' ? smellMark() : octicon(String(first?.icon || 'issue'))),
         h(
           'span',
           { className: 'notifications-cause-copy' },
-          h(
-            'strong',
-            null,
-            String(
-              first?.detail || first?.reason || 'Repeated notification cause',
-            ),
-          ),
-          h(
-            'small',
-            null,
-            `${entries.length} occurrences across ${repositories.size} ${repositories.size === 1 ? 'repository' : 'repositories'}`,
-          ),
+          h('strong', null, String(first?.detail || first?.reason || 'Repeated notification cause')),
+          h('small', null, `${entries.length} occurrences across ${repositories.size} ${repositories.size === 1 ? 'repository' : 'repositories'}`),
         ),
         octicon('chevron-right', 'notifications-cause-chevron'),
       ],
       entriesList,
-      (container) =>
-        container.replaceChildren(
-          ...entries.map((row) =>
-            renderNotification(row, state, selected, bulkDone, render),
-          ),
-        ),
+      (container) => container.replaceChildren(...entries.map((row) => renderNotification(row, state, selected, bulkDone, render))),
       { summaryClassName: 'notifications-cause-summary' },
     )
     content.push(cluster)
@@ -677,13 +516,7 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
   return content
 }
 
-const ACTIVE_STATUSES = new Set([
-  'queued',
-  'in-progress',
-  'in_progress',
-  'waiting',
-  'pending',
-])
+const ACTIVE_STATUSES = new Set(['queued', 'in-progress', 'in_progress', 'waiting', 'pending'])
 
 /**
  * @param {Record<string, unknown>[]} attentionRows
@@ -696,13 +529,7 @@ function renderOperationalPulse(attentionRows, sources, showNotifications) {
   const outcomes = sources.outcomes ?? []
   const operationalValues = sources.operationalValues ?? []
   const evidenceRecords = sources.evidenceRecords ?? []
-  const end = latestObservedAt([
-    ...runs,
-    ...workItems,
-    ...outcomes,
-    ...operationalValues,
-    ...evidenceRecords,
-  ])
+  const end = latestObservedAt([...runs, ...workItems, ...outcomes, ...operationalValues, ...evidenceRecords])
   const lastCatchUp = readLastCatchUp()
   const defaultRange = lastCatchUp && lastCatchUp < end ? 'since' : '7d'
   const range = /** @type {HTMLSelectElement} */ (
@@ -719,35 +546,16 @@ function renderOperationalPulse(attentionRows, sources, showNotifications) {
         'Since last catch-up',
       ),
       h('option', { value: '1d' }, 'Last 24 hours'),
-      h(
-        'option',
-        { value: '7d', selected: defaultRange === '7d' },
-        'Last 7 days',
-      ),
+      h('option', { value: '7d', selected: defaultRange === '7d' }, 'Last 7 days'),
       h('option', { value: '30d' }, 'Last 30 days'),
     )
   )
   const content = h('div', { className: 'home-catchup-content' })
-  const markCaughtUp = h(
-    'button',
-    { type: 'button', className: 'home-catchup-done' },
-    octicon('check'),
-    'Mark caught up',
-  )
+  const markCaughtUp = h('button', { type: 'button', className: 'home-catchup-done' }, octicon('check'), 'Mark caught up')
   const render = () => {
-    const start =
-      range.value === 'since' && lastCatchUp
-        ? lastCatchUp
-        : end - (Number.parseInt(range.value, 10) || 7) * DAY_MILLISECONDS
+    const start = range.value === 'since' && lastCatchUp ? lastCatchUp : end - (Number.parseInt(range.value, 10) || 7) * DAY_MILLISECONDS
     content.replaceChildren(
-      renderCatchUpContent(
-        attentionRows,
-        { runs, workItems, outcomes, operationalValues, evidenceRecords },
-        start,
-        end,
-        () => render(),
-        showNotifications,
-      ),
+      renderCatchUpContent(attentionRows, { runs, workItems, outcomes, operationalValues, evidenceRecords }, start, end, () => render(), showNotifications),
     )
   }
   range.addEventListener('change', render)
@@ -767,11 +575,7 @@ function renderOperationalPulse(attentionRows, sources, showNotifications) {
       className: 'notifications-health home-catchup',
       'aria-label': 'Catch-up briefing',
     },
-    h(
-      'header',
-      { className: 'home-catchup-header' },
-      h('div', { className: 'home-catchup-controls' }, range, markCaughtUp),
-    ),
+    h('header', { className: 'home-catchup-header' }, h('div', { className: 'home-catchup-controls' }, range, markCaughtUp)),
     content,
   )
 }
@@ -784,56 +588,21 @@ function renderOperationalPulse(attentionRows, sources, showNotifications) {
  * @param {() => void} redraw
  * @param {(query?: string) => void} showNotifications
  */
-function renderCatchUpContent(
-  attentionRows,
-  sources,
-  start,
-  end,
-  redraw,
-  showNotifications,
-) {
+function renderCatchUpContent(attentionRows, sources, start, end, redraw, showNotifications) {
   const currentOutcomes = within(sources.outcomes, start, end)
-  const previousOutcomes = within(
-    sources.outcomes,
-    start - (end - start),
-    start,
-  )
-  const delivered = currentOutcomes.filter(
-    (row) => row['outcome-state'] === 'lifecycle-close',
-  ).length
-  const previousDelivered = previousOutcomes.filter(
-    (row) => row['outcome-state'] === 'lifecycle-close',
-  ).length
-  const pending = currentOutcomes.filter(
-    (row) => row['outcome-state'] === 'pending',
-  ).length
-  const activeWork = sources.workItems.filter((row) =>
-    ['active', 'in-progress', 'running'].includes(
-      String(row['lifecycle-state']),
-    ),
-  ).length
-  const activeRuns = sources.runs.filter((row) =>
-    ACTIVE_STATUSES.has(String(row['run-status'])),
-  ).length
+  const previousOutcomes = within(sources.outcomes, start - (end - start), start)
+  const delivered = currentOutcomes.filter((row) => row['outcome-state'] === 'lifecycle-close').length
+  const previousDelivered = previousOutcomes.filter((row) => row['outcome-state'] === 'lifecycle-close').length
+  const pending = currentOutcomes.filter((row) => row['outcome-state'] === 'pending').length
+  const activeWork = sources.workItems.filter((row) => ['active', 'in-progress', 'running'].includes(String(row['lifecycle-state']))).length
+  const activeRuns = sources.runs.filter((row) => ACTIVE_STATUSES.has(String(row['run-status']))).length
   const running = activeWork || activeRuns
   const currentEvidence = within(sources.evidenceRecords, start, end)
-  const acceptedEvidence = currentEvidence.filter(
-    (row) => row['verification-state'] === 'accepted',
-  ).length
-  const evidencePercent =
-    currentEvidence.length > 0
-      ? acceptedEvidence / currentEvidence.length
-      : null
+  const acceptedEvidence = currentEvidence.filter((row) => row['verification-state'] === 'accepted').length
+  const evidencePercent = currentEvidence.length > 0 ? acceptedEvidence / currentEvidence.length : null
   const value = valueSeries(sources.operationalValues, start, end)
-  const valueDelta =
-    value.length > 1 ? value[value.length - 1] - value[0] : null
-  const stories = catchUpStories(
-    attentionRows,
-    currentOutcomes,
-    sources.operationalValues,
-    start,
-    end,
-  )
+  const valueDelta = value.length > 1 ? value[value.length - 1] - value[0] : null
+  const stories = catchUpStories(attentionRows, currentOutcomes, sources.operationalValues, start, end)
   const queueState = readCatchUpQueueState()
   const { queue, size, seen } = buildCatchUpQueue(stories, queueState)
   queueState.queue = queue
@@ -841,11 +610,7 @@ function renderCatchUpContent(
   queueState.seen = seen
   writeCatchUpQueueState(queueState)
   const storiesById = new Map(stories.map((story) => [story.id, story]))
-  const queuedStories = /** @type {typeof stories} */ (
-    queue
-      .map((id) => storiesById.get(id))
-      .filter((story) => story !== undefined)
-  )
+  const queuedStories = /** @type {typeof stories} */ (queue.map((id) => storiesById.get(id)).filter((story) => story !== undefined))
   /** @param {string} storyId @param {'done' | 'later'} bucket */
   const processStory = (storyId, bucket) => {
     queueState[bucket].add(storyId)
@@ -860,38 +625,15 @@ function renderCatchUpContent(
       'dl',
       { className: 'home-catchup-metrics', 'aria-label': 'Catch-up summary' },
       catchUpMetric(String(delivered), 'outcomes delivered', 'success'),
-      catchUpMetric(
-        String(pending),
-        'awaiting review',
-        pending > 0 ? 'attention' : 'neutral',
-      ),
-      catchUpMetric(
-        String(running),
-        'running now',
-        running > 0 ? 'accent' : 'neutral',
-      ),
-      catchUpMetric(
-        formatRoundedPercent(evidencePercent),
-        'evidence accepted',
-        'neutral',
-      ),
+      catchUpMetric(String(pending), 'awaiting review', pending > 0 ? 'attention' : 'neutral'),
+      catchUpMetric(String(running), 'running now', running > 0 ? 'accent' : 'neutral'),
+      catchUpMetric(formatRoundedPercent(evidencePercent), 'evidence accepted', 'neutral'),
     ),
     h(
       'div',
       { className: 'home-catchup-charts' },
-      renderOutcomeMomentum(
-        currentOutcomes,
-        start,
-        end,
-        delivered,
-        previousDelivered,
-      ),
-      h(
-        'div',
-        { className: 'home-catchup-side-charts' },
-        renderWorkNow(sources.workItems, running, pending),
-        renderValueGain(value, valueDelta),
-      ),
+      renderOutcomeMomentum(currentOutcomes, start, end, delivered, previousDelivered),
+      h('div', { className: 'home-catchup-side-charts' }, renderWorkNow(sources.workItems, running, pending), renderValueGain(value, valueDelta)),
     ),
     h(
       'section',
@@ -906,26 +648,14 @@ function renderCatchUpContent(
         h(
           'span',
           null,
-          size > 0
-            ? `${queuedStories.length} of ${size} remaining`
-            : `${queuedStories.length} highlight${queuedStories.length === 1 ? '' : 's'}`,
+          size > 0 ? `${queuedStories.length} of ${size} remaining` : `${queuedStories.length} highlight${queuedStories.length === 1 ? '' : 's'}`,
         ),
       ),
       queuedStories.length > 0
-        ? h(
-            'div',
-            { className: 'home-story-rail' },
-            ...queuedStories
-              .slice(0, 4)
-              .map((story) => renderCatchUpStory(story, processStory)),
-          )
+        ? h('div', { className: 'home-story-rail' }, ...queuedStories.slice(0, 4).map((story) => renderCatchUpStory(story, processStory)))
         : size > 0
           ? renderCaughtUp(queueState.later.size, showNotifications)
-          : h(
-              'p',
-              { className: 'home-catchup-quiet' },
-              'No meaningful state changes were observed in this interval.',
-            ),
+          : h('p', { className: 'home-catchup-quiet' }, 'No meaningful state changes were observed in this interval.'),
     ),
     h(
       'section',
@@ -944,28 +674,21 @@ function renderCatchUpContent(
             'aria-live': 'polite',
             tabindex: '-1',
           },
-          size > 0
-            ? `${Math.min(size, size - queuedStories.length + 1)} of ${size}`
-            : 'No highlights',
+          size > 0 ? `${Math.min(size, size - queuedStories.length + 1)} of ${size}` : 'No highlights',
         ),
       ),
       queuedStories.length > 0
         ? renderMobileCatchUpStory(queuedStories[0], processStory)
         : size > 0
           ? renderCaughtUp(queueState.later.size, showNotifications)
-          : h(
-              'p',
-              { className: 'home-catchup-quiet' },
-              'No meaningful state changes were observed in this interval.',
-            ),
+          : h('p', { className: 'home-catchup-quiet' }, 'No meaningful state changes were observed in this interval.'),
     ),
   )
 }
 
 /** @param {number} laterCount @param {(query?: string) => void} showNotifications */
 function renderCaughtUp(laterCount, showNotifications) {
-  const label =
-    laterCount > 0 ? 'View Later in Notifications' : 'Back to Notifications'
+  const label = laterCount > 0 ? 'View Later in Notifications' : 'Back to Notifications'
   return h(
     'p',
     { className: 'home-catchup-quiet' },
@@ -995,15 +718,7 @@ function within(rows, start, end) {
 
 /** @param {Record<string, unknown>} row */
 function observedAt(row) {
-  return Date.parse(
-    String(
-      row['observed-at'] ||
-        row['published-at'] ||
-        row['ended-at'] ||
-        row['started-at'] ||
-        '',
-    ),
-  )
+  return Date.parse(String(row['observed-at'] || row['published-at'] || row['ended-at'] || row['started-at'] || ''))
 }
 
 /** @param {Record<string, unknown>[]} rows */
@@ -1014,9 +729,7 @@ function latestObservedAt(rows) {
 
 function readLastCatchUp() {
   try {
-    const timestamp = Number(
-      globalThis.window?.localStorage.getItem(CATCH_UP_STORAGE_KEY),
-    )
+    const timestamp = Number(globalThis.window?.localStorage.getItem(CATCH_UP_STORAGE_KEY))
     return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null
   } catch {
     return null
@@ -1025,28 +738,15 @@ function readLastCatchUp() {
 
 /** @param {string} value @param {string} label @param {string} tone */
 function catchUpMetric(value, label, tone) {
-  return h(
-    'div',
-    { className: `home-catchup-metric home-catchup-metric-${tone}` },
-    h('dd', null, value),
-    h('dt', null, label),
-  )
+  return h('div', { className: `home-catchup-metric home-catchup-metric-${tone}` }, h('dd', null, value), h('dt', null, label))
 }
 
 /** @param {Record<string, unknown>[]} outcomes @param {number} start @param {number} end @param {number} delivered @param {number} previousDelivered */
-function renderOutcomeMomentum(
-  outcomes,
-  start,
-  end,
-  delivered,
-  previousDelivered,
-) {
+function renderOutcomeMomentum(outcomes, start, end, delivered, previousDelivered) {
   const days = timeBuckets(start, end, 10)
   for (const outcome of outcomes) {
     const timestamp = observedAt(outcome)
-    const bucket = days.find(
-      (day) => timestamp >= day.start && timestamp < day.end,
-    )
+    const bucket = days.find((day) => timestamp >= day.start && timestamp < day.end)
     if (!bucket) continue
     outcome['outcome-state'] === 'lifecycle-close'
       ? (bucket.delivered += 1)
@@ -1054,14 +754,8 @@ function renderOutcomeMomentum(
         ? (bucket.pending += 1)
         : (bucket.other += 1)
   }
-  const max = Math.max(
-    1,
-    ...days.map((day) => day.delivered + day.pending + day.other),
-  )
-  const gain =
-    previousDelivered > 0
-      ? Math.round(((delivered - previousDelivered) / previousDelivered) * 100)
-      : null
+  const max = Math.max(1, ...days.map((day) => day.delivered + day.pending + day.other))
+  const gain = previousDelivered > 0 ? Math.round(((delivered - previousDelivered) / previousDelivered) * 100) : null
   return h(
     'section',
     { className: 'home-momentum-panel' },
@@ -1081,15 +775,9 @@ function renderOutcomeMomentum(
       h(
         'strong',
         { className: gain !== null && gain >= 0 ? 'home-positive' : '' },
-        gain === null
-          ? `${delivered} delivered`
-          : `${gain >= 0 ? '+' : ''}${gain}%`,
+        gain === null ? `${delivered} delivered` : `${gain >= 0 ? '+' : ''}${gain}%`,
       ),
-      h(
-        'small',
-        null,
-        gain === null ? 'this interval' : 'vs previous interval',
-      ),
+      h('small', null, gain === null ? 'this interval' : 'vs previous interval'),
     ),
     h(
       'svg',
@@ -1135,18 +823,8 @@ function renderOutcomeMomentum(
     h(
       'div',
       { className: 'home-chart-legend' },
-      h(
-        'span',
-        null,
-        h('i', { className: 'home-legend-delivered' }),
-        'Delivered',
-      ),
-      h(
-        'span',
-        null,
-        h('i', { className: 'home-legend-pending' }),
-        'Needs review',
-      ),
+      h('span', null, h('i', { className: 'home-legend-delivered' }), 'Delivered'),
+      h('span', null, h('i', { className: 'home-legend-pending' }), 'Needs review'),
     ),
   )
 }
@@ -1165,19 +843,12 @@ function timeBuckets(start, end, count) {
 
 /** @param {Record<string, unknown>[]} workItems @param {number} running @param {number} pending */
 function renderWorkNow(workItems, running, pending) {
-  const blocked = workItems.filter(
-    (row) => row['lifecycle-state'] === 'blocked',
-  ).length
+  const blocked = workItems.filter((row) => row['lifecycle-state'] === 'blocked').length
   const total = Math.max(1, running + pending + blocked)
   return h(
     'section',
     { className: 'home-mini-chart' },
-    h(
-      'header',
-      null,
-      renderOriginBadge({ label: 'Work', icon: 'workflow', tone: 'work' }),
-      h('h3', null, 'Work now'),
-    ),
+    h('header', null, renderOriginBadge({ label: 'Work', icon: 'workflow', tone: 'work' }), h('h3', null, 'Work now')),
     h(
       'div',
       { className: 'home-work-now' },
@@ -1193,18 +864,8 @@ function renderWorkNow(workItems, running, pending) {
       h(
         'dl',
         null,
-        h(
-          'div',
-          null,
-          h('dt', null, 'Needs review'),
-          h('dd', null, String(pending)),
-        ),
-        h(
-          'div',
-          null,
-          h('dt', null, 'Blocked'),
-          h('dd', null, String(blocked)),
-        ),
+        h('div', null, h('dt', null, 'Needs review'), h('dd', null, String(pending))),
+        h('div', null, h('dt', null, 'Blocked'), h('dd', null, String(blocked))),
       ),
     ),
   )
@@ -1220,57 +881,36 @@ function valueSeries(rows, start, end) {
     if (row['maturity-status'] !== 'matured') continue
     const timestamp = observedAt(row)
     const value = Number(row['operational-value'])
-    const bucket = buckets.find(
-      (entry) => timestamp >= entry.start && timestamp < entry.end,
-    )
+    const bucket = buckets.find((entry) => timestamp >= entry.start && timestamp < entry.end)
     if (bucket && Number.isFinite(value)) bucket.values.push(value)
   }
-  return buckets
-    .filter((bucket) => bucket.values.length > 0)
-    .map(
-      (bucket) =>
-        bucket.values.reduce((sum, value) => sum + value, 0) /
-        bucket.values.length,
-    )
+  return buckets.filter((bucket) => bucket.values.length > 0).map((bucket) => bucket.values.reduce((sum, value) => sum + value, 0) / bucket.values.length)
 }
 
 /** @param {number[]} values @param {number | null} delta */
 function renderValueGain(values, delta) {
   const points = values.length > 0 ? values : [0]
   const coordinates = points
-    .map(
-      (value, index) =>
-        `${8 + index * (104 / Math.max(1, points.length - 1))},${42 - Math.max(0, Math.min(1, value)) * 32}`,
-    )
+    .map((value, index) => `${8 + index * (104 / Math.max(1, points.length - 1))},${42 - Math.max(0, Math.min(1, value)) * 32}`)
     .join(' ')
   return h(
     'section',
     { className: 'home-mini-chart' },
-    h(
-      'header',
-      null,
-      renderOriginBadge({ label: 'Insights', icon: 'graph', tone: 'insights' }),
-      h('h3', null, 'Value gained'),
-    ),
+    h('header', null, renderOriginBadge({ label: 'Insights', icon: 'graph', tone: 'insights' }), h('h3', null, 'Value gained')),
     h(
       'div',
       { className: 'home-value-gain' },
       h(
         'strong',
         { className: delta !== null && delta >= 0 ? 'home-positive' : '' },
-        delta === null
-          ? '—'
-          : `${delta >= 0 ? '+' : ''}${Math.round(delta * 100)} pts`,
+        delta === null ? '—' : `${delta >= 0 ? '+' : ''}${Math.round(delta * 100)} pts`,
       ),
       h(
         'svg',
         {
           viewBox: '0 0 120 48',
           role: 'img',
-          'aria-label':
-            delta === null
-              ? 'Operational value change unavailable'
-              : `Operational value changed ${Math.round(delta * 100)} points`,
+          'aria-label': delta === null ? 'Operational value change unavailable' : `Operational value changed ${Math.round(delta * 100)} points`,
         },
         h('line', {
           x1: 8,
@@ -1292,17 +932,9 @@ function renderValueGain(values, delta) {
  * @param {number} start
  * @param {number} end
  */
-function catchUpStories(
-  attentionRows,
-  outcomes,
-  operationalValues,
-  start,
-  end,
-) {
+function catchUpStories(attentionRows, outcomes, operationalValues, start, end) {
   const leadAttention = attentionRows[0]
-  const agentSmell = attentionRows.find(
-    (row) => row['signal-type'] === 'agent-smell' && row !== leadAttention,
-  )
+  const agentSmell = attentionRows.find((row) => row['signal-type'] === 'agent-smell' && row !== leadAttention)
   /** @type {Record<string, unknown>[]} */
   const selectedAttention = []
   if (leadAttention) selectedAttention.push(leadAttention)
@@ -1313,46 +945,27 @@ function catchUpStories(
     deepLink: findLink(row, 'evidence-link')?.href || '',
   }))
   const latestValue = operationalValues
-    .filter(
-      (row) =>
-        row['maturity-status'] === 'matured' &&
-        observedAt(row) >= start &&
-        observedAt(row) <= end,
-    )
+    .filter((row) => row['maturity-status'] === 'matured' && observedAt(row) >= start && observedAt(row) <= end)
     .sort((left, right) => observedAt(right) - observedAt(left))[0]
-  return normalizeNotificationStories([
-    ...attention,
-    ...outcomeStoryEvents(outcomes),
-    ...operationalValueStoryEvents(latestValue ? [latestValue] : []),
-  ]).filter((story) => Number.isFinite(story.timestamp))
+  return normalizeNotificationStories([...attention, ...outcomeStoryEvents(outcomes), ...operationalValueStoryEvents(latestValue ? [latestValue] : [])]).filter(
+    (story) => Number.isFinite(story.timestamp),
+  )
 }
 
 /** @param {Record<string, unknown>[]} outcomes */
 function outcomeStoryEvents(outcomes) {
   return outcomes
-    .filter((row) =>
-      ['pending', 'lifecycle-close'].includes(String(row['outcome-state'])),
-    )
+    .filter((row) => ['pending', 'lifecycle-close'].includes(String(row['outcome-state'])))
     .map((row) => {
-      const outcomeId = String(
-        row['safe-output'] || row['outcome-number'] || '',
-      )
+      const outcomeId = String(row['safe-output'] || row['outcome-number'] || '')
       return {
         ...row,
         ...(outcomeId ? { 'event-id': `outcome:${outcomeId}` } : {}),
         classification: String(row['outcome-state']),
-        title: String(
-          row['outcome-title'] || row['workflow-name'] || 'Outcome observed',
-        ),
-        detail:
-          row['outcome-state'] === 'pending'
-            ? 'A produced outcome is ready for review.'
-            : 'A produced outcome was delivered.',
+        title: String(row['outcome-title'] || row['workflow-name'] || 'Outcome observed'),
+        detail: row['outcome-state'] === 'pending' ? 'A produced outcome is ready for review.' : 'A produced outcome was delivered.',
         timestamp: observedAt(row),
-        deepLink:
-          findLink(row, 'external-link')?.href ||
-          findLink(row, 'evidence-link')?.href ||
-          '',
+        deepLink: findLink(row, 'external-link')?.href || findLink(row, 'evidence-link')?.href || '',
       }
     })
 }
@@ -1361,9 +974,7 @@ function outcomeStoryEvents(outcomes) {
 function operationalValueStoryEvents(operationalValues) {
   return operationalValues.map((row) => ({
     ...row,
-    ...(row['observation-id'] ||
-    row.workflow ||
-    row['operational-value-definition']
+    ...(row['observation-id'] || row.workflow || row['operational-value-definition']
       ? {
           'event-id': `operational-value:${String(row['observation-id'] || row.workflow || row['operational-value-definition'])}`,
         }
@@ -1402,12 +1013,7 @@ function renderCatchUpStory(story, processStory) {
     )
   const link = [
     renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType })),
-    h(
-      'span',
-      { className: 'home-story-copy' },
-      h('strong', null, story.title),
-      h('small', null, story.detail),
-    ),
+    h('span', { className: 'home-story-copy' }, h('strong', null, story.title), h('small', null, story.detail)),
     octicon('chevron-right'),
   ]
   return h(
@@ -1421,12 +1027,7 @@ function renderCatchUpStory(story, processStory) {
       },
       ...link,
     ),
-    h(
-      'span',
-      { className: 'home-story-actions' },
-      action('Save for later', 'clock', 'later'),
-      action('Mark as done', 'check-circle', 'done'),
-    ),
+    h('span', { className: 'home-story-actions' }, action('Save for later', 'clock', 'later'), action('Mark as done', 'check-circle', 'done')),
   )
 }
 
@@ -1444,14 +1045,9 @@ function renderMobileCatchUpStory(story, processStory) {
         className: `home-catchup-mobile-action home-catchup-mobile-${bucket}`,
         'aria-label': `${label} ${story.title}`,
         onClick: /** @param {MouseEvent} event */ (event) => {
-          const briefing =
-            event.currentTarget instanceof HTMLElement
-              ? event.currentTarget.closest('.home-catchup')
-              : null
+          const briefing = event.currentTarget instanceof HTMLElement ? event.currentTarget.closest('.home-catchup') : null
           processStory(story.id, bucket)
-          const focusTarget =
-            briefing?.querySelector(`.home-catchup-mobile-${bucket}`) ??
-            briefing?.querySelector('.home-catchup-mobile-progress')
+          const focusTarget = briefing?.querySelector(`.home-catchup-mobile-${bucket}`) ?? briefing?.querySelector('.home-catchup-mobile-progress')
           if (focusTarget instanceof HTMLElement) focusTarget.focus()
         },
       },
@@ -1470,30 +1066,15 @@ function renderMobileCatchUpStory(story, processStory) {
       h(
         'span',
         { className: 'home-catchup-mobile-meta' },
-        h(
-          'span',
-          { className: 'home-catchup-classification' },
-          catchUpClassificationLabel(story.classification),
-        ),
-        renderOriginBadge(
-          notificationOrigin({ 'signal-type': story.sourceType }),
-        ),
+        h('span', { className: 'home-catchup-classification' }, catchUpClassificationLabel(story.classification)),
+        renderOriginBadge(notificationOrigin({ 'signal-type': story.sourceType })),
       ),
       h('strong', null, story.title),
       h('p', null, story.detail),
       story.repository ? h('small', null, story.repository) : null,
     ),
-    h(
-      'span',
-      { className: 'home-catchup-mobile-hint', 'aria-hidden': 'true' },
-      'Swipe right for Done · left for Later',
-    ),
-    h(
-      'span',
-      { className: 'home-catchup-mobile-actions' },
-      action('Later', 'clock', 'later'),
-      action('Done', 'check-circle', 'done'),
-    ),
+    h('span', { className: 'home-catchup-mobile-hint', 'aria-hidden': 'true' }, 'Swipe right for Done · left for Later'),
+    h('span', { className: 'home-catchup-mobile-actions' }, action('Later', 'clock', 'later'), action('Done', 'check-circle', 'done')),
   )
   enableCatchUpSwipe(card, story.id, processStory)
   return card
@@ -1512,21 +1093,15 @@ function enableCatchUpSwipe(card, storyId, processStory) {
       x: pointer.clientX,
       y: pointer.clientY,
     }
-    if (pointer.pointerId !== undefined)
-      card.setPointerCapture?.(pointer.pointerId)
+    if (pointer.pointerId !== undefined) card.setPointerCapture?.(pointer.pointerId)
   })
   card.addEventListener('pointerup', (event) => {
     const pointer = /** @type {PointerEvent} */ (event)
-    if (
-      !start ||
-      (start.pointerId !== undefined && pointer.pointerId !== start.pointerId)
-    )
-      return
+    if (!start || (start.pointerId !== undefined && pointer.pointerId !== start.pointerId)) return
     const horizontal = pointer.clientX - start.x
     const vertical = pointer.clientY - start.y
     start = null
-    if (Math.abs(horizontal) < 48 || Math.abs(horizontal) <= Math.abs(vertical))
-      return
+    if (Math.abs(horizontal) < 48 || Math.abs(horizontal) <= Math.abs(vertical)) return
     pointer.preventDefault()
     suppressClick = true
     processStory(storyId, horizontal > 0 ? 'done' : 'later')
@@ -1555,47 +1130,23 @@ function catchUpClassificationLabel(classification) {
 
 /** @param {Record<string, unknown>} row */
 function notificationOrigin(row) {
-  const signal = String(
-    row.sourceType || row['signal-type'] || '',
-  ).toLowerCase()
-  if (
-    signal.includes('agent') ||
-    signal.includes('security') ||
-    signal.includes('threat')
-  )
-    return { label: 'Operations', icon: 'copilot', tone: 'agents' }
-  if (
-    signal.includes('value') ||
-    signal.includes('evidence') ||
-    signal.includes('budget') ||
-    signal.includes('capacity')
-  )
+  const signal = String(row.sourceType || row['signal-type'] || '').toLowerCase()
+  if (signal.includes('agent') || signal.includes('security') || signal.includes('threat')) return { label: 'Operations', icon: 'copilot', tone: 'agents' }
+  if (signal.includes('value') || signal.includes('evidence') || signal.includes('budget') || signal.includes('capacity'))
     return { label: 'Insights', icon: 'graph', tone: 'insights' }
   return { label: 'Work', icon: 'project-roadmap', tone: 'work' }
 }
 
 /** @param {{ label: string, icon: string, tone: string }} origin */
 function renderOriginBadge(origin) {
-  return h(
-    'span',
-    { className: `home-origin-badge home-origin-${origin.tone}` },
-    octicon(origin.icon),
-    h('span', null, origin.label),
-  )
+  return h('span', { className: `home-origin-badge home-origin-${origin.tone}` }, octicon(origin.icon), h('span', null, origin.label))
 }
 
 /** @param {Record<string, unknown>} row @param {{ read: Set<string>, saved: Set<string>, done: Set<string> }} state @param {Set<string>} selected @param {HTMLButtonElement} bulkDone @param {() => void} render */
 function renderNotification(row, state, selected, bulkDone, render) {
   const id = rowId(row)
-  const deepLink =
-    typeof row.deepLink === 'string' && row.deepLink
-      ? { href: row.deepLink }
-      : null
-  const link =
-    deepLink ??
-    findLink(row, 'evidence-link') ??
-    findLink(row, 'run-link') ??
-    findLink(row, 'external-link')
+  const deepLink = typeof row.deepLink === 'string' && row.deepLink ? { href: row.deepLink } : null
+  const link = deepLink ?? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link')
   const unread = !hasRowState(state.read, row)
   const done = hasRowState(state.done, row)
   /** @param {string} label @param {string} icon @param {boolean} active @param {() => void} change */
@@ -1630,9 +1181,7 @@ function renderNotification(row, state, selected, bulkDone, render) {
       dataset: { notificationId: id },
       'aria-label': `Select ${String(row.objective || 'notification')}`,
       onChange: /** @param {Event} event */ (event) => {
-        ;/** @type {HTMLInputElement} */ (event.currentTarget).checked
-          ? selected.add(id)
-          : selected.delete(id)
+        ;/** @type {HTMLInputElement} */ (event.currentTarget).checked ? selected.add(id) : selected.delete(id)
         bulkDone.disabled = selected.size === 0
       },
     }),
@@ -1653,42 +1202,20 @@ function renderNotification(row, state, selected, bulkDone, render) {
       },
       h('span', { className: 'notification-repository' }, scopeLabel(row)),
       h('strong', null, String(row.title || row.objective || 'Notification')),
-      h(
-        'small',
-        null,
-        String(row.detail || row.reason || 'No additional detail'),
-      ),
+      h('small', null, String(row.detail || row.reason || 'No additional detail')),
     ),
-    h(
-      'span',
-      { className: 'notification-meta' },
-      String(row['expected-actor'] || ''),
-      h('small', null, age(row)),
-    ),
+    h('span', { className: 'notification-meta' }, String(row['expected-actor'] || ''), h('small', null, age(row))),
     h(
       'span',
       { className: 'notification-actions' },
-      action(
-        unread ? 'Mark as read' : 'Mark as unread',
-        unread ? 'check' : 'read',
-        !unread,
-        () => setRowState(state.read, row, unread),
+      action(unread ? 'Mark as read' : 'Mark as unread', unread ? 'check' : 'read', !unread, () => setRowState(state.read, row, unread)),
+      action(hasRowState(state.saved, row) ? 'Unsave' : 'Save', 'bookmark', hasRowState(state.saved, row), () =>
+        setRowState(state.saved, row, !hasRowState(state.saved, row)),
       ),
-      action(
-        hasRowState(state.saved, row) ? 'Unsave' : 'Save',
-        'bookmark',
-        hasRowState(state.saved, row),
-        () => setRowState(state.saved, row, !hasRowState(state.saved, row)),
-      ),
-      action(
-        done ? 'Move to inbox' : 'Mark as done',
-        done ? 'inbox' : 'check-circle',
-        done,
-        () => {
-          setRowState(state.done, row, !done)
-          if (!done) markCatchUpStoriesDone([id])
-        },
-      ),
+      action(done ? 'Move to inbox' : 'Mark as done', done ? 'inbox' : 'check-circle', done, () => {
+        setRowState(state.done, row, !done)
+        if (!done) markCatchUpStoriesDone([id])
+      }),
     ),
   )
 }

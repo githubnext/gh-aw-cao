@@ -23,11 +23,7 @@ function renderDataStateMetricCard(label, axis, status) {
     'div',
     { className: 'metric-card' },
     h('dt', { className: 'metric-label' }, label),
-    h(
-      'dd',
-      { className: 'metric-value', 'data-state-axis': axis },
-      renderStatusBadge(status),
-    ),
+    h('dd', { className: 'metric-value', 'data-state-axis': axis }, renderStatusBadge(status)),
   )
 }
 

@@ -82,9 +82,7 @@ describe('canonical IndexedDB generations', () => {
     await stageCanonicalBatch(indexedDB, canonicalBatch, 'generation-a')
     await activateGeneration(indexedDB, 'generation-a')
 
-    expect(await readActiveCollection(indexedDB, 'repositories')).toHaveLength(
-      1,
-    )
+    expect(await readActiveCollection(indexedDB, 'repositories')).toHaveLength(1)
   })
 
   it('resumes after interruption from the last committed bounded batch', async () => {
@@ -109,9 +107,7 @@ describe('canonical IndexedDB generations', () => {
     expect(await activeGeneration(indexedDB)).toBeNull()
     expect(await readCheckpoint(indexedDB, generation)).toBeNull()
     expect(await generationState(indexedDB, generation)).toBe('staging')
-    await expect(activateGeneration(indexedDB, generation)).rejects.toThrow(
-      `Generation ${generation} is incomplete`,
-    )
+    await expect(activateGeneration(indexedDB, generation)).rejects.toThrow(`Generation ${generation} is incomplete`)
 
     await stageCanonicalBatch(indexedDB, canonicalBatch, generation, {
       batchSize: 2,
@@ -122,21 +118,16 @@ describe('canonical IndexedDB generations', () => {
     })
     await activateGeneration(indexedDB, generation)
     expect(await generationState(indexedDB, generation)).toBe('complete')
-    expect(await readActiveCollection(indexedDB, 'repositories')).toHaveLength(
-      5,
-    )
+    expect(await readActiveCollection(indexedDB, 'repositories')).toHaveLength(5)
   })
 
   it('stages 100,000 records in bounded transactions', async () => {
     const generation = 'generation-large'
     const canonicalBatch = normalize([], { generation })
-    canonicalBatch.repositories = Array.from(
-      { length: 100_000 },
-      (_, index) => ({
-        id: `repository:${index}`,
-        generation,
-      }),
-    )
+    canonicalBatch.repositories = Array.from({ length: 100_000 }, (_, index) => ({
+      id: `repository:${index}`,
+      generation,
+    }))
     /** @type {{ committedBatches: number, committedRecords: number }[]} */
     const progress = []
 
@@ -169,14 +160,10 @@ describe('canonical IndexedDB generations', () => {
     })
     await stageCanonicalBatch(indexedDB, invalid, 'generation-b')
 
-    await expect(activateGeneration(indexedDB, 'generation-b')).rejects.toThrow(
-      'Generation relationship validation failed',
-    )
+    await expect(activateGeneration(indexedDB, 'generation-b')).rejects.toThrow('Generation relationship validation failed')
     expect(await generationState(indexedDB, 'generation-b')).toBe('failed')
     expect(await activeGeneration(indexedDB)).toBe('generation-a')
-    expect(await readActiveCollection(indexedDB, 'repositories')).toEqual([
-      expect.objectContaining({ generation: 'generation-a' }),
-    ])
+    expect(await readActiveCollection(indexedDB, 'repositories')).toEqual([expect.objectContaining({ generation: 'generation-a' })])
   })
 
   it('atomically switches queries to a replacement and retires the previous generation', async () => {
@@ -205,16 +192,12 @@ describe('canonical IndexedDB generations', () => {
 
     const database = await openCanonicalDatabase(indexedDB)
     const transaction = database.transaction('repositories', 'readwrite')
-    transaction
-      .objectStore('repositories')
-      .delete(['generation-a', 'repository:1'])
+    transaction.objectStore('repositories').delete(['generation-a', 'repository:1'])
     await new Promise((resolve) => {
       transaction.oncomplete = resolve
     })
     database.close()
 
-    expect(await activeGenerationIsUsable(indexedDB, 'generation-a')).toBe(
-      false,
-    )
+    expect(await activeGenerationIsUsable(indexedDB, 'generation-a')).toBe(false)
   })
 })

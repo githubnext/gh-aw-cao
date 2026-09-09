@@ -35,14 +35,7 @@ export function renderLinkTabs({ className, ariaLabel, tabs }) {
   return h(
     'nav',
     { className, 'aria-label': ariaLabel },
-    ...tabs.map(({ label, icon, href, current }) =>
-      h(
-        'a',
-        { href, 'aria-current': current ? 'page' : undefined },
-        octicon(icon),
-        h('span', null, label),
-      ),
-    ),
+    ...tabs.map(({ label, icon, href, current }) => h('a', { href, 'aria-current': current ? 'page' : undefined }, octicon(icon), h('span', null, label))),
   )
 }
 
@@ -56,13 +49,7 @@ export function renderLinkTabs({ className, ariaLabel, tabs }) {
  * }} options
  * @returns {HTMLDivElement}
  */
-export function renderInteractiveTabs({
-  className,
-  ariaLabel,
-  panelId,
-  tabs,
-  onSelect,
-}) {
+export function renderInteractiveTabs({ className, ariaLabel, panelId, tabs, onSelect }) {
   /** @type {HTMLButtonElement[]} */
   const buttons = []
 
@@ -92,17 +79,7 @@ export function renderInteractiveTabs({
           )
         )
         button.addEventListener('keydown', (event) => {
-          if (
-            ![
-              'ArrowLeft',
-              'ArrowRight',
-              'ArrowUp',
-              'ArrowDown',
-              'Home',
-              'End',
-            ].includes(event.key)
-          )
-            return
+          if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
           event.preventDefault()
           const currentIndex = buttons.indexOf(button)
           const nextIndex =
@@ -110,12 +87,7 @@ export function renderInteractiveTabs({
               ? 0
               : event.key === 'End'
                 ? buttons.length - 1
-                : (currentIndex +
-                    (event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                      ? 1
-                      : -1) +
-                    buttons.length) %
-                  buttons.length
+                : (currentIndex + (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length
           const nextButton = buttons[nextIndex]
           nextButton?.click()
           nextButton?.focus()
@@ -132,11 +104,7 @@ export function renderInteractiveTabs({
  * @param {string} selectedValue
  * @param {string} [attributeName]
  */
-export function updateInteractiveTabSelection(
-  root,
-  selectedValue,
-  attributeName = 'data-tab-value',
-) {
+export function updateInteractiveTabSelection(root, selectedValue, attributeName = 'data-tab-value') {
   const buttons = root.querySelectorAll('[role="tab"]')
   for (const button of buttons) {
     const element = /** @type {HTMLElement} */ (button)

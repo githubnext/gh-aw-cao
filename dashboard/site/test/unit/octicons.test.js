@@ -16,8 +16,6 @@ describe('octicons', () => {
   it('continues to render packaged Octicons through the sprite', () => {
     const rendered = octicon('alert')
 
-    expect(rendered.querySelector('use')?.getAttribute('href')).toMatch(
-      /\/src\/octicons\.svg#octicon-alert$/,
-    )
+    expect(rendered.querySelector('use')?.getAttribute('href')).toMatch(/\/src\/octicons\.svg#octicon-alert$/)
   })
 })

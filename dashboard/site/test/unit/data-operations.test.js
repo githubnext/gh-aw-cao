@@ -37,11 +37,7 @@ describe('dashboard data operations', () => {
       { status: 'open', repositories: 2, 'mean-score': 4 },
       { status: 'closed', repositories: 1, 'mean-score': 4 },
     ])
-    expect(rows.map((row) => row.repository)).toEqual([
-      'bravo',
-      'alpha',
-      'charlie',
-    ])
+    expect(rows.map((row) => row.repository)).toEqual(['bravo', 'alpha', 'charlie'])
   })
 
   it('supports text search, alternatives, limits, and the worker request shape', () => {
@@ -62,12 +58,8 @@ describe('dashboard data operations', () => {
   })
 
   it('rejects malformed worker requests', () => {
-    expect(() => processDataRequest({ data: rows, operators: null })).toThrow(
-      'Data worker requests require data and operators arrays.',
-    )
-    expect(() => tidy(rows, [/** @type {any} */ ({ op: 'execute' })])).toThrow(
-      'Unsupported data operator: execute',
-    )
+    expect(() => processDataRequest({ data: rows, operators: null })).toThrow('Data worker requests require data and operators arrays.')
+    expect(() => tidy(rows, [/** @type {any} */ ({ op: 'execute' })])).toThrow('Unsupported data operator: execute')
     expect(() =>
       processDataRequest({
         operation: 'cluster-scatter-points',
@@ -101,9 +93,7 @@ describe('dashboard data operations', () => {
     const sources = {
       runs: {
         source: 'runs',
-        rows: [
-          { organization: 'acme', repository: 'app', run: '42', attempts: 1 },
-        ],
+        rows: [{ organization: 'acme', repository: 'app', run: '42', attempts: 1 }],
         metadata: {
           'source-id': 'runs',
           'source-kind': 'fixture',
@@ -126,14 +116,11 @@ describe('dashboard data operations', () => {
       })
     )
 
-    expect(result['data-health-files'].rows).toMatchObject([
-      { file: 'runs.json', rows: 1 },
-    ])
+    expect(result['data-health-files'].rows).toMatchObject([{ file: 'runs.json', rows: 1 }])
     expect(result['data-health-schema'].rows).toMatchObject([
       {
         source: 'runs',
-        schema:
-          '{ attempts: number, organization: string, repository: string, run: string }',
+        schema: '{ attempts: number, organization: string, repository: string, run: string }',
       },
     ])
     expect(result).not.toHaveProperty('runs')
@@ -141,9 +128,7 @@ describe('dashboard data operations', () => {
 
   it('canonicalizes dashboard sources through the worker request boundary', () => {
     const source = {
-      rows: [
-        { organization: 'acme', repository: 'app', visibility: 'private' },
-      ],
+      rows: [{ organization: 'acme', repository: 'app', visibility: 'private' }],
       metadata: {
         'artifact-generation': 'generation-a',
         'as-of': '2026-09-08T00:00:00Z',
@@ -185,14 +170,7 @@ describe('dashboard data operations', () => {
     )
 
     expect(clustered).toHaveLength(400)
-    expect(new Set(clustered.map((point) => point.color))).toEqual(
-      new Set(['lane-0', 'lane-1', 'lane-2', 'lane-3']),
-    )
-    expect(
-      clustered.every(
-        (point) =>
-          Number.isFinite(Date.parse(point.x)) && Number.isFinite(point.y),
-      ),
-    ).toBe(true)
+    expect(new Set(clustered.map((point) => point.color))).toEqual(new Set(['lane-0', 'lane-1', 'lane-2', 'lane-3']))
+    expect(clustered.every((point) => Number.isFinite(Date.parse(point.x)) && Number.isFinite(point.y))).toBe(true)
   })
 })

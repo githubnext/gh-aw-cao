@@ -26,15 +26,9 @@ describe('count formatters', () => {
   it('formats singular and plural count nouns for reusable UI copy', () => {
     expect(formatCountNoun(1, 'signal', 'signals')).toBe('1 signal')
     expect(formatCountNoun(2, 'signal', 'signals')).toBe('2 signals')
-    expect(
-      formatCountNoun(1, 'worker dispatch lacks', 'worker dispatches lack'),
-    ).toBe('1 worker dispatch lacks')
-    expect(
-      formatCountNoun(3, 'worker dispatch lacks', 'worker dispatches lack'),
-    ).toBe('3 worker dispatches lack')
-    expect(formatCountNoun(undefined, 'workflow', 'workflows')).toBe(
-      '0 workflows',
-    )
+    expect(formatCountNoun(1, 'worker dispatch lacks', 'worker dispatches lack')).toBe('1 worker dispatch lacks')
+    expect(formatCountNoun(3, 'worker dispatch lacks', 'worker dispatches lack')).toBe('3 worker dispatches lack')
+    expect(formatCountNoun(undefined, 'workflow', 'workflows')).toBe('0 workflows')
     expect(formatCountNoun(1, 'item', 'items')).toBe('1 item')
     expect(formatCountNoun(3, 'item', 'items')).toBe('3 items')
   })
@@ -110,11 +104,7 @@ describe('count formatters', () => {
   })
 
   it('tallies rows into a Map keyed by a derived label', () => {
-    const rows = [
-      { readiness: 'ready' },
-      { readiness: 'blocked' },
-      { readiness: 'ready' },
-    ]
+    const rows = [{ readiness: 'ready' }, { readiness: 'blocked' }, { readiness: 'ready' }]
     const counts = countBy(rows, (row) => row.readiness)
     expect(counts.get('ready')).toBe(2)
     expect(counts.get('blocked')).toBe(1)

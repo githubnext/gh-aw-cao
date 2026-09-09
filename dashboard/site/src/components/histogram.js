@@ -3,15 +3,9 @@
  */
 
 import { h } from '../dom.js'
-import {
-  automaticHistogramBinCount,
-  binHistogramValues,
-} from '../table-summary-data.js'
+import { automaticHistogramBinCount, binHistogramValues } from '../table-summary-data.js'
 
-export {
-  automaticHistogramBinCount,
-  binHistogramValues,
-} from '../table-summary-data.js'
+export { automaticHistogramBinCount, binHistogramValues } from '../table-summary-data.js'
 
 /**
  * @param {{
@@ -24,13 +18,7 @@ export {
  * @returns {SVGElement}
  */
 export function renderHistogram(options) {
-  const {
-    values,
-    label,
-    width = 120,
-    height = 32,
-    binCount = automaticHistogramBinCount(values),
-  } = options
+  const { values, label, width = 120, height = 32, binCount = automaticHistogramBinCount(values) } = options
   const bins = binHistogramValues(values, binCount)
   return renderHistogramBins({ bins, label, width, height })
 }
@@ -62,8 +50,7 @@ export function renderHistogramBins(options) {
         },
         h('title', null, label),
         ...bins.map((bin, index) => {
-          const barHeight =
-            maximumCount > 0 ? (bin.count / maximumCount) * height : 0
+          const barHeight = maximumCount > 0 ? (bin.count / maximumCount) * height : 0
           return h('rect', {
             style: `--chart-entry-index: ${index}`,
             x: index * barWidth + gap / 2,

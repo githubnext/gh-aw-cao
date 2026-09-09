@@ -12,11 +12,7 @@ const UNKNOWN = '—'
  * @returns {HTMLElement}
  */
 export function renderExperimentSectionHeading(id, title, description) {
-  return h(
-    'header',
-    { className: 'experiment-section-heading' },
-    h('div', null, h('h2', { id }, title), h('p', null, description)),
-  )
+  return h('header', { className: 'experiment-section-heading' }, h('div', null, h('h2', { id }, title), h('p', null, description)))
 }
 
 /**
@@ -27,14 +23,7 @@ export function renderExperimentSectionHeading(id, title, description) {
  * @param {{ id: string, title: string, description: string, className?: string, emptyState?: HTMLElement | null, renderContent: () => HTMLElement }} options
  * @returns {HTMLElement}
  */
-export function renderExperimentSection({
-  id,
-  title,
-  description,
-  className,
-  emptyState,
-  renderContent,
-}) {
+export function renderExperimentSection({ id, title, description, className, emptyState, renderContent }) {
   return h(
     'section',
     {
@@ -70,13 +59,7 @@ export function renderExperimentEmptyState(icon, headline, description) {
  * @returns {HTMLElement}
  */
 export function renderExperimentEffect(value) {
-  if (!Number.isFinite(value))
-    return h(
-      'span',
-      { className: 'effect effect-unknown' },
-      UNKNOWN,
-      h('span', { className: 'sr-only' }, ' insufficient evidence'),
-    )
+  if (!Number.isFinite(value)) return h('span', { className: 'effect effect-unknown' }, UNKNOWN, h('span', { className: 'sr-only' }, ' insufficient evidence'))
   const positive = value > 0
   const negative = value < 0
   return h(
@@ -86,11 +69,7 @@ export function renderExperimentEffect(value) {
     },
     `${positive ? '+' : ''}${value.toFixed(3)}`,
     positive ? ' ▲' : negative ? ' ▼' : ' ·',
-    h(
-      'span',
-      { className: 'sr-only' },
-      positive ? ' improvement' : negative ? ' regression' : ' no change',
-    ),
+    h('span', { className: 'sr-only' }, positive ? ' improvement' : negative ? ' regression' : ' no change'),
   )
 }
 
@@ -141,17 +120,10 @@ export function metricSummaries(observations, control, candidate) {
   return [...groups.values()]
     .map((group) => {
       const first = group[0]
-      const controlRows = group.filter(
-        (row) => row.variant === control && row.included,
-      )
-      const candidateRows = group.filter(
-        (row) => row.variant === candidate && row.included,
-      )
+      const controlRows = group.filter((row) => row.variant === control && row.included)
+      const candidateRows = group.filter((row) => row.variant === candidate && row.included)
       const controlValue = aggregateObservations(controlRows, first.sourceType)
-      const candidateValue = aggregateObservations(
-        candidateRows,
-        first.sourceType,
-      )
+      const candidateValue = aggregateObservations(candidateRows, first.sourceType)
       const rawEffect = difference(candidateValue, controlValue)
       const normalizedEffect = normalizeEffect(rawEffect, first.direction)
       const thresholdRegression =
@@ -175,16 +147,10 @@ export function metricSummaries(observations, control, candidate) {
         controlN: controlRows.length,
         candidateN: candidateRows.length,
         excluded: group.length - controlRows.length - candidateRows.length,
-        regression:
-          thresholdRegression ||
-          (Number.isFinite(normalizedEffect) && normalizedEffect < 0),
+        regression: thresholdRegression || (Number.isFinite(normalizedEffect) && normalizedEffect < 0),
       }
     })
-    .sort(
-      (left, right) =>
-        roleOrder(left.role) - roleOrder(right.role) ||
-        left.identifier.localeCompare(right.identifier),
-    )
+    .sort((left, right) => roleOrder(left.role) - roleOrder(right.role) || left.identifier.localeCompare(right.identifier))
 }
 
 /**
@@ -194,12 +160,8 @@ export function metricSummaries(observations, control, candidate) {
  */
 function aggregateObservations(rows, sourceType) {
   if (sourceType === 'eval') {
-    const known = rows.filter(
-      (row) => row.result === 'YES' || row.result === 'NO',
-    )
-    return known.length
-      ? known.filter((row) => row.result === 'YES').length / known.length
-      : NaN
+    const known = rows.filter((row) => row.result === 'YES' || row.result === 'NO')
+    return known.length ? known.filter((row) => row.result === 'YES').length / known.length : NaN
   }
   return mean(rows.map(numericObservation).filter(Number.isFinite))
 }
@@ -212,12 +174,7 @@ function aggregateObservations(rows, sourceType) {
  * @returns {number}
  */
 export function numericObservation(observation) {
-  if (observation.sourceType === 'eval')
-    return observation.result === 'YES'
-      ? 1
-      : observation.result === 'NO'
-        ? 0
-        : NaN
+  if (observation.sourceType === 'eval') return observation.result === 'YES' ? 1 : observation.result === 'NO' ? 0 : NaN
   return finite(observation.result) ?? NaN
 }
 
@@ -245,9 +202,7 @@ export function difference(left, right) {
  * @returns {number}
  */
 export function mean(values) {
-  return values.length
-    ? values.reduce((sum, value) => sum + value, 0) / values.length
-    : NaN
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : NaN
 }
 
 /**
@@ -276,16 +231,10 @@ function roleOrder(role) {
 export function safeExperimentLink(value) {
   if (!value || typeof value !== 'object') return null
   const candidate = /** @type {{ href: string, label?: unknown }} */ (value)
-  if (typeof candidate.href !== 'string' || !isSafeHttpsUrl(candidate.href))
-    return null
+  if (typeof candidate.href !== 'string' || !isSafeHttpsUrl(candidate.href)) return null
   const label = candidate.label
   return {
     href: candidate.href,
-    label:
-      typeof label === 'string'
-        ? label.trim()
-        : label == null
-          ? ''
-          : String(label),
+    label: typeof label === 'string' ? label.trim() : label == null ? '' : String(label),
   }
 }

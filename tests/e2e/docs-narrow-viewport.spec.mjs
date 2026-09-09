@@ -1,43 +1,39 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from "@playwright/test";
 
 const paths = [
-  './',
-  'getting-started/',
-  'configuration/',
-  'operations/',
-  'architecture/',
-  'catalog/',
-  'catalog/self-care/',
-  'operational-observability-visualization-specification/',
-]
+  "./",
+  "getting-started/",
+  "configuration/",
+  "operations/",
+  "architecture/",
+  "catalog/",
+  "catalog/self-care/",
+  "operational-observability-visualization-specification/",
+];
 
-for (const colorScheme of ['light', 'dark']) {
+for (const colorScheme of ["light", "dark"]) {
   test.describe(`${colorScheme} scheme`, () => {
-    test.use({ colorScheme, viewport: { width: 320, height: 900 } })
+    test.use({ colorScheme, viewport: { width: 320, height: 900 } });
 
     for (const path of paths) {
       test(`${path} does not overflow horizontally`, async ({ page }) => {
-        expect((await page.goto(path))?.ok()).toBe(true)
+        expect((await page.goto(path))?.ok()).toBe(true);
 
-        expect(
-          await page.locator('html').evaluate((element) => element.scrollWidth),
-        ).toBeLessThanOrEqual(320)
-      })
+        expect(await page.locator("html").evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(320);
+      });
     }
-  })
+  });
 }
 
-test('long code remains in a keyboard-focusable local scroll region', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 320, height: 900 })
-  await page.goto('configuration/')
+test("long code remains in a keyboard-focusable local scroll region", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto("configuration/");
 
-  const code = page.locator('.sl-markdown-content pre').first()
+  const code = page.locator(".sl-markdown-content pre").first();
   const dimensions = await code.evaluate((element) => ({
     clientWidth: element.clientWidth,
     scrollWidth: element.scrollWidth,
-  }))
-  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth)
-  await expect(code).toHaveAttribute('tabindex', '0')
-})
+  }));
+  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+  await expect(code).toHaveAttribute("tabindex", "0");
+});

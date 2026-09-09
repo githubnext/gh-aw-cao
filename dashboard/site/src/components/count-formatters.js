@@ -101,9 +101,7 @@ export function formatCoveragePercent(coverage, unknown = '—') {
  * @returns {string}
  */
 export function formatRoundedPercent(ratio, unknown = '—') {
-  return ratio === null || !Number.isFinite(ratio)
-    ? unknown
-    : `${Math.round(ratio * 100)}%`
+  return ratio === null || !Number.isFinite(ratio) ? unknown : `${Math.round(ratio * 100)}%`
 }
 
 /**

@@ -1,41 +1,41 @@
-import { defineConfig } from 'astro/config'
-import { unified } from '@astrojs/markdown-remark'
-import starlight from '@astrojs/starlight'
-import mermaid from 'astro-mermaid'
-import starlightGitHubAlerts from 'starlight-github-alerts'
-import rewriteDocsLinks from './docs/rewrite-docs-links.mjs'
+import { defineConfig } from "astro/config";
+import { unified } from "@astrojs/markdown-remark";
+import starlight from "@astrojs/starlight";
+import mermaid from "astro-mermaid";
+import starlightGitHubAlerts from "starlight-github-alerts";
+import rewriteDocsLinks from "./docs/rewrite-docs-links.mjs";
 
 export default defineConfig({
-  site: 'https://githubnext.github.io',
-  base: '/gh-aw-cao',
-  srcDir: './docs',
+  site: "https://githubnext.github.io",
+  base: "/gh-aw-cao",
+  srcDir: "./docs",
   markdown: {
     processor: unified({
-      remarkPlugins: [[rewriteDocsLinks, { base: '/gh-aw-cao' }]],
+      remarkPlugins: [[rewriteDocsLinks, { base: "/gh-aw-cao" }]],
     }),
   },
   integrations: [
     mermaid(),
     starlight({
-      title: 'Central Agentic Ops',
-      description: 'Enterprise control planes for GitHub Agentic Workflows.',
+      title: "Central Agentic Ops",
+      description: "Enterprise control planes for GitHub Agentic Workflows.",
       logo: {
-        src: './docs/assets/logo.svg',
-        alt: '',
+        src: "./docs/assets/logo.svg",
+        alt: "",
       },
-      favicon: '/favicon.svg',
-      customCss: ['./docs/styles/branding.css'],
+      favicon: "/favicon.svg",
+      customCss: ["./docs/styles/branding.css"],
       plugins: [starlightGitHubAlerts()],
       markdown: {
-        processedDirs: ['.'],
+        processedDirs: ["."],
       },
       components: {
-        Banner: './docs/components/ExperimentalBanner.astro',
-        Footer: './docs/components/SiteFooter.astro',
-        Hero: './docs/components/HierarchyHero.astro',
+        Banner: "./docs/components/ExperimentalBanner.astro",
+        Footer: "./docs/components/SiteFooter.astro",
+        Hero: "./docs/components/HierarchyHero.astro",
       },
       editLink: {
-        baseUrl: 'https://github.com/githubnext/gh-aw-cao/edit/main/',
+        baseUrl: "https://github.com/githubnext/gh-aw-cao/edit/main/",
       },
       head: [
         {
@@ -44,7 +44,7 @@ export default defineConfig({
           // so keyboard users can't reach clipped content (axe
           // `scrollable-region-focusable`, WCAG 2.1.1/2.1.3). Make overflowing
           // regions focusable with an accessible name.
-          tag: 'script',
+          tag: "script",
           content: `(function () {
             function findPrecedingHeadingText(headings, table) {
               let text = null;
@@ -94,67 +94,67 @@ export default defineConfig({
       ],
       social: [
         {
-          icon: 'github',
-          label: 'GitHub repository',
-          href: 'https://github.com/githubnext/gh-aw-cao',
+          icon: "github",
+          label: "GitHub repository",
+          href: "https://github.com/githubnext/gh-aw-cao",
         },
       ],
       sidebar: [
-        { label: 'Overview', link: '/' },
+        { label: "Overview", link: "/" },
         {
-          label: 'Get started',
+          label: "Get started",
           items: [
-            { label: 'Quickstart', link: '/getting-started/' },
-            { label: 'Package catalog', link: '/catalog/' },
-            { label: 'Configure authentication', link: '/authentication/' },
+            { label: "Quickstart", link: "/getting-started/" },
+            { label: "Package catalog", link: "/catalog/" },
+            { label: "Configure authentication", link: "/authentication/" },
           ],
         },
         {
-          label: 'Run safely',
+          label: "Run safely",
           items: [
-            { label: 'Control plane status', link: '/cao/' },
-            { label: 'Admission gates', link: '/admission/' },
-            { label: 'Roll out an operation', link: '/rollout-and-routing/' },
-            { label: 'Monitor and recover', link: '/operations/' },
-            { label: 'Emergency stop', link: '/operations/#emergency-stop' },
+            { label: "Control plane status", link: "/cao/" },
+            { label: "Admission gates", link: "/admission/" },
+            { label: "Roll out an operation", link: "/rollout-and-routing/" },
+            { label: "Monitor and recover", link: "/operations/" },
+            { label: "Emergency stop", link: "/operations/#emergency-stop" },
           ],
         },
         {
-          label: 'Reference',
+          label: "Reference",
           items: [
-            { label: 'Configuration', link: '/configuration/' },
-            { label: 'Control plane overview', link: '/architecture/' },
-            { label: 'Dashboard Overview', link: '/dashboard-overview/' },
-            { label: 'Dashboard Data Model', link: '/dashboard-data-model/' },
-            { label: 'CAO Activity', link: '/activity/' },
+            { label: "Configuration", link: "/configuration/" },
+            { label: "Control plane overview", link: "/architecture/" },
+            { label: "Dashboard Overview", link: "/dashboard-overview/" },
+            { label: "Dashboard Data Model", link: "/dashboard-data-model/" },
+            { label: "CAO Activity", link: "/activity/" },
             {
-              label: 'Deployment and governance',
-              link: '/deployment-and-governance/',
+              label: "Deployment and governance",
+              link: "/deployment-and-governance/",
             },
-            { label: 'Execution and safety', link: '/execution-and-safety/' },
+            { label: "Execution and safety", link: "/execution-and-safety/" },
             {
-              label: 'Agentic workflow smells',
-              link: '/agentic-workflow-smells/',
+              label: "Agentic workflow smells",
+              link: "/agentic-workflow-smells/",
             },
-            { label: 'Glossary', link: '/glossary/' },
+            { label: "Glossary", link: "/glossary/" },
             {
-              label: 'Orchestrators and workers',
-              link: '/orchestrators-and-workers/',
+              label: "Orchestrators and workers",
+              link: "/orchestrators-and-workers/",
             },
           ],
         },
         {
-          label: 'Maintain',
+          label: "Maintain",
           items: [
-            { label: 'Add a package', link: '/operations/#adding-a-package' },
-            { label: 'Add a worker', link: '/operations/#adding-a-worker' },
+            { label: "Add a package", link: "/operations/#adding-a-package" },
+            { label: "Add a worker", link: "/operations/#adding-a-worker" },
             {
-              label: 'Validate changes',
-              link: '/operations/#change-validation',
+              label: "Validate changes",
+              link: "/operations/#change-validation",
             },
           ],
         },
       ],
     }),
   ],
-})
+});
