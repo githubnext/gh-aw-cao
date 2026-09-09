@@ -10,7 +10,7 @@ import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
 import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
-import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection } from './components/view-chrome.js';
+import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
@@ -1085,21 +1085,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
 
     rendered.classList.remove('custom-view');
     rendered.removeAttribute('data-view-layout');
-    return h(
-      'details',
-      {
-        className: 'custom-view view-disclosure',
-        'data-view-layout': layout,
-        'data-disclosure': disclosure
-      },
-      h(
-        'summary',
-        { className: 'view-disclosure-summary' },
-        h('span', null, getViewTitle(view, index)),
-        h('span', { className: 'view-disclosure-hint' }, 'Show details')
-      ),
-      rendered
-    );
+    return renderViewDisclosure(rendered, layout, disclosure, getViewTitle(view, index));
   });
   const renderedViewsById = new Map(views.map((view, index) => [
     isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,
@@ -1761,21 +1747,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
     if (disclosure === 'essential') return rendered;
     rendered.classList.remove('custom-view');
     rendered.removeAttribute('data-view-layout');
-    return h(
-      'details',
-      {
-        className: 'custom-view view-disclosure',
-        'data-view-layout': layout,
-        'data-disclosure': disclosure
-      },
-      h(
-        'summary',
-        { className: 'view-disclosure-summary' },
-        h('span', null, getViewTitle(view, index)),
-        h('span', { className: 'view-disclosure-hint' }, 'Show details')
-      ),
-      rendered
-    );
+    return renderViewDisclosure(rendered, layout, disclosure, getViewTitle(view, index));
   }));
   const renderedViewsById = new Map(views.map((view, index) => [
     isPlainObject(view) && typeof view.id === 'string' ? view.id : `view-${index + 1}`,
