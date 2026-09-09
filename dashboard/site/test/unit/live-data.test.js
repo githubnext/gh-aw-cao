@@ -11,7 +11,7 @@ describe("live Dashboard Language sources", () => {
     const preview = readFileSync(resolve("src/main.js"), "utf8");
 
     expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
-    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("await loadCanonicalDashboardSources("));
+    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("dashboard-loading-skeleton");
@@ -19,7 +19,9 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js"');
-    expect(preview).toMatch(/await loadCanonicalDashboardSources\(\s*sourceUrl,\s*initialSources,\s*dashboardContext,\s*continuationRequests\(initialLazySources\)/);
+    expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
+    expect(preview).toContain('renderSources(cachedSources, "cached", true, loadPageSources)');
+    expect(preview).toContain("void refresh.then(");
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');

@@ -6,6 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { activeGenerationMetadata } from './data/storage/indexeddb.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -16,6 +17,17 @@ import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
 let liveDashboard = null;
+
+async function loadActiveDashboard() {
+  if (liveDashboard) return liveDashboard;
+  const active = await activeGenerationMetadata(indexedDB);
+  if (!active) throw new Error('Canonical dashboard data has not been loaded.');
+  liveDashboard = {
+    logicalSources: {},
+    generation: active.generation
+  };
+  return liveDashboard;
+}
 
 /**
  * @param {unknown} sourceNames
@@ -44,18 +56,18 @@ function pageScopedSources(sources, requested) {
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  */
 async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}) {
-  if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
+  const dashboard = await loadActiveDashboard();
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
-    liveDashboard.logicalSources,
-    liveDashboard.generation,
+    dashboard.logicalSources,
+    dashboard.generation,
     required
   );
   const derivedSources = deriveRuntimeSources(
     deriveRepositorySources(
       deriveOverviewSources(
-        deriveWorkflowSources({ ...liveDashboard.logicalSources, ...canonicalPayload })
+        deriveWorkflowSources({ ...dashboard.logicalSources, ...canonicalPayload })
       )
     )
   );
@@ -69,7 +81,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-    continuationRevision(context.queries, liveDashboard.generation)
+    continuationRevision(context.queries, dashboard.generation)
   );
 }
 

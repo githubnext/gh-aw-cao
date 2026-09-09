@@ -286,6 +286,33 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
+test('data worker queries the retained active generation before downloading sources', async ({ page }) => {
+  await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources } = await import(processorUrl);
+    await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['failed-runs'],
+      { githubUrlBase: 'https://github.com', pages: [] }
+    );
+  });
+
+  await page.reload();
+  const retained = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardPage } = await import(processorUrl);
+    return loadCanonicalDashboardPage(
+      ['failed-runs'],
+      { githubUrlBase: 'https://github.com', pages: [] }
+    );
+  });
+
+  expect(retained['failed-runs']).toMatchObject({
+    rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
+    metadata: { 'source-kind': 'canonical-query' }
+  });
+});
+
 test('data worker executes declarative queries and returns only the derived projection', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;

@@ -909,27 +909,67 @@
           };
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
-          renderSources(
-            bindContinuations(
-              await loadCanonicalDashboardSources(
-                sourceUrl,
-                initialSources,
-                dashboardContext,
-                continuationRequests(initialLazySources),
-              ),
-              initialLazySources,
+          /**
+           * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
+           */
+          const loadInitialSources = async (load) => bindContinuations(
+            await load(
+              initialSources,
+              continuationRequests(initialLazySources),
             ),
-            "ready",
-            true,
-            loadPageSources,
+            initialLazySources,
           );
+          /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
+          let cachedSources = null;
+          try {
+            cachedSources = await loadInitialSources(
+              (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            );
+          } catch {
+            // An empty or incompatible database is rebuilt from the published sources below.
+          }
+
+          if (cachedSources) {
+            renderSources(cachedSources, "cached", true, loadPageSources);
+            loadingProgress.complete();
+            cancelCommand.complete();
+          }
+
+          const refresh = loadInitialSources(
+            (requested, pagination) => loadCanonicalDashboardSources(
+              sourceUrl,
+              requested,
+              dashboardContext,
+              pagination,
+            ),
+          );
+          if (cachedSources) {
+            void refresh.then(
+              (sources) => updateWithViewTransition(
+                document,
+                () => renderSources(sources, "ready", true, loadPageSources),
+              ),
+              (error) => {
+                const message = error instanceof Error ? error.message : String(error);
+                console.error(`Unable to refresh live dashboard data: ${message}`);
+                updateWithViewTransition(
+                  document,
+                  () => renderSources(cachedSources, "ready", true, loadPageSources),
+                );
+              },
+            );
+          } else {
+            renderSources(await refresh, "ready", true, loadPageSources);
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           const failure = new Error(`Unable to load live dashboard data: ${message}`, { cause: error });
           root.textContent = failure.message;
           throw failure;
         } finally {
-          loadingProgress.complete();
-          cancelCommand.complete();
+          if (!cachedSources) {
+            loadingProgress.complete();
+            cancelCommand.complete();
+          }
         }
       }
