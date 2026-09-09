@@ -16,6 +16,7 @@
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.3.0",
     "eslint": "^9.34.0",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
     "lighthouse": "^13.4.1",

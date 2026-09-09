@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
+import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
@@ -41,6 +43,26 @@ async function readBounded(file) {
   } catch {
     return null;
   }
+}
+
+export async function readRunTimeline(outputDirectory, runId, sessionId) {
+  const runRoot = path.join(outputDirectory, `run-${runId}`);
+  const files = await securityFiles(runRoot);
+  const selected = files.filter((file) => {
+    const relativePath = relativeEvidencePath(runRoot, file);
+    return /(^|\/)gateway\.jsonl$/.test(relativePath)
+      || /(^|\/)rpc-messages\.jsonl$/.test(relativePath)
+      || /firewall.*\/audit\.jsonl$/.test(relativePath)
+      || /copilot-session-state\/[^/]+\/events\.jsonl$/.test(relativePath);
+  });
+  const inputs = (await Promise.all(selected.map(async (file) => ({
+    path: relativeEvidencePath(runRoot, file),
+    content: await readBounded(file),
+  })))).filter((file) => file.content !== null);
+  return adaptGhAwTimelineFiles(inputs, sessionId).map((observation) => ({
+    sourceId: observation.sourceId,
+    ...observation.data,
+  }));
 }
 
 function emptySecurityTelemetry() {
@@ -554,6 +576,7 @@ export async function collectAicUsage() {
         const common = {
           repository,
           runId,
+          runAttempt: Number(run.run_attempt ?? run.runAttempt ?? run.attempt) || 1,
           workflowName: run.workflow_name || run.workflow || metadata.workflow.name || null,
           workflowPath: metadata.workflow.path || null,
           mode,
@@ -580,10 +603,20 @@ export async function collectAicUsage() {
         });
         let security;
         let evals = [];
+        let timeline = [];
         try {
-          [security, evals] = await Promise.all([
+          [security, evals, timeline] = await Promise.all([
             readRunSecurityTelemetry(temporaryRoot, runId),
             readRunEvals(temporaryRoot, runId),
+            readRunTimeline(
+              temporaryRoot,
+              runId,
+              sourceId(
+                "session",
+                "gh-aw-logs",
+                `${canonicalRunId(runId, common.runAttempt)}:unified`,
+              ),
+            ),
           ]);
         } catch (error) {
           security = emptySecurityTelemetry();
@@ -607,6 +640,7 @@ export async function collectAicUsage() {
           logsPayload: run,
           security,
           evals,
+          timeline,
         });
       }
     } catch (error) {

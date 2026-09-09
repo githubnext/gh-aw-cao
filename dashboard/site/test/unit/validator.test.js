@@ -57,7 +57,7 @@ describe('dashboard document validation', () => {
     }
 
     expect(pages['overview-failed-runs'].views[0]).toMatchObject({
-      data: { source: 'runs', filters: { 'run-conclusion': ['failure', 'startup-failure', 'stale', 'timed-out'] } },
+      data: { source: 'failed-runs', filters: { 'run-conclusion': ['failure', 'startup-failure', 'stale', 'timed-out'] } },
       encoding: {
         columns: [
           { field: 'started-at', type: 'temporal', title: 'Date' },

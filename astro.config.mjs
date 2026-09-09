@@ -125,6 +125,7 @@ export default defineConfig({
             { label: "Configuration", link: "/configuration/" },
             { label: "Control plane overview", link: "/architecture/" },
             { label: "Dashboard Overview", link: "/dashboard-overview/" },
+            { label: "Dashboard Data Model", link: "/dashboard-data-model/" },
             { label: "CAO Activity", link: "/activity/" },
             { label: "Deployment and governance", link: "/deployment-and-governance/" },
             { label: "Execution and safety", link: "/execution-and-safety/" },
