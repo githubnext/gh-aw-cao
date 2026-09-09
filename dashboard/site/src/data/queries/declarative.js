@@ -152,19 +152,26 @@ export function executeDashboardQueries(definitions, sources, requested) {
  */
 export function executeDashboardQuery(definition, sources) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
-  const metadata = composedMetadata(definition.name, inputs);
   const unavailable = inputs.find((input) => !input.source || !Array.isArray(input.source.rows));
   if (unavailable) {
-    return unavailableResult(definition, metadata, `input source "${unavailable.name}" is unavailable`);
+    return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), `input source "${unavailable.name}" is unavailable`);
   }
   if (inputs.some((input) => input.source?.metadata?.availability === 'unavailable')) {
-    return { source: definition.name, rows: [], metadata };
+    return unavailableResult(
+      definition,
+      composedMetadata(definition.name, inputs, 0),
+      `input source "${inputs.find((input) => input.source?.metadata?.availability === 'unavailable')?.name}" is unavailable`
+    );
   }
   try {
     const rows = runDashboardQuery(definition, sources);
-    return { source: definition.name, rows, metadata };
+    return { source: definition.name, rows, metadata: composedMetadata(definition.name, inputs, rows.length) };
   } catch (error) {
-    return unavailableResult(definition, metadata, error instanceof Error ? error.message : String(error));
+    return unavailableResult(
+      definition,
+      composedMetadata(definition.name, inputs, 0),
+      error instanceof Error ? error.message : String(error)
+    );
   }
 }
 
@@ -281,9 +288,10 @@ function enforceLimit(count, limit, subject) {
  * input source. The weakest input state wins.
  * @param {string} name
  * @param {Array<{ name: string, source?: LogicalSourceInput }>} inputs
+ * @param {number} rowCount
  * @returns {SourceMetadata}
  */
-function composedMetadata(name, inputs) {
+function composedMetadata(name, inputs, rowCount) {
   const metadata = inputs.map((input) => input.source?.metadata).filter(Boolean);
   /** @param {'as-of'|'retrieved-at'} field */
   const oldest = (field) => metadata
@@ -306,7 +314,7 @@ function composedMetadata(name, inputs) {
         : 'unknown',
     availability: !complete || metadata.some((value) => value?.availability === 'unavailable')
       ? 'unavailable'
-      : metadata.every((value) => value?.availability === 'available') ? 'available' : 'partial',
+      : rowCount > 0 ? 'available' : 'empty',
     'query-name': name
   };
 }

@@ -4662,3 +4662,167 @@ dashboard:
     }
   });
 });
+
+describe('declarative query validation', () => {
+  const queryDocument = (/** @type {unknown} */ queries, /** @type {string} */ source = 'workflow-costs') => JSON.stringify({
+    'language-version': '0.1.0',
+    dashboard: {
+      id: 'query-dashboard',
+      title: 'Query Dashboard',
+      queries,
+      pages: [{
+        id: 'derived',
+        kind: 'custom',
+        title: 'Derived',
+        views: [{
+          id: 'derived-table',
+          title: 'Derived',
+          data: { source },
+          mark: 'table',
+          encoding: { columns: [{ field: 'workflow', type: 'nominal', title: 'Workflow' }] }
+        }]
+      }]
+    }
+  });
+
+  const validQuery = {
+    name: 'workflow-costs',
+    description: 'Declared workflows joined with observed AI Credit totals.',
+    from: 'workflows',
+    joins: [{
+      source: 'workflow-aic',
+      type: 'left',
+      on: [{ left: 'workflow', right: 'workflow' }],
+      fields: [{ field: 'aic', as: 'observed-aic' }]
+    }],
+    filter: { predicates: [{ field: 'workflow-active', equals: 'true' }] },
+    compute: [{ as: 'total-aic', function: 'coalesce', args: [{ field: 'observed-aic' }, { value: 0 }] }],
+    select: [{ field: 'workflow' }, { field: 'total-aic', as: 'aic' }],
+    'order-by': [{ field: 'workflow', direction: 'asc' }],
+    limit: 500
+  };
+
+  const aicQuery = {
+    name: 'workflow-aic',
+    from: 'usage',
+    aggregate: { by: ['workflow'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] }
+  };
+
+  it('accepts a derived query used as a logical source', () => {
+    expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
+  });
+
+  it('rejects unknown query sources, duplicate names, and canonical name shadowing', () => {
+    const result = validateDashboardDocument(queryDocument([
+      { name: 'runs', from: 'workflows' },
+      { name: 'workflow-costs', from: 'mystery' },
+      { name: 'workflow-costs', from: 'workflows' }
+    ]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].name' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[1].from' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[2].name' })
+      ]));
+    }
+  });
+
+  it('rejects unknown fields, invalid join types, and forward query references', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'workflows',
+      joins: [{
+        source: 'workflow-aic',
+        type: 'cross',
+        on: [{ left: 'missing-left', right: 'workflow' }],
+        fields: [{ field: 'aic', as: 'observed-aic' }]
+      }]
+    }, aicQuery]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].joins[0].source' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].joins[0].type' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.queries[0].joins[0].on[0].left' })
+      ]));
+    }
+  });
+
+  it('rejects output name collisions between joined and computed fields', () => {
+    const result = validateDashboardDocument(queryDocument([aicQuery, {
+      ...validQuery,
+      joins: [{
+        source: 'workflow-aic',
+        type: 'left',
+        on: [{ left: 'workflow', right: 'workflow' }],
+        fields: [{ field: 'aic', as: 'workflow' }]
+      }],
+      compute: [{ as: 'workflow', function: 'trim', args: [{ field: 'workflow' }] }],
+      select: [{ field: 'workflow' }, { field: 'workflow', as: 'workflow' }]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[1].joins[0].fields[0].as' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[1].compute[0].as' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[1].select[1].as' })
+      ]));
+    }
+  });
+
+  it('rejects computed functions outside the closed vocabulary and wrong argument counts', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'workflows',
+      compute: [
+        { as: 'evaluated', function: 'eval', args: [{ field: 'workflow' }] },
+        { as: 'divided', function: 'quotient', args: [{ field: 'workflow' }] },
+        { as: 'invalid-argument', function: 'trim', args: [{ field: 'workflow', value: 'both' }] }
+      ]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].compute[0].function' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].compute[1].args' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[0].compute[2].args[0]' })
+      ]));
+    }
+  });
+
+  it('rejects references to fields the query no longer produces', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'workflows',
+      select: [{ field: 'workflow' }],
+      'order-by': [{ field: 'repository', direction: 'asc' }]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.queries[0].order-by[0].field' })
+      ]));
+    }
+  });
+
+  it('rejects view fields that the derived output schema does not declare and limits beyond the documented maximum', () => {
+    const document = JSON.parse(queryDocument([aicQuery, validQuery]));
+    document.dashboard.queries[1].limit = 1000000;
+    document.dashboard.pages[0].views[0].encoding.columns.push({ field: 'observed-aic', type: 'quantitative', title: 'Observed' });
+    const result = validateDashboardDocument(JSON.stringify(document));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[1].limit' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].field' })
+      ]));
+    }
+  });
+});
