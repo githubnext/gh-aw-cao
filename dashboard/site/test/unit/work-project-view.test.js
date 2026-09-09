@@ -4,8 +4,8 @@ import { renderWorkProjectView } from '../../src/components/work-project-view.js
 import { renderWorkItemCard } from '../../src/components/work-item-card.js';
 import { renderWorkItemRow } from '../../src/components/work-item-row.js';
 import { renderWorkItemTimelineLane } from '../../src/components/work-item-timeline-lane.js';
-import { renderWorkViewNavigation } from '../../src/components/work-view-navigation.js';
-import { workRoutePageConfigForBody, workRoutePageConfigs } from '../../src/components/work-view-route-config.js';
+import { renderWorkSectionToolbar, renderWorkViewNavigation, workViewChromeForBody, workViewChromes } from '../../src/components/work-view-chrome.js';
+import { workRoutePageConfigForBody } from '../../src/components/work-view-route-config.js';
 
 const item = {
   name: 'Dependabot release train',
@@ -79,6 +79,13 @@ describe('work project view primitives', () => {
   });
 
   it('derives reusable work route navigation from declarative body selection', () => {
+    expect(workViewChromeForBody('board')).toMatchObject({
+      key: 'board',
+      pageId: 'work',
+      href: '#page-work',
+      title: 'Board',
+      icon: 'project-roadmap'
+    });
     expect(workRoutePageConfigForBody('board')).toMatchObject({
       key: 'board',
       pageId: 'work',
@@ -97,7 +104,8 @@ describe('work project view primitives', () => {
       href: '#page-work-roadmap',
       title: 'Roadmap'
     });
-    const rendered = renderWorkViewNavigation(workRoutePageConfigs(), 'tasks');
+    expect(workViewChromes().map((item) => item.pageId)).toEqual(['work', 'work-tasks', 'work-roadmap']);
+    const rendered = renderWorkViewNavigation(workViewChromes(), 'tasks');
     expect([...rendered.querySelectorAll('a')].map((link) => ({
       href: link.getAttribute('href'),
       current: link.getAttribute('aria-current'),
@@ -107,6 +115,13 @@ describe('work project view primitives', () => {
       { href: '#page-work-tasks', current: 'page', text: 'Tasks' },
       { href: '#page-work-roadmap', current: null, text: 'Roadmap' }
     ]);
+  });
+
+  it('renders reusable work section toolbar from canonical body metadata', () => {
+    const rendered = renderWorkSectionToolbar(workViewChromeForBody('tasks'), 2);
+    expect(rendered.textContent).toContain('Tasks');
+    expect(rendered.textContent).toContain('2 items');
+    expect(rendered.querySelector('.work-section-toolbar-icon .octicon-table')).not.toBeNull();
   });
 
   it('renders a compact custom Table with configurable sorting and mobile field selection', () => {
@@ -121,7 +136,7 @@ describe('work project view primitives', () => {
       elementConfig: { body: 'tasks' }
     }));
 
-    expect(rendered.querySelector('.work-task-view-name')?.textContent).toContain('Operations tasks');
+    expect(rendered.querySelector('.work-section-toolbar-title')?.textContent).toContain('Tasks');
     expect(rendered.querySelector('.work-mobile-field-settings')).not.toBeNull();
     expect([...rendered.querySelectorAll('[name="mobile-work-field"]')].map((field) => /** @type {HTMLInputElement} */ (field).value)).toEqual([
       'repository', 'status', 'owner', 'label', 'dates'

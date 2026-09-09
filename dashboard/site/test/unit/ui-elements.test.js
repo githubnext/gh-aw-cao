@@ -426,6 +426,7 @@ describe('UI elements', () => {
     });
 
     expect(rendered?.querySelector('.work-project-tabs')?.textContent).toBe('BoardTasksRoadmap');
+    expect(rendered?.querySelector('.work-section-toolbar-title')?.textContent).toContain('Roadmap');
     expect(rendered?.querySelector('[href="#page-work-roadmap"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-tasks')).toBeNull();
@@ -502,6 +503,7 @@ describe('UI elements', () => {
 
     expect(rendered?.querySelector('[href="#page-work-tasks"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered?.querySelector('.work-tasks')).not.toBeNull();
+    expect(rendered?.querySelector('.work-section-toolbar-title')?.textContent).toContain('Tasks');
     expect(rendered?.querySelector('.work-board')).toBeNull();
     expect(rendered?.querySelector('.work-roadmap')).toBeNull();
   });

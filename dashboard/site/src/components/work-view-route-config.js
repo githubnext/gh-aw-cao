@@ -1,16 +1,5 @@
-import { WORK_VIEW_BODY_VALUES, workViewCompositionForBody } from './work-view-primitives.js';
-
-const WORK_ROUTE_PAGE_BY_BODY = /** @type {const} */ ({
-  board: 'work',
-  tasks: 'work-tasks',
-  roadmap: 'work-roadmap'
-});
-
-const WORK_ROUTE_ICON_BY_BODY = /** @type {const} */ ({
-  board: 'project-roadmap',
-  tasks: 'table',
-  roadmap: 'calendar'
-});
+import { WORK_VIEW_BODY_VALUES } from './work-view-primitives.js';
+import { workViewChromeForBody } from './work-view-chrome.js';
 
 /**
  * @typedef {{
@@ -27,13 +16,13 @@ const WORK_ROUTE_ICON_BY_BODY = /** @type {const} */ ({
  * @returns {WorkRoutePageConfig}
  */
 export function workRoutePageConfigForBody(body) {
-  const composition = workViewCompositionForBody(body);
+  const composition = workViewChromeForBody(body);
   return {
     key: composition.key,
     title: composition.title,
-    icon: WORK_ROUTE_ICON_BY_BODY[composition.key],
-    pageId: WORK_ROUTE_PAGE_BY_BODY[composition.key],
-    href: `#page-${WORK_ROUTE_PAGE_BY_BODY[composition.key]}`
+    icon: composition.icon,
+    pageId: composition.pageId,
+    href: composition.href
   };
 }
 

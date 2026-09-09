@@ -1451,10 +1451,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-card dd { margin: 0; overflow: hidden; font-size: .75rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .work-tasks { --work-task-columns: 36px 224px 86px 74px 105px 115px 115px 145px; min-width: 0; display: grid; gap: 0; container-type: inline-size; overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; background: var(--canvas); }
 .work-task-viewbar { width: 100cqw; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 8px; position: sticky; z-index: 4; left: 0; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
-.work-task-view-name { display: flex; align-items: center; gap: 7px; margin-right: auto; }
-.work-task-view-name strong { font-size: .75rem; }
-.work-task-view-name > span:last-child { padding: 1px 6px; border-radius: 999px; background: var(--neutral-muted); color: var(--muted); font-size: .625rem; }
-.work-task-view-icon, .work-task-sort-icon { display: grid; color: var(--muted); }
+.work-section-toolbar { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.work-section-toolbar-title { min-width: 0; display: flex; align-items: center; gap: 7px; margin-right: auto; }
+.work-section-toolbar-title strong { font-size: .75rem; }
+.work-section-toolbar-title > span:last-child { padding: 1px 6px; border-radius: 999px; background: var(--neutral-muted); color: var(--muted); font-size: .625rem; }
+.work-section-toolbar-icon, .work-task-sort-icon { display: grid; color: var(--muted); }
 .work-task-settings, .work-task-settings-sheet, .work-task-settings-panel { display: contents; }
 .work-task-sort-controls { display: flex; align-items: center; gap: 8px; }
 .work-task-sort { min-height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 4px 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--muted); font-size: .6875rem; }
@@ -1471,10 +1472,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .work-roadmap { min-width: 0; display: grid; gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 4px; background: var(--canvas); }
 .work-roadmap-body { min-width: 0; }
 .work-roadmap-toolbar { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
-.work-roadmap-toolbar > div { min-width: 0; display: flex; align-items: center; gap: 7px; margin-right: auto; }
-.work-roadmap-toolbar strong { font-size: .75rem; }
-.work-roadmap-toolbar > div > span:last-child { padding: 1px 6px; border-radius: 999px; background: var(--neutral-muted); color: var(--muted); font-size: .625rem; }
-.work-roadmap-toolbar-icon { display: grid; color: var(--muted); }
+.work-roadmap-toolbar > .work-section-toolbar { margin-right: auto; }
 .work-roadmap-zoom { position: relative; z-index: 20; }
 .work-roadmap-zoom summary { min-height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font-size: .6875rem; font-weight: 600; cursor: pointer; list-style: none; }
 .work-roadmap-zoom summary::-webkit-details-marker { display: none; }

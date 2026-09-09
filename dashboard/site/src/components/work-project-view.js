@@ -7,9 +7,8 @@ import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderClo
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
+import { renderWorkSectionToolbar, renderWorkViewNavigation, workViewChromeForBody, workViewChromes } from './work-view-chrome.js';
 import { workViewComposition } from './work-view-composition.js';
-import { renderWorkViewNavigation } from './work-view-navigation.js';
-import { workRoutePageConfigs } from './work-view-route-config.js';
 import { workViewSectionRenderer } from './work-view-sections.js';
 
 const BOARD_COLUMNS = [
@@ -19,7 +18,7 @@ const BOARD_COLUMNS = [
   { title: 'Done', states: ['done'], tone: 'done' }
 ];
 
-/** @typedef {{ id: string, className: string, landmarkLabel: string, title: string }} WorkSection */
+/** @typedef {{ id: string, className: string, landmarkLabel: string, title: string, key: 'board'|'tasks'|'roadmap', pageId: string, href: string, icon: string }} WorkSection */
 /** @typedef {(items: Array<ReturnType<typeof normalizeWorkItem>>, section: WorkSection) => HTMLElement} WorkSectionRenderer */
 
 /**
@@ -57,7 +56,11 @@ export function renderWorkProjectView(context) {
             id: workSectionId(context.pageId, section.key),
             className: section.className,
             landmarkLabel: section.landmarkLabel,
-            title: section.title
+            title: section.title,
+            key: section.key,
+            pageId: workViewChromeForBody(section.key).pageId,
+            href: workViewChromeForBody(section.key).href,
+            icon: workViewChromeForBody(section.key).icon
           })
           : null;
       })
@@ -68,7 +71,7 @@ export function renderWorkProjectView(context) {
   const root = h(
     'section',
     { className: 'work-project-view', 'aria-label': 'Work' },
-    renderWorkViewNavigation(workRoutePageConfigs(), activeSection),
+    renderWorkViewNavigation(workViewChromes(), activeSection),
     filterBar.element,
     viewBody
   );
@@ -171,7 +174,7 @@ function renderFacetSelect(label, values) {
 
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
- * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ * @param {WorkSection} section
  * @param {() => void} onUpdate
  */
 function renderBoard(items, section, onUpdate) {
@@ -243,6 +246,7 @@ function renderBoard(items, section, onUpdate) {
   return h(
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
+    renderWorkSectionToolbar(section, items.length),
     tabs,
     ...columns
   );
@@ -250,7 +254,7 @@ function renderBoard(items, section, onUpdate) {
 
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
- * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ * @param {WorkSection} section
  * @param {() => void} onUpdate
  */
 function renderTasks(items, section, onUpdate) {
@@ -350,10 +354,7 @@ function renderTasks(items, section, onUpdate) {
   return h(
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
-    h('div', { className: 'work-task-viewbar' },
-      h('div', { className: 'work-task-view-name' }, renderIconSpan('work-task-view-icon', 'table', { ariaHidden: true }), h('strong', null, 'Operations tasks'), h('span', null, `${items.length} items`)),
-      h('div', { className: 'work-task-settings' }, settingsToggle, settingsSheet)
-    ),
+    h('div', { className: 'work-task-viewbar' }, renderWorkSectionToolbar(section, items.length, h('div', { className: 'work-task-settings' }, settingsToggle, settingsSheet))),
     h('div', { className: 'work-task-scroll' },
       h('div', { className: 'work-task-table-header', role: 'row' },
         h('span', { 'aria-hidden': 'true' }),
@@ -380,7 +381,7 @@ function compareWorkItems(left, right, field) {
 
 /**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
- * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
+ * @param {WorkSection} section
  * @param {() => void} onUpdate
  */
 function renderRoadmap(items, section, onUpdate) {
@@ -531,7 +532,7 @@ function renderRoadmap(items, section, onUpdate) {
     'section',
     { className: section.className, id: section.id, 'aria-label': section.landmarkLabel },
     h('div', { className: 'work-roadmap-toolbar' },
-      h('div', null, renderIconSpan('work-roadmap-toolbar-icon', 'project-roadmap', { ariaHidden: true }), h('strong', null, section.title), h('span', null, `${items.length} items`)),
+      renderWorkSectionToolbar(section, items.length),
       visualToggle,
       mobilePeriodControls,
       zoom,
