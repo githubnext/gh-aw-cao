@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   DASHBOARD_QUERY_LIMITS,
@@ -191,6 +191,70 @@ describe('declarative dashboard queries', () => {
     expect(result.rows).toEqual([{ name: 'b.md' }, { name: 'a.md', package: 'aw-doctor' }]);
     expect(result.metadata['source-kind']).toBe('derived');
     expect(result.metadata.availability).toBe('available');
+  });
+
+  it('times each query execution pipeline stage with console markers', () => {
+    const start = vi.spyOn(console, 'time').mockImplementation(() => {});
+    const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
+
+    try {
+      executeDashboardQuery({
+        name: 'timed-inventory',
+        from: 'workflows',
+        joins: [{
+          source: 'usage',
+          type: 'left',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'aic' }]
+        }],
+        filter: { predicates: [{ field: 'organization', equals: 'githubnext' }] },
+        compute: [{ as: 'observed-aic', function: 'coalesce', args: [{ field: 'aic' }, { value: 0 }] }],
+        aggregate: { by: ['repository'], values: [{ field: 'observed-aic', as: 'aic', reducer: 'sum' }] },
+        select: [{ field: 'repository' }, { field: 'aic' }],
+        'order-by': [{ field: 'aic', direction: 'desc' }],
+        limit: 1
+      }, { workflows, usage: { ...usage, rows: [usage.rows[0]] } });
+
+      const labels = [
+        'from',
+        'join:usage',
+        'filter',
+        'compute',
+        'aggregate',
+        'select',
+        'order-by',
+        'limit'
+      ].map((stage) => `[dashboard-query:timed-inventory] ${stage}`);
+      expect(start.mock.calls.map(([label]) => label)).toEqual(labels);
+      expect(end.mock.calls.map(([label]) => label)).toEqual(labels);
+    } finally {
+      start.mockRestore();
+      end.mockRestore();
+    }
+  });
+
+  it('ends a query stage timer when execution fails', () => {
+    const start = vi.spyOn(console, 'time').mockImplementation(() => {});
+    const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
+
+    try {
+      const result = executeDashboardQuery({
+        name: 'failed-timer',
+        from: 'workflows',
+        joins: [{
+          source: 'usage',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'aic' }]
+        }]
+      }, { workflows, usage });
+
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(start).toHaveBeenCalledWith('[dashboard-query:failed-timer] join:usage');
+      expect(end).toHaveBeenCalledWith('[dashboard-query:failed-timer] join:usage');
+    } finally {
+      start.mockRestore();
+      end.mockRestore();
+    }
   });
 
   it('aggregates, joins, and computes derived fields across sources', () => {
