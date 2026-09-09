@@ -891,9 +891,6 @@ test("dashboard source bridge carries API capacity admission blocks into run row
       "github-api-remaining": null,
       "github-api-required": null,
       "github-api-reset-at": "",
-      "runner-disk-status": "unknown",
-      "runner-disk-available-mb": null,
-      "runner-disk-required-mb": null,
       "run-link": {
         relation: "run",
         href: "https://github.com/githubnext/gh-aw-cao/actions/runs/42",

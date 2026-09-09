@@ -760,9 +760,6 @@ function admissionRows(deployed) {
         "github-api-remaining": finite(admission.githubApiCapacity?.remaining),
         "github-api-required": finite(admission.githubApiCapacity?.required),
         "github-api-reset-at": admission.githubApiCapacity?.resetAt || "",
-        "runner-disk-status": admission.runnerDiskCapacity?.status || "unknown",
-        "runner-disk-available-mb": finite(admission.runnerDiskCapacity?.available),
-        "runner-disk-required-mb": finite(admission.runnerDiskCapacity?.required),
         "run-link": link("run", workflowRunUrl(workflow.repository, run.runId), `Run ${run.runId}`),
       };
       admissions.push(row);

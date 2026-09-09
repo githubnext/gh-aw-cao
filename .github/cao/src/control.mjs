@@ -266,7 +266,7 @@ function writeCapacityBlockedPrecompute(packageName, role, capacity) {
     github_api_required: capacity.required,
     github_api_reset_at: capacity.resetAt,
   });
-  writeAdmissionSummary({ authorized: false, packageName, role, reason, apiCapacity: capacity, diskCapacity: undefined });
+  writeAdmissionSummary({ authorized: false, packageName, role, reason, apiCapacity: capacity });
 }
 
 function applyGithubApiAdmission(result, options) {
@@ -279,39 +279,6 @@ function applyGithubApiAdmission(result, options) {
     authorized: false,
     reason: capacity.status === "limited" ? "github-api-capacity-insufficient" : "github-api-capacity-unavailable",
     github_api_capacity: capacity,
-  };
-}
-
-function runnerDiskRequirement(options) {
-  return options.role === "orchestrator" ? ORCHESTRATOR_FREE_DISK_MEGABYTES : WORKER_FREE_DISK_MEGABYTES;
-}
-
-function runnerDiskCapacity(required) {
-  const path = environment("RUNNER_TEMP") || environment("GITHUB_WORKSPACE") || "/tmp";
-  try {
-    const source = run("df", ["-Pk", path]);
-    const line = source.trim().split("\n").at(-1) ?? "";
-    const columns = /\s(\d+)\s+(\d+)\s+(\d+)\s+\d+%/.exec(line);
-    const availableKilobytes = columns ? Number(columns[3]) : Number.NaN;
-    if (!Number.isSafeInteger(availableKilobytes)) {
-      throw new ControlError("df did not report an integer count of available blocks");
-    }
-    const available = Math.floor(availableKilobytes / 1024);
-    return { status: available >= required ? "available" : "limited", available, required, path };
-  } catch {
-    return { status: "unavailable", available: 0, required, path };
-  }
-}
-
-function applyRunnerDiskAdmission(result, options) {
-  if (!result.authorized) return result;
-  const capacity = runnerDiskCapacity(runnerDiskRequirement(options));
-  if (capacity.status === "available") return { ...result, runner_disk_capacity: capacity };
-  return {
-    ...result,
-    authorized: false,
-    reason: capacity.status === "limited" ? "runner-disk-capacity-insufficient" : "runner-disk-capacity-unavailable",
-    runner_disk_capacity: capacity,
   };
 }
 
@@ -360,7 +327,6 @@ function writeAdmissionRecord(result, options, workflowSha) {
     failed_check: failedIndex >= 0 ? ADMISSION_CHECKS[failedIndex][0] : null,
     checks,
     ...(result.github_api_capacity ? { github_api_capacity: result.github_api_capacity } : {}),
-    ...(result.runner_disk_capacity ? { runner_disk_capacity: result.runner_disk_capacity } : {}),
   });
 }
 
@@ -387,7 +353,7 @@ function admit() {
     } catch (error) {
       throw new ControlError(error instanceof PolicyError ? "control policy validation failed" : error.message);
     }
-    result = applyRunnerDiskAdmission(applyGithubApiAdmission(effectivePolicy(document, options), options), options);
+    result = applyGithubApiAdmission(effectivePolicy(document, options), options);
     writeFileSync(join(directory, "effective-policy.json"), `${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
     result = { authorized: false, reason: error.message };
@@ -408,14 +374,6 @@ function admit() {
       github_api_reset_at: result.github_api_capacity.resetAt,
     });
   }
-  if (result.runner_disk_capacity && result.runner_disk_capacity.status !== "available") {
-    Object.assign(outputs, {
-      runner_disk_status: result.runner_disk_capacity.status,
-      runner_disk_available_mb: result.runner_disk_capacity.available,
-      runner_disk_required_mb: result.runner_disk_capacity.required,
-      runner_disk_path: result.runner_disk_capacity.path,
-    });
-  }
   writeActionsOutputs(outputs);
   writeAdmissionSummary({
     authorized: result.authorized,
@@ -423,7 +381,6 @@ function admit() {
     role: options.role,
     reason: result.reason,
     apiCapacity: result.github_api_capacity,
-    diskCapacity: result.runner_disk_capacity,
   });
   log(`Admission ${result.authorized ? "authorized" : "denied"}.`);
 }
