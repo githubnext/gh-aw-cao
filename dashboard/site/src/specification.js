@@ -3,6 +3,7 @@
  */
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
+import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
 export {
   EXPERIMENTS_VIEW_BODY_VALUES,
   EXPERIMENTS_VIEW_SECTION_KEYS,
@@ -35,9 +36,9 @@ export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
 export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer'];
 export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max'];
 export const QUERY_SELECT_KEYS = ['field', 'as'];
-export const QUERY_MAX_JOINS = 4;
 export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
-export { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
+export { DASHBOARD_QUERY_LIMITS };
+export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
 export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals'];
 export const TOOLTIP_KEYS = ['label', 'description', 'icon'];

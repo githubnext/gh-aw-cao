@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
+import { DASHBOARD_QUERY_LIMITS, QUERY_MAX_JOINS } from '../../src/specification.js';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 
 const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
@@ -4747,6 +4748,65 @@ describe('declarative query validation', () => {
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].joins[0].source' }),
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].joins[0].type' }),
         expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.queries[0].joins[0].on[0].left' })
+      ]));
+    }
+  });
+
+  it('rejects self references and dependency cycles between queries', () => {
+    const result = validateDashboardDocument(queryDocument([
+      { name: 'workflow-costs', from: 'workflow-costs' },
+      {
+        name: 'cyclic-costs',
+        from: 'workflows',
+        joins: [{
+          source: 'cyclic-costs',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'workflow', as: 'joined-workflow' }]
+        }]
+      }
+    ]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[0].from' }),
+        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.queries[1].joins[0].source' })
+      ]));
+    }
+  });
+
+  it('rejects keyless joins, excessive join chains, and out-of-range limits', () => {
+    const join = {
+      source: 'workflow-aic',
+      on: [{ left: 'workflow', right: 'workflow' }],
+      fields: [{ field: 'aic', as: 'observed-aic' }]
+    };
+    const result = validateDashboardDocument(queryDocument([aicQuery, {
+      name: 'workflow-costs',
+      from: 'workflows',
+      joins: [{ ...join, on: [] }],
+      limit: DASHBOARD_QUERY_LIMITS['max-output-rows'] + 1
+    }]));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].joins[0].on' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[1].limit' })
+      ]));
+    }
+
+    const chained = validateDashboardDocument(queryDocument([aicQuery, {
+      name: 'workflow-costs',
+      from: 'workflows',
+      joins: Array.from({ length: QUERY_MAX_JOINS + 1 }, (_, index) => ({
+        ...join,
+        fields: [{ field: 'aic', as: `observed-aic-${index}` }]
+      }))
+    }]));
+    expect(chained.ok).toBe(false);
+    if (!chained.ok) {
+      expect(chained.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.queries[1].joins' })
       ]));
     }
   });

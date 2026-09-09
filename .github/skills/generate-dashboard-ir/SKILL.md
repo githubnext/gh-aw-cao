@@ -100,6 +100,22 @@ queries:
 
 Invalid because `cross` is not a supported join type, `usage` has more than one row per join key, and `eval` is outside the closed computed-field vocabulary. Queries must reference only canonical sources or earlier queries, keep every output name unique, and reference only fields the preceding clauses produce.
 
+Also invalid:
+
+```yaml
+queries:
+  - name: workflow-totals
+    from: workflow-inventory
+  - name: workflow-inventory
+    from: workflows
+    joins:
+      - source: workflow-totals
+        on: []
+        fields: [{ field: aic, as: aic }]
+```
+
+Invalid because the two queries form a dependency cycle, `workflow-totals` reads a query declared after it, and the keyless `on` would expand every row against every other row. Queries must form an acyclic graph in declaration order, and every join must declare at least one equality key pair.
+
 ## Corpus procedure
 
 When the working context requests a training-corpus example:

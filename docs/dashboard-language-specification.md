@@ -436,6 +436,7 @@ Computed fields use only the following typed, deterministic functions with the s
 - **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, the weakest input completeness and freshness, and `unavailable` availability when any input is missing or unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
 - **DLS-QUERY-015:** A failed query **MUST** produce zero rows, `unavailable` availability, and one explicit diagnostic identifying the dashboard path of the failing query. A diagnostic **MUST NOT** contain source payloads, row values, credentials, or secrets.
 - **DLS-QUERY-016:** A presenter **MUST** resolve the query dependency graph before requesting a page projection so every input source required by a requested derived source is loaded while unrelated sources remain excluded, and **MUST** execute queries in the data-processing layer defined by Section 7.5 without a main-thread fallback.
+- **DLS-QUERY-017:** An execution layer **MUST NOT** assume its query definitions were validated. Before it reads any rows it **MUST** reject a query that reads itself, participates in a dependency cycle, reads a query declared later in the sequence, shares its name with another query, declares a join without equality keys, declares more joins than **DLS-QUERY-005** permits, or declares a `limit` outside **DLS-QUERY-013**. Every query that reads a rejected query **MUST** also be rejected. Rejected queries **MUST** fail closed under **DLS-QUERY-015**, and a query that does not depend on a rejected query **MUST** still execute.
 
 ---
 
@@ -1121,7 +1122,7 @@ dashboard:
 - Added the `agent-assignments` source fields and `agent-marketplace-view` element for Marketplace-style agent capability and runtime-health presentation.
 - Added the attention-first `signal-list` Home presentation, four-state Work display mapping, and composed `insights-overview` element with explicit outcome, AIC, detection, and experiment evidence boundaries.
 - Aligned page icons with the presenter's canonical Octicon set and defined the icon-only, tooltip-backed horizon control.
-- Added declarative `dashboard.queries` derived sources in Section 5.5 with constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-016**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents remain valid and the language version is unchanged.
+- Added declarative `dashboard.queries` derived sources in Section 5.5 with constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-017**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents remain valid and the language version is unchanged.
 
 ---
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DASHBOARD_QUERY_LIMITS,
+  dashboardQueryDefects,
   dashboardQueryOutputFields,
   executeDashboardQueries,
   executeDashboardQuery,
@@ -230,6 +231,75 @@ describe('declarative dashboard queries', () => {
     );
 
     expect(Object.keys(derived)).toEqual(['totals']);
+  });
+
+  it('rejects cyclic, self-referencing, and forward query dependencies', () => {
+    const defects = dashboardQueryDefects([
+      { name: 'self', from: 'self' },
+      { name: 'early', from: 'late' },
+      { name: 'late', from: 'workflows' },
+      { name: 'left-cycle', from: 'workflows', joins: [{ source: 'right-cycle', on: [{ left: 'workflow', right: 'workflow' }], fields: [{ field: 'workflow', as: 'joined' }] }] },
+      { name: 'right-cycle', from: 'left-cycle' }
+    ]);
+
+    expect(defects.get('self')).toBe('query "self" reads itself');
+    expect(defects.get('early')).toBe('input source "late" is declared after "early"');
+    expect(defects.get('left-cycle')).toBe('query "left-cycle" and input source "right-cycle" form a dependency cycle');
+    expect(defects.get('right-cycle')).toBe('input source "left-cycle" is a rejected query');
+    expect(defects.has('late')).toBe(false);
+  });
+
+  it('rejects duplicate query names instead of resolving one arbitrarily', () => {
+    const definitions = [
+      { name: 'inventory', from: 'workflows' },
+      { name: 'inventory', from: 'usage' }
+    ];
+
+    expect(dashboardQueryDefects(definitions).get('inventory'))
+      .toBe('query name "inventory" is declared more than once');
+    expect(executeDashboardQueries(definitions, { workflows, usage }).inventory.metadata.availability)
+      .toBe('unavailable');
+  });
+
+  it('rejects keyless joins that would expand without bound', () => {
+    const result = executeDashboardQuery(
+      { name: 'cartesian', from: 'workflows', joins: [{ source: 'usage', on: [], fields: [{ field: 'aic', as: 'aic' }] }] },
+      { workflows, usage }
+    );
+
+    expect(result.rows).toEqual([]);
+    expect(result.metadata.availability).toBe('unavailable');
+    expect(result.metadata['query-diagnostic'])
+      .toBe('$.dashboard.queries[cartesian]: join on "usage" declares no equality keys.');
+  });
+
+  it('rejects join chains and limits beyond the documented bounds', () => {
+    const join = { source: 'usage', on: [{ left: 'workflow', right: 'workflow' }], fields: [{ field: 'aic', as: 'aic' }] };
+    const chained = executeDashboardQuery(
+      { name: 'chained', from: 'workflows', joins: Array.from({ length: DASHBOARD_QUERY_LIMITS['max-joins'] + 1 }, () => join) },
+      { workflows, usage }
+    );
+    expect(chained.metadata['query-diagnostic']).toContain('max-joins');
+
+    const oversized = executeDashboardQuery(
+      { name: 'oversized-limit', from: 'workflows', limit: DASHBOARD_QUERY_LIMITS['max-output-rows'] + 1 },
+      { workflows }
+    );
+    expect(oversized.metadata['query-diagnostic']).toContain('limit must be a positive integer');
+  });
+
+  it('executes a query graph containing a rejected query without failing the others', () => {
+    const derived = executeDashboardQueries(
+      [
+        { name: 'cyclic', from: 'cyclic' },
+        { name: 'inventory', from: 'workflows', select: [{ field: 'workflow' }] }
+      ],
+      { workflows }
+    );
+
+    expect(derived.cyclic.metadata.availability).toBe('unavailable');
+    expect(derived.cyclic.metadata['query-diagnostic']).toContain('reads itself');
+    expect(derived.inventory.rows).toEqual([{ workflow: 'a.md' }, { workflow: 'b.md' }]);
   });
 
   it('derives the static output field schema before execution', () => {

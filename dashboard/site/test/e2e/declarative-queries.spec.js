@@ -430,3 +430,61 @@ test('scenario 10: empty results and unavailable inputs report distinct data sta
     'query-diagnostic': '$.dashboard.queries[undeclared-inventory]: input source "not-a-declared-source" is unavailable.'
   });
 });
+
+test('scenario 11: catastrophic query patterns are rejected before any rows are read', async ({ page }) => {
+  const payload = await loadThroughWorker(page, [
+    { name: 'self-referencing', from: 'self-referencing' },
+    {
+      name: 'cartesian',
+      from: 'workflows',
+      joins: [{ source: 'runs', type: 'left', on: [], fields: [{ field: 'run', as: 'run' }] }]
+    },
+    { name: 'oversized-limit', from: 'runs', limit: 100001 },
+    { name: 'healthy', from: 'runs', select: [{ field: 'run' }], 'order-by': [{ field: 'run', direction: 'asc' }], limit: 1 }
+  ], ['self-referencing', 'cartesian', 'oversized-limit', 'healthy']);
+
+  expect(payload['self-referencing'].metadata).toMatchObject({
+    availability: 'unavailable',
+    'query-diagnostic': '$.dashboard.queries[self-referencing]: query "self-referencing" reads itself.'
+  });
+  expect(payload.cartesian.metadata).toMatchObject({
+    availability: 'unavailable',
+    'query-diagnostic': '$.dashboard.queries[cartesian]: join on "runs" declares no equality keys.'
+  });
+  expect(payload['oversized-limit'].metadata['query-diagnostic'])
+    .toBe('$.dashboard.queries[oversized-limit]: limit must be a positive integer no greater than 100000.');
+  for (const name of ['self-referencing', 'cartesian', 'oversized-limit']) {
+    expect(payload[name].rows).toEqual([]);
+  }
+
+  expect(payload.healthy.rows).toEqual([{ run: '1001' }]);
+  expect(payload.healthy.metadata.availability).toBe('available');
+});
+
+test('scenario 12: a dependency cycle rejects every query in the cycle and everything downstream', async ({ page }) => {
+  const payload = await loadThroughWorker(page, [
+    {
+      name: 'left-cycle',
+      from: 'workflows',
+      joins: [{
+        source: 'right-cycle',
+        type: 'left',
+        on: [{ left: 'workflow', right: 'workflow' }],
+        fields: [{ field: 'workflow', as: 'joined-workflow' }]
+      }]
+    },
+    { name: 'right-cycle', from: 'left-cycle' },
+    { name: 'downstream', from: 'right-cycle' }
+  ], ['left-cycle', 'right-cycle', 'downstream']);
+
+  expect(payload['left-cycle'].metadata['query-diagnostic'])
+    .toBe('$.dashboard.queries[left-cycle]: query "left-cycle" and input source "right-cycle" form a dependency cycle.');
+  expect(payload['right-cycle'].metadata['query-diagnostic'])
+    .toBe('$.dashboard.queries[right-cycle]: input source "left-cycle" is a rejected query.');
+  expect(payload.downstream.metadata['query-diagnostic'])
+    .toBe('$.dashboard.queries[downstream]: input source "right-cycle" is a rejected query.');
+  for (const name of ['left-cycle', 'right-cycle', 'downstream']) {
+    expect(payload[name].rows).toEqual([]);
+    expect(payload[name].metadata.availability).toBe('unavailable');
+  }
+});

@@ -41,7 +41,8 @@ import { tidy } from '../../data-operations.js';
 export const DASHBOARD_QUERY_LIMITS = {
   'max-input-rows': 200000,
   'max-join-rows': 200000,
-  'max-output-rows': 100000
+  'max-output-rows': 100000,
+  'max-joins': 4
 };
 
 /** Supported join types. */
@@ -58,9 +59,115 @@ export function dashboardQueryIndex(definitions) {
   if (!Array.isArray(definitions)) return index;
   for (const definition of definitions) {
     if (!isPlainObject(definition) || typeof definition.name !== 'string') continue;
+    if (index.has(definition.name)) continue;
     index.set(definition.name, /** @type {DashboardQuery} */ (definition));
   }
   return index;
+}
+
+/**
+ * Detects the query patterns that cannot be executed safely, so they fail
+ * closed before any rows are read instead of looping, expanding without
+ * bound, or resolving to an arbitrary definition.
+ *
+ * Detected patterns are cyclic dependencies (including self-reference),
+ * dependencies declared after the consuming query, duplicate query names,
+ * unbounded keyless joins, excessive join chains, and out-of-range limits.
+ *
+ * @param {unknown} definitions
+ * @returns {Map<string, string>} query name to the reason it is rejected
+ */
+export function dashboardQueryDefects(definitions) {
+  /** @type {Map<string, string>} */
+  const defects = new Map();
+  const list = Array.isArray(definitions) ? definitions : [];
+  const index = dashboardQueryIndex(definitions);
+
+  /** @type {Set<string>} */
+  const seen = new Set();
+  for (const definition of list) {
+    if (!isPlainObject(definition) || typeof definition.name !== 'string') continue;
+    if (seen.has(definition.name)) {
+      defects.set(definition.name, `query name "${definition.name}" is declared more than once`);
+    }
+    seen.add(definition.name);
+  }
+
+  /** @type {Set<string>} */
+  const available = new Set();
+  for (const [name, definition] of index) {
+    for (const input of queryInputNames(definition)) {
+      if (!index.has(input) || available.has(input)) continue;
+      defects.set(name, input === name
+        ? `query "${name}" reads itself`
+        : reachesQuery(index, input, name)
+          ? `query "${name}" and input source "${input}" form a dependency cycle`
+          : `input source "${input}" is declared after "${name}"`);
+      break;
+    }
+    available.add(name);
+    const structural = queryStructuralDefect(definition);
+    if (structural && !defects.has(name)) defects.set(name, structural);
+  }
+
+  let propagated = true;
+  while (propagated) {
+    propagated = false;
+    for (const [name, definition] of index) {
+      if (defects.has(name)) continue;
+      const rejected = queryInputNames(definition).find((input) => defects.has(input));
+      if (!rejected) continue;
+      defects.set(name, `input source "${rejected}" is a rejected query`);
+      propagated = true;
+    }
+  }
+  return defects;
+}
+
+/**
+ * Rejects the query shapes whose cost is unbounded or undefined regardless of
+ * the rows they read.
+ * @param {DashboardQuery} definition
+ * @returns {string | undefined}
+ */
+function queryStructuralDefect(definition) {
+  const joins = definition.joins ?? [];
+  if (joins.length > DASHBOARD_QUERY_LIMITS['max-joins']) {
+    return `joins exceed the max-joins limit of ${DASHBOARD_QUERY_LIMITS['max-joins']}`;
+  }
+  for (const join of joins) {
+    if (!Array.isArray(join?.on) || join.on.length === 0) {
+      return `join on "${String(join?.source)}" declares no equality keys`;
+    }
+  }
+  if (definition.limit !== undefined
+      && (!Number.isSafeInteger(definition.limit)
+        || Number(definition.limit) <= 0
+        || Number(definition.limit) > DASHBOARD_QUERY_LIMITS['max-output-rows'])) {
+    return `limit must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}`;
+  }
+  return undefined;
+}
+
+/**
+ * @param {Map<string, DashboardQuery>} index
+ * @param {string} from
+ * @param {string} target
+ * @returns {boolean} whether `target` is reachable from `from`
+ */
+function reachesQuery(index, from, target) {
+  /** @type {Set<string>} */
+  const visited = new Set();
+  /** @type {string[]} */
+  const pending = [from];
+  while (pending.length > 0) {
+    const name = /** @type {string} */ (pending.shift());
+    if (name === target) return true;
+    if (visited.has(name)) continue;
+    visited.add(name);
+    pending.push(...queryInputNames(index.get(name)));
+  }
+  return false;
 }
 
 /**
@@ -135,12 +242,13 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
 export function executeDashboardQueries(definitions, sources, requested) {
   const index = dashboardQueryIndex(definitions);
   if (index.size === 0) return {};
+  const defects = dashboardQueryDefects(definitions);
   const wanted = requested ? new Set(resolveDashboardQuerySources(definitions, requested)) : null;
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
   for (const [name, definition] of index) {
     if (wanted && !wanted.has(name)) continue;
-    derived[name] = executeDashboardQuery(definition, { ...sources, ...derived });
+    derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name));
   }
   return derived;
 }
@@ -148,10 +256,15 @@ export function executeDashboardQueries(definitions, sources, requested) {
 /**
  * @param {DashboardQuery} definition
  * @param {Record<string, LogicalSourceInput>} sources
+ * @param {string} [defect] a rejected query pattern detected before execution
  * @returns {LogicalSourceInput}
  */
-export function executeDashboardQuery(definition, sources) {
+export function executeDashboardQuery(definition, sources, defect) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
+  const rejected = defect ?? queryStructuralDefect(definition);
+  if (rejected) {
+    return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
+  }
   const unavailable = inputs.find((input) => !input.source || !Array.isArray(input.source.rows));
   if (unavailable) {
     return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), `input source "${unavailable.name}" is unavailable`);
