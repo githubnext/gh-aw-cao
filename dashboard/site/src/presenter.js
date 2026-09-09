@@ -1186,7 +1186,6 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       'data-route-navigation-page': routeNavigationPage
     },
     filterBar,
-    renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
@@ -1795,37 +1794,9 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       'data-route-navigation-page': routeNavigationPage
     },
     ...(filterBar ? [filterBar] : []),
-    renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
-  );
-}
-
-/**
- * @param {string} pageId
- * @param {Record<string, LogicalSourceInput>} sources
- * @returns {HTMLElement | null}
- */
-function renderFirewallDataWarning(pageId, sources) {
-  if (pageId !== 'firewall' || sources['firewall-domain-totals']?.metadata?.availability === 'available') {
-    return null;
-  }
-  return h(
-    'aside',
-    { className: 'dashboard-callout firewall-data-warning', role: 'alert', 'data-firewall-data-warning': '' },
-    h(
-      'div',
-      { className: 'dashboard-callout-heading' },
-      octicon('alert'),
-      h(
-        'div',
-        null,
-        h('span', { className: 'scope-kicker' }, 'Data warning'),
-        h('h3', null, 'Firewall data is corrupted')
-      )
-    ),
-    h('p', null, 'Firewall evidence is unavailable. Refresh the dashboard data before relying on this view.')
   );
 }
 
