@@ -1,0 +1,42 @@
+{
+  "id": "overview-awaiting-review-ledger",
+  "title": "Review evidence",
+  "description": "Open the retained GitHub outcome or its run evidence to complete the review.",
+  "data": {
+    "source": "work-items",
+    "filters": {
+      "lifecycle-state": "review"
+    },
+    "order-by": [
+      {
+        "field": "waiting-since",
+        "direction": "asc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "column-summaries": true,
+  "empty-message": "No work is awaiting review in the selected horizon.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "waiting-since",
+        "type": "temporal",
+        "title": "Date"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "objective",
+        "type": "nominal",
+        "title": "Work",
+        "display": "evidence-link"
+      }
+    ]
+  }
+}

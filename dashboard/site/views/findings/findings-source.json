@@ -1,0 +1,59 @@
+{
+  "id": "findings-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "findings"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "finding-summary",
+        "type": "nominal",
+        "display": "outcome-link"
+      },
+      {
+        "field": "finding-severity",
+        "type": "nominal",
+        "display": "status"
+      },
+      {
+        "field": "finding-status",
+        "type": "nominal",
+        "display": "status"
+      },
+      {
+        "field": "organization",
+        "type": "nominal"
+      },
+      {
+        "field": "repository",
+        "type": "nominal"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal"
+      },
+      {
+        "field": "issue-link",
+        "type": "nominal"
+      },
+      {
+        "field": "pull-request-link",
+        "type": "nominal"
+      },
+      {
+        "field": "run-link",
+        "type": "nominal"
+      }
+    ],
+    "href": {
+      "field": "issue-link",
+      "type": "nominal"
+    }
+  }
+}

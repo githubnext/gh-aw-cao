@@ -1,0 +1,43 @@
+{
+  "id": "security-output-ledger",
+  "data": {
+    "source": "findings"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No retained output assurance records were observed.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "finding-summary",
+        "type": "nominal",
+        "title": "Output",
+        "display": "outcome-link"
+      },
+      {
+        "field": "finding-kind",
+        "type": "nominal",
+        "title": "Signal"
+      },
+      {
+        "field": "finding-severity",
+        "type": "nominal",
+        "title": "Severity",
+        "display": "status"
+      },
+      {
+        "field": "finding-status",
+        "type": "nominal",
+        "title": "Lifecycle",
+        "display": "status"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Updated"
+      }
+    ]
+  },
+  "lazy-list": true
+}

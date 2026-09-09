@@ -1,0 +1,56 @@
+{
+  "id": "package-workflow-table",
+  "disclosure-label": "Orchestrator and workers",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "packaged-workflows",
+    "route-field": "package"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No orchestrator or worker workflows are configured for this package.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "workflow-role",
+        "type": "ordinal",
+        "title": "Role",
+        "display": "label"
+      },
+      {
+        "field": "workflow-name",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Definition"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "workflow-active",
+        "type": "nominal",
+        "title": "Registration",
+        "display": "active-state"
+      },
+      {
+        "field": "runs",
+        "type": "quantitative",
+        "title": "Runs"
+      },
+      {
+        "field": "aic",
+        "type": "quantitative",
+        "title": "Total AIC",
+        "unit": "aic"
+      }
+    ]
+  },
+  "layout": "full"
+}

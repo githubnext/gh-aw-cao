@@ -1,0 +1,17 @@
+{
+  "id": "outcome-record",
+  "title": "Outcome",
+  "description": "Rendered from reusable discussion and metadata sections bound to the selected outcome.",
+  "title-link": {
+    "href-field": "external-link",
+    "identifier-field": "outcome-number"
+  },
+  "mark": "element",
+  "element": "outcome-detail",
+  "data": {
+    "sources": [
+      "outcomes"
+    ]
+  },
+  "layout": "full"
+}

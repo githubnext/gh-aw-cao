@@ -1,0 +1,30 @@
+{
+  "id": "package-insights-by-workflow",
+  "title": "AI Credit usage by workflow",
+  "description": "Measured workflow allocation highlights the package's dominant operating activity.",
+  "data": {
+    "source": "packaged-workflows",
+    "route-field": "package"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "workflow-name",
+      "type": "nominal",
+      "title": "Workflow"
+    },
+    "y": {
+      "field": "aic",
+      "type": "quantitative",
+      "aggregate": "sum",
+      "title": "Total AIC",
+      "unit": "aic"
+    },
+    "href": {
+      "field": "workflow-link",
+      "type": "nominal"
+    }
+  }
+}

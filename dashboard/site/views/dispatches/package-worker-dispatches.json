@@ -1,0 +1,61 @@
+{
+  "id": "package-worker-dispatches",
+  "description": "Runs whose authoritative GitHub Actions trigger is workflow_dispatch, ordered newest first.",
+  "data": {
+    "source": "dispatches"
+  },
+  "mark": "table",
+  "empty-message": "No workflow dispatch events were observed in the current run window.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "started-at",
+        "type": "temporal",
+        "title": "Started"
+      },
+      {
+        "field": "dispatch-type",
+        "type": "nominal",
+        "title": "Type"
+      },
+      {
+        "field": "package-name",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "workflow-name",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "run-title",
+        "type": "nominal",
+        "title": "Run title"
+      },
+      {
+        "field": "runtime-repository",
+        "type": "nominal",
+        "title": "Runtime repository"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "status-detail",
+        "type": "nominal",
+        "title": "Why"
+      }
+    ]
+  },
+  "layout": "full-view",
+  "controls": "interactive",
+  "lazy-list": true
+}

@@ -1,0 +1,73 @@
+{
+  "id": "package-failed-dispatch-table",
+  "disclosure-label": "Failed dispatches",
+  "description": "Failure reasons first. Open a reason for the GitHub Actions run, or copy a debug prompt with retained context.",
+  "data": {
+    "source": "dispatches",
+    "route-field": "package",
+    "filters": {
+      "status": [
+        "failure",
+        "startup-failure",
+        "timed-out",
+        "stale"
+      ]
+    }
+  },
+  "mark": "table",
+  "disclosure": "supplemental",
+  "controls": "interactive",
+  "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "status-detail",
+        "type": "nominal",
+        "title": "Why"
+      },
+      {
+        "field": "started-at",
+        "type": "temporal",
+        "title": "Started"
+      },
+      {
+        "field": "workflow-name",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "run-title",
+        "type": "nominal",
+        "title": "Run title"
+      },
+      {
+        "field": "runtime-repository",
+        "type": "nominal",
+        "title": "Runtime repository"
+      }
+    ],
+    "actions": [
+      {
+        "intent": "Debug this failed workflow dispatch. Explain the retained failure reason, verify it against the linked GitHub Actions run, and propose the safest next action.",
+        "presentation": "copy-prompt",
+        "icon": "search",
+        "label": "Review debug prompt",
+        "context": [
+          "package",
+          "status",
+          "status-detail",
+          "started-at",
+          "workflow-name",
+          "run-title",
+          "runtime-repository",
+          "run-link"
+        ]
+      }
+    ]
+  },
+  "layout": "full"
+}

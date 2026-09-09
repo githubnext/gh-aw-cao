@@ -1,0 +1,45 @@
+{
+  "id": "readiness-operational-observations",
+  "description": "Failures, authored warnings, and no-op reports are attributed to orchestrator and worker workflows from workflow inventory.",
+  "data": {
+    "source": "readiness-observations"
+  },
+  "mark": "table",
+  "layout": "full-view",
+  "encoding": {
+    "href": {
+      "field": "evidence-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "signal",
+        "type": "nominal",
+        "title": "Signal"
+      },
+      {
+        "field": "count",
+        "type": "quantitative",
+        "title": "Observed"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "title": "State",
+        "display": "status"
+      },
+      {
+        "field": "detail",
+        "type": "nominal",
+        "title": "Evidence"
+      },
+      {
+        "field": "latest-at",
+        "type": "temporal",
+        "title": "Latest"
+      }
+    ]
+  },
+  "controls": "interactive",
+  "lazy-list": true
+}

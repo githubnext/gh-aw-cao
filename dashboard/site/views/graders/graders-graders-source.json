@@ -1,0 +1,16 @@
+{
+  "id": "graders-graders-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "graders"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "grader",
+        "type": "nominal"
+      }
+    ]
+  }
+}

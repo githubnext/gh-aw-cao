@@ -1,0 +1,73 @@
+{
+  "id": "runs-runs-source",
+  "title": "Runs",
+  "description": "Observed workflow runs across the configured repository scope.",
+  "data": {
+    "source": "runs"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "layout": "full-view",
+  "empty-message": "No runs observed.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "run",
+        "type": "nominal"
+      },
+      {
+        "field": "run-status",
+        "type": "nominal",
+        "display": "status"
+      },
+      {
+        "field": "run-conclusion",
+        "type": "nominal",
+        "display": "status"
+      },
+      {
+        "field": "organization",
+        "type": "nominal"
+      },
+      {
+        "field": "repository",
+        "type": "nominal"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "display": "mode"
+      },
+      {
+        "field": "engine",
+        "type": "nominal"
+      },
+      {
+        "field": "engine-version",
+        "type": "nominal"
+      },
+      {
+        "field": "requested-model",
+        "type": "nominal"
+      },
+      {
+        "field": "resolved-model",
+        "type": "nominal"
+      },
+      {
+        "field": "started-at",
+        "type": "temporal"
+      }
+    ]
+  }
+}

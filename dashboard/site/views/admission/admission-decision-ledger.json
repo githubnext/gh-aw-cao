@@ -1,0 +1,68 @@
+{
+  "id": "admission-decision-ledger",
+  "description": "Latest structured pre-activation records preserve the decision, failing gate, reason, role, and run provenance.",
+  "data": {
+    "source": "admissions",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ],
+    "limit": 100
+  },
+  "mark": "table",
+  "layout": "full-view",
+  "empty-message": "No structured admission records were observed in the current run window.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      },
+      {
+        "field": "package",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "workflow-role",
+        "type": "nominal",
+        "title": "Role"
+      },
+      {
+        "field": "admission-status",
+        "type": "nominal",
+        "title": "Decision",
+        "display": "status"
+      },
+      {
+        "field": "failed-check",
+        "type": "nominal",
+        "title": "Failed gate"
+      },
+      {
+        "field": "admission-reason",
+        "type": "nominal",
+        "title": "Reason"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Control repository"
+      },
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      }
+    ]
+  },
+  "controls": "interactive",
+  "lazy-list": true
+}

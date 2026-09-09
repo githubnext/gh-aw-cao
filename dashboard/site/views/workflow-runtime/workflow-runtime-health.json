@@ -1,0 +1,35 @@
+{
+  "id": "workflow-runtime-health",
+  "title": "Runtime health trend",
+  "description": "Daily conclusions provide the leading runtime signal for this workflow.",
+  "data": {
+    "source": "workflow-runs",
+    "route-field": "workflow-route",
+    "time": {
+      "range": "30d"
+    }
+  },
+  "mark": "chart",
+  "chart": "swimlane",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "started-at",
+      "type": "temporal",
+      "title": "Started"
+    },
+    "y": {
+      "field": "run-conclusion",
+      "type": "ordinal",
+      "title": "Conclusion"
+    },
+    "color": {
+      "field": "run-conclusion",
+      "type": "nominal"
+    },
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  }
+}

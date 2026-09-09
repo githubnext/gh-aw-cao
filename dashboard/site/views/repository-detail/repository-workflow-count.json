@@ -1,0 +1,21 @@
+{
+  "id": "repository-workflow-count",
+  "title": "Authored Agentic Workflows",
+  "description": "One canonical identity per authored .github/workflows/*.md source.",
+  "data": {
+    "source": "repository-detail-summary",
+    "route-field": "repository"
+  },
+  "mark": "metric",
+  "encoding": {
+    "value": {
+      "field": "workflows",
+      "type": "quantitative"
+    },
+    "href": {
+      "field": "external-link",
+      "type": "nominal"
+    }
+  },
+  "layout": "third"
+}

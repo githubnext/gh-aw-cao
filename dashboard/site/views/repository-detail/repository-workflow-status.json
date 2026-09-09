@@ -1,0 +1,24 @@
+{
+  "id": "repository-workflow-status",
+  "title": "Workflow registration status",
+  "description": "Current GitHub Actions registration state for authored workflows.",
+  "data": {
+    "source": "repository-workflow-status",
+    "route-field": "repository"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "encoding": {
+    "x": {
+      "field": "status",
+      "type": "nominal",
+      "title": "Status"
+    },
+    "y": {
+      "field": "workflows",
+      "type": "quantitative",
+      "title": "Workflows"
+    }
+  },
+  "layout": "half"
+}

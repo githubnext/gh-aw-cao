@@ -1,0 +1,17 @@
+{
+  "id": "work-project-board",
+  "locked": true,
+  "title": "Board",
+  "description": "Delegated work grouped by its current lifecycle state.",
+  "data": {
+    "sources": [
+      "work-items"
+    ]
+  },
+  "mark": "element",
+  "element": "work-project-view",
+  "config": {
+    "body": "board"
+  },
+  "layout": "full"
+}

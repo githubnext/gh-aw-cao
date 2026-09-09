@@ -1,0 +1,15 @@
+{
+  "id": "outcome-metadata",
+  "title": "Outcome metadata",
+  "data": {
+    "sources": [
+      "outcomes"
+    ]
+  },
+  "mark": "element",
+  "element": "outcome-detail-section",
+  "config": {
+    "body": "metadata"
+  },
+  "layout": "full"
+}

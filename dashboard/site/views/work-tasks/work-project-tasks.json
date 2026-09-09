@@ -1,0 +1,17 @@
+{
+  "id": "work-project-tasks",
+  "locked": true,
+  "title": "Table",
+  "description": "A structured record list with owners, repositories, lifecycle state, and runtime windows.",
+  "data": {
+    "sources": [
+      "work-items"
+    ]
+  },
+  "mark": "element",
+  "element": "work-project-view",
+  "config": {
+    "body": "tasks"
+  },
+  "layout": "full"
+}

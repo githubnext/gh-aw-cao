@@ -87,60 +87,10 @@
           },
           "views": [
             {
-              "id": "overview-run-health",
-              "locked": true,
-              "title": "Run health trend",
-              "description": "Daily run conclusions surface the control plane's current operating signal.",
-              "data": {
-                "source": "runs",
-                "time": {
-                  "range": "30d"
-                }
-              },
-              "mark": "chart",
-              "chart": "swimlane",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                },
-                "y": {
-                  "field": "run-conclusion",
-                  "type": "ordinal",
-                  "title": "Conclusion"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
-                },
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                }
-              }
+              "$ref": "./views/operations/overview-run-health.json"
             },
             {
-              "id": "overview-attention-domains",
-              "locked": true,
-              "title": "Attention by domain",
-              "description": "Ordered by urgency. Each state names only what retained evidence and configured policy can support.",
-              "data": {
-                "sources": [
-                  "repositories",
-                  "workflows",
-                  "runs",
-                  "usage",
-                  "outcomes",
-                  "findings",
-                  "operational-values",
-                  "overview-attention-domains"
-                ]
-              },
-              "mark": "element",
-              "element": "domain-attention",
-              "layout": "full"
+              "$ref": "./views/operations/overview-attention-domains.json"
             }
           ]
         }
@@ -155,49 +105,7 @@
         "description": "Fail-closed release readiness across evidence integrity, package inventory, policy controls, and recent runtime behavior.",
         "views": [
           {
-            "id": "readiness-operational-observations",
-            "description": "Failures, authored warnings, and no-op reports are attributed to orchestrator and worker workflows from workflow inventory.",
-            "data": {
-              "source": "readiness-observations"
-            },
-            "mark": "table",
-            "layout": "full-view",
-            "encoding": {
-              "href": {
-                "field": "evidence-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "signal",
-                  "type": "nominal",
-                  "title": "Signal"
-                },
-                {
-                  "field": "count",
-                  "type": "quantitative",
-                  "title": "Observed"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "detail",
-                  "type": "nominal",
-                  "title": "Evidence"
-                },
-                {
-                  "field": "latest-at",
-                  "type": "temporal",
-                  "title": "Latest"
-                }
-              ]
-            },
-            "controls": "interactive",
-            "lazy-list": true
+            "$ref": "./views/readiness/readiness-operational-observations.json"
           }
         ]
       },
@@ -211,105 +119,7 @@
         "description": "Raw GitHub API quota checkpoints by resource and credential.",
         "views": [
           {
-            "id": "github-api-observations",
-            "title": "Raw quota observations",
-            "description": "Detailed GitHub quota checkpoints retain calculation inputs and correlation state for diagnostics.",
-            "data": {
-              "source": "github-api-rate-limits",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                },
-                {
-                  "field": "resource",
-                  "direction": "asc"
-                },
-                {
-                  "field": "credential",
-                  "direction": "asc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "layout": "full-view",
-            "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Operation"
-                },
-                {
-                  "field": "phase",
-                  "type": "nominal",
-                  "title": "Phase"
-                },
-                {
-                  "field": "resource",
-                  "type": "nominal",
-                  "title": "Resource"
-                },
-                {
-                  "field": "remaining-percent",
-                  "type": "quantitative",
-                  "title": "Remaining",
-                  "unit": "percent"
-                },
-                {
-                  "field": "remaining",
-                  "type": "quantitative",
-                  "title": "Requests remaining"
-                },
-                {
-                  "field": "used",
-                  "type": "quantitative",
-                  "title": "Requests used"
-                },
-                {
-                  "field": "limit",
-                  "type": "quantitative",
-                  "title": "Limit"
-                },
-                {
-                  "field": "reset-at",
-                  "type": "temporal",
-                  "title": "Reset (UTC)"
-                },
-                {
-                  "field": "credential",
-                  "type": "nominal",
-                  "title": "Credential"
-                },
-                {
-                  "field": "operation-execution-id",
-                  "type": "nominal",
-                  "title": "Execution"
-                },
-                {
-                  "field": "consumed-since-previous",
-                  "type": "quantitative",
-                  "title": "Consumed since previous"
-                },
-                {
-                  "field": "attribution-status",
-                  "type": "nominal",
-                  "title": "Attribution"
-                }
-              ]
-            }
+            "$ref": "./views/github-api/github-api-observations.json"
           }
         ]
       },
@@ -323,70 +133,7 @@
         "description": "Measured AI Credit allocation and efficiency evidence for the configured githubnext/gh-aw-cao repository.",
         "views": [
           {
-            "id": "cost-usage-records",
-            "title": "AI Credit usage",
-            "description": "Observed AI Credit allocation by workflow, repository, engine, model, and rollout mode.",
-            "data": {
-              "source": "usage",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "column-summaries": true,
-            "layout": "full-view",
-            "empty-message": "No AI Credit usage was observed in the selected horizon.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "engine",
-                  "type": "nominal",
-                  "title": "Engine"
-                },
-                {
-                  "field": "resolved-model",
-                  "type": "nominal",
-                  "title": "Model"
-                },
-                {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "title": "AIC",
-                  "unit": "aic"
-                },
-                {
-                  "field": "estimated-usd",
-                  "type": "quantitative",
-                  "title": "Estimated USD"
-                }
-              ]
-            }
+            "$ref": "./views/cost/cost-usage-records.json"
           }
         ]
       },
@@ -400,83 +147,7 @@
         "description": "Observed firewall domains and aggregate request activity for agent egress.",
         "views": [
           {
-            "id": "security-firewall-domains",
-            "title": "Domains",
-            "description": "Aggregate observed requests, runs, repositories, workflows, policy decisions, and policy rules by normalized domain over the requested 30-day horizon.",
-            "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "decision": [
-                  "allowed",
-                  "denied"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "requests",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "column-summaries": true,
-            "layout": "full-view",
-            "empty-message": "No observed firewall domains are available for this selection.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "domain",
-                  "type": "nominal"
-                },
-                {
-                  "field": "request-count",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "requests",
-                  "title": "Requests"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "runs",
-                  "title": "Runs"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "repositories",
-                  "title": "Repositories"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "workflows",
-                  "title": "Workflows"
-                },
-                {
-                  "field": "decision",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "decisions",
-                  "title": "Policy decisions"
-                },
-                {
-                  "field": "policy-rule-id",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "policy-rules",
-                  "title": "Policy rules"
-                }
-              ]
-            }
+            "$ref": "./views/firewall/security-firewall-domains.json"
           }
         ]
       },
@@ -490,85 +161,7 @@
         "description": "Diagnose MCP reliability, response payload sizes, and observed server versions across agentic workflow runs.",
         "views": [
           {
-            "id": "mcp-tool-inventory",
-            "title": "MCP tools",
-            "description": "Individual MCP tool calls, response payload sizes, and available server versions remain attributable to workflow runs.",
-            "data": {
-              "source": "mcp-calls",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "empty-message": "No MCP tool activity was observed.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "mcp-server",
-                  "type": "nominal",
-                  "title": "MCP server"
-                },
-                {
-                  "field": "mcp-tool",
-                  "type": "nominal",
-                  "title": "MCP tool"
-                },
-                {
-                  "field": "mcp-server-version",
-                  "type": "nominal",
-                  "title": "Server version"
-                },
-                {
-                  "field": "mcp-protocol-version",
-                  "type": "nominal",
-                  "title": "Protocol version"
-                },
-                {
-                  "field": "gh-aw-version",
-                  "type": "nominal",
-                  "title": "gh-aw version"
-                },
-                {
-                  "field": "mcp-status",
-                  "type": "ordinal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "response-bytes",
-                  "type": "quantitative",
-                  "title": "Response bytes"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/mcps/mcp-tool-inventory.json"
           }
         ]
       },
@@ -582,47 +175,7 @@
         "description": "Operational assurance, warning, and telemetry-integrity signals for the configured githubnext/gh-aw-cao repository.",
         "views": [
           {
-            "id": "security-output-ledger",
-            "data": {
-              "source": "findings"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No retained output assurance records were observed.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "finding-summary",
-                  "type": "nominal",
-                  "title": "Output",
-                  "display": "outcome-link"
-                },
-                {
-                  "field": "finding-kind",
-                  "type": "nominal",
-                  "title": "Signal"
-                },
-                {
-                  "field": "finding-severity",
-                  "type": "nominal",
-                  "title": "Severity",
-                  "display": "status"
-                },
-                {
-                  "field": "finding-status",
-                  "type": "nominal",
-                  "title": "Lifecycle",
-                  "display": "status"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Updated"
-                }
-              ]
-            },
-            "lazy-list": true
+            "$ref": "./views/security/security-output-ledger.json"
           }
         ]
       },
@@ -640,111 +193,22 @@
           },
           "views": [
             {
-              "id": "organizations-by-aic",
-              "title": "AI Credit usage by organization",
-              "description": "Measured AI Credit allocation identifies where agent activity is concentrated.",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "organization",
-                  "type": "nominal",
-                  "title": "Organization"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                },
-                "href": {
-                  "field": "organization-link",
-                  "type": "nominal"
-                }
-              }
+              "$ref": "./views/organizations/organizations-by-aic.json"
             },
             {
-              "id": "organizations-organizations-source",
-              "data": {
-                "source": "organizations"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "organization",
-                    "type": "nominal"
-                  }
-                ]
-              }
+              "$ref": "./views/organizations/organizations-organizations-source.json"
             },
             {
-              "id": "organizations-repositories-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "repositories"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "repository",
-                    "type": "nominal"
-                  }
-                ]
-              }
+              "$ref": "./views/organizations/organizations-repositories-source.json"
             },
             {
-              "id": "organizations-workflows-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "workflows"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "workflow",
-                    "type": "nominal"
-                  }
-                ]
-              }
+              "$ref": "./views/organizations/organizations-workflows-source.json"
             },
             {
-              "id": "organizations-runs-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "runs"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "run",
-                  "type": "nominal",
-                  "aggregate": "distinct-count"
-                }
-              }
+              "$ref": "./views/organizations/organizations-runs-source.json"
             },
             {
-              "id": "organizations-usage-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "metric",
-              "encoding": {
-                "value": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "unit": "aic"
-                }
-              }
+              "$ref": "./views/organizations/organizations-usage-source.json"
             }
           ]
         }
@@ -765,68 +229,7 @@
           },
           "views": [
             {
-              "id": "repositories-activity",
-              "title": "Repositories",
-              "description": "Repository-local execution health and all attributed package or local-workflow outcomes.",
-              "data": {
-                "source": "repository-activity"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "layout": "full-view",
-              "empty-message": "No repositories discovered.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository"
-                  },
-                  {
-                    "field": "workflows",
-                    "type": "quantitative",
-                    "title": "Local AWs"
-                  },
-                  {
-                    "field": "reports",
-                    "type": "quantitative",
-                    "title": "Reports"
-                  },
-                  {
-                    "field": "evaluated-workflows",
-                    "type": "quantitative",
-                    "title": "Evaluated AWs"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Local runs"
-                  },
-                  {
-                    "field": "failure-summary",
-                    "type": "nominal",
-                    "title": "Failure rate",
-                    "filter": false
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "Local AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "status",
-                    "type": "nominal",
-                    "title": "Status",
-                    "display": "status"
-                  }
-                ],
-                "href": {
-                  "field": "repository-link",
-                  "type": "nominal"
-                }
-              }
+              "$ref": "./views/repositories/repositories-activity.json"
             }
           ]
         }
@@ -844,180 +247,19 @@
         },
         "views": [
           {
-            "id": "repository-workflow-aic",
-            "title": "Top workflows by AIC",
-            "description": "The five workflows with the highest measured AI Credit totals in this repository.",
-            "data": {
-              "source": "repository-workflow-usage",
-              "route-field": "repository",
-              "limit": 5,
-              "order-by": [
-                {
-                  "field": "total-aic",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "encoding": {
-              "x": {
-                "field": "workflow",
-                "type": "nominal",
-                "format": "workflow-relative-path",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "as": "total-aic",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "third"
+            "$ref": "./views/repository-detail/repository-workflow-aic.json"
           },
           {
-            "id": "repository-run-health",
-            "title": "Repository run health trend",
-            "description": "Daily run conclusions are the leading execution-health signal for this repository.",
-            "data": {
-              "source": "runs",
-              "route-field": "repository",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "started-at",
-                "type": "temporal",
-                "time-unit": "day"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count"
-              },
-              "color": {
-                "field": "run-conclusion",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/repository-detail/repository-run-health.json"
           },
           {
-            "id": "repository-workflow-count",
-            "title": "Authored Agentic Workflows",
-            "description": "One canonical identity per authored .github/workflows/*.md source.",
-            "data": {
-              "source": "repository-detail-summary",
-              "route-field": "repository"
-            },
-            "mark": "metric",
-            "encoding": {
-              "value": {
-                "field": "workflows",
-                "type": "quantitative"
-              },
-              "href": {
-                "field": "external-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "third"
+            "$ref": "./views/repository-detail/repository-workflow-count.json"
           },
           {
-            "id": "repository-workflow-status",
-            "title": "Workflow registration status",
-            "description": "Current GitHub Actions registration state for authored workflows.",
-            "data": {
-              "source": "repository-workflow-status",
-              "route-field": "repository"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "workflows",
-                "type": "quantitative",
-                "title": "Workflows"
-              }
-            },
-            "layout": "half"
+            "$ref": "./views/repository-detail/repository-workflow-status.json"
           },
           {
-            "id": "repository-authored-workflows",
-            "disclosure-label": "Agentic workflows",
-            "disclosure": "supplemental",
-            "description": "Authored workflows with managed-package membership shown as data.",
-            "data": {
-              "source": "repository-workflows",
-              "route-field": "repository"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No authored Agentic Workflows were observed for this repository.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "workflow-role",
-                  "type": "nominal",
-                  "title": "Role"
-                },
-                {
-                  "field": "package-name",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "workflow-active",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "active-state"
-                },
-                {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "title": "AIC",
-                  "unit": "aic"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Updated"
-                }
-              ],
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "full"
+            "$ref": "./views/repository-detail/repository-authored-workflows.json"
           }
         ]
       },
@@ -1033,89 +275,13 @@
         },
         "views": [
           {
-            "id": "workflow-report-status",
-            "title": "Report status",
-            "description": "The disposition of durable outputs is the leading outcome signal for this workflow.",
-            "data": {
-              "source": "workflow-reports",
-              "route-field": "workflow-route"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "outcome-status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "safe-output",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Reports"
-              }
-            }
+            "$ref": "./views/workflow-detail/workflow-report-status.json"
           },
           {
-            "id": "workflow-reports-route",
-            "title": "Workflow reports",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "workflow-route-page",
-            "config": {
-              "body": "reports"
-            },
-            "layout": "full"
+            "$ref": "./views/workflow-detail/workflow-reports-route.json"
           },
           {
-            "id": "workflow-report-table",
-            "disclosure-label": "Reports",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "workflow-reports",
-              "route-field": "workflow-route"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No reports have been attributed to this workflow.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "outcome-title",
-                  "type": "nominal",
-                  "title": "Report",
-                  "display": "outcome-link"
-                },
-                {
-                  "field": "outcome-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "outcome-category",
-                  "type": "nominal",
-                  "title": "Type"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Updated"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/workflow-detail/workflow-report-table.json"
           }
         ]
       },
@@ -1131,177 +297,16 @@
         },
         "views": [
           {
-            "id": "workflow-run-health",
-            "title": "Run health trend",
-            "description": "Daily conclusions show this workflow's execution health at a glance.",
-            "data": {
-              "source": "workflow-runs",
-              "route-field": "workflow-route"
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "started-at",
-                "type": "temporal",
-                "time-unit": "day"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count"
-              },
-              "color": {
-                "field": "run-conclusion",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/workflow-runs/workflow-run-health.json"
           },
           {
-            "id": "workflow-runs-route",
-            "title": "Workflow runs",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "workflow-route-page",
-            "config": {
-              "body": "runs"
-            },
-            "layout": "full"
+            "$ref": "./views/workflow-runs/workflow-runs-route.json"
           },
           {
-            "id": "workflow-runs-table",
-            "disclosure-label": "Runs",
-            "description": "Answers which recent workflow runs succeeded, failed, or remain in progress.",
-            "data": {
-              "source": "workflow-runs",
-              "route-field": "workflow-route"
-            },
-            "mark": "table",
-            "disclosure": "supplemental",
-            "controls": "static",
-            "empty-message": "No runs have been observed for this workflow.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                },
-                {
-                  "field": "run-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "run-conclusion",
-                  "type": "nominal",
-                  "title": "Conclusion",
-                  "display": "status"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "full"
+            "$ref": "./views/workflow-runs/workflow-runs-table.json"
           },
           {
-            "id": "workflow-run-details",
-            "disclosure-label": "Run details",
-            "description": "Supplemental metadata for deeper evidence review after the run-status table answers the current state.",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "workflow-runs",
-              "route-field": "workflow-route"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No runs have been observed for this workflow.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                },
-                {
-                  "field": "run-title",
-                  "type": "nominal",
-                  "title": "Title"
-                },
-                {
-                  "field": "event",
-                  "type": "nominal",
-                  "title": "Trigger"
-                },
-                {
-                  "field": "engine",
-                  "type": "nominal",
-                  "title": "Engine"
-                },
-                {
-                  "field": "requested-model",
-                  "type": "nominal",
-                  "title": "Requested model"
-                },
-                {
-                  "field": "resolved-model",
-                  "type": "nominal",
-                  "title": "Resolved model"
-                },
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                },
-                {
-                  "field": "ended-at",
-                  "type": "temporal",
-                  "title": "Ended"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Investigate this failed workflow run.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "run",
-                    "run-title",
-                    "repository",
-                    "workflow",
-                    "run-conclusion",
-                    "failure-job",
-                    "failure-message",
-                    "failure-step",
-                    "run-link"
-                  ],
-                  "when": {
-                    "field": "run-conclusion",
-                    "equals": "failure"
-                  }
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "full"
+            "$ref": "./views/workflow-runs/workflow-run-details.json"
           }
         ]
       },
@@ -1317,57 +322,10 @@
         },
         "views": [
           {
-            "id": "workflow-runtime-health",
-            "title": "Runtime health trend",
-            "description": "Daily conclusions provide the leading runtime signal for this workflow.",
-            "data": {
-              "source": "workflow-runs",
-              "route-field": "workflow-route",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "swimlane",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "started-at",
-                "type": "temporal",
-                "title": "Started"
-              },
-              "y": {
-                "field": "run-conclusion",
-                "type": "ordinal",
-                "title": "Conclusion"
-              },
-              "color": {
-                "field": "run-conclusion",
-                "type": "nominal"
-              },
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/workflow-runtime/workflow-runtime-health.json"
           },
           {
-            "id": "workflow-runtime-route",
-            "title": "Workflow runtime",
-            "data": {
-              "sources": [
-                "workflows",
-                "runs",
-                "usage",
-                "operational-values"
-              ]
-            },
-            "mark": "element",
-            "element": "workflow-route-page",
-            "config": {
-              "body": "insights"
-            },
-            "layout": "full"
+            "$ref": "./views/workflow-runtime/workflow-runtime-route.json"
           }
         ]
       },
@@ -1383,76 +341,16 @@
         },
         "views": [
           {
-            "id": "outcome-disposition",
-            "title": "Outcome disposition",
-            "description": "The current disposition is the leading signal for this retained outcome.",
-            "data": {
-              "source": "outcomes",
-              "route-field": "safe-output"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "outcome-state",
-                "type": "nominal",
-                "title": "Disposition"
-              },
-              "y": {
-                "field": "safe-output",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Outcomes"
-              }
-            }
+            "$ref": "./views/outcome-detail/outcome-disposition.json"
           },
           {
-            "id": "outcome-record",
-            "title": "Outcome",
-            "description": "Rendered from reusable discussion and metadata sections bound to the selected outcome.",
-            "title-link": {
-              "href-field": "external-link",
-              "identifier-field": "outcome-number"
-            },
-            "mark": "element",
-            "element": "outcome-detail",
-            "data": {
-              "sources": [
-                "outcomes"
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/outcome-detail/outcome-record.json"
           },
           {
-            "id": "outcome-discussion",
-            "title": "Outcome discussion",
-            "data": {
-              "sources": [
-                "outcomes"
-              ]
-            },
-            "mark": "element",
-            "element": "outcome-detail-section",
-            "config": {
-              "body": "discussion"
-            },
-            "layout": "full"
+            "$ref": "./views/outcome-detail/outcome-discussion.json"
           },
           {
-            "id": "outcome-metadata",
-            "title": "Outcome metadata",
-            "data": {
-              "sources": [
-                "outcomes"
-              ]
-            },
-            "mark": "element",
-            "element": "outcome-detail-section",
-            "config": {
-              "body": "metadata"
-            },
-            "layout": "full"
+            "$ref": "./views/outcome-detail/outcome-metadata.json"
           }
         ],
         "sections": [
@@ -1485,67 +383,7 @@
           },
           "views": [
             {
-              "id": "packages-inventory",
-              "title": "Packages",
-              "description": "Centrally managed package inventory and observed execution totals.",
-              "data": {
-                "source": "package-inventory"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "column-summaries": true,
-              "layout": "full-view",
-              "empty-message": "No packages discovered.",
-              "encoding": {
-                "href": {
-                  "field": "package-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "package-name",
-                    "type": "nominal",
-                    "title": "Package"
-                  },
-                  {
-                    "field": "workflows",
-                    "type": "quantitative",
-                    "title": "Workflows"
-                  },
-                  {
-                    "field": "repositories",
-                    "type": "quantitative",
-                    "title": "Control repositories"
-                  },
-                  {
-                    "field": "roles",
-                    "type": "nominal",
-                    "title": "Roles"
-                  },
-                  {
-                    "field": "modes",
-                    "type": "nominal",
-                    "title": "Modes"
-                  },
-                  {
-                    "field": "registration",
-                    "type": "nominal",
-                    "title": "Registration"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Runs"
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
-                  }
-                ]
-              }
+              "$ref": "./views/packages/packages-inventory.json"
             }
           ]
         }
@@ -1562,50 +400,10 @@
         },
         "views": [
           {
-            "id": "package-insights-by-workflow",
-            "title": "AI Credit usage by workflow",
-            "description": "Measured workflow allocation highlights the package's dominant operating activity.",
-            "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "workflow-name",
-                "type": "nominal",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/package-insights/package-insights-by-workflow.json"
           },
           {
-            "id": "package-operational-value",
-            "title": "Package operational value",
-            "data": {
-              "sources": [
-                "workflows",
-                "operational-values"
-              ]
-            },
-            "mark": "element",
-            "element": "package-route",
-            "layout": "full",
-            "config": {
-              "body": "insights"
-            }
+            "$ref": "./views/package-insights/package-operational-value.json"
           }
         ]
       },
@@ -1621,75 +419,10 @@
         },
         "views": [
           {
-            "id": "package-workflow-navigation",
-            "title": "Package workflows",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "package-route",
-            "layout": "full",
-            "config": {
-              "body": "workflows"
-            }
+            "$ref": "./views/package-detail/package-workflow-navigation.json"
           },
           {
-            "id": "package-workflow-table",
-            "disclosure-label": "Orchestrator and workers",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "packaged-workflows",
-              "route-field": "package"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No orchestrator or worker workflows are configured for this package.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "workflow-role",
-                  "type": "ordinal",
-                  "title": "Role",
-                  "display": "label"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Definition"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "workflow-active",
-                  "type": "nominal",
-                  "title": "Registration",
-                  "display": "active-state"
-                },
-                {
-                  "field": "runs",
-                  "type": "quantitative",
-                  "title": "Runs"
-                },
-                {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/package-detail/package-workflow-table.json"
           }
         ]
       },
@@ -1705,214 +438,19 @@
         },
         "views": [
           {
-            "id": "package-dispatch-status",
-            "title": "Dispatch status",
-            "description": "Activated and guarded dispatches provide the package's leading activation signal.",
-            "data": {
-              "source": "dispatches",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "started-at",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Dispatches"
-              }
-            }
+            "$ref": "./views/package-dispatches/package-dispatch-status.json"
           },
           {
-            "id": "package-dispatch-navigation",
-            "title": "Package dispatches",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "package-route",
-            "layout": "full",
-            "config": {
-              "body": "dispatches"
-            }
+            "$ref": "./views/package-dispatches/package-dispatch-navigation.json"
           },
           {
-            "id": "package-failure-reason-distribution",
-            "title": "Why these dispatches failed",
-            "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",
-            "data": {
-              "source": "dispatches",
-              "route-field": "package",
-              "filters": {
-                "status": [
-                  "failure",
-                  "startup-failure",
-                  "timed-out",
-                  "stale"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "count-status-detail",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "encoding": {
-              "x": {
-                "field": "status-detail",
-                "type": "nominal",
-                "title": "Failure reason"
-              },
-              "y": {
-                "field": "status-detail",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Failed dispatches"
-              }
-            },
-            "layout": "full"
+            "$ref": "./views/package-dispatches/package-failure-reason-distribution.json"
           },
           {
-            "id": "package-failed-dispatch-table",
-            "disclosure-label": "Failed dispatches",
-            "description": "Failure reasons first. Open a reason for the GitHub Actions run, or copy a debug prompt with retained context.",
-            "data": {
-              "source": "dispatches",
-              "route-field": "package",
-              "filters": {
-                "status": [
-                  "failure",
-                  "startup-failure",
-                  "timed-out",
-                  "stale"
-                ]
-              }
-            },
-            "mark": "table",
-            "disclosure": "supplemental",
-            "controls": "interactive",
-            "empty-message": "No failed workflow dispatch runs were observed for this package in the current run window.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "status-detail",
-                  "type": "nominal",
-                  "title": "Why"
-                },
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "run-title",
-                  "type": "nominal",
-                  "title": "Run title"
-                },
-                {
-                  "field": "runtime-repository",
-                  "type": "nominal",
-                  "title": "Runtime repository"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Debug this failed workflow dispatch. Explain the retained failure reason, verify it against the linked GitHub Actions run, and propose the safest next action.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Review debug prompt",
-                  "context": [
-                    "package",
-                    "status",
-                    "status-detail",
-                    "started-at",
-                    "workflow-name",
-                    "run-title",
-                    "runtime-repository",
-                    "run-link"
-                  ]
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/package-dispatches/package-failed-dispatch-table.json"
           },
           {
-            "id": "package-dispatch-table",
-            "disclosure-label": "All dispatches",
-            "disclosure": "supplemental",
-            "description": "Workflow dispatch runs attributed to this package, ordered newest first.",
-            "data": {
-              "source": "dispatches",
-              "route-field": "package"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No workflow dispatch runs were observed for this package in the current run window.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                },
-                {
-                  "field": "dispatch-type",
-                  "type": "nominal",
-                  "title": "Type"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "run-title",
-                  "type": "nominal",
-                  "title": "Run title"
-                },
-                {
-                  "field": "runtime-repository",
-                  "type": "nominal",
-                  "title": "Runtime repository"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "status-detail",
-                  "type": "nominal",
-                  "title": "Why"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/package-dispatches/package-dispatch-table.json"
           }
         ]
       },
@@ -1928,89 +466,13 @@
         },
         "views": [
           {
-            "id": "package-report-status",
-            "title": "Report status",
-            "description": "The disposition of durable outputs is the leading outcome signal for this package.",
-            "data": {
-              "source": "package-reports",
-              "route-field": "package"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "outcome-status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "safe-output",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Reports"
-              }
-            }
+            "$ref": "./views/package-reports/package-report-status.json"
           },
           {
-            "id": "package-report-navigation",
-            "title": "Package reports",
-            "data": {
-              "sources": [
-                "workflows"
-              ]
-            },
-            "mark": "element",
-            "element": "package-route",
-            "layout": "full",
-            "config": {
-              "body": "reports"
-            }
+            "$ref": "./views/package-reports/package-report-navigation.json"
           },
           {
-            "id": "package-report-table",
-            "disclosure-label": "Reports",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "package-reports",
-              "route-field": "package"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No reports have been attributed to this package.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "outcome-title",
-                  "type": "nominal",
-                  "title": "Report",
-                  "display": "outcome-link"
-                },
-                {
-                  "field": "outcome-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "outcome-category",
-                  "type": "nominal",
-                  "title": "Type"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Updated"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/package-reports/package-report-table.json"
           }
         ]
       },
@@ -2029,76 +491,7 @@
           },
           "views": [
             {
-              "id": "workflows-inventory",
-              "title": "Workflows",
-              "description": "Central package and repository-owned workflow inventory with observed execution totals.",
-              "data": {
-                "source": "workflow-inventory",
-                "order-by": [
-                  {
-                    "field": "repository",
-                    "direction": "asc"
-                  }
-                ]
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "column-summaries": true,
-              "layout": "full-view",
-              "empty-message": "No workflows observed.",
-              "encoding": {
-                "href": {
-                  "field": "package-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "package-name",
-                    "type": "nominal",
-                    "title": "Package"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Control repository"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal",
-                    "format": "workflow-relative-path",
-                    "title": "Workflow"
-                  },
-                  {
-                    "field": "workflow-role",
-                    "type": "nominal",
-                    "title": "Role"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "title": "Mode",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "workflow-active",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "runs",
-                    "type": "quantitative",
-                    "title": "Runs"
-                  }
-                ]
-              }
+              "$ref": "./views/workflows/workflows-inventory.json"
             }
           ]
         }
@@ -2113,65 +506,7 @@
         "description": "Execution failures, approval gates, and exact control-plane episode evidence.",
         "views": [
           {
-            "id": "runtime-execution-episodes",
-            "description": "Dispatch manifests are not retained, so attribution is partial by construction.",
-            "data": {
-              "source": "runtime-episodes"
-            },
-            "mark": "table",
-            "layout": "full-view",
-            "empty-message": "No orchestrator runs were observed in the current run window.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                },
-                {
-                  "field": "package",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                },
-                {
-                  "field": "duration",
-                  "type": "nominal",
-                  "title": "Duration"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Result",
-                  "display": "status"
-                },
-                {
-                  "field": "control-transition",
-                  "type": "nominal",
-                  "title": "Control transition"
-                },
-                {
-                  "field": "attribution",
-                  "type": "nominal",
-                  "title": "Evidence"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            },
-            "controls": "interactive",
-            "lazy-list": true
+            "$ref": "./views/runtime/runtime-execution-episodes.json"
           }
         ]
       },
@@ -2185,90 +520,7 @@
         "description": "Workflow and job duration distributions across runners, sandbox runtimes, agent engines, and models.",
         "views": [
           {
-            "id": "job-performance-records",
-            "title": "Job performance",
-            "description": "Observed job duration, execution state, runner, engine, and model evidence.",
-            "data": {
-              "source": "job-performance",
-              "order-by": [
-                {
-                  "field": "started-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "column-summaries": true,
-            "layout": "full-view",
-            "empty-message": "No job performance data was observed in the selected horizon.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "job",
-                  "type": "nominal",
-                  "title": "Job"
-                },
-                {
-                  "field": "job-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "job-conclusion",
-                  "type": "nominal",
-                  "title": "Conclusion",
-                  "display": "status"
-                },
-                {
-                  "field": "job-duration-seconds",
-                  "type": "quantitative",
-                  "title": "Duration",
-                  "unit": "human-duration"
-                },
-                {
-                  "field": "runner",
-                  "type": "nominal",
-                  "title": "Runner"
-                },
-                {
-                  "field": "sandbox-runtime",
-                  "type": "nominal",
-                  "title": "Sandbox runtime"
-                },
-                {
-                  "field": "engine",
-                  "type": "nominal",
-                  "title": "Engine"
-                },
-                {
-                  "field": "model",
-                  "type": "nominal",
-                  "title": "Model"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                }
-              ]
-            }
+            "$ref": "./views/performance/job-performance-records.json"
           }
         ]
       },
@@ -2286,77 +538,7 @@
           },
           "views": [
             {
-              "id": "runs-runs-source",
-              "title": "Runs",
-              "description": "Observed workflow runs across the configured repository scope.",
-              "data": {
-                "source": "runs"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "column-summaries": true,
-              "layout": "full-view",
-              "empty-message": "No runs observed.",
-              "encoding": {
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "run",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run-status",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "run-conclusion",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "organization",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "engine",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "engine-version",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "resolved-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "started-at",
-                    "type": "temporal"
-                  }
-                ]
-              }
+              "$ref": "./views/runs/runs-runs-source.json"
             }
           ]
         }
@@ -2371,74 +553,7 @@
         "description": "Safe-output volume, diagnostic signals, and per-run delivery performance.",
         "views": [
           {
-            "id": "safe-output-diagnostics",
-            "description": "Run-level evidence for delivered outputs and explicit noop, missing_data, missing_tool, or report_incomplete signals.",
-            "data": {
-              "source": "safe-output-performance",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No safe-output activity was reported in the selected horizon.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "safe-output-kind",
-                  "type": "nominal",
-                  "title": "Signal"
-                },
-                {
-                  "field": "safe-output-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "safe-output-count",
-                  "type": "quantitative",
-                  "title": "Items"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "run-conclusion",
-                  "type": "nominal",
-                  "title": "Conclusion",
-                  "display": "status"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "full-view",
-            "lazy-list": true
+            "$ref": "./views/safe-outputs/safe-output-diagnostics.json"
           }
         ]
       },
@@ -2451,110 +566,7 @@
         "description": "Detection job results and threat-detection verdicts for each observed workflow run.",
         "views": [
           {
-            "id": "detection-results",
-            "title": "Detection results",
-            "description": "Detection job execution and threat-detection verdicts remain joined to their authoritative workflow run.",
-            "data": {
-              "source": "detection-observations",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "lazy-list": true,
-            "column-summaries": true,
-            "empty-message": "No detection results were observed in the current run window.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "detection-state",
-                  "type": "nominal",
-                  "title": "Threat detection",
-                  "display": "status"
-                },
-                {
-                  "field": "detection-signal",
-                  "type": "nominal",
-                  "title": "Threat detection result"
-                },
-                {
-                  "field": "inspection-warning",
-                  "type": "nominal",
-                  "title": "Inspection warning"
-                },
-                {
-                  "field": "job-status",
-                  "type": "nominal",
-                  "title": "Job status",
-                  "display": "status"
-                },
-                {
-                  "field": "job-conclusion",
-                  "type": "nominal",
-                  "title": "Job conclusion",
-                  "display": "status"
-                },
-                {
-                  "field": "job-duration-seconds",
-                  "type": "quantitative",
-                  "title": "Duration",
-                  "unit": "human-duration"
-                },
-                {
-                  "field": "runner",
-                  "type": "nominal",
-                  "title": "Runner"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                }
-              ],
-              "actions": [
-                {
-                  "intent": "Investigate this detection result using the linked GitHub Actions run as authoritative evidence.",
-                  "presentation": "copy-prompt",
-                  "icon": "search",
-                  "label": "Investigate",
-                  "context": [
-                    "repository",
-                    "workflow",
-                    "run",
-                    "detection-state",
-                    "detection-signal",
-                    "inspection-warning",
-                    "job-status",
-                    "job-conclusion",
-                    "run-link"
-                  ]
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/detection/detection-results.json"
           }
         ]
       },
@@ -2567,65 +579,7 @@
         "description": "Workflow dispatch events retained from configured repositories.",
         "views": [
           {
-            "id": "package-worker-dispatches",
-            "description": "Runs whose authoritative GitHub Actions trigger is workflow_dispatch, ordered newest first.",
-            "data": {
-              "source": "dispatches"
-            },
-            "mark": "table",
-            "empty-message": "No workflow dispatch events were observed in the current run window.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Started"
-                },
-                {
-                  "field": "dispatch-type",
-                  "type": "nominal",
-                  "title": "Type"
-                },
-                {
-                  "field": "package-name",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "run-title",
-                  "type": "nominal",
-                  "title": "Run title"
-                },
-                {
-                  "field": "runtime-repository",
-                  "type": "nominal",
-                  "title": "Runtime repository"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "status-detail",
-                  "type": "nominal",
-                  "title": "Why"
-                }
-              ]
-            },
-            "layout": "full-view",
-            "controls": "interactive",
-            "lazy-list": true
+            "$ref": "./views/dispatches/package-worker-dispatches.json"
           }
         ]
       },
@@ -2646,73 +600,7 @@
           },
           "views": [
             {
-              "id": "experiments-list",
-              "title": "Experiments",
-              "description": "Experiment readiness, evidence, and decisions without treating workflow execution success as experiment success.",
-              "data": {
-                "source": "experiments"
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "lazy-list": true,
-              "layout": "full-view",
-              "empty-message": "No experiments configured.",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "experiment",
-                    "type": "nominal",
-                    "title": "Experiment"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal",
-                    "title": "Workflow / agent"
-                  },
-                  {
-                    "field": "control-variant",
-                    "type": "nominal",
-                    "title": "Control"
-                  },
-                  {
-                    "field": "candidate-variant",
-                    "type": "nominal",
-                    "title": "Candidate"
-                  },
-                  {
-                    "field": "primary-metric",
-                    "type": "nominal",
-                    "title": "Primary metric"
-                  },
-                  {
-                    "field": "normalized-effect",
-                    "type": "quantitative",
-                    "title": "Normalized effect"
-                  },
-                  {
-                    "field": "evidence-strength",
-                    "type": "ordinal",
-                    "title": "Evidence"
-                  },
-                  {
-                    "field": "readiness",
-                    "type": "ordinal",
-                    "title": "Readiness",
-                    "display": "status"
-                  },
-                  {
-                    "field": "decision",
-                    "type": "ordinal",
-                    "title": "Decision",
-                    "display": "status"
-                  },
-                  {
-                    "field": "last-observation",
-                    "type": "temporal",
-                    "title": "Last observation"
-                  }
-                ]
-              }
+              "$ref": "./views/experiments/experiments-list.json"
             }
           ]
         }
@@ -2731,83 +619,13 @@
           },
           "views": [
             {
-              "id": "grader-observation-trend",
-              "title": "Grader observation trend",
-              "description": "Mean grader values over time reveal whether assessed quality is improving.",
-              "data": {
-                "source": "grader-observations",
-                "time": {
-                  "range": "30d"
-                }
-              },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "value",
-                  "type": "quantitative",
-                  "aggregate": "mean"
-                },
-                "color": {
-                  "field": "grader",
-                  "type": "nominal"
-                }
-              }
+              "$ref": "./views/graders/grader-observation-trend.json"
             },
             {
-              "id": "graders-graders-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "graders"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "grader",
-                    "type": "nominal"
-                  }
-                ]
-              }
+              "$ref": "./views/graders/graders-graders-source.json"
             },
             {
-              "id": "graders-observations-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "grader-observations"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "grader",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "value",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "status",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal"
-                  }
-                ]
-              }
+              "$ref": "./views/graders/graders-observations-source.json"
             }
           ]
         }
@@ -2826,81 +644,13 @@
           },
           "views": [
             {
-              "id": "eval-results",
-              "title": "Evaluation results",
-              "description": "The result distribution surfaces the leading evaluation-quality signal.",
-              "data": {
-                "source": "eval-observations"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "eval-result",
-                  "type": "nominal",
-                  "title": "Result"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count",
-                  "title": "Evaluations"
-                }
-              }
+              "$ref": "./views/evals/eval-results.json"
             },
             {
-              "id": "evals-evals-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "evals"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "eval",
-                    "type": "nominal"
-                  }
-                ]
-              }
+              "$ref": "./views/evals/evals-evals-source.json"
             },
             {
-              "id": "evals-observations-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "eval-observations"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "eval",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "eval-result",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "resolved-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal"
-                  }
-                ]
-              }
+              "$ref": "./views/evals/evals-observations-source.json"
             }
           ]
         }
@@ -2919,107 +669,10 @@
           },
           "views": [
             {
-              "id": "usage-by-model",
-              "title": "AI Credit usage by model",
-              "description": "Measured AI Credit allocation identifies the models driving agent consumption.",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "resolved-model",
-                  "type": "nominal",
-                  "title": "Resolved model"
-                },
-                "y": {
-                  "field": "aic",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "title": "Total AIC",
-                  "unit": "aic"
-                }
-              }
+              "$ref": "./views/usage/usage-by-model.json"
             },
             {
-              "id": "usage-usage-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "usage"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "input-tokens",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "output-tokens",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "cache-read-tokens",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "cache-write-tokens",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "reasoning-tokens",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "estimated-usd",
-                    "type": "quantitative"
-                  },
-                  {
-                    "field": "engine",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "engine-version",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "resolved-model",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "organization",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal"
-                  }
-                ]
-              }
+              "$ref": "./views/usage/usage-usage-source.json"
             }
           ]
         }
@@ -3030,81 +683,10 @@
         "title": "Engines Models",
         "icon": "sparkles-fill",
         "views": [
-            {
-              "id": "engines-models-usage",
-              "title": "Engines and models",
-              "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
-              "data": {
-                "source": "usage",
-                "order-by": [
-                  {
-                    "field": "observed-at",
-                    "direction": "desc"
-                  }
-                ]
-              },
-              "mark": "table",
-              "controls": "interactive",
-              "empty-message": "No engine or model usage metadata is available.",
-              "layout": "full-view",
-              "encoding": {
-                "href": {
-                  "field": "run-link",
-                  "type": "nominal"
-                },
-                "columns": [
-                  {
-                    "field": "engine",
-                    "type": "nominal",
-                    "title": "Agentic engine"
-                  },
-                  {
-                    "field": "engine-version",
-                    "type": "nominal",
-                    "title": "Engine version"
-                  },
-                  {
-                    "field": "requested-model",
-                    "type": "nominal",
-                    "title": "Requested model"
-                  },
-                  {
-                    "field": "resolved-model",
-                    "type": "nominal",
-                    "title": "Resolved model"
-                  },
-                  {
-                    "field": "rollout-mode",
-                    "type": "nominal",
-                    "title": "Mode",
-                    "display": "mode"
-                  },
-                  {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal",
-                    "title": "Repository"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal",
-                    "title": "Workflow"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal",
-                    "title": "Observed"
-                  }
-                ]
-              },
-              "lazy-list": true
-            }
-          ],
+          {
+            "$ref": "./views/engines-models/engines-models-usage.json"
+          }
+        ],
         "navigation-label": "Models & agents",
         "description": "Compare observed AI Credit allocation by model and agentic engine/version where usage telemetry provides that metadata."
       },
@@ -3118,65 +700,7 @@
         "description": "Outcome, grader, maturity, AI Credit, and experiment-readiness evidence for the configured repositories.",
         "views": [
           {
-            "id": "operational-value-ledger",
-            "data": {
-              "source": "grader-observations"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No operational-value grader records were retained.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "grader",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "display": "grader-status",
-                  "title": "Status"
-                },
-                {
-                  "field": "maturity-status",
-                  "type": "nominal",
-                  "display": "label",
-                  "title": "Maturity"
-                },
-                {
-                  "field": "value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Value"
-                },
-                {
-                  "field": "baseline-value",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Baseline"
-                },
-                {
-                  "field": "delta-from-baseline",
-                  "type": "quantitative",
-                  "unit": "grade",
-                  "title": "Delta"
-                },
-                {
-                  "field": "evaluator-digest",
-                  "type": "nominal",
-                  "display": "digest",
-                  "title": "Evaluator"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ]
-            },
-            "lazy-list": true
+            "$ref": "./views/operational-value/operational-value-ledger.json"
           }
         ]
       },
@@ -3194,87 +718,10 @@
           },
           "views": [
             {
-              "id": "findings-by-severity",
-              "title": "Findings by severity",
-              "description": "The severity distribution surfaces the most urgent retained findings.",
-              "data": {
-                "source": "findings"
-              },
-              "mark": "chart",
-              "chart": "pie",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "finding-severity",
-                  "type": "ordinal",
-                  "title": "Severity"
-                },
-                "y": {
-                  "field": "finding",
-                  "type": "quantitative",
-                  "aggregate": "count",
-                  "title": "Findings"
-                }
-              }
+              "$ref": "./views/findings/findings-by-severity.json"
             },
             {
-              "id": "findings-source",
-              "disclosure": "supplemental",
-              "data": {
-                "source": "findings"
-              },
-              "mark": "table",
-              "encoding": {
-                "columns": [
-                  {
-                    "field": "finding-summary",
-                    "type": "nominal",
-                    "display": "outcome-link"
-                  },
-                  {
-                    "field": "finding-severity",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "finding-status",
-                    "type": "nominal",
-                    "display": "status"
-                  },
-                  {
-                    "field": "organization",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "repository",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "workflow",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "observed-at",
-                    "type": "temporal"
-                  },
-                  {
-                    "field": "issue-link",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "pull-request-link",
-                    "type": "nominal"
-                  },
-                  {
-                    "field": "run-link",
-                    "type": "nominal"
-                  }
-                ],
-                "href": {
-                  "field": "issue-link",
-                  "type": "nominal"
-                }
-              }
+              "$ref": "./views/findings/findings-source.json"
             }
           ]
         }
@@ -3289,69 +736,7 @@
         "class-name": "data-health-page",
         "views": [
           {
-            "id": "data-health-sources",
-            "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
-            "data": {
-              "source": "data-health-sources"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No cached data sources available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "fields",
-                  "type": "quantitative",
-                  "title": "Fields"
-                },
-                {
-                  "field": "field-coverage",
-                  "type": "nominal",
-                  "title": "Fields populated"
-                },
-                {
-                  "field": "cell-coverage",
-                  "type": "nominal",
-                  "title": "Cells populated"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Confidence",
-                  "display": "status"
-                },
-                {
-                  "field": "availability",
-                  "type": "nominal",
-                  "title": "Availability",
-                  "display": "status"
-                },
-                {
-                  "field": "completeness",
-                  "type": "nominal",
-                  "title": "Completeness",
-                  "display": "status"
-                },
-                {
-                  "field": "freshness",
-                  "type": "nominal",
-                  "title": "Freshness",
-                  "display": "status"
-                }
-              ]
-            },
-            "layout": "full-view",
-            "lazy-list": true
+            "$ref": "./views/data-health/data-health-sources.json"
           }
         ]
       },
@@ -3366,157 +751,16 @@
         },
         "views": [
           {
-            "id": "coverage-by-organization",
-            "title": "Repository coverage by organization",
-            "description": "The discovered repository distribution makes scope concentration visible at a glance.",
-            "data": {
-              "source": "repositories"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "organization",
-                "type": "nominal",
-                "title": "Organization"
-              },
-              "y": {
-                "field": "repository",
-                "type": "quantitative",
-                "aggregate": "count",
-                "title": "Repositories"
-              },
-              "href": {
-                "field": "organization-link",
-                "type": "nominal"
-              }
-            }
+            "$ref": "./views/coverage/coverage-by-organization.json"
           },
           {
-            "id": "coverage-summary",
-            "title": "Canonical coverage",
-            "description": "Expected-versus-observed coverage is derived once by Data Health.",
-            "data": {
-              "source": "data-health-coverage"
-            },
-            "mark": "table",
-            "controls": "static",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "area",
-                  "type": "nominal",
-                  "title": "Evidence area"
-                },
-                {
-                  "field": "expected",
-                  "type": "nominal",
-                  "title": "Expected"
-                },
-                {
-                  "field": "observed",
-                  "type": "nominal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "missing",
-                  "type": "nominal",
-                  "title": "Missing"
-                },
-                {
-                  "field": "coverage-percent",
-                  "type": "nominal",
-                  "title": "Coverage"
-                },
-                {
-                  "field": "state",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/coverage/coverage-summary.json"
           },
           {
-            "id": "coverage-diagnostics",
-            "disclosure-label": "Coverage diagnostics",
-            "disclosure": "supplemental",
-            "description": "Collection gaps consume the same evidence used by Data Health confidence.",
-            "data": {
-              "source": "data-health-collections"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No reporting coverage gaps detected.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Collection"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Effect"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/coverage/coverage-diagnostics.json"
           },
           {
-            "id": "coverage-technical-details",
-            "disclosure-label": "Technical collection details",
-            "description": "Raw collection diagnostics for operators who need endpoint, retry, and snapshot context.",
-            "disclosure": "supplemental",
-            "data": {
-              "source": "data-health-collections"
-            },
-            "mark": "table",
-            "controls": "static",
-            "empty-message": "No technical coverage details retained.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "operation",
-                  "type": "nominal",
-                  "title": "Collection"
-                },
-                {
-                  "field": "failure-class",
-                  "type": "nominal",
-                  "title": "Failure class"
-                },
-                {
-                  "field": "technical-detail",
-                  "type": "nominal",
-                  "title": "Technical detail"
-                },
-                {
-                  "field": "evidence-horizon",
-                  "type": "nominal",
-                  "title": "Evidence horizon"
-                },
-                {
-                  "field": "provenance",
-                  "type": "nominal",
-                  "title": "Provenance"
-                },
-                {
-                  "field": "snapshot-age",
-                  "type": "nominal",
-                  "title": "Snapshot age"
-                }
-              ]
-            },
-            "layout": "full"
+            "$ref": "./views/coverage/coverage-technical-details.json"
           }
         ]
       },
@@ -3528,50 +772,7 @@
         "description": "Installed gh-aw compiler versions and whether a newer gh-aw release is available.",
         "views": [
           {
-            "id": "workflow-updates",
-            "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
-            "data": {
-              "source": "workflows"
-            },
-            "mark": "table",
-            "empty-message": "No agentic workflows observed.",
-            "encoding": {
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "gh-aw-version",
-                  "type": "nominal",
-                  "title": "Installed version"
-                },
-                {
-                  "field": "gh-aw-current-version",
-                  "type": "nominal",
-                  "title": "Current version"
-                },
-                {
-                  "field": "gh-aw-update-state",
-                  "type": "nominal",
-                  "title": "Update state",
-                  "display": "status"
-                }
-              ]
-            },
-            "layout": "full-view",
-            "controls": "interactive",
-            "lazy-list": true
+            "$ref": "./views/updates/workflow-updates.json"
           }
         ]
       },
@@ -3583,72 +784,7 @@
         "description": "Pre-activation decisions and gate behavior for control-plane orchestrators and workers.",
         "views": [
           {
-            "id": "admission-decision-ledger",
-            "description": "Latest structured pre-activation records preserve the decision, failing gate, reason, role, and run provenance.",
-            "data": {
-              "source": "admissions",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ],
-              "limit": 100
-            },
-            "mark": "table",
-            "layout": "full-view",
-            "empty-message": "No structured admission records were observed in the current run window.",
-            "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
-              "columns": [
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "package",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                {
-                  "field": "workflow-role",
-                  "type": "nominal",
-                  "title": "Role"
-                },
-                {
-                  "field": "admission-status",
-                  "type": "nominal",
-                  "title": "Decision",
-                  "display": "status"
-                },
-                {
-                  "field": "failed-check",
-                  "type": "nominal",
-                  "title": "Failed gate"
-                },
-                {
-                  "field": "admission-reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Control repository"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "title": "Run"
-                }
-              ]
-            },
-            "controls": "interactive",
-            "lazy-list": true
+            "$ref": "./views/admission/admission-decision-ledger.json"
           }
         ]
       },
@@ -3662,18 +798,7 @@
         "description": "Review and edit the entries in the checked-in .github/workflows/cao.json policy.",
         "views": [
           {
-            "id": "configuration-policy",
-            "locked": true,
-            "title": "Policy",
-            "description": "Change policy values, then copy the updated JSON for review and commit.",
-            "data": {
-              "sources": [
-                "configuration-policy"
-              ]
-            },
-            "mark": "element",
-            "element": "configuration-policy",
-            "layout": "full"
+            "$ref": "./views/configuration/configuration-policy.json"
           }
         ]
       },
@@ -3685,61 +810,7 @@
         "description": "Current report issues attributed to the worker workflows and packages that produced them.",
         "views": [
           {
-            "id": "preview-issue-ledger",
-            "description": "Open an issue to inspect its full report and workflow provenance.",
-            "data": {
-              "source": "outcomes",
-              "filters": {
-                "outcome-category": [
-                  "issue"
-                ],
-                "workflow-role": [
-                  "worker"
-                ]
-              },
-              "limit": 100
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No issues were retained in the current report.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "package",
-                  "type": "nominal",
-                  "title": "Package"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Worker"
-                },
-                {
-                  "field": "outcome-title",
-                  "type": "nominal",
-                  "title": "Issue",
-                  "display": "outcome-link"
-                },
-                {
-                  "field": "outcome-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Updated"
-                }
-              ]
-            },
-            "lazy-list": true
+            "$ref": "./views/preview/preview-issue-ledger.json"
           }
         ]
       },
@@ -3752,18 +823,7 @@
         "class-name": "dashboard-overview-page",
         "views": [
           {
-            "id": "overview-attention",
-            "locked": true,
-            "data": {
-              "sources": [
-                "runs",
-                "work-items",
-                "security-findings"
-              ]
-            },
-            "mark": "element",
-            "element": "home-attention-summary",
-            "layout": "full"
+            "$ref": "./views/overview/overview-attention.json"
           }
         ]
       },
@@ -3778,51 +838,7 @@
         },
         "views": [
           {
-            "id": "overview-failed-runs-ledger",
-            "title": "Failed run evidence",
-            "description": "Open a run on GitHub to inspect its jobs, logs, and retained evidence.",
-            "data": {
-              "source": "failed-runs",
-              "filters": {
-                "run-conclusion": [
-                  "failure",
-                  "startup-failure",
-                  "stale",
-                  "timed-out"
-                ]
-              },
-              "order-by": [
-                {
-                  "field": "started-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No failed runs were observed in the selected horizon.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "title": "Date"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "failure-detail",
-                  "type": "nominal",
-                  "title": "Error",
-                  "display": "run-link"
-                }
-              ]
-            }
+            "$ref": "./views/overview-failed-runs/overview-failed-runs-ledger.json"
           }
         ]
       },
@@ -3837,46 +853,7 @@
         },
         "views": [
           {
-            "id": "overview-blocked-work-ledger",
-            "title": "Blocked work evidence",
-            "description": "Open the latest GitHub run to resolve the admission or execution failure.",
-            "data": {
-              "source": "work-items",
-              "filters": {
-                "lifecycle-state": "blocked"
-              },
-              "order-by": [
-                {
-                  "field": "waiting-since",
-                  "direction": "asc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No blocked work was observed in the selected horizon.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "waiting-since",
-                  "type": "temporal",
-                  "title": "Date"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Blocked by",
-                  "display": "run-link"
-                }
-              ]
-            }
+            "$ref": "./views/overview-blocked-work/overview-blocked-work-ledger.json"
           }
         ]
       },
@@ -3891,46 +868,7 @@
         },
         "views": [
           {
-            "id": "overview-awaiting-review-ledger",
-            "title": "Review evidence",
-            "description": "Open the retained GitHub outcome or its run evidence to complete the review.",
-            "data": {
-              "source": "work-items",
-              "filters": {
-                "lifecycle-state": "review"
-              },
-              "order-by": [
-                {
-                  "field": "waiting-since",
-                  "direction": "asc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No work is awaiting review in the selected horizon.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "waiting-since",
-                  "type": "temporal",
-                  "title": "Date"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "objective",
-                  "type": "nominal",
-                  "title": "Work",
-                  "display": "evidence-link"
-                }
-              ]
-            }
+            "$ref": "./views/overview-awaiting-review/overview-awaiting-review-ledger.json"
           }
         ]
       },
@@ -3945,43 +883,7 @@
         },
         "views": [
           {
-            "id": "overview-security-findings-ledger",
-            "title": "Security finding evidence",
-            "description": "Open the GitHub run that produced each threat-detection finding.",
-            "data": {
-              "source": "security-findings",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No security findings were observed in the selected horizon.",
-            "layout": "full-view",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Date"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "smell-name",
-                  "type": "nominal",
-                  "title": "Finding",
-                  "display": "run-link"
-                }
-              ]
-            }
+            "$ref": "./views/overview-security-findings/overview-security-findings-ledger.json"
           }
         ]
       },
@@ -3994,21 +896,7 @@
         "description": "Plan and track delegated work by lifecycle state.",
         "views": [
           {
-            "id": "work-project-board",
-            "locked": true,
-            "title": "Board",
-            "description": "Delegated work grouped by its current lifecycle state.",
-            "data": {
-              "sources": [
-                "work-items"
-              ]
-            },
-            "mark": "element",
-            "element": "work-project-view",
-            "config": {
-              "body": "board"
-            },
-            "layout": "full"
+            "$ref": "./views/work/work-project-board.json"
           }
         ]
       },
@@ -4024,21 +912,7 @@
         },
         "views": [
           {
-            "id": "work-project-tasks",
-            "locked": true,
-            "title": "Table",
-            "description": "A structured record list with owners, repositories, lifecycle state, and runtime windows.",
-            "data": {
-              "sources": [
-                "work-items"
-              ]
-            },
-            "mark": "element",
-            "element": "work-project-view",
-            "config": {
-              "body": "tasks"
-            },
-            "layout": "full"
+            "$ref": "./views/work-tasks/work-project-tasks.json"
           }
         ]
       },
@@ -4054,21 +928,7 @@
         },
         "views": [
           {
-            "id": "work-project-roadmap",
-            "locked": true,
-            "title": "Roadmap",
-            "description": "Start dates, durations, owners, and completion points aligned on one calendar.",
-            "data": {
-              "sources": [
-                "work-items"
-              ]
-            },
-            "mark": "element",
-            "element": "work-project-view",
-            "config": {
-              "body": "roadmap"
-            },
-            "layout": "full"
+            "$ref": "./views/work-roadmap/work-project-roadmap.json"
           }
         ]
       },
@@ -4082,21 +942,7 @@
         "description": "Browse operation packages, standalone workflows, and their runtime health.",
         "views": [
           {
-            "id": "agents-marketplace",
-            "locked": true,
-            "title": "Operations",
-            "description": "Operation package or standalone workflow name, description, permissions, runtime, and freshness.",
-            "data": {
-              "sources": [
-                "agent-assignments",
-                "workflows",
-                "agent-smells",
-                "security-observations"
-              ]
-            },
-            "mark": "element",
-            "element": "agent-marketplace-view",
-            "layout": "full"
+            "$ref": "./views/agents/agents-marketplace.json"
           }
         ]
       },
@@ -4109,27 +955,7 @@
         "description": "Longer-horizon outcomes, operational value, measured resource use, and capacity without unsupported causal claims.",
         "views": [
           {
-            "id": "insights-overview",
-            "locked": true,
-            "title": "Operational impact",
-            "description": "Value attainment, durable outcomes, measured AI Credit allocation, execution health, threat detection, and experiment decisions.",
-            "data": {
-              "sources": [
-                "operational-values",
-                "outcomes",
-                "usage",
-                "runs",
-                "detection-observations",
-                "experiments"
-              ],
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "element",
-            "element": "insights-overview",
-            "layout": "full",
-            "disclosure": "essential"
+            "$ref": "./views/insights/insights-overview.json"
           }
         ]
       }

@@ -1,0 +1,74 @@
+{
+  "id": "engines-models-usage",
+  "title": "Engines and models",
+  "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
+  "data": {
+    "source": "usage",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No engine or model usage metadata is available.",
+  "layout": "full-view",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "engine",
+        "type": "nominal",
+        "title": "Agentic engine"
+      },
+      {
+        "field": "engine-version",
+        "type": "nominal",
+        "title": "Engine version"
+      },
+      {
+        "field": "requested-model",
+        "type": "nominal",
+        "title": "Requested model"
+      },
+      {
+        "field": "resolved-model",
+        "type": "nominal",
+        "title": "Resolved model"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "aic",
+        "type": "quantitative",
+        "title": "AIC",
+        "unit": "aic"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      }
+    ]
+  },
+  "lazy-list": true
+}

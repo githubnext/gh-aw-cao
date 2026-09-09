@@ -1,0 +1,15 @@
+{
+  "id": "package-dispatch-navigation",
+  "title": "Package dispatches",
+  "data": {
+    "sources": [
+      "workflows"
+    ]
+  },
+  "mark": "element",
+  "element": "package-route",
+  "layout": "full",
+  "config": {
+    "body": "dispatches"
+  }
+}

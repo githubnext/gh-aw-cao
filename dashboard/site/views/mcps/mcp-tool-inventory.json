@@ -1,0 +1,81 @@
+{
+  "id": "mcp-tool-inventory",
+  "title": "MCP tools",
+  "description": "Individual MCP tool calls, response payload sizes, and available server versions remain attributable to workflow runs.",
+  "data": {
+    "source": "mcp-calls",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "empty-message": "No MCP tool activity was observed.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "mcp-server",
+        "type": "nominal",
+        "title": "MCP server"
+      },
+      {
+        "field": "mcp-tool",
+        "type": "nominal",
+        "title": "MCP tool"
+      },
+      {
+        "field": "mcp-server-version",
+        "type": "nominal",
+        "title": "Server version"
+      },
+      {
+        "field": "mcp-protocol-version",
+        "type": "nominal",
+        "title": "Protocol version"
+      },
+      {
+        "field": "gh-aw-version",
+        "type": "nominal",
+        "title": "gh-aw version"
+      },
+      {
+        "field": "mcp-status",
+        "type": "ordinal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "response-bytes",
+        "type": "quantitative",
+        "title": "Response bytes"
+      },
+      {
+        "field": "repository",
+        "type": "nominal"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal"
+      },
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      }
+    ],
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  }
+}

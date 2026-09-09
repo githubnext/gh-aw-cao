@@ -1,0 +1,23 @@
+{
+  "id": "insights-overview",
+  "locked": true,
+  "title": "Operational impact",
+  "description": "Value attainment, durable outcomes, measured AI Credit allocation, execution health, threat detection, and experiment decisions.",
+  "data": {
+    "sources": [
+      "operational-values",
+      "outcomes",
+      "usage",
+      "runs",
+      "detection-observations",
+      "experiments"
+    ],
+    "time": {
+      "range": "30d"
+    }
+  },
+  "mark": "element",
+  "element": "insights-overview",
+  "layout": "full",
+  "disclosure": "essential"
+}

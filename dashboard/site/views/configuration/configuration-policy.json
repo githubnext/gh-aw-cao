@@ -1,0 +1,14 @@
+{
+  "id": "configuration-policy",
+  "locked": true,
+  "title": "Policy",
+  "description": "Change policy values, then copy the updated JSON for review and commit.",
+  "data": {
+    "sources": [
+      "configuration-policy"
+    ]
+  },
+  "mark": "element",
+  "element": "configuration-policy",
+  "layout": "full"
+}

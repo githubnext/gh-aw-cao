@@ -1,0 +1,30 @@
+{
+  "id": "grader-observation-trend",
+  "title": "Grader observation trend",
+  "description": "Mean grader values over time reveal whether assessed quality is improving.",
+  "data": {
+    "source": "grader-observations",
+    "time": {
+      "range": "30d"
+    }
+  },
+  "mark": "chart",
+  "chart": "line",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "observed-at",
+      "type": "temporal",
+      "time-unit": "day"
+    },
+    "y": {
+      "field": "value",
+      "type": "quantitative",
+      "aggregate": "mean"
+    },
+    "color": {
+      "field": "grader",
+      "type": "nominal"
+    }
+  }
+}

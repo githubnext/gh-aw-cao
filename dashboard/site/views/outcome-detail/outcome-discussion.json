@@ -1,0 +1,15 @@
+{
+  "id": "outcome-discussion",
+  "title": "Outcome discussion",
+  "data": {
+    "sources": [
+      "outcomes"
+    ]
+  },
+  "mark": "element",
+  "element": "outcome-detail-section",
+  "config": {
+    "body": "discussion"
+  },
+  "layout": "full"
+}

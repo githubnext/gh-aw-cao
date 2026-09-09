@@ -1,0 +1,106 @@
+{
+  "id": "detection-results",
+  "title": "Detection results",
+  "description": "Detection job execution and threat-detection verdicts remain joined to their authoritative workflow run.",
+  "data": {
+    "source": "detection-observations",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "empty-message": "No detection results were observed in the current run window.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "detection-state",
+        "type": "nominal",
+        "title": "Threat detection",
+        "display": "status"
+      },
+      {
+        "field": "detection-signal",
+        "type": "nominal",
+        "title": "Threat detection result"
+      },
+      {
+        "field": "inspection-warning",
+        "type": "nominal",
+        "title": "Inspection warning"
+      },
+      {
+        "field": "job-status",
+        "type": "nominal",
+        "title": "Job status",
+        "display": "status"
+      },
+      {
+        "field": "job-conclusion",
+        "type": "nominal",
+        "title": "Job conclusion",
+        "display": "status"
+      },
+      {
+        "field": "job-duration-seconds",
+        "type": "quantitative",
+        "title": "Duration",
+        "unit": "human-duration"
+      },
+      {
+        "field": "runner",
+        "type": "nominal",
+        "title": "Runner"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      }
+    ],
+    "actions": [
+      {
+        "intent": "Investigate this detection result using the linked GitHub Actions run as authoritative evidence.",
+        "presentation": "copy-prompt",
+        "icon": "search",
+        "label": "Investigate",
+        "context": [
+          "repository",
+          "workflow",
+          "run",
+          "detection-state",
+          "detection-signal",
+          "inspection-warning",
+          "job-status",
+          "job-conclusion",
+          "run-link"
+        ]
+      }
+    ],
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "id": "data-health-sources",
+  "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
+  "data": {
+    "source": "data-health-sources"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No cached data sources available.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "source",
+        "type": "nominal",
+        "title": "Source"
+      },
+      {
+        "field": "rows",
+        "type": "quantitative",
+        "title": "Rows"
+      },
+      {
+        "field": "fields",
+        "type": "quantitative",
+        "title": "Fields"
+      },
+      {
+        "field": "field-coverage",
+        "type": "nominal",
+        "title": "Fields populated"
+      },
+      {
+        "field": "cell-coverage",
+        "type": "nominal",
+        "title": "Cells populated"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "title": "Confidence",
+        "display": "status"
+      },
+      {
+        "field": "availability",
+        "type": "nominal",
+        "title": "Availability",
+        "display": "status"
+      },
+      {
+        "field": "completeness",
+        "type": "nominal",
+        "title": "Completeness",
+        "display": "status"
+      },
+      {
+        "field": "freshness",
+        "type": "nominal",
+        "title": "Freshness",
+        "display": "status"
+      }
+    ]
+  },
+  "layout": "full-view",
+  "lazy-list": true
+}

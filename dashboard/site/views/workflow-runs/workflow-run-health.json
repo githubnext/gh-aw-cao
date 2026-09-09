@@ -1,0 +1,28 @@
+{
+  "id": "workflow-run-health",
+  "title": "Run health trend",
+  "description": "Daily conclusions show this workflow's execution health at a glance.",
+  "data": {
+    "source": "workflow-runs",
+    "route-field": "workflow-route"
+  },
+  "mark": "chart",
+  "chart": "line",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "started-at",
+      "type": "temporal",
+      "time-unit": "day"
+    },
+    "y": {
+      "field": "run",
+      "type": "quantitative",
+      "aggregate": "count"
+    },
+    "color": {
+      "field": "run-conclusion",
+      "type": "nominal"
+    }
+  }
+}

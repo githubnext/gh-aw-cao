@@ -1,0 +1,25 @@
+{
+  "id": "workflow-report-status",
+  "title": "Report status",
+  "description": "The disposition of durable outputs is the leading outcome signal for this workflow.",
+  "data": {
+    "source": "workflow-reports",
+    "route-field": "workflow-route"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "outcome-status",
+      "type": "nominal",
+      "title": "Status"
+    },
+    "y": {
+      "field": "safe-output",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Reports"
+    }
+  }
+}

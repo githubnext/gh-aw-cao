@@ -1,0 +1,15 @@
+{
+  "id": "organizations-organizations-source",
+  "data": {
+    "source": "organizations"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "organization",
+        "type": "nominal"
+      }
+    ]
+  }
+}

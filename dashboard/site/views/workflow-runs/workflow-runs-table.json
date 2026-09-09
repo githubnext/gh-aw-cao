@@ -1,0 +1,45 @@
+{
+  "id": "workflow-runs-table",
+  "disclosure-label": "Runs",
+  "description": "Answers which recent workflow runs succeeded, failed, or remain in progress.",
+  "data": {
+    "source": "workflow-runs",
+    "route-field": "workflow-route"
+  },
+  "mark": "table",
+  "disclosure": "supplemental",
+  "controls": "static",
+  "empty-message": "No runs have been observed for this workflow.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      },
+      {
+        "field": "run-status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "run-conclusion",
+        "type": "nominal",
+        "title": "Conclusion",
+        "display": "status"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      }
+    ],
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  },
+  "layout": "full"
+}

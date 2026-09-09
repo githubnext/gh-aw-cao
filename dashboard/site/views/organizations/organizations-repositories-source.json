@@ -1,0 +1,16 @@
+{
+  "id": "organizations-repositories-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "repositories"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "repository",
+        "type": "nominal"
+      }
+    ]
+  }
+}

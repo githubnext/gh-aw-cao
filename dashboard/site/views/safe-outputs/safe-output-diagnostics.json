@@ -1,0 +1,70 @@
+{
+  "id": "safe-output-diagnostics",
+  "description": "Run-level evidence for delivered outputs and explicit noop, missing_data, missing_tool, or report_incomplete signals.",
+  "data": {
+    "source": "safe-output-performance",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "column-summaries": true,
+  "empty-message": "No safe-output activity was reported in the selected horizon.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "safe-output-kind",
+        "type": "nominal",
+        "title": "Signal"
+      },
+      {
+        "field": "safe-output-status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "safe-output-count",
+        "type": "quantitative",
+        "title": "Items"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "run-conclusion",
+        "type": "nominal",
+        "title": "Conclusion",
+        "display": "status"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      }
+    ],
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  },
+  "layout": "full-view",
+  "lazy-list": true
+}

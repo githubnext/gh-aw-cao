@@ -1,0 +1,29 @@
+{
+  "id": "organizations-by-aic",
+  "title": "AI Credit usage by organization",
+  "description": "Measured AI Credit allocation identifies where agent activity is concentrated.",
+  "data": {
+    "source": "usage"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "organization",
+      "type": "nominal",
+      "title": "Organization"
+    },
+    "y": {
+      "field": "aic",
+      "type": "quantitative",
+      "aggregate": "sum",
+      "title": "Total AIC",
+      "unit": "aic"
+    },
+    "href": {
+      "field": "organization-link",
+      "type": "nominal"
+    }
+  }
+}

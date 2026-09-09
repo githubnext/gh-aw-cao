@@ -2,7 +2,6 @@
  * Presenter for JSON-driven dashboard pages using GitHub Primer styling and elements.
  */
 
-import builtInDashboard from '../dashboard.json' with { type: 'json' };
 import { h } from './dom.js';
 import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
@@ -102,36 +101,18 @@ export function updateWithViewTransition(document, update) {
 }
 
 /** @type {Record<string, PresentableCustomPage>} */
-const BUILT_IN_PAGE_PAYLOADS = /** @type {Record<string, PresentableCustomPage>} */ (Object.fromEntries(
-  builtInDashboard.dashboard.pages
-    .filter((page) => page.kind === 'built-in')
-    .map((page) => [
-      page.page,
-      {
-        id: page.id,
-        kind: 'custom',
-        title: page.title,
-        description: 'description' in page ? page.description : undefined,
-        'class-name': 'class-name' in page ? page['class-name'] : undefined,
-        views: page.definition?.views ?? [],
-        sections: page.definition && 'sections' in page.definition ? page.definition.sections : undefined
-      }
-    ])
-));
-
 /**
  * @param {PresentableBuiltInPage} page
  * @returns {PresentableCustomPage}
  */
 function getBuiltInPagePayload(page) {
-  const payload = BUILT_IN_PAGE_PAYLOADS[page.page];
+  const payload = page.definition;
   return {
-    ...payload,
     id: page.id,
     kind: 'custom',
-    title: page.title ?? payload?.title,
-    description: page.description ?? payload?.description,
-    'class-name': page['class-name'] ?? payload?.['class-name'],
+    title: page.title,
+    description: page.description,
+    'class-name': page['class-name'],
     views: payload?.views ?? [],
     sections: payload?.sections
   };

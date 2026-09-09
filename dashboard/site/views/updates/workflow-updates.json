@@ -1,0 +1,46 @@
+{
+  "id": "workflow-updates",
+  "description": "Every agentic workflow discovered in the configured scope. Unknown means the compiled workflow metadata or latest release could not be read.",
+  "data": {
+    "source": "workflows"
+  },
+  "mark": "table",
+  "empty-message": "No agentic workflows observed.",
+  "encoding": {
+    "href": {
+      "field": "workflow-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "gh-aw-version",
+        "type": "nominal",
+        "title": "Installed version"
+      },
+      {
+        "field": "gh-aw-current-version",
+        "type": "nominal",
+        "title": "Current version"
+      },
+      {
+        "field": "gh-aw-update-state",
+        "type": "nominal",
+        "title": "Update state",
+        "display": "status"
+      }
+    ]
+  },
+  "layout": "full-view",
+  "controls": "interactive",
+  "lazy-list": true
+}

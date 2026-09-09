@@ -1,0 +1,61 @@
+{
+  "id": "runtime-execution-episodes",
+  "description": "Dispatch manifests are not retained, so attribution is partial by construction.",
+  "data": {
+    "source": "runtime-episodes"
+  },
+  "mark": "table",
+  "layout": "full-view",
+  "empty-message": "No orchestrator runs were observed in the current run window.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      },
+      {
+        "field": "package",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "started-at",
+        "type": "temporal",
+        "title": "Started"
+      },
+      {
+        "field": "duration",
+        "type": "nominal",
+        "title": "Duration"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "title": "Result",
+        "display": "status"
+      },
+      {
+        "field": "control-transition",
+        "type": "nominal",
+        "title": "Control transition"
+      },
+      {
+        "field": "attribution",
+        "type": "nominal",
+        "title": "Evidence"
+      }
+    ],
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  },
+  "controls": "interactive",
+  "lazy-list": true
+}

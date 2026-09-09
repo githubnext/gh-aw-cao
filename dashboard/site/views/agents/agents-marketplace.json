@@ -1,0 +1,17 @@
+{
+  "id": "agents-marketplace",
+  "locked": true,
+  "title": "Operations",
+  "description": "Operation package or standalone workflow name, description, permissions, runtime, and freshness.",
+  "data": {
+    "sources": [
+      "agent-assignments",
+      "workflows",
+      "agent-smells",
+      "security-observations"
+    ]
+  },
+  "mark": "element",
+  "element": "agent-marketplace-view",
+  "layout": "full"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "findings-by-severity",
+  "title": "Findings by severity",
+  "description": "The severity distribution surfaces the most urgent retained findings.",
+  "data": {
+    "source": "findings"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "finding-severity",
+      "type": "ordinal",
+      "title": "Severity"
+    },
+    "y": {
+      "field": "finding",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Findings"
+    }
+  }
+}

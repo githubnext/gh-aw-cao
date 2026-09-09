@@ -1,0 +1,47 @@
+{
+  "id": "coverage-technical-details",
+  "disclosure-label": "Technical collection details",
+  "description": "Raw collection diagnostics for operators who need endpoint, retry, and snapshot context.",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "data-health-collections"
+  },
+  "mark": "table",
+  "controls": "static",
+  "empty-message": "No technical coverage details retained.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "operation",
+        "type": "nominal",
+        "title": "Collection"
+      },
+      {
+        "field": "failure-class",
+        "type": "nominal",
+        "title": "Failure class"
+      },
+      {
+        "field": "technical-detail",
+        "type": "nominal",
+        "title": "Technical detail"
+      },
+      {
+        "field": "evidence-horizon",
+        "type": "nominal",
+        "title": "Evidence horizon"
+      },
+      {
+        "field": "provenance",
+        "type": "nominal",
+        "title": "Provenance"
+      },
+      {
+        "field": "snapshot-age",
+        "type": "nominal",
+        "title": "Snapshot age"
+      }
+    ]
+  },
+  "layout": "full"
+}

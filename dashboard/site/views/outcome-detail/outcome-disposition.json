@@ -1,0 +1,25 @@
+{
+  "id": "outcome-disposition",
+  "title": "Outcome disposition",
+  "description": "The current disposition is the leading signal for this retained outcome.",
+  "data": {
+    "source": "outcomes",
+    "route-field": "safe-output"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "outcome-state",
+      "type": "nominal",
+      "title": "Disposition"
+    },
+    "y": {
+      "field": "safe-output",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Outcomes"
+    }
+  }
+}

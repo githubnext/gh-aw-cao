@@ -74,6 +74,7 @@ import {
   VIEW_ELEMENT_CONFIG_KEYS,
   VIEW_ELEMENT_VALUES,
   VIEW_KEYS,
+  VIEW_REFERENCE_KEYS,
   VIEW_LAYOUT_VALUES,
   VIEW_MARK_VALUES,
   VIEW_TITLE_LINK_KEYS,
@@ -943,6 +944,10 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
     ));
     return;
   }
+  if (definition.views.some(isViewReference)) {
+    validateViewReferences(definition.views, `${path}.definition.views`, errors);
+    return;
+  }
 
   validatePageSections(
     definition.sections,
@@ -1354,6 +1359,10 @@ function validateCustomPage(page, pageNode, path, errors) {
     ));
     return;
   }
+  if (page.views.some(isViewReference)) {
+    validateViewReferences(page.views, `${path}.views`, errors);
+    return;
+  }
 
   /** @type {Set<string>} */
   const viewIds = new Set();
@@ -1392,6 +1401,32 @@ function validateView(view, viewNode, path, viewIds, errors) {
       path
     ));
     return;
+  }
+
+  /**
+   * @param {unknown[]} views
+   * @param {string} path
+   * @param {ValidationError[]} errors
+   */
+  function validateViewReferences(views, path, errors) {
+    views.forEach((view, index) => {
+      const viewPath = `${path}[${index}]`;
+      if (!isViewReference(view)) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'view sequences must not mix inline views and view references.',
+          viewPath
+        ));
+        return;
+      }
+      if (!/^\.\/views\/[a-z0-9][a-z0-9/-]*\.json$/.test(view.$ref) || view.$ref.includes('..')) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'view $ref must be a relative path under ./views ending in .json.',
+          `${viewPath}.$ref`
+        ));
+      }
+    });
   }
 
   if (view.title === undefined && typeof view.id === 'string' && !IDENTIFIER_PATTERN.test(view.id)) {
@@ -3550,6 +3585,13 @@ function createError(code, message, path) {
  */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value */
+function isViewReference(value) {
+  return isPlainObject(value)
+    && Object.keys(value).length === VIEW_REFERENCE_KEYS.length
+    && VIEW_REFERENCE_KEYS.every((key) => typeof value[key] === 'string');
 }
 
 /**

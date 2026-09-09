@@ -1,0 +1,21 @@
+{
+  "id": "overview-attention-domains",
+  "locked": true,
+  "title": "Attention by domain",
+  "description": "Ordered by urgency. Each state names only what retained evidence and configured policy can support.",
+  "data": {
+    "sources": [
+      "repositories",
+      "workflows",
+      "runs",
+      "usage",
+      "outcomes",
+      "findings",
+      "operational-values",
+      "overview-attention-domains"
+    ]
+  },
+  "mark": "element",
+  "element": "domain-attention",
+  "layout": "full"
+}

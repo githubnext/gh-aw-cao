@@ -1,0 +1,39 @@
+{
+  "id": "repository-workflow-aic",
+  "title": "Top workflows by AIC",
+  "description": "The five workflows with the highest measured AI Credit totals in this repository.",
+  "data": {
+    "source": "repository-workflow-usage",
+    "route-field": "repository",
+    "limit": 5,
+    "order-by": [
+      {
+        "field": "total-aic",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "encoding": {
+    "x": {
+      "field": "workflow",
+      "type": "nominal",
+      "format": "workflow-relative-path",
+      "title": "Workflow"
+    },
+    "y": {
+      "field": "aic",
+      "type": "quantitative",
+      "aggregate": "sum",
+      "as": "total-aic",
+      "title": "Total AIC",
+      "unit": "aic"
+    },
+    "href": {
+      "field": "workflow-link",
+      "type": "nominal"
+    }
+  },
+  "layout": "third"
+}

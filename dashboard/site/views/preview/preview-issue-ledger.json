@@ -1,0 +1,57 @@
+{
+  "id": "preview-issue-ledger",
+  "description": "Open an issue to inspect its full report and workflow provenance.",
+  "data": {
+    "source": "outcomes",
+    "filters": {
+      "outcome-category": [
+        "issue"
+      ],
+      "workflow-role": [
+        "worker"
+      ]
+    },
+    "limit": 100
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No issues were retained in the current report.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "package",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "workflow-name",
+        "type": "nominal",
+        "title": "Worker"
+      },
+      {
+        "field": "outcome-title",
+        "type": "nominal",
+        "title": "Issue",
+        "display": "outcome-link"
+      },
+      {
+        "field": "outcome-status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Updated"
+      }
+    ]
+  },
+  "lazy-list": true
+}

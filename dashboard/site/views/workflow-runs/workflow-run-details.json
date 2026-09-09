@@ -1,0 +1,85 @@
+{
+  "id": "workflow-run-details",
+  "disclosure-label": "Run details",
+  "description": "Supplemental metadata for deeper evidence review after the run-status table answers the current state.",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "workflow-runs",
+    "route-field": "workflow-route"
+  },
+  "mark": "table",
+  "controls": "static",
+  "empty-message": "No runs have been observed for this workflow.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      },
+      {
+        "field": "run-title",
+        "type": "nominal",
+        "title": "Title"
+      },
+      {
+        "field": "event",
+        "type": "nominal",
+        "title": "Trigger"
+      },
+      {
+        "field": "engine",
+        "type": "nominal",
+        "title": "Engine"
+      },
+      {
+        "field": "requested-model",
+        "type": "nominal",
+        "title": "Requested model"
+      },
+      {
+        "field": "resolved-model",
+        "type": "nominal",
+        "title": "Resolved model"
+      },
+      {
+        "field": "started-at",
+        "type": "temporal",
+        "title": "Started"
+      },
+      {
+        "field": "ended-at",
+        "type": "temporal",
+        "title": "Ended"
+      }
+    ],
+    "actions": [
+      {
+        "intent": "Investigate this failed workflow run.",
+        "presentation": "copy-prompt",
+        "icon": "search",
+        "label": "Investigate",
+        "context": [
+          "run",
+          "run-title",
+          "repository",
+          "workflow",
+          "run-conclusion",
+          "failure-job",
+          "failure-message",
+          "failure-step",
+          "run-link"
+        ],
+        "when": {
+          "field": "run-conclusion",
+          "equals": "failure"
+        }
+      }
+    ],
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  },
+  "layout": "full"
+}

@@ -1,0 +1,101 @@
+{
+  "id": "github-api-observations",
+  "title": "Raw quota observations",
+  "description": "Detailed GitHub quota checkpoints retain calculation inputs and correlation state for diagnostics.",
+  "data": {
+    "source": "github-api-rate-limits",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      },
+      {
+        "field": "resource",
+        "direction": "asc"
+      },
+      {
+        "field": "credential",
+        "direction": "asc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "layout": "full-view",
+  "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      },
+      {
+        "field": "operation",
+        "type": "nominal",
+        "title": "Operation"
+      },
+      {
+        "field": "phase",
+        "type": "nominal",
+        "title": "Phase"
+      },
+      {
+        "field": "resource",
+        "type": "nominal",
+        "title": "Resource"
+      },
+      {
+        "field": "remaining-percent",
+        "type": "quantitative",
+        "title": "Remaining",
+        "unit": "percent"
+      },
+      {
+        "field": "remaining",
+        "type": "quantitative",
+        "title": "Requests remaining"
+      },
+      {
+        "field": "used",
+        "type": "quantitative",
+        "title": "Requests used"
+      },
+      {
+        "field": "limit",
+        "type": "quantitative",
+        "title": "Limit"
+      },
+      {
+        "field": "reset-at",
+        "type": "temporal",
+        "title": "Reset (UTC)"
+      },
+      {
+        "field": "credential",
+        "type": "nominal",
+        "title": "Credential"
+      },
+      {
+        "field": "operation-execution-id",
+        "type": "nominal",
+        "title": "Execution"
+      },
+      {
+        "field": "consumed-since-previous",
+        "type": "quantitative",
+        "title": "Consumed since previous"
+      },
+      {
+        "field": "attribution-status",
+        "type": "nominal",
+        "title": "Attribution"
+      }
+    ]
+  }
+}

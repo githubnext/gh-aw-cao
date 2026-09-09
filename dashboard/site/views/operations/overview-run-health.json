@@ -1,0 +1,35 @@
+{
+  "id": "overview-run-health",
+  "locked": true,
+  "title": "Run health trend",
+  "description": "Daily run conclusions surface the control plane's current operating signal.",
+  "data": {
+    "source": "runs",
+    "time": {
+      "range": "30d"
+    }
+  },
+  "mark": "chart",
+  "chart": "swimlane",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "started-at",
+      "type": "temporal",
+      "title": "Started"
+    },
+    "y": {
+      "field": "run-conclusion",
+      "type": "ordinal",
+      "title": "Conclusion"
+    },
+    "color": {
+      "field": "run-conclusion",
+      "type": "nominal"
+    },
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    }
+  }
+}

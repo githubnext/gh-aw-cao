@@ -1,0 +1,31 @@
+{
+  "id": "repository-run-health",
+  "title": "Repository run health trend",
+  "description": "Daily run conclusions are the leading execution-health signal for this repository.",
+  "data": {
+    "source": "runs",
+    "route-field": "repository",
+    "time": {
+      "range": "30d"
+    }
+  },
+  "mark": "chart",
+  "chart": "line",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "started-at",
+      "type": "temporal",
+      "time-unit": "day"
+    },
+    "y": {
+      "field": "run",
+      "type": "quantitative",
+      "aggregate": "count"
+    },
+    "color": {
+      "field": "run-conclusion",
+      "type": "nominal"
+    }
+  }
+}

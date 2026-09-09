@@ -1,0 +1,69 @@
+{
+  "id": "experiments-list",
+  "title": "Experiments",
+  "description": "Experiment readiness, evidence, and decisions without treating workflow execution success as experiment success.",
+  "data": {
+    "source": "experiments"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "layout": "full-view",
+  "empty-message": "No experiments configured.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "experiment",
+        "type": "nominal",
+        "title": "Experiment"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow / agent"
+      },
+      {
+        "field": "control-variant",
+        "type": "nominal",
+        "title": "Control"
+      },
+      {
+        "field": "candidate-variant",
+        "type": "nominal",
+        "title": "Candidate"
+      },
+      {
+        "field": "primary-metric",
+        "type": "nominal",
+        "title": "Primary metric"
+      },
+      {
+        "field": "normalized-effect",
+        "type": "quantitative",
+        "title": "Normalized effect"
+      },
+      {
+        "field": "evidence-strength",
+        "type": "ordinal",
+        "title": "Evidence"
+      },
+      {
+        "field": "readiness",
+        "type": "ordinal",
+        "title": "Readiness",
+        "display": "status"
+      },
+      {
+        "field": "decision",
+        "type": "ordinal",
+        "title": "Decision",
+        "display": "status"
+      },
+      {
+        "field": "last-observation",
+        "type": "temporal",
+        "title": "Last observation"
+      }
+    ]
+  }
+}

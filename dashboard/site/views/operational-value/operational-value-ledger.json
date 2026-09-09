@@ -1,0 +1,61 @@
+{
+  "id": "operational-value-ledger",
+  "data": {
+    "source": "grader-observations"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No operational-value grader records were retained.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "grader",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "display": "grader-status",
+        "title": "Status"
+      },
+      {
+        "field": "maturity-status",
+        "type": "nominal",
+        "display": "label",
+        "title": "Maturity"
+      },
+      {
+        "field": "value",
+        "type": "quantitative",
+        "unit": "grade",
+        "title": "Value"
+      },
+      {
+        "field": "baseline-value",
+        "type": "quantitative",
+        "unit": "grade",
+        "title": "Baseline"
+      },
+      {
+        "field": "delta-from-baseline",
+        "type": "quantitative",
+        "unit": "grade",
+        "title": "Delta"
+      },
+      {
+        "field": "evaluator-digest",
+        "type": "nominal",
+        "display": "digest",
+        "title": "Evaluator"
+      },
+      {
+        "field": "run",
+        "type": "nominal",
+        "title": "Run"
+      }
+    ]
+  },
+  "lazy-list": true
+}

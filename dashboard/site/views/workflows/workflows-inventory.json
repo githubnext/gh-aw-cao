@@ -1,0 +1,72 @@
+{
+  "id": "workflows-inventory",
+  "title": "Workflows",
+  "description": "Central package and repository-owned workflow inventory with observed execution totals.",
+  "data": {
+    "source": "workflow-inventory",
+    "order-by": [
+      {
+        "field": "repository",
+        "direction": "asc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "layout": "full-view",
+  "empty-message": "No workflows observed.",
+  "encoding": {
+    "href": {
+      "field": "package-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "package-name",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Control repository"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "format": "workflow-relative-path",
+        "title": "Workflow"
+      },
+      {
+        "field": "workflow-role",
+        "type": "nominal",
+        "title": "Role"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "workflow-active",
+        "type": "nominal",
+        "title": "Registration",
+        "display": "active-state"
+      },
+      {
+        "field": "aic",
+        "type": "quantitative",
+        "title": "AIC",
+        "unit": "aic"
+      },
+      {
+        "field": "runs",
+        "type": "quantitative",
+        "title": "Runs"
+      }
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "package-dispatch-table",
+  "disclosure-label": "All dispatches",
+  "disclosure": "supplemental",
+  "description": "Workflow dispatch runs attributed to this package, ordered newest first.",
+  "data": {
+    "source": "dispatches",
+    "route-field": "package"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No workflow dispatch runs were observed for this package in the current run window.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "started-at",
+        "type": "temporal",
+        "title": "Started"
+      },
+      {
+        "field": "dispatch-type",
+        "type": "nominal",
+        "title": "Type"
+      },
+      {
+        "field": "workflow-name",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "run-title",
+        "type": "nominal",
+        "title": "Run title"
+      },
+      {
+        "field": "runtime-repository",
+        "type": "nominal",
+        "title": "Runtime repository"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "status-detail",
+        "type": "nominal",
+        "title": "Why"
+      }
+    ]
+  },
+  "layout": "full"
+}

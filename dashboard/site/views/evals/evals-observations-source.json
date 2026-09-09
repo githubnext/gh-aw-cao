@@ -1,0 +1,37 @@
+{
+  "id": "evals-observations-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "eval-observations"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "eval",
+        "type": "nominal"
+      },
+      {
+        "field": "run",
+        "type": "nominal"
+      },
+      {
+        "field": "eval-result",
+        "type": "nominal",
+        "display": "status"
+      },
+      {
+        "field": "requested-model",
+        "type": "nominal"
+      },
+      {
+        "field": "resolved-model",
+        "type": "nominal"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal"
+      }
+    ]
+  }
+}

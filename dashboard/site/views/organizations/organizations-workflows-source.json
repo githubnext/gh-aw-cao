@@ -1,0 +1,16 @@
+{
+  "id": "organizations-workflows-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "workflows"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "workflow",
+        "type": "nominal"
+      }
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "overview-security-findings-ledger",
+  "title": "Security finding evidence",
+  "description": "Open the GitHub run that produced each threat-detection finding.",
+  "data": {
+    "source": "security-findings",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "column-summaries": true,
+  "empty-message": "No security findings were observed in the selected horizon.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Date"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "smell-name",
+        "type": "nominal",
+        "title": "Finding",
+        "display": "run-link"
+      }
+    ]
+  }
+}

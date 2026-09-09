@@ -1,0 +1,45 @@
+{
+  "id": "workflow-report-table",
+  "disclosure-label": "Reports",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "workflow-reports",
+    "route-field": "workflow-route"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "empty-message": "No reports have been attributed to this workflow.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "outcome-title",
+        "type": "nominal",
+        "title": "Report",
+        "display": "outcome-link"
+      },
+      {
+        "field": "outcome-status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "outcome-category",
+        "type": "nominal",
+        "title": "Type"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Updated"
+      }
+    ]
+  },
+  "layout": "full"
+}

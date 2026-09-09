@@ -42,6 +42,8 @@ resources:
     destination: .github/aw/dashboard/site/favicon.svg
   - source: site/dashboard.json
     destination: .github/aw/dashboard/site/dashboard.json
+  - source: site/views
+    destination: .github/aw/dashboard/site/views
   - source: site/src/data-operations.js
     destination: .github/aw/dashboard/site/src/data-operations.js
   - source: site/src/data-processor.js
@@ -124,6 +126,8 @@ resources:
     destination: .github/aw/dashboard/site/src/validator.js
   - source: site/src/view-formatters.js
     destination: .github/aw/dashboard/site/src/view-formatters.js
+  - source: site/src/view-loader.js
+    destination: .github/aw/dashboard/site/src/view-loader.js
   - source: site/src/workflow-data.js
     destination: .github/aw/dashboard/site/src/workflow-data.js
   - source: site/src/components/anomaly-readiness.js

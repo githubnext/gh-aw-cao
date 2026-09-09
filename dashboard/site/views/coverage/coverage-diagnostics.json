@@ -1,0 +1,27 @@
+{
+  "id": "coverage-diagnostics",
+  "disclosure-label": "Coverage diagnostics",
+  "disclosure": "supplemental",
+  "description": "Collection gaps consume the same evidence used by Data Health confidence.",
+  "data": {
+    "source": "data-health-collections"
+  },
+  "mark": "table",
+  "controls": "static",
+  "empty-message": "No reporting coverage gaps detected.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "operation",
+        "type": "nominal",
+        "title": "Collection"
+      },
+      {
+        "field": "reason",
+        "type": "nominal",
+        "title": "Effect"
+      }
+    ]
+  },
+  "layout": "full"
+}

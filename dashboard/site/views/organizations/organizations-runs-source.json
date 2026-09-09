@@ -1,0 +1,15 @@
+{
+  "id": "organizations-runs-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "runs"
+  },
+  "mark": "metric",
+  "encoding": {
+    "value": {
+      "field": "run",
+      "type": "nominal",
+      "aggregate": "distinct-count"
+    }
+  }
+}

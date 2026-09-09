@@ -1,0 +1,33 @@
+{
+  "id": "graders-observations-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "grader-observations"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "grader",
+        "type": "nominal"
+      },
+      {
+        "field": "run",
+        "type": "nominal"
+      },
+      {
+        "field": "value",
+        "type": "quantitative"
+      },
+      {
+        "field": "status",
+        "type": "nominal",
+        "display": "status"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal"
+      }
+    ]
+  }
+}

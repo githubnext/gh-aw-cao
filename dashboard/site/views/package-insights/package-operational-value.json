@@ -1,0 +1,16 @@
+{
+  "id": "package-operational-value",
+  "title": "Package operational value",
+  "data": {
+    "sources": [
+      "workflows",
+      "operational-values"
+    ]
+  },
+  "mark": "element",
+  "element": "package-route",
+  "layout": "full",
+  "config": {
+    "body": "insights"
+  }
+}

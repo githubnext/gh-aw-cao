@@ -1,0 +1,24 @@
+{
+  "id": "eval-results",
+  "title": "Evaluation results",
+  "description": "The result distribution surfaces the leading evaluation-quality signal.",
+  "data": {
+    "source": "eval-observations"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "eval-result",
+      "type": "nominal",
+      "title": "Result"
+    },
+    "y": {
+      "field": "run",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Evaluations"
+    }
+  }
+}

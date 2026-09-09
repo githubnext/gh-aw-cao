@@ -1,0 +1,15 @@
+{
+  "id": "workflow-reports-route",
+  "title": "Workflow reports",
+  "data": {
+    "sources": [
+      "workflows"
+    ]
+  },
+  "mark": "element",
+  "element": "workflow-route-page",
+  "config": {
+    "body": "reports"
+  },
+  "layout": "full"
+}

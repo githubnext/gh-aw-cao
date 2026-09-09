@@ -1,0 +1,25 @@
+{
+  "id": "package-report-status",
+  "title": "Report status",
+  "description": "The disposition of durable outputs is the leading outcome signal for this package.",
+  "data": {
+    "source": "package-reports",
+    "route-field": "package"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "outcome-status",
+      "type": "nominal",
+      "title": "Status"
+    },
+    "y": {
+      "field": "safe-output",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Reports"
+    }
+  }
+}

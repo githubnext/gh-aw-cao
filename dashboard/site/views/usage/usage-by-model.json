@@ -1,0 +1,25 @@
+{
+  "id": "usage-by-model",
+  "title": "AI Credit usage by model",
+  "description": "Measured AI Credit allocation identifies the models driving agent consumption.",
+  "data": {
+    "source": "usage"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "resolved-model",
+      "type": "nominal",
+      "title": "Resolved model"
+    },
+    "y": {
+      "field": "aic",
+      "type": "quantitative",
+      "aggregate": "sum",
+      "title": "Total AIC",
+      "unit": "aic"
+    }
+  }
+}

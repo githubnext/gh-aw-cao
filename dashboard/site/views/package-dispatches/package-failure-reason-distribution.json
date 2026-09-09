@@ -1,0 +1,39 @@
+{
+  "id": "package-failure-reason-distribution",
+  "title": "Why these dispatches failed",
+  "description": "Grouped by the strongest failure reason retained for each dispatch. Select a reason in the table below to open its GitHub Actions evidence.",
+  "data": {
+    "source": "dispatches",
+    "route-field": "package",
+    "filters": {
+      "status": [
+        "failure",
+        "startup-failure",
+        "timed-out",
+        "stale"
+      ]
+    },
+    "order-by": [
+      {
+        "field": "count-status-detail",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "encoding": {
+    "x": {
+      "field": "status-detail",
+      "type": "nominal",
+      "title": "Failure reason"
+    },
+    "y": {
+      "field": "status-detail",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Failed dispatches"
+    }
+  },
+  "layout": "full"
+}

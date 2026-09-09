@@ -18,6 +18,7 @@
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources } from "./src/data-processor.js";
       import { loadCanonicalViewSources } from "./src/data/queries/view-sources.js";
       import { octicon } from "./src/octicons.js";
+      import { resolveDashboardPageViews } from "./src/view-loader.js";
 
       const metadata = (id, overrides = {}) => ({
         "source-id": id,
@@ -48,7 +49,8 @@
       }));
 
       const loadingProgress = startLoadingProgress(document);
-      const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
+      const dashboardUrl = new URL("./dashboard.json", window.location.href);
+      const dashboardSchema = await fetch(dashboardUrl, { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error(`Unable to load dashboard.json: ${response.status}`);
           return response.json();
@@ -183,7 +185,7 @@
         root.replaceChildren(dashboard);
         return dashboard;
       };
-      window.addEventListener("dashboard-preview-update", (event) => {
+      window.addEventListener("dashboard-preview-update", async (event) => {
         const previousDashboardDocument = dashboardDocument;
         try {
           const schema = event.detail.dashboard;
@@ -191,6 +193,12 @@
             languageVersion: schema["language-version"],
             dashboard: schema.dashboard,
           };
+          const activePageId = window.location.hash.startsWith("#page-")
+            ? decodeURIComponent(window.location.hash.slice("#page-".length).split("?")[0])
+            : dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id;
+          if (activePageId) {
+            await resolveDashboardPageViews(dashboardDocument, activePageId, { baseUrl: dashboardUrl.href });
+          }
           updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
           if (event.detail.traceId && dashboardSocket?.readyState === WebSocket.OPEN) {
             dashboardSocket.send(JSON.stringify({
@@ -847,6 +855,10 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
+        const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
+          ?? dashboardDocument.dashboard.pages[0]?.id
+          ?? "";
+        await resolveDashboardPageViews(dashboardDocument, initialPageId, { baseUrl: dashboardUrl.href });
         renderSources(await withCanonicalViewSources(fixtureSources, true));
         loadingProgress.complete();
       } else {
@@ -862,10 +874,14 @@
             dashboardRepository: dashboardDocument.dashboard.repository,
             pages: dashboardDocument.dashboard.pages,
           };
-          const loadPageSources = (pageId) => loadCanonicalDashboardPage(
-            dashboardPageSourceNames(dashboardDocument, pageId),
-            dashboardContext,
-          );
+          const loadPageSources = async (pageId) => {
+            await resolveDashboardPageViews(dashboardDocument, pageId, { baseUrl: dashboardUrl.href });
+            return loadCanonicalDashboardPage(
+              dashboardPageSourceNames(dashboardDocument, pageId),
+              dashboardContext,
+            );
+          };
+          await resolveDashboardPageViews(dashboardDocument, initialPageId, { baseUrl: dashboardUrl.href });
           renderSources(
             await loadCanonicalDashboardSources(
               sourceUrl,

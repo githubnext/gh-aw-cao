@@ -1,0 +1,79 @@
+{
+  "id": "security-firewall-domains",
+  "title": "Domains",
+  "description": "Aggregate observed requests, runs, repositories, workflows, policy decisions, and policy rules by normalized domain over the requested 30-day horizon.",
+  "data": {
+    "source": "firewall-observations",
+    "time": {
+      "range": "30d"
+    },
+    "filters": {
+      "decision": [
+        "allowed",
+        "denied"
+      ]
+    },
+    "order-by": [
+      {
+        "field": "requests",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "layout": "full-view",
+  "empty-message": "No observed firewall domains are available for this selection.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "domain",
+        "type": "nominal"
+      },
+      {
+        "field": "request-count",
+        "type": "quantitative",
+        "aggregate": "sum",
+        "as": "requests",
+        "title": "Requests"
+      },
+      {
+        "field": "run",
+        "type": "nominal",
+        "aggregate": "distinct-count",
+        "as": "runs",
+        "title": "Runs"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "aggregate": "distinct-count",
+        "as": "repositories",
+        "title": "Repositories"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "aggregate": "distinct-count",
+        "as": "workflows",
+        "title": "Workflows"
+      },
+      {
+        "field": "decision",
+        "type": "nominal",
+        "aggregate": "distinct-count",
+        "as": "decisions",
+        "title": "Policy decisions"
+      },
+      {
+        "field": "policy-rule-id",
+        "type": "nominal",
+        "aggregate": "distinct-count",
+        "as": "policy-rules",
+        "title": "Policy rules"
+      }
+    ]
+  }
+}

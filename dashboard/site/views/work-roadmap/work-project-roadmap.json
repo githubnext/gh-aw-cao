@@ -1,0 +1,17 @@
+{
+  "id": "work-project-roadmap",
+  "locked": true,
+  "title": "Roadmap",
+  "description": "Start dates, durations, owners, and completion points aligned on one calendar.",
+  "data": {
+    "sources": [
+      "work-items"
+    ]
+  },
+  "mark": "element",
+  "element": "work-project-view",
+  "config": {
+    "body": "roadmap"
+  },
+  "layout": "full"
+}

@@ -1,0 +1,61 @@
+{
+  "id": "repository-authored-workflows",
+  "disclosure-label": "Agentic workflows",
+  "disclosure": "supplemental",
+  "description": "Authored workflows with managed-package membership shown as data.",
+  "data": {
+    "source": "repository-workflows",
+    "route-field": "repository"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "column-summaries": true,
+  "empty-message": "No authored Agentic Workflows were observed for this repository.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "workflow-name",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "workflow-role",
+        "type": "nominal",
+        "title": "Role"
+      },
+      {
+        "field": "package-name",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "workflow-active",
+        "type": "nominal",
+        "title": "State",
+        "display": "active-state"
+      },
+      {
+        "field": "aic",
+        "type": "quantitative",
+        "title": "AIC",
+        "unit": "aic"
+      },
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Updated"
+      }
+    ],
+    "href": {
+      "field": "workflow-link",
+      "type": "nominal"
+    }
+  },
+  "layout": "full"
+}

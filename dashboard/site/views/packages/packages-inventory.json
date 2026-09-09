@@ -1,0 +1,63 @@
+{
+  "id": "packages-inventory",
+  "title": "Packages",
+  "description": "Centrally managed package inventory and observed execution totals.",
+  "data": {
+    "source": "package-inventory"
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "layout": "full-view",
+  "empty-message": "No packages discovered.",
+  "encoding": {
+    "href": {
+      "field": "package-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "package-name",
+        "type": "nominal",
+        "title": "Package"
+      },
+      {
+        "field": "workflows",
+        "type": "quantitative",
+        "title": "Workflows"
+      },
+      {
+        "field": "repositories",
+        "type": "quantitative",
+        "title": "Control repositories"
+      },
+      {
+        "field": "roles",
+        "type": "nominal",
+        "title": "Roles"
+      },
+      {
+        "field": "modes",
+        "type": "nominal",
+        "title": "Modes"
+      },
+      {
+        "field": "registration",
+        "type": "nominal",
+        "title": "Registration"
+      },
+      {
+        "field": "runs",
+        "type": "quantitative",
+        "title": "Runs"
+      },
+      {
+        "field": "aic",
+        "type": "quantitative",
+        "title": "AIC",
+        "unit": "aic"
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "id": "coverage-summary",
+  "title": "Canonical coverage",
+  "description": "Expected-versus-observed coverage is derived once by Data Health.",
+  "data": {
+    "source": "data-health-coverage"
+  },
+  "mark": "table",
+  "controls": "static",
+  "encoding": {
+    "columns": [
+      {
+        "field": "area",
+        "type": "nominal",
+        "title": "Evidence area"
+      },
+      {
+        "field": "expected",
+        "type": "nominal",
+        "title": "Expected"
+      },
+      {
+        "field": "observed",
+        "type": "nominal",
+        "title": "Observed"
+      },
+      {
+        "field": "missing",
+        "type": "nominal",
+        "title": "Missing"
+      },
+      {
+        "field": "coverage-percent",
+        "type": "nominal",
+        "title": "Coverage"
+      },
+      {
+        "field": "state",
+        "type": "nominal",
+        "title": "State",
+        "display": "status"
+      },
+      {
+        "field": "reason",
+        "type": "nominal",
+        "title": "Reason"
+      }
+    ]
+  },
+  "layout": "full"
+}

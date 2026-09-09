@@ -1,0 +1,14 @@
+{
+  "id": "overview-attention",
+  "locked": true,
+  "data": {
+    "sources": [
+      "runs",
+      "work-items",
+      "security-findings"
+    ]
+  },
+  "mark": "element",
+  "element": "home-attention-summary",
+  "layout": "full"
+}

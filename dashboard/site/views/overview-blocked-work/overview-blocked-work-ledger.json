@@ -1,0 +1,42 @@
+{
+  "id": "overview-blocked-work-ledger",
+  "title": "Blocked work evidence",
+  "description": "Open the latest GitHub run to resolve the admission or execution failure.",
+  "data": {
+    "source": "work-items",
+    "filters": {
+      "lifecycle-state": "blocked"
+    },
+    "order-by": [
+      {
+        "field": "waiting-since",
+        "direction": "asc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "column-summaries": true,
+  "empty-message": "No blocked work was observed in the selected horizon.",
+  "layout": "full-view",
+  "encoding": {
+    "columns": [
+      {
+        "field": "waiting-since",
+        "type": "temporal",
+        "title": "Date"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "reason",
+        "type": "nominal",
+        "title": "Blocked by",
+        "display": "run-link"
+      }
+    ]
+  }
+}

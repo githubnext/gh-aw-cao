@@ -1,0 +1,86 @@
+{
+  "id": "job-performance-records",
+  "title": "Job performance",
+  "description": "Observed job duration, execution state, runner, engine, and model evidence.",
+  "data": {
+    "source": "job-performance",
+    "order-by": [
+      {
+        "field": "started-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "layout": "full-view",
+  "empty-message": "No job performance data was observed in the selected horizon.",
+  "encoding": {
+    "href": {
+      "field": "run-link",
+      "type": "nominal"
+    },
+    "columns": [
+      {
+        "field": "job",
+        "type": "nominal",
+        "title": "Job"
+      },
+      {
+        "field": "job-status",
+        "type": "nominal",
+        "title": "Status",
+        "display": "status"
+      },
+      {
+        "field": "job-conclusion",
+        "type": "nominal",
+        "title": "Conclusion",
+        "display": "status"
+      },
+      {
+        "field": "job-duration-seconds",
+        "type": "quantitative",
+        "title": "Duration",
+        "unit": "human-duration"
+      },
+      {
+        "field": "runner",
+        "type": "nominal",
+        "title": "Runner"
+      },
+      {
+        "field": "sandbox-runtime",
+        "type": "nominal",
+        "title": "Sandbox runtime"
+      },
+      {
+        "field": "engine",
+        "type": "nominal",
+        "title": "Engine"
+      },
+      {
+        "field": "model",
+        "type": "nominal",
+        "title": "Model"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "started-at",
+        "type": "temporal",
+        "title": "Started"
+      }
+    ]
+  }
+}

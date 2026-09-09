@@ -1,0 +1,16 @@
+{
+  "id": "evals-evals-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "evals"
+  },
+  "mark": "table",
+  "encoding": {
+    "columns": [
+      {
+        "field": "eval",
+        "type": "nominal"
+      }
+    ]
+  }
+}

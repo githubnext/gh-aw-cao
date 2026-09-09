@@ -1,0 +1,25 @@
+{
+  "id": "package-dispatch-status",
+  "title": "Dispatch status",
+  "description": "Activated and guarded dispatches provide the package's leading activation signal.",
+  "data": {
+    "source": "dispatches",
+    "route-field": "package"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "status",
+      "type": "nominal",
+      "title": "Status"
+    },
+    "y": {
+      "field": "started-at",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Dispatches"
+    }
+  }
+}

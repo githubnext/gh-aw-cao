@@ -1,0 +1,15 @@
+{
+  "id": "package-report-navigation",
+  "title": "Package reports",
+  "data": {
+    "sources": [
+      "workflows"
+    ]
+  },
+  "mark": "element",
+  "element": "package-route",
+  "layout": "full",
+  "config": {
+    "body": "reports"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "coverage-by-organization",
+  "title": "Repository coverage by organization",
+  "description": "The discovered repository distribution makes scope concentration visible at a glance.",
+  "data": {
+    "source": "repositories"
+  },
+  "mark": "chart",
+  "chart": "pie",
+  "layout": "full",
+  "encoding": {
+    "x": {
+      "field": "organization",
+      "type": "nominal",
+      "title": "Organization"
+    },
+    "y": {
+      "field": "repository",
+      "type": "quantitative",
+      "aggregate": "count",
+      "title": "Repositories"
+    },
+    "href": {
+      "field": "organization-link",
+      "type": "nominal"
+    }
+  }
+}

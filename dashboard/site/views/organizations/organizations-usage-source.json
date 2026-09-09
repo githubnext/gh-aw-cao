@@ -1,0 +1,16 @@
+{
+  "id": "organizations-usage-source",
+  "disclosure": "supplemental",
+  "data": {
+    "source": "usage"
+  },
+  "mark": "metric",
+  "encoding": {
+    "value": {
+      "field": "aic",
+      "type": "quantitative",
+      "aggregate": "sum",
+      "unit": "aic"
+    }
+  }
+}

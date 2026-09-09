@@ -1,0 +1,66 @@
+{
+  "id": "cost-usage-records",
+  "title": "AI Credit usage",
+  "description": "Observed AI Credit allocation by workflow, repository, engine, model, and rollout mode.",
+  "data": {
+    "source": "usage",
+    "order-by": [
+      {
+        "field": "observed-at",
+        "direction": "desc"
+      }
+    ]
+  },
+  "mark": "table",
+  "controls": "interactive",
+  "lazy-list": true,
+  "column-summaries": true,
+  "layout": "full-view",
+  "empty-message": "No AI Credit usage was observed in the selected horizon.",
+  "encoding": {
+    "columns": [
+      {
+        "field": "observed-at",
+        "type": "temporal",
+        "title": "Observed"
+      },
+      {
+        "field": "repository",
+        "type": "nominal",
+        "title": "Repository"
+      },
+      {
+        "field": "workflow",
+        "type": "nominal",
+        "title": "Workflow"
+      },
+      {
+        "field": "rollout-mode",
+        "type": "nominal",
+        "title": "Mode",
+        "display": "mode"
+      },
+      {
+        "field": "engine",
+        "type": "nominal",
+        "title": "Engine"
+      },
+      {
+        "field": "resolved-model",
+        "type": "nominal",
+        "title": "Model"
+      },
+      {
+        "field": "aic",
+        "type": "quantitative",
+        "title": "AIC",
+        "unit": "aic"
+      },
+      {
+        "field": "estimated-usd",
+        "type": "quantitative",
+        "title": "Estimated USD"
+      }
+    ]
+  }
+}

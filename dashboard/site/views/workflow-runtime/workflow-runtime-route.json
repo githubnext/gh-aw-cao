@@ -1,0 +1,18 @@
+{
+  "id": "workflow-runtime-route",
+  "title": "Workflow runtime",
+  "data": {
+    "sources": [
+      "workflows",
+      "runs",
+      "usage",
+      "operational-values"
+    ]
+  },
+  "mark": "element",
+  "element": "workflow-route-page",
+  "config": {
+    "body": "insights"
+  },
+  "layout": "full"
+}
