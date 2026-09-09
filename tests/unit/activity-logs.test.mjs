@@ -86,7 +86,8 @@ if (args[0] === "aw") {
       item.logsPath,
     ]);
     assert.equal(args.filter((value) => value === "logs").length, 1);
-    assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "200"]);
+    assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "10"]);
+    assert.deepEqual(args.slice(args.indexOf("--timeout"), args.indexOf("--timeout") + 2), ["--timeout", "10"]);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     const snapshot = JSON.parse(await readFile(item.logsPath, "utf8"));
     assert.deepEqual(snapshot.runs[0].jobs, [{

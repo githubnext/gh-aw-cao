@@ -9,7 +9,7 @@ import { actionsLog as log } from "./actions-log.mjs";
 import { performanceJobRecord } from "./failure-evidence.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
-const DEFAULT_RUN_LIMIT = 200;
+const DEFAULT_RUN_LIMIT = 10;
 const ACTIONS_API_CONCURRENCY = 4;
 const ACTIONS_JOB_PAGE_LIMIT = 10;
 

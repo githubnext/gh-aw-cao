@@ -8,7 +8,7 @@ logs_path="${REPORT_GH_AW_LOGS:-_activity/gh-aw-logs.json}"
 output_directory="${REPORT_AIC_CACHE:-_activity/gh-aw-logs}"
 exit_code_path="${REPORT_GH_AW_LOGS_EXIT_CODE:-_activity/gh-aw-logs-exit-code}"
 window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
-run_limit="${REPORT_RUN_LIMIT:-200}"
+run_limit="${REPORT_RUN_LIMIT:-10}"
 
 mkdir -p "$output_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_path")"
 
@@ -27,7 +27,7 @@ gh aw logs --audit \
   --start-date "-${window_days}d" \
   --cache-before "-${window_days}d" \
   --count "$run_limit" \
-  --timeout 15 \
+  --timeout 10 \
   --max-github-api-rate-limit -2000 \
   --max-storage 1200 \
   --prune-older-runs \
