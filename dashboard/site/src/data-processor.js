@@ -2,6 +2,8 @@ import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { deriveDataHealthSources } from './data-health.js';
+import { adaptDashboardSources, snapshotDashboardSources } from './data/adapters/dashboard-sources.js';
+import { normalize } from './data/normalize/index.js';
 
 /** @type {Worker | null} */
 let worker = null;
@@ -60,22 +62,41 @@ export function processDataHealthSources(sources, context) {
 }
 
 /**
+ * Adapts and normalizes published dashboard sources in a Web Worker when supported.
+ * @param {Record<string, unknown>} sources
+ * @param {string} generation
+ * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
+ */
+export function processCanonicalDashboardSources(sources, generation) {
+  return processRequest(
+    { operation: 'canonicalize-dashboard-sources', sources, generation },
+    () => ({
+      ...normalize(adaptDashboardSources(sources).observations, { generation }),
+      ...snapshotDashboardSources(sources, generation)
+    }),
+    false
+  );
+}
+
+/**
  * @template T
  * @param {Record<string, unknown>} request
  * @param {() => T} fallback
+ * @param {boolean} [recoverWorkerError]
  * @returns {T|Promise<T>}
  */
-function processRequest(request, fallback) {
+function processRequest(request, fallback, recoverWorkerError = true) {
   const processor = getWorker();
   if (!processor) return fallback();
   const id = ++nextRequestId;
-  return new Promise((resolve, reject) => {
+  const result = new Promise((resolve, reject) => {
     pending.set(id, {
       resolve: (value) => resolve(/** @type {T} */ (value)),
       reject
     });
     processor.postMessage({ id, ...request });
-  }).catch(fallback);
+  });
+  return recoverWorkerError ? result.catch(fallback) : result;
 }
 
 /** @returns {Worker | null} */

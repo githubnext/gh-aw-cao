@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { sourceId } from "../site/src/data/model/ids.js";
 import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
@@ -10,6 +11,8 @@ const sourceNames = [
   "repositories",
   "workflows",
   "runs",
+  "sessions",
+  "events",
   "admissions",
   "admission-checks",
   "run-performance",
@@ -703,6 +706,7 @@ function runRows(deployed, usage) {
         ...names,
         workflow: workflow.path?.replace(/\.lock\.yml$/, ".md") || "",
         run: String(run.runId),
+        "run-attempt": Number(run.runAttempt) || 1,
         event: run.event || "unknown",
         "run-title": run.displayTitle || `Run ${run.runId}`,
         "started-at": run.startedAt || run.createdAt,
@@ -808,6 +812,53 @@ function collectedLogRuns(usage) {
     runs.set(key, { ...(runs.get(key) || {}), ...run });
   }
   return [...runs.values()];
+}
+
+function transactionLogRows(usage) {
+  const sessions = [];
+  const events = [];
+  for (const run of usage.securityRuns || []) {
+    const timeline = Array.isArray(run.timeline) ? run.timeline : [];
+    if (timeline.length === 0) continue;
+    const names = repositoryParts(run.repository);
+    const attempt = Number(run.runAttempt) || 1;
+    const session = firstText(timeline[0]?.sessionId);
+    if (!session) continue;
+    const timestamps = timeline.map((event) => firstText(event.timestamp)).filter(Boolean).sort();
+    const agentJob = Array.isArray(run.logsPayload?.jobs)
+      ? run.logsPayload.jobs.find((job) => /agent/i.test(firstText(job?.name)))
+      : null;
+    const common = {
+      ...names,
+      workflow: run.workflowPath?.replace(/\.lock\.yml$/, ".md") || run.workflowName || "",
+      run: String(run.runId),
+      "run-attempt": attempt,
+      session,
+    };
+    sessions.push({
+      ...common,
+      ...(agentJob?.jobId !== undefined && agentJob?.jobId !== null ? { "job-id": String(agentJob.jobId) } : {}),
+      "session-kind": "unified-operational-log",
+      "session-status": firstText(run.logsPayload?.status) || "unknown",
+      "started-at": timestamps[0],
+      "ended-at": run.logsPayload?.status === "completed" ? timestamps.at(-1) : undefined,
+      "observed-at": run.createdAt || usage.generatedAt,
+    });
+    timeline.forEach((event) => events.push({
+      ...common,
+      event: sourceId("event", "gh-aw-logs", event.sourceId),
+      "event-timestamp": event.timestamp,
+      "event-source": event.source,
+      "event-type": event.type,
+      ...(event.summary ? { "event-summary": event.summary } : {}),
+      ...(event.status ? { "event-status": event.status } : {}),
+      ...(event.correlationId ? { "correlation-id": event.correlationId } : {}),
+      ...(event.payloadRef ? { "payload-ref": event.payloadRef } : {}),
+      ...(event.sourceSequence !== undefined ? { "source-sequence": event.sourceSequence } : {}),
+      "observed-at": run.createdAt || usage.generatedAt,
+    }));
+  }
+  return { sessions, events };
 }
 
 function experimentTelemetryRows(usage) {
@@ -970,6 +1021,7 @@ function performanceRows(deployed, usage) {
         ...names,
         workflow: workflow.path?.replace(/\.lock\.yml$/, ".md") || "",
         run: String(run.runId),
+        "run-attempt": Number(run.runAttempt) || 1,
         "started-at": run.startedAt || run.createdAt,
         "run-conclusion": runConclusion(run.conclusion),
         "rollout-mode": rolloutMode(run.displayTitle),
@@ -984,6 +1036,7 @@ function performanceRows(deployed, usage) {
         const labels = Array.isArray(job.labels) ? job.labels.filter(Boolean) : [];
         jobs.push({
           ...common,
+          ...(job.jobId !== null && job.jobId !== undefined ? { "job-id": String(job.jobId) } : {}),
           job: job.name || "Unknown job",
           "job-status": job.status || "unknown",
           "job-conclusion": runConclusion(job.conclusion),
@@ -2475,6 +2528,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const runs = runRows(deployed, usage);
   const admission = admissionRows(deployed);
   const performance = performanceRows(deployed, usage);
+  const transactionLogs = transactionLogRows(usage);
   const detectionObservations = detectionObservationRows(usage, performance.jobs);
   const safeOutputPerformance = safeOutputPerformanceRows(usage);
   const records = report.records || [];
@@ -2533,6 +2587,20 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
   sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
+  sources.sessions = source(
+    "sessions",
+    transactionLogs.sessions,
+    generatedAt,
+    usage.securityAvailable === true,
+    usage.securityComplete === true,
+  );
+  sources.events = source(
+    "events",
+    transactionLogs.events,
+    generatedAt,
+    usage.securityAvailable === true,
+    usage.securityComplete === true,
+  );
   const admissionExpected = (deployed.workflows || [])
     .filter((workflow) => workflow.role === "orchestrator" || workflow.role === "worker")
     .flatMap((workflow) => workflow.runHealth?.runRecords || []);

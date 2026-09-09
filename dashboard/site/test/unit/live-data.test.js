@@ -9,7 +9,7 @@ describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
     const preview = readFileSync(resolve("index.html"), "utf8");
 
-    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadDashboardSources(fetch, cacheKey)"));
+    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadDashboardSources(fetch, sourceUrl)"));
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("dashboard-loading-skeleton");
@@ -17,11 +17,12 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { loadDashboardSources } from "./src/source-loader.js"');
-    expect(preview).toContain("loadDashboardSources(fetch, cacheKey)");
-    expect(preview).toContain('readCachedSources(window.indexedDB, cacheKey)');
-    expect(preview).toContain('renderSources(cachedSources, "cached")');
-    expect(preview).toContain("writeCachedSources(window.indexedDB, cacheKey, sources)");
-    expect(preview).toContain("dashboard = renderSources(sources)");
+    expect(preview).toContain("loadDashboardSources(fetch, sourceUrl)");
+    expect(preview).toContain("renderSources(await withCanonicalViewSources(sources, true))");
+    expect(preview).not.toContain('./src/source-cache.js');
+    expect(preview).not.toContain('Showing cached data.');
+    expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {');
+    expect(preview).toContain('storage: navigator.storage');
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');

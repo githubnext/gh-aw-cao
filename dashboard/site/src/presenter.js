@@ -2793,7 +2793,8 @@ function deriveRepositoryDashboardLinks(sources, pages) {
 function deriveWorkflowDashboardLinks(sources, pages) {
   const insightsPage = pages.find((page) => page.kind === 'custom' && page.id === 'workflow-runtime');
   if (!insightsPage) return sources;
-  const knownWorkflows = new Set((sources.workflows?.rows ?? [])
+  const workflowRows = sources.workflows?.rows ?? [];
+  const knownWorkflows = new Set(workflowRows
     .map(workflowDashboardIdentity)
     .filter((identity) => identity !== null));
 

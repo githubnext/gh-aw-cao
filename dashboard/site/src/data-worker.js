@@ -2,9 +2,11 @@ import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { deriveDataHealthSources } from './data-health.js';
+import { adaptDashboardSources, snapshotDashboardSources } from './data/adapters/dashboard-sources.js';
+import { normalize } from './data/normalize/index.js';
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, context?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, context?: unknown, generation?: unknown }} request
  * @returns {unknown}
  */
 export function processDataRequest(request) {
@@ -35,6 +37,25 @@ export function processDataRequest(request) {
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
       /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
     );
+  }
+  if (request?.operation === 'canonicalize-dashboard-sources') {
+    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
+      throw new TypeError('Canonical source requests require a sources object.');
+    }
+    if (typeof request.generation !== 'string' || !request.generation.trim()) {
+      throw new TypeError('Canonical source requests require a generation.');
+    }
+    const adapted = adaptDashboardSources(/** @type {Record<string, unknown>} */ (request.sources));
+    if (adapted.generation !== request.generation) {
+      throw new TypeError('Canonical source generation changed during processing.');
+    }
+    return {
+      ...normalize(adapted.observations, { generation: request.generation }),
+      ...snapshotDashboardSources(
+        /** @type {Record<string, unknown>} */ (request.sources),
+        request.generation
+      )
+    };
   }
   if (!Array.isArray(request?.data) || !Array.isArray(request?.operators)) {
     throw new TypeError('Data worker requests require data and operators arrays.');
