@@ -2082,6 +2082,11 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   expect(await filterBar.getByRole('checkbox').evaluateAll(
     (inputs) => inputs.every((input) => /** @type {HTMLInputElement} */ (input).checked)
   )).toBe(true);
+  const desktopPanelBox = await filterBar.locator('.filter-tuning-controls').boundingBox();
+  const desktopTimeRangeBox = await filterBar.locator('.time-window-control').boundingBox();
+  expect(desktopTimeRangeBox?.x).toBeGreaterThanOrEqual(desktopPanelBox?.x ?? 0);
+  expect((desktopTimeRangeBox?.x ?? 0) + (desktopTimeRangeBox?.width ?? 0))
+    .toBeLessThanOrEqual((desktopPanelBox?.x ?? 0) + (desktopPanelBox?.width ?? 0));
   await expect(filterBar.getByRole('link', { name: 'Export JSON' })).toHaveCount(0);
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('2');
 

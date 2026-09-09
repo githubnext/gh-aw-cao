@@ -357,10 +357,10 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .filter-control input { min-width: 0; flex: 1; padding: 5px 12px; border: 0; outline: 0; background: transparent; color: var(--accent); font: inherit; }
 .search-control { padding-inline: 9px; border-left: 1px solid var(--border); color: var(--muted); }
 .scope-period { min-height: 30px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font-size: .75rem; font-weight: 600; white-space: nowrap; }
-.time-window-control { display: none; align-items: stretch; gap: 6px; }
+.time-window-control { width: 100%; min-width: 0; display: none; flex-wrap: wrap; align-items: stretch; gap: 6px; }
 .filter-bar-expanded .time-window-control { display: flex; }
 .time-window-control label { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--muted); font-size: .6875rem; font-weight: 600; white-space: nowrap; }
-.mode-filter-control { display: flex; align-items: stretch; gap: 2px; margin: 0; padding: 0; border: 0; }
+.mode-filter-control { min-width: 0; display: flex; align-items: stretch; gap: 2px; margin: 0; padding: 0; border: 0; }
 .mode-filter-control legend { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .mode-filter-control label { cursor: pointer; text-transform: capitalize; }
 .mode-filter-control input { width: auto; accent-color: var(--accent); }
