@@ -19,6 +19,23 @@ const sources = {
     }],
     metadata
   },
+  sessions: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', 'observed-at': '2026-09-09T04:00:00Z'
+    }],
+    metadata
+  },
+  events: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', event: 'event-42',
+      'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
+      'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': 'call-42',
+      'observed-at': '2026-09-09T04:01:00Z'
+    }],
+    metadata
+  },
   'job-performance': {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -119,6 +136,28 @@ describe('canonical view sources', () => {
     await expect(queries.findings.bySeverity('high')).resolves.toEqual([
       expect.objectContaining({ observationId: 'threat-detection:observation-1', severity: 'high' })
     ]);
+  });
+
+  it('projects request-scoped events with canonical run context', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      sources,
+      metadata['artifact-generation'],
+      ['events']
+    );
+
+    expect(Object.keys(projected)).toEqual(['events']);
+    expect(projected.events).toMatchObject({
+      source: 'events',
+      rows: [{
+        repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42',
+        'event-type': 'tool.call', 'event-summary': 'github/search_issues',
+        'correlation-id': 'call-42'
+      }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {

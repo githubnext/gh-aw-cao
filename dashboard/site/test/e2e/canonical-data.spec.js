@@ -149,6 +149,34 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
   };
 }
 
+function mcpCanonicalSources() {
+  const sources = canonicalSources('mcp-browser-generation', '67890');
+  const event = {
+    organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+    run: '67890', 'run-attempt': 2, session: 'session-67890',
+    'event-source': 'agent', 'observed-at': '2026-09-09T05:00:00Z'
+  };
+  sources.events.rows = [
+    {
+      ...event, event: 'tool-call-success', 'event-timestamp': '2026-09-09T04:01:00Z',
+      'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': 'call-success'
+    },
+    {
+      ...event, event: 'tool-result', 'event-timestamp': '2026-09-09T04:01:01Z',
+      'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': 'call-success'
+    },
+    {
+      ...event, event: 'tool-call-error', 'event-timestamp': '2026-09-09T04:02:00Z',
+      'event-type': 'tool.call', 'event-summary': 'github/create_issue', 'correlation-id': 'call-error'
+    },
+    {
+      ...event, event: 'tool-error', 'event-timestamp': '2026-09-09T04:02:01Z',
+      'event-type': 'tool.error', 'event-status': 'failure', 'correlation-id': 'call-error'
+    }
+  ];
+  return sources;
+}
+
 test.beforeEach(async ({ context, page }) => {
   await context.route('http://dashboard.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -162,6 +190,10 @@ test.beforeEach(async ({ context, page }) => {
     }
     if (pathname === '/sources.json') {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(canonicalSources()) });
+      return;
+    }
+    if (pathname === '/mcp-sources.json') {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(mcpCanonicalSources()) });
       return;
     }
     const filePath = join(siteRoot, pathname);
@@ -380,6 +412,44 @@ test('data worker returns the Models & agents query on initial and navigated req
   }
 });
 
+test('data worker returns declarative MCP activity on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/mcp-sources.json`,
+      ['mcp-tool-activity'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['mcp-tool-activity'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['mcp-tool-activity']);
+    expect(payload['mcp-tool-activity']).toMatchObject({
+      source: 'mcp-tool-activity',
+      rows: [
+        {
+          'mcp-server': 'github', 'mcp-tool': 'create_issue', 'mcp-status': 'failure',
+          repository: 'gh-aw-cao', run: '67890'
+        },
+        {
+          'mcp-server': 'github', 'mcp-tool': 'search_issues', 'mcp-status': 'success',
+          repository: 'gh-aw-cao', run: '67890'
+        }
+      ],
+      metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
+    });
+  }
+});
+
 test('data worker queries firewall domain totals on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
@@ -501,9 +571,9 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
   expect(result.sessions[0].kind).toBe('unified-operational-log');
   expect(result.events.map((/** @type {Record<string, unknown>} */ event) => [event.sequence, event.source, event.type])).toEqual([
     [0, 'agent', 'agent_turn'],
-    [1, 'gateway', 'tool_call'],
-    [2, 'agent', 'agent_tool_start'],
-    [3, 'agent', 'agent_tool_done'],
+    [1, 'gateway', 'gateway.request'],
+    [2, 'agent', 'tool.call'],
+    [3, 'agent', 'tool.result'],
     [4, 'firewall', 'net_allowed'],
     [5, 'agent', 'assistant_message']
   ]);

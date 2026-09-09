@@ -239,7 +239,7 @@ describe('dashboard document validation', () => {
           'lazy-list': true,
           layout: 'full-view',
           data: {
-            source: 'mcp-calls',
+            source: 'mcp-tool-activity',
             'order-by': [{ field: 'observed-at', direction: 'desc' }]
           }
         }
@@ -249,11 +249,7 @@ describe('dashboard document validation', () => {
     expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
       'mcp-server',
       'mcp-tool',
-      'mcp-server-version',
-      'mcp-protocol-version',
-      'gh-aw-version',
       'mcp-status',
-      'response-bytes',
       'repository',
       'workflow',
       'run',

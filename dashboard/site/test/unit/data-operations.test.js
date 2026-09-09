@@ -19,6 +19,19 @@ describe('dashboard data operations', () => {
     ]);
   });
 
+  it('extracts MCP server and tool names from canonical tool identities', () => {
+    expect(tidy([{ identity: 'github/search/issues' }, { identity: 'invalid' }], [{
+      op: 'compute',
+      values: [
+        { as: 'server', function: 'tool-server', args: [{ field: 'identity' }] },
+        { as: 'tool', function: 'tool-name', args: [{ field: 'identity' }] }
+      ]
+    }])).toEqual([
+      { identity: 'github/search/issues', server: 'github', tool: 'search/issues' },
+      { identity: 'invalid', server: null, tool: null }
+    ]);
+  });
+
   it('summarizes groups and computes means without mutating its input', () => {
     expect(tidy(rows, [{
       op: 'summarize',
