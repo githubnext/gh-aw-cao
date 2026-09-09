@@ -5,7 +5,7 @@ import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
-import { projectCanonicalViewSources } from './data/queries/view-sources.js';
+import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -13,8 +13,8 @@ import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDashboardLinkSources } from './inferred-sources.js';
 
-/** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
-let liveDashboardSources = null;
+/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
+let liveDashboard = null;
 
 /**
  * @param {unknown} sourceNames
@@ -32,10 +32,33 @@ function requestedSourceNames(sourceNames) {
  * @param {Set<string>} requested
  */
 function pageScopedSources(sources, requested) {
-  return Object.fromEntries(Object.entries(sources).flatMap(([name, source]) => {
-    if (requested.has(name)) return [[name, source]];
-    return source?.metadata ? [[name, { source: name, rows: [], metadata: source.metadata }]] : [];
-  }));
+  return Object.fromEntries(Object.entries(sources).filter(([name]) => requested.has(name)));
+}
+
+/**
+ * @param {Set<string>} requested
+ * @param {ReturnType<typeof dashboardContext>} context
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
+ */
+async function queryLiveDashboard(requested, context, requestContext) {
+  if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
+  const canonicalPayload = await queryCanonicalViewSources(
+    indexedDB,
+    liveDashboard.logicalSources,
+    liveDashboard.generation,
+    [...requested]
+  );
+  const derivedSources = deriveRuntimeSources(
+    deriveRepositorySources(
+      deriveOverviewSources(
+        deriveWorkflowSources({ ...liveDashboard.logicalSources, ...canonicalPayload })
+      )
+    )
+  );
+  const querySources = [...requested].some((name) => name.startsWith('data-health-'))
+    ? { ...derivedSources, ...deriveDataHealthSources(derivedSources, requestContext) }
+    : derivedSources;
+  return deriveDashboardLinkSources(pageScopedSources(querySources, requested), context);
 }
 
 /** @param {unknown} value */
@@ -62,18 +85,11 @@ export function processDataRequest(request) {
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
-    if (!liveDashboardSources) throw new Error('Canonical dashboard data has not been loaded.');
-    const requiresDataHealth = [...requested].some((name) => name.startsWith('data-health-'));
-    const querySources = requiresDataHealth
-      ? {
-          ...liveDashboardSources,
-          ...deriveDataHealthSources(
-            liveDashboardSources,
-            /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
-          )
-        }
-      : liveDashboardSources;
-    return deriveDashboardLinkSources(pageScopedSources(querySources, requested), context);
+    return queryLiveDashboard(
+      requested,
+      context,
+      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
+    );
   }
   if (request?.operation === 'load-canonical-dashboard') {
     if (typeof request.sourceUrl !== 'string' || !request.sourceUrl.trim()) {
@@ -95,11 +111,15 @@ export function processDataRequest(request) {
       const { generation } = await ingestDashboardSources(indexedDB, sources, {
         storage: globalThis.navigator?.storage
       });
-      const canonicalSources = await projectCanonicalViewSources(indexedDB, sources, generation);
-      liveDashboardSources = deriveRuntimeSources(
-        deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(canonicalSources)))
+      liveDashboard = {
+        logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
+        generation
+      };
+      return queryLiveDashboard(
+        requested,
+        context,
+        /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
       );
-      return deriveDashboardLinkSources(pageScopedSources(liveDashboardSources, requested), context);
     })();
   }
   if (request?.operation === 'summarize-table-columns') {
