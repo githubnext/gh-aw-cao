@@ -14,6 +14,7 @@ export function createCanonicalQueries(indexedDB) {
     },
     runs: {
       list: () => readActiveCollection(indexedDB, 'runs'),
+      get: (/** @type {string} */ id) => readActiveRecord(indexedDB, 'runs', id),
       forRepository: (/** @type {string} */ repositoryId) =>
         readActiveIndex(indexedDB, 'runs', 'byRepository', [repositoryId]),
       forWorkflow: (/** @type {string} */ workflowId) =>
@@ -31,6 +32,7 @@ export function createCanonicalQueries(indexedDB) {
         readActiveIndex(indexedDB, 'jobs', 'byRun', [runId])
     },
     sessions: {
+      get: (/** @type {string} */ id) => readActiveRecord(indexedDB, 'sessions', id),
       forRun: (/** @type {string} */ runId) =>
         readActiveIndex(indexedDB, 'sessions', 'byRun', [runId]),
       forJob: (/** @type {string} */ jobId) =>
@@ -39,6 +41,10 @@ export function createCanonicalQueries(indexedDB) {
     events: {
       forSession: (/** @type {string} */ sessionId) =>
         readActiveIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]),
+      firewallActivity: async () => (await Promise.all([
+        readActiveIndex(indexedDB, 'events', 'byType', ['net_allowed']),
+        readActiveIndex(indexedDB, 'events', 'byType', ['net_blocked'])
+      ])).flat(),
       forSessionByType: async (/** @type {string} */ sessionId, /** @type {string} */ type) => {
         const events = await readActiveIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]);
         return events.filter((event) => event.type === type);
