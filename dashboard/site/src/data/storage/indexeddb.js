@@ -485,12 +485,13 @@ export async function countActiveCollections(indexedDB, storeNames) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
     const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    if (typeof active?.value !== 'string') {
+    const generation = active?.value;
+    if (typeof generation !== 'string') {
       return Object.fromEntries(storeNames.map((storeName) => [storeName, 0]));
     }
     const transaction = database.transaction(storeNames);
     const counts = await Promise.all(storeNames.map((storeName) => requestResult(
-      transaction.objectStore(storeName).index('generation').count(active.value)
+      transaction.objectStore(storeName).index('generation').count(generation)
     )));
     return Object.fromEntries(storeNames.map((storeName, index) => [storeName, counts[index]]));
   } finally {

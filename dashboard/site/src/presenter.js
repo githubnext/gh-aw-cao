@@ -165,7 +165,7 @@ export function dashboardPageSourceNames(document, pageId) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null } = input;
+  const { document, sources: rawSources, viewer = null, loadDatabaseCounts } = input;
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
@@ -200,7 +200,7 @@ export function renderDashboard(input) {
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
   const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer);
+  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer, loadDatabaseCounts);
 
   const appShell = h(
     'div',
@@ -653,9 +653,10 @@ function getPageIcon(page) {
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
  * @param {LocalViewer | null} viewer
+ * @param {PresentationInput['loadDatabaseCounts']} loadDatabaseCounts
  * @returns {HTMLElement}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer) {
+function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer, loadDatabaseCounts) {
   const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
@@ -697,7 +698,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, input.loadDatabaseCounts),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts),
           dashboardRepository
             ? h(
               'a',
@@ -849,6 +850,7 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
       ? 'muted'
       : 'attention';
   const databaseCounts = h('span', { className: 'horizon-tooltip-counts' }, 'Database counts load on hover');
+  /** @type {Promise<void> | undefined} */
   let countsPromise;
   const loadCounts = () => {
     if (!loadDatabaseCounts || countsPromise) return;
