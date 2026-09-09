@@ -34,6 +34,10 @@ The CAO operator-facing name for the workflow that selects and dispatches work f
 
 The repository that hosts CAO workflows and policy. It coordinates work across explicitly enrolled target repositories. This is CAO's implementation of the gh-aw [Central Control Plane](https://github.github.com/gh-aw/reference/glossary/#central-control-plane) pattern.
 
+## Declarative query
+
+A reusable derived logical source declared in `dashboard.queries` as a closed, structured projection over already-declared logical sources or earlier queries, using only named clauses (`from`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit`) rather than SQL text, scripts, callbacks, or templates. Dashboard views must derive their data through declarative queries executed by the canonical data model's query engine and Web Worker; JavaScript-based dashboard views are not permitted. See the Dashboard Language Specification, Section 5.5.
+
 ## Dispatch
 
 The bounded handoff by which a coordinator starts a worker with one selected target and a resolved control envelope. A dispatch is an event within an operation run, not an operation or agent.
