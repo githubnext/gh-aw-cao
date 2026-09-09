@@ -2019,7 +2019,7 @@
         "kind": "built-in",
         "page": "workflows",
         "title": "Workflows",
-        "icon": "codescan",
+        "icon": "workflow",
         "description": "Inspect declared central package and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
         "definition": {
           "data-state": {
@@ -3800,9 +3800,9 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "column-summaries": false,
+            "column-summaries": true,
             "empty-message": "No failed runs were observed in the selected horizon.",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -3854,9 +3854,9 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "column-summaries": false,
+            "column-summaries": true,
             "empty-message": "No blocked work was observed in the selected horizon.",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -3908,9 +3908,9 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "column-summaries": false,
+            "column-summaries": true,
             "empty-message": "No work is awaiting review in the selected horizon.",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -3959,9 +3959,9 @@
             },
             "mark": "table",
             "controls": "interactive",
-            "column-summaries": false,
+            "column-summaries": true,
             "empty-message": "No security findings were observed in the selected horizon.",
-            "layout": "full",
+            "layout": "full-view",
             "encoding": {
               "columns": [
                 {
@@ -4148,6 +4148,9 @@
       {
         "pages": [
           "overview",
+          "repositories",
+          "workflows",
+          "packages",
           "configuration"
         ]
       },
@@ -4190,9 +4193,6 @@
           "dispatches",
           "firewall",
           "mcps",
-          "workflows",
-          "repositories",
-          "packages",
           "engines-models"
         ]
       }

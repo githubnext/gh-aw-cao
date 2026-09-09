@@ -60,6 +60,23 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'started-at': '2026-09-09T04:01:00Z'
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    'work-items': {
+      rows: [{
+        'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md',
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        'lifecycle-state': 'blocked', reason: 'Build failed', 'observed-at': '2026-09-09T04:00:00Z'
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    'security-findings': {
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+        'smell-observation-id': `threat-detection:${run}`, 'smell-id': 'threat-detection-secret-leak',
+        'smell-name': 'Secret leak detected', 'smell-severity': 'high',
+        'observed-at': '2026-09-09T04:01:00Z'
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     }
   };
 }
@@ -71,9 +88,20 @@ test.beforeEach(async ({ context, page }) => {
       await route.fulfill({ contentType: 'text/html', body: '<main>Canonical data test</main>' });
       return;
     }
+    if (pathname === '/sources/manifest.json') {
+      await route.fulfill({ status: 404, body: 'Not found' });
+      return;
+    }
+    if (pathname === '/sources.json') {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(canonicalSources()) });
+      return;
+    }
     const filePath = join(siteRoot, pathname);
     if (existsSync(filePath)) {
-      await route.fulfill({ contentType: 'application/javascript', body: readFileSync(filePath) });
+      await route.fulfill({
+        contentType: pathname.endsWith('.json') ? 'application/json' : 'application/javascript',
+        body: readFileSync(filePath)
+      });
     } else {
       await route.fulfill({ contentType: 'text/html', body: '<main>Canonical data test</main>' });
     }
@@ -164,6 +192,50 @@ test('native IndexedDB activates and retains a canonical generation across reloa
     organization: 'githubnext', repository: 'gh-aw-cao', run: '12345',
     'run-attempt': 2, 'job-id': '123459', job: 'build'
   }]);
+});
+
+test('data worker returns only the canonical payload requested by a view', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['failed-runs'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['failed-runs'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['failed-runs']);
+    expect(payload['failed-runs']).toMatchObject({
+      source: 'failed-runs',
+      rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
+  }
+});
+
+test('data worker queries canonical work items and security findings', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    await loadCanonicalDashboardSources(`${location.origin}/sources.json`, ['work-items'], context);
+    return loadCanonicalDashboardPage(['work-items', 'security-findings'], context);
+  });
+
+  expect(Object.keys(result)).toEqual(['work-items', 'security-findings']);
+  expect(result['work-items']).toMatchObject({
+    rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }],
+    metadata: { 'source-kind': 'canonical-query' }
+  });
+  expect(result['security-findings']).toMatchObject({
+    rows: [{ 'smell-observation-id': 'threat-detection:12345', 'smell-severity': 'high' }],
+    metadata: { 'source-kind': 'canonical-query' }
+  });
 });
 
 test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', async ({ page }) => {

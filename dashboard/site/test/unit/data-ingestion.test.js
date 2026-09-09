@@ -109,7 +109,7 @@ describe('canonical source ingestion and queries', () => {
       .toHaveLength(2);
     await expect(activeGenerationMetadata(indexedDB)).resolves.toEqual({
       generation: 'warehouse-2026-09-09-05',
-      canonicalSchemaVersion: 4
+      canonicalSchemaVersion: 5
     });
   });
 
@@ -176,7 +176,7 @@ describe('canonical source ingestion and queries', () => {
     });
     await expect(activeGenerationMetadata(indexedDB)).resolves.toEqual({
       generation: 'generation-a',
-      canonicalSchemaVersion: 4
+      canonicalSchemaVersion: 5
     });
   });
 });

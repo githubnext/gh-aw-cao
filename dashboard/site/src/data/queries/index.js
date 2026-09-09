@@ -43,6 +43,16 @@ export function createCanonicalQueries(indexedDB) {
         const events = await readActiveIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]);
         return events.filter((event) => event.type === type);
       }
+    },
+    workItems: {
+      list: () => readActiveCollection(indexedDB, 'workItems'),
+      byLifecycleState: (/** @type {string} */ lifecycleState) =>
+        readActiveIndex(indexedDB, 'workItems', 'byLifecycleState', [lifecycleState])
+    },
+    findings: {
+      list: () => readActiveCollection(indexedDB, 'findings'),
+      bySeverity: (/** @type {string} */ severity) =>
+        readActiveIndex(indexedDB, 'findings', 'bySeverity', [severity])
     }
   };
 }
