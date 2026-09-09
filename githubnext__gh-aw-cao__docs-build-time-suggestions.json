@@ -1,6 +1,6 @@
 {
   "source_sha": "90f767ac57bf04c6ef09637bb0e79801653e2cab",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
     {
       "evaluated_at": "2026-09-09T13:27:00Z",
@@ -305,6 +305,23 @@
       "category": "reusable dashboard generation",
       "evidence_run_ids": [],
       "outcome": "incomplete: evaluation of category 'reusable dashboard generation' stopped after trusted workflow YAML reads because fresh docs.yml run listing failed with HTTP 403 API rate-limit exhaustion and the immediate retry failed with HTTP 502 resource-labeling errors; open-issue duplicate verification also failed. The required minimum of five comparable successful docs.yml runs, median and p90 workflow/job timings, step timings, and cache-hit verification could not be established safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T21:25:27Z",
+      "worker_run_id": 34406379131,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        34406290143,
+        34401878660,
+        34401626423,
+        34401555682,
+        34401067101,
+        34400782295,
+        34400715111,
+        34399419097
+      ],
+      "outcome": "no-op: analyzed 8 comparable successful docs.yml runs from 2026-09-09T20:10:16Z to 2026-09-09T21:21:41Z for category 'reusable dashboard generation'. Median workflow execution was 134s (p90 189.9s); parent job medians were dashboard 53s, build 37s, and deploy 10.5s. The dispatched dashboard-build child build remained small: Build Dashboard Language sources median 3s, Restore collected activity data median 4.5s, Upload dashboard artifact median 4s. Trusted step metadata showed the parent node_modules cache hitting on all 8 samples (Install dependencies and Save node_modules reported 0s throughout), but the parent Restore dashboard from cache step still took 1s and Mount dashboard at /cao took 2s on every sample, so the parent always downloaded the dashboard artifact after dispatch. That repeated transfer and workflow-dispatch wait are each below the >=60s or >=15% actionability threshold for this category based on current evidence. Duplicate-open-issue verification failed with HTTP 502 while reading open issues, so no non-duplicate suggestion was emitted.",
       "suggestion_fingerprint": ""
     }
   ]
