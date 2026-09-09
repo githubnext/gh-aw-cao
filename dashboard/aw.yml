@@ -86,6 +86,8 @@ resources:
     destination: .github/aw/dashboard/site/src/debounce.js
   - source: site/src/horizon.js
     destination: .github/aw/dashboard/site/src/horizon.js
+  - source: site/src/inferred-sources.js
+    destination: .github/aw/dashboard/site/src/inferred-sources.js
   - source: site/src/loading-progress.js
     destination: .github/aw/dashboard/site/src/loading-progress.js
   - source: site/src/notification-stories.js

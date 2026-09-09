@@ -857,15 +857,21 @@
           const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
             ?? dashboardDocument.dashboard.pages[0]?.id
             ?? "";
+          const dashboardContext = {
+            githubUrlBase: dashboardDocument.dashboard["github-url-base"],
+            dashboardRepository: dashboardDocument.dashboard.repository,
+            pages: dashboardDocument.dashboard.pages,
+          };
           const loadPageSources = (pageId) => loadCanonicalDashboardPage(
             dashboardPageSourceNames(dashboardDocument, pageId),
-            {
-              githubUrlBase: dashboardDocument.dashboard["github-url-base"],
-              dashboardRepository: dashboardDocument.dashboard.repository,
-            },
+            dashboardContext,
           );
           renderSources(
-            await loadCanonicalDashboardSources(sourceUrl, dashboardPageSourceNames(dashboardDocument, initialPageId)),
+            await loadCanonicalDashboardSources(
+              sourceUrl,
+              dashboardPageSourceNames(dashboardDocument, initialPageId),
+              dashboardContext,
+            ),
             "ready",
             true,
             loadPageSources,

@@ -11,6 +11,7 @@ import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
+import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
 let liveDashboardSources = null;
@@ -37,6 +38,22 @@ function pageScopedSources(sources, requested) {
   }));
 }
 
+/** @param {unknown} value */
+function dashboardContext(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('Canonical dashboard queries require a dashboard context.');
+  }
+  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown }} */ (value);
+  if (!Array.isArray(context.pages)) {
+    throw new TypeError('Canonical dashboard context requires pages.');
+  }
+  return {
+    githubUrlBase: typeof context.githubUrlBase === 'string' && context.githubUrlBase
+      ? context.githubUrlBase : 'https://github.com',
+    pages: /** @type {import('./inferred-sources.js').DashboardPage[]} */ (context.pages)
+  };
+}
+
 /**
  * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown }} request
  * @returns {unknown}
@@ -44,6 +61,7 @@ function pageScopedSources(sources, requested) {
 export function processDataRequest(request) {
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
+    const context = dashboardContext(request.context);
     if (!liveDashboardSources) throw new Error('Canonical dashboard data has not been loaded.');
     const requiresDataHealth = [...requested].some((name) => name.startsWith('data-health-'));
     const querySources = requiresDataHealth
@@ -55,7 +73,7 @@ export function processDataRequest(request) {
           )
         }
       : liveDashboardSources;
-    return pageScopedSources(querySources, requested);
+    return deriveDashboardLinkSources(pageScopedSources(querySources, requested), context);
   }
   if (request?.operation === 'load-canonical-dashboard') {
     if (typeof request.sourceUrl !== 'string' || !request.sourceUrl.trim()) {
@@ -71,6 +89,7 @@ export function processDataRequest(request) {
       throw new TypeError('Canonical dashboard source URL must be same-origin.');
     }
     const requested = requestedSourceNames(request.sourceNames);
+    const context = dashboardContext(request.context);
     return (async () => {
       const sources = await loadDashboardSources(fetch, sourceUrl.href);
       const { generation } = await ingestDashboardSources(indexedDB, sources, {
@@ -80,7 +99,7 @@ export function processDataRequest(request) {
       liveDashboardSources = deriveRuntimeSources(
         deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(canonicalSources)))
       );
-      return pageScopedSources(liveDashboardSources, requested);
+      return deriveDashboardLinkSources(pageScopedSources(liveDashboardSources, requested), context);
     })();
   }
   if (request?.operation === 'summarize-table-columns') {
