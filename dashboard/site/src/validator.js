@@ -9,6 +9,7 @@ import {
   DASHBOARD_HORIZON_KEYS,
   DASHBOARD_QUERY_LIMITS,
   COMPUTE_FUNCTION_ARITY,
+  NUMERIC_COMPUTE_FUNCTIONS,
   QUERY_AGGREGATE_KEYS,
   QUERY_AGGREGATE_VALUE_KEYS,
   QUERY_COMPUTE_ARGUMENT_KEYS,
@@ -22,7 +23,9 @@ import {
   QUERY_MAX_JOINS,
   QUERY_PREDICATE_KEYS,
   QUERY_REDUCER_VALUES,
+  QUERY_NUMERIC_REDUCER_VALUES,
   QUERY_SELECT_KEYS,
+  INFERRED_FIELD_NAMES,
   DATASET_AVAILABILITY_VALUES,
   DATASET_COMPLETENESS_VALUES,
   DATASET_FRESHNESS_VALUES,
@@ -2188,6 +2191,41 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
     }
     fields.push(alias);
   };
+  /**
+   * Rejects field references that the canonical schema cannot satisfy: fields
+   * materialized only after query execution, structured link fields used as
+   * scalars, and temporal fields used as numeric measures.
+   *
+   * @param {unknown} field
+   * @param {string} fieldPath
+   * @param {'read' | 'scalar' | 'numeric'} use
+   */
+  const requireSchemaType = (field, fieldPath, use) => {
+    if (typeof field !== 'string') return;
+    if (INFERRED_FIELD_NAMES.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        `query fields must exist in the canonical schema; "${field}" is derived after query execution.`,
+        fieldPath
+      ));
+      return;
+    }
+    if (use !== 'read' && LINK_FIELD_NAMES.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        `query operators require a scalar field; "${field}" is a structured link field.`,
+        fieldPath
+      ));
+      return;
+    }
+    if (use === 'numeric' && TEMPORAL_FIELD_NAMES.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        `numeric query operators require a numeric field; "${field}" is a timestamp field.`,
+        fieldPath
+      ));
+    }
+  };
 
   if (query.joins !== undefined) {
     const joinsNode = getValueNodeByKey(queryNode, 'joins');
@@ -2235,6 +2273,8 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
             validateStringField(pair.left, `${pairPath}.left`, true, errors);
             validateStringField(pair.right, `${pairPath}.right`, true, errors);
             requireField(pair.left, `${pairPath}.left`);
+            requireSchemaType(pair.left, `${pairPath}.left`, 'scalar');
+            requireSchemaType(pair.right, `${pairPath}.right`, 'scalar');
             if (typeof pair.right === 'string' && joinedFields && !joinedFields.includes(pair.right)) {
               errors.push(createError(
                 ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -2273,6 +2313,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
               `${fieldPath}.field`
             ));
           }
+          requireSchemaType(field.field, `${fieldPath}.field`, 'read');
           declareField(field.as, `${fieldPath}.as`);
         }
       }
@@ -2306,6 +2347,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           );
           validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
           requireField(predicate.field, `${predicatePath}.field`);
+          requireSchemaType(predicate.field, `${predicatePath}.field`, 'scalar');
           if (predicate.equals === undefined && predicate.in === undefined && predicate.includes === undefined) {
             errors.push(createError(
               ERROR_CODES.missingOrInvalidRequiredField,
@@ -2379,6 +2421,13 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
             if (hasField) {
               validateStringField(argument.field, `${argumentPath}.field`, true, errors);
               requireField(argument.field, `${argumentPath}.field`);
+              requireSchemaType(
+                argument.field,
+                `${argumentPath}.field`,
+                typeof computed.function !== 'string' ? 'read'
+                  : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
+                    : computed.function === 'coalesce' ? 'read' : 'scalar'
+              );
             } else if (!['string', 'number', 'boolean'].includes(typeof argument.value)) {
               errors.push(createError(
                 ERROR_CODES.missingOrInvalidRequiredField,
@@ -2413,6 +2462,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           for (const [index, field] of query.aggregate.by.entries()) {
             validateStringField(field, `${aggregatePath}.by[${index}]`, true, errors);
             requireField(field, `${aggregatePath}.by[${index}]`);
+            requireSchemaType(field, `${aggregatePath}.by[${index}]`, 'scalar');
             if (typeof field === 'string') grouped.push(field);
           }
         }
@@ -2439,6 +2489,13 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
           validateStringField(value.field, `${valuePath}.field`, true, errors);
           validateStringField(value.as, `${valuePath}.as`, true, errors);
           requireField(value.field, `${valuePath}.field`);
+          requireSchemaType(
+            value.field,
+            `${valuePath}.field`,
+            typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer)
+              ? 'numeric'
+              : 'scalar'
+          );
           if (typeof value.reducer !== 'string' || !QUERY_REDUCER_VALUES.includes(value.reducer)) {
             errors.push(createError(
               ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -2481,6 +2538,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
         validateStringField(field.field, `${selectPath}.field`, true, errors);
         validateOptionalStringField(field.as, `${selectPath}.as`, errors);
         requireField(field.field, `${selectPath}.field`);
+        requireSchemaType(field.field, `${selectPath}.field`, 'read');
         const alias = typeof field.as === 'string' ? field.as : field.field;
         if (typeof alias === 'string') {
           if (projected.includes(alias)) {
@@ -2520,6 +2578,7 @@ function validateQueryClauses(query, queryNode, path, declared, errors) {
         );
         validateStringField(clause.field, `${clausePath}.field`, true, errors);
         requireField(clause.field, `${clausePath}.field`);
+        requireSchemaType(clause.field, `${clausePath}.field`, 'scalar');
         if (clause.direction !== undefined
             && (typeof clause.direction !== 'string' || !ORDER_DIRECTION_VALUES.includes(clause.direction))) {
           errors.push(createError(

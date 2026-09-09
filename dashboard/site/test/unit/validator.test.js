@@ -4885,4 +4885,84 @@ describe('declarative query validation', () => {
       ]));
     }
   });
+
+  it('rejects structured link fields used where the schema requires a scalar', () => {
+    const result = validateDashboardDocument(queryDocument([aicQuery, {
+      name: 'workflow-costs',
+      from: 'workflows',
+      joins: [
+        {
+          source: 'workflow-aic',
+          type: 'left',
+          on: [{ left: 'workflow-link', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'observed-aic' }]
+        },
+        {
+          source: 'runs',
+          type: 'left',
+          on: [{ left: 'workflow', right: 'run-link' }],
+          fields: [{ field: 'run-status', as: 'observed-status' }]
+        }
+      ],
+      filter: { predicates: [{ field: 'repository-link', equals: 'octo/demo' }] },
+      compute: [{ as: 'link-label', function: 'lower', args: [{ field: 'organization-link' }] }],
+      select: [{ field: 'workflow' }, { field: 'workflow-link' }],
+      'order-by': [{ field: 'workflow-link', direction: 'asc' }]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].joins[0].on[0].left' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].joins[1].on[0].right' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].filter.predicates[0].field' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].compute[0].args[0].field' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].order-by[0].field' })
+      ]));
+      expect(result.errors).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[1].select[1].field' })
+      ]));
+    }
+  });
+
+  it('rejects numeric operators applied to temporal schema fields', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'runs',
+      compute: [{ as: 'start-number', function: 'number', args: [{ field: 'started-at' }] }],
+      aggregate: {
+        by: ['workflow'],
+        values: [
+          { field: 'started-at', as: 'first-start', reducer: 'min' },
+          { field: 'run', as: 'observed-runs', reducer: 'distinct-count' }
+        ]
+      }
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[0].compute[0].args[0].field' }),
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[0].aggregate.values[0].field' })
+      ]));
+      expect(result.errors).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[0].aggregate.values[1].field' })
+      ]));
+    }
+  });
+
+  it('rejects fields that only exist after post-query link inference', () => {
+    const result = validateDashboardDocument(queryDocument([{
+      name: 'workflow-costs',
+      from: 'packaged-workflows',
+      select: [{ field: 'workflow' }, { field: 'package-link' }]
+    }]));
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E011', path: '$.dashboard.queries[0].select[1].field' })
+      ]));
+    }
+  });
 });

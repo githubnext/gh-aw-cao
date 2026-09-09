@@ -36,6 +36,8 @@ export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
 export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer'];
 export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max'];
 export const QUERY_SELECT_KEYS = ['field', 'as'];
+export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
+export const INFERRED_FIELD_NAMES = ['package-link'];
 export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
 export { DASHBOARD_QUERY_LIMITS };
 export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];

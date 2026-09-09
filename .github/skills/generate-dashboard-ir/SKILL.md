@@ -116,6 +116,23 @@ queries:
 
 Invalid because the two queries form a dependency cycle, `workflow-totals` reads a query declared after it, and the keyless `on` would expand every row against every other row. Queries must form an acyclic graph in declaration order, and every join must declare at least one equality key pair.
 
+Also invalid:
+
+```yaml
+queries:
+  - name: workflow-activity
+    from: runs
+    joins:
+      - source: workflows
+        on: [{ left: workflow-link, right: workflow-link }]
+        fields: [{ field: package, as: package }]
+    aggregate:
+      by: [workflow]
+      values: [{ field: started-at, as: first-start, reducer: min }]
+```
+
+Invalid because the join keys and the `min` measure are incompatible with the source schema: `workflow-link` is a structured link field with no scalar value to compare, and `started-at` is a temporal field rather than a numeric measure. A query may project a link field, but must not filter, join, group, order, or compute with one, and must not read a field a presenter only derives after the query runs, such as `package-link`.
+
 ## Corpus procedure
 
 When the working context requests a training-corpus example:
