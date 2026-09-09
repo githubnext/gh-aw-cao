@@ -2357,7 +2357,7 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({
       document,
-      sources: {
+      sources: applyDashboardQueries({
         runs: {
           source: 'runs',
           rows: [
@@ -2403,7 +2403,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      }, ['runs-table'])
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
