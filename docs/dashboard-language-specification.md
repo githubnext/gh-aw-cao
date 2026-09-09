@@ -414,6 +414,10 @@ Computed fields use only the following typed, deterministic functions with the s
 | `coalesce` | 2–8 | first argument that is not null, empty text, or a structured value |
 | `concat` | 2–8 | text |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
+| `equals-any` | 2–8 | whether the first argument equals any later argument |
+| `greater-than` | 2 | whether the first numeric argument is greater than the second |
+| `if` | 3 | second argument when the first is true; otherwise the third |
+| `format-count`, `format-percent` | 1 | locale-stable display text |
 | `number` | 1 | finite number or null |
 | `sum`, `product` | 2–8 | finite number or null |
 | `difference`, `quotient` | 2 | finite number or null |
@@ -430,7 +434,7 @@ Computed fields use only the following typed, deterministic functions with the s
 - **DLS-QUERY-008:** For an unmatched `left` join row, every imported join field **MUST** be null; an unmatched `inner` join row **MUST** be dropped.
 - **DLS-QUERY-009:** Every output name **MUST** be unique. A join field alias, computed field name, aggregate output name, or `select` alias that collides with an existing output name **MUST** be rejected.
 - **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
-- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
+- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. Query aggregates additionally permit `distinct-list`, which returns distinct non-null scalar values sorted as text and joined with `, `. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
 - **DLS-QUERY-012:** The output field schema of a query **MUST** be statically derivable from its declaration so encodings, filters, and `order-by` references can be validated before execution. A reference to a field the preceding clauses do not produce **MUST** be rejected with `DLS-E010`.
 - **DLS-QUERY-013:** A query **MUST NOT** read more than 200000 input rows per source, produce more than 200000 joined rows, or produce more than 100000 output rows; `limit` **MUST NOT** exceed 100000. Exceeding a limit **MUST** fail the query closed and **MUST NOT** truncate results silently.
 - **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, the weakest input completeness and freshness, and `unavailable` availability when any input is missing or unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
@@ -577,7 +581,7 @@ Every request contains `data`, a sequence of row mappings, and `operators`, an o
 | `arrange` | ordered `by` entries | Orders rows by each `field`; `direction` is `asc` or `desc`. |
 | `slice` | `limit` and optional `offset` | Retains the requested contiguous range. |
 
-The `summarize` reducers are `count`, `distinct-count`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3. An empty numeric input yields `null` for `mean`, `min`, and `max`, and zero for `sum`. Operators execute from first to last; therefore a conforming compilation places filtering before summarization, arrangement, and slicing.
+The `summarize` reducers are `count`, `distinct-count`, `distinct-list`, `sum`, `mean`, `min`, and `max`, with the semantics in Section 7.3 and Section 5.5.2. An empty numeric input yields `null` for `mean`, `min`, and `max`, and zero for `sum`. Operators execute from first to last; therefore a conforming compilation places filtering before summarization, arrangement, and slicing.
 
 ```json
 {

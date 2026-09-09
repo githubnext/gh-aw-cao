@@ -13,5 +13,5 @@ const authoritativeQueries = JSON.parse(
  * @returns {Record<string, import('../src/presenter.js').LogicalSourceInput>}
  */
 export function applyDashboardQueries(sources) {
-  return { ...sources, ...executeDashboardQueries(authoritativeQueries, sources) };
+  return { ...sources, ...executeDashboardQueries(authoritativeQueries, sources, ['workflow-inventory']) };
 }

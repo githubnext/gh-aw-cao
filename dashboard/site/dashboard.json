@@ -335,6 +335,235 @@
             "direction": "asc"
           }
         ]
+      },
+      {
+        "name": "repository-workflow-totals",
+        "description": "Declared and disabled workflow totals for each repository.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "disabled",
+            "function": "equals-any",
+            "args": [
+              { "field": "workflow-active" },
+              { "value": "false" }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "workflow", "as": "workflows", "reducer": "count" },
+            { "field": "disabled", "as": "disabled", "reducer": "sum" }
+          ]
+        }
+      },
+      {
+        "name": "repository-report-totals",
+        "description": "Published report totals for each repository.",
+        "from": "outcomes",
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "repository", "as": "reports", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "repository-evaluated-workflow-totals",
+        "description": "Distinct evaluated workflow totals for each repository.",
+        "from": "operational-values",
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "workflow", "as": "evaluated-workflows", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
+        "name": "repository-run-totals",
+        "description": "Distinct run and conclusion totals for each repository.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "failed",
+            "function": "equals-any",
+            "args": [
+              { "field": "run-conclusion" },
+              { "value": "failure" },
+              { "value": "startup-failure" },
+              { "value": "timed-out" }
+            ]
+          },
+          {
+            "as": "action-required",
+            "function": "equals-any",
+            "args": [
+              { "field": "run-conclusion" },
+              { "value": "action-required" }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "failed", "as": "failed", "reducer": "sum" },
+            { "field": "action-required", "as": "action-required", "reducer": "sum" }
+          ]
+        }
+      },
+      {
+        "name": "repository-aic-totals",
+        "description": "Observed AI Credit totals for each repository.",
+        "from": "usage",
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "aic", "as": "aic", "reducer": "sum" }
+          ]
+        }
+      },
+      {
+        "name": "repository-activity-core",
+        "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
+        "from": "repositories",
+        "joins": [
+          {
+            "source": "repository-workflow-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "workflows", "as": "observed-workflows" },
+              { "field": "disabled", "as": "observed-disabled" }
+            ]
+          },
+          {
+            "source": "repository-report-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "reports", "as": "observed-reports" }
+            ]
+          },
+          {
+            "source": "repository-evaluated-workflow-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "evaluated-workflows", "as": "observed-evaluated-workflows" }
+            ]
+          },
+          {
+            "source": "repository-run-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "runs", "as": "observed-runs" },
+              { "field": "failed", "as": "observed-failed" },
+              { "field": "action-required", "as": "observed-action-required" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "repository-activity",
+        "description": "Repository-local execution health and attributed outcome totals.",
+        "from": "repository-activity-core",
+        "joins": [
+          {
+            "source": "repository-aic-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "aic", "as": "observed-aic" }
+            ]
+          }
+        ],
+        "compute": [
+          { "as": "repository-slug", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+          { "as": "workflows", "function": "coalesce", "args": [{ "field": "observed-workflows" }, { "value": 0 }] },
+          { "as": "disabled", "function": "coalesce", "args": [{ "field": "observed-disabled" }, { "value": 0 }] },
+          { "as": "reports", "function": "coalesce", "args": [{ "field": "observed-reports" }, { "value": 0 }] },
+          { "as": "evaluated-workflows", "function": "coalesce", "args": [{ "field": "observed-evaluated-workflows" }, { "value": 0 }] },
+          { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
+          { "as": "failed", "function": "coalesce", "args": [{ "field": "observed-failed" }, { "value": 0 }] },
+          { "as": "action-required", "function": "coalesce", "args": [{ "field": "observed-action-required" }, { "value": 0 }] },
+          { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
+          { "as": "has-failures", "function": "greater-than", "args": [{ "field": "failed" }, { "value": 0 }] },
+          { "as": "has-action-required", "function": "greater-than", "args": [{ "field": "action-required" }, { "value": 0 }] },
+          { "as": "has-runs", "function": "greater-than", "args": [{ "field": "runs" }, { "value": 0 }] },
+          { "as": "has-disabled", "function": "greater-than", "args": [{ "field": "disabled" }, { "value": 0 }] },
+          { "as": "outcomes-observed", "function": "sum", "args": [{ "field": "reports" }, { "field": "evaluated-workflows" }] },
+          { "as": "has-outcomes", "function": "greater-than", "args": [{ "field": "outcomes-observed" }, { "value": 0 }] },
+          { "as": "failure-rate", "function": "quotient", "args": [{ "field": "failed" }, { "field": "runs" }] },
+          { "as": "failure-percent", "function": "format-percent", "args": [{ "field": "failure-rate" }] },
+          { "as": "failure-count", "function": "format-count", "args": [{ "field": "failed" }] },
+          { "as": "observed-failure-summary", "function": "concat", "args": [{ "field": "failure-percent" }, { "value": " · " }, { "field": "failure-count" }, { "value": " failed" }] },
+          { "as": "failure-summary", "function": "if", "args": [{ "field": "has-runs" }, { "field": "observed-failure-summary" }, { "value": "—" }] },
+          { "as": "outcome-status", "function": "if", "args": [{ "field": "has-outcomes" }, { "value": "Outcomes observed" }, { "value": "No recent activity" }] },
+          { "as": "disabled-status", "function": "if", "args": [{ "field": "has-disabled" }, { "value": "Disabled workflows" }, { "field": "outcome-status" }] },
+          { "as": "run-status", "function": "if", "args": [{ "field": "has-runs" }, { "value": "No failures observed" }, { "field": "disabled-status" }] },
+          { "as": "action-status", "function": "if", "args": [{ "field": "has-action-required" }, { "value": "Approval required" }, { "field": "run-status" }] },
+          { "as": "status", "function": "if", "args": [{ "field": "has-failures" }, { "value": "Needs attention" }, { "field": "action-status" }] }
+        ],
+        "select": [
+          { "field": "repository-slug", "as": "repository" },
+          { "field": "workflows" },
+          { "field": "reports" },
+          { "field": "evaluated-workflows" },
+          { "field": "runs" },
+          { "field": "failure-summary" },
+          { "field": "aic" },
+          { "field": "status" },
+          { "field": "repository-link" },
+          { "field": "failed" }
+        ],
+        "order-by": [
+          { "field": "failed", "direction": "desc" },
+          { "field": "runs", "direction": "desc" },
+          { "field": "repository", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "package-inventory",
+        "description": "Centrally managed package inventory and observed execution totals.",
+        "from": "workflow-inventory",
+        "filter": {
+          "predicates": [
+            { "field": "workflow-role", "in": ["orchestrator", "worker"] }
+          ]
+        },
+        "aggregate": {
+          "by": ["package", "package-name"],
+          "values": [
+            { "field": "workflow", "as": "workflows", "reducer": "count" },
+            { "field": "repository", "as": "repositories", "reducer": "distinct-count" },
+            { "field": "workflow-role", "as": "roles", "reducer": "distinct-list" },
+            { "field": "rollout-mode", "as": "modes", "reducer": "distinct-list" },
+            { "field": "workflow-active", "as": "registration", "reducer": "distinct-list" },
+            { "field": "runs", "as": "runs", "reducer": "sum" },
+            { "field": "aic", "as": "aic", "reducer": "sum" }
+          ]
+        },
+        "order-by": [
+          { "field": "package-name", "direction": "asc" }
+        ]
       }
     ],
     "pages": [

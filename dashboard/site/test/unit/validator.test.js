@@ -4481,7 +4481,7 @@ dashboard:
       views:
         - id: repository-table
           data:
-            source: repository-activity
+            source: repositories
           mark: table
           controls: interactive
           lazy-list: true
