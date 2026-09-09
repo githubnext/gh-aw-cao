@@ -1760,10 +1760,54 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
   const pageClassName = typeof page['class-name'] === 'string' && page['class-name'].length > 0
     ? ` ${page['class-name']}`
     : '';
-  const filterBar = withFilterBar
-    ? renderCustomPage(page, title, sources, units, dashboardDefaults, true).firstElementChild
+  /** @type {HTMLElement} */
+  let root;
+  const filterBar = withFilterBar && !inventoryPage(page.id)
+    ? renderFilterBar((filters, timeWindow) => {
+      const result = filterDashboardSources(
+        sources,
+        filters,
+        page.id === 'readiness' ? undefined : timeWindow,
+        page.id === 'readiness'
+          ? new Set(['runs', 'findings', 'outcomes'])
+          : new Set(pageSources.keys())
+      );
+      /** @type {(filteredSources: Record<string, LogicalSourceInput>) => void} */
+      const apply = (filteredSources) => {
+        const pageFilteredSources = page.id === 'readiness'
+          ? completedRunSources(filteredSources)
+          : filteredSources;
+        const effectiveSources = page.id === 'readiness'
+          ? deriveOverviewSources(pageFilteredSources, { readinessWindow: timeWindow })
+          : pageFilteredSources;
+        void renderCustomPageAsync(
+          page,
+          title,
+          effectiveSources,
+          units,
+          dashboardDefaults,
+          false
+        ).then((replacement) => {
+          const detailsState = [...root.querySelectorAll('details')].map((details) => details.open);
+          [...replacement.querySelectorAll('details')].forEach((details, index) => {
+            if (detailsState[index] !== undefined) details.open = detailsState[index];
+          });
+          root.replaceChildren(...replacement.children);
+          enableLazyViews(root);
+          dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');
+        }).catch(() => {});
+      };
+      result.then(apply).catch(() => {});
+    }, {
+      defaultRange: isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.range === 'string'
+        ? dashboardDefaults.time.range
+        : '1w',
+      referenceEnd: latestSourceCoverageEnd(page.id === 'readiness'
+        ? [sources.runs, sources.findings, sources.outcomes]
+        : [...pageSources.values()])
+    })
     : null;
-  return h(
+  root = h(
     'section',
     {
       className: `dashboard-page${pageClassName}`,
@@ -1782,6 +1826,7 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
   );
+  return root;
 }
 
 /**
