@@ -1,1 +1,138 @@
-{"source_sha":"a2bc97bbbaf9fa09c6e114284b1f828472a788e2","next_category":"Astro documentation generation","evaluations":[{"evaluated_at":"2026-09-09T13:00:10Z","worker_run_id":34353985336,"category":"dependency installation and caching","evidence_run_ids":[],"outcome":"incomplete: GitHub Actions workflow-run evidence could not be collected because the GitHub API rate limit was already exceeded before run listing succeeded; fewer than five comparable successful docs.yml runs could be verified.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T13:27:00Z","worker_run_id":34356795496,"category":"dependency installation and caching","evidence_run_ids":[34356814511,34356512646,34355129849,34351757030,34351606718,34346012893,34345182997,34343367088,34341957606,34340838821,34340006581,34335678483,34334693840,34332404246],"outcome":"no-op: collected enough successful docs.yml runs to inspect, but GitHub read failures (HTTP 502 from gh while listing open issues and re-reading workflow runs) prevented duplicate-check verification required before making a non-repeated suggestion. Kept category unchanged for a later complete evaluation.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T13:36:30Z","worker_run_id":34358255413,"category":"dependency installation and caching","evidence_run_ids":[34357846882,34356814511,34356512646,34355129849,34351757030,34351606718,34346012893,34345182997,34343367088,34341957606,34340838821,34340006581,34335678483,34334693840],"outcome":"no-op: workflow sources were readable, but GitHub Actions metadata became unavailable with repeated HTTP 502 errors before job-timing, log, cache-hit, and duplicate-open-issue checks could be completed. No evidence-backed suggestion could be made safely, so the category remains unchanged for a later complete evaluation.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T13:54:10Z","worker_run_id":34359688367,"category":"dependency installation and caching","evidence_run_ids":[],"outcome":"incomplete: GitHub Actions run evidence for docs.yml could not be collected because the GitHub API returned HTTP 403 rate-limit exhaustion before the initial run listing completed, so the required minimum of five comparable successful runs, job timings, step timings, and cache-hit verification could not be established.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T14:28:00Z","worker_run_id":34363506100,"category":"dependency installation and caching","evidence_run_ids":[34363322741,34363307839,34361733001,34357846882,34356814511,34356512646,34355129849,34351757030,34351606718,34346012893,34345182997,34343367088,34341957606,34340838821],"outcome":"no-op: latest 14-day docs.yml listing yielded enough comparable successful runs, but GitHub read failures blocked the required run-job timing, step timing, cache-hit verification, and duplicate-open-issue checks. gh run view returned repeated HTTP 502 resource-labeling failures and several empty failures, and gh issue list also failed, so no evidence-backed non-duplicate recommendation could be made safely.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T14:42:30Z","worker_run_id":34364949039,"category":"dependency installation and caching","evidence_run_ids":[],"outcome":"incomplete: GitHub Actions evidence collection stopped immediately because listing docs.yml runs hit HTTP 403 API rate-limit exhaustion before the initial sample could be gathered. The required minimum of five comparable successful runs, median and p90 job timings, step timings, cache-hit verification, and duplicate-open-issue review could not be established safely.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T15:29:30Z","worker_run_id":34369988574,"category":"dependency installation and caching","evidence_run_ids":[34369886934,34369770164,34364463570,34363322741,34357846882,34356814511,34351757030,34351606718],"outcome":"no-op: analyzed 8 comparable successful docs.yml runs from 2026-09-09T12:32:25Z to 2026-09-09T15:25:55Z. Trusted job metadata showed node_modules cache hits on 7/8 runs and only one miss, with Install dependencies skipped in 7/8 runs. Median workflow execution was 118.5s; p90 was 215s. Build job median was 34.5s, with Build documentation median 7s, Set up Node.js median 6s, and Restore node_modules median 7s. The only cache miss added about 18s versus cache-hit peers, below the 60s / 15% actionability threshold. Open-issue duplicate verification could not be completed because gh issue list failed, so no non-duplicate actionable recommendation was emitted.","suggestion_fingerprint":""}]}
+{
+  "source_sha": "a2bc97bbbaf9fa09c6e114284b1f828472a788e2",
+  "next_category": "reusable dashboard generation",
+  "evaluations": [
+    {
+      "evaluated_at": "2026-09-09T13:00:10Z",
+      "worker_run_id": 34353985336,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions workflow-run evidence could not be collected because the GitHub API rate limit was already exceeded before run listing succeeded; fewer than five comparable successful docs.yml runs could be verified.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T13:27:00Z",
+      "worker_run_id": 34356795496,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        34356814511,
+        34356512646,
+        34355129849,
+        34351757030,
+        34351606718,
+        34346012893,
+        34345182997,
+        34343367088,
+        34341957606,
+        34340838821,
+        34340006581,
+        34335678483,
+        34334693840,
+        34332404246
+      ],
+      "outcome": "no-op: collected enough successful docs.yml runs to inspect, but GitHub read failures (HTTP 502 from gh while listing open issues and re-reading workflow runs) prevented duplicate-check verification required before making a non-repeated suggestion. Kept category unchanged for a later complete evaluation.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T13:36:30Z",
+      "worker_run_id": 34358255413,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        34357846882,
+        34356814511,
+        34356512646,
+        34355129849,
+        34351757030,
+        34351606718,
+        34346012893,
+        34345182997,
+        34343367088,
+        34341957606,
+        34340838821,
+        34340006581,
+        34335678483,
+        34334693840
+      ],
+      "outcome": "no-op: workflow sources were readable, but GitHub Actions metadata became unavailable with repeated HTTP 502 errors before job-timing, log, cache-hit, and duplicate-open-issue checks could be completed. No evidence-backed suggestion could be made safely, so the category remains unchanged for a later complete evaluation.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T13:54:10Z",
+      "worker_run_id": 34359688367,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions run evidence for docs.yml could not be collected because the GitHub API returned HTTP 403 rate-limit exhaustion before the initial run listing completed, so the required minimum of five comparable successful runs, job timings, step timings, and cache-hit verification could not be established.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T14:28:00Z",
+      "worker_run_id": 34363506100,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        34363322741,
+        34363307839,
+        34361733001,
+        34357846882,
+        34356814511,
+        34356512646,
+        34355129849,
+        34351757030,
+        34351606718,
+        34346012893,
+        34345182997,
+        34343367088,
+        34341957606,
+        34340838821
+      ],
+      "outcome": "no-op: latest 14-day docs.yml listing yielded enough comparable successful runs, but GitHub read failures blocked the required run-job timing, step timing, cache-hit verification, and duplicate-open-issue checks. gh run view returned repeated HTTP 502 resource-labeling failures and several empty failures, and gh issue list also failed, so no evidence-backed non-duplicate recommendation could be made safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T14:42:30Z",
+      "worker_run_id": 34364949039,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions evidence collection stopped immediately because listing docs.yml runs hit HTTP 403 API rate-limit exhaustion before the initial sample could be gathered. The required minimum of five comparable successful runs, median and p90 job timings, step timings, cache-hit verification, and duplicate-open-issue review could not be established safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T15:29:30Z",
+      "worker_run_id": 34369988574,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        34369886934,
+        34369770164,
+        34364463570,
+        34363322741,
+        34357846882,
+        34356814511,
+        34351757030,
+        34351606718
+      ],
+      "outcome": "no-op: analyzed 8 comparable successful docs.yml runs from 2026-09-09T12:32:25Z to 2026-09-09T15:25:55Z. Trusted job metadata showed node_modules cache hits on 7/8 runs and only one miss, with Install dependencies skipped in 7/8 runs. Median workflow execution was 118.5s; p90 was 215s. Build job median was 34.5s, with Build documentation median 7s, Set up Node.js median 6s, and Restore node_modules median 7s. The only cache miss added about 18s versus cache-hit peers, below the 60s / 15% actionability threshold. Open-issue duplicate verification could not be completed because gh issue list failed, so no non-duplicate actionable recommendation was emitted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T15:41:03Z",
+      "worker_run_id": 34371340546,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        34371008731,
+        34369886934,
+        34369770164,
+        34364463570,
+        34363322741,
+        34363307839,
+        34361733001,
+        34357846882,
+        34356814511,
+        34356512646,
+        34355129849,
+        34351757030,
+        34351606718
+      ],
+      "outcome": "no-op: analyzed 13 successful docs.yml runs in the last 14 days (2026-09-09T12:32:25Z to 2026-09-09T15:33:23Z). Evaluated category 'Astro documentation generation'. Astro documentation generation is not actionable: trusted job metadata shows Build documentation median 7s and p90 8s across 7 comparable successful schedule runs, versus workflow execution median 112s and dashboard job median 54s. Repeated time is dominated by the dispatched dashboard build and not Astro generation, so no category-aligned change can save at least 60s or 15% of median execution safely. Duplicate-open-issue verification remained unavailable because GitHub issue reads returned HTTP 502.",
+      "suggestion_fingerprint": ""
+    }
+  ]
+}
