@@ -1482,9 +1482,17 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
             title: 'Inventory',
             description: 'Inventory subtitle',
             views: [{
-              id: 'inventory-list',
-              title: 'Inventory list',
-              description: 'Inventory view subtitle',
+               id: 'inventory-summary',
+               title: 'Inventory summary',
+               data: { source: 'inventory' },
+               mark: 'metric',
+               encoding: {
+                 value: { field: 'repository', type: 'nominal', aggregate: 'distinct-count' }
+               }
+             }, {
+               id: 'inventory-list',
+               title: 'Inventory list',
+               description: 'Inventory view subtitle',
               data: { source: 'inventory' },
               mark: 'table',
               controls: 'interactive',
@@ -1507,14 +1515,16 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   `);
 
   const view = page.locator('[data-view-layout="full-view"]');
+  const summary = page.locator('[data-view-id="inventory-summary"]');
   const lazyList = view.locator('[data-lazy-list]');
   await expect(view).toHaveCount(1);
+  await expect(summary).toBeVisible();
   await expect(lazyList).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Inventory list' })).toBeVisible();
   await expect(page.locator('.overview-header .lede')).toBeHidden();
   await expect(view.getByRole('heading', { name: 'Inventory list' })).toBeHidden();
   expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
-  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(700);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
 
   const scroll = view.locator('.table-scroll');
@@ -1532,6 +1542,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(summary).toBeHidden();
     for (const firstRepository of [26, 1]) {
       const stayedCompact = await scroll.evaluate((element) => {
         element.scrollTop = 0;
@@ -1548,6 +1559,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(summary).toBeVisible();
     for (const firstRepository of [26, 51]) {
       await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
       await scroll.dispatchEvent('scroll');

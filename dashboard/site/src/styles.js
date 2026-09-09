@@ -419,6 +419,15 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-full-view :is(.report-body, .dashboard-pages, .dashboard-page:not([hidden]), .custom-view-grid) { height: 100%; min-height: 0; }
 .dashboard-full-view .dashboard-pages,
 .dashboard-full-view .custom-view-grid { gap: 0; }
+.dashboard-full-view .custom-view-grid:has(> .custom-view[data-view-layout="full-view"]) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dashboard-full-view .custom-view-grid > .custom-view[data-view-layout="full-view"] {
+  min-height: 0;
+  flex: 1;
+}
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .table-region {
   margin: 0;
   overflow: hidden;
@@ -429,6 +438,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
 .dashboard-root.dashboard-full-view-scrolled .org-sidebar,
 .dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav { display: none; }
+.dashboard-root.dashboard-full-view-scrolled .custom-view-grid > :has(~ .custom-view[data-view-layout="full-view"]) { display: none; }
 .custom-view[data-view-layout="half"] { grid-column: span 6; }
 .custom-view[data-view-layout="third"] { grid-column: span 4; }
 .view-metadata-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 12px; color: var(--fg); }
