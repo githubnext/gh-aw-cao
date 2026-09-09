@@ -815,7 +815,9 @@ A missing canonical data point MUST NOT immediately be treated as zero, empty, o
 
 Before classifying it as missing, an implementation agent SHALL inspect the current [`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json) and determine whether any field in the applicable output variant contains an authoritative observation that can be normalized into the canonical model. This inspection SHALL include nested and aggregate structures, not only fields whose names match the canonical property.
 
-When the schema exposes suitable data, the source adapter SHOULD normalize it. The mapping MUST:
+This discovery and normalization SHALL run in the activity-package JavaScript invoked by `.github/workflows/activity.yml`, before the activity snapshot is published. The workflow YAML orchestrates that JavaScript and MUST NOT embed source-field mappings.
+
+When the schema exposes suitable data, the activity-package source adapter SHOULD normalize it. The mapping MUST:
 
 1. be explicit, deterministic, and covered by a fixture-based test;
 2. preserve source provenance and the schema revision used to establish the mapping;
@@ -825,7 +827,7 @@ When the schema exposes suitable data, the source adapter SHOULD normalize it. T
 
 The `gh aw logs` schema is a discovery surface for source adapters, not a canonical dashboard contract. Views MUST NOT read its fields directly, and similarity of field names alone is insufficient evidence for a mapping.
 
-If the schema defines a suitable field but the collected log does not contain it, the adapter MUST preserve the data point as unknown and record why it is missing, including whether the cause is an unsupported schema variant, an older producer, an unavailable artifact, an uncollected optional field, or invalid source data. If no semantically valid field exists, the data point MUST remain explicitly unknown rather than being guessed or coerced.
+If the schema defines a suitable field but the collected log does not contain it, the activity-package source adapter MUST preserve the data point as unknown and record why it is missing, including whether the cause is an unsupported schema variant, an older producer, an unavailable artifact, an uncollected optional field, or invalid source data. If no semantically valid field exists, the data point MUST remain explicitly unknown rather than being guessed or coerced.
 
 ---
 
