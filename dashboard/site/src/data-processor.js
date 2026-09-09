@@ -138,6 +138,23 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
 }
 
 /**
+ * Refreshes the canonical dashboard and reports whether ingestion activated a
+ * changed generation or hydrated transient published sources after reload.
+ * @param {string} sourceUrl
+ * @param {string[]} sourceNames
+ * @param {{ githubUrlBase?: string, pages: unknown[] }} context
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @returns {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>}
+ */
+export function refreshCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
+  return /** @type {Promise<{ sources: Record<string, import('./presenter.js').LogicalSourceInput>, changed: boolean }>} */ (processRequest(
+    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination, reportActivation: true },
+    () => Promise.reject(new Error('Live canonical dashboard refresh requires a data worker.')),
+    false
+  ));
+}
+
+/**
  * Queries one page from the live canonical dashboard retained by the worker.
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context

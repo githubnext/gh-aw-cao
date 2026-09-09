@@ -310,6 +310,31 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
+test('data worker reports only changed or newly hydrated refreshes', async ({ page }) => {
+  const refreshes = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { refreshCanonicalDashboardSources } = await import(processorUrl);
+    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    return [
+      await refreshCanonicalDashboardSources(
+        `${location.origin}/sources.json`,
+        ['failed-runs'],
+        context
+      ),
+      await refreshCanonicalDashboardSources(
+        `${location.origin}/sources.json`,
+        ['failed-runs'],
+        context
+      )
+    ];
+  });
+
+  expect(refreshes.map((refresh) => refresh.changed)).toEqual([true, false]);
+  expect(refreshes[0].sources['failed-runs'].rows).toMatchObject([
+    { repository: 'gh-aw-cao', run: '12345' }
+  ]);
+});
+
 test('data worker queries the retained active generation before downloading sources', async ({ page }) => {
   await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
@@ -322,20 +347,29 @@ test('data worker queries the retained active generation before downloading sour
   });
 
   await page.reload();
-  const retained = await page.evaluate(async () => {
+  const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
-    const { loadCanonicalDashboardPage } = await import(processorUrl);
-    return loadCanonicalDashboardPage(
+    const { loadCanonicalDashboardPage, refreshCanonicalDashboardSources } = await import(processorUrl);
+    const context = { githubUrlBase: 'https://github.com', pages: [] };
+    const retained = await loadCanonicalDashboardPage(
       ['failed-runs', 'overview-attention-domains'],
-      { githubUrlBase: 'https://github.com', pages: [] }
+      context
     );
+    const refreshed = await refreshCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['failed-runs', 'overview-attention-domains'],
+      context
+    );
+    return { retained, refreshed };
   });
 
-  expect(retained['failed-runs']).toMatchObject({
+  expect(result.retained['failed-runs']).toMatchObject({
     rows: [{ repository: 'gh-aw-cao', run: '12345', 'run-conclusion': 'failure' }],
     metadata: { 'source-kind': 'canonical-query' }
   });
-  expect(retained['overview-attention-domains']).toBeUndefined();
+  expect(result.retained['overview-attention-domains']).toBeUndefined();
+  expect(result.refreshed.changed).toBe(true);
+  expect(result.refreshed.sources['overview-attention-domains']).toBeDefined();
 });
 
 test('data worker executes declarative queries and returns only the derived projection', async ({ page }) => {

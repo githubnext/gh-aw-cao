@@ -114,7 +114,7 @@ function dashboardContext(value) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -146,21 +146,25 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      const hadPublishedSources = Object.keys(liveDashboard?.logicalSources ?? {}).length > 0;
       const sources = await loadDashboardSources(fetch, sourceUrl.href);
-      const { generation } = await ingestDashboardSources(indexedDB, sources, {
+      const { generation, activated } = await ingestDashboardSources(indexedDB, sources, {
         storage: globalThis.navigator?.storage
       });
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         generation
       };
-      return queryLiveDashboard(
+      const projected = await queryLiveDashboard(
         requested,
         context,
         /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
         signal,
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
+      return request.reportActivation
+        ? { sources: projected, changed: activated || !hadPublishedSources }
+        : projected;
     })();
   }
   if (request?.operation === 'execute-dashboard-queries') {
