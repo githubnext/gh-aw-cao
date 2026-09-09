@@ -121,6 +121,35 @@ export function renderViewSectionChrome(metadata, contextDetails) {
 }
 
 /**
+ * Wraps a rendered supplemental view in the shared `<details class="view-disclosure">`
+ * summary toggle, used by both the synchronous and async custom-page renderers to hide
+ * supplemental views behind a "Show details" summary.
+ * @param {HTMLElement} rendered the already-rendered view element, with `custom-view` and
+ *   `data-view-layout` already removed by the caller
+ * @param {string} layout
+ * @param {string} disclosure
+ * @param {string} title
+ * @returns {HTMLElement}
+ */
+export function renderViewDisclosure(rendered, layout, disclosure, title) {
+  return h(
+    'details',
+    {
+      className: 'custom-view view-disclosure',
+      'data-view-layout': layout,
+      'data-disclosure': disclosure
+    },
+    h(
+      'summary',
+      { className: 'view-disclosure-summary' },
+      h('span', null, title),
+      h('span', { className: 'view-disclosure-hint' }, 'Show details')
+    ),
+    rendered
+  );
+}
+
+/**
  * @param {'available'|'empty'|'unavailable'} availability
  * @returns {string}
  */

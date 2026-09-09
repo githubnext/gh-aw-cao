@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { customViewAvailabilityMessage, renderContextChrome, renderContextList, renderCustomViewStateDetails, renderDefinitionList, renderDefinitionListRows, renderLayoutSectionChrome, renderMetadataSection, renderPageSection, renderProvenanceList, renderProvenanceSection, renderSummaryList, renderSummaryRegion, renderTitledBodySection, renderTitledRegion, renderViewChrome, renderViewSectionChrome } from '../../src/components/view-chrome.js';
+import { customViewAvailabilityMessage, renderContextChrome, renderContextList, renderCustomViewStateDetails, renderDefinitionList, renderDefinitionListRows, renderLayoutSectionChrome, renderMetadataSection, renderPageSection, renderProvenanceList, renderProvenanceSection, renderSummaryList, renderSummaryRegion, renderTitledBodySection, renderTitledRegion, renderViewChrome, renderViewDisclosure, renderViewSectionChrome } from '../../src/components/view-chrome.js';
 
 describe('view chrome component helpers', () => {
   it('DLS-SAFE-007 renders focusable labeled page sections with deterministic heading ids', () => {
@@ -99,6 +99,22 @@ describe('view chrome component helpers', () => {
     expect(withSource[1]?.className).toBe('view-context');
     expect(withSource[1]?.textContent).toContain('Filters: {"status":"open"}');
     expect(withoutSource).toHaveLength(0);
+  });
+
+  it('wraps a rendered supplemental view in the shared view-disclosure summary toggle', () => {
+    const rendered = document.createElement('div');
+    rendered.textContent = 'body content';
+
+    const details = renderViewDisclosure(rendered, 'half', 'supplemental', 'View title');
+
+    expect(details.tagName).toBe('DETAILS');
+    expect(details.className).toBe('custom-view view-disclosure');
+    expect(details.getAttribute('data-view-layout')).toBe('half');
+    expect(details.getAttribute('data-disclosure')).toBe('supplemental');
+    const summary = details.querySelector('summary');
+    expect(summary?.className).toBe('view-disclosure-summary');
+    expect(summary?.textContent).toBe('View titleShow details');
+    expect(details.lastElementChild).toBe(rendered);
   });
 
   it('renders reusable definition-list rows for summary-style key/value grids including empty input', () => {
