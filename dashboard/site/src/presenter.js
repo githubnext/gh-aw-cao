@@ -25,7 +25,7 @@ import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
-import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
+import { DASHBOARD_HORIZON_COUNT_SOURCES, dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 
 /**
@@ -73,7 +73,7 @@ import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadDatabaseCounts?: () => Promise<{ workflows: number, runs: number, events: number }> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -165,7 +165,7 @@ export function dashboardPageSourceNames(document, pageId) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null, loadDatabaseCounts } = input;
+  const { document, sources: rawSources, viewer = null, loadHorizonSources } = input;
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
@@ -200,7 +200,7 @@ export function renderDashboard(input) {
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
   const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer, loadDatabaseCounts);
+  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer, loadHorizonSources);
 
   const appShell = h(
     'div',
@@ -653,10 +653,10 @@ function getPageIcon(page) {
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
  * @param {LocalViewer | null} viewer
- * @param {PresentationInput['loadDatabaseCounts']} loadDatabaseCounts
+ * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
  * @returns {HTMLElement}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer, loadDatabaseCounts) {
+function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer, loadHorizonSources) {
   const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
@@ -698,7 +698,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources),
           dashboardRepository
             ? h(
               'a',
@@ -819,10 +819,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
- * @param {PresentationInput['loadDatabaseCounts']} loadDatabaseCounts
+ * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources) {
   if (!hasData) {
     return h(
       'span',
@@ -853,11 +853,13 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   /** @type {Promise<void> | undefined} */
   let countsPromise;
   const loadCounts = () => {
-    if (!loadDatabaseCounts || countsPromise) return;
+    if (!loadHorizonSources || countsPromise) return;
     databaseCounts.textContent = 'Loading database counts…';
-    countsPromise = loadDatabaseCounts()
-      .then((counts) => {
-       databaseCounts.textContent = `${counts.workflows} workflows · ${counts.runs} runs · ${counts.events} events`;
+    countsPromise = loadHorizonSources()
+      .then((sources) => {
+       const counts = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
+       if (counts.some((row) => !row)) throw new Error('Database count query unavailable');
+       databaseCounts.textContent = `${counts[0]?.workflows} workflows · ${counts[1]?.runs} runs · ${counts[2]?.events} events`;
       })
       .catch(() => {
        databaseCounts.textContent = 'Database counts unavailable';

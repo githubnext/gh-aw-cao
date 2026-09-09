@@ -1,9 +1,8 @@
-import { countActiveCollections, readActiveCollection, readActiveIndex, readActiveRecord } from '../storage/indexeddb.js';
+import { readActiveCollection, readActiveIndex, readActiveRecord } from '../storage/indexeddb.js';
 
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
   return {
-    counts: () => countActiveCollections(indexedDB, ['workflows', 'runs', 'events']),
     repositories: {
       list: () => readActiveCollection(indexedDB, 'repositories'),
       get: (/** @type {string} */ id) => readActiveRecord(indexedDB, 'repositories', id)

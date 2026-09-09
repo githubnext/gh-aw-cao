@@ -1,8 +1,9 @@
       import { dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { loadCanonicalDashboardCounts, loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
+      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
       import { octicon } from "./octicons.js";
 
       /**
@@ -64,6 +65,8 @@
       let renderedSourcesPrepared = false;
       /** @type {((pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedPageSourceLoader;
+      /** @type {(() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
+      let renderedHorizonSourceLoader;
       const previewMode = new URLSearchParams(window.location.search).get("local-preview");
       const localViewer = previewMode
         ? await fetch("./viewer.json")
@@ -158,18 +161,20 @@
        * @param {'ready' | 'loading' | 'cached'} [state]
        * @param {boolean} [prepared]
        * @param {(pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
+       * @param {() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadHorizonSources]
        */
-      const renderSources = (sources, state = "ready", prepared = false, loadPageSources) => {
+      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources) => {
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
+        renderedHorizonSourceLoader = loadHorizonSources;
         const dashboard = renderDashboard({
           document: dashboardDocument,
           sources,
           viewer: localViewer,
           prepared,
           loadPageSources,
-          loadDatabaseCounts: loadCanonicalDashboardCounts,
+          loadHorizonSources,
         });
         if (state === "loading") {
           dashboard.classList.add("dashboard-loading");
@@ -209,7 +214,7 @@
             languageVersion: schema["language-version"],
             dashboard: schema.dashboard,
           };
-          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
+          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader));
           if (traceId && dashboardSocket?.readyState === WebSocket.OPEN) {
             dashboardSocket.send(JSON.stringify({
               type: "browser.trace",
@@ -228,7 +233,7 @@
           let recoveryErrorLog = "";
           dashboardDocument = previousDashboardDocument;
           try {
-            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader);
+            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader);
             recovered = true;
           } catch (recoveryError) {
             recoveryErrorLog = recoveryError instanceof Error && recoveryError.stack
@@ -896,6 +901,10 @@
             dashboardPageSourceNames(dashboardDocument, pageId),
             dashboardContext,
           );
+          const loadHorizonSources = () => loadCanonicalDashboardPage(
+            DASHBOARD_HORIZON_COUNT_SOURCES,
+            dashboardContext,
+          );
           renderSources(
             await loadCanonicalDashboardSources(
               sourceUrl,
@@ -905,6 +914,7 @@
             "ready",
             true,
             loadPageSources,
+            loadHorizonSources,
           );
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

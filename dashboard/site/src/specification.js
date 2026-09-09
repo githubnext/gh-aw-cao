@@ -314,6 +314,8 @@ export const SOURCE_VALUES = [
   'repositories',
   'workflows',
   'runs',
+  'sessions',
+  'events',
   'admissions',
   'admission-checks',
   'run-performance',

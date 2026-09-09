@@ -151,18 +151,6 @@ export function loadCanonicalDashboardPage(sourceNames, context) {
 }
 
 /**
- * Counts workflows, runs, and events in the active canonical generation.
- * @returns {Promise<{ workflows: number, runs: number, events: number }>}
- */
-export function loadCanonicalDashboardCounts() {
-  return /** @type {Promise<{ workflows: number, runs: number, events: number }>} */ (processRequest(
-    { operation: 'query-canonical-counts' },
-    () => Promise.reject(new Error('Canonical dashboard counts require a data worker.')),
-    false
-  ));
-}
-
-/**
  * @template T
  * @param {Record<string, unknown>} request
  * @param {() => T} fallback
