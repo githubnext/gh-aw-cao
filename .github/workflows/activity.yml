@@ -94,11 +94,11 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@5e508589e03a7757a7e05b26e834292f5445bfb6 # v0.88.8
+        uses: github/gh-aw-actions/setup-cli@af9516b9001c6aa6d4817b7484de4bb017ebb27f # v0.89.0
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
-          version: v0.88.8
+          version: v0.89.0
 
       - name: Restore activity cache
         id: activity-cache
