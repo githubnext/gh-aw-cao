@@ -150,7 +150,9 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
 }
 
 function mcpCanonicalSources() {
-  const sources = canonicalSources('mcp-browser-generation', '67890');
+  const sources = /** @type {Record<string, { rows: Record<string, unknown>[], metadata: Record<string, unknown> }>} */ (
+    canonicalSources('mcp-browser-generation', '67890')
+  );
   const event = {
     organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
     run: '67890', 'run-attempt': 2, session: 'session-67890',
