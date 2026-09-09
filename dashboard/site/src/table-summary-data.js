@@ -12,7 +12,7 @@ function histogramBinCountForSampleSize(sampleSize) {
 
 /**
  * @typedef {{ field?: string, label: string, type?: string, display?: string, values: unknown[] }} TableSummaryColumn
- * @typedef {{ kind: 'none' } | { kind: 'empty', message: string } | { kind: 'boolean', ratio: number } | { kind: 'count', count: number } | { kind: 'categorical', values: Array<{ label: string, ratio: number }> } | { kind: 'quantitative', count: number, mean: number, deviation: number | null, bins: HistogramBin[] } | { kind: 'temporal', start: number, stop: number }} TableColumnSummary
+ * @typedef {{ kind: 'none' } | { kind: 'empty', message: string } | { kind: 'boolean', count: number, trueCount: number } | { kind: 'count', count: number } | { kind: 'categorical', values: Array<{ label: string, ratio: number }> } | { kind: 'quantitative', count: number, mean: number, deviation: number | null, bins: HistogramBin[] } | { kind: 'temporal', start: number, stop: number }} TableColumnSummary
  * @typedef {{ lower: number, upper: number, count: number }} HistogramBin
  */
 
@@ -36,10 +36,16 @@ function summarizeTableColumn(column) {
   if (values.length === 0) {
     return { kind: 'empty', message: 'No values' };
   }
-  if (column.type === 'boolean' || values.every((value) => typeof value === 'boolean')) {
+  const booleanValues = values.map(normalizeBooleanValue);
+  if (column.type === 'boolean' || booleanValues.every((value) => value !== null)) {
+    const recognizedValues = booleanValues.filter((value) => value !== null);
+    if (recognizedValues.length === 0) {
+      return { kind: 'empty', message: 'No boolean values' };
+    }
     return {
       kind: 'boolean',
-      ratio: values.filter((value) => value === true).length / values.length
+      count: recognizedValues.length,
+      trueCount: recognizedValues.filter((value) => value === true).length
     };
   }
   if (column.type === 'quantitative') {
@@ -49,6 +55,7 @@ function summarizeTableColumn(column) {
     if (numericValues.length === 0) {
       return { kind: 'empty', message: 'No numeric values' };
     }
+
     const mean = numericValues.reduce((total, value) => total + value, 0) / numericValues.length;
     return {
       kind: 'quantitative',
@@ -89,6 +96,16 @@ function summarizeTableColumn(column) {
       .slice(0, 3)
       .map(([label, count]) => ({ label, ratio: count / values.length }))
   };
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean | null}
+ */
+function normalizeBooleanValue(value) {
+  if (value === true || value === 1 || value === 'true' || value === '1') return true;
+  if (value === false || value === 0 || value === 'false' || value === '0') return false;
+  return null;
 }
 
 /**

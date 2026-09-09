@@ -1620,6 +1620,18 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-categories li { display: flex; min-width: 0; justify-content: space-between; gap: 8px; }
 .table-summary-categories li span { overflow: hidden; color: var(--fg); text-overflow: ellipsis; white-space: nowrap; }
 .table-summary-categories strong, .table-summary-boolean strong, .table-summary-count strong { color: var(--fg); font-weight: 600; }
+.table-summary-boolean { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px; }
+.table-summary-boolean .chart-widget { min-height: 52px; margin: 0; }
+.table-summary-boolean .chart-widget svg { width: 52px; height: 52px; }
+.table-summary-boolean .pie-chart-total-value, .table-summary-boolean .pie-chart-total-label { display: none; }
+.table-summary-boolean .chart-legend { min-width: 0; display: grid; gap: 3px; margin: 0; }
+.table-summary-boolean .chart-legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 5px; }
+.table-summary-boolean .chart-legend i { width: 8px; height: 8px; }
+.table-summary-boolean .chart-legend strong { display: none; }
+.table-summary-boolean .chart-widget .chart-series-1 { stroke: var(--success); }
+.table-summary-boolean .chart-widget .chart-series-2 { stroke: var(--muted); }
+.table-summary-boolean .chart-legend i.chart-series-1 { color: var(--success); }
+.table-summary-boolean .chart-legend i.chart-series-2 { color: var(--muted); }
 .table-summary-count { font-weight: 400; }
 .table-summary-quantitative { display: grid; gap: 6px; }
 .table-summary-histogram { width: 100%; height: 32px; overflow: visible; }
