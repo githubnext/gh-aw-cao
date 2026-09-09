@@ -127,12 +127,44 @@ describe('declarative dashboard queries', () => {
       usage: { source: 'usage', rows: [{ run: '2' }, { run: '1' }], metadata: metadata('usage') }
     }, {
       usage: { limit: 1, continuationToken: page.continuationToken }
-    })).toThrow('Invalid continuation token for "usage".');
+    })).toThrow('Invalid or stale continuation token for "usage".');
     expect(() => paginateDashboardSources({
       runs: { source: 'runs', rows: [], metadata: metadata('runs') }
     }, {
       runs: { limit: 1, continuationToken: 'not-a-token' }
-    })).toThrow('Invalid continuation token for "runs".');
+    })).toThrow('Invalid or stale continuation token for "runs".');
+  });
+
+  it('rejects continuations after query or data revisions change', () => {
+    const query = [{ name: 'recent-runs', from: 'runs' }];
+    const source = {
+      runs: {
+        source: 'runs',
+        rows: ['3', '2', '1'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    };
+    const first = executeDashboardQueries(query, source, ['recent-runs'], {
+      pagination: { 'recent-runs': { limit: 1 } }
+    })['recent-runs'];
+
+    expect(() => executeDashboardQueries(
+      [{ ...query[0], select: [{ field: 'run' }] }],
+      source,
+      ['recent-runs'],
+      { pagination: { 'recent-runs': { limit: 1, continuationToken: first.continuationToken } } }
+    )).toThrow('Invalid or stale continuation token');
+    expect(() => executeDashboardQueries(
+      query,
+      {
+        runs: {
+          ...source.runs,
+          metadata: metadata('runs', { 'as-of': '2026-09-02T00:00:00Z' })
+        }
+      },
+      ['recent-runs'],
+      { pagination: { 'recent-runs': { limit: 1, continuationToken: first.continuationToken } } }
+    )).toThrow('Invalid or stale continuation token');
   });
 
   it('projects, renames, and orders rows deterministically', () => {

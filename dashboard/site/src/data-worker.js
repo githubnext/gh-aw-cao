@@ -6,7 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
-import { DashboardQueryCancelledError, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -68,7 +68,8 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   };
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
-    /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {})
+    /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
+    continuationRevision(context.queries, liveDashboard.generation)
   );
 }
 

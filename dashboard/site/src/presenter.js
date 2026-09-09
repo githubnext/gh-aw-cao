@@ -27,6 +27,7 @@ import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
+import { sourceContinuation } from './data/continuation.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -1962,6 +1963,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
+  const sourcePage = view['lazy-list'] === true ? sourceContinuation(sourceInput) : undefined;
   const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {
     pageId,
     title,
@@ -1976,21 +1978,16 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     buildChartPoints,
     prepareChartPoints,
     toText,
-    continuation: view['lazy-list'] === true
-      && sourceInput.continuationToken
-      && sourceInput.loadContinuation
-      ? {
-          token: sourceInput.continuationToken,
-          totalRows: Number(sourceInput.metadata?.['total-row-count']) || filteredRows.length,
-          load: async (token) => {
-            const next = await sourceInput.loadContinuation?.(token);
-            return {
-              rows: filterRowsForView(next?.rows ?? [], view.data),
-              continuationToken: next?.continuationToken
-            };
-          }
-        }
-      : undefined
+    continuation: sourcePage ? {
+      ...sourcePage,
+      load: async (token) => {
+        const next = await sourcePage.load(token);
+        return {
+          rows: filterRowsForView(next?.rows ?? [], view.data),
+          continuationToken: next?.continuationToken
+        };
+      }
+    } : undefined
   });
   if (rendered) return rendered;
 

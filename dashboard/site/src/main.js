@@ -3,6 +3,7 @@
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
 
       /**
@@ -884,50 +885,39 @@
             pages: dashboardDocument.dashboard.pages,
             queries: dashboardQueries,
           };
-          const continuationPageSize = 25;
-          /** @param {string[]} sourceNames @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources */
-          const attachContinuationLoaders = (sourceNames, sources) => {
-            for (const sourceName of sourceNames) {
-              const source = sources[sourceName];
-              if (!source?.continuationToken) continue;
-              source.loadContinuation = async (continuationToken) => {
-                const next = await loadCanonicalDashboardPage(
-                  [sourceName],
-                  dashboardContext,
-                  { [sourceName]: { limit: continuationPageSize, continuationToken } },
-                );
-                attachContinuationLoaders([sourceName], next);
-                return next[sourceName];
-              };
-            }
-            return sources;
-          };
+          /**
+           * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+           * @param {string[]} sourceNames
+           */
+          const bindContinuations = (sources, sourceNames) => bindSourceContinuations(
+            sources,
+            sourceNames,
+            (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+          );
           /** @param {string} pageId */
           const loadPageSources = async (pageId) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
             const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
-            const pagination = Object.fromEntries(
-              lazySources.map((sourceName) => [sourceName, { limit: continuationPageSize }]),
-            );
-            return attachContinuationLoaders(
+            return bindContinuations(
+              await loadCanonicalDashboardPage(
+                sourceNames,
+                dashboardContext,
+                continuationRequests(lazySources),
+              ),
               lazySources,
-              await loadCanonicalDashboardPage(sourceNames, dashboardContext, pagination),
             );
           };
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
-          const initialPagination = Object.fromEntries(
-            initialLazySources.map((sourceName) => [sourceName, { limit: continuationPageSize }]),
-          );
           renderSources(
-            attachContinuationLoaders(
-              initialLazySources,
+            bindContinuations(
               await loadCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
                 dashboardContext,
-                initialPagination,
+                continuationRequests(initialLazySources),
               ),
+              initialLazySources,
             ),
             "ready",
             true,

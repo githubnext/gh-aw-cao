@@ -19,7 +19,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js"');
-    expect(preview).toMatch(/await loadCanonicalDashboardSources\(\s*sourceUrl,\s*initialSources,\s*dashboardContext,\s*initialPagination/);
+    expect(preview).toMatch(/await loadCanonicalDashboardSources\(\s*sourceUrl,\s*initialSources,\s*dashboardContext,\s*continuationRequests\(initialLazySources\)/);
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');

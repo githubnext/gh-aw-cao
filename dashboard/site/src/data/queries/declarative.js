@@ -47,7 +47,7 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-duration-ms': 60000
 };
 
-const CONTINUATION_TOKEN_VERSION = 1;
+const CONTINUATION_TOKEN_VERSION = 2;
 
 /**
  * Applies request-scoped pagination after query execution so query definitions
@@ -56,8 +56,15 @@ const CONTINUATION_TOKEN_VERSION = 1;
  *
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {string} [revision]
  */
-export function paginateDashboardSources(sources, pagination = {}) {
+export function paginateDashboardSources(
+  sources,
+  pagination = {},
+  revision = continuationRevision(Object.fromEntries(
+    Object.entries(sources).map(([name, source]) => [name, source.metadata])
+  ))
+) {
   return Object.fromEntries(Object.entries(sources).map(([name, source]) => {
     const page = pagination[name];
     if (!page) return [name, source];
@@ -67,7 +74,7 @@ export function paginateDashboardSources(sources, pagination = {}) {
     }
     const rows = Array.isArray(source.rows) ? source.rows : [];
     const cursor = page.continuationToken
-      ? decodeContinuationToken(page.continuationToken, name)
+      ? decodeContinuationToken(page.continuationToken, name, revision)
       : null;
     let offset = cursor?.offset ?? 0;
     if (cursor?.run !== undefined) {
@@ -84,7 +91,8 @@ export function paginateDashboardSources(sources, pagination = {}) {
       ? encodeContinuationToken({
           source: name,
           offset: end,
-          run: runCursor(pageRows.at(-1))
+          run: runCursor(pageRows.at(-1)),
+          revision
         })
       : undefined;
     return [name, {
@@ -102,7 +110,7 @@ function runCursor(row) {
   return typeof run === 'string' && /^\d+$/.test(run) ? run : undefined;
 }
 
-/** @param {{ source: string, offset: number, run?: string }} cursor */
+/** @param {{ source: string, offset: number, run?: string, revision: string }} cursor */
 function encodeContinuationToken(cursor) {
   const bytes = new TextEncoder().encode(JSON.stringify({
     version: CONTINUATION_TOKEN_VERSION,
@@ -113,8 +121,8 @@ function encodeContinuationToken(cursor) {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
 }
 
-/** @param {string} token @param {string} source */
-function decodeContinuationToken(token, source) {
+/** @param {string} token @param {string} source @param {string} revision */
+function decodeContinuationToken(token, source, revision) {
   try {
     const encoded = token.replaceAll('-', '+').replaceAll('_', '/');
     const binary = atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '='));
@@ -122,15 +130,47 @@ function decodeContinuationToken(token, source) {
     const cursor = JSON.parse(new TextDecoder().decode(bytes));
     if (cursor?.version !== CONTINUATION_TOKEN_VERSION
         || cursor?.source !== source
+        || cursor?.revision !== revision
         || !Number.isSafeInteger(cursor?.offset)
         || cursor.offset <= 0
         || (cursor.run !== undefined && (typeof cursor.run !== 'string' || !/^\d+$/.test(cursor.run)))) {
       throw new Error('invalid cursor');
     }
-    return /** @type {{ source: string, offset: number, run?: string }} */ (cursor);
+    return /** @type {{ source: string, offset: number, run?: string, revision: string }} */ (cursor);
   } catch {
-    throw new TypeError(`Invalid continuation token for "${source}".`);
+    throw new TypeError(`Invalid or stale continuation token for "${source}".`);
   }
+}
+
+/**
+ * Produces a deterministic, non-secret revision for stale-token detection.
+ * Query definitions and data generations are execution context, never cursor
+ * fields in the authored query language.
+ *
+ * @param {unknown} queryContext
+ * @param {unknown} [dataContext]
+ */
+export function continuationRevision(queryContext, dataContext) {
+  const text = stableJson([queryContext, dataContext]);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `v1-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+/** @param {unknown} value @returns {string} */
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .filter(([, item]) => typeof item !== 'function')
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
 }
 
 /** Rows processed between cancellation checkpoints inside a join. */
@@ -405,6 +445,9 @@ export function executeDashboardQueries(definitions, sources, requested, options
   if (index.size === 0) return {};
   const defects = dashboardQueryDefects(definitions);
   const budget = options.budget ?? createDashboardQueryBudget(options);
+  const revision = continuationRevision(definitions, Object.fromEntries(
+    Object.entries(sources).map(([name, source]) => [name, source.metadata])
+  ));
   if (requested) {
     /** @type {Record<string, LogicalSourceInput>} */
     const requestedResults = {};
@@ -413,7 +456,7 @@ export function executeDashboardQueries(definitions, sources, requested, options
       const compiled = compileDashboardQuery(name, index, sources, defects, budget);
       requestedResults[name] = compiled[name];
     }
-    return paginateDashboardSources(requestedResults, options.pagination);
+    return paginateDashboardSources(requestedResults, options.pagination, revision);
   }
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
@@ -421,7 +464,7 @@ export function executeDashboardQueries(definitions, sources, requested, options
     budget.checkpoint();
     derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name), budget);
   }
-  return paginateDashboardSources(derived, options.pagination);
+  return paginateDashboardSources(derived, options.pagination, revision);
 }
 
 /**
