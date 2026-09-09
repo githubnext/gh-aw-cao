@@ -3,7 +3,7 @@
  */
 
 import { formatNumber, formatPercent } from './view-formatters.js';
-import { pluralSuffix, titleCase } from './components/count-formatters.js';
+import { formatCount, pluralSuffix, titleCase } from './components/count-formatters.js';
 import { classifyUtilizationRatio, isApprovalConclusion, isFailureConclusion } from './components/run-classification.js';
 import { buildAttentionItems } from './components/attention-rules.js';
 
@@ -1094,13 +1094,6 @@ function domainRow(row) {
 function roundMetric(value) {
   return Math.round(value * 1000) / 1000;
 }
-
-/**
- * @param {number} value
- */
-function formatCount(value) {
-      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value);
-    }
 
 /**
  * @param {number} value
