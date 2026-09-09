@@ -1442,15 +1442,37 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
         dashboard: {
           id: 'full-view-layout',
           title: 'Full View Layout',
+          callouts: [{
+            id: 'inventory-warning',
+            title: 'Inventory warning',
+            description: 'Inventory data may be incomplete.'
+          }],
           pages: [{
             id: 'inventory',
             kind: 'custom',
             title: 'Inventory',
             description: 'Inventory subtitle',
             views: [{
-              id: 'inventory-list',
-              title: 'Inventory list',
-              description: 'Inventory view subtitle',
+              id: 'inventory-callout',
+              title: 'Review inventory warning',
+              description: 'Some inventory rows require review.',
+              mark: 'callout',
+              callout: {
+                label: 'Warning',
+                icon: 'alert'
+              }
+            }, {
+               id: 'inventory-summary',
+               title: 'Inventory summary',
+               data: { source: 'inventory' },
+               mark: 'metric',
+               encoding: {
+                 value: { field: 'repository', type: 'nominal', aggregate: 'distinct-count' }
+               }
+             }, {
+               id: 'inventory-list',
+               title: 'Inventory list',
+               description: 'Inventory view subtitle',
               data: { source: 'inventory' },
               mark: 'table',
               controls: 'interactive',
@@ -1473,14 +1495,24 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   `);
 
   const view = page.locator('[data-view-layout="full-view"]');
+  const siteCallout = page.getByRole('status', { name: 'Inventory warning' });
+  const warningCallout = page.getByRole('note', { name: 'Review inventory warning' });
+  const summary = page.locator('[data-view-id="inventory-summary"]');
+  const pageTitle = page.locator('#page-title');
+  const tableFilter = view.locator('.table-filter');
   const lazyList = view.locator('[data-lazy-list]');
   await expect(view).toHaveCount(1);
+  await expect(siteCallout).toBeVisible();
+  await expect(warningCallout).toBeVisible();
+  await expect(summary).toBeVisible();
+  await expect(pageTitle).toBeVisible();
+  await expect(tableFilter).toBeVisible();
   await expect(lazyList).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Inventory list' })).toBeVisible();
   await expect(page.locator('.overview-header .lede')).toBeHidden();
   await expect(view.getByRole('heading', { name: 'Inventory list' })).toBeHidden();
   expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
-  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
+  expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(550);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
 
   const scroll = view.locator('.table-scroll');
@@ -1493,12 +1525,38 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
 
   for (let cycle = 0; cycle < 3; cycle += 1) {
+    await scroll.evaluate((element) => {
+      element.scrollTop = 100;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(siteCallout).toBeHidden();
+    await expect(warningCallout).toBeHidden();
+    await expect(summary).toBeHidden();
+    await expect(pageTitle).toBeHidden();
+    await expect(tableFilter).toBeHidden();
+    expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     for (const firstRepository of [26, 1]) {
-      await scroll.evaluate((element) => { element.scrollTop = 0; });
-      await scroll.dispatchEvent('scroll');
+      const stayedCompact = await scroll.evaluate((element) => {
+        element.scrollTop = 0;
+        element.dispatchEvent(new Event('scroll'));
+        return element.closest('.dashboard-root')?.classList.contains('dashboard-full-view-scrolled');
+      });
+      expect(stayedCompact).toBe(true);
       await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
+      await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
       await expect(view.locator('tbody > tr')).toHaveCount(50);
     }
+    await scroll.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(siteCallout).toBeVisible();
+    await expect(warningCallout).toBeVisible();
+    await expect(summary).toBeVisible();
+    await expect(pageTitle).toBeVisible();
+    await expect(tableFilter).toBeVisible();
     for (const firstRepository of [26, 51]) {
       await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
       await scroll.dispatchEvent('scroll');
