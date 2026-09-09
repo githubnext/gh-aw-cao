@@ -24,6 +24,7 @@ const dashboardSubscriptions = new Map();
 /** @type {Set<string>} */
 const dirtyDashboardSubscriptions = new Set();
 let subscriptionFlushScheduled = false;
+let subscriptionFlushRunning = false;
 
 /**
  * @param {unknown} sourceNames
@@ -50,20 +51,21 @@ function pageScopedSources(sources, requested) {
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
  * @param {{ aborted?: boolean }} [signal]
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {typeof liveDashboard} [dashboard]
  */
-async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}) {
-  if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
+async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}, dashboard = liveDashboard) {
+  if (!dashboard) throw new Error('Canonical dashboard data has not been loaded.');
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
-    liveDashboard.logicalSources,
-    liveDashboard.generation,
+    dashboard.logicalSources,
+    dashboard.generation,
     required
   );
   const derivedSources = deriveRuntimeSources(
     deriveRepositorySources(
       deriveOverviewSources(
-        deriveWorkflowSources({ ...liveDashboard.logicalSources, ...canonicalPayload })
+        deriveWorkflowSources({ ...dashboard.logicalSources, ...canonicalPayload })
       )
     )
   );
@@ -77,7 +79,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-    continuationRevision(context.queries, liveDashboard.generation)
+    continuationRevision(context.queries, dashboard.generation)
   );
 }
 
@@ -86,40 +88,56 @@ function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
   for (const id of ids) {
     if (dashboardSubscriptions.has(id)) dirtyDashboardSubscriptions.add(id);
   }
-  if (subscriptionFlushScheduled || dirtyDashboardSubscriptions.size === 0) return;
+  if (subscriptionFlushScheduled || subscriptionFlushRunning || dirtyDashboardSubscriptions.size === 0) return;
   subscriptionFlushScheduled = true;
-  queueMicrotask(flushDashboardSubscriptions);
+  queueMicrotask(() => {
+    subscriptionFlushScheduled = false;
+    void flushDashboardSubscriptions();
+  });
 }
 
 async function flushDashboardSubscriptions() {
-  subscriptionFlushScheduled = false;
-  const ids = [...dirtyDashboardSubscriptions];
-  dirtyDashboardSubscriptions.clear();
-  await Promise.all(ids.map(async (id) => {
-    const subscription = dashboardSubscriptions.get(id);
-    if (!subscription || !liveDashboard) return;
-    try {
-      const data = await queryLiveDashboard(
-        new Set(subscription.sourceNames),
-        subscription.context,
-        subscription.requestContext,
-        undefined,
-        subscription.pagination
-      );
-      if (dashboardSubscriptions.get(id) === subscription) {
-        self.postMessage({ subscriptionId: id, generation: liveDashboard.generation, data });
+  if (subscriptionFlushRunning) return;
+  subscriptionFlushRunning = true;
+  try {
+    while (dirtyDashboardSubscriptions.size > 0) {
+      const ids = [...dirtyDashboardSubscriptions];
+      dirtyDashboardSubscriptions.clear();
+      const dashboard = liveDashboard;
+      if (!dashboard) {
+        for (const id of ids) dirtyDashboardSubscriptions.add(id);
+        break;
       }
-    } catch (error) {
-      if (dashboardSubscriptions.get(id) === subscription) {
-        self.postMessage({
-          subscriptionId: id,
-          generation: liveDashboard?.generation,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
+      await Promise.all(ids.map(async (id) => {
+        const subscription = dashboardSubscriptions.get(id);
+        if (!subscription) return;
+        try {
+          const data = await queryLiveDashboard(
+            new Set(subscription.sourceNames),
+            subscription.context,
+            subscription.requestContext,
+            undefined,
+            subscription.pagination,
+            dashboard
+          );
+          if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            self.postMessage({ subscriptionId: id, generation: dashboard.generation, data });
+          }
+        } catch (error) {
+          if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            self.postMessage({
+              subscriptionId: id,
+              generation: dashboard.generation,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }
+      }));
     }
-  }));
-  scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
+  } finally {
+    subscriptionFlushRunning = false;
+    if (liveDashboard) scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
+  }
 }
 
 /** @param {unknown} value */

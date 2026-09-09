@@ -4,7 +4,7 @@
  */
 
 /**
- * @typedef {{ run: () => void, schedule: () => void, stop: () => void, _registerCleanup: (cleanup: () => void) => void }} EffectHandle
+ * @typedef {{ run: () => void, schedule: () => void, stop: () => void, _computed: boolean, _registerCleanup: (cleanup: () => void) => void }} EffectHandle
  */
 
 /** @type {EffectHandle | null} */
@@ -13,15 +13,19 @@ let batchDepth = 0;
 let flushing = false;
 /** @type {Set<EffectHandle>} */
 const pendingEffects = new Set();
+/** @type {Set<EffectHandle>} */
+const pendingComputations = new Set();
 
 function flushEffects() {
   if (batchDepth > 0 || flushing) return;
   flushing = true;
   try {
-    while (pendingEffects.size > 0) {
-      const effects = [...pendingEffects];
-      pendingEffects.clear();
-      for (const handle of effects) handle.run();
+    while (pendingComputations.size > 0 || pendingEffects.size > 0) {
+      const queue = pendingComputations.size > 0 ? pendingComputations : pendingEffects;
+      const handle = queue.values().next().value;
+      if (!handle) break;
+      queue.delete(handle);
+      handle.run();
     }
   } finally {
     flushing = false;
@@ -58,15 +62,17 @@ export function onCleanup(cleanup) {
 
 /**
  * @param {() => void} fn
+ * @param {{ computed?: boolean }} [options]
  * @returns {EffectHandle}
  */
-export function effect(fn) {
+export function effect(fn, options = {}) {
   /** @type {Set<() => void>} */
   const cleanups = new Set();
   let stopped = false;
 
   /** @type {EffectHandle} */
   const handle = {
+    _computed: options.computed === true,
     run() {
       if (stopped) return;
       for (const cleanup of cleanups) {
@@ -84,7 +90,7 @@ export function effect(fn) {
     schedule() {
       if (stopped) return;
       if (batchDepth > 0 || flushing) {
-        pendingEffects.add(handle);
+        (handle._computed ? pendingComputations : pendingEffects).add(handle);
       } else {
         handle.run();
       }
@@ -93,6 +99,7 @@ export function effect(fn) {
       if (stopped) return;
       stopped = true;
       pendingEffects.delete(handle);
+      pendingComputations.delete(handle);
       for (const cleanup of cleanups) {
         cleanup();
       }
@@ -168,7 +175,7 @@ export function derived(compute) {
   const value = state(compute());
   const handle = effect(() => {
     value.set(compute());
-  });
+  }, { computed: true });
 
   return {
     get() {

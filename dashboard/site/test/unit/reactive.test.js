@@ -54,6 +54,40 @@ describe('reactive core', () => {
     runner.stop();
   });
 
+  it('DLS-CONF-004 does not rerun a queued consumer after a derived update', () => {
+    const value = state(1);
+    const doubled = derived(() => value.get() * 2);
+    /** @type {number[][]} */
+    const seen = [];
+    const runner = effect(() => {
+      seen.push([value.get(), doubled.get()]);
+    });
+
+    batch(() => value.set(2));
+
+    expect(seen).toEqual([[1, 2], [2, 4]]);
+    runner.stop();
+    doubled.dispose();
+  });
+
+  it('DLS-CONF-004 resolves chained derived values before consumer effects', () => {
+    const value = state(1);
+    const doubled = derived(() => value.get() * 2);
+    const incremented = derived(() => doubled.get() + 1);
+    /** @type {number[][]} */
+    const seen = [];
+    const runner = effect(() => {
+      seen.push([value.get(), incremented.get()]);
+    });
+
+    batch(() => value.set(2));
+
+    expect(seen).toEqual([[1, 3], [2, 5]]);
+    runner.stop();
+    incremented.dispose();
+    doubled.dispose();
+  });
+
   it('DLS-CONF-004 runs registered cleanup before reruns and disposal', () => {
     const value = state('a');
     /** @type {string[]} */
