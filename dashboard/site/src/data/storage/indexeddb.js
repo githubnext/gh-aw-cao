@@ -476,6 +476,29 @@ export async function readActiveCollection(indexedDB, storeName) {
 }
 
 /**
+ * Counts selected stores in the active generation without loading their records.
+ * @param {IDBFactory} indexedDB
+ * @param {Array<typeof ENTITY_STORES[number]>} storeNames
+ * @returns {Promise<Record<string, number>>}
+ */
+export async function countActiveCollections(indexedDB, storeNames) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
+    if (typeof active?.value !== 'string') {
+      return Object.fromEntries(storeNames.map((storeName) => [storeName, 0]));
+    }
+    const transaction = database.transaction(storeNames);
+    const counts = await Promise.all(storeNames.map((storeName) => requestResult(
+      transaction.objectStore(storeName).index('generation').count(active.value)
+    )));
+    return Object.fromEntries(storeNames.map((storeName, index) => [storeName, counts[index]]));
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * @param {IDBFactory} indexedDB
  * @param {typeof ENTITY_STORES[number]} storeName
  * @param {string} id

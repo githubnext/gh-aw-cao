@@ -5,6 +5,7 @@ import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
+import { createCanonicalQueries } from './data/queries/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { DashboardQueryCancelledError, executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
@@ -94,6 +95,9 @@ function dashboardContext(value) {
  * @returns {unknown}
  */
 export function processDataRequest(request, signal) {
+  if (request?.operation === 'query-canonical-counts') {
+    return createCanonicalQueries(indexedDB).counts();
+  }
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);

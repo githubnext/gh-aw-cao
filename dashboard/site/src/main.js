@@ -1,7 +1,7 @@
       import { dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
-      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
+      import { loadCanonicalDashboardCounts, loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { octicon } from "./octicons.js";
 
@@ -163,7 +163,14 @@
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
-        const dashboard = renderDashboard({ document: dashboardDocument, sources, viewer: localViewer, prepared, loadPageSources });
+        const dashboard = renderDashboard({
+          document: dashboardDocument,
+          sources,
+          viewer: localViewer,
+          prepared,
+          loadPageSources,
+          loadDatabaseCounts: loadCanonicalDashboardCounts,
+        });
         if (state === "loading") {
           dashboard.classList.add("dashboard-loading");
           dashboard.setAttribute("aria-busy", "true");

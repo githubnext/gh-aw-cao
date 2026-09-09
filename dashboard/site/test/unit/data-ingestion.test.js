@@ -99,6 +99,7 @@ describe('canonical source ingestion and queries', () => {
     });
 
     const queries = createCanonicalQueries(indexedDB);
+    expect(await queries.counts()).toEqual({ workflows: 1, runs: 1, events: 2 });
     expect(await queries.runs.list()).toEqual([
       expect.objectContaining({ id: 'github:run:303:attempt:1' })
     ]);

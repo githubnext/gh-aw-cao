@@ -1383,7 +1383,8 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('gpt-5.4');
   });
 
-  it('applies the JSON horizon against one evaluated time while retaining timeless rows', () => {
+  it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
+    const loadDatabaseCounts = vi.fn().mockResolvedValue({ workflows: 4, runs: 12, events: 89 });
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -1433,7 +1434,8 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      },
+      loadDatabaseCounts
     });
 
     const table = rendered.querySelector('.custom-table');
@@ -1447,6 +1449,19 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
+    expect(loadDatabaseCounts).not.toHaveBeenCalled();
+    expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent).toBe('Database counts load on hover');
+
+    rendered.querySelector('.horizon-summary')?.dispatchEvent(new Event('pointerenter'));
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
+        .toBe('4 workflows · 12 runs · 89 events');
+    });
+    expect(loadDatabaseCounts).toHaveBeenCalledOnce();
+
+    rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(loadDatabaseCounts).toHaveBeenCalledOnce();
   });
 
   it('renders Security assurance records as one full-view lazy table', async () => {
