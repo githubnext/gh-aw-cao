@@ -42,9 +42,6 @@ export function normalizeAdmissionRecord(value, expected = {}) {
   const githubApiCapacity = capacity(value.github_api_capacity, [
     "status", "limit", "remaining", "required", "resetAt", "gateActive",
   ]);
-  const runnerDiskCapacity = capacity(value.runner_disk_capacity, [
-    "status", "available", "required", "path",
-  ]);
   return {
     schemaVersion: 1,
     observedAt,
@@ -62,7 +59,6 @@ export function normalizeAdmissionRecord(value, expected = {}) {
     failedCheck: value.failed_check === null ? null : text(value.failed_check),
     checks,
     ...(githubApiCapacity ? { githubApiCapacity } : {}),
-    ...(runnerDiskCapacity ? { runnerDiskCapacity } : {}),
   };
 }
 
