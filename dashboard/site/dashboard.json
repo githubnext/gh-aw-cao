@@ -73,6 +73,7 @@
     "queries": [
       {
         "name": "workflow-run-totals",
+        "intent": "Summarize observed run counts by declared workflow.",
         "description": "Observed run totals for each declared workflow.",
         "from": "runs",
         "aggregate": {
@@ -92,6 +93,7 @@
       },
       {
         "name": "workflow-aic-totals",
+        "intent": "Summarize observed AI Credit usage by declared workflow.",
         "description": "Observed AI Credit totals for each declared workflow.",
         "from": "usage",
         "aggregate": {
@@ -111,6 +113,7 @@
       },
       {
         "name": "workflow-inventory",
+        "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
         "from": "workflows",
         "joins": [
@@ -338,6 +341,7 @@
       },
       {
         "name": "repository-workflow-totals",
+        "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
         "from": "workflows",
         "compute": [
@@ -360,6 +364,7 @@
       },
       {
         "name": "repository-report-totals",
+        "intent": "Summarize published outcome report counts by repository.",
         "description": "Published report totals for each repository.",
         "from": "outcomes",
         "aggregate": {
@@ -371,6 +376,7 @@
       },
       {
         "name": "repository-evaluated-workflow-totals",
+        "intent": "Summarize distinct workflows with operational-value evaluations by repository.",
         "description": "Distinct evaluated workflow totals for each repository.",
         "from": "operational-values",
         "aggregate": {
@@ -382,6 +388,7 @@
       },
       {
         "name": "repository-run-totals",
+        "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
         "from": "runs",
         "compute": [
@@ -415,6 +422,7 @@
       },
       {
         "name": "repository-aic-totals",
+        "intent": "Summarize observed AI Credit usage by repository.",
         "description": "Observed AI Credit totals for each repository.",
         "from": "usage",
         "aggregate": {
@@ -426,6 +434,7 @@
       },
       {
         "name": "repository-activity-core",
+        "intent": "Join each repository with its workflow, report, evaluation, and run totals.",
         "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
         "from": "repositories",
         "joins": [
@@ -480,6 +489,7 @@
       },
       {
         "name": "repository-activity",
+        "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
         "description": "Repository-local execution health and attributed outcome totals.",
         "from": "repository-activity-core",
         "joins": [
@@ -542,6 +552,7 @@
       },
       {
         "name": "package-inventory",
+        "intent": "Summarize centrally managed packages with their workflow, repository, rollout, run, and AI Credit totals.",
         "description": "Centrally managed package inventory and observed execution totals.",
         "from": "workflow-inventory",
         "filter": {

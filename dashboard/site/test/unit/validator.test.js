@@ -4670,7 +4670,11 @@ describe('declarative query validation', () => {
     dashboard: {
       id: 'query-dashboard',
       title: 'Query Dashboard',
-      queries,
+      queries: Array.isArray(queries)
+        ? queries.map(query => query && typeof query === 'object'
+          ? { intent: 'Preserve the original query request for future modifications.', ...query }
+          : query)
+        : queries,
       pages: [{
         id: 'derived',
         kind: 'custom',
@@ -4711,6 +4715,19 @@ describe('declarative query validation', () => {
 
   it('accepts a derived query used as a logical source', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
+  });
+
+  it('requires a non-empty original intent for every query', () => {
+    for (const intent of [undefined, '', 42]) {
+      const result = validateDashboardDocument(queryDocument([{ ...aicQuery, intent }]));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.errors).toContainEqual(expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.queries[0].intent'
+        }));
+      }
+    }
   });
 
   it('rejects unknown query sources, duplicate names, and canonical name shadowing', () => {
