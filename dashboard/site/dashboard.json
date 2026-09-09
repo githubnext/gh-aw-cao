@@ -276,6 +276,22 @@
         "intent": "List canonical GitHub API request, response, rate-limit, and error events.",
         "description": "Observed GitHub API events with run and correlation context.",
         "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          }
+        ],
         "filter": {
           "predicates": [
             {
@@ -294,7 +310,7 @@
           { "field": "workflow" },
           { "field": "run" },
           { "field": "correlation-id" },
-          { "field": "run-link" }
+          { "field": "linked-run", "as": "run-link" }
         ],
         "order-by": [
           {
