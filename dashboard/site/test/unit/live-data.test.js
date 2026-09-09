@@ -29,7 +29,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("renderRefreshError(retryRefresh)");
     expect(preview).toContain("refreshSources");
     expect(preview).toContain("if (changed) return;");
-    expect(preview).toContain('dashboard.classList.remove("dashboard-refreshing")');
+    expect(preview).toContain('renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources)');
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');
