@@ -27,6 +27,7 @@ import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
+import { sourceContinuation } from './data/continuation.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -37,7 +38,7 @@ import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-
  */
 
 /**
- * @typedef {{ source: string, rows: Array<Record<string, unknown>>, metadata: SourceMetadata }} LogicalSourceInput
+ * @typedef {{ source: string, rows: Array<Record<string, unknown>>, metadata: SourceMetadata, continuationToken?: string, loadContinuation?: (token: string) => Promise<LogicalSourceInput> }} LogicalSourceInput
  */
 
 /**
@@ -151,6 +152,7 @@ export function dashboardPageSourceNames(document, pageId) {
   for (const view of payload.views ?? []) {
     for (const sourceName of getViewSources(view)) names.add(sourceName);
   }
+
   for (const section of payload.sections ?? []) {
     if (typeof section['count-source'] === 'string') names.add(section['count-source']);
   }
@@ -158,6 +160,21 @@ export function dashboardPageSourceNames(document, pageId) {
     if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
   }
   return [...names];
+}
+
+/**
+ * Returns sources rendered by lazy-list views without exposing pagination in
+ * the dashboard query language.
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ */
+export function dashboardPageLazySourceNames(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return [];
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  return [...new Set((payload.views ?? []).flatMap((view) =>
+    isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
+  ))];
 }
 
 /**
@@ -1946,6 +1963,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
+  const sourcePage = view['lazy-list'] === true ? sourceContinuation(sourceInput) : undefined;
   const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {
     pageId,
     title,
@@ -1959,7 +1977,17 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     prepareTableRows,
     buildChartPoints,
     prepareChartPoints,
-    toText
+    toText,
+    continuation: sourcePage ? {
+      ...sourcePage,
+      load: async (token) => {
+        const next = await sourcePage.load(token);
+        return {
+          rows: filterRowsForView(next?.rows ?? [], view.data),
+          continuationToken: next?.continuationToken
+        };
+      }
+    } : undefined
   });
   if (rendered) return rendered;
 

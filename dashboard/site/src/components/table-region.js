@@ -32,6 +32,7 @@ const DEFAULT_PAGE_SIZE = 25;
  *   filterPlaceholder?: string,
  *   filterFields?: TableFilterField[],
  *   lazyList?: boolean,
+ *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: HTMLTableRowElement[], continuationToken?: string }> },
  *   pageSize?: number,
  *   resultNoun?: string,
  *   resultNounPlural?: string,
@@ -55,6 +56,7 @@ export function renderTableRegion(options) {
     filterPlaceholder = 'Filter rows',
     filterFields = [],
     lazyList = false,
+    continuation,
     pageSize = DEFAULT_PAGE_SIZE,
     resultNoun,
     resultNounPlural
@@ -155,7 +157,7 @@ export function renderTableRegion(options) {
     const rows = [...region.querySelectorAll('tbody > tr')]
       .filter((row) => row instanceof HTMLTableRowElement);
     if (sortable) enableTableSort(region, rows);
-    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural }, rows);
+    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural, continuation }, rows);
   } else if (hasRows && sortable) {
     enableTableSort(region);
   }
@@ -228,7 +230,7 @@ function cellText(row, columnIndex) {
  */
 /**
  * @param {HTMLElement} region
- * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string }} options
+ * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string, continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: HTMLTableRowElement[], continuationToken?: string }> } }} options
  * @param {HTMLTableRowElement[]} rows
  */
 function enableTableFilter(region, options, rows) {
@@ -265,6 +267,8 @@ function enableTableFilter(region, options, rows) {
   let lazyWindowStart = 0;
   let lazyMatchedRows = /** @type {HTMLTableRowElement[]} */ ([]);
   let lazyShown = 0;
+  let continuationToken = options.continuation?.token;
+  let loadingContinuation = false;
   /**
    * @param {HTMLTableRowElement[]} matchedRows
    * @param {number} shown
@@ -327,8 +331,12 @@ function enableTableFilter(region, options, rows) {
          if (visible) shown += 1;
        }
      }
-     output.textContent = formatResultCount(shown, processed.length, options.resultNoun, options.resultNounPlural);
-     more.hidden = shown >= processed.length;
+     const unfiltered = query === '' && predicates.length === 0;
+     const total = unfiltered && options.continuation
+       ? options.continuation.totalRows
+       : processed.length;
+     output.textContent = formatResultCount(shown, total, options.resultNoun, options.resultNounPlural);
+     more.hidden = !continuationToken && shown >= processed.length;
    });
   };
 
@@ -355,11 +363,30 @@ function enableTableFilter(region, options, rows) {
      apply(true);
    });
   }
-  const loadMore = () => {
+  const loadMore = async () => {
+   if (loadingContinuation) return;
+   if (continuationToken && options.continuation) {
+     loadingContinuation = true;
+     more.disabled = true;
+     try {
+       const next = await options.continuation.load(continuationToken);
+       rows.push(...next.rows);
+       continuationToken = next.continuationToken;
+       more.textContent = 'Load more rows';
+       delete more.dataset.loadError;
+     } catch {
+       more.textContent = 'Retry loading rows';
+       more.dataset.loadError = '';
+       return;
+     } finally {
+       loadingContinuation = false;
+       more.disabled = false;
+     }
+   }
    limit = options.lazyList ? limit + options.pageSize : Number.POSITIVE_INFINITY;
    apply();
   };
- more.addEventListener('click', loadMore);
+ more.addEventListener('click', () => void loadMore());
  region.addEventListener('table-sorted', () => apply(true));
  apply();
  const Observer = region.ownerDocument.defaultView?.IntersectionObserver;
@@ -377,7 +404,7 @@ function enableTableFilter(region, options, rows) {
     }
   });
   observeLoadMoreBoundary(Observer, more, () => {
-    if (!more.hidden) loadMore();
+    if (!more.hidden) void loadMore();
   }, { root: region.querySelector('.table-scroll'), rootMargin: '200px 0px' });
  }
 }

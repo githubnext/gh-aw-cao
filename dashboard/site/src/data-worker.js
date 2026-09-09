@@ -6,7 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
-import { DashboardQueryCancelledError, executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
+import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -41,8 +41,9 @@ function pageScopedSources(sources, requested) {
  * @param {ReturnType<typeof dashboardContext>} context
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
  * @param {{ aborted?: boolean }} [signal]
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  */
-async function queryLiveDashboard(requested, context, requestContext, signal) {
+async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}) {
   if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
@@ -65,7 +66,11 @@ async function queryLiveDashboard(requested, context, requestContext, signal) {
     ...healthSources,
     ...executeDashboardQueries(context.queries, healthSources, requested, { signal })
   };
-  return deriveDashboardLinkSources(pageScopedSources(querySources, requested), context);
+  return paginateDashboardSources(
+    deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
+    /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
+    continuationRevision(context.queries, liveDashboard.generation)
+  );
 }
 
 /** @param {unknown} value */
@@ -89,7 +94,7 @@ function dashboardContext(value) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -101,7 +106,8 @@ export function processDataRequest(request, signal) {
       requested,
       context,
       /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
-      signal
+      signal,
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
     );
   }
   if (request?.operation === 'load-canonical-dashboard') {
@@ -132,7 +138,8 @@ export function processDataRequest(request, signal) {
         requested,
         context,
         /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
-        signal
+        signal,
+        /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
     })();
   }
@@ -147,7 +154,10 @@ export function processDataRequest(request, signal) {
       request.queries,
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
       undefined,
-      { signal }
+      {
+        signal,
+        pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
+      }
     );
   }
   if (request?.operation === 'summarize-table-columns') {
