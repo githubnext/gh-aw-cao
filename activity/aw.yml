@@ -12,6 +12,8 @@ resources:
     destination: .github/aw/activity/actions-context.mjs
   - source: actions-log.mjs
     destination: .github/aw/activity/actions-log.mjs
+  - source: collect-logs.sh
+    destination: .github/aw/activity/collect-logs.sh
   - source: failure-evidence.mjs
     destination: .github/aw/activity/failure-evidence.mjs
   - source: index.mjs
