@@ -9,6 +9,52 @@
 
 /** @type {EffectHandle | null} */
 let activeEffect = null;
+let batchDepth = 0;
+let flushing = false;
+/** @type {Set<EffectHandle>} */
+const pendingEffects = new Set();
+
+function flushEffects() {
+  if (batchDepth > 0 || flushing) return;
+  flushing = true;
+  try {
+    while (pendingEffects.size > 0) {
+      const effects = [...pendingEffects];
+      pendingEffects.clear();
+      for (const handle of effects) handle.run();
+    }
+  } finally {
+    flushing = false;
+  }
+}
+
+/**
+ * Groups reactive writes so each dependent effect runs once with the final
+ * state, matching the transaction semantics used by mature reactive runtimes.
+ * @template T
+ * @param {() => T} fn
+ * @returns {T}
+ */
+export function batch(fn) {
+  batchDepth += 1;
+  try {
+    return fn();
+  } finally {
+    batchDepth -= 1;
+    flushEffects();
+  }
+}
+
+/**
+ * Registers lifecycle cleanup with the currently running effect.
+ * @param {() => void} cleanup
+ */
+export function onCleanup(cleanup) {
+  if (!activeEffect) {
+    throw new Error('Reactive cleanup must be registered inside an effect.');
+  }
+  activeEffect._registerCleanup(cleanup);
+}
 
 /**
  * @param {() => void} fn
@@ -17,10 +63,12 @@ let activeEffect = null;
 export function effect(fn) {
   /** @type {Set<() => void>} */
   const cleanups = new Set();
+  let stopped = false;
 
   /** @type {EffectHandle} */
   const handle = {
     run() {
+      if (stopped) return;
       for (const cleanup of cleanups) {
         cleanup();
       }
@@ -34,9 +82,17 @@ export function effect(fn) {
       }
     },
     schedule() {
-      handle.run();
+      if (stopped) return;
+      if (batchDepth > 0 || flushing) {
+        pendingEffects.add(handle);
+      } else {
+        handle.run();
+      }
     },
     stop() {
+      if (stopped) return;
+      stopped = true;
+      pendingEffects.delete(handle);
       for (const cleanup of cleanups) {
         cleanup();
       }

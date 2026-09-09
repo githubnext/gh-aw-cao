@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { derived, effect, state } from '../../src/reactive.js';
+import { batch, derived, effect, onCleanup, state } from '../../src/reactive.js';
 import { h, keyed } from '../../src/dom.js';
 
 describe('reactive core', () => {
@@ -33,6 +33,41 @@ describe('reactive core', () => {
     value.set('c');
 
     expect(seen).toEqual(['a', 'b']);
+  });
+
+  it('DLS-CONF-004 batches dependent effects with their final state', () => {
+    const first = state(1);
+    const second = state(2);
+    /** @type {number[]} */
+    const seen = [];
+    const runner = effect(() => {
+      seen.push(first.get() + second.get());
+    });
+
+    batch(() => {
+      first.set(3);
+      second.set(4);
+      first.set(5);
+    });
+
+    expect(seen).toEqual([3, 9]);
+    runner.stop();
+  });
+
+  it('DLS-CONF-004 runs registered cleanup before reruns and disposal', () => {
+    const value = state('a');
+    /** @type {string[]} */
+    const cleaned = [];
+    const runner = effect(() => {
+      const current = value.get();
+      onCleanup(() => cleaned.push(current));
+    });
+
+    value.set('b');
+    runner.stop();
+
+    expect(cleaned).toEqual(['a', 'b']);
+    expect(() => onCleanup(() => {})).toThrow('inside an effect');
   });
 
   it('DLS-CONF-004 builds DOM trees with text and attributes', () => {

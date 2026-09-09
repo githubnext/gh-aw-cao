@@ -16,6 +16,14 @@ import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
 let liveDashboard = null;
+/**
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }> }} DashboardSubscription
+ */
+/** @type {Map<string, DashboardSubscription>} */
+const dashboardSubscriptions = new Map();
+/** @type {Set<string>} */
+const dirtyDashboardSubscriptions = new Set();
+let subscriptionFlushScheduled = false;
 
 /**
  * @param {unknown} sourceNames
@@ -71,6 +79,47 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
     continuationRevision(context.queries, liveDashboard.generation)
   );
+}
+
+/** @param {Iterable<string>} [ids] */
+function scheduleDashboardSubscriptions(ids = dashboardSubscriptions.keys()) {
+  for (const id of ids) {
+    if (dashboardSubscriptions.has(id)) dirtyDashboardSubscriptions.add(id);
+  }
+  if (subscriptionFlushScheduled || dirtyDashboardSubscriptions.size === 0) return;
+  subscriptionFlushScheduled = true;
+  queueMicrotask(flushDashboardSubscriptions);
+}
+
+async function flushDashboardSubscriptions() {
+  subscriptionFlushScheduled = false;
+  const ids = [...dirtyDashboardSubscriptions];
+  dirtyDashboardSubscriptions.clear();
+  await Promise.all(ids.map(async (id) => {
+    const subscription = dashboardSubscriptions.get(id);
+    if (!subscription || !liveDashboard) return;
+    try {
+      const data = await queryLiveDashboard(
+        new Set(subscription.sourceNames),
+        subscription.context,
+        subscription.requestContext,
+        undefined,
+        subscription.pagination
+      );
+      if (dashboardSubscriptions.get(id) === subscription) {
+        self.postMessage({ subscriptionId: id, generation: liveDashboard.generation, data });
+      }
+    } catch (error) {
+      if (dashboardSubscriptions.get(id) === subscription) {
+        self.postMessage({
+          subscriptionId: id,
+          generation: liveDashboard?.generation,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+  }));
+  scheduleDashboardSubscriptions(dirtyDashboardSubscriptions);
 }
 
 /** @param {unknown} value */
@@ -134,6 +183,7 @@ export function processDataRequest(request, signal) {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         generation
       };
+      scheduleDashboardSubscriptions();
       return queryLiveDashboard(
         requested,
         context,
@@ -226,6 +276,24 @@ function cancelInFlight(ids) {
 if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessage' in self) {
   self.addEventListener('message', (event) => {
     const id = event.data?.id;
+    if (event.data?.operation === 'subscribe-canonical-dashboard') {
+      const subscriptionId = event.data.subscriptionId;
+      if (typeof subscriptionId !== 'string' || !subscriptionId.trim()) return;
+      const context = dashboardContext(event.data.context);
+      dashboardSubscriptions.set(subscriptionId, {
+        sourceNames: [...requestedSourceNames(event.data.sourceNames)],
+        context,
+        requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
+        pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {})
+      });
+      scheduleDashboardSubscriptions([subscriptionId]);
+      return;
+    }
+    if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
+      dashboardSubscriptions.delete(event.data.subscriptionId);
+      dirtyDashboardSubscriptions.delete(event.data.subscriptionId);
+      return;
+    }
     if (event.data?.operation === 'cancel-data-processing') {
       const cancelled = cancelInFlight(event.data.ids);
       self.postMessage({ id, data: { cancelled } });

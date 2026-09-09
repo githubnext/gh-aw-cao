@@ -4,6 +4,7 @@ import { clusterScatterPoints } from './scatter-clustering.js';
 import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
+import { batch } from './reactive.js';
 
 /** Milliseconds a cooperative cancellation is given before the worker is terminated. */
 const CANCELLATION_GRACE_MS = 250;
@@ -11,8 +12,22 @@ const CANCELLATION_GRACE_MS = 250;
 /** @type {Worker | null} */
 let worker = null;
 let nextRequestId = 0;
-/** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void }>} */
+/** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void, cleanup: () => void }>} */
 const pending = new Map();
+/**
+ * @typedef {{
+ *   id: string,
+ *   sourceNames: string[],
+ *   context: { githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] },
+ *   pagination?: Record<string, { limit: number, continuationToken?: string }>,
+ *   listeners: Set<(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void>,
+ *   registeredWorker: Worker | null,
+ *   latest: Record<string, import('./presenter.js').LogicalSourceInput> | null,
+ *   scheduled: boolean
+ * }} ViewSubscription
+ */
+/** @type {Map<string, ViewSubscription>} */
+const subscriptions = new Map();
 
 /**
  * Cancels every in-flight data-worker request. The worker is first asked to
@@ -33,11 +48,12 @@ export function cancelDataProcessing(reason = 'Data processing was cancelled.') 
   setTimeout(() => {
     if (!ids.some((id) => pending.has(id))) return;
     for (const id of ids) {
+      pending.get(id)?.cleanup();
       pending.get(id)?.reject(cancellation);
       pending.delete(id);
     }
     processor?.terminate();
-    if (worker === processor) worker = null;
+    if (worker === processor) resetWorker(processor);
   }, CANCELLATION_GRACE_MS);
   return ids.length;
 }
@@ -153,6 +169,107 @@ export function loadCanonicalDashboardPage(sourceNames, context, pagination) {
 }
 
 /**
+ * Subscribes UI code to the latest rows for one dashboard view. Multiple
+ * listeners for the same view share one worker subscription, and rapid worker
+ * updates collapse into one notification containing the newest tables.
+ *
+ * @param {string} viewId
+ * @param {string[]} sourceNames
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
+ * @param {(sources: Record<string, import('./presenter.js').LogicalSourceInput>) => void} listener
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @returns {() => void}
+ */
+export function subscribeCanonicalDashboardView(viewId, sourceNames, context, listener, pagination) {
+  if (typeof viewId !== 'string' || !viewId.trim()) {
+    throw new TypeError('Canonical dashboard subscriptions require a view identifier.');
+  }
+  if (!Array.isArray(sourceNames) || sourceNames.some((name) => typeof name !== 'string')) {
+    throw new TypeError('Canonical dashboard subscription source names must be an array of strings.');
+  }
+  if (typeof listener !== 'function') {
+    throw new TypeError('Canonical dashboard subscriptions require a listener.');
+  }
+  let subscription = subscriptions.get(viewId);
+  if (subscription) {
+    if (!sameSubscription(subscription, sourceNames, context, pagination)) {
+      throw new Error(`Canonical dashboard view ${viewId} is already subscribed with different query parameters.`);
+    }
+  } else {
+    subscription = {
+      id: viewId,
+      sourceNames: [...sourceNames],
+      context,
+      pagination,
+      listeners: new Set(),
+      registeredWorker: null,
+      latest: null,
+      scheduled: false
+    };
+    subscriptions.set(viewId, subscription);
+  }
+  subscription.listeners.add(listener);
+  const processor = getWorker();
+  if (processor) registerSubscription(processor, subscription);
+
+  let active = true;
+  return () => {
+    if (!active) return;
+    active = false;
+    const current = subscriptions.get(viewId);
+    if (!current) return;
+    current.listeners.delete(listener);
+    if (current.listeners.size > 0) return;
+    subscriptions.delete(viewId);
+    current.latest = null;
+    current.registeredWorker?.postMessage({
+      operation: 'unsubscribe-canonical-dashboard',
+      subscriptionId: viewId
+    });
+    current.registeredWorker = null;
+  };
+}
+
+/** @param {ViewSubscription} subscription @param {string[]} sourceNames @param {object} context @param {object | undefined} pagination */
+function sameSubscription(subscription, sourceNames, context, pagination) {
+  return JSON.stringify([subscription.sourceNames, subscription.context, subscription.pagination ?? null])
+    === JSON.stringify([sourceNames, context, pagination ?? null]);
+}
+
+/** @param {Worker} processor @param {ViewSubscription} subscription */
+function registerSubscription(processor, subscription) {
+  if (subscription.registeredWorker === processor) return;
+  subscription.registeredWorker = processor;
+  processor.postMessage({
+    operation: 'subscribe-canonical-dashboard',
+    subscriptionId: subscription.id,
+    sourceNames: subscription.sourceNames,
+    context: subscription.context,
+    pagination: subscription.pagination
+  });
+}
+
+/**
+ * Retains only the newest worker payload until the current microtask completes.
+ * @param {ViewSubscription} subscription
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ */
+function enqueueSubscriptionUpdate(subscription, sources) {
+  subscription.latest = sources;
+  if (subscription.scheduled) return;
+  subscription.scheduled = true;
+  queueMicrotask(() => {
+    subscription.scheduled = false;
+    const latest = subscription.latest;
+    subscription.latest = null;
+    if (!latest || subscriptions.get(subscription.id) !== subscription) return;
+    batch(() => {
+      for (const listener of [...subscription.listeners]) listener(latest);
+    });
+  });
+}
+
+/**
  * @template T
  * @param {Record<string, unknown>} request
  * @param {() => T} fallback
@@ -165,14 +282,15 @@ function processRequest(request, fallback, recoverWorkerError = true, signal) {
   if (!processor) return fallback();
   const id = ++nextRequestId;
   const result = new Promise((resolve, reject) => {
-    pending.set(id, {
-      resolve: (value) => resolve(/** @type {T} */ (value)),
-      reject
-    });
-    processor.postMessage({ id, ...request });
     const onAbort = () => {
       if (pending.has(id)) processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
     };
+    pending.set(id, {
+      resolve: (value) => resolve(/** @type {T} */ (value)),
+      reject,
+      cleanup: () => signal?.removeEventListener('abort', onAbort)
+    });
+    processor.postMessage({ id, ...request });
     if (signal?.aborted) onAbort();
     else signal?.addEventListener('abort', onAbort, { once: true });
   });
@@ -185,9 +303,17 @@ function getWorker() {
   if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
   worker = new Worker(new URL('./data-worker.js', import.meta.url), { type: 'module' });
   worker.addEventListener('message', (event) => {
+    if (typeof event.data?.subscriptionId === 'string') {
+      const subscription = subscriptions.get(event.data.subscriptionId);
+      if (subscription && event.data.data && typeof event.data.data === 'object') {
+        enqueueSubscriptionUpdate(subscription, event.data.data);
+      }
+      return;
+    }
     const request = pending.get(event.data?.id);
     if (!request) return;
     pending.delete(event.data.id);
+    request.cleanup();
     if (typeof event.data.error === 'string') {
       const error = new Error(event.data.error);
       if (event.data.cancelled) error.name = 'DataProcessingCancelledError';
@@ -197,10 +323,21 @@ function getWorker() {
     }
   });
   worker.addEventListener('error', (event) => {
-    for (const request of pending.values()) request.reject(new Error(event.message || 'Data worker failed.'));
+    for (const request of pending.values()) {
+      request.cleanup();
+      request.reject(new Error(event.message || 'Data worker failed.'));
+    }
     pending.clear();
-    worker?.terminate();
-    worker = null;
+    resetWorker(worker);
   });
+  for (const subscription of subscriptions.values()) registerSubscription(worker, subscription);
   return worker;
+}
+
+/** @param {Worker | null} processor */
+function resetWorker(processor) {
+  processor?.terminate();
+  if (worker !== processor) return;
+  worker = null;
+  for (const subscription of subscriptions.values()) subscription.registeredWorker = null;
 }
