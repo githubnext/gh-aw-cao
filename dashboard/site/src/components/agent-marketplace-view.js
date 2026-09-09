@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderIconSpan, formatShortDate, renderFilterSelect, renderSearchInput } from './ui-primitives.js';
+import { renderIconSpan, formatShortDate, renderFilterSelect, renderOptionSelect, renderSearchInput } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 import { textValue } from './count-formatters.js';
 
@@ -28,13 +28,13 @@ export function renderAgentMarketplaceView(context) {
   const search = renderSearchInput('Search operations and workflows');
   const owner = renderFilterSelect('Filter operations by owner', 'All owners',
     agents.map((agent) => agent.owner));
-  const status = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Filter operations by status' },
-    h('option', { value: 'all' }, 'All statuses'),
-    h('option', { value: 'smells' }, `Smells (${agents.filter((agent) => agentSmellReasons(agent).length > 0).length})`),
-    h('option', { value: 'disabled' }, `Disabled (${agents.filter((agent) => agent.state === 'disabled').length})`),
-    h('option', { value: 'slow' }, `Slow (${agents.filter((agent) => agent.slow).length})`),
-    h('option', { value: 'stale' }, `Stale (${agents.filter((agent) => agent.stale).length})`)
-  ));
+  const status = renderOptionSelect('Filter operations by status', [
+    { value: 'all', label: 'All statuses' },
+    { value: 'smells', label: `Smells (${agents.filter((agent) => agentSmellReasons(agent).length > 0).length})` },
+    { value: 'disabled', label: `Disabled (${agents.filter((agent) => agent.state === 'disabled').length})` },
+    { value: 'slow', label: `Slow (${agents.filter((agent) => agent.slow).length})` },
+    { value: 'stale', label: `Stale (${agents.filter((agent) => agent.stale).length})` }
+  ]);
   const count = h('span', { className: 'agent-marketplace-count', 'aria-live': 'polite' });
   let sortOrder = 'runtime';
   let activeKind = agents.some((agent) => agent.kind === 'package') ? 'package' : 'all';

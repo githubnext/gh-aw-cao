@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { textValue, titleCase } from './count-formatters.js';
-import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderOptionSelect, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -256,12 +256,13 @@ function renderBoard(items, section, onUpdate) {
 function renderTasks(items, section, onUpdate) {
   const list = h('div', { className: 'work-task-list work-mobile-hide-repository work-mobile-hide-dates', role: 'list' });
   const choices = workItemChoices(items);
-  const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort tasks by' },
-    h('option', { value: 'started' }, 'Start date'),
-    h('option', { value: 'name' }, 'Title'),
-    h('option', { value: 'state' }, 'Status'),
-    h('option', { value: 'owner' }, 'Owned by'),
-    h('option', { value: 'package' }, 'Package')));
+  const sort = renderOptionSelect('Sort tasks by', [
+    { value: 'started', label: 'Start date' },
+    { value: 'name', label: 'Title' },
+    { value: 'state', label: 'Status' },
+    { value: 'owner', label: 'Owned by' },
+    { value: 'package', label: 'Package' }
+  ]);
   const direction = h('button', { type: 'button', className: 'work-task-sort-direction', 'aria-label': 'Sort descending', title: 'Sort descending' }, renderIconSpan('work-task-sort-icon', 'arrow-down', { ariaHidden: true }));
   let descending = true;
   const renderRows = () => {

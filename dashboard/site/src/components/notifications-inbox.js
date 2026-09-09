@@ -6,7 +6,7 @@ import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
-import { createExpandableToggle, renderLazyDisclosure, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, renderLazyDisclosure, renderOptionSelect, renderSearchInput } from './ui-primitives.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -248,15 +248,17 @@ export function renderNotificationsInbox(rows, sources = {}) {
   const list = lazyList.element;
   const count = h('span', { className: 'notifications-result-count', 'aria-live': 'polite' });
   const search = renderSearchInput('Filter notifications', 'is:unread');
-  const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort notifications' },
-    h('option', { value: 'newest' }, 'Newest to oldest'),
-    h('option', { value: 'oldest' }, 'Oldest to newest'),
-    h('option', { value: 'priority' }, 'Highest priority')));
-  const group = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Group notifications' },
-    h('option', { value: 'cause' }, 'Cause'),
-    h('option', { value: 'date' }, 'Date'),
-    h('option', { value: 'repository' }, 'Repository'),
-    h('option', { value: 'none' }, 'No grouping')));
+  const sort = renderOptionSelect('Sort notifications', [
+    { value: 'newest', label: 'Newest to oldest' },
+    { value: 'oldest', label: 'Oldest to newest' },
+    { value: 'priority', label: 'Highest priority' }
+  ]);
+  const group = renderOptionSelect('Group notifications', [
+    { value: 'cause', label: 'Cause' },
+    { value: 'date', label: 'Date' },
+    { value: 'repository', label: 'Repository' },
+    { value: 'none', label: 'No grouping' }
+  ]);
   const selectAll = /** @type {HTMLInputElement} */ (h('input', { type: 'checkbox', 'aria-label': 'Select all notifications' }));
   const bulkDone = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'notifications-icon-button', title: 'Mark selected as done',
@@ -433,11 +435,12 @@ function renderOperationalPulse(attentionRows, sources, showNotifications) {
   const end = latestObservedAt([...runs, ...workItems, ...outcomes, ...operationalValues, ...evidenceRecords]);
   const lastCatchUp = readLastCatchUp();
   const defaultRange = lastCatchUp && lastCatchUp < end ? 'since' : '7d';
-  const range = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Catch-up interval' },
-    h('option', { value: 'since', disabled: !lastCatchUp, selected: defaultRange === 'since' }, 'Since last catch-up'),
-    h('option', { value: '1d' }, 'Last 24 hours'),
-    h('option', { value: '7d', selected: defaultRange === '7d' }, 'Last 7 days'),
-    h('option', { value: '30d' }, 'Last 30 days')));
+  const range = renderOptionSelect('Catch-up interval', [
+    { value: 'since', label: 'Since last catch-up', disabled: !lastCatchUp, selected: defaultRange === 'since' },
+    { value: '1d', label: 'Last 24 hours' },
+    { value: '7d', label: 'Last 7 days', selected: defaultRange === '7d' },
+    { value: '30d', label: 'Last 30 days' }
+  ]);
   const content = h('div', { className: 'home-catchup-content' });
   const markCaughtUp = h('button', { type: 'button', className: 'home-catchup-done' }, octicon('check'), 'Mark caught up');
   const render = () => {

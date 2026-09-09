@@ -322,6 +322,27 @@ export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareF
 }
 
 /**
+ * @typedef {{ value: string, label: string, selected?: boolean, disabled?: boolean }} SelectOption
+ */
+
+/**
+ * Renders the shared "`<select>` with a fixed, statically labeled set of
+ * `<option>`s" pattern used by the notifications-inbox sort/group/catch-up
+ * controls, the operations marketplace status filter, and the work-project
+ * task sort control. All of these pair an `aria-label` with option elements
+ * built from `{ value, label }` pairs, some of which mark an option
+ * `selected` or `disabled` up front.
+ * @param {string} ariaLabel
+ * @param {SelectOption[]} options
+ * @returns {HTMLSelectElement}
+ */
+export function renderOptionSelect(ariaLabel, options) {
+  return /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': ariaLabel },
+    ...options.map(({ value, label, selected, disabled }) => h('option', { value, selected, disabled }, label))
+  ));
+}
+
+/**
  * Renders the shared `type="search"` filter/search input pattern used by the
  * agent marketplace, work-project, and notifications-inbox toolbars, which
  * all pair an identical placeholder and `aria-label` with a disabled
