@@ -86,8 +86,8 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
     expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: yes 2, no 1');
     expect([...rendered.querySelectorAll('.chart-legend li')].map((item) => item.textContent)).toEqual([
-      '✓267%',
-      '×133%'
+      '✓266.7%',
+      '×133.3%'
     ]);
     expect([...rendered.querySelectorAll('.chart-legend li span')].map((item) => item.getAttribute('aria-label'))).toEqual(['yes', 'no']);
   });
