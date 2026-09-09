@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
+import { loadDashboardDocument } from '../dashboard-document.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -195,7 +196,7 @@ test('mobile Catch Up completes with persistent Done, Later, Open, and Notificat
 
 test('production pages expose a responsive executive chart', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 320, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -253,7 +254,7 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
 });
 
 test('GitHub API raw quota table remains operable at desktop and narrow widths', async ({ page }) => {
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -356,7 +357,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error));
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 1003, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -456,7 +457,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
 
 test('experiments page composes reusable declarative slices with rendered parity', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -572,7 +573,7 @@ test('desktop navigation sections collapse and expand around the current view', 
 
 test('clean navigation preserves the Overview decision hierarchy across desktop and mobile', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.setContent(`
     <div id="root"></div>
@@ -970,7 +971,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
 test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -1046,7 +1047,7 @@ test('Work uses focused mobile Board, Table, Roadmap, and detail interactions', 
 
 test('performance page renders one full-view lazy job table', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  const documentModel = loadDashboardDocument(fileURLToPath(new URL('../../dashboard.json', import.meta.url)));
   await page.setViewportSize({ width: 1200, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -1181,6 +1182,8 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
 
 test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style six-domain operational overview in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  const overviewDefinition = loadDashboardDocument().dashboard.pages
+    .find((/** @type {any} */ entry) => entry.id === 'operations').definition;
 
   await page.setContent(`
     <div id="root"></div>
@@ -1399,6 +1402,8 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
         }
       };
 
+      dashboardDocument.dashboard.pages[0].definition = ${JSON.stringify(overviewDefinition)};
+      dashboardDocument.dashboard.pages[0]['class-name'] = 'overview-page';
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
@@ -1657,6 +1662,8 @@ test('pie charts match the report layout at medium viewport widths', async ({ pa
 
 test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode filters, AIC utilization, and run trends in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  const packagesDefinition = loadDashboardDocument().dashboard.pages
+    .find((/** @type {any} */ entry) => entry.id === 'packages').definition;
 
   await page.setContent(`
     <div id="root"></div>
@@ -1934,6 +1941,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
         }
       };
 
+      documentModel.dashboard.pages[0].definition = ${JSON.stringify(packagesDefinition)};
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
@@ -2106,6 +2114,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
 
 test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  const evalsDefinition = loadDashboardDocument().dashboard.pages
+    .find((/** @type {any} */ entry) => entry.id === 'evals').definition;
 
   await page.setContent(`
     <div id="root"></div>
@@ -2175,6 +2185,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
         }
       };
 
+      dashboardDocument.dashboard.pages[0].definition = ${JSON.stringify(evalsDefinition)};
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
@@ -2194,6 +2205,8 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
 
 test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page exposes accessible names, labeled columns, textual data states, and only safe labeled external links in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  const findingsDefinition = loadDashboardDocument().dashboard.pages
+    .find((/** @type {any} */ entry) => entry.id === 'findings').definition;
 
   await page.setContent(`
     <a id="plain-external-link" href="https://example.com/docs">External documentation</a>
@@ -2260,6 +2273,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
         }
       };
 
+      dashboardDocument.dashboard.pages[0].definition = ${JSON.stringify(findingsDefinition)};
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);

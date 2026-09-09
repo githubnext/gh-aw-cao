@@ -1,4 +1,4 @@
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
@@ -54,7 +54,30 @@ export async function bundleDashboardFiles(outputPath, dashboardPaths) {
       dashboard(JSON.parse(await readFile(source, "utf8")), source)
     )),
   );
-  await writeFile(outputPath, `${JSON.stringify(composeDashboardDocuments(primary, additions), null, 2)}\n`);
+  const composed = composeDashboardDocuments(primary, additions);
+  await splitInlineViews(composed, path.dirname(outputPath));
+  await writeFile(outputPath, `${JSON.stringify(composed, null, 2)}\n`);
+}
+
+async function splitInlineViews(document, outputDirectory) {
+  for (const page of document.dashboard.pages) {
+    const owner = page.kind === "built-in" ? page.definition : page;
+    if (!owner || !Array.isArray(owner.views)) continue;
+    const pageDirectory = path.join(outputDirectory, "views", page.id);
+    const views = [];
+    for (const view of owner.views) {
+      if (typeof view?.$ref === "string") {
+        views.push(view);
+        continue;
+      }
+      if (typeof view?.id !== "string") throw new Error(`dashboard page "${page.id}" contains a view without an id`);
+      await mkdir(pageDirectory, { recursive: true });
+      const relativePath = `./views/${page.id}/${view.id}.json`;
+      await writeFile(path.join(outputDirectory, relativePath), `${JSON.stringify(view, null, 2)}\n`);
+      views.push({ $ref: relativePath });
+    }
+    owner.views = views;
+  }
 }
 
 async function main() {

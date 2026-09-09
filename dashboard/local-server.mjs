@@ -1904,8 +1904,15 @@ export async function startDashboardServer({
         sendContent(request, response, contentTypes.get(".json"), content);
         return;
       }
-      const candidate = resolve(resolvedSiteRoot, `.${pathname}`);
-      if (!isWithin(resolvedSiteRoot, candidate)) {
+      const generatedCandidate = resolve(temporaryDirectory, `.${pathname}`);
+      const generatedMetadata = pathname.startsWith("/views/") && isWithin(temporaryDirectory, generatedCandidate)
+        ? await stat(generatedCandidate).catch(() => null)
+        : null;
+      const candidate = generatedMetadata?.isFile()
+        ? generatedCandidate
+        : resolve(resolvedSiteRoot, `.${pathname}`);
+      const candidateRoot = generatedMetadata?.isFile() ? temporaryDirectory : resolvedSiteRoot;
+      if (!isWithin(candidateRoot, candidate)) {
         response.writeHead(404).end("Not found\n");
         return;
       }
@@ -1927,7 +1934,7 @@ export async function startDashboardServer({
         return;
       }
       const canonicalFilePath = await realpath(filePath);
-      if (!isWithin(resolvedSiteRoot, canonicalFilePath)) {
+      if (!isWithin(candidateRoot, canonicalFilePath)) {
         response.writeHead(404).end("Not found\n");
         return;
       }

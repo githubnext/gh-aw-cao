@@ -1,14 +1,9 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { renderDashboard } from '../../src/presenter.js';
+import { loadDashboardDocument } from '../dashboard-document.js';
 
-const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
-const authoritativeDashboard = JSON.parse(
-  readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')
-);
+const authoritativeDashboard = loadDashboardDocument();
 
 const metadata = {
   'source-id': 'runtime-fixture',

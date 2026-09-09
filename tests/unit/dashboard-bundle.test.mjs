@@ -30,6 +30,15 @@ test("bundles installed package dashboards into one deterministic document", asy
     await bundleDashboards(output, additions);
     const bundled = JSON.parse(await readFile(output, "utf8"));
     assert.deepEqual(bundled.dashboard.pages.map(({ id }) => id), ["overview", "alpha", "zeta"]);
+    assert.deepEqual(bundled.dashboard.pages.map(({ views }) => views), [
+      [{ $ref: "./views/overview/overview-view.json" }],
+      [{ $ref: "./views/alpha/alpha-view.json" }],
+      [{ $ref: "./views/zeta/zeta-view.json" }],
+    ]);
+    assert.equal(
+      JSON.parse(await readFile(path.join(root, "views", "alpha", "alpha-view.json"), "utf8")).id,
+      "alpha-view",
+    );
     assert.deepEqual(bundled.dashboard.navigation, [
       { label: "Explore", pages: ["overview"] },
       { label: "Package operations", pages: ["alpha", "zeta"] },

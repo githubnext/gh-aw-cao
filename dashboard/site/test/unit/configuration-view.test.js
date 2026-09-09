@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { loadDashboardDocument } from '../dashboard-document.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'configuration-fixture',
@@ -35,7 +34,7 @@ function context(row) {
 
 describe('Configuration dashboard view', () => {
   it('exposes Control in the clean navigation without a chart', () => {
-    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
+    const dashboard = loadDashboardDocument().dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
     const cleanNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => !candidate.label);
 

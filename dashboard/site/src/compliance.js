@@ -695,6 +695,7 @@ dashboard:
       kind: built-in
       page: experiments
       title: Experiments & Evaluation
+      description: Observed associations are presented without implying causation.
       definition:
         data-state:
           availability: true

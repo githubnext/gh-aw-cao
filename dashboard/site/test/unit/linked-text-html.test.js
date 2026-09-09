@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderDashboard } from '../../src/presenter.js';
+import { loadDashboardDocument } from '../dashboard-document.js';
+
+const workflowsDefinition = loadDashboardDocument().dashboard.pages
+  .find((/** @type {any} */ page) => page.id === 'workflows').definition;
 
 describe('linked text refactor behavior preservation', () => {
   it('preserves derived links in declarative workflow inventory tables', () => {
@@ -10,7 +14,7 @@ describe('linked text refactor behavior preservation', () => {
         id: 'workflow-topology-links-dashboard',
         title: 'Workflow Topology Links',
         pages: [
-          { id: 'workflows', kind: /** @type {'built-in'} */ ('built-in'), page: 'workflows', title: 'Workflows' },
+          { id: 'workflows', kind: /** @type {'built-in'} */ ('built-in'), page: 'workflows', title: 'Workflows', definition: workflowsDefinition },
           {
             id: 'repository-detail',
             kind: /** @type {'custom'} */ ('custom'),

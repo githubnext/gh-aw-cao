@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { renderDashboard } from '../../src/presenter.js';
+import { loadDashboardDocument } from '../dashboard-document.js';
 
-const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+const dashboard = loadDashboardDocument();
 const dispatchPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'dispatches');
 const metadata = {
   'source-id': 'fixture',

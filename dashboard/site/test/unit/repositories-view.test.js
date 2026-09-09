@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { deriveRepositorySources, summarizeRepositories } from '../../src/repository-data.js';
+import { loadDashboardDocument } from '../dashboard-document.js';
 
-const dashboard = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8'));
+const dashboard = loadDashboardDocument();
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {

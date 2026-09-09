@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { renderDashboard } from '../../src/presenter.js';
+import { loadDashboardDocument } from '../dashboard-document.js';
 
-const authoritativeDashboardDocument = JSON.parse(
-  readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')
-);
+const authoritativeDashboardDocument = loadDashboardDocument();
 
 const metadata = {
   'source-id': 'cost-fixture',
