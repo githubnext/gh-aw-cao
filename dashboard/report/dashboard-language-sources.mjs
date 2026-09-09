@@ -886,6 +886,37 @@ export function transactionLogRows(usage) {
   return { sessions, events };
 }
 
+function transactionLogRowsForCurrentRuns(transactionLogs, runs, jobs) {
+  const runCoordinate = (row) => [
+    `${String(row.organization || "").toLowerCase()}/${String(row.repository || "").toLowerCase()}`,
+    String(row.run || ""),
+    Number(row["run-attempt"]) || 1,
+  ].join(":");
+  const runCoordinates = new Set(runs.map(runCoordinate));
+  const jobCoordinates = new Set(jobs
+    .filter((row) => row["job-id"] !== undefined && row["job-id"] !== null)
+    .map((row) => `${runCoordinate(row)}:${row["job-id"]}`));
+  const sessions = transactionLogs.sessions.flatMap((row) => {
+    const coordinate = runCoordinate(row);
+    if (!runCoordinates.has(coordinate)) return [];
+    if (
+      row["job-id"] === undefined
+      || row["job-id"] === null
+      || jobCoordinates.has(`${coordinate}:${row["job-id"]}`)
+    ) {
+      return [row];
+    }
+    const session = { ...row };
+    delete session["job-id"];
+    return [session];
+  });
+  const sessionIds = new Set(sessions.map((row) => row.session));
+  return {
+    sessions,
+    events: transactionLogs.events.filter((row) => sessionIds.has(row.session)),
+  };
+}
+
 function experimentTelemetryRows(usage) {
   const definitions = new Map();
   const assignments = [];
@@ -2553,7 +2584,11 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const runs = runRows(deployed, usage);
   const admission = admissionRows(deployed);
   const performance = performanceRows(deployed, usage);
-  const transactionLogs = transactionLogRows(usage);
+  const transactionLogs = transactionLogRowsForCurrentRuns(
+    transactionLogRows(usage),
+    runs,
+    performance.jobs,
+  );
   const detectionObservations = detectionObservationRows(usage, performance.jobs);
   const safeOutputPerformance = safeOutputPerformanceRows(usage);
   const records = report.records || [];
