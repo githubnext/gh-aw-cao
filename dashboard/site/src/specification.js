@@ -3,6 +3,7 @@
  */
 
 import octiconNames from './octicon-names.json' with { type: 'json' };
+import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
 export {
   EXPERIMENTS_VIEW_BODY_VALUES,
   EXPERIMENTS_VIEW_SECTION_KEYS,
@@ -19,8 +20,27 @@ export const LANGUAGE_VERSION = '0.1.0';
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
-export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts'];
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
+
+export const QUERY_KEYS = ['name', 'description', 'from', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
+export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
+export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
+export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
+export const QUERY_JOIN_FIELD_KEYS = ['field', 'as'];
+export const QUERY_FILTER_KEYS = ['predicates'];
+export const QUERY_PREDICATE_KEYS = ['field', 'equals', 'in', 'includes'];
+export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
+export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value'];
+export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
+export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer'];
+export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max'];
+export const QUERY_SELECT_KEYS = ['field', 'as'];
+export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
+export const INFERRED_FIELD_NAMES = ['package-link'];
+export { COMPUTE_FUNCTION_ARITY, NUMERIC_COMPUTE_FUNCTIONS, TEXT_COMPUTE_FUNCTIONS } from './data-operations.js';
+export { DASHBOARD_QUERY_LIMITS };
+export const QUERY_MAX_JOINS = DASHBOARD_QUERY_LIMITS['max-joins'];
 export const SITE_CALLOUT_KEYS = ['id', 'title', 'description', 'icon', 'navigation-page', 'visible-when'];
 export const SITE_CALLOUT_VISIBILITY_KEYS = ['source', 'field', 'equals'];
 export const TOOLTIP_KEYS = ['label', 'description', 'icon'];

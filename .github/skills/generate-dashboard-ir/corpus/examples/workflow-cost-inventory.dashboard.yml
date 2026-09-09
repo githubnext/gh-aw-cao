@@ -1,0 +1,120 @@
+language-version: "0.1.0"
+dashboard:
+  id: workflow-cost-inventory
+  title: Workflow cost inventory
+  defaults:
+    scope:
+      repositories:
+        - githubnext/gh-aw-cao
+    time:
+      range: 30d
+  units:
+    aic:
+      name: AI Credits
+      symbol: AIC
+      significant: 0.1
+  queries:
+    - name: workflow-aic-totals
+      description: Observed AI Credit totals for each declared workflow.
+      from: usage
+      aggregate:
+        by:
+          - organization
+          - repository
+          - workflow
+        values:
+          - field: aic
+            as: aic
+            reducer: sum
+    - name: workflow-cost-inventory
+      description: Declared workflows joined with their observed AI Credit totals.
+      from: workflows
+      joins:
+        - source: workflow-aic-totals
+          type: left
+          on:
+            - left: organization
+              right: organization
+            - left: repository
+              right: repository
+            - left: workflow
+              right: workflow
+          fields:
+            - field: aic
+              as: observed-aic
+      compute:
+        - as: total-aic
+          function: coalesce
+          args:
+            - field: observed-aic
+            - value: 0
+        - as: repository-slug
+          function: concat
+          args:
+            - field: organization
+            - value: /
+            - field: repository
+      select:
+        - field: repository-slug
+          as: repository
+        - field: workflow
+        - field: workflow-name
+        - field: rollout-mode
+        - field: total-aic
+          as: aic
+        - field: workflow-link
+      order-by:
+        - field: aic
+          direction: desc
+      limit: 50
+  pages:
+    - id: workflow-cost-inventory
+      kind: custom
+      title: Workflow cost inventory
+      description: Shows declared workflows with their observed AI Credit totals so an operator can see which workflows consume the most credits.
+      views:
+        - id: inventory-total-aic
+          title: Observed AI Credits
+          description: Total AI Credits observed across the declared workflows in the selected horizon.
+          data:
+            source: workflow-cost-inventory
+          mark: metric
+          layout: third
+          disclosure: essential
+          encoding:
+            value:
+              field: aic
+              type: quantitative
+              aggregate: sum
+              title: Observed AIC
+              unit: aic
+        - id: inventory-table
+          title: Workflow cost inventory
+          description: Declared workflows with observed AI Credit totals, ordered by consumption.
+          data:
+            source: workflow-cost-inventory
+          mark: table
+          controls: interactive
+          layout: full
+          disclosure: essential
+          empty-message: No declared workflows match the selected horizon.
+          encoding:
+            href:
+              field: workflow-link
+              type: nominal
+            columns:
+              - field: repository
+                type: nominal
+                title: Repository
+              - field: workflow
+                type: nominal
+                format: workflow-relative-path
+                title: Workflow
+              - field: rollout-mode
+                type: nominal
+                title: Mode
+                display: mode
+              - field: aic
+                type: quantitative
+                title: Observed AIC
+                unit: aic

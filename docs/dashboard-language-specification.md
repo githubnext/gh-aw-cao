@@ -61,13 +61,14 @@ This specification covers:
 - built-in and custom dashboard pages;
 - intrinsic agentic-operations entities and observations;
 - dimensions, measures, aggregation, scope, time, and filters;
+- declarative derived queries over declared logical sources;
 - constrained hash-query routing for custom pages;
 - provenance, freshness, missing-data semantics, and links; and
 - validation, conformance, and compliance testing.
 
 This specification does not cover:
 
-- arbitrary scripts, joins, formulas, expressions, or content templates;
+- arbitrary scripts, SQL text, general-purpose expressions, or content templates;
 - plugins, themes, renderer details, or implementation architecture;
 - deployment-level routing, fetching, authentication, caching, or storage;
 - campaign or experiment management; or
@@ -210,13 +211,24 @@ Language keys and enumerated values use canonical kebab-case. Human-readable tit
 | Mapping | Allowed keys |
 |---|---|
 | Root | `language-version`, `dashboard` |
-| `dashboard` | `id`, `title`, `description`, `github-url-base`, `repository`, `callouts`, `horizon`, `defaults`, `units`, `pages`, `navigation` |
+| `dashboard` | `id`, `title`, `description`, `github-url-base`, `repository`, `callouts`, `horizon`, `defaults`, `units`, `queries`, `pages`, `navigation` |
 | Site-wide callout | `id`, `title`, `description`, `icon`, `navigation-page`, `visible-when` |
 | Callout `visible-when` | `source`, `field`, `equals` |
 | Dashboard `horizon` | `label`, `tooltip` |
 | Tooltip | `label`, `description`, `icon` |
 | `defaults` | `scope`, `time`, `filters` |
 | Unit definition | `name`, `symbol`, `significant`, `format` |
+| Query definition | `name`, `description`, `from`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, `limit` |
+| Query `joins` entry | `source`, `type`, `on`, `fields` |
+| Query join key | `left`, `right` |
+| Query join field | `field`, `as` |
+| Query `filter` | `predicates` |
+| Query predicate | `field`, `equals`, `in`, `includes` |
+| Query computed field | `as`, `function`, `args` |
+| Query computed argument | `field` or `value` |
+| Query `aggregate` | `by`, `values` |
+| Query aggregate value | `field`, `as`, `reducer` |
+| Query `select` entry | `field`, `as` |
 | Built-in page | `id`, `kind`, `page`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `definition` |
 | Custom page | `id`, `kind`, `title`, `navigation-label`, `description`, `icon`, `class-name`, `route`, `views`, `sections` |
 | Navigation section | `label`, `pages`, `experimental` |
@@ -352,6 +364,81 @@ A package groups one orchestrator and one or more workers that execute centrally
 - **DLS-SEM-030:** A smell **MUST** carry observed evidence or deterministic configuration evidence. Disabled, blocked, slow, stale, expensive, or unsuccessful state alone **MUST NOT** be classified as a smell.
 - **DLS-SEM-031:** Native agentic assessment kind names **MUST** be normalized from snake case to canonical kebab-case `smell-id` values without changing their audit-provided severity, summary, evidence, or recommendation.
 - **DLS-SEM-032:** The canonical Home attention view **MUST** preserve smell source classification, evidence attribution, severity, expected actor, and remediation when normalizing smell rows into attention signals.
+
+### 5.5 Declarative Queries
+
+`dashboard.queries`, when present, declares reusable derived logical sources. A query is a closed, structured projection over already declared sources; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
+
+```yaml
+queries:
+  - name: workflow-aic-totals
+    description: Observed AI Credit totals for each declared workflow.
+    from: usage
+    aggregate:
+      by: [organization, repository, workflow]
+      values:
+        - field: aic
+          as: aic
+          reducer: sum
+  - name: workflow-inventory
+    from: workflows
+    joins:
+      - source: workflow-aic-totals
+        type: left
+        on:
+          - { left: organization, right: organization }
+          - { left: repository, right: repository }
+          - { left: workflow, right: workflow }
+        fields:
+          - { field: aic, as: observed-aic }
+    compute:
+      - as: total-aic
+        function: coalesce
+        args:
+          - { field: observed-aic }
+          - { value: 0 }
+    select:
+      - { field: workflow }
+      - { field: total-aic, as: aic }
+    order-by:
+      - { field: workflow, direction: asc }
+    limit: 5000
+```
+
+#### 5.5.1 Computed-Field Vocabulary
+
+Computed fields use only the following typed, deterministic functions with the stated inclusive argument counts. Each argument is either one `field` reference valid at that point in the query or one scalar `value` literal.
+
+| Function | Arguments | Result |
+|---|---|---|
+| `coalesce` | 2–8 | first argument that is not null, empty text, or a structured value |
+| `concat` | 2–8 | text |
+| `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
+| `number` | 1 | finite number or null |
+| `sum`, `product` | 2–8 | finite number or null |
+| `difference`, `quotient` | 2 | finite number or null |
+
+#### 5.5.2 Normative Query Requirements
+
+- **DLS-QUERY-001:** `queries`, when present, **MUST** be a non-empty sequence of mappings. Each query **MUST** declare a `name` matching the canonical identifier pattern in **DLS-DOC-005** and one `from` source, **MAY** declare `description`, `joins`, `filter`, `compute`, `aggregate`, `select`, `order-by`, and `limit`, and **MUST NOT** declare any other key.
+- **DLS-QUERY-002:** A query `name` **MUST** be unique among queries and **MUST NOT** shadow a Section 5.1 source name. A declared query name **MAY** be used wherever a view selects a logical source.
+- **DLS-QUERY-003:** `from` and every `joins[].source` **MUST** name one Section 5.1 source or one query declared earlier in the sequence. Forward references, self references, and cycles **MUST** be rejected.
+- **DLS-QUERY-004:** Clause execution order **MUST** be `from`, then `joins` in declaration order, then `filter`, `compute` in declaration order, `aggregate`, `select`, `order-by`, and finally `limit`.
+- **DLS-QUERY-005:** A join **MUST** declare `source`, a non-empty `on` sequence of `left`/`right` equality key pairs, and a non-empty `fields` sequence of aliased fields imported from the joined source. `type` **MUST** be `inner` or `left` and defaults to `inner`. Version 0.1.0 defines no other join type, no join expressions, and no cross joins. A query **MUST NOT** declare more than four joins.
+- **DLS-QUERY-006:** Join keys **MUST** address logical-source fields, not canonical entity identities. `left` **MUST** name a field available after the preceding clauses and `right` **MUST** name a field declared by the joined source. Key values **MUST** be compared as trimmed text; a null, missing, empty, or structured key value **MUST NOT** match any row.
+- **DLS-QUERY-007:** The joined source **MUST** contain at most one row per join key. A duplicate join key **MUST** fail the query rather than expand rows, so many-to-many expansion cannot occur.
+- **DLS-QUERY-008:** For an unmatched `left` join row, every imported join field **MUST** be null; an unmatched `inner` join row **MUST** be dropped.
+- **DLS-QUERY-009:** Every output name **MUST** be unique. A join field alias, computed field name, aggregate output name, or `select` alias that collides with an existing output name **MUST** be rejected.
+- **DLS-QUERY-010:** Computed fields **MUST** use only the Section 5.5.1 vocabulary with a valid argument count. A missing, null, empty, or structured input to a numeric function, a non-numeric text input, and division by zero **MUST** produce null. Text functions **MUST** treat null, missing, and structured inputs as empty text. A computation **MUST NOT** produce `NaN`, `Infinity`, or an error value.
+- **DLS-QUERY-011:** `filter`, `aggregate`, `order-by`, and `limit` **MUST** use the same deterministic semantics as Sections 6, 7, and 11.2. `select` **MUST** project and optionally rename fields and **MUST** drop every field it does not name.
+- **DLS-QUERY-012:** The output field schema of a query **MUST** be statically derivable from its declaration so encodings, filters, and `order-by` references can be validated before execution. A reference to a field the preceding clauses do not produce **MUST** be rejected with `DLS-E010`.
+- **DLS-QUERY-013:** A query **MUST NOT** read more than 200000 input rows per source, produce more than 200000 joined rows, or produce more than 100000 output rows; `limit` **MUST NOT** exceed 100000. Exceeding a limit **MUST** fail the query closed and **MUST NOT** truncate results silently.
+- **DLS-QUERY-014:** A derived source's metadata **MUST** compose its inputs' provenance: it **MUST** report `source-kind` `derived`, the oldest input `as-of` and `retrieved-at`, the weakest input completeness and freshness, and `unavailable` availability when any input is missing or unavailable. An executed query with zero output rows **MUST** report `empty` availability under **DLS-DATA-004**.
+- **DLS-QUERY-015:** A failed query **MUST** produce zero rows, `unavailable` availability, and one explicit diagnostic identifying the dashboard path of the failing query. A diagnostic **MUST NOT** contain source payloads, row values, credentials, or secrets.
+- **DLS-QUERY-016:** A presenter **MUST** resolve the query dependency graph before requesting a page projection so every input source required by a requested derived source is loaded while unrelated sources remain excluded, and **MUST** execute queries in the data-processing layer defined by Section 7.5 without a main-thread fallback.
+- **DLS-QUERY-017:** An execution layer **MUST NOT** assume its query definitions were validated. Before it reads any rows it **MUST** reject a query that reads itself, participates in a dependency cycle, reads a query declared later in the sequence, shares its name with another query, declares a join without equality keys, declares more joins than **DLS-QUERY-005** permits, or declares a `limit` outside **DLS-QUERY-013**. Every query that reads a rejected query **MUST** also be rejected. Rejected queries **MUST** fail closed under **DLS-QUERY-015**, and a query that does not depend on a rejected query **MUST** still execute.
+- **DLS-QUERY-018:** Query execution **MUST** be cancelable from outside the execution layer through an abort signal, **MUST** stop after 60000 milliseconds of execution, and **MUST** stop after 5000000 row operations. A stopped execution **MUST NOT** report a partial projection: it **MUST** surface an explicit cancellation distinct from a query fault, and **MUST** identify only the cancellation cause without source payloads or secrets. A presenter **MUST** offer a command that cancels a runaway computation, and **MUST** terminate a data worker that does not acknowledge cancellation.
+- **DLS-QUERY-019:** A validator **MUST** reject a query whose field references are incompatible with the source schema, with `DLS-E011`. A field that only exists after a presenter derives it from an executed projection **MUST NOT** be read by a query. A structured link field **MUST NOT** be a join key, filter field, computed-field argument, grouping field, aggregate measure, or `order-by` field, because **DLS-QUERY-006** and **DLS-QUERY-010** define no scalar value for it; a query **MAY** still project one. A temporal field **MUST NOT** be a numeric computed-field argument or the measure of a `sum`, `mean`, `min`, or `max` reducer.
 
 ---
 
@@ -735,7 +822,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-008:** A field definition **MUST** contain `field` and **MAY** contain only `type`, `aggregate`, `time-unit`, `title`, `as`, `display`, `filter`, `format`, and `unit` in addition; `as` is valid only when `aggregate` is not `none`. `display` is valid only on table columns and **MUST** be `text`, `status`, `grader-status`, `mode`, `active-state`, `label`, `digest`, `outcome-link`, `run-link`, or `evidence-link`. `filter` is valid only on table columns and **MUST** be boolean. `format`, when present, **MUST** be `workflow-relative-path` or `workflow-run-url` and is valid only on nominal or ordinal fields. `workflow-relative-path` **MUST** affect presentation only by removing a leading `.github/workflows/` while preserving the `.md` extension. `workflow-run-url` is valid only on table columns and **MUST** present a canonical github.com Actions run URL as an external link labeled with the run ID, while leaving non-matching values as plain text.
 - **DLS-VIEW-009:** `time-unit` **MUST** be used only with a temporal field and **MUST** use an allowed value from Section 7.3.
 - **DLS-VIEW-010:** `data.limit` **MUST** be a positive integer, and `data.order-by.field` **MUST** reference either a source field valid at the post-aggregation output grain or one unique aggregate-output identifier. Ambiguous or invalid order references **MUST** be rejected with `DLS-E010`, and a group-grain output whose canonical post-aggregation row order cannot be totally resolved **MUST** be rejected with `DLS-E010` under **DLS-AGG-011**.
-- **DLS-VIEW-011:** A custom view **MUST NOT** contain scripts, joins, formulas, expressions, templates, plugins, or undeclared transforms.
+- **DLS-VIEW-011:** A custom view **MUST NOT** contain scripts, joins, formulas, expressions, templates, plugins, or undeclared transforms. A view **MAY** select a derived source declared by `dashboard.queries` under Section 5.5; joins and computed fields **MUST** be declared there and **MUST NOT** appear inside a view.
 - **DLS-VIEW-012:** A custom view **MUST** apply defaults, filtering, aggregation, ordering, and limiting in the order defined by Sections 6, 7, and 11.2, and ordering **MUST** use the resolved output identifier before applying `limit` and then the canonical post-aggregation row order from **DLS-AGG-008**, using the same algorithm whether `order-by` is explicit or omitted. A `chart`'s series and a `table`'s rows **MUST** inherit this canonical post-aggregation row order without constraining visual styling beyond the mark defaults in **DLS-VIEW-006**.
 - **DLS-VIEW-013:** Before mark-specific rendering, a custom view **MUST** determine and expose exactly one view-level availability state of `available`, `empty`, or `unavailable`, together with its source provenance, freshness, completeness, effective scope, effective time range, and effective filters. An `empty` or `unavailable` state **MUST NOT** make the view invalid or cause the presenter to omit it; its textual state output **MUST** identify the affected source or sources, effective scope, time range, and filters.
 - **DLS-VIEW-014:** Under `empty`, a `metric` **MUST** render an absent aggregate value, except that `count` and `distinct-count` **MUST** render zero; a `table` **MUST** render zero rows; and a `chart` **MUST** render zero points. Under `unavailable`, a `metric` **MUST** render no numeric value and a `table` or `chart` **MUST** render no rows or points. An `element` **MUST** preserve each declared source's data state. A presenter **MUST NOT** synthesize placeholder observations, zero-valued non-count aggregates, or links for either state.
@@ -1037,6 +1124,7 @@ dashboard:
 - Added the `agent-assignments` source fields and `agent-marketplace-view` element for Marketplace-style agent capability and runtime-health presentation.
 - Added the attention-first `signal-list` Home presentation, four-state Work display mapping, and composed `insights-overview` element with explicit outcome, AIC, detection, and experiment evidence boundaries.
 - Aligned page icons with the presenter's canonical Octicon set and defined the icon-only, tooltip-backed horizon control.
+- Added declarative `dashboard.queries` derived sources in Section 5.5 with constrained equality joins, an allowlisted computed-field vocabulary, static output schemas, documented resource limits, composed data states, and worker-only execution through **DLS-QUERY-001** to **DLS-QUERY-019**, and revised Section 1.2, **DLS-VIEW-011**, and Appendix C.3 accordingly. `queries` is an optional additive key, so conforming `"0.1.0"` documents remain valid and the language version is unchanged.
 
 ---
 
@@ -1188,6 +1276,8 @@ Invalid because the ID is not kebab-case and `pages` is empty.
         value:
           expression: raw-token-count * rate
 ```
+
+Invalid because a view **MUST NOT** declare a join or an expression. A relationship between sources and a derived measure are declared instead as a `dashboard.queries` entry under Section 5.5, and the view selects that derived source by name.
 
 Invalid because `join` and `expression` are not language vocabulary and arbitrary joins and expressions are excluded.
 

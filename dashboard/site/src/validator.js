@@ -7,6 +7,25 @@ import {
   CUSTOM_PAGE_KEYS,
   DASHBOARD_KEYS,
   DASHBOARD_HORIZON_KEYS,
+  DASHBOARD_QUERY_LIMITS,
+  COMPUTE_FUNCTION_ARITY,
+  NUMERIC_COMPUTE_FUNCTIONS,
+  QUERY_AGGREGATE_KEYS,
+  QUERY_AGGREGATE_VALUE_KEYS,
+  QUERY_COMPUTE_ARGUMENT_KEYS,
+  QUERY_COMPUTE_KEYS,
+  QUERY_FILTER_KEYS,
+  QUERY_JOIN_FIELD_KEYS,
+  QUERY_JOIN_KEYS,
+  QUERY_JOIN_ON_KEYS,
+  QUERY_JOIN_TYPE_VALUES,
+  QUERY_KEYS,
+  QUERY_MAX_JOINS,
+  QUERY_PREDICATE_KEYS,
+  QUERY_REDUCER_VALUES,
+  QUERY_NUMERIC_REDUCER_VALUES,
+  QUERY_SELECT_KEYS,
+  INFERRED_FIELD_NAMES,
   DATASET_AVAILABILITY_VALUES,
   DATASET_COMPLETENESS_VALUES,
   DATASET_FRESHNESS_VALUES,
@@ -129,6 +148,14 @@ import {
  */
 
 /**
+ * Output field schemas of the queries declared by the dashboard currently
+ * being validated, keyed by query name in declaration order. Validation is
+ * synchronous and non-reentrant, so this is reset for every document.
+ * @type {Map<string, string[] | undefined>}
+ */
+let declaredQueries = new Map();
+
+/**
  * @param {string} source
  * @returns {ValidationResult}
  */
@@ -169,7 +196,11 @@ export function validateDashboardDocument(source) {
     return { ok: false, errors };
   }
 
-  validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors);
+  try {
+    validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors);
+  } finally {
+    declaredQueries = new Map();
+  }
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -464,6 +495,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     }
   }
 
+  declaredQueries = validateQueries(dashboard.queries, getValueNodeByKey(dashboardNode, 'queries'), errors);
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
   validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors);
 
@@ -582,7 +614,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       typeof visibility.source === 'string'
       && SOURCE_VALUES.includes(visibility.source)
       && typeof visibility.field === 'string'
-      && !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (visibility.source)]?.includes(visibility.field)
+      && !sourceFieldNames(visibility.source)?.includes(visibility.field)
     ) {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'visible-when field must be declared by visible-when source.', `${path}.field`));
     }
@@ -1526,7 +1558,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
         ? view.data.source
         : null;
       const sourceFields = treeSource
-        ? SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (treeSource)]
+        ? sourceFieldNames(treeSource)
         : null;
       for (const field of [view.tree['id-field'], view.tree['parent-field']]) {
         if (typeof field === 'string' && sourceFields && !sourceFields.includes(field)) {
@@ -1753,7 +1785,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
       }
     } else {
       validateSource(view.data.source, `${path}.data.source`, errors);
-      if (typeof view.data.source === 'string' && SOURCE_VALUES.includes(view.data.source)) {
+      if (typeof view.data.source === 'string'
+          && (SOURCE_VALUES.includes(view.data.source) || declaredQueries.has(view.data.source))) {
         sourceName = view.data.source;
       }
       if (view.data.sources !== undefined) {
@@ -1768,7 +1801,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
         if (
           sourceName
           && typeof view.data['route-field'] === 'string'
-          && !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(view.data['route-field'])
+          && !sourceFieldNames(sourceName)?.includes(view.data['route-field'])
         ) {
           errors.push(createError(
             ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
@@ -1852,7 +1885,7 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
           errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'action context fields must be unique.', fieldPath));
         }
         contextFields.add(field);
-        if (sourceName && !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(field)) {
+        if (sourceName && !sourceFieldNames(sourceName)?.includes(field)) {
           errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'action context field must be declared by data.source.', fieldPath));
         }
       });
@@ -1864,7 +1897,7 @@ function validateTableActions(encoding, encodingNode, mark, sourceName, path, er
     }
     validateObjectKeys(getValueNodeByKey(actionNode, 'when'), TABLE_ACTION_WHEN_KEYS, `${actionPath}.when`, errors);
     validateStringField(action.when.field, `${actionPath}.when.field`, true, errors);
-    if (typeof action.when.field === 'string' && sourceName && !SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(action.when.field)) {
+    if (typeof action.when.field === 'string' && sourceName && !sourceFieldNames(sourceName)?.includes(action.when.field)) {
       errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'action when field must be declared by data.source.', `${actionPath}.when.field`));
     }
     if (!Object.hasOwn(action.when, 'equals') || ['object', 'function', 'symbol'].includes(typeof action.when.equals)) {
@@ -1960,8 +1993,8 @@ function validateTitleLink(titleLink, titleLinkNode, mark, data, path, errors) {
   if (typeof hrefField !== 'string' || typeof identifierField !== 'string') return;
   const hasCompatibleSource = data.sources.some((sourceName) => (
     typeof sourceName === 'string'
-    && SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(hrefField)
-    && SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]?.includes(identifierField)
+    && sourceFieldNames(sourceName)?.includes(hrefField)
+    && sourceFieldNames(sourceName)?.includes(identifierField)
   ));
   if (!hasCompatibleSource) {
     errors.push(createError(
@@ -2062,19 +2095,542 @@ function validateDisclosureValue(disclosure, path, errors) {
 }
 
 /**
+ * Validates declarative query definitions and derives each query's static
+ * output field schema so view encodings, filters, and order-by references can
+ * be checked before execution.
+ *
+ * @param {unknown} queries
+ * @param {unknown} queriesNode
+ * @param {ValidationError[]} errors
+ * @returns {Map<string, string[] | undefined>}
+ */
+function validateQueries(queries, queriesNode, errors) {
+  /** @type {Map<string, string[] | undefined>} */
+  const declared = new Map();
+  if (queries === undefined) return declared;
+  if (!Array.isArray(queries) || queries.length === 0) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'queries must be a non-empty sequence of query definitions.',
+      '$.dashboard.queries'
+    ));
+    return declared;
+  }
+
+  for (const [index, query] of queries.entries()) {
+    const path = `$.dashboard.queries[${index}]`;
+    const queryNode = getSequenceItemNode(queriesNode, index);
+    if (!isPlainObject(query)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'query must be a mapping.', path));
+      continue;
+    }
+    validateObjectKeys(queryNode, QUERY_KEYS, path, errors);
+    validateRequiredIdentifier(query.name, `${path}.name`, 'query name', errors);
+    validateOptionalStringField(query.description, `${path}.description`, errors);
+    const name = typeof query.name === 'string' ? query.name : null;
+    if (name && (SOURCE_VALUES.includes(name) || declared.has(name))) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'query name must be unique and must not shadow a canonical source name.',
+        `${path}.name`
+      ));
+    }
+    const fields = validateQueryClauses(query, queryNode, path, declared, errors);
+    if (name) declared.set(name, fields);
+  }
+  return declared;
+}
+
+/**
+ * @param {Record<string, unknown>} query
+ * @param {unknown} queryNode
+ * @param {string} path
+ * @param {Map<string, string[] | undefined>} declared
+ * @param {ValidationError[]} errors
+ * @returns {string[] | undefined}
+ */
+function validateQueryClauses(query, queryNode, path, declared, errors) {
+  /** @param {unknown} source @param {string} sourcePath */
+  const inputFields = (source, sourcePath) => {
+    validateStringField(source, sourcePath, true, errors);
+    if (typeof source !== 'string') return undefined;
+    if (!SOURCE_VALUES.includes(source) && !declared.has(source)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'query sources must name one canonical source or one previously declared query.',
+        sourcePath
+      ));
+      return undefined;
+    }
+    return SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (source)] ?? declared.get(source);
+  };
+
+  const fromFields = inputFields(query.from, `${path}.from`);
+  /** @type {string[] | undefined} */
+  let fields = fromFields ? [...fromFields] : undefined;
+  /** @param {unknown} field @param {string} fieldPath */
+  const requireField = (field, fieldPath) => {
+    if (typeof field === 'string' && fields && !fields.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'query field references must name a field produced by the preceding clause.',
+        fieldPath
+      ));
+    }
+  };
+  /** @param {unknown} alias @param {string} aliasPath */
+  const declareField = (alias, aliasPath) => {
+    if (typeof alias !== 'string' || !fields) return;
+    if (fields.includes(alias)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'query output names must be unique across joined sources and computed fields.',
+        aliasPath
+      ));
+      return;
+    }
+    fields.push(alias);
+  };
+  /**
+   * Rejects field references that the canonical schema cannot satisfy: fields
+   * materialized only after query execution, structured link fields used as
+   * scalars, and temporal fields used as numeric measures.
+   *
+   * @param {unknown} field
+   * @param {string} fieldPath
+   * @param {'read' | 'scalar' | 'numeric'} use
+   */
+  const requireSchemaType = (field, fieldPath, use) => {
+    if (typeof field !== 'string') return;
+    if (INFERRED_FIELD_NAMES.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        `query fields must exist in the canonical schema; "${field}" is derived after query execution.`,
+        fieldPath
+      ));
+      return;
+    }
+    if (use !== 'read' && LINK_FIELD_NAMES.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        `query operators require a scalar field; "${field}" is a structured link field.`,
+        fieldPath
+      ));
+      return;
+    }
+    if (use === 'numeric' && TEMPORAL_FIELD_NAMES.includes(field)) {
+      errors.push(createError(
+        ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+        `numeric query operators require a numeric field; "${field}" is a timestamp field.`,
+        fieldPath
+      ));
+    }
+  };
+
+  if (query.joins !== undefined) {
+    const joinsNode = getValueNodeByKey(queryNode, 'joins');
+    if (!Array.isArray(query.joins) || query.joins.length === 0 || query.joins.length > QUERY_MAX_JOINS) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        `joins must be a sequence of 1 to ${QUERY_MAX_JOINS} join definitions.`,
+        `${path}.joins`
+      ));
+    } else {
+      for (const [index, join] of query.joins.entries()) {
+        const joinPath = `${path}.joins[${index}]`;
+        if (!isPlainObject(join)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'join must be a mapping.', joinPath));
+          continue;
+        }
+        validateObjectKeys(getSequenceItemNode(joinsNode, index), QUERY_JOIN_KEYS, joinPath, errors);
+        const joinedFields = inputFields(join.source, `${joinPath}.source`);
+        if (join.type !== undefined && (typeof join.type !== 'string' || !QUERY_JOIN_TYPE_VALUES.includes(join.type))) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            `join type must be one of ${QUERY_JOIN_TYPE_VALUES.join(', ')}.`,
+            `${joinPath}.type`
+          ));
+        }
+        if (!Array.isArray(join.on) || join.on.length === 0) {
+          errors.push(createError(
+            ERROR_CODES.invalidEntityRelationshipOrSourceGrain,
+            'join on must declare at least one equality key pair.',
+            `${joinPath}.on`
+          ));
+        } else {
+          for (const [pairIndex, pair] of join.on.entries()) {
+            const pairPath = `${joinPath}.on[${pairIndex}]`;
+            if (!isPlainObject(pair)) {
+              errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'join key must be a mapping.', pairPath));
+              continue;
+            }
+            validateObjectKeys(
+              getSequenceItemNode(getValueNodeByKey(getSequenceItemNode(joinsNode, index), 'on'), pairIndex),
+              QUERY_JOIN_ON_KEYS,
+              pairPath,
+              errors
+            );
+            validateStringField(pair.left, `${pairPath}.left`, true, errors);
+            validateStringField(pair.right, `${pairPath}.right`, true, errors);
+            requireField(pair.left, `${pairPath}.left`);
+            requireSchemaType(pair.left, `${pairPath}.left`, 'scalar');
+            requireSchemaType(pair.right, `${pairPath}.right`, 'scalar');
+            if (typeof pair.right === 'string' && joinedFields && !joinedFields.includes(pair.right)) {
+              errors.push(createError(
+                ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+                'join key must name a field declared by the joined source.',
+                `${pairPath}.right`
+              ));
+            }
+          }
+        }
+        if (!Array.isArray(join.fields) || join.fields.length === 0) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'join fields must declare the aliased fields imported from the joined source.',
+            `${joinPath}.fields`
+          ));
+          continue;
+        }
+        for (const [fieldIndex, field] of join.fields.entries()) {
+          const fieldPath = `${joinPath}.fields[${fieldIndex}]`;
+          if (!isPlainObject(field)) {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'join field must be a mapping.', fieldPath));
+            continue;
+          }
+          validateObjectKeys(
+            getSequenceItemNode(getValueNodeByKey(getSequenceItemNode(joinsNode, index), 'fields'), fieldIndex),
+            QUERY_JOIN_FIELD_KEYS,
+            fieldPath,
+            errors
+          );
+          validateStringField(field.field, `${fieldPath}.field`, true, errors);
+          validateStringField(field.as, `${fieldPath}.as`, true, errors);
+          if (typeof field.field === 'string' && joinedFields && !joinedFields.includes(field.field)) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'join field must name a field declared by the joined source.',
+              `${fieldPath}.field`
+            ));
+          }
+          requireSchemaType(field.field, `${fieldPath}.field`, 'read');
+          declareField(field.as, `${fieldPath}.as`);
+        }
+      }
+    }
+  }
+
+  if (query.filter !== undefined) {
+    const filterPath = `${path}.filter`;
+    if (!isPlainObject(query.filter)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'filter must be a mapping.', filterPath));
+    } else {
+      validateObjectKeys(getValueNodeByKey(queryNode, 'filter'), QUERY_FILTER_KEYS, filterPath, errors);
+      if (!Array.isArray(query.filter.predicates) || query.filter.predicates.length === 0) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'filter predicates must be a non-empty sequence.',
+          `${filterPath}.predicates`
+        ));
+      } else {
+        for (const [index, predicate] of query.filter.predicates.entries()) {
+          const predicatePath = `${filterPath}.predicates[${index}]`;
+          if (!isPlainObject(predicate)) {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'predicate must be a mapping.', predicatePath));
+            continue;
+          }
+          validateObjectKeys(
+            getSequenceItemNode(getValueNodeByKey(getValueNodeByKey(queryNode, 'filter'), 'predicates'), index),
+            QUERY_PREDICATE_KEYS,
+            predicatePath,
+            errors
+          );
+          validateStringField(predicate.field, `${predicatePath}.field`, true, errors);
+          requireField(predicate.field, `${predicatePath}.field`);
+          requireSchemaType(predicate.field, `${predicatePath}.field`, 'scalar');
+          if (predicate.equals === undefined && predicate.in === undefined && predicate.includes === undefined) {
+            errors.push(createError(
+              ERROR_CODES.missingOrInvalidRequiredField,
+              'predicate must declare exactly one of equals, in, or includes.',
+              predicatePath
+            ));
+          }
+        }
+      }
+    }
+  }
+
+  if (query.compute !== undefined) {
+    const computeNode = getValueNodeByKey(queryNode, 'compute');
+    if (!Array.isArray(query.compute) || query.compute.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'compute must be a non-empty sequence of computed-field definitions.',
+        `${path}.compute`
+      ));
+    } else {
+      for (const [index, computed] of query.compute.entries()) {
+        const computePath = `${path}.compute[${index}]`;
+        if (!isPlainObject(computed)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'computed field must be a mapping.', computePath));
+          continue;
+        }
+        validateObjectKeys(getSequenceItemNode(computeNode, index), QUERY_COMPUTE_KEYS, computePath, errors);
+        validateStringField(computed.as, `${computePath}.as`, true, errors);
+        const arity = typeof computed.function === 'string'
+          ? COMPUTE_FUNCTION_ARITY[/** @type {keyof typeof COMPUTE_FUNCTION_ARITY} */ (computed.function)]
+          : undefined;
+        if (!arity) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            `computed field function must be one of ${Object.keys(COMPUTE_FUNCTION_ARITY).join(', ')}.`,
+            `${computePath}.function`
+          ));
+        }
+        if (!Array.isArray(computed.args) || (arity && (computed.args.length < arity[0] || computed.args.length > arity[1]))) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            arity
+              ? `computed field "${String(computed.function)}" accepts between ${arity[0]} and ${arity[1]} arguments.`
+              : 'computed field args must be a sequence.',
+            `${computePath}.args`
+          ));
+        } else {
+          for (const [argIndex, argument] of computed.args.entries()) {
+            const argumentPath = `${computePath}.args[${argIndex}]`;
+            if (!isPlainObject(argument)) {
+              errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'computed argument must be a mapping.', argumentPath));
+              continue;
+            }
+            validateObjectKeys(
+              getSequenceItemNode(getValueNodeByKey(getSequenceItemNode(computeNode, index), 'args'), argIndex),
+              QUERY_COMPUTE_ARGUMENT_KEYS,
+              argumentPath,
+              errors
+            );
+            const hasField = argument.field !== undefined;
+            const hasValue = argument.value !== undefined;
+            if (hasField === hasValue) {
+              errors.push(createError(
+                ERROR_CODES.missingOrInvalidRequiredField,
+                'computed argument must declare exactly one of field or value.',
+                argumentPath
+              ));
+              continue;
+            }
+            if (hasField) {
+              validateStringField(argument.field, `${argumentPath}.field`, true, errors);
+              requireField(argument.field, `${argumentPath}.field`);
+              requireSchemaType(
+                argument.field,
+                `${argumentPath}.field`,
+                typeof computed.function !== 'string' ? 'read'
+                  : NUMERIC_COMPUTE_FUNCTIONS.includes(computed.function) ? 'numeric'
+                    : computed.function === 'coalesce' ? 'read' : 'scalar'
+              );
+            } else if (!['string', 'number', 'boolean'].includes(typeof argument.value)) {
+              errors.push(createError(
+                ERROR_CODES.missingOrInvalidRequiredField,
+                'computed argument value must be a string, number, or boolean literal.',
+                `${argumentPath}.value`
+              ));
+            }
+          }
+        }
+        declareField(computed.as, `${computePath}.as`);
+      }
+    }
+  }
+
+  if (query.aggregate !== undefined) {
+    const aggregatePath = `${path}.aggregate`;
+    const aggregateNode = getValueNodeByKey(queryNode, 'aggregate');
+    if (!isPlainObject(query.aggregate)) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'aggregate must be a mapping.', aggregatePath));
+    } else {
+      validateObjectKeys(aggregateNode, QUERY_AGGREGATE_KEYS, aggregatePath, errors);
+      /** @type {string[]} */
+      const grouped = [];
+      if (query.aggregate.by !== undefined) {
+        if (!Array.isArray(query.aggregate.by)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'aggregate by must be a sequence of grouping fields.',
+            `${aggregatePath}.by`
+          ));
+        } else {
+          for (const [index, field] of query.aggregate.by.entries()) {
+            validateStringField(field, `${aggregatePath}.by[${index}]`, true, errors);
+            requireField(field, `${aggregatePath}.by[${index}]`);
+            requireSchemaType(field, `${aggregatePath}.by[${index}]`, 'scalar');
+            if (typeof field === 'string') grouped.push(field);
+          }
+        }
+      }
+      if (!Array.isArray(query.aggregate.values) || query.aggregate.values.length === 0) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'aggregate values must be a non-empty sequence.',
+          `${aggregatePath}.values`
+        ));
+      } else {
+        for (const [index, value] of query.aggregate.values.entries()) {
+          const valuePath = `${aggregatePath}.values[${index}]`;
+          if (!isPlainObject(value)) {
+            errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'aggregate value must be a mapping.', valuePath));
+            continue;
+          }
+          validateObjectKeys(
+            getSequenceItemNode(getValueNodeByKey(aggregateNode, 'values'), index),
+            QUERY_AGGREGATE_VALUE_KEYS,
+            valuePath,
+            errors
+          );
+          validateStringField(value.field, `${valuePath}.field`, true, errors);
+          validateStringField(value.as, `${valuePath}.as`, true, errors);
+          requireField(value.field, `${valuePath}.field`);
+          requireSchemaType(
+            value.field,
+            `${valuePath}.field`,
+            typeof value.reducer === 'string' && QUERY_NUMERIC_REDUCER_VALUES.includes(value.reducer)
+              ? 'numeric'
+              : 'scalar'
+          );
+          if (typeof value.reducer !== 'string' || !QUERY_REDUCER_VALUES.includes(value.reducer)) {
+            errors.push(createError(
+              ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+              `aggregate reducer must be one of ${QUERY_REDUCER_VALUES.join(', ')}.`,
+              `${valuePath}.reducer`
+            ));
+          }
+          if (typeof value.as === 'string' && grouped.includes(value.as)) {
+            errors.push(createError(
+              ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+              'query output names must be unique across joined sources and computed fields.',
+              `${valuePath}.as`
+            ));
+          }
+          if (typeof value.as === 'string') grouped.push(value.as);
+        }
+      }
+      fields = fields ? grouped : undefined;
+    }
+  }
+
+  if (query.select !== undefined) {
+    const selectNode = getValueNodeByKey(queryNode, 'select');
+    if (!Array.isArray(query.select) || query.select.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'select must be a non-empty sequence of projected fields.',
+        `${path}.select`
+      ));
+    } else {
+      /** @type {string[]} */
+      const projected = [];
+      for (const [index, field] of query.select.entries()) {
+        const selectPath = `${path}.select[${index}]`;
+        if (!isPlainObject(field)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'select entry must be a mapping.', selectPath));
+          continue;
+        }
+        validateObjectKeys(getSequenceItemNode(selectNode, index), QUERY_SELECT_KEYS, selectPath, errors);
+        validateStringField(field.field, `${selectPath}.field`, true, errors);
+        validateOptionalStringField(field.as, `${selectPath}.as`, errors);
+        requireField(field.field, `${selectPath}.field`);
+        requireSchemaType(field.field, `${selectPath}.field`, 'read');
+        const alias = typeof field.as === 'string' ? field.as : field.field;
+        if (typeof alias === 'string') {
+          if (projected.includes(alias)) {
+            errors.push(createError(
+              ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+              'select output names must be unique.',
+              `${selectPath}.as`
+            ));
+          } else {
+            projected.push(alias);
+          }
+        }
+      }
+      fields = fields ? projected : undefined;
+    }
+  }
+
+  if (query['order-by'] !== undefined) {
+    if (!Array.isArray(query['order-by']) || query['order-by'].length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'order-by must be a non-empty sequence of ordering clauses.',
+        `${path}.order-by`
+      ));
+    } else {
+      for (const [index, clause] of query['order-by'].entries()) {
+        const clausePath = `${path}.order-by[${index}]`;
+        if (!isPlainObject(clause)) {
+          errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField, 'order-by clause must be a mapping.', clausePath));
+          continue;
+        }
+        validateObjectKeys(
+          getSequenceItemNode(getValueNodeByKey(queryNode, 'order-by'), index),
+          ORDER_BY_KEYS,
+          clausePath,
+          errors
+        );
+        validateStringField(clause.field, `${clausePath}.field`, true, errors);
+        requireField(clause.field, `${clausePath}.field`);
+        requireSchemaType(clause.field, `${clausePath}.field`, 'scalar');
+        if (clause.direction !== undefined
+            && (typeof clause.direction !== 'string' || !ORDER_DIRECTION_VALUES.includes(clause.direction))) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            `order-by direction must be one of ${ORDER_DIRECTION_VALUES.join(', ')}.`,
+            `${clausePath}.direction`
+          ));
+        }
+      }
+    }
+  }
+
+  if (query.limit !== undefined
+      && (!Number.isSafeInteger(query.limit) || Number(query.limit) <= 0
+        || Number(query.limit) > DASHBOARD_QUERY_LIMITS['max-output-rows'])) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      `limit must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}.`,
+      `${path}.limit`
+    ));
+  }
+
+  return fields;
+}
+
+/**
  * @param {unknown} source
  * @param {string} path
  * @param {ValidationError[]} errors
  */
 function validateSource(source, path, errors) {
   validateStringField(source, path, true, errors);
-  if (typeof source === 'string' && !SOURCE_VALUES.includes(source)) {
+  if (typeof source === 'string' && !SOURCE_VALUES.includes(source) && !declaredQueries.has(source)) {
     errors.push(createError(
       ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-      'source must use one canonical Section 5.1 source name.',
+      'source must use one canonical Section 5.1 source name or one declared query name.',
       path
     ));
   }
+}
+
+/**
+ * Resolves the declared field schema of a canonical source or of a derived
+ * query. Returns `undefined` when the schema cannot be derived statically, in
+ * which case field references are not checked.
+ * @param {string} sourceName
+ * @returns {string[] | undefined}
+ */
+function sourceFieldNames(sourceName) {
+  return SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]
+    ?? declaredQueries.get(sourceName)
+    ?? undefined;
 }
 
 /**
@@ -3028,8 +3584,8 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
 
   const fieldName = typeof fieldDefinition.field === 'string' ? fieldDefinition.field : null;
   if (fieldName && sourceName) {
-    const sourceFields = SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)];
-    if (!sourceFields.includes(fieldName)) {
+    const sourceFields = sourceFieldNames(sourceName);
+    if (sourceFields && !sourceFields.includes(fieldName)) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
         'field must exist in the selected source.',
@@ -3122,7 +3678,11 @@ function validateOrderByReferences(data, encoding, aggregateOutputIds, sourceNam
     return;
   }
 
-  const sourceFieldSet = new Set(SOURCE_FIELDS[/** @type {keyof typeof SOURCE_FIELDS} */ (sourceName)]);
+  const declaredFields = sourceFieldNames(sourceName);
+  if (!declaredFields) {
+    return;
+  }
+  const sourceFieldSet = new Set(declaredFields);
   const entityIdSet = new Set(SOURCE_ENTITY_IDENTIFIER_FIELDS[/** @type {keyof typeof SOURCE_ENTITY_IDENTIFIER_FIELDS} */ (sourceName)] ?? []);
   const unaggregatedOutputFields = new Set();
   if (isPlainObject(encoding)) {

@@ -4,6 +4,8 @@
  * Operators are plain data so the same pipeline can run in a Web Worker.
  */
 
+import { titleCase } from './components/count-formatters.js';
+
 /**
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string }} Predicate
@@ -11,8 +13,37 @@
  * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
- * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator} DataOperator
+ * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
+ * @typedef {{ as: string, function: keyof typeof COMPUTE_FUNCTION_ARITY, args: ComputeArgument[] }} ComputedField
+ * @typedef {{ op: 'compute', values: ComputedField[] }} ComputeOperator
+ * @typedef {{ op: 'select', fields: Array<{ field: string, as?: string }> }} SelectOperator
+ * @typedef {FilterOperator|SummarizeOperator|ArrangeOperator|SliceOperator|ComputeOperator|SelectOperator} DataOperator
  */
+
+/**
+ * The closed, typed vocabulary of deterministic computed-field functions and
+ * the inclusive minimum and maximum argument counts each one accepts.
+ */
+export const COMPUTE_FUNCTION_ARITY = {
+  coalesce: [2, 8],
+  concat: [2, 8],
+  lower: [1, 1],
+  upper: [1, 1],
+  'title-case': [1, 1],
+  trim: [1, 1],
+  'url-encode': [1, 1],
+  number: [1, 1],
+  sum: [2, 8],
+  difference: [2, 2],
+  product: [2, 8],
+  quotient: [2, 2]
+};
+
+/** Computed-field functions whose result is always text or null. */
+export const TEXT_COMPUTE_FUNCTIONS = ['concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode'];
+
+/** Computed-field functions whose result is always a finite number or null. */
+export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'sum', 'difference', 'product', 'quotient'];
 
 /**
  * Applies a sequence of declarative operators without mutating the input rows.
@@ -29,11 +60,87 @@ function applyOperator(rows, operator) {
   if (operator.op === 'filter') return filter(rows, operator);
   if (operator.op === 'summarize') return summarize(rows, operator);
   if (operator.op === 'arrange') return arrange(rows, operator);
+  if (operator.op === 'compute') return compute(rows, operator);
+  if (operator.op === 'select') return select(rows, operator);
   if (operator.op === 'slice') {
     const offset = Number.isInteger(operator.offset) ? Math.max(0, Number(operator.offset)) : 0;
     return rows.slice(offset, offset + Math.max(0, operator.limit));
   }
   throw new TypeError(`Unsupported data operator: ${String(/** @type {{ op?: unknown }} */ (operator).op)}`);
+}
+
+/**
+ * Adds deterministic computed fields. Computed fields are evaluated in
+ * declaration order so a later field may read an earlier one.
+ * @param {Row[]} rows @param {ComputeOperator} operator
+ */
+function compute(rows, operator) {
+  return rows.map((row) => {
+    const computed = { ...row };
+    for (const value of operator.values) {
+      computed[value.as] = computeValue(computed, value);
+    }
+    return computed;
+  });
+}
+
+/**
+ * Projects and renames fields, dropping every field that is not selected.
+ * @param {Row[]} rows @param {SelectOperator} operator
+ */
+function select(rows, operator) {
+  return rows.map((row) => Object.fromEntries(
+    operator.fields
+      .filter((field) => row[field.field] !== undefined)
+      .map((field) => [field.as ?? field.field, row[field.field]])
+  ));
+}
+
+/**
+ * Evaluates one computed field. Missing values, unusable types, and
+ * division by zero yield `null` rather than throwing or propagating `NaN`.
+ * @param {Row} row
+ * @param {ComputedField} definition
+ * @returns {string|number|boolean|null}
+ */
+export function computeValue(row, definition) {
+  const values = definition.args.map((argument) => (
+    'field' in argument ? row[argument.field] ?? null : argument.value ?? null
+  ));
+  if (definition.function === 'coalesce') {
+    return /** @type {string|number|boolean|null} */ (
+      values.find((value) => value !== null && value !== '' && typeof value !== 'object') ?? null
+    );
+  }
+  if (definition.function === 'concat') return values.map(textValue).join('');
+  if (definition.function === 'lower') return textValue(values[0]).toLocaleLowerCase('en');
+  if (definition.function === 'upper') return textValue(values[0]).toLocaleUpperCase('en');
+  if (definition.function === 'title-case') return titleCase(textValue(values[0]));
+  if (definition.function === 'trim') return textValue(values[0]).trim();
+  if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
+  const numbers = values.map(numericValue);
+  if (numbers.some((value) => value === null)) return null;
+  const finite = /** @type {number[]} */ (numbers);
+  if (definition.function === 'number') return finite[0];
+  if (definition.function === 'sum') return finite.reduce((total, value) => total + value, 0);
+  if (definition.function === 'difference') return finite[0] - finite[1];
+  if (definition.function === 'product') return finite.reduce((total, value) => total * value, 1);
+  if (definition.function === 'quotient') return finite[1] === 0 ? null : finite[0] / finite[1];
+  throw new TypeError(`Unsupported computed-field function: ${String(definition.function)}`);
+}
+
+/** @param {unknown} value */
+function textValue(value) {
+  return value == null || typeof value === 'object' ? '' : String(value);
+}
+
+/** @param {unknown} value @returns {number | null} */
+function numericValue(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'object' || typeof value === 'boolean') {
+    return null;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
 }
 
 /** @param {Row[]} rows @param {FilterOperator} operator */

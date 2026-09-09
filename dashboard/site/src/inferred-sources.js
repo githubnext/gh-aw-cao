@@ -1,4 +1,5 @@
 import { findLink } from './components/link-content.js';
+import { titleCase } from './components/count-formatters.js';
 
 /**
  * @typedef {import('./presenter.js').LogicalSourceInput} LogicalSourceInput
@@ -11,9 +12,11 @@ import { findLink } from './components/link-content.js';
  * @returns {Record<string, LogicalSourceInput>}
  */
 export function deriveDashboardLinkSources(sources, context) {
-  return deriveWorkflowDashboardLinks(
-    deriveRepositoryDashboardLinks(deriveEntityLinkSources(sources, context.githubUrlBase), context.pages),
-    context.pages
+  return derivePackageDashboardLinks(
+    deriveWorkflowDashboardLinks(
+      deriveRepositoryDashboardLinks(deriveEntityLinkSources(sources, context.githubUrlBase), context.pages),
+      context.pages
+    )
   );
 }
 
@@ -71,6 +74,38 @@ function deriveWorkflowDashboardLinks(sources, pages) {
         : source?.rows
     }
   ]));
+}
+
+/**
+ * @param {Record<string, LogicalSourceInput>} sources
+ */
+function derivePackageDashboardLinks(sources) {
+  return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
+    name,
+    {
+      ...source,
+      rows: Array.isArray(source?.rows) ? source.rows.map(derivePackageDashboardLink) : source?.rows
+    }
+  ]));
+}
+
+/** @param {Record<string, unknown>} row */
+function derivePackageDashboardLink(row) {
+  const packageId = trimmedString(row.package);
+  if (!packageId || isPlainObject(row['package-link'])) return row;
+  const packageTargetLink = isPlainObject(row['repository-link'])
+    ? row['repository-link']
+    : (isPlainObject(row['workflow-link']) ? row['workflow-link'] : null);
+  const packageName = trimmedString(row['package-name']) ?? titleCase(packageId);
+
+  return {
+    ...row,
+    'package-link': {
+      ...(packageTargetLink ?? {}),
+      'dashboard-href': `#page-package-insights?package=${encodeURIComponent(packageId)}`,
+      'dashboard-label': `View ${packageName} package dashboard`
+    }
+  };
 }
 
 /**

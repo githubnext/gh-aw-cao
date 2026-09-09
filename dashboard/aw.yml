@@ -64,6 +64,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/model/schema.js
   - source: site/src/data/normalize/index.js
     destination: .github/aw/dashboard/site/src/data/normalize/index.js
+  - source: site/src/data/queries/declarative.js
+    destination: .github/aw/dashboard/site/src/data/queries/declarative.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
   - source: site/src/data/queries/view-sources.js
@@ -76,6 +78,8 @@ resources:
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js
     destination: .github/aw/dashboard/site/src/compliance.js
+  - source: site/src/cancel-command.js
+    destination: .github/aw/dashboard/site/src/cancel-command.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/dom.js
