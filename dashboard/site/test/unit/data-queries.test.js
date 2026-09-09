@@ -45,8 +45,18 @@ const workflows = {
 const usage = {
   source: 'usage',
   rows: [
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', aic: 4 },
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', aic: 6 }
+    {
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1',
+      engine: 'copilot', 'engine-version': '1.2.3', 'requested-model': 'model-a',
+      'resolved-model': 'model-b', 'rollout-mode': 'review', aic: 4,
+      'observed-at': '2026-09-01T00:00:00Z', 'run-link': { href: 'run-1' }
+    },
+    {
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2',
+      engine: 'copilot', 'engine-version': '1.2.4', 'requested-model': 'model-b',
+      'resolved-model': 'model-b', 'rollout-mode': 'live', aic: 6,
+      'observed-at': '2026-09-02T00:00:00Z', 'run-link': { href: 'run-2' }
+    }
   ],
   metadata: metadata('usage', { freshness: 'stale' })
 };
@@ -110,6 +120,46 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(derived.inventory.metadata.freshness).toBe('stale');
     expect(derived['aic-totals'].metadata['query-name']).toBe('aic-totals');
+  });
+
+  it('projects the Models & agents view from its request-scoped dashboard query', () => {
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { usage },
+      ['engines-models-usage']
+    );
+
+    expect(Object.keys(derived)).toEqual(['engines-models-usage']);
+    expect(derived['engines-models-usage']).toMatchObject({
+      source: 'engines-models-usage',
+      rows: [
+        {
+          engine: 'copilot',
+          'engine-version': '1.2.4',
+          'requested-model': 'model-b',
+          'resolved-model': 'model-b',
+          'rollout-mode': 'live',
+          aic: 6,
+          repository: 'gh-aw-cao',
+          workflow: 'a.md',
+          'observed-at': '2026-09-02T00:00:00Z',
+          'run-link': { href: 'run-2' }
+        },
+        {
+          engine: 'copilot',
+          'engine-version': '1.2.3',
+          'requested-model': 'model-a',
+          'resolved-model': 'model-b',
+          'rollout-mode': 'review',
+          aic: 4,
+          repository: 'gh-aw-cao',
+          workflow: 'a.md',
+          'observed-at': '2026-09-01T00:00:00Z',
+          'run-link': { href: 'run-1' }
+        }
+      ],
+      metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
+    });
   });
 
   it('computes the Repositories and Packages view payloads from dashboard queries', () => {

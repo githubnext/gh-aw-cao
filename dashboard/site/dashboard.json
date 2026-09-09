@@ -110,6 +110,29 @@
         }
       },
       {
+        "name": "engines-models-usage",
+        "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
+        "from": "usage",
+        "select": [
+          { "field": "engine" },
+          { "field": "engine-version" },
+          { "field": "requested-model" },
+          { "field": "resolved-model" },
+          { "field": "rollout-mode" },
+          { "field": "aic" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "observed-at" },
+          { "field": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "workflow-inventory",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
         "from": "workflows",
@@ -3535,13 +3558,7 @@
               "title": "Engines and models",
               "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
               "data": {
-                "source": "usage",
-                "order-by": [
-                  {
-                    "field": "observed-at",
-                    "direction": "desc"
-                  }
-                ]
+                "source": "engines-models-usage"
               },
               "mark": "table",
               "controls": "interactive",
