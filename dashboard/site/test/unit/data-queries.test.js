@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   DASHBOARD_QUERY_LIMITS,
@@ -64,6 +64,24 @@ const usage = {
 const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('counts database entities through the declared horizon queries', () => {
+    const sources = {
+      workflows,
+      runs: { source: 'runs', rows: [{ run: '1' }, { run: '2' }], metadata: metadata('runs') },
+      events: { source: 'events', rows: [{ event: 'a' }, { event: 'b' }, { event: 'c' }], metadata: metadata('events') }
+    };
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      sources,
+      ['database-workflow-count', 'database-run-count', 'database-event-count']
+    );
+
+    expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
+    expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
+    expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);
+  });
+
   it('continues query results without exposing cursors in query definitions', () => {
     const sources = {
       runs: {
@@ -193,6 +211,70 @@ describe('declarative dashboard queries', () => {
     expect(result.metadata.availability).toBe('available');
   });
 
+  it('times each query execution pipeline stage with console markers', () => {
+    const start = vi.spyOn(console, 'time').mockImplementation(() => {});
+    const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
+
+    try {
+      executeDashboardQuery({
+        name: 'timed-inventory',
+        from: 'workflows',
+        joins: [{
+          source: 'usage',
+          type: 'left',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'aic' }]
+        }],
+        filter: { predicates: [{ field: 'organization', equals: 'githubnext' }] },
+        compute: [{ as: 'observed-aic', function: 'coalesce', args: [{ field: 'aic' }, { value: 0 }] }],
+        aggregate: { by: ['repository'], values: [{ field: 'observed-aic', as: 'aic', reducer: 'sum' }] },
+        select: [{ field: 'repository' }, { field: 'aic' }],
+        'order-by': [{ field: 'aic', direction: 'desc' }],
+        limit: 1
+      }, { workflows, usage: { ...usage, rows: [usage.rows[0]] } });
+
+      const labels = [
+        'from',
+        'join:usage',
+        'filter',
+        'compute',
+        'aggregate',
+        'select',
+        'order-by',
+        'limit'
+      ].map((stage) => `[dashboard-query:timed-inventory] ${stage}`);
+      expect(start.mock.calls.map(([label]) => label)).toEqual(labels);
+      expect(end.mock.calls.map(([label]) => label)).toEqual(labels);
+    } finally {
+      start.mockRestore();
+      end.mockRestore();
+    }
+  });
+
+  it('ends a query stage timer when execution fails', () => {
+    const start = vi.spyOn(console, 'time').mockImplementation(() => {});
+    const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
+
+    try {
+      const result = executeDashboardQuery({
+        name: 'failed-timer',
+        from: 'workflows',
+        joins: [{
+          source: 'usage',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'aic' }]
+        }]
+      }, { workflows, usage });
+
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(start).toHaveBeenCalledWith('[dashboard-query:failed-timer] join:usage');
+      expect(end).toHaveBeenCalledWith('[dashboard-query:failed-timer] join:usage');
+    } finally {
+      start.mockRestore();
+      end.mockRestore();
+    }
+  });
+
   it('aggregates, joins, and computes derived fields across sources', () => {
     const derived = executeDashboardQueries(
       [
@@ -302,6 +384,100 @@ describe('declarative dashboard queries', () => {
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
   });
+
+  it('projects MCP activity entirely from declarative event queries', () => {
+      const events = {
+        source: 'events',
+        rows: [
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+            'event-type': 'tool.call', 'event-summary': 'github/search_issues',
+            'event-timestamp': '2026-09-01T00:00:00Z', 'correlation-id': 'call-1'
+          },
+          { 'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': 'call-1' },
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+            'event-type': 'tool.call', 'event-summary': 'github/create_issue',
+            'event-timestamp': '2026-09-02T00:00:00Z', 'correlation-id': 'call-2'
+          },
+          { 'event-type': 'tool.error', 'event-status': 'failure', 'correlation-id': 'call-2' }
+        ],
+        metadata: metadata('events')
+      };
+      const runs = {
+        source: 'runs',
+        rows: [
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'run-link': { href: 'run-1' } },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, 'run-link': { href: 'run-2' } }
+        ],
+        metadata: metadata('runs')
+      };
+
+      const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['mcp-tool-activity']);
+
+      expect(Object.keys(derived)).toEqual(['mcp-tool-activity']);
+      expect(derived['mcp-tool-activity']).toMatchObject({
+        rows: [
+          {
+            'mcp-tool': 'github/create_issue', 'mcp-status': 'failure',
+            repository: 'gh-aw-cao', run: '2', 'run-link': { href: 'run-2' }
+          },
+          {
+            'mcp-tool': 'github/search_issues', 'mcp-status': 'success',
+            repository: 'gh-aw-cao', run: '1', 'run-link': { href: 'run-1' }
+          }
+        ],
+        metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
+    });
+  });
+
+  it('projects the event inspection view from its request-scoped dashboard query', () => {
+      const events = {
+        source: 'events',
+        rows: [
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+            session: 'session-1', event: 'event-1', 'event-source': 'agent', 'event-type': 'agent_turn',
+            'event-status': 'completed', 'event-summary': 'First turn', 'correlation-id': 'correlation-1',
+            'source-sequence': 1, 'event-timestamp': '2026-09-01T00:00:00Z'
+          },
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+            session: 'session-2', event: 'event-2', 'event-source': 'gateway', 'event-type': 'tool_call',
+            'event-status': 'started', 'event-summary': 'Second turn', 'correlation-id': 'correlation-2',
+            'source-sequence': 2, 'event-timestamp': '2026-09-02T00:00:00Z'
+          }
+        ],
+        metadata: metadata('events')
+      };
+      const runs = {
+        source: 'runs',
+        rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
+        metadata: metadata('runs')
+      };
+      const derived = executeDashboardQueries(
+        dashboardQueries,
+        { events, runs },
+        ['event-inspection']
+      );
+
+      expect(derived['event-inspection'].rows).toEqual([
+        expect.objectContaining({
+          event: 'event-2',
+          'event-source': 'gateway',
+          'event-type': 'tool_call',
+          'observed-at': '2026-09-02T00:00:00Z',
+          'run-link': { href: 'run-2' }
+        }),
+        expect.objectContaining({
+          event: 'event-1',
+          'event-source': 'agent',
+          'event-type': 'agent_turn',
+          'observed-at': '2026-09-01T00:00:00Z',
+          'run-link': { href: 'run-1' }
+        })
+      ]);
+    });
 
   it('computes the Repositories and Packages view payloads from dashboard queries', () => {
     const repositories = {

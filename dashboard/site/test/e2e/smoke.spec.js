@@ -227,7 +227,7 @@ test('production pages expose a responsive executive chart', async ({ page }) =>
   expect(widePlotBox?.width).toBeGreaterThan((wideChartBox?.width ?? 0) * 0.95);
 });
 
-test('GitHub API raw quota table remains operable at desktop and narrow widths', async ({ page }) => {
+test('GitHub API events table remains operable at desktop and narrow widths', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -236,7 +236,7 @@ test('GitHub API raw quota table remains operable at desktop and narrow widths',
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
-        'source-id': 'rate-limit-viewport-fixture',
+        'source-id': 'github-api-event-viewport-fixture',
         'source-kind': 'fixture',
         'as-of': '2026-09-04T12:00:00Z',
         'retrieved-at': '2026-09-04T12:01:00Z',
@@ -245,58 +245,24 @@ test('GitHub API raw quota table remains operable at desktop and narrow widths',
         availability: 'available'
       };
       const row = {
-        'observation-id': 'run-1:after:reader:core:2026-09-04T12:00:00Z',
-        'operation-execution-id': 'run-1',
         'observed-at': '2026-09-04T12:00:00Z',
-        phase: 'after',
-        operation: 'refresh-activity',
-        outcome: 'success',
-        credential: 'reader',
-        'credential-type': 'app',
-        resource: 'core',
-        bucket: 'core · reader',
-        'maximum-lane': 'core · reader · max 5000',
-        'history-series': 'core · reader',
-        remaining: 1000,
-        limit: 5000,
-        used: 4000,
-        'remaining-percent': 20,
-        'reset-at': '2026-09-04T13:00:00Z',
-        'minutes-to-reset': 60,
-        'burn-rate-per-minute': 20,
-        'projected-remaining-at-reset': -200,
-        'projected-exhaustion-at': '2026-09-04T12:50:00Z',
-        'runway-ratio': 0.83,
-        'risk-status': 'critical',
-        'risk-order': 0,
-        'is-current': true,
-        'attribution-status': 'available',
-        'operation-consumed': 20
+        'event-type': 'github-api.response',
+        'event-summary': 'GET /rate_limit',
+        'event-status': '200',
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '1',
+        'correlation-id': 'request-1'
       };
       const sources = {
-        'github-api-rate-limits': {
-          source: 'github-api-rate-limits',
+        'github-api-events': {
+          source: 'github-api-events',
           metadata,
           rows: [
-            { ...row, 'observation-id': 'run-0:after:reader:core:2026-09-04T11:00:00Z', 'operation-execution-id': 'run-0', 'observed-at': '2026-09-04T11:00:00Z', remaining: 2200, used: 2800, 'remaining-percent': 44, 'is-current': false },
+            { ...row, 'observed-at': '2026-09-04T11:00:00Z', 'event-type': 'github-api.request', 'event-status': 'pending' },
             row
           ]
-        },
-        'github-api-collector-health': {
-          source: 'github-api-collector-health',
-          metadata,
-          rows: [{
-            'observed-at': '2026-09-04T12:00:00Z',
-            'operation-execution-id': 'run-1',
-            phase: 'after',
-            operation: 'refresh-activity',
-            outcome: 'success',
-            credential: 'reader',
-            'cache-hydrated': true,
-            'cache-entries': 12,
-            'cache-folders': 2,
-            'rate-limit-error': ''
-          }]
         }
       };
       window.location.hash = '#page-overview';
@@ -310,7 +276,7 @@ test('GitHub API raw quota table remains operable at desktop and narrow widths',
   const observations = apiPage.locator('[data-view-layout="full-view"]');
   const table = observations.locator('[data-lazy-list]');
   await expect(table).toBeVisible();
-  await expect(apiPage.getByText('core', { exact: true }).first()).toBeVisible();
+  await expect(apiPage.getByText('github-api.response', { exact: true }).first()).toBeVisible();
   await expect.poll(async () => {
     const box = await table.boundingBox();
     return box !== null && box.width <= 1200;
