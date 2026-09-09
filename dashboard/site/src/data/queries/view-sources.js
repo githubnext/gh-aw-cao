@@ -274,6 +274,33 @@ function securityFindingsSource(findings, sources) {
   };
 }
 
+/**
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<string, Record<string, unknown>>} sessionsById
+ * @param {Map<string, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function firewallEventsSource(events, sessionsById, runsById, sources) {
+  return {
+    source: 'firewall-events',
+    rows: events.map((event) => {
+      const session = sessionsById.get(String(event.sessionId)) ?? {};
+      const run = runsById.get(String(session.runId)) ?? {};
+      const domain = String(event.summary ?? '').trim().split(/\s+/, 1)[0];
+      return {
+        domain,
+        run: String(run.githubRunId ?? ''),
+        event: event.id,
+        'event-source': event.source,
+        'event-type': event.type,
+        'event-timestamp': event.timestamp,
+        'observed-at': event.observedAt
+      };
+    }).filter((event) => event.domain),
+    metadata: projectionMetadata(sources, 'events', 'firewall-events', true)
+  };
+}
+
 /** @param {unknown} source */
 function sourceRows(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
@@ -326,7 +353,8 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources, gen
       'job-performance',
       'failed-runs',
       'work-items',
-      'security-findings'
+      'security-findings',
+      'firewall-events'
     ])
   };
 }
@@ -348,15 +376,24 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
-  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings] = await Promise.all([
+  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings, firewallEvents] = await Promise.all([
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     requested.has('work-items') ? queries.workItems.list() : [],
-    requested.has('security-findings') ? queries.findings.list() : []
+    requested.has('security-findings') ? queries.findings.list() : [],
+    requested.has('firewall-events')
+      ? queries.events.forSourceByTypes('firewall', ['net_allowed', 'net_blocked'])
+      : []
   ]);
+  const firewallSessionIds = [...new Set(firewallEvents.map((event) => String(event.sessionId)))];
+  const firewallSessions = await Promise.all(firewallSessionIds.map((id) => queries.sessions.get(id)));
+  const sessionsById = new Map(firewallSessions.filter(Boolean).map((session) => [String(session.id), session]));
+  const firewallRunIds = [...new Set(firewallSessions.filter(Boolean).map((session) => String(session.runId)))];
+  const firewallRuns = await Promise.all(firewallRunIds.map((id) => queries.runs.get(id)));
+  const firewallRunsById = new Map(firewallRuns.filter(Boolean).map((run) => [String(run.id), run]));
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
   const sources = namedLogicalSources(logicalSources);
@@ -369,5 +406,13 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('work-items')) projected['work-items'] = workItemsSource(workItems, sources);
   if (requested.has('security-findings')) projected['security-findings'] = securityFindingsSource(findings, sources);
+  if (requested.has('firewall-events')) {
+    projected['firewall-events'] = firewallEventsSource(
+      firewallEvents,
+      sessionsById,
+      firewallRunsById,
+      sources
+    );
+  }
   return projected;
 }

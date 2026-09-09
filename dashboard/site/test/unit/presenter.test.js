@@ -206,34 +206,14 @@ describe('presenter built-in and custom pages', () => {
       freshness: 'fresh',
       availability: 'available'
     });
-    const base = {
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow: '.github/workflows/security.md',
-      'rollout-mode': 'review',
-      'run-conclusion': 'success',
-      protocol: 'https',
-      port: 443,
-      'request-count': 1,
-      'policy-rule-id': 'unavailable',
-      'observed-at': '2026-09-05T11:00:00Z',
-      'evidence-completeness': 'complete',
-      'evidence-freshness': 'fresh'
-    };
     const rows = [
-      { ...base, run: '1', 'firewall-observation': '1', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'no-traffic', 'evidence-label': 'No observed traffic', domain: 'unknown', decision: 'unknown', 'decision-label': 'Unknown', 'drift-state': 'stable', 'drift-label': 'Stable', 'review-state': 'stable', 'review-label': 'Stable', 'review-priority': 9, 'request-count': null },
-      { ...base, run: '2', 'firewall-observation': '2', 'firewall-enabled': 'disabled', 'enforcement-label': 'Enforcement disabled', 'evidence-state': 'disabled', 'evidence-label': 'Enforcement disabled', domain: 'unknown', decision: 'unknown', 'decision-label': 'Unknown', 'drift-state': 'unknown', 'drift-label': 'Unknown', 'review-state': 'enforcement-disabled', 'review-label': 'Enforcement disabled', 'review-priority': 1, 'request-count': null },
-      { ...base, run: '3', 'firewall-observation': '3', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'unavailable', 'evidence-label': 'Evidence missing', 'evidence-completeness': 'unknown', domain: 'unknown', decision: 'unknown', 'decision-label': 'Unknown', 'drift-state': 'unknown', 'drift-label': 'Unknown', 'review-state': 'evidence-missing', 'review-label': 'Evidence missing', 'review-priority': 2, 'request-count': null },
-      { ...base, run: '4', 'firewall-observation': '4', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'api.github.com', decision: 'allowed', 'decision-label': 'Allowed by policy', 'drift-state': 'stable', 'drift-label': 'Stable', 'review-state': 'stable', 'review-label': 'Stable', 'review-priority': 9 },
-      { ...base, run: '5', 'firewall-observation': '5', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'new.example', decision: 'allowed', 'decision-label': 'Allowed by policy', 'current-decision': 'allowed', 'drift-state': 'newly-allowed', 'drift-label': 'Newly allowed', 'review-state': 'newly-allowed', 'review-label': 'Newly allowed', 'review-priority': 3 },
-      { ...base, run: '6', 'firewall-observation': '6', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'blocked.example', decision: 'denied', 'decision-label': 'Denied by policy', 'current-decision': 'denied', 'drift-state': 'stable', 'drift-label': 'Stable', 'review-state': 'stable', 'review-label': 'Stable', 'review-priority': 9, 'policy-rule-id': 'default-deny' },
-      { ...base, run: '7', 'firewall-observation': '7', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'changed.example', decision: 'denied', 'decision-label': 'Denied by policy', 'previous-decision': 'allowed', 'current-decision': 'denied', 'drift-state': 'decision-changed', 'drift-label': 'Decision changed', 'review-state': 'decision-changed', 'review-label': 'Decision changed', 'review-priority': 4 }
+      { domain: 'api.github.com', runs: 2, accepted: 7, blocked: 0 },
+      { domain: 'blocked.example', runs: 1, accepted: 0, blocked: 3 }
     ];
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'firewall-observations': { source: 'firewall-observations', rows, metadata },
-        'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
+        'firewall-domains': { source: 'firewall-domains', rows, metadata }
       }
     });
 
@@ -242,22 +222,21 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     const text = page?.textContent ?? '';
     expect(text).toContain('api.github.com');
-    expect(text).toContain('new.example');
     expect(text).toContain('blocked.example');
-    expect(text).toContain('changed.example');
-    expect(text).toContain('Requests');
     expect(text).toContain('Runs');
+    expect(text).toContain('Accepted');
+    expect(text).toContain('Blocked');
     expect(text).not.toContain('firewall failure');
     expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
     rendered.remove();
   });
 
-  it('warns that firewall data is corrupted when firewall observations are unavailable', async () => {
+  it('warns that firewall data is corrupted when the firewall query is unavailable', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'firewall-observations': {
-          source: 'firewall-observations',
+        'firewall-domains': {
+          source: 'firewall-domains',
           rows: [],
           metadata: {
             'source-id': 'firewall-fixture',

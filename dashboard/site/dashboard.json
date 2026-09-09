@@ -72,6 +72,104 @@
     },
     "queries": [
       {
+        "name": "firewall-domains",
+        "intent": "Summarize accepted and blocked firewall events by domain.",
+        "description": "Observed run and firewall decision totals for each domain.",
+        "from": "firewall-events",
+        "compute": [
+          {
+            "as": "accepted-match",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "event-type"
+              },
+              {
+                "value": "net_allowed"
+              }
+            ]
+          },
+          {
+            "as": "accepted-event",
+            "function": "if",
+            "args": [
+              {
+                "field": "accepted-match"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "blocked-match",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "event-type"
+              },
+              {
+                "value": "net_blocked"
+              }
+            ]
+          },
+          {
+            "as": "blocked-event",
+            "function": "if",
+            "args": [
+              {
+                "field": "blocked-match"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "domain"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "accepted-event",
+              "as": "accepted",
+              "reducer": "sum"
+            },
+            {
+              "field": "blocked-event",
+              "as": "blocked",
+              "reducer": "sum"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "blocked",
+            "direction": "desc"
+          },
+          {
+            "field": "accepted",
+            "direction": "desc"
+          },
+          {
+            "field": "domain",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "workflow-run-totals",
         "intent": "Summarize observed run counts by declared workflow.",
         "description": "Observed run totals for each declared workflow.",
@@ -909,21 +1007,12 @@
           {
             "id": "security-firewall-domains",
             "title": "Domains",
-            "description": "Aggregate observed requests, runs, repositories, workflows, policy decisions, and policy rules by normalized domain over the requested 30-day horizon.",
+            "description": "Aggregate observed runs, accepted requests, and blocked requests by domain.",
             "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "decision": [
-                  "allowed",
-                  "denied"
-                ]
-              },
+              "source": "firewall-domains",
               "order-by": [
                 {
-                  "field": "requests",
+                  "field": "blocked",
                   "direction": "desc"
                 }
               ]
@@ -941,46 +1030,19 @@
                   "type": "nominal"
                 },
                 {
-                  "field": "request-count",
+                  "field": "runs",
                   "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "requests",
-                  "title": "Requests"
-                },
-                {
-                  "field": "run",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "runs",
                   "title": "Runs"
                 },
                 {
-                  "field": "repository",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "repositories",
-                  "title": "Repositories"
+                  "field": "accepted",
+                  "type": "quantitative",
+                  "title": "Accepted"
                 },
                 {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "workflows",
-                  "title": "Workflows"
-                },
-                {
-                  "field": "decision",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "decisions",
-                  "title": "Policy decisions"
-                },
-                {
-                  "field": "policy-rule-id",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "policy-rules",
-                  "title": "Policy rules"
+                  "field": "blocked",
+                  "type": "quantitative",
+                  "title": "Blocked"
                 }
               ]
             }

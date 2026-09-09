@@ -14,6 +14,7 @@ export function createCanonicalQueries(indexedDB) {
     },
     runs: {
       list: () => readActiveCollection(indexedDB, 'runs'),
+      get: (/** @type {string} */ id) => readActiveRecord(indexedDB, 'runs', id),
       forRepository: (/** @type {string} */ repositoryId) =>
         readActiveIndex(indexedDB, 'runs', 'byRepository', [repositoryId]),
       forWorkflow: (/** @type {string} */ workflowId) =>
@@ -31,12 +32,18 @@ export function createCanonicalQueries(indexedDB) {
         readActiveIndex(indexedDB, 'jobs', 'byRun', [runId])
     },
     sessions: {
+      get: (/** @type {string} */ id) => readActiveRecord(indexedDB, 'sessions', id),
       forRun: (/** @type {string} */ runId) =>
         readActiveIndex(indexedDB, 'sessions', 'byRun', [runId]),
       forJob: (/** @type {string} */ jobId) =>
         readActiveIndex(indexedDB, 'sessions', 'byJob', [jobId])
     },
     events: {
+      forSourceByTypes: async (/** @type {string} */ source, /** @type {string[]} */ types) => (
+        await Promise.all([...new Set(types)].map((type) =>
+          readActiveIndex(indexedDB, 'events', 'bySourceType', [source, type])
+        ))
+      ).flat(),
       forSession: (/** @type {string} */ sessionId) =>
         readActiveIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]),
       forSessionByType: async (/** @type {string} */ sessionId, /** @type {string} */ type) => {

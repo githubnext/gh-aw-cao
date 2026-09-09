@@ -186,20 +186,15 @@ describe('dashboard document validation', () => {
       'column-summaries': true,
       layout: 'full-view',
       data: {
-        source: 'firewall-observations',
-        time: { range: '30d' },
-        filters: { decision: ['allowed', 'denied'] },
-        'order-by': [{ field: 'requests', direction: 'desc' }]
+        source: 'firewall-domains',
+        'order-by': [{ field: 'blocked', direction: 'desc' }]
       }
     });
     expect(domains.encoding.columns).toEqual([
       { field: 'domain', type: 'nominal' },
-      { field: 'request-count', type: 'quantitative', aggregate: 'sum', as: 'requests', title: 'Requests' },
-      { field: 'run', type: 'nominal', aggregate: 'distinct-count', as: 'runs', title: 'Runs' },
-      { field: 'repository', type: 'nominal', aggregate: 'distinct-count', as: 'repositories', title: 'Repositories' },
-      { field: 'workflow', type: 'nominal', aggregate: 'distinct-count', as: 'workflows', title: 'Workflows' },
-      { field: 'decision', type: 'nominal', aggregate: 'distinct-count', as: 'decisions', title: 'Policy decisions' },
-      { field: 'policy-rule-id', type: 'nominal', aggregate: 'distinct-count', as: 'policy-rules', title: 'Policy rules' }
+      { field: 'runs', type: 'quantitative', title: 'Runs' },
+      { field: 'accepted', type: 'quantitative', title: 'Accepted' },
+      { field: 'blocked', type: 'quantitative', title: 'Blocked' }
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
     expect(serialized).not.toContain('blocked = failure');

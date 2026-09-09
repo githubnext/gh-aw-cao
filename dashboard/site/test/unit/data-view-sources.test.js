@@ -19,6 +19,38 @@ const sources = {
     }],
     metadata
   },
+  sessions: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', 'session-kind': 'unified-operational-log',
+      'session-status': 'completed', 'started-at': '2026-09-09T04:00:00Z',
+      'ended-at': '2026-09-09T04:02:00Z', 'observed-at': '2026-09-09T04:00:00Z'
+    }],
+    metadata
+  },
+  events: {
+    rows: [
+      {
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        run: '42', 'run-attempt': 2, session: 'session-42', event: 'firewall-allowed',
+        'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'firewall',
+        'event-type': 'net_allowed', 'event-summary': 'api.github.com GET', 'observed-at': '2026-09-09T04:01:00Z'
+      },
+      {
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        run: '42', 'run-attempt': 2, session: 'session-42', event: 'firewall-blocked',
+        'event-timestamp': '2026-09-09T04:01:01Z', 'event-source': 'firewall',
+        'event-type': 'net_blocked', 'event-summary': 'blocked.example POST', 'observed-at': '2026-09-09T04:01:01Z'
+      },
+      {
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        run: '42', 'run-attempt': 2, session: 'session-42', event: 'agent-event',
+        'event-timestamp': '2026-09-09T04:01:02Z', 'event-source': 'agent',
+        'event-type': 'assistant_message', 'event-summary': 'done', 'observed-at': '2026-09-09T04:01:02Z'
+      }
+    ],
+    metadata
+  },
   'job-performance': {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -106,6 +138,7 @@ describe('canonical view sources', () => {
       rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }],
       metadata: { 'source-kind': 'canonical-query' }
     });
+
     expect(projected['security-findings']).toMatchObject({
       source: 'security-findings',
       rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }],
@@ -118,6 +151,27 @@ describe('canonical view sources', () => {
     await expect(queries.findings.bySeverity('high')).resolves.toEqual([
       expect.objectContaining({ observationId: 'threat-detection:observation-1', severity: 'high' })
     ]);
+  });
+
+  it('uses the event source/type index for the request-scoped firewall projection', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      sources,
+      metadata['artifact-generation'],
+      ['firewall-events']
+    );
+
+    expect(Object.keys(projected)).toEqual(['firewall-events']);
+    expect(projected['firewall-events']).toMatchObject({
+      source: 'firewall-events',
+      rows: [
+        { domain: 'api.github.com', run: '42', 'event-type': 'net_allowed' },
+        { domain: 'blocked.example', run: '42', 'event-type': 'net_blocked' }
+      ],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {

@@ -53,6 +53,44 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
+    sessions: {
+      rows: [{
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run,
+        'run-attempt': 2,
+        session: `session-${run}`,
+        'session-kind': 'unified-operational-log',
+        'session-status': 'completed',
+        'started-at': '2026-09-09T04:00:00Z',
+        'ended-at': '2026-09-09T04:02:00Z',
+        'observed-at': '2026-09-09T05:00:00Z'
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    events: {
+      rows: [
+        ['firewall-allowed', 'net_allowed', 'api.github.com GET'],
+        ['firewall-blocked', 'net_blocked', 'api.github.com POST'],
+        ['firewall-denied-domain', 'net_blocked', 'blocked.example GET']
+      ].map(([event, type, summary], index) => ({
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run,
+        'run-attempt': 2,
+        session: `session-${run}`,
+        event: `${event}-${run}`,
+        'event-timestamp': `2026-09-09T04:01:0${index}Z`,
+        'event-source': 'firewall',
+        'event-type': type,
+        'event-summary': summary,
+        'source-sequence': index,
+        'observed-at': '2026-09-09T05:00:00Z'
+      })),
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
     'job-performance': {
       rows: [{
         organization: 'githubnext',
@@ -285,6 +323,37 @@ test('data worker executes declarative queries and returns only the derived proj
       source: 'workflow-run-inventory',
       rows: [{ workflow: '.github/workflows/dashboard.md', runs: 1 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'workflow-run-inventory', availability: 'available' }
+    });
+  }
+});
+
+test('data worker queries indexed firewall events for initial and navigated views', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['firewall-domains'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['firewall-domains'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['firewall-domains']);
+    expect(payload['firewall-domains']).toMatchObject({
+      rows: [
+        { domain: 'api.github.com', runs: 1, accepted: 1, blocked: 1 },
+        { domain: 'blocked.example', runs: 1, accepted: 0, blocked: 1 }
+      ],
+      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domains' }
     });
   }
 });

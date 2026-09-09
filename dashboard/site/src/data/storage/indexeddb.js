@@ -1,7 +1,7 @@
 import { CANONICAL_SCHEMA_VERSION, relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 /**
  * @param {IDBFactory} indexedDB
@@ -102,6 +102,7 @@ function createSchema(database) {
   createIndex(events, 'bySessionTimestamp', ['generation', 'sessionId', 'timestamp']);
   createIndex(events, 'byType', ['generation', 'type']);
   createIndex(events, 'bySource', ['generation', 'source']);
+  createIndex(events, 'bySourceType', ['generation', 'source', 'type']);
   createIndex(events, 'byCorrelation', ['generation', 'correlationId']);
 
   createOperationalEntityStores(database);
@@ -144,6 +145,10 @@ export function openCanonicalDatabase(indexedDB) {
       if (event.oldVersion < 1) createSchema(request.result);
       if (event.oldVersion < 3) deleteLegacySourceStores(request.result);
       if (event.oldVersion >= 1 && event.oldVersion < 4) createOperationalEntityStores(request.result);
+      if (event.oldVersion >= 1 && event.oldVersion < 5) {
+        request.transaction?.objectStore('events')
+          .createIndex('bySourceType', ['generation', 'source', 'type']);
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));
