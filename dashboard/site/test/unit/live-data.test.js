@@ -19,6 +19,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js"');
+    expect(preview).toContain('loadCanonicalDashboardPage(\n            DASHBOARD_HORIZON_COUNT_SOURCES,');
     expect(preview).toMatch(/await loadCanonicalDashboardSources\(\s*sourceUrl,\s*initialSources,\s*dashboardContext,\s*continuationRequests\(initialLazySources\)/);
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
@@ -29,7 +30,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');
-    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)');
+    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader)');
     expect(preview).toContain('event: "preview.rendered"');
     expect(preview).toContain('get("local-preview")');
     expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/);

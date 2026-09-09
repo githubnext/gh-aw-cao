@@ -25,7 +25,7 @@ import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
-import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
+import { DASHBOARD_HORIZON_COUNT_SOURCES, dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
 
@@ -74,7 +74,7 @@ import { sourceContinuation } from './data/continuation.js';
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -182,7 +182,7 @@ export function dashboardPageLazySourceNames(document, pageId) {
  * @returns {HTMLElement}
  */
 export function renderDashboard(input) {
-  const { document, sources: rawSources, viewer = null } = input;
+  const { document, sources: rawSources, viewer = null, loadHorizonSources } = input;
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
@@ -217,7 +217,7 @@ export function renderDashboard(input) {
   const skipLink = h('a', { href: '#main-content', className: 'skip-link' }, 'Skip to main content');
 
   const sidebar = renderSidebar(pages, sidebarTitle, document.dashboard.navigation);
-  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer);
+  const mainContent = renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, summarizeDataState(new Map(Object.entries(rawSources))), viewer, loadHorizonSources);
 
   const appShell = h(
     'div',
@@ -670,9 +670,10 @@ function getPageIcon(page) {
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
  * @param {LocalViewer | null} viewer
+ * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
  * @returns {HTMLElement}
  */
-function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer) {
+function renderMainContent(document, pages, sources, githubUrlBase, dashboardRepository, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, viewer, loadHorizonSources) {
   const initialPage = pages.find((page) => page.id !== 'configuration') ?? pages[0];
   const overviewPage = pages.find((page) => page.id === 'overview');
   const initialPageTitle = initialPage ? getPageTitle(initialPage) : '';
@@ -714,7 +715,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources),
           dashboardRepository
             ? h(
               'a',
@@ -835,9 +836,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
+ * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources) {
   if (!hasData) {
     return h(
       'span',
@@ -864,13 +866,29 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
     : completeness === 'unknown' || freshness === 'unknown'
       ? 'muted'
       : 'attention';
+  const databaseCounts = h('span', { className: 'horizon-tooltip-counts' }, 'Database counts load on hover');
+  /** @type {Promise<void> | undefined} */
+  let countsPromise;
+  const loadCounts = () => {
+    if (!loadHorizonSources || countsPromise) return;
+    databaseCounts.textContent = 'Loading database counts…';
+    countsPromise = loadHorizonSources()
+      .then((sources) => {
+       const counts = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
+       if (counts.some((row) => !row)) throw new Error('Database count query unavailable');
+       databaseCounts.textContent = `${counts[0]?.workflows} workflows · ${counts[1]?.runs} runs · ${counts[2]?.events} events`;
+      })
+      .catch(() => {
+       databaseCounts.textContent = 'Database counts unavailable';
+      });
+  };
 
   return h(
     'div',
     { className: 'dashboard-horizon', 'data-dashboard-evaluated-at': evaluatedAt },
     h(
       'div',
-      { className: 'horizon-summary' },
+      { className: 'horizon-summary', onpointerenter: loadCounts, onfocusin: loadCounts },
       h(
         'button',
         {
@@ -887,6 +905,7 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
         { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
         h('strong', null, duration),
         h('span', null, `${label} · Completeness ${completeness} · Freshness ${freshness}`),
+        databaseCounts,
         h('span', { className: `horizon-tooltip-quality status-${qualityState}`, 'aria-hidden': 'true' })
       )
     ),

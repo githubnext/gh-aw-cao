@@ -64,6 +64,24 @@ const usage = {
 const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('counts database entities through the declared horizon queries', () => {
+    const sources = {
+      workflows,
+      runs: { source: 'runs', rows: [{ run: '1' }, { run: '2' }], metadata: metadata('runs') },
+      events: { source: 'events', rows: [{ event: 'a' }, { event: 'b' }, { event: 'c' }], metadata: metadata('events') }
+    };
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      sources,
+      ['database-workflow-count', 'database-run-count', 'database-event-count']
+    );
+
+    expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
+    expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
+    expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);
+  });
+
   it('continues query results without exposing cursors in query definitions', () => {
     const sources = {
       runs: {

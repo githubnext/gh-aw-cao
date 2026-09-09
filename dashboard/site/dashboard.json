@@ -72,6 +72,36 @@
     },
     "queries": [
       {
+        "name": "database-workflow-count",
+        "intent": "Count workflows in the dashboard database.",
+        "from": "workflows",
+        "aggregate": {
+          "values": [
+            { "field": "workflow", "as": "workflows", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "database-run-count",
+        "intent": "Count runs in the dashboard database.",
+        "from": "runs",
+        "aggregate": {
+          "values": [
+            { "field": "run", "as": "runs", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "database-event-count",
+        "intent": "Count events in the dashboard database.",
+        "from": "events",
+        "aggregate": {
+          "values": [
+            { "field": "event", "as": "events", "reducer": "count" }
+          ]
+        }
+      },
+      {
         "name": "firewall-domain-totals",
         "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
