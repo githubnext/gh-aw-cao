@@ -27,7 +27,7 @@ import { tidy } from '../../data-operations.js';
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'sum'|'mean'|'min'|'max' }> },
+ *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'sum'|'mean'|'min'|'max' }> },
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   limit?: number

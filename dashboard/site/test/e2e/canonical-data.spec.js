@@ -31,6 +31,11 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         organization: 'githubnext',
         repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md',
+        package: 'dashboard',
+        'package-name': 'Dashboard',
+        'workflow-role': 'worker',
+        'rollout-mode': 'review',
+        'workflow-active': 'true',
         'observed-at': '2026-09-09T05:00:00Z'
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -76,6 +81,18 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'smell-name': 'Secret leak detected', 'smell-severity': 'high',
         'observed-at': '2026-09-09T04:01:00Z'
       }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    usage: {
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run, aic: 17 }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    outcomes: {
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'safe-output': 'report-1' }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    'operational-values': {
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', 'operational-value': 1 }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     }
   };
@@ -270,6 +287,55 @@ test('data worker executes declarative queries and returns only the derived proj
       metadata: { 'source-kind': 'derived', 'query-name': 'workflow-run-inventory', availability: 'available' }
     });
   }
+});
+
+test('data worker computes repository and package pages with request-scoped dashboard queries', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['repository-activity'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['package-inventory'], context);
+    return { initial, navigated };
+  });
+
+  expect(Object.keys(result.initial)).toEqual(['repository-activity']);
+  expect(result.initial['repository-activity']).toMatchObject({
+    rows: [{
+      repository: 'githubnext/gh-aw-cao',
+      workflows: 1,
+      reports: 1,
+      runs: 1,
+      'failure-summary': '100% · 1 failed',
+      aic: 17,
+      status: 'Needs attention'
+    }],
+    metadata: { 'source-kind': 'derived', 'query-name': 'repository-activity' }
+  });
+  expect(Object.keys(result.navigated)).toEqual(['package-inventory']);
+  expect(result.navigated['package-inventory']).toMatchObject({
+    rows: [{
+      package: 'dashboard',
+      'package-name': 'Dashboard',
+      workflows: 1,
+      repositories: 1,
+      roles: 'worker',
+      modes: 'review',
+      registration: 'true',
+      runs: 1,
+      aic: 17
+    }],
+    metadata: { 'source-kind': 'derived', 'query-name': 'package-inventory' }
+  });
 });
 
 test('data worker queries canonical work items and security findings', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   DASHBOARD_QUERY_LIMITS,
   DashboardQueryCancelledError,
@@ -49,6 +50,7 @@ const usage = {
   ],
   metadata: metadata('usage', { freshness: 'stale' })
 };
+const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
   it('projects, renames, and orders rows deterministically', () => {
@@ -108,6 +110,76 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(derived.inventory.metadata.freshness).toBe('stale');
     expect(derived['aic-totals'].metadata['query-name']).toBe('aic-totals');
+  });
+
+  it('computes the Repositories and Packages view payloads from dashboard queries', () => {
+    const repositories = {
+      source: 'repositories',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
+      metadata: metadata('repositories')
+    };
+    const queryWorkflows = {
+      source: 'workflows',
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
+          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'orchestrator',
+          'rollout-mode': 'review', 'workflow-active': 'true'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
+          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'worker',
+          'rollout-mode': 'review', 'workflow-active': 'false'
+        }
+      ],
+      metadata: metadata('workflows')
+    };
+    const runs = {
+      source: 'runs',
+      rows: [
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-conclusion': 'failure' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-conclusion': 'success' }
+      ],
+      metadata: metadata('runs')
+    };
+    const outcomes = {
+      source: 'outcomes',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
+      metadata: metadata('outcomes')
+    };
+    const operationalValues = {
+      source: 'operational-values',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-value': 1 }],
+      metadata: metadata('operational-values')
+    };
+
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { repositories, workflows: queryWorkflows, runs, outcomes, 'operational-values': operationalValues, usage },
+      ['repository-activity', 'package-inventory']
+    );
+
+    expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
+      repository: 'githubnext/gh-aw-cao',
+      workflows: 2,
+      reports: 1,
+      'evaluated-workflows': 1,
+      runs: 2,
+      'failure-summary': '50% · 1 failed',
+      aic: 10,
+      status: 'Needs attention'
+    })]);
+    expect(derived['package-inventory'].rows).toEqual([{
+      package: 'aw-doctor',
+      'package-name': 'AW Doctor',
+      workflows: 2,
+      repositories: 1,
+      roles: 'orchestrator, worker',
+      modes: 'review',
+      registration: 'false, true',
+      runs: 2,
+      aic: 10
+    }]);
   });
 
   it('drops unmatched rows for inner joins and keeps them for left joins', () => {
@@ -404,6 +476,14 @@ describe('computed field vocabulary', () => {
     expect(compute('trim', [{ value: '  spaced  ' }])).toBe('spaced');
     expect(compute('url-encode', [{ value: 'a/b' }])).toBe('a%2Fb');
     expect(compute('concat', [{ field: 'missing' }, { value: 'tail' }])).toBe('tail');
+    expect(compute('format-count', [{ value: 1234 }])).toBe('1,234');
+    expect(compute('format-percent', [{ value: 0.5 }])).toBe('50%');
+  });
+
+  it('evaluates conditional functions deterministically', () => {
+    expect(compute('equals-any', [{ value: 'failure' }, { value: 'failure' }, { value: 'success' }])).toBe(true);
+    expect(compute('greater-than', [{ value: 2 }, { value: 1 }])).toBe(true);
+    expect(compute('if', [{ value: true }, { value: 'yes' }, { value: 'no' }])).toBe('yes');
   });
 
   it('evaluates every numeric function and returns null for unusable inputs', () => {
