@@ -733,7 +733,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
+  await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toBeVisible();
+  await accountMenu.getByRole('button', { name: 'Reset local data' }).click();
+  const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
+  await expect(resetDialog).toBeVisible();
+  await expect(resetDialog).toContainText('This action cannot be undone.');
+  await resetDialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(resetDialog).not.toBeVisible();
   await expect(accountMenu.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.dashboard-root')).not.toHaveAttribute('data-theme');
   await accountMenu.getByRole('button', { name: 'Light' }).click();
@@ -1142,7 +1150,7 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
 
   await page.setViewportSize({ width: 393, height: 852 });
   await expect(details).toBeVisible();
-  await expect(page.locator('.refresh-button > span')).toBeHidden();
+  await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
     const bounds = item.getBoundingClientRect();
     return Math.round(bounds.top + bounds.height / 2);
