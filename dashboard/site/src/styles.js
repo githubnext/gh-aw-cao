@@ -437,7 +437,9 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
 .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
 .dashboard-root.dashboard-full-view-scrolled .org-sidebar,
-.dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav { display: none; }
+.dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav,
+.dashboard-root.dashboard-full-view-scrolled .site-callouts,
+.dashboard-root.dashboard-full-view-scrolled .custom-view[data-view-layout="full-view"] .table-filter { display: none; }
 .dashboard-root.dashboard-full-view-scrolled .custom-view-grid > :has(~ .custom-view[data-view-layout="full-view"]) { display: none; }
 .custom-view[data-view-layout="half"] { grid-column: span 6; }
 .custom-view[data-view-layout="third"] { grid-column: span 4; }
