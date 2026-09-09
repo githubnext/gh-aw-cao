@@ -5,6 +5,72 @@
     "title": "Dev Practices",
     "description": "Track framework review runs, evidence-backed guidance, and explicit human acceptance for frozen repository snapshots.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "development-practices-review-runs",
+        "intent": "Show framework-review orchestrator and worker runs so operators can verify activation for GitHub Well-Architected and NIST SSDF guidance.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/software-development-practices.md",
+                ".github/workflows/software-development-practices-github-well-architected.md",
+                ".github/workflows/software-development-practices-nist-ssdf.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "development-practices-guidance",
+        "intent": "List retained framework guidance with official-source provenance and evidence limitations for human review.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "software-development-practices"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "development-practices-acceptance",
+        "intent": "Show explicit human-acceptance observations for Well-Architected and NIST SSDF guidance without inferring framework conformance.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/software-development-practices-github-well-architected.md",
+                ".github/workflows/software-development-practices-nist-ssdf.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "software-development-practices-dashboard",
@@ -19,7 +85,7 @@
             "title": "Framework reviews by conclusion",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "development-practices-review-runs",
               "time": {
                 "range": "30d"
               },
@@ -33,6 +99,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -51,7 +118,7 @@
             "description": "Guidance retains official source provenance, evidence limitations, and prioritized recommendations for human review.",
             "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "development-practices-guidance",
               "filters": {
                 "package": [
                   "software-development-practices"
@@ -60,6 +127,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No Software Development Practices guidance was retained.",
             "encoding": {
               "href": {
@@ -74,7 +144,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Guidance"
+                  "title": "Guidance",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -87,16 +158,34 @@
                   "type": "temporal",
                   "title": "Published"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this framework guidance, verify its source evidence and limitations, and identify the next human decision.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "workflow-name",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "evidence-strength",
+                    "published-at",
+                    "external-link"
+                  ]
+                }
               ]
             }
           },
           {
             "id": "software-development-practices-attainment",
-            "title": "Human-accepted guidance evidence",
+            "disclosure-label": "Human-accepted guidance evidence",
             "description": "Each framework preserves its stable target-commit opportunity, acceptance evidence, maturity state, and repository link.",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "development-practices-acceptance",
               "filters": {
                 "workflow": [
                   ".github/workflows/software-development-practices-github-well-architected.md",
@@ -106,6 +195,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No Software Development Practices acceptance evidence is available.",
             "encoding": {
               "href": {
@@ -152,7 +244,7 @@
             "description": "Mean attainment remains separated by evaluator definition and does not imply causation, certification, security, or framework conformance.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "development-practices-acceptance",
               "time": {
                 "range": "90d"
               },
@@ -165,6 +257,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",

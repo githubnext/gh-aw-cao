@@ -5,6 +5,70 @@
     "title": "SelfCare",
     "description": "Track production Pages health, dashboard performance improvements, build-time investigations, and clustered failures across represented public projects.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "self-care-observed-runs",
+        "intent": "Show runs for the SelfCare operations represented on this dashboard so operators can compare build, production, performance, and public-project health.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/self-care-docs-build-time-investigator.md",
+                ".github/workflows/self-care-pages-health.md",
+                ".github/workflows/self-care-dashboard-performance.md",
+                ".github/workflows/self-care-open-source-failures.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "self-care-retained-outcomes",
+        "intent": "List retained SelfCare recommendations, reports, improvements, and findings so maintainers can review evidence-backed follow-up work.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "self-care"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "self-care-build-attainment",
+        "intent": "Show reliable docs build-speed attainment while preserving maturity, evidence cutoffs, and missing-evidence states.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "equals": ".github/workflows/self-care-docs-build-time-investigator.md"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "self-care-dashboard",
@@ -18,7 +82,7 @@
             "title": "Build-time investigations by conclusion",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "self-care-observed-runs",
               "time": {
                 "range": "30d"
               },
@@ -30,6 +94,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -48,7 +113,7 @@
             "description": "Retained issues expose actionable timing evidence; creating an issue alone does not establish realized speed improvement.",
             "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "self-care-retained-outcomes",
               "filters": {
                 "workflow": [
                   ".github/workflows/self-care-docs-build-time-investigator.md"
@@ -57,6 +122,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No build-speed recommendations were retained.",
             "encoding": {
               "href": {
@@ -71,7 +139,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Recommendation"
+                  "title": "Recommendation",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -84,16 +153,32 @@
                   "type": "temporal",
                   "title": "Published"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this build-speed recommendation, verify its retained timing evidence, and identify the safest follow-up.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "published-at",
+                    "external-link"
+                  ]
+                }
               ]
             }
           },
           {
             "id": "self-care-build-attainment",
-            "title": "Reliable build-speed attainment",
+            "disclosure-label": "Reliable build-speed attainment",
             "description": "Attainment compares successful docs.yml execution times while requiring completed-run reliability to be preserved.",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "self-care-build-attainment",
               "filters": {
                 "workflow": [
                   ".github/workflows/self-care-docs-build-time-investigator.md"
@@ -102,6 +187,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No matured build-speed attainment evidence is available.",
             "encoding": {
               "href": {
@@ -139,7 +227,7 @@
             "description": "Mean attainment summarizes repeated observations under the same frozen evaluator and does not establish causation.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "self-care-build-attainment",
               "time": {
                 "range": "90d"
               },
@@ -151,6 +239,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",
@@ -174,7 +263,7 @@
             "description": "Run conclusions for the six-hour desktop, mobile, and low-bandwidth production sweep.",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "self-care-observed-runs",
               "time": {
                 "range": "30d"
               },
@@ -186,6 +275,7 @@
             },
             "mark": "chart",
             "chart": "bar",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -204,11 +294,9 @@
           },
           {
             "id": "self-care-pages-health-outcomes",
-            "title": "Current Pages health reports",
             "description": "Replacement reports covering browser errors and per-view Lighthouse evidence across all production profiles.",
-            "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "self-care-retained-outcomes",
               "filters": {
                 "workflow": [
                   ".github/workflows/self-care-pages-health.md"
@@ -216,7 +304,12 @@
               },
               "limit": 50
             },
+            "disclosure-label": "Current Pages health reports",
+            "disclosure": "supplemental",
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No Pages health reports were retained.",
             "encoding": {
               "href": {
@@ -231,7 +324,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Report"
+                  "title": "Report",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -251,9 +345,9 @@
             "id": "self-care-dashboard-performance-runs",
             "title": "Dashboard performance runs",
             "description": "Run conclusions for trace-backed CFO, CTO, and CSO Lighthouse evaluations.",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "data": {
-              "source": "runs",
+              "source": "self-care-observed-runs",
               "time": {
                 "range": "30d"
               },
@@ -265,6 +359,7 @@
             },
             "mark": "chart",
             "chart": "bar",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -283,11 +378,11 @@
           },
           {
             "id": "self-care-dashboard-performance-outcomes",
-            "title": "Dashboard performance improvements",
+            "disclosure-label": "Dashboard performance improvements",
             "description": "Draft pull requests for one trace-backed Lighthouse bottleneck at a time; publication does not establish realized performance improvement.",
-            "disclosure": "essential",
+            "disclosure": "supplemental",
             "data": {
-              "source": "outcomes",
+              "source": "self-care-retained-outcomes",
               "filters": {
                 "workflow": [
                   ".github/workflows/self-care-dashboard-performance.md"
@@ -296,6 +391,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No dashboard performance improvements were retained.",
             "encoding": {
               "href": {
@@ -310,7 +408,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Improvement"
+                  "title": "Improvement",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -330,9 +429,9 @@
               "id": "self-care-public-failure-runs",
               "title": "Public-project failure scans",
               "description": "Run conclusions for the worker that clusters failures represented in the CAO dashboard activity snapshot.",
-              "disclosure": "essential",
+              "disclosure": "supplemental",
               "data": {
-                "source": "runs",
+                "source": "self-care-observed-runs",
                 "time": {
                   "range": "30d"
                 },
@@ -344,6 +443,7 @@
               },
               "mark": "chart",
               "chart": "bar",
+              "layout": "half",
               "encoding": {
                 "x": {
                   "field": "run-conclusion",
@@ -362,11 +462,11 @@
             },
             {
               "id": "self-care-public-failure-outcomes",
-              "title": "Public-project failure findings",
+              "disclosure-label": "Public-project failure findings",
               "description": "Retained digests and remediation issues for clustered failures across public projects represented in the dashboard.",
-              "disclosure": "essential",
+              "disclosure": "supplemental",
               "data": {
-                "source": "outcomes",
+                "source": "self-care-retained-outcomes",
                 "filters": {
                   "workflow": [
                     ".github/workflows/self-care-open-source-failures.md"
@@ -375,6 +475,9 @@
                 "limit": 50
               },
               "mark": "table",
+              "controls": "interactive",
+              "lazy-list": true,
+              "layout": "full-view",
               "empty-message": "No public-project failure findings were retained.",
               "encoding": {
                 "href": {
@@ -389,7 +492,8 @@
                   {
                     "field": "outcome-title",
                     "type": "nominal",
-                    "title": "Finding"
+                    "title": "Finding",
+                    "display": "outcome-link"
                   },
                   {
                     "field": "outcome-state",

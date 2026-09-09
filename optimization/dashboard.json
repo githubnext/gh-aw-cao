@@ -5,6 +5,75 @@
     "title": "AW Optimization",
     "description": "Track AI Credit and ambient context optimization runs, retained recommendations, and matured accuracy and efficiency evidence.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "optimization-run-observations",
+        "intent": "Show AW Optimization orchestrator and worker runs so operators can verify activation across AI Credit and ambient-context operations.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/optimization.md",
+                ".github/workflows/optimization-ai-credit-auditor.md",
+                ".github/workflows/optimization-ai-credit-optimizer.md",
+                ".github/workflows/optimization-agents-md-curator.md",
+                ".github/workflows/optimization-skills-curator.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "optimization-retained-outcomes",
+        "intent": "List retained AW Optimization audits and recommendations without presenting proposed savings or context changes as realized value.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "optimization"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "optimization-attainment-observations",
+        "intent": "Show matured accuracy and efficiency observations for graded AW Optimization workers while preserving each evaluator definition.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/optimization-ai-credit-auditor.md",
+                ".github/workflows/optimization-ai-credit-optimizer.md",
+                ".github/workflows/optimization-agents-md-curator.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "optimization-dashboard",
@@ -18,7 +87,7 @@
             "title": "AW Optimization runs by conclusion",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "optimization-run-observations",
               "time": {
                 "range": "30d"
               },
@@ -34,6 +103,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -52,7 +122,7 @@
             "description": "Retained snapshots and recommendations expose repository evidence without treating a recommendation as realized savings or context improvement.",
             "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "optimization-retained-outcomes",
               "filters": {
                 "package": [
                   "optimization"
@@ -61,6 +131,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No optimization outputs were retained.",
             "encoding": {
               "href": {
@@ -75,7 +148,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Audit or recommendation"
+                  "title": "Audit or recommendation",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -88,6 +162,22 @@
                   "type": "temporal",
                   "title": "Published"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this optimization output, verify its retained evidence, and identify the safest next action.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "published-at",
+                    "external-link"
+                  ]
+                }
               ]
             }
           },
@@ -97,7 +187,7 @@
             "description": "AI Credit and ambient context evidence matures on each worker's frozen evaluation schedule.",
             "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "optimization-attainment-observations",
               "filters": {
                 "workflow": [
                   ".github/workflows/optimization-ai-credit-auditor.md",
@@ -108,6 +198,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No optimization attainment evidence is available.",
             "encoding": {
               "href": {
@@ -154,7 +247,7 @@
             "description": "AI Credit and ambient context attainment remain separate evaluator series and are not inferred from activity totals alone.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "optimization-attainment-observations",
               "time": {
                 "range": "90d"
               },
@@ -168,6 +261,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",

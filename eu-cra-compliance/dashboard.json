@@ -5,6 +5,82 @@
     "title": "EU CRA",
     "description": "Track evidence-gathering runs, non-binding CRA reports, and explicit human acceptance across each assessment domain.",
     "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "eu-cra-assessment-runs",
+        "intent": "Show EU CRA orchestrator, maintainer, and assessment-worker runs so operators can verify activation across every declared domain.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/eu-cra-compliance.md",
+                ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                ".github/workflows/eu-cra-compliance-scope-classifier.md",
+                ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
+                ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
+                ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
+                ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
+                ".github/workflows/eu-cra-compliance-conformity-release-evidence.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "eu-cra-evidence-reports",
+        "intent": "List retained EU CRA evidence reports for human review without presenting advisory findings as legal determinations or certifications.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "eu-cra-compliance"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "eu-cra-domain-attainment",
+        "intent": "Show human-reviewed attainment for each EU CRA assessment domain while preserving stable opportunities, maturity, and evidence provenance.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/eu-cra-compliance-package-maintainer.md",
+                ".github/workflows/eu-cra-compliance-scope-classifier.md",
+                ".github/workflows/eu-cra-compliance-security-requirements-auditor.md",
+                ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
+                ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
+                ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
+                ".github/workflows/eu-cra-compliance-conformity-release-evidence.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "eu-cra-compliance-dashboard",
@@ -19,7 +95,7 @@
             "title": "Assessment runs by conclusion",
             "disclosure": "essential",
             "data": {
-              "source": "runs",
+              "source": "eu-cra-assessment-runs",
               "time": {
                 "range": "30d"
               },
@@ -38,6 +114,7 @@
             },
             "mark": "chart",
             "chart": "pie",
+            "layout": "half",
             "encoding": {
               "x": {
                 "field": "run-conclusion",
@@ -56,7 +133,7 @@
             "description": "Reports retain scope and evidence gaps for human review; they are not legal determinations or certifications.",
             "disclosure": "essential",
             "data": {
-              "source": "outcomes",
+              "source": "eu-cra-evidence-reports",
               "filters": {
                 "package": [
                   "eu-cra-compliance"
@@ -65,6 +142,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No EU CRA evidence reports were retained.",
             "encoding": {
               "href": {
@@ -79,7 +159,8 @@
                 {
                   "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Evidence report"
+                  "title": "Evidence report",
+                  "display": "outcome-link"
                 },
                 {
                   "field": "outcome-state",
@@ -92,6 +173,23 @@
                   "type": "temporal",
                   "title": "Published"
                 }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this advisory CRA evidence report, verify its retained evidence and limitations, and identify the next human decision.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "evidence-strength",
+                    "published-at",
+                    "external-link"
+                  ]
+                }
               ]
             }
           },
@@ -101,7 +199,7 @@
             "description": "Each domain preserves its stable target-commit opportunity, maturity state, and repository evidence link.",
             "disclosure": "supplemental",
             "data": {
-              "source": "operational-values",
+              "source": "eu-cra-domain-attainment",
               "filters": {
                 "workflow": [
                   ".github/workflows/eu-cra-compliance-package-maintainer.md",
@@ -116,6 +214,9 @@
               "limit": 50
             },
             "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
             "empty-message": "No EU CRA attainment evidence is available.",
             "encoding": {
               "href": {
@@ -162,7 +263,7 @@
             "description": "Mean attainment remains separated by evaluator definition and does not imply legal compliance or causation.",
             "disclosure": "essential",
             "data": {
-              "source": "operational-values",
+              "source": "eu-cra-domain-attainment",
               "time": {
                 "range": "90d"
               },
@@ -180,6 +281,7 @@
             },
             "mark": "chart",
             "chart": "line",
+            "layout": "full",
             "encoding": {
               "x": {
                 "field": "observed-at",
