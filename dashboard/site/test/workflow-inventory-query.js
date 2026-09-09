@@ -9,8 +9,8 @@ const authoritativeQueries = JSON.parse(
  * Applies the authoritative declarative queries the way the data worker does, so
  * presentation tests can render derived sources without a main-thread fallback.
  *
- * @param {Record<string, unknown>} sources
- * @returns {Record<string, unknown>}
+ * @param {Record<string, import('../src/presenter.js').LogicalSourceInput>} sources
+ * @returns {Record<string, import('../src/presenter.js').LogicalSourceInput>}
  */
 export function applyDashboardQueries(sources) {
   return { ...sources, ...executeDashboardQueries(authoritativeQueries, sources) };

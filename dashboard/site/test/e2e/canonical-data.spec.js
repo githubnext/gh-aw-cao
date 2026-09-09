@@ -218,6 +218,60 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
+test('data worker executes declarative queries and returns only the derived projection', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: [],
+      queries: [
+        {
+          name: 'run-totals',
+          from: 'runs',
+          aggregate: {
+            by: ['organization', 'repository', 'workflow'],
+            values: [{ field: 'run', as: 'runs', reducer: 'distinct-count' }]
+          }
+        },
+        {
+          name: 'workflow-run-inventory',
+          from: 'workflows',
+          joins: [{
+            source: 'run-totals',
+            type: 'left',
+            on: [
+              { left: 'organization', right: 'organization' },
+              { left: 'repository', right: 'repository' },
+              { left: 'workflow', right: 'workflow' }
+            ],
+            fields: [{ field: 'runs', as: 'observed-runs' }]
+          }],
+          compute: [{ as: 'total-runs', function: 'coalesce', args: [{ field: 'observed-runs' }, { value: 0 }] }],
+          select: [{ field: 'workflow' }, { field: 'total-runs', as: 'runs' }],
+          'order-by': [{ field: 'workflow', direction: 'asc' }]
+        }
+      ]
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['workflow-run-inventory'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['workflow-run-inventory'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['workflow-run-inventory']);
+    expect(payload['workflow-run-inventory']).toMatchObject({
+      source: 'workflow-run-inventory',
+      rows: [{ workflow: '.github/workflows/dashboard.md', runs: 1 }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'workflow-run-inventory', availability: 'available' }
+    });
+  }
+});
+
 test('data worker queries canonical work items and security findings', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;

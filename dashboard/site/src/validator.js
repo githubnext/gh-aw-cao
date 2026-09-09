@@ -444,22 +444,6 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       validateObjectKeys(
         getValueNodeByKey(dashboardNode, 'horizon'),
         DASHBOARD_HORIZON_KEYS,
-  DASHBOARD_QUERY_LIMITS,
-  COMPUTE_FUNCTION_ARITY,
-  QUERY_AGGREGATE_KEYS,
-  QUERY_AGGREGATE_VALUE_KEYS,
-  QUERY_COMPUTE_ARGUMENT_KEYS,
-  QUERY_COMPUTE_KEYS,
-  QUERY_FILTER_KEYS,
-  QUERY_JOIN_FIELD_KEYS,
-  QUERY_JOIN_KEYS,
-  QUERY_JOIN_ON_KEYS,
-  QUERY_JOIN_TYPE_VALUES,
-  QUERY_KEYS,
-  QUERY_MAX_JOINS,
-  QUERY_PREDICATE_KEYS,
-  QUERY_REDUCER_VALUES,
-  QUERY_SELECT_KEYS,
         '$.dashboard.horizon',
         errors
       );

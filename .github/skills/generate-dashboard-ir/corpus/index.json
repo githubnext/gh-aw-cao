@@ -5,6 +5,11 @@
       "id": "triage-review-readiness",
       "metadata": "examples/triage-review-readiness.json",
       "dashboard": "examples/triage-review-readiness.dashboard.yml"
+    },
+    {
+      "id": "workflow-cost-inventory",
+      "metadata": "examples/workflow-cost-inventory.json",
+      "dashboard": "examples/workflow-cost-inventory.dashboard.yml"
     }
   ]
 }

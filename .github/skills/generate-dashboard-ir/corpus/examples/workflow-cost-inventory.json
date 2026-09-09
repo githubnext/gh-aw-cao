@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "id": "workflow-cost-inventory",
+  "task": {
+    "actor": "Repository operator",
+    "subject": "The declared workflows of the githubnext/gh-aw-cao repository and their observed AI Credit consumption",
+    "intent": "Let an operator see, without any view-specific code, which declared workflows consume the most observed AI Credits by declaring one derived query that joins the workflow inventory with observed usage totals.",
+    "activationConditions": [
+      "A repository operator declares one or more workflows in githubnext/gh-aw-cao.",
+      "Model invocations for those workflows are observed in the dashboard horizon.",
+      "The dashboard declares a derived query that joins the declared workflows with the observed usage totals."
+    ],
+    "requiredEffects": [
+      "The derived query must project one row per declared workflow with its observed AI Credit total.",
+      "A declared workflow without observed usage must remain in the inventory with a zero total rather than being dropped.",
+      "Every view must select the derived source by name instead of declaring joins or computed fields inside the view."
+    ],
+    "noopConditions": [
+      "No workflow is declared for the repository in the selected horizon.",
+      "The usage source is unavailable, in which case the derived source must report an unavailable state instead of a fabricated total.",
+      "The horizon contains no model invocation, in which case every declared workflow reports a zero observed total."
+    ],
+    "successConditions": [
+      "The derived query validates against the declared source fields before execution.",
+      "The inventory table renders one row per declared workflow with its observed AI Credit total.",
+      "Workflow ordering by observed AI Credits is deterministic for the same input rows."
+    ],
+    "uncertainties": [
+      "Observed AI Credits measure consumption, not delivered operational value.",
+      "A missing usage observation is not evidence that a workflow consumed zero credits outside the horizon.",
+      "A zero total may reflect an inactive workflow rather than an efficient one."
+    ]
+  },
+  "operationalValue": {
+    "statement": "Operational value is the share of declared workflow cost-review opportunities whose observed AI Credit consumption is presented with matured usage evidence for the same workflow.",
+    "opportunity": "One declared workflow in githubnext/gh-aw-cao that is eligible for a cost review in the selected horizon.",
+    "opportunityKey": "repository + workflow opportunity represented by operational-case",
+    "acceptedEvidence": [
+      "A declared workflow row identifying the repository and workflow path.",
+      "Observed usage rows whose organization, repository, and workflow identify the same workflow opportunity.",
+      "An operational-value observation whose operational-case identifies the same workflow opportunity and whose accepted-evidence-provenance names the accepted usage evidence."
+    ],
+    "evidenceRepositories": [
+      "githubnext/gh-aw-cao"
+    ],
+    "metric": {
+      "name": "workflow-cost-visibility-attainment",
+      "range": "[0,1]",
+      "directness": "direct",
+      "definition": "1 when the workflow opportunity is presented with a matured observed AI Credit total for the same operational case; 0 when the matured evidence shows the total could not be attributed to the workflow by cutoff; null when required usage evidence has not matured."
+    },
+    "maturation": "An opportunity matures when the operational-value observation reaches maturity-status matured after the evidence-cutoff for the same operational case.",
+    "zeroRule": "Assign 0 only when mature evidence shows the observed consumption could not be attributed to the declared workflow by cutoff.",
+    "missingRule": "Use null when the usage evidence is absent, unavailable, or not yet matured for the workflow opportunity; do not substitute 0.",
+    "baseline": {
+      "mode": "attainment-only",
+      "value": null,
+      "cutoff": null
+    }
+  },
+  "logicalSources": {
+    "workflows": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/aw-doctor.md",
+          "workflow-name": "AW Doctor",
+          "workflow-role": "orchestrator",
+          "workflow-active": "true",
+          "rollout-mode": "review",
+          "package": "aw-doctor",
+          "observed-at": "2026-09-01T00:00:00Z",
+          "workflow-link": {
+            "relation": "workflow",
+            "href": "https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/aw-doctor.md",
+            "label": "AW Doctor"
+          }
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/dashboard.md",
+          "workflow-name": "Dashboard",
+          "workflow-role": "standalone",
+          "workflow-active": "true",
+          "rollout-mode": "live",
+          "observed-at": "2026-09-01T00:00:00Z",
+          "workflow-link": {
+            "relation": "workflow",
+            "href": "https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/dashboard.md",
+            "label": "Dashboard"
+          }
+        }
+      ]
+    },
+    "usage": {
+      "rows": [
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/aw-doctor.md",
+          "run": "9001",
+          "invocation": "9001-1",
+          "engine": "copilot",
+          "aic": 12.5,
+          "observed-at": "2026-09-01T01:00:00Z"
+        },
+        {
+          "organization": "githubnext",
+          "repository": "gh-aw-cao",
+          "workflow": ".github/workflows/aw-doctor.md",
+          "run": "9002",
+          "invocation": "9002-1",
+          "engine": "copilot",
+          "aic": 7.5,
+          "observed-at": "2026-09-01T02:00:00Z"
+        }
+      ]
+    }
+  },
+  "dashboard": "workflow-cost-inventory.dashboard.yml"
+}

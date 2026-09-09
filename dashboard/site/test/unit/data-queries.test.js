@@ -9,9 +9,13 @@ import {
 import { computeValue, tidy } from '../../src/data-operations.js';
 import { processDataRequest } from '../../src/data-worker.js';
 
-/** @param {string} id @param {Partial<Record<string, string>>} [overrides] */
+/**
+ * @param {string} id
+ * @param {Partial<Record<string, string>>} [overrides]
+ * @returns {import('../../src/presenter.js').SourceMetadata}
+ */
 function metadata(id, overrides = {}) {
-  return {
+  return /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
     'source-id': id,
     'source-kind': 'published',
     'as-of': '2026-09-01T00:00:00Z',
@@ -20,9 +24,10 @@ function metadata(id, overrides = {}) {
     freshness: 'fresh',
     availability: 'available',
     ...overrides
-  };
+  });
 }
 
+/** @type {import('../../src/presenter.js').LogicalSourceInput} */
 const workflows = {
   source: 'workflows',
   rows: [
@@ -32,6 +37,7 @@ const workflows = {
   metadata: metadata('workflows')
 };
 
+/** @type {import('../../src/presenter.js').LogicalSourceInput} */
 const usage = {
   source: 'usage',
   rows: [
@@ -107,6 +113,7 @@ describe('declarative dashboard queries', () => {
       on: [{ left: 'workflow', right: 'workflow' }],
       fields: [{ field: 'aic', as: 'aic' }]
     };
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */
     const sources = {
       workflows,
       'usage-totals': { source: 'usage-totals', rows: [{ workflow: 'a.md', aic: 10 }], metadata: metadata('usage-totals') }
@@ -142,6 +149,7 @@ describe('declarative dashboard queries', () => {
   });
 
   it('never matches null, blank, or object join keys', () => {
+    /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */
     const sources = {
       workflows: {
         source: 'workflows',
@@ -290,11 +298,11 @@ describe('computed field vocabulary', () => {
   });
 
   it('executes declared queries through the data worker request handler', () => {
-    const response = processDataRequest({
+    const response = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (processDataRequest({
       operation: 'execute-dashboard-queries',
       queries: [{ name: 'totals', from: 'usage', aggregate: { by: ['workflow'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] } }],
       sources: { usage }
-    });
+    }));
 
     expect(response.totals.rows).toEqual([{ workflow: 'a.md', aic: 10 }]);
   });

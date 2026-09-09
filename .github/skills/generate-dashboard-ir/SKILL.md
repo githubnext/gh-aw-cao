@@ -49,6 +49,57 @@ Produce one complete Dashboard Language YAML document that:
 
 Return only the validated complete Dashboard Language YAML document unless the user explicitly requests an explanation.
 
+## Declarative queries
+
+When the intent needs a projection, a relationship between two sources, or a derived measure that no canonical source provides, declare it once under `dashboard.queries` (Dashboard Language Specification Section 5.5) and select the derived source by name from the views. Never add view-specific code, joins, or expressions.
+
+Valid:
+
+```yaml
+queries:
+  - name: workflow-aic-totals
+    from: usage
+    aggregate:
+      by: [organization, repository, workflow]
+      values:
+        - { field: aic, as: aic, reducer: sum }
+  - name: workflow-cost-inventory
+    from: workflows
+    joins:
+      - source: workflow-aic-totals
+        type: left
+        on:
+          - { left: workflow, right: workflow }
+        fields:
+          - { field: aic, as: observed-aic }
+    compute:
+      - as: total-aic
+        function: coalesce
+        args: [{ field: observed-aic }, { value: 0 }]
+    select:
+      - { field: workflow }
+      - { field: total-aic, as: aic }
+```
+
+Invalid:
+
+```yaml
+queries:
+  - name: workflow-cost-inventory
+    from: workflows
+    joins:
+      - source: usage
+        type: cross
+        on: [{ left: workflow, right: workflow }]
+        fields: [{ field: aic, as: aic }]
+    compute:
+      - as: cost
+        function: eval
+        args: [{ value: "aic * rate" }]
+```
+
+Invalid because `cross` is not a supported join type, `usage` has more than one row per join key, and `eval` is outside the closed computed-field vocabulary. Queries must reference only canonical sources or earlier queries, keep every output name unique, and reference only fields the preceding clauses produce.
+
 ## Corpus procedure
 
 When the working context requests a training-corpus example:
