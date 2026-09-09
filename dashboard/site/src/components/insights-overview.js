@@ -4,6 +4,7 @@ import { formatRoundedPercent } from './count-formatters.js';
 import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
+import { renderDlRow } from './ui-primitives.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required']);
 
@@ -64,9 +65,9 @@ export function renderInsightsOverview(context) {
           h('h2', { id: 'insights-value-title' }, 'Operational value attainment'),
           h('p', null, 'Measured attainment and accepted repository outcomes, without inferring unsupported ROI.')),
         h('dl', { className: 'insights-lead-metrics' },
-          metric(meanValue === null ? '—' : formatRoundedPercent(meanValue), 'mean attainment'),
-          metric(formatNumber(acceptedOutcomes), 'accepted outcomes'),
-          metric(formatNumber(matureValues), 'mature observations'))),
+          renderDlRow('mean attainment', meanValue === null ? '—' : formatRoundedPercent(meanValue)),
+          renderDlRow('accepted outcomes', formatNumber(acceptedOutcomes)),
+          renderDlRow('mature observations', formatNumber(matureValues)))),
       valueSeries.length > 1 ? renderValueSeriesSelector(valuePoints, valueSeries, valueChart) : null,
       valueChart),
 
@@ -80,9 +81,9 @@ export function renderInsightsOverview(context) {
       renderLazyPanel('Execution health', () => insightPanel('Execution health', 'Recent completed workflow-run conclusions.',
         renderChartWidget('swimlane', runPoints, listChartSeries(runPoints)),
         h('dl', { className: 'insights-inline-metrics' },
-          metric(completedRuns.length ? formatRoundedPercent(successfulRuns / completedRuns.length) : '—', 'successful'),
-          metric(formatNumber(failedRuns), 'failed'),
-          metric(formatNumber(activeRuns), 'active')))),
+          renderDlRow('successful', completedRuns.length ? formatRoundedPercent(successfulRuns / completedRuns.length) : '—'),
+          renderDlRow('failed', formatNumber(failedRuns)),
+          renderDlRow('active', formatNumber(activeRuns))))),
       renderLazyPanel('Threat detection', () => insightPanel('Threat detection', 'Usable verdicts remain distinct from unavailable evidence.',
         renderChartWidget('pie', [], [], pieSummary(detectionEntries), 'Observations'),
         h('div', { className: 'insights-panel-stat' }, h('strong', null, usableVerdicts === null ? '—' : `${Math.round(usableVerdicts)}%`), h('span', null, 'usable verdict coverage'))))),
@@ -165,11 +166,6 @@ function insightPanel(title, description, ...children) {
   return h('section', { className: 'insights-plot-panel' },
     h('header', null, h('h2', null, title), h('p', null, description)),
     ...children);
-}
-
-/** @param {string} value @param {string} label */
-function metric(value, label) {
-  return h('div', null, h('dt', null, label), h('dd', null, value));
 }
 
 /** @param {number[]} values */
