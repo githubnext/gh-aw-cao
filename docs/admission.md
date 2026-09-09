@@ -50,7 +50,7 @@ Admission is deliberately lightweight and repository-local. Once admitted, `.git
 | Validates policy and workflow identity | Resolves repository inventory and allowlists |
 | Rejects disabled or undeclared packages and workers | Verifies target and review-repository access |
 | Prevents manual inputs from widening policy | Binds live workers to centrally authorized targets and output routes |
-| Computes policy ceilings | Applies repository, rollout, dispatch, and monthly AI Credit limits |
+| Computes policy ceilings | Applies repository, rollout, and dispatch limits |
 | Uses only the control repository revision | Confirms installed worker workflow availability and binds output routing |
 
 Failure in either phase prevents agent execution. Admission denial skips activation; precompute fails closed when an authorized run cannot establish a required remote fact. Successful precompute uploads only `control-precompute.json`; the agent job restores and validates that non-secret artifact before checkout or model invocation.
@@ -77,7 +77,6 @@ The [Configuration Reference](configuration.md) defines every policy field. The 
 | `max-repositories` and `rollout-percent` | Rejects a wider manual request. | Bounds selected repositories. |
 | `scope` | Validates and returns the configured owners and repositories. | Filters inventory and rejects out-of-scope targets or review destinations; workers also reject targets outside a configured exact repository allowlist. |
 | `inventory` | Validates scan, cell, and batch limits. | Performs bounded discovery and deterministic batching. |
-| `monthly-ai-credit-budget` | Validates and returns the package budget. | Reads usage and admits only work that fits the remaining budget. |
 
 ## Diagnose a Skipped Run
 
