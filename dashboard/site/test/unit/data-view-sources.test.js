@@ -106,6 +106,7 @@ describe('canonical view sources', () => {
       rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }],
       metadata: { 'source-kind': 'canonical-query' }
     });
+
     expect(projected['security-findings']).toMatchObject({
       source: 'security-findings',
       rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }],
