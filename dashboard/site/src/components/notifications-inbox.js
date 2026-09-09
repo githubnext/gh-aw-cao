@@ -6,7 +6,7 @@ import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
-import { createExpandableToggle, renderLazyDisclosure, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, renderDlRow, renderLazyDisclosure, renderSearchInput } from './ui-primitives.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -632,8 +632,8 @@ function renderWorkNow(workItems, running, pending) {
     h('div', { className: 'home-work-now' },
       h('div', { className: 'home-work-ring', style: `--running:${(running / total) * 360}deg;--review:${((running + pending) / total) * 360}deg` }, h('strong', null, String(running)), h('span', null, 'running')),
       h('dl', null,
-        h('div', null, h('dt', null, 'Needs review'), h('dd', null, String(pending))),
-        h('div', null, h('dt', null, 'Blocked'), h('dd', null, String(blocked))))));
+        renderDlRow('Needs review', String(pending)),
+        renderDlRow('Blocked', String(blocked)))));
 }
 
 /** @param {Record<string, unknown>[]} rows @param {number} start @param {number} end */
