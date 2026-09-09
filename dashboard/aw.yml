@@ -220,6 +220,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/route-empty-state.js
   - source: site/src/components/route-page-shell.js
     destination: .github/aw/dashboard/site/src/components/route-page-shell.js
+  - source: site/src/components/reset-dashboard-control.js
+    destination: .github/aw/dashboard/site/src/components/reset-dashboard-control.js
   - source: site/src/components/route-composition.js
     destination: .github/aw/dashboard/site/src/components/route-composition.js
   - source: site/src/components/route-body-composition.js

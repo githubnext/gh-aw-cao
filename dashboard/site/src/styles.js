@@ -330,6 +330,28 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .appearance-options button:last-child { border-radius: 0 6px 6px 0; }
 .appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .appearance-options .octicon { width: 14px; height: 14px; }
+.reset-dashboard-control { padding-top: 8px; border-top: 1px solid var(--border); }
+.account-menu-reset { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; cursor: pointer; }
+.account-menu-reset:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
+.account-menu-reset .octicon { width: 15px; height: 15px; }
+.reset-dashboard-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
+.reset-dashboard-dialog[open] { display: grid; }
+.reset-dashboard-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
+.reset-dashboard-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
+.reset-dashboard-dialog-header h2 { margin: 0; font-size: 1rem; }
+.reset-dashboard-dialog-close { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.reset-dashboard-dialog-close:hover { background: var(--neutral-muted); color: var(--fg); }
+.reset-dashboard-dialog-body { display: grid; gap: 8px; padding: 18px 16px; line-height: 1.5; }
+.reset-dashboard-dialog-body p { margin: 0; }
+.reset-dashboard-dialog-body strong { color: var(--danger); }
+.reset-dashboard-dialog-footer { min-height: 58px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }
+.reset-dashboard-status { min-width: 0; flex: 1; color: var(--danger); font-size: .75rem; }
+.reset-dashboard-cancel, .reset-dashboard-confirm { min-height: 34px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; }
+.reset-dashboard-cancel { background: var(--canvas); color: var(--fg); }
+.reset-dashboard-confirm { border-color: var(--danger); background: var(--danger); color: var(--on-emphasis); }
+.reset-dashboard-cancel:hover { background: var(--neutral-muted); }
+.reset-dashboard-confirm:hover { filter: brightness(1.08); }
+.reset-dashboard-cancel:disabled, .reset-dashboard-confirm:disabled { cursor: default; opacity: .6; }
 main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px 24px 40px; }
 .lede { color: var(--muted); }
 .overview-header { min-width: 0; flex: 1; }
