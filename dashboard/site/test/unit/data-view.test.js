@@ -72,6 +72,38 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.view-description')).toBeNull();
   });
 
+  it('omits table facets for columns with filtering disabled', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'repositories',
+      title: 'Repositories',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        encoding: {
+          columns: [
+            { field: 'failure-rate', type: 'nominal', filter: false },
+            { field: 'status', type: 'nominal', display: 'status' }
+          ]
+        }
+      },
+      sourceName: 'repositories',
+      rows: [
+        { 'failure-rate': '0%', status: 'Healthy' },
+        { 'failure-rate': '50%', status: 'Warning' }
+      ],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelector('[data-table-facet="failure-rate"]')).toBeNull();
+    expect(rendered?.querySelector('[data-table-facet="status"]')).not.toBeNull();
+  });
+
   it('renders charts without duplicate data tables', () => {
     const context = /** @type {Parameters<typeof renderDataView>[1]} */ ({
       pageId: 'repositories',

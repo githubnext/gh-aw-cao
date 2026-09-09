@@ -221,7 +221,7 @@ function renderTableView(context) {
       filterLabel: interactive ? `Filter ${title}` : undefined,
       filterId: typeof view.id === 'string' ? view.id : `${pageId}-table`,
       filterFields: columns.flatMap((column, columnIndex) => (
-        ['nominal', 'ordinal'].includes(String(column.type))
+        column.filter !== false && ['nominal', 'ordinal'].includes(String(column.type))
           ? [{
               key: typeof column.as === 'string' ? column.as : column.field,
               label: fieldTitle(column),

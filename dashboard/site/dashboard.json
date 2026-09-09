@@ -806,7 +806,8 @@
                   {
                     "field": "failure-summary",
                     "type": "nominal",
-                    "title": "Failure rate"
+                    "title": "Failure rate",
+                    "filter": false
                   },
                   {
                     "field": "aic",
