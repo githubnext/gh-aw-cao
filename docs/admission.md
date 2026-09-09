@@ -29,7 +29,6 @@ The shared control component reads `.github/cao/src/control.mjs` and `.github/ca
 | Mode input | `safe_output_mode` is `review` or `live` and does not exceed the checked-in package, target, or worker ceiling. |
 | Run limits | `max_repos` and `rollout_percent` are valid and do not exceed checked-in policy. |
 | GitHub API capacity | The credential used for precompute has enough primary REST API capacity for the run. |
-| Runner disk capacity | The runner reports at least 2048 MB free for an orchestrator, or 6144 MB free for a worker, on the job temporary directory. |
 
 A manual dispatch can narrow a run, such as changing an authorized `live` run to `review` or reducing `max_repos`. It cannot promote mode, add scope, enable a package or worker, or increase a limit.
 
@@ -96,6 +95,5 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 | `safe_output_mode exceeds checked-in policy`, `safe_output_mode must be review or live` | Mode input | Narrow the requested `safe_output_mode`, or raise the checked-in package, target, or worker `mode`/`max-mode` ceiling. |
 | `max_repositories exceeds checked-in policy`, `rollout_percent exceeds checked-in policy`, or an integer-range message | Run limits | Narrow the requested `max_repos`/`rollout_percent`, or raise the checked-in `max-repositories`/`rollout-percent`. |
 | `github-api-capacity-insufficient`, `github-api-capacity-unavailable` | GitHub API capacity | Follow the remediation guidance in the run summary and wait until the reported reset time before retrying. |
-| `runner-disk-capacity-insufficient`, `runner-disk-capacity-unavailable` | Runner disk capacity | Free disk space on the runner, use a larger runner, or narrow the run; a runner that cannot report free space fails closed. |
 
 Fix the checked-in setup or policy, commit and push the new revision, then start a new run. Do not bypass admission by editing a generated `.lock.yml` file or by widening manual inputs.
