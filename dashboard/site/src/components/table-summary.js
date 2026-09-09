@@ -155,7 +155,7 @@ function renderQuantitativeSummary(summary) {
       'dl',
       null,
       ...renderDefinitionListRows([
-        { label: 'Mean', value: formatStatistic(summary.mean) },
+        { label: 'Avg', value: formatStatistic(summary.mean) },
         { label: 'Stddev', value: summary.deviation === null ? 'N/A' : formatStatistic(summary.deviation) }
       ])
     )

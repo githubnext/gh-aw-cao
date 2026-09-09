@@ -365,8 +365,6 @@ async function collectDashboardRecordsImpl({
     ...(deployedInventory.allowedRepositories || []),
     ...allowedRepositories,
   ].filter(Boolean))].sort();
-  const remoteWorkflowRepositories = [...allowedRepositories]
-    .filter((repositoryName) => repositoryName !== repository.toLowerCase());
   const repositoryStates = await mapWithConcurrency(reportRepositoryNames, 4, async (repositoryName) => {
     try {
       const metadata = await github(`/repos/${repositoryName}`);
@@ -374,7 +372,9 @@ async function collectDashboardRecordsImpl({
         ? metadata.visibility
         : metadata.private === true ? "private" : metadata.private === false ? "public" : "unknown";
       return {
-        repository: repositoryName,
+        repository: metadata.full_name || repositoryName,
+        requestedRepository: repositoryName,
+        id: metadata.id ?? null,
         complete: visibility !== "unknown" && Boolean(metadata.default_branch),
         visibility,
         defaultBranch: metadata.default_branch || "",
@@ -385,12 +385,39 @@ async function collectDashboardRecordsImpl({
     } catch (error) {
       if (error instanceof GitHubRateLimitError) throw error;
       log.warning`${error.message}; remote workflow discovery will be incomplete for ${repositoryName}`;
-      return { repository: repositoryName, complete: false, visibility: "unknown", reason: error.message };
+      return {
+        repository: repositoryName,
+        requestedRepository: repositoryName,
+        id: null,
+        complete: false,
+        visibility: "unknown",
+        reason: error.message,
+      };
     }
   });
-  const repositoryStateByName = new Map(
-    repositoryStates.map((state) => [state.repository.toLowerCase(), state]),
+  const repositoryStateByName = new Map();
+  const repositoryStateByIdentity = new Map();
+  for (const state of repositoryStates) {
+    repositoryStateByName.set(state.requestedRepository.toLowerCase(), state);
+    repositoryStateByName.set(state.repository.toLowerCase(), state);
+    const identity = state.id === null ? state.repository.toLowerCase() : `id:${state.id}`;
+    if (!repositoryStateByIdentity.has(identity)) repositoryStateByIdentity.set(identity, state);
+  }
+  const canonicalRepositoryNames = [...repositoryStateByIdentity.values()].map((state) => state.repository);
+  const canonicalAllowedRepositories = new Set(
+    [...allowedRepositories].flatMap((repositoryName) => [
+      repositoryName,
+      repositoryStateByName.get(repositoryName)?.repository.toLowerCase() || repositoryName,
+    ]),
   );
+  const remoteWorkflowRepositories = canonicalRepositoryNames
+    .filter((repositoryName) => (
+      canonicalAllowedRepositories.has(repositoryName.toLowerCase())
+      && repositoryName.toLowerCase() !== (
+        repositoryStateByName.get(repository.toLowerCase())?.repository.toLowerCase()
+        || repository.toLowerCase()
+      )
+    ));
   const controlRepositoryState = repositoryStateByName.get(repository.toLowerCase());
   if (!controlRepositoryState?.complete) {
     throw new Error(controlRepositoryState?.reason || "Control repository visibility is unavailable");
@@ -563,7 +590,7 @@ async function collectDashboardRecordsImpl({
       updatedAt: artifact.updated_at,
       workflow: run.name,
       runUrl: safeUrl(run.html_url),
-      repository: targetRepositoryFromRun(run, outputRepository, allowedRepositories, owner),
+      repository: targetRepositoryFromRun(run, outputRepository, canonicalAllowedRepositories, owner),
       outputRepository,
       runtimeRepository: outputRepository,
       workflowPath: run.path || "",
@@ -577,7 +604,7 @@ async function collectDashboardRecordsImpl({
   }
 
   const [reportSources, latestRelease] = await Promise.all([
-    mapWithConcurrency(reportRepositoryNames, 4, repositoryReportSources),
+    mapWithConcurrency(canonicalRepositoryNames, 4, repositoryReportSources),
     remoteWorkflowRepositories.length > 0
       ? githubOptional("/repos/github/gh-aw/releases/latest", {})
       : null,
@@ -614,7 +641,7 @@ async function collectDashboardRecordsImpl({
     return {
       mode: normalizeMode(mode),
       conclusion: run?.conclusion || "unknown",
-      repository: targetRepositoryFromRun(run, `${runOwner}/${runRepository}`, allowedRepositories, owner),
+      repository: targetRepositoryFromRun(run, `${runOwner}/${runRepository}`, canonicalAllowedRepositories, owner),
       runtimeRepository: `${runOwner}/${runRepository}`,
       workflowPath,
       workflowId: workflowPath.split("/").at(-1)?.replace(/\.lock\.yml$/, "") || "",
@@ -661,7 +688,9 @@ async function collectDashboardRecordsImpl({
             ? configuredModeFor(bundle, controlSettings)
             : inferredMode,
       conclusion: record.conclusion || metadata.conclusion,
-      repository: record.repository || metadata.repository || "",
+      repository: repositoryStateByName.get(
+        String(record.repository || metadata.repository || "").toLowerCase(),
+      )?.repository || record.repository || metadata.repository || "",
       runtimeRepository: record.runtimeRepository || metadata.runtimeRepository || "",
       workflowPath: record.workflowPath || metadata.workflowPath || inventoryWorkflow?.sourcePath || "",
       workflowId,
@@ -670,7 +699,7 @@ async function collectDashboardRecordsImpl({
   }))).sort((left, right) => new Date(right.updatedAt) - new Date(left.updatedAt));
   const scopedRecords = records.filter((record) => {
     const repositoryName = record.repository.toLowerCase();
-    if (allowedRepositories.size > 0 && !allowedRepositories.has(repositoryName)) return false;
+    if (canonicalAllowedRepositories.size > 0 && !canonicalAllowedRepositories.has(repositoryName)) return false;
     return repositoryStateByName.get(repositoryName)?.complete === true;
   });
   return {

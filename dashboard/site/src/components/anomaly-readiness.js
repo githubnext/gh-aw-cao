@@ -4,6 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { text as stringValue } from './count-formatters.js';
 
 /**
  * @param {Record<string, unknown>} row
@@ -21,9 +22,4 @@ export function renderAnomalyReadiness(row) {
     ),
     h('p', null, stringValue(row.detail))
   );
-}
-
-/** @param {unknown} value */
-function stringValue(value) {
-  return value == null ? '' : String(value);
 }
