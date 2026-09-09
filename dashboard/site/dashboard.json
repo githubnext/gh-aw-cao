@@ -111,6 +111,7 @@
       },
       {
         "name": "engines-models-usage",
+        "intent": "List agent events with their run-level engine, model, version, rollout, and navigation context.",
         "description": "Observed agent events joined with their engine, model, version, and rollout metadata.",
         "from": "events",
         "joins": [
