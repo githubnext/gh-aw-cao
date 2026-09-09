@@ -874,6 +874,8 @@
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./sources.json", window.location.href).href;
+        /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
+        let cachedSources = null;
 
         try {
           const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
@@ -919,8 +921,6 @@
             ),
             initialLazySources,
           );
-          /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
-          let cachedSources = null;
           try {
             cachedSources = await loadInitialSources(
               (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
@@ -930,20 +930,18 @@
           }
 
           if (cachedSources) {
-            renderSources(cachedSources, "cached", true, loadPageSources);
+            const displayedSources = cachedSources;
+            renderSources(displayedSources, "cached", true, loadPageSources);
             loadingProgress.complete();
             cancelCommand.complete();
-          }
-
-          const refresh = loadInitialSources(
-            (requested, pagination) => loadCanonicalDashboardSources(
-              sourceUrl,
-              requested,
-              dashboardContext,
-              pagination,
-            ),
-          );
-          if (cachedSources) {
+            const refresh = loadInitialSources(
+              (requested, pagination) => loadCanonicalDashboardSources(
+                sourceUrl,
+                requested,
+                dashboardContext,
+                pagination,
+              ),
+            );
             void refresh.then(
               (sources) => updateWithViewTransition(
                 document,
@@ -954,12 +952,24 @@
                 console.error(`Unable to refresh live dashboard data: ${message}`);
                 updateWithViewTransition(
                   document,
-                  () => renderSources(cachedSources, "ready", true, loadPageSources),
+                  () => renderSources(displayedSources, "ready", true, loadPageSources),
                 );
               },
             );
           } else {
-            renderSources(await refresh, "ready", true, loadPageSources);
+            renderSources(
+              await loadInitialSources(
+                (requested, pagination) => loadCanonicalDashboardSources(
+                  sourceUrl,
+                  requested,
+                  dashboardContext,
+                  pagination,
+                ),
+              ),
+              "ready",
+              true,
+              loadPageSources,
+            );
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
