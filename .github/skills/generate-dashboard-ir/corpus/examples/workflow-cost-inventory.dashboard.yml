@@ -15,6 +15,7 @@ dashboard:
       significant: 0.1
   queries:
     - name: workflow-aic-totals
+      intent: Summarize observed AI Credit usage by declared workflow.
       description: Observed AI Credit totals for each declared workflow.
       from: usage
       aggregate:
@@ -27,6 +28,7 @@ dashboard:
             as: aic
             reducer: sum
     - name: workflow-cost-inventory
+      intent: List declared workflows with their observed AI Credit totals so operators can identify the highest-cost workflows.
       description: Declared workflows joined with their observed AI Credit totals.
       from: workflows
       joins:
