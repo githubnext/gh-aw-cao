@@ -2,8 +2,8 @@
  * Shared route-scoped empty and unavailable state helpers.
  */
 
-import { h } from '../dom.js';
-import { renderEmptyMessage } from './ui-primitives.js';
+import { h } from '../dom.js'
+import { renderEmptyMessage } from './ui-primitives.js'
 
 /**
  * @typedef {{
@@ -29,28 +29,39 @@ export function createRouteView(options) {
   const root = h('div', {
     className: options.rootClassName,
     'data-route-view': '',
-    'data-route-parameter': options.routeParameter
-  });
+    'data-route-parameter': options.routeParameter,
+  })
 
   /** @param {unknown} routeValue */
   const render = (routeValue) => {
-    const normalizedValue = typeof routeValue === 'string' ? routeValue : '';
-    root.dataset[options.datasetKey] = normalizedValue;
-    const unavailable = options.isUnavailable?.() ?? false;
-    const hasSelection = options.hasSelection ? options.hasSelection(normalizedValue) : normalizedValue.trim().length > 0;
-    const matched = unavailable || !hasSelection ? null : options.renderMatched(normalizedValue);
+    const normalizedValue = typeof routeValue === 'string' ? routeValue : ''
+    root.dataset[options.datasetKey] = normalizedValue
+    const unavailable = options.isUnavailable?.() ?? false
+    const hasSelection = options.hasSelection
+      ? options.hasSelection(normalizedValue)
+      : normalizedValue.trim().length > 0
+    const matched =
+      unavailable || !hasSelection
+        ? null
+        : options.renderMatched(normalizedValue)
     const message = unavailable
-      ? options.unavailableMessage ?? options.selectMessage
+      ? (options.unavailableMessage ?? options.selectMessage)
       : matched
         ? null
-        : hasSelection ? options.notFoundMessage : options.selectMessage;
-    root.replaceChildren(matched ?? renderEmptyMessage(message ?? ''));
-  };
+        : hasSelection
+          ? options.notFoundMessage
+          : options.selectMessage
+    root.replaceChildren(matched ?? renderEmptyMessage(message ?? ''))
+  }
 
   root.addEventListener('dashboard-route-change', (event) => {
-    if (!(event instanceof CustomEvent) || event.detail?.parameter !== options.routeParameter) return;
-    render(event.detail.value);
-  });
-  render('');
-  return root;
+    if (
+      !(event instanceof CustomEvent) ||
+      event.detail?.parameter !== options.routeParameter
+    )
+      return
+    render(event.detail.value)
+  })
+  render('')
+  return root
 }

@@ -1,8 +1,9 @@
-import { existsSync } from 'node:fs';
-import { defineConfig } from '@playwright/test';
+import { existsSync } from 'node:fs'
+import { defineConfig } from '@playwright/test'
 
-const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-  || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
+const executablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+  (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined)
 
 export default defineConfig({
   fullyParallel: true,
@@ -14,7 +15,7 @@ export default defineConfig({
     headless: true,
     launchOptions: {
       args: ['--no-sandbox'],
-      ...(executablePath ? { executablePath } : {})
-    }
-  }
-});
+      ...(executablePath ? { executablePath } : {}),
+    },
+  },
+})

@@ -2,8 +2,8 @@
  * GitHub Primer data-state metrics card grid component.
  */
 
-import { h } from '../dom.js';
-import { renderStatusBadge } from './badge.js';
+import { h } from '../dom.js'
+import { renderStatusBadge } from './badge.js'
 
 /**
  * @typedef {import("../presenter.js").DataState} EffectiveDataState
@@ -28,7 +28,7 @@ function renderDataStateMetricCard(label, axis, status) {
       { className: 'metric-value', 'data-state-axis': axis },
       renderStatusBadge(status),
     ),
-  );
+  )
 }
 
 /**
@@ -36,9 +36,9 @@ function renderDataStateMetricCard(label, axis, status) {
  * @returns {HTMLElement}
  */
 export function renderDataStateMetrics(effectiveState) {
-  const availability = effectiveState?.availability ?? 'available';
-  const completeness = effectiveState?.completeness ?? 'complete';
-  const freshness = effectiveState?.freshness ?? 'fresh';
+  const availability = effectiveState?.availability ?? 'available'
+  const completeness = effectiveState?.completeness ?? 'complete'
+  const freshness = effectiveState?.freshness ?? 'fresh'
 
   return h(
     'dl',
@@ -46,5 +46,5 @@ export function renderDataStateMetrics(effectiveState) {
     renderDataStateMetricCard('Availability', 'availability', availability),
     renderDataStateMetricCard('Completeness', 'completeness', completeness),
     renderDataStateMetricCard('Freshness', 'freshness', freshness),
-  );
+  )
 }

@@ -1,6 +1,6 @@
-import { h } from '../dom.js';
-import { renderLinkedValue } from './link-content.js';
-import { renderDlRow, renderIconSpan } from './ui-primitives.js';
+import { h } from '../dom.js'
+import { renderLinkedValue } from './link-content.js'
+import { renderDlRow, renderIconSpan } from './ui-primitives.js'
 
 /** @import { SafeLink } from './link-content.js' */
 
@@ -29,34 +29,67 @@ export function renderWorkItemCard(item) {
       'header',
       null,
       renderIconSpan('work-avatar', item.icon, { ariaHidden: true }),
-      h('strong', null, renderLinkedValue(item.name, item.evidenceLink ?? null)),
-      h('span', {
-        className: 'work-owner-avatar',
-        'aria-label': `Owner: ${item.owner}`,
-        title: `Owner: ${item.owner}`
-      }, ownerInitials(item.owner))
+      h(
+        'strong',
+        null,
+        renderLinkedValue(item.name, item.evidenceLink ?? null),
+      ),
+      h(
+        'span',
+        {
+          className: 'work-owner-avatar',
+          'aria-label': `Owner: ${item.owner}`,
+          title: `Owner: ${item.owner}`,
+        },
+        ownerInitials(item.owner),
+      ),
     ),
     h('p', null, item.repository),
-    h('div', { className: 'work-card-labels', 'aria-label': 'Work labels' },
-      ...(item.packageName ? [h('span', { className: 'work-card-label work-card-label-package' }, item.packageName)] : []),
+    h(
+      'div',
+      { className: 'work-card-labels', 'aria-label': 'Work labels' },
+      ...(item.packageName
+        ? [
+            h(
+              'span',
+              { className: 'work-card-label work-card-label-package' },
+              item.packageName,
+            ),
+          ]
+        : []),
       ...(item.workType && item.workType !== 'unknown'
-        ? [h('span', { className: 'work-card-label work-card-label-role' }, item.workType)]
-        : [])
+        ? [
+            h(
+              'span',
+              { className: 'work-card-label work-card-label-role' },
+              item.workType,
+            ),
+          ]
+        : []),
     ),
-    h('dl', null,
+    h(
+      'dl',
+      null,
       renderDlRow('Owner', item.owner),
       renderDlRow(item.timeLabel, item.startedLabel),
-      ...(item.timeLabel === 'Observed' ? [] : [
-        renderDlRow('Stopped', item.stoppedLabel),
-        renderDlRow('Duration', item.durationLabel)
-      ])
-    )
-  );
+      ...(item.timeLabel === 'Observed'
+        ? []
+        : [
+            renderDlRow('Stopped', item.stoppedLabel),
+            renderDlRow('Duration', item.durationLabel),
+          ]),
+    ),
+  )
 }
 
 /** @param {string} owner */
 function ownerInitials(owner) {
-  if (!owner || owner === 'Unassigned') return '?';
-  const parts = owner.split(/[\s/_-]+/).filter(Boolean);
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+  if (!owner || owner === 'Unassigned') return '?'
+  const parts = owner.split(/[\s/_-]+/).filter(Boolean)
+  return (
+    parts
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || '?'
+  )
 }

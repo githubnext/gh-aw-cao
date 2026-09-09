@@ -1,16 +1,20 @@
-import { processCanonicalDashboardSources } from '../../data-processor.js';
-import { dashboardSourceGeneration } from '../adapters/dashboard-sources.js';
-import { adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
-import { adaptSqlExport } from '../adapters/sql-export.js';
-import { normalize } from '../normalize/index.js';
-import { activateGeneration, activeGenerationIsUsable, stageCanonicalBatch } from '../storage/indexeddb.js';
+import { processCanonicalDashboardSources } from '../../data-processor.js'
+import { dashboardSourceGeneration } from '../adapters/dashboard-sources.js'
+import { adaptGhAwLogs } from '../adapters/gh-aw-logs.js'
+import { adaptSqlExport } from '../adapters/sql-export.js'
+import { normalize } from '../normalize/index.js'
+import {
+  activateGeneration,
+  activeGenerationIsUsable,
+  stageCanonicalBatch,
+} from '../storage/indexeddb.js'
 import {
   inspectStorage,
   reclaimExpendableGenerations,
   requestPersistentStorage,
-  withQuotaRecovery
-} from '../storage/quota.js';
-import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
+  withQuotaRecovery,
+} from '../storage/quota.js'
+import { CanonicalIngestionError, classifyIngestionError } from './errors.js'
 
 /**
  * @param {IDBFactory} indexedDB
@@ -18,23 +22,28 @@ import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
  * @param {() => import('../model/schema.js').CanonicalBatch | Promise<import('../model/schema.js').CanonicalBatch>} buildBatch
  * @param {{ storage?: StorageManager }} options
  */
-async function ingestReplacementGeneration(indexedDB, generation, buildBatch, options) {
+async function ingestReplacementGeneration(
+  indexedDB,
+  generation,
+  buildBatch,
+  options,
+) {
   if (options.storage) {
     await Promise.allSettled([
       inspectStorage(options.storage),
-      requestPersistentStorage(options.storage)
-    ]);
+      requestPersistentStorage(options.storage),
+    ])
   }
   if (await activeGenerationIsUsable(indexedDB, generation)) {
-    return { generation, activated: false };
+    return { generation, activated: false }
   }
-  const batch = await buildBatch();
+  const batch = await buildBatch()
   await withQuotaRecovery(
     () => stageCanonicalBatch(indexedDB, batch, generation),
-    () => reclaimExpendableGenerations(indexedDB)
-  );
-  await activateGeneration(indexedDB, generation);
-  return { generation, activated: true };
+    () => reclaimExpendableGenerations(indexedDB),
+  )
+  await activateGeneration(indexedDB, generation)
+  return { generation, activated: true }
 }
 
 /**
@@ -46,25 +55,30 @@ async function ingestReplacementGeneration(indexedDB, generation, buildBatch, op
  * @param {{ storage?: StorageManager }} [options]
  */
 export async function ingestDashboardSources(indexedDB, sources, options = {}) {
-  let phase = 'adapting';
+  let phase = 'adapting'
   /** @type {string | null} */
-  let generation = null;
+  let generation = null
   try {
-    generation = dashboardSourceGeneration(sources);
-    const targetGeneration = generation;
-    phase = 'normalizing';
-    phase = 'staging';
+    generation = dashboardSourceGeneration(sources)
+    const targetGeneration = generation
+    phase = 'normalizing'
+    phase = 'staging'
     const result = await ingestReplacementGeneration(
       indexedDB,
       targetGeneration,
       () => processCanonicalDashboardSources(sources, targetGeneration),
-      options
-    );
-    phase = 'activating';
-    return result;
+      options,
+    )
+    phase = 'activating'
+    return result
   } catch (error) {
-    if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, generation, error);
+    if (error instanceof CanonicalIngestionError) throw error
+    throw new CanonicalIngestionError(
+      classifyIngestionError(error, phase),
+      phase,
+      generation,
+      error,
+    )
   }
 }
 
@@ -76,23 +90,39 @@ export async function ingestDashboardSources(indexedDB, sources, options = {}) {
  * @param {unknown} input
  * @param {{ storage?: StorageManager }} [options]
  */
-export async function ingestSqlExportGeneration(indexedDB, input, options = {}) {
-  let phase = 'adapting';
+export async function ingestSqlExportGeneration(
+  indexedDB,
+  input,
+  options = {},
+) {
+  let phase = 'adapting'
   /** @type {string | null} */
-  let generation = null;
+  let generation = null
   try {
-    const adapted = adaptSqlExport(input);
-    generation = adapted.generation;
-    const targetGeneration = generation;
-    phase = 'normalizing';
-    const batch = normalize(adapted.observations, { generation: targetGeneration });
-    phase = 'staging';
-    const result = await ingestReplacementGeneration(indexedDB, targetGeneration, () => batch, options);
-    phase = 'activating';
-    return result;
+    const adapted = adaptSqlExport(input)
+    generation = adapted.generation
+    const targetGeneration = generation
+    phase = 'normalizing'
+    const batch = normalize(adapted.observations, {
+      generation: targetGeneration,
+    })
+    phase = 'staging'
+    const result = await ingestReplacementGeneration(
+      indexedDB,
+      targetGeneration,
+      () => batch,
+      options,
+    )
+    phase = 'activating'
+    return result
   } catch (error) {
-    if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, generation, error);
+    if (error instanceof CanonicalIngestionError) throw error
+    throw new CanonicalIngestionError(
+      classifyIngestionError(error, phase),
+      phase,
+      generation,
+      error,
+    )
   }
 }
 
@@ -105,21 +135,33 @@ export async function ingestSqlExportGeneration(indexedDB, input, options = {}) 
  * @param {{ storage?: StorageManager }} [options]
  */
 export async function ingestGhAwLogsGeneration(indexedDB, input, options = {}) {
-  let phase = 'adapting';
+  let phase = 'adapting'
   /** @type {string | null} */
-  let generation = null;
+  let generation = null
   try {
-    const adapted = adaptGhAwLogs(input);
-    generation = adapted.generation;
-    const targetGeneration = generation;
-    phase = 'normalizing';
-    const batch = normalize(adapted.observations, { generation: targetGeneration });
-    phase = 'staging';
-    const result = await ingestReplacementGeneration(indexedDB, targetGeneration, () => batch, options);
-    phase = 'activating';
-    return result;
+    const adapted = adaptGhAwLogs(input)
+    generation = adapted.generation
+    const targetGeneration = generation
+    phase = 'normalizing'
+    const batch = normalize(adapted.observations, {
+      generation: targetGeneration,
+    })
+    phase = 'staging'
+    const result = await ingestReplacementGeneration(
+      indexedDB,
+      targetGeneration,
+      () => batch,
+      options,
+    )
+    phase = 'activating'
+    return result
   } catch (error) {
-    if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, generation, error);
+    if (error instanceof CanonicalIngestionError) throw error
+    throw new CanonicalIngestionError(
+      classifyIngestionError(error, phase),
+      phase,
+      generation,
+      error,
+    )
   }
 }

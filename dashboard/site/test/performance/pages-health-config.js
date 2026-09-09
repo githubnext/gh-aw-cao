@@ -3,7 +3,7 @@ export const profiles = [
     id: 'desktop',
     viewport: { width: 1440, height: 900 },
     deviceScaleFactor: 1,
-    lighthouse: ['--preset=desktop']
+    lighthouse: ['--preset=desktop'],
   },
   {
     id: 'mobile',
@@ -13,8 +13,8 @@ export const profiles = [
       '--screenEmulation.mobile=true',
       '--screenEmulation.width=390',
       '--screenEmulation.height=844',
-      '--screenEmulation.deviceScaleFactor=3'
-    ]
+      '--screenEmulation.deviceScaleFactor=3',
+    ],
   },
   {
     id: 'low-bandwidth',
@@ -22,8 +22,8 @@ export const profiles = [
     deviceScaleFactor: 3,
     network: {
       latency: 400,
-      downloadThroughput: 400 * 1024 / 8,
-      uploadThroughput: 100 * 1024 / 8
+      downloadThroughput: (400 * 1024) / 8,
+      uploadThroughput: (100 * 1024) / 8,
     },
     cpuSlowdownMultiplier: 4,
     lighthouse: [
@@ -34,30 +34,34 @@ export const profiles = [
       '--throttling-method=simulate',
       '--throttling.rttMs=400',
       '--throttling.throughputKbps=400',
-      '--throttling.cpuSlowdownMultiplier=4'
-    ]
-  }
-];
+      '--throttling.cpuSlowdownMultiplier=4',
+    ],
+  },
+]
 
 /**
  * @param {unknown} dashboard
  * @returns {string[]}
  */
 export function dashboardPageIds(dashboard) {
-  const pages = /** @type {{ dashboard?: { pages?: Array<{ id?: unknown }> } }} */ (dashboard)?.dashboard?.pages;
-  if (!Array.isArray(pages)) throw new Error('dashboard.json does not declare dashboard.pages');
+  const pages =
+    /** @type {{ dashboard?: { pages?: Array<{ id?: unknown }> } }} */ (
+      dashboard
+    )?.dashboard?.pages
+  if (!Array.isArray(pages))
+    throw new Error('dashboard.json does not declare dashboard.pages')
   /** @type {string[]} */
-  const ids = [];
+  const ids = []
   for (const page of pages) {
     if (typeof page.id !== 'string' || page.id.length === 0) {
-      throw new Error('dashboard.json contains missing or duplicate page ids');
+      throw new Error('dashboard.json contains missing or duplicate page ids')
     }
-    ids.push(page.id);
+    ids.push(page.id)
   }
   if (new Set(ids).size !== ids.length) {
-    throw new Error('dashboard.json contains missing or duplicate page ids');
+    throw new Error('dashboard.json contains missing or duplicate page ids')
   }
-  return ids;
+  return ids
 }
 
 /**
@@ -65,9 +69,9 @@ export function dashboardPageIds(dashboard) {
  * @param {string} pageId
  */
 export function routeUrl(siteUrl, pageId) {
-  const url = new URL(siteUrl);
-  url.hash = `page-${encodeURIComponent(pageId)}`;
-  return url.href;
+  const url = new URL(siteUrl)
+  url.hash = `page-${encodeURIComponent(pageId)}`
+  return url.href
 }
 
 /**
@@ -86,6 +90,6 @@ export function lighthouseArguments(lighthouseCli, url, outputPath, profile) {
     `--output-path=${outputPath}`,
     '--disable-full-page-screenshot',
     '--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage',
-    ...profile.lighthouse
-  ];
+    ...profile.lighthouse,
+  ]
 }

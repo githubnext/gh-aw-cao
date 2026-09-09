@@ -10,5 +10,5 @@
  * @returns {Array<Record<string, unknown>>}
  */
 export function rowsFor(sources, name) {
-  return Array.isArray(sources[name]?.rows) ? sources[name].rows : [];
+  return Array.isArray(sources[name]?.rows) ? sources[name].rows : []
 }

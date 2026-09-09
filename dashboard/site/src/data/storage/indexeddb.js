@@ -1,7 +1,10 @@
-import { CANONICAL_SCHEMA_VERSION, relationshipErrors } from '../model/schema.js';
+import {
+  CANONICAL_SCHEMA_VERSION,
+  relationshipErrors,
+} from '../model/schema.js'
 
-export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 4;
+export const DATABASE_NAME = 'gh-aw-cao-dashboard-data'
+export const DATABASE_VERSION = 4
 
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
@@ -11,13 +14,13 @@ const ENTITY_STORES = /** @type {const} */ ([
   'sessions',
   'events',
   'workItems',
-  'findings'
-]);
-const GENERATION_STORES = ENTITY_STORES;
-const META_STORE = 'meta';
-const ACTIVE_GENERATION_KEY = 'activeGeneration';
-const CHECKPOINT_STORE = 'ingestionCheckpoints';
-const DEFAULT_WRITE_BATCH_SIZE = 1000;
+  'findings',
+])
+const GENERATION_STORES = ENTITY_STORES
+const META_STORE = 'meta'
+const ACTIVE_GENERATION_KEY = 'activeGeneration'
+const CHECKPOINT_STORE = 'ingestionCheckpoints'
+const DEFAULT_WRITE_BATCH_SIZE = 1000
 
 /**
  * @template T
@@ -26,18 +29,21 @@ const DEFAULT_WRITE_BATCH_SIZE = 1000;
  */
 function requestResult(request) {
   return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
-  });
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () =>
+      reject(request.error ?? new Error('IndexedDB request failed'))
+  })
 }
 
 /** @param {IDBTransaction} transaction */
 function transactionDone(transaction) {
   return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve(undefined);
-    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
-  });
+    transaction.oncomplete = () => resolve(undefined)
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error('IndexedDB transaction failed'))
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error('IndexedDB transaction aborted'))
+  })
 }
 
 /**
@@ -46,77 +52,114 @@ function transactionDone(transaction) {
  * @param {string | string[]} keyPath
  */
 function createIndex(store, name, keyPath) {
-  store.createIndex(name, keyPath);
+  store.createIndex(name, keyPath)
 }
 
 /** @param {IDBDatabase} database */
 function createSchema(database) {
-  database.createObjectStore(META_STORE, { keyPath: 'key' });
+  database.createObjectStore(META_STORE, { keyPath: 'key' })
 
-  const repositories = database.createObjectStore('repositories', { keyPath: ['generation', 'id'] });
-  createIndex(repositories, 'generation', 'generation');
-  createIndex(repositories, 'byGithubId', ['generation', 'githubId']);
-  createIndex(repositories, 'byFullName', ['generation', 'fullName']);
+  const repositories = database.createObjectStore('repositories', {
+    keyPath: ['generation', 'id'],
+  })
+  createIndex(repositories, 'generation', 'generation')
+  createIndex(repositories, 'byGithubId', ['generation', 'githubId'])
+  createIndex(repositories, 'byFullName', ['generation', 'fullName'])
 
-  const workflows = database.createObjectStore('workflows', { keyPath: ['generation', 'id'] });
-  createIndex(workflows, 'generation', 'generation');
-  createIndex(workflows, 'byRepository', ['generation', 'repositoryId']);
-  createIndex(workflows, 'byRepositoryPath', ['generation', 'repositoryId', 'path']);
+  const workflows = database.createObjectStore('workflows', {
+    keyPath: ['generation', 'id'],
+  })
+  createIndex(workflows, 'generation', 'generation')
+  createIndex(workflows, 'byRepository', ['generation', 'repositoryId'])
+  createIndex(workflows, 'byRepositoryPath', [
+    'generation',
+    'repositoryId',
+    'path',
+  ])
 
-  const runs = database.createObjectStore('runs', { keyPath: ['generation', 'id'] });
-  createIndex(runs, 'generation', 'generation');
-  createIndex(runs, 'byRepository', ['generation', 'repositoryId']);
-  createIndex(runs, 'byWorkflow', ['generation', 'workflowId']);
-  createIndex(runs, 'byStatus', ['generation', 'status']);
-  createIndex(runs, 'byRepositoryStartedAt', ['generation', 'repositoryId', 'startedAt']);
-  createIndex(runs, 'byWorkflowStartedAt', ['generation', 'workflowId', 'startedAt']);
+  const runs = database.createObjectStore('runs', {
+    keyPath: ['generation', 'id'],
+  })
+  createIndex(runs, 'generation', 'generation')
+  createIndex(runs, 'byRepository', ['generation', 'repositoryId'])
+  createIndex(runs, 'byWorkflow', ['generation', 'workflowId'])
+  createIndex(runs, 'byStatus', ['generation', 'status'])
+  createIndex(runs, 'byRepositoryStartedAt', [
+    'generation',
+    'repositoryId',
+    'startedAt',
+  ])
+  createIndex(runs, 'byWorkflowStartedAt', [
+    'generation',
+    'workflowId',
+    'startedAt',
+  ])
 
-  const jobs = database.createObjectStore('jobs', { keyPath: ['generation', 'id'] });
-  createIndex(jobs, 'generation', 'generation');
-  createIndex(jobs, 'byRun', ['generation', 'runId']);
-  createIndex(jobs, 'byRunStartedAt', ['generation', 'runId', 'startedAt']);
+  const jobs = database.createObjectStore('jobs', {
+    keyPath: ['generation', 'id'],
+  })
+  createIndex(jobs, 'generation', 'generation')
+  createIndex(jobs, 'byRun', ['generation', 'runId'])
+  createIndex(jobs, 'byRunStartedAt', ['generation', 'runId', 'startedAt'])
 
-  const sessions = database.createObjectStore('sessions', { keyPath: ['generation', 'id'] });
-  createIndex(sessions, 'generation', 'generation');
-  createIndex(sessions, 'byRun', ['generation', 'runId']);
-  createIndex(sessions, 'byJob', ['generation', 'jobId']);
-  createIndex(sessions, 'byRunStartedAt', ['generation', 'runId', 'startedAt']);
-  createIndex(sessions, 'byJobStartedAt', ['generation', 'jobId', 'startedAt']);
+  const sessions = database.createObjectStore('sessions', {
+    keyPath: ['generation', 'id'],
+  })
+  createIndex(sessions, 'generation', 'generation')
+  createIndex(sessions, 'byRun', ['generation', 'runId'])
+  createIndex(sessions, 'byJob', ['generation', 'jobId'])
+  createIndex(sessions, 'byRunStartedAt', ['generation', 'runId', 'startedAt'])
+  createIndex(sessions, 'byJobStartedAt', ['generation', 'jobId', 'startedAt'])
 
-  const events = database.createObjectStore('events', { keyPath: ['generation', 'id'] });
-  createIndex(events, 'generation', 'generation');
-  createIndex(events, 'bySessionSequence', ['generation', 'sessionId', 'sequence']);
-  createIndex(events, 'bySessionTimestamp', ['generation', 'sessionId', 'timestamp']);
-  createIndex(events, 'byType', ['generation', 'type']);
-  createIndex(events, 'bySource', ['generation', 'source']);
-  createIndex(events, 'byCorrelation', ['generation', 'correlationId']);
+  const events = database.createObjectStore('events', {
+    keyPath: ['generation', 'id'],
+  })
+  createIndex(events, 'generation', 'generation')
+  createIndex(events, 'bySessionSequence', [
+    'generation',
+    'sessionId',
+    'sequence',
+  ])
+  createIndex(events, 'bySessionTimestamp', [
+    'generation',
+    'sessionId',
+    'timestamp',
+  ])
+  createIndex(events, 'byType', ['generation', 'type'])
+  createIndex(events, 'bySource', ['generation', 'source'])
+  createIndex(events, 'byCorrelation', ['generation', 'correlationId'])
 
-  createOperationalEntityStores(database);
+  createOperationalEntityStores(database)
 
   const checkpoints = database.createObjectStore('ingestionCheckpoints', {
-    keyPath: ['generation', 'chunk']
-  });
-  createIndex(checkpoints, 'generation', 'generation');
+    keyPath: ['generation', 'chunk'],
+  })
+  createIndex(checkpoints, 'generation', 'generation')
 }
 
 /** @param {IDBDatabase} database */
 function createOperationalEntityStores(database) {
   if (!database.objectStoreNames.contains('workItems')) {
-    const workItems = database.createObjectStore('workItems', { keyPath: ['generation', 'id'] });
-    createIndex(workItems, 'generation', 'generation');
-    createIndex(workItems, 'byLifecycleState', ['generation', 'lifecycleState']);
+    const workItems = database.createObjectStore('workItems', {
+      keyPath: ['generation', 'id'],
+    })
+    createIndex(workItems, 'generation', 'generation')
+    createIndex(workItems, 'byLifecycleState', ['generation', 'lifecycleState'])
   }
   if (!database.objectStoreNames.contains('findings')) {
-    const findings = database.createObjectStore('findings', { keyPath: ['generation', 'id'] });
-    createIndex(findings, 'generation', 'generation');
-    createIndex(findings, 'bySeverity', ['generation', 'severity']);
+    const findings = database.createObjectStore('findings', {
+      keyPath: ['generation', 'id'],
+    })
+    createIndex(findings, 'generation', 'generation')
+    createIndex(findings, 'bySeverity', ['generation', 'severity'])
   }
 }
 
 /** @param {IDBDatabase} database */
 function deleteLegacySourceStores(database) {
   for (const storeName of ['sourceMetadata', 'sourceRecords']) {
-    if (database.objectStoreNames.contains(storeName)) database.deleteObjectStore(storeName);
+    if (database.objectStoreNames.contains(storeName))
+      database.deleteObjectStore(storeName)
   }
 }
 
@@ -125,17 +168,22 @@ function deleteLegacySourceStores(database) {
  * @returns {Promise<IDBDatabase>}
  */
 export function openCanonicalDatabase(indexedDB) {
-  const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+  const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION)
   return new Promise((resolve, reject) => {
     request.onupgradeneeded = (event) => {
-      if (event.oldVersion < 1) createSchema(request.result);
-      if (event.oldVersion < 3) deleteLegacySourceStores(request.result);
-      if (event.oldVersion >= 1 && event.oldVersion < 4) createOperationalEntityStores(request.result);
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));
-    request.onblocked = () => reject(new Error('Opening canonical dashboard data was blocked'));
-  });
+      if (event.oldVersion < 1) createSchema(request.result)
+      if (event.oldVersion < 3) deleteLegacySourceStores(request.result)
+      if (event.oldVersion >= 1 && event.oldVersion < 4)
+        createOperationalEntityStores(request.result)
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () =>
+      reject(
+        request.error ?? new Error('Unable to open canonical dashboard data'),
+      )
+    request.onblocked = () =>
+      reject(new Error('Opening canonical dashboard data was blocked'))
+  })
 }
 
 /**
@@ -143,11 +191,15 @@ export function openCanonicalDatabase(indexedDB) {
  * @param {string} key
  */
 async function readMeta(database, key) {
-  const transaction = database.transaction(META_STORE);
-  const result = await requestResult(transaction.objectStore(META_STORE).get(key));
+  const transaction = database.transaction(META_STORE)
+  const result = await requestResult(
+    transaction.objectStore(META_STORE).get(key),
+  )
   return result && typeof result === 'object'
-    ? /** @type {{ key: string, value?: unknown, state?: unknown, canonicalSchemaVersion?: unknown }} */ (result)
-    : null;
+    ? /** @type {{ key: string, value?: unknown, state?: unknown, canonicalSchemaVersion?: unknown }} */ (
+        result
+      )
+    : null
 }
 
 /**
@@ -155,9 +207,9 @@ async function readMeta(database, key) {
  * @param {Record<string, unknown>} value
  */
 async function writeMeta(database, value) {
-  const transaction = database.transaction(META_STORE, 'readwrite');
-  transaction.objectStore(META_STORE).put(value);
-  await transactionDone(transaction);
+  const transaction = database.transaction(META_STORE, 'readwrite')
+  transaction.objectStore(META_STORE).put(value)
+  await transactionDone(transaction)
 }
 
 /**
@@ -166,13 +218,13 @@ async function writeMeta(database, value) {
  * @param {string} chunk
  */
 async function readStoredCheckpoint(database, generation, chunk) {
-  const transaction = database.transaction(CHECKPOINT_STORE);
+  const transaction = database.transaction(CHECKPOINT_STORE)
   const result = await requestResult(
-    transaction.objectStore(CHECKPOINT_STORE).get([generation, chunk])
-  );
+    transaction.objectStore(CHECKPOINT_STORE).get([generation, chunk]),
+  )
   return result && typeof result === 'object'
     ? /** @type {Record<string, unknown>} */ (result)
-    : null;
+    : null
 }
 
 /**
@@ -181,51 +233,64 @@ async function readStoredCheckpoint(database, generation, chunk) {
  * @param {string} generation
  * @param {{ batchSize?: number, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
  */
-export async function stageCanonicalBatch(indexedDB, batch, generation, options = {}) {
-  const database = await openCanonicalDatabase(indexedDB);
+export async function stageCanonicalBatch(
+  indexedDB,
+  batch,
+  generation,
+  options = {},
+) {
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const metaTransaction = database.transaction(META_STORE, 'readwrite');
+    const metaTransaction = database.transaction(META_STORE, 'readwrite')
     metaTransaction.objectStore(META_STORE).put({
       key: `generation:${generation}`,
-      state: 'staging'
-    });
-    await transactionDone(metaTransaction);
+      state: 'staging',
+    })
+    await transactionDone(metaTransaction)
 
-    const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
+    const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE
     if (!Number.isInteger(batchSize) || batchSize < 1) {
-      throw new TypeError('Write batch size must be a positive integer');
+      throw new TypeError('Write batch size must be a positive integer')
     }
-    let committedRecords = 0;
-    let committedBatches = 0;
+    let committedRecords = 0
+    let committedBatches = 0
     for (const storeName of GENERATION_STORES) {
-      const records = batch[storeName];
+      const records = batch[storeName]
       for (let offset = 0; offset < records.length; offset += batchSize) {
-        const boundedRecords = records.slice(offset, offset + batchSize);
-        const invalid = boundedRecords.find((record) => record.generation !== generation);
+        const boundedRecords = records.slice(offset, offset + batchSize)
+        const invalid = boundedRecords.find(
+          (record) => record.generation !== generation,
+        )
         if (invalid) {
-          throw new Error(`${storeName} record does not belong to generation ${generation}`);
+          throw new Error(
+            `${storeName} record does not belong to generation ${generation}`,
+          )
         }
-        const transaction = database.transaction(storeName, 'readwrite');
-        for (const record of boundedRecords) transaction.objectStore(storeName).put(record);
-        await transactionDone(transaction);
-        committedRecords += boundedRecords.length;
-        committedBatches += 1;
-        await options.onBatchCommitted?.({ committedBatches, committedRecords });
+        const transaction = database.transaction(storeName, 'readwrite')
+        for (const record of boundedRecords)
+          transaction.objectStore(storeName).put(record)
+        await transactionDone(transaction)
+        committedRecords += boundedRecords.length
+        committedBatches += 1
+        await options.onBatchCommitted?.({ committedBatches, committedRecords })
       }
     }
 
-    const checkpointTransaction = database.transaction(CHECKPOINT_STORE, 'readwrite');
+    const checkpointTransaction = database.transaction(
+      CHECKPOINT_STORE,
+      'readwrite',
+    )
     checkpointTransaction.objectStore(CHECKPOINT_STORE).put({
       generation,
       chunk: 'dashboard-sources',
       digest: generation,
       status: 'committed',
       recordCount: committedRecords,
-      committedAt: new Date().toISOString()
-    });
-    await transactionDone(checkpointTransaction);
+      committedAt: new Date().toISOString(),
+    })
+    await transactionDone(checkpointTransaction)
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -234,12 +299,16 @@ export async function stageCanonicalBatch(indexedDB, batch, generation, options 
  * @param {string} generation
  * @param {string} [chunk]
  */
-export async function readCheckpoint(indexedDB, generation, chunk = 'dashboard-sources') {
-  const database = await openCanonicalDatabase(indexedDB);
+export async function readCheckpoint(
+  indexedDB,
+  generation,
+  chunk = 'dashboard-sources',
+) {
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    return await readStoredCheckpoint(database, generation, chunk);
+    return await readStoredCheckpoint(database, generation, chunk)
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -248,45 +317,52 @@ export async function readCheckpoint(indexedDB, generation, chunk = 'dashboard-s
  * @param {string} generation
  */
 export async function generationState(indexedDB, generation) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const metadata = await readMeta(database, `generation:${generation}`);
-    return typeof metadata?.state === 'string' ? metadata.state : null;
+    const metadata = await readMeta(database, `generation:${generation}`)
+    return typeof metadata?.state === 'string' ? metadata.state : null
   } finally {
-    database.close();
+    database.close()
   }
 }
 
 /** @param {IDBRequest<IDBCursor | null>} request @param {IDBObjectStore} store */
 function deleteCursorRecords(request, store) {
   return new Promise((resolve, reject) => {
-    request.onerror = () => reject(request.error ?? new Error('Unable to delete generation records'));
+    request.onerror = () =>
+      reject(request.error ?? new Error('Unable to delete generation records'))
     request.onsuccess = () => {
-      const cursor = request.result;
+      const cursor = request.result
       if (!cursor) {
-        resolve(undefined);
-        return;
+        resolve(undefined)
+        return
       }
-      store.delete(cursor.primaryKey);
-      cursor.continue();
-    };
-  });
+      store.delete(cursor.primaryKey)
+      cursor.continue()
+    }
+  })
 }
 
 /** @param {IDBFactory} indexedDB */
 export async function listGenerationStates(indexedDB) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const transaction = database.transaction(META_STORE);
-    const records = await requestResult(transaction.objectStore(META_STORE).getAll());
+    const transaction = database.transaction(META_STORE)
+    const records = await requestResult(
+      transaction.objectStore(META_STORE).getAll(),
+    )
     return records
-      .filter((record) => typeof record?.key === 'string' && record.key.startsWith('generation:'))
+      .filter(
+        (record) =>
+          typeof record?.key === 'string' &&
+          record.key.startsWith('generation:'),
+      )
       .map((record) => ({
         generation: record.key.slice('generation:'.length),
-        state: typeof record.state === 'string' ? record.state : 'unknown'
-      }));
+        state: typeof record.state === 'string' ? record.state : 'unknown',
+      }))
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -295,31 +371,36 @@ export async function listGenerationStates(indexedDB) {
  * @param {string} generation
  */
 export async function deleteGeneration(indexedDB, generation) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
     if (active?.value === generation) {
-      throw new Error(`Cannot delete active generation ${generation}`);
+      throw new Error(`Cannot delete active generation ${generation}`)
     }
     const transaction = database.transaction(
       [META_STORE, CHECKPOINT_STORE, ...GENERATION_STORES],
-      'readwrite'
-    );
-    const done = transactionDone(transaction);
+      'readwrite',
+    )
+    const done = transactionDone(transaction)
     const deletions = GENERATION_STORES.map((storeName) => {
-      const store = transaction.objectStore(storeName);
-      return deleteCursorRecords(store.index('generation').openKeyCursor(generation), store);
-    });
-    const checkpoints = transaction.objectStore(CHECKPOINT_STORE);
-    deletions.push(deleteCursorRecords(
-      checkpoints.index('generation').openKeyCursor(generation),
-      checkpoints
-    ));
-    transaction.objectStore(META_STORE).delete(`generation:${generation}`);
-    await Promise.all(deletions);
-    await done;
+      const store = transaction.objectStore(storeName)
+      return deleteCursorRecords(
+        store.index('generation').openKeyCursor(generation),
+        store,
+      )
+    })
+    const checkpoints = transaction.objectStore(CHECKPOINT_STORE)
+    deletions.push(
+      deleteCursorRecords(
+        checkpoints.index('generation').openKeyCursor(generation),
+        checkpoints,
+      ),
+    )
+    transaction.objectStore(META_STORE).delete(`generation:${generation}`)
+    await Promise.all(deletions)
+    await done
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -329,13 +410,22 @@ export async function deleteGeneration(indexedDB, generation) {
  * @returns {Promise<import('../model/schema.js').CanonicalBatch>}
  */
 async function readGeneration(database, generation) {
-  const transaction = database.transaction(ENTITY_STORES);
-  const records = await Promise.all(ENTITY_STORES.map((storeName) =>
-    requestResult(transaction.objectStore(storeName).index('generation').getAll(generation))
-  ));
-  return /** @type {import('../model/schema.js').CanonicalBatch} */ (Object.fromEntries(
-    ENTITY_STORES.map((storeName, index) => [storeName, records[index]])
-  ));
+  const transaction = database.transaction(ENTITY_STORES)
+  const records = await Promise.all(
+    ENTITY_STORES.map((storeName) =>
+      requestResult(
+        transaction
+          .objectStore(storeName)
+          .index('generation')
+          .getAll(generation),
+      ),
+    ),
+  )
+  return /** @type {import('../model/schema.js').CanonicalBatch} */ (
+    Object.fromEntries(
+      ENTITY_STORES.map((storeName, index) => [storeName, records[index]]),
+    )
+  )
 }
 
 /**
@@ -343,75 +433,92 @@ async function readGeneration(database, generation) {
  * @param {string} generation
  */
 export async function activateGeneration(indexedDB, generation) {
-  const database = await openCanonicalDatabase(indexedDB);
-  let validating = false;
+  const database = await openCanonicalDatabase(indexedDB)
+  let validating = false
   try {
-    const generationMeta = await readMeta(database, `generation:${generation}`);
+    const generationMeta = await readMeta(database, `generation:${generation}`)
     if (generationMeta?.state !== 'staging') {
-      throw new Error(`Generation ${generation} is not staging`);
+      throw new Error(`Generation ${generation} is not staging`)
     }
-    const checkpoint = await readStoredCheckpoint(database, generation, 'dashboard-sources');
-    if (checkpoint?.status !== 'committed' || checkpoint.digest !== generation) {
-      throw new Error(`Generation ${generation} is incomplete`);
+    const checkpoint = await readStoredCheckpoint(
+      database,
+      generation,
+      'dashboard-sources',
+    )
+    if (
+      checkpoint?.status !== 'committed' ||
+      checkpoint.digest !== generation
+    ) {
+      throw new Error(`Generation ${generation} is incomplete`)
     }
-    await writeMeta(database, { key: `generation:${generation}`, state: 'validating' });
-    validating = true;
-    const errors = relationshipErrors(await readGeneration(database, generation));
+    await writeMeta(database, {
+      key: `generation:${generation}`,
+      state: 'validating',
+    })
+    validating = true
+    const errors = relationshipErrors(
+      await readGeneration(database, generation),
+    )
     if (errors.length > 0) {
-      throw new Error(`Generation relationship validation failed: ${errors.join('; ')}`);
+      throw new Error(
+        `Generation relationship validation failed: ${errors.join('; ')}`,
+      )
     }
 
-    const previousActive = await readMeta(database, ACTIVE_GENERATION_KEY);
-    const transaction = database.transaction(META_STORE, 'readwrite');
-    const store = transaction.objectStore(META_STORE);
-    if (typeof previousActive?.value === 'string' && previousActive.value !== generation) {
-      store.put({ key: `generation:${previousActive.value}`, state: 'retired' });
+    const previousActive = await readMeta(database, ACTIVE_GENERATION_KEY)
+    const transaction = database.transaction(META_STORE, 'readwrite')
+    const store = transaction.objectStore(META_STORE)
+    if (
+      typeof previousActive?.value === 'string' &&
+      previousActive.value !== generation
+    ) {
+      store.put({ key: `generation:${previousActive.value}`, state: 'retired' })
     }
-    store.put({ key: `generation:${generation}`, state: 'complete' });
+    store.put({ key: `generation:${generation}`, state: 'complete' })
     store.put({
       key: ACTIVE_GENERATION_KEY,
       value: generation,
-      canonicalSchemaVersion: CANONICAL_SCHEMA_VERSION
-    });
-    await transactionDone(transaction);
+      canonicalSchemaVersion: CANONICAL_SCHEMA_VERSION,
+    })
+    await transactionDone(transaction)
   } catch (error) {
     if (validating) {
       await writeMeta(database, {
         key: `generation:${generation}`,
         state: 'failed',
-        detail: error instanceof Error ? error.message : String(error)
-      });
+        detail: error instanceof Error ? error.message : String(error),
+      })
     }
-    throw error;
+    throw error
   } finally {
-    database.close();
+    database.close()
   }
 }
 
 /** @param {IDBFactory} indexedDB */
 export async function activeGeneration(indexedDB) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    return typeof active?.value === 'string' ? active.value : null;
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
+    return typeof active?.value === 'string' ? active.value : null
   } finally {
-    database.close();
+    database.close()
   }
 }
 
 /** @param {IDBFactory} indexedDB */
 export async function activeGenerationMetadata(indexedDB) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
     return typeof active?.value === 'string'
       ? {
           generation: active.value,
-          canonicalSchemaVersion: Number(active.canonicalSchemaVersion) || null
+          canonicalSchemaVersion: Number(active.canonicalSchemaVersion) || null,
         }
-      : null;
+      : null
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -422,24 +529,47 @@ export async function activeGenerationMetadata(indexedDB) {
  * @param {string} expectedGeneration
  */
 export async function activeGenerationIsUsable(indexedDB, expectedGeneration) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    if (active?.value !== expectedGeneration
-      || Number(active.canonicalSchemaVersion) !== CANONICAL_SCHEMA_VERSION) return false;
-    const generation = await readMeta(database, `generation:${expectedGeneration}`);
-    const checkpoint = await readStoredCheckpoint(database, expectedGeneration, 'dashboard-sources');
-    if (generation?.state !== 'complete'
-      || checkpoint?.status !== 'committed'
-      || checkpoint.digest !== expectedGeneration) return false;
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
+    if (
+      active?.value !== expectedGeneration ||
+      Number(active.canonicalSchemaVersion) !== CANONICAL_SCHEMA_VERSION
+    )
+      return false
+    const generation = await readMeta(
+      database,
+      `generation:${expectedGeneration}`,
+    )
+    const checkpoint = await readStoredCheckpoint(
+      database,
+      expectedGeneration,
+      'dashboard-sources',
+    )
+    if (
+      generation?.state !== 'complete' ||
+      checkpoint?.status !== 'committed' ||
+      checkpoint.digest !== expectedGeneration
+    )
+      return false
 
-    const transaction = database.transaction(GENERATION_STORES);
-    const counts = await Promise.all(GENERATION_STORES.map((storeName) => requestResult(
-      transaction.objectStore(storeName).index('generation').count(expectedGeneration)
-    )));
-    return counts.reduce((total, count) => total + count, 0) === Number(checkpoint.recordCount);
+    const transaction = database.transaction(GENERATION_STORES)
+    const counts = await Promise.all(
+      GENERATION_STORES.map((storeName) =>
+        requestResult(
+          transaction
+            .objectStore(storeName)
+            .index('generation')
+            .count(expectedGeneration),
+        ),
+      ),
+    )
+    return (
+      counts.reduce((total, count) => total + count, 0) ===
+      Number(checkpoint.recordCount)
+    )
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -449,16 +579,19 @@ export async function activeGenerationIsUsable(indexedDB, expectedGeneration) {
  * @returns {Promise<Record<string, unknown>[]>}
  */
 export async function readActiveCollection(indexedDB, storeName) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    if (typeof active?.value !== 'string') return [];
-    const transaction = database.transaction(storeName);
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
+    if (typeof active?.value !== 'string') return []
+    const transaction = database.transaction(storeName)
     return await requestResult(
-      transaction.objectStore(storeName).index('generation').getAll(active.value)
-    );
+      transaction
+        .objectStore(storeName)
+        .index('generation')
+        .getAll(active.value),
+    )
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -468,15 +601,17 @@ export async function readActiveCollection(indexedDB, storeName) {
  * @param {string} id
  */
 export async function readActiveRecord(indexedDB, storeName, id) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    if (typeof active?.value !== 'string') return null;
-    const transaction = database.transaction(storeName);
-    const result = await requestResult(transaction.objectStore(storeName).get([active.value, id]));
-    return result && typeof result === 'object' ? result : null;
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
+    if (typeof active?.value !== 'string') return null
+    const transaction = database.transaction(storeName)
+    const result = await requestResult(
+      transaction.objectStore(storeName).get([active.value, id]),
+    )
+    return result && typeof result === 'object' ? result : null
   } finally {
-    database.close();
+    database.close()
   }
 }
 
@@ -488,18 +623,19 @@ export async function readActiveRecord(indexedDB, storeName, id) {
  * @returns {Promise<Record<string, unknown>[]>}
  */
 export async function readActiveIndex(indexedDB, storeName, indexName, key) {
-  const database = await openCanonicalDatabase(indexedDB);
+  const database = await openCanonicalDatabase(indexedDB)
   try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    if (typeof active?.value !== 'string') return [];
-    const transaction = database.transaction(storeName);
-    const prefix = [active.value, ...key];
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY)
+    if (typeof active?.value !== 'string') return []
+    const transaction = database.transaction(storeName)
+    const prefix = [active.value, ...key]
     return await requestResult(
-      transaction.objectStore(storeName).index(indexName).getAll(
-        IDBKeyRange.bound(prefix, [...prefix, []], false, true)
-      )
-    );
+      transaction
+        .objectStore(storeName)
+        .index(indexName)
+        .getAll(IDBKeyRange.bound(prefix, [...prefix, []], false, true)),
+    )
   } finally {
-    database.close();
+    database.close()
   }
 }

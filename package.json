@@ -14,6 +14,8 @@
     "docs:dev": "astro dev",
     "docs:build": "astro build",
     "docs:preview": "astro preview",
+    "format": "prettier --write \"**/*.{js,mjs,cjs}\"",
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs}\"",
     "lint": "node scripts/check-file-sizes.mjs",
     "typecheck:cao": "npx tsc -p .github/cao/tsconfig.json",
     "test": "npm run test:unit && npm run test:integration",
@@ -24,7 +26,7 @@
     "check:svg": "node scripts/check-svg-visual-language.mjs",
     "compile": "gh aw compile --strict --no-emit --no-check-update --schedule-seed githubnext/gh-aw-cao",
     "compile:locks": "gh aw compile --strict --no-check-update --schedule-seed githubnext/gh-aw-cao",
-    "check": "npm run lint && npm run typecheck:cao && npm test && npm run test:load && npm run check:svg && npm run compile && npm run docs:build",
+    "check": "npm run format:check && npm run lint && npm run typecheck:cao && npm test && npm run test:load && npm run check:svg && npm run compile && npm run docs:build",
     "update-deps": "npx npm-check-updates -u && npm install",
     "test:e2e:docs": "npm run docs:build && playwright test --config=playwright.docs.config.mjs",
     "test:e2e:dashboard-views": "playwright test --config=playwright.dashboard-views.config.mjs",
@@ -50,6 +52,7 @@
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
     "fake-indexeddb": "^6.2.5",
+    "prettier": "3.9.6",
     "typescript": "^7.0.2"
   }
 }

@@ -10,15 +10,15 @@
 const EXPERIMENT_VIEW_SECTION_RENDERERS = {
   overview: 'renderOverview',
   table: 'renderTable',
-  detail: 'renderDetail'
-};
+  detail: 'renderDetail',
+}
 
 /**
  * @param {string} section
  * @returns {section is keyof typeof EXPERIMENT_VIEW_SECTION_RENDERERS}
  */
 export function isExperimentViewSection(section) {
-  return Object.hasOwn(EXPERIMENT_VIEW_SECTION_RENDERERS, section);
+  return Object.hasOwn(EXPERIMENT_VIEW_SECTION_RENDERERS, section)
 }
 
 /**
@@ -27,8 +27,8 @@ export function isExperimentViewSection(section) {
  * @returns {keyof ExperimentViewRenderers | null}
  */
 export function experimentViewSectionRenderer(section, renderers) {
-  const rendererName = EXPERIMENT_VIEW_SECTION_RENDERERS[section];
+  const rendererName = EXPERIMENT_VIEW_SECTION_RENDERERS[section]
   return rendererName && typeof renderers[rendererName] === 'function'
     ? rendererName
-    : null;
+    : null
 }

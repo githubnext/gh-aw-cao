@@ -2,30 +2,49 @@
  * Registry for JSON-selected dashboard UI elements.
  */
 
-import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
-import { formatClockDuration } from '../view-formatters.js';
-import { findLink } from './link-content.js';
-import { renderPackagesView, renderPackageSummary, renderPackageUtilization, renderRunTrend } from './packages-view.js';
-import { renderPackageRouteVariant, renderPackageRouteView } from './package-route-view.js';
-import { renderOutcomeDetail } from './outcome-detail.js';
-import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
-import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
-import { slugify, clampPercent } from './count-formatters.js';
-import { renderDefinitionList } from './view-chrome.js';
-import { renderAnomalyReadiness } from './anomaly-readiness.js';
-import { renderWorkflowRouteView } from './workflow-route-view.js';
-import { renderConfigurationView } from './configuration-view.js';
-import { renderConfigurationActions } from './configuration-actions.js';
-import { renderExperimentsEvaluation } from './experiments-evaluation.js';
-import { renderWorkProjectView } from './work-project-view.js';
-import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
-import { renderHomeAttentionSummary } from './home-attention-summary.js';
-import { renderInsightsOverview } from './insights-overview.js';
-import { modeBadgeClassName, renderStatusBadge } from './badge.js';
-import { rowsFor as rowsForSource } from './source-rows.js';
-import { renderPackagesModeShell } from './packages-mode-shell.js';
-import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { h } from '../dom.js'
+import { octicon } from '../octicons.js'
+import { formatClockDuration } from '../view-formatters.js'
+import { findLink } from './link-content.js'
+import {
+  renderPackagesView,
+  renderPackageSummary,
+  renderPackageUtilization,
+  renderRunTrend,
+} from './packages-view.js'
+import {
+  renderPackageRouteVariant,
+  renderPackageRouteView,
+} from './package-route-view.js'
+import { renderOutcomeDetail } from './outcome-detail.js'
+import {
+  isOutcomeDetailSectionConfig,
+  renderOutcomeDetailSection,
+} from './outcome-detail-sections.js'
+import {
+  renderSectionHeading,
+  isPlainObject,
+  renderIdentityLink,
+  renderDlRow,
+  renderIconSpan,
+  renderLabeledSpan,
+  renderListOrEmptyMessage,
+} from './ui-primitives.js'
+import { slugify, clampPercent } from './count-formatters.js'
+import { renderDefinitionList } from './view-chrome.js'
+import { renderAnomalyReadiness } from './anomaly-readiness.js'
+import { renderWorkflowRouteView } from './workflow-route-view.js'
+import { renderConfigurationView } from './configuration-view.js'
+import { renderConfigurationActions } from './configuration-actions.js'
+import { renderExperimentsEvaluation } from './experiments-evaluation.js'
+import { renderWorkProjectView } from './work-project-view.js'
+import { renderAgentMarketplaceView } from './agent-marketplace-view.js'
+import { renderHomeAttentionSummary } from './home-attention-summary.js'
+import { renderInsightsOverview } from './insights-overview.js'
+import { modeBadgeClassName, renderStatusBadge } from './badge.js'
+import { rowsFor as rowsForSource } from './source-rows.js'
+import { renderPackagesModeShell } from './packages-mode-shell.js'
+import { renderWorkflowRoutePage } from './workflow-route-page.js'
 /**
  * @typedef {{
  *   pageId: string,
@@ -55,15 +74,30 @@ const ELEMENT_RENDERERS = new Map([
   ['data-health-domain-list', renderDataHealthDomainListElement],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
-  ['package-activity', ({ sources, pageId }) => renderPackagesView(sources, pageId)],
+  [
+    'package-activity',
+    ({ sources, pageId }) => renderPackagesView(sources, pageId),
+  ],
   ['package-utilization', ({ sources }) => renderPackageUtilization(sources)],
   ['package-run-trend', ({ sources }) => renderRunTrend(sources)],
   ['package-summary-table', ({ sources }) => renderPackageSummary(sources)],
   ['package-activity-shell', renderPackageActivityShellElement],
-  ['package-insights', (context) => renderPackageRouteVariant(context, 'insights')],
-  ['package-detail', (context) => renderPackageRouteVariant(context, 'workflows')],
-  ['package-dispatches', (context) => renderPackageRouteVariant(context, 'dispatches')],
-  ['package-reports', (context) => renderPackageRouteVariant(context, 'reports')],
+  [
+    'package-insights',
+    (context) => renderPackageRouteVariant(context, 'insights'),
+  ],
+  [
+    'package-detail',
+    (context) => renderPackageRouteVariant(context, 'workflows'),
+  ],
+  [
+    'package-dispatches',
+    (context) => renderPackageRouteVariant(context, 'dispatches'),
+  ],
+  [
+    'package-reports',
+    (context) => renderPackageRouteVariant(context, 'reports'),
+  ],
   ['package-route', renderPackageRouteView],
   ['workflow-route', renderWorkflowRouteView],
   ['workflow-route-page', renderWorkflowRoutePage],
@@ -75,10 +109,33 @@ const ELEMENT_RENDERERS = new Map([
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
   ['insights-overview', renderInsightsOverview],
-  ['home-attention-summary', renderHomeAttentionSummary]
-]);
+  ['home-attention-summary', renderHomeAttentionSummary],
+])
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'home-attention-summary']);
+const EMPTY_AWARE_ELEMENTS = new Set([
+  'summary-grid',
+  'readiness-verdict',
+  'context-summary',
+  'data-health-domain-list',
+  'signal-list',
+  'package-insights',
+  'package-detail',
+  'package-dispatches',
+  'package-reports',
+  'package-route',
+  'workflow-route',
+  'workflow-route-page',
+  'outcome-detail',
+  'outcome-detail-section',
+  'configuration-policy',
+  'configuration-actions',
+  'experiments-evaluation',
+  'package-activity-shell',
+  'work-project-view',
+  'agent-marketplace-view',
+  'insights-overview',
+  'home-attention-summary',
+])
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -90,67 +147,124 @@ const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'cont
  * @returns {(context: ElementRenderContext) => Promise<HTMLElement | null>}
  */
 function lazyElementRenderer(importModule, render) {
-  return async (context) => render(await importModule(), context);
+  return async (context) => render(await importModule(), context)
 }
 
 /** @type {Map<string, (context: ElementRenderContext) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
-  ['package-activity-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackagesView }, { sources, pageId }) => renderPackagesView(sources, pageId)
-  )],
-  ['package-utilization-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackageUtilization }, { sources }) => renderPackageUtilization(sources)
-  )],
-  ['package-run-trend-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderRunTrend }, { sources }) => renderRunTrend(sources)
-  )],
-  ['package-summary-table-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackageSummary }, { sources }) => renderPackageSummary(sources)
-  )],
-  ['package-activity-shell-lazy', lazyElementRenderer(
-    () => import('./packages-view.js'),
-    ({ renderPackageUtilization, renderRunTrend, renderPackageSummary }, context) => renderPackagesModeShell({
-      pageId: context.pageId,
-      sections: [
-        { id: 'utilization', render: (mode) => renderPackageUtilization(context.sources, mode) },
-        { id: 'run-trend', render: (mode) => renderRunTrend(context.sources, mode) },
-        { id: 'summary', render: (mode) => renderPackageSummary(context.sources, mode) }
-      ]
-    })
-  )],
-  ['package-insights-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'insights')
-  )],
-  ['package-detail-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'workflows')
-  )],
-  ['package-dispatches-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'dispatches')
-  )],
-  ['package-reports-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteVariant }, context) => renderPackageRouteVariant(context, 'reports')
-  )],
-  ['package-route-lazy', lazyElementRenderer(
-    () => import('./package-route-view.js'),
-    ({ renderPackageRouteView }, context) => renderPackageRouteView(context)
-  )],
-  ['workflow-route-lazy', lazyElementRenderer(
-    () => import('./workflow-route-view.js'),
-    ({ renderWorkflowRouteView }, context) => renderWorkflowRouteView(context)
-  )],
-  ['workflow-route-page-lazy', lazyElementRenderer(
-    () => import('./workflow-route-page.js'),
-    ({ renderWorkflowRoutePage }, context) => renderWorkflowRoutePage(context)
-  )]
-]);
+  [
+    'package-activity-lazy',
+    lazyElementRenderer(
+      () => import('./packages-view.js'),
+      ({ renderPackagesView }, { sources, pageId }) =>
+        renderPackagesView(sources, pageId),
+    ),
+  ],
+  [
+    'package-utilization-lazy',
+    lazyElementRenderer(
+      () => import('./packages-view.js'),
+      ({ renderPackageUtilization }, { sources }) =>
+        renderPackageUtilization(sources),
+    ),
+  ],
+  [
+    'package-run-trend-lazy',
+    lazyElementRenderer(
+      () => import('./packages-view.js'),
+      ({ renderRunTrend }, { sources }) => renderRunTrend(sources),
+    ),
+  ],
+  [
+    'package-summary-table-lazy',
+    lazyElementRenderer(
+      () => import('./packages-view.js'),
+      ({ renderPackageSummary }, { sources }) => renderPackageSummary(sources),
+    ),
+  ],
+  [
+    'package-activity-shell-lazy',
+    lazyElementRenderer(
+      () => import('./packages-view.js'),
+      (
+        { renderPackageUtilization, renderRunTrend, renderPackageSummary },
+        context,
+      ) =>
+        renderPackagesModeShell({
+          pageId: context.pageId,
+          sections: [
+            {
+              id: 'utilization',
+              render: (mode) => renderPackageUtilization(context.sources, mode),
+            },
+            {
+              id: 'run-trend',
+              render: (mode) => renderRunTrend(context.sources, mode),
+            },
+            {
+              id: 'summary',
+              render: (mode) => renderPackageSummary(context.sources, mode),
+            },
+          ],
+        }),
+    ),
+  ],
+  [
+    'package-insights-lazy',
+    lazyElementRenderer(
+      () => import('./package-route-view.js'),
+      ({ renderPackageRouteVariant }, context) =>
+        renderPackageRouteVariant(context, 'insights'),
+    ),
+  ],
+  [
+    'package-detail-lazy',
+    lazyElementRenderer(
+      () => import('./package-route-view.js'),
+      ({ renderPackageRouteVariant }, context) =>
+        renderPackageRouteVariant(context, 'workflows'),
+    ),
+  ],
+  [
+    'package-dispatches-lazy',
+    lazyElementRenderer(
+      () => import('./package-route-view.js'),
+      ({ renderPackageRouteVariant }, context) =>
+        renderPackageRouteVariant(context, 'dispatches'),
+    ),
+  ],
+  [
+    'package-reports-lazy',
+    lazyElementRenderer(
+      () => import('./package-route-view.js'),
+      ({ renderPackageRouteVariant }, context) =>
+        renderPackageRouteVariant(context, 'reports'),
+    ),
+  ],
+  [
+    'package-route-lazy',
+    lazyElementRenderer(
+      () => import('./package-route-view.js'),
+      ({ renderPackageRouteView }, context) => renderPackageRouteView(context),
+    ),
+  ],
+  [
+    'workflow-route-lazy',
+    lazyElementRenderer(
+      () => import('./workflow-route-view.js'),
+      ({ renderWorkflowRouteView }, context) =>
+        renderWorkflowRouteView(context),
+    ),
+  ],
+  [
+    'workflow-route-page-lazy',
+    lazyElementRenderer(
+      () => import('./workflow-route-page.js'),
+      ({ renderWorkflowRoutePage }, context) =>
+        renderWorkflowRoutePage(context),
+    ),
+  ],
+])
 
 /**
  * @param {string} name
@@ -158,7 +272,7 @@ const LAZY_ELEMENT_RENDERERS = new Map([
  * @returns {HTMLElement | null}
  */
 export function renderUiElement(name, context) {
-  return ELEMENT_RENDERERS.get(name)?.({ ...context, element: name }) ?? null;
+  return ELEMENT_RENDERERS.get(name)?.({ ...context, element: name }) ?? null
 }
 
 /**
@@ -167,9 +281,9 @@ export function renderUiElement(name, context) {
  * @returns {Promise<HTMLElement | null>}
  */
 export async function renderUiElementAsync(name, context) {
-  const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`);
-  if (lazyRenderer) return lazyRenderer({ ...context, element: name });
-  return renderUiElement(name, context);
+  const lazyRenderer = LAZY_ELEMENT_RENDERERS.get(`${name}-lazy`)
+  if (lazyRenderer) return lazyRenderer({ ...context, element: name })
+  return renderUiElement(name, context)
 }
 
 /**
@@ -177,14 +291,18 @@ export async function renderUiElementAsync(name, context) {
  * @returns {HTMLElement | null}
  */
 function renderOutcomeDetailSectionElement(context) {
-  const outcomes = rowsFor(context, 'outcomes');
+  const outcomes = rowsFor(context, 'outcomes')
   const sectionConfig = isOutcomeDetailSectionConfig(context.elementConfig)
     ? context.elementConfig
-    : null;
-  if (!sectionConfig) return null;
-  const outcomeId = stringValue(context.scope?.['safe-output']);
-  const outcome = outcomes.find((row) => String(row['safe-output']) === outcomeId);
-  return outcome ? renderOutcomeDetailSection(outcome, sectionConfig.body) : null;
+    : null
+  if (!sectionConfig) return null
+  const outcomeId = stringValue(context.scope?.['safe-output'])
+  const outcome = outcomes.find(
+    (row) => String(row['safe-output']) === outcomeId,
+  )
+  return outcome
+    ? renderOutcomeDetailSection(outcome, sectionConfig.body)
+    : null
 }
 
 /**
@@ -197,18 +315,18 @@ function renderPackageActivityShellElement(context) {
     sections: [
       {
         id: 'utilization',
-        render: (mode) => renderPackageUtilization(context.sources, mode)
+        render: (mode) => renderPackageUtilization(context.sources, mode),
       },
       {
         id: 'run-trend',
-        render: (mode) => renderRunTrend(context.sources, mode)
+        render: (mode) => renderRunTrend(context.sources, mode),
       },
       {
         id: 'summary',
-        render: (mode) => renderPackageSummary(context.sources, mode)
-      }
-    ]
-  });
+        render: (mode) => renderPackageSummary(context.sources, mode),
+      },
+    ],
+  })
 }
 
 /**
@@ -216,15 +334,15 @@ function renderPackageActivityShellElement(context) {
  * @returns {boolean}
  */
 export function elementHandlesEmptyRows(name) {
-  return EMPTY_AWARE_ELEMENTS.has(name);
+  return EMPTY_AWARE_ELEMENTS.has(name)
 }
 
 /**
  * @param {ElementRenderContext} context
  */
 function renderDomainAttentionElement(context) {
-  const rows = rowsFor(context, 'overview-attention-domains');
-  const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`;
+  const rows = rowsFor(context, 'overview-attention-domains')
+  const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`
   return h(
     'section',
     { className: 'overview-observability', 'aria-labelledby': headingId },
@@ -233,44 +351,54 @@ function renderDomainAttentionElement(context) {
       id: headingId,
       title: context.title,
       description: context.description,
-      headingTag: 'h2'
+      headingTag: 'h2',
     }),
     h(
       'div',
       { className: 'attention-domain-grid' },
-      ...rows.map((row) => h(
-        'a',
-        {
-          className: `attention-domain-card attention-domain-${stringValue(row.tone)}`,
-          href: stringValue(row.href)
-        },
+      ...rows.map((row) =>
         h(
-          'header',
-          null,
-          renderIconSpan('attention-domain-icon', stringValue(row.icon)),
-          h('strong', null, stringValue(row.domain)),
-          h('span', { className: 'attention-domain-state' }, stringValue(row.state))
+          'a',
+          {
+            className: `attention-domain-card attention-domain-${stringValue(row.tone)}`,
+            href: stringValue(row.href),
+          },
+          h(
+            'header',
+            null,
+            renderIconSpan('attention-domain-icon', stringValue(row.icon)),
+            h('strong', null, stringValue(row.domain)),
+            h(
+              'span',
+              { className: 'attention-domain-state' },
+              stringValue(row.state),
+            ),
+          ),
+          h(
+            'span',
+            { className: 'attention-domain-value' },
+            stringValue(row.value),
+          ),
+          h('p', null, stringValue(row.detail)),
+          h('footer', null, 'Open evidence'),
         ),
-        h('span', { className: 'attention-domain-value' }, stringValue(row.value)),
-        h('p', null, stringValue(row.detail)),
-        h('footer', null, 'Open evidence')
-      ))
+      ),
     ),
     h(
       'p',
       { className: 'overview-method-note' },
       h('strong', null, 'State key:'),
-      ' Act now is a direct failure; Investigate is a direct control, collection, or attribution signal; Monitor has observations without a direct signal; Unavailable means a required threshold or evidence feed is absent.'
-    )
-  );
+      ' Act now is a direct failure; Investigate is a direct control, collection, or attribution signal; Monitor has observations without a direct signal; Unavailable means a required threshold or evidence feed is absent.',
+    ),
+  )
 }
 
 /**
  * @param {ElementRenderContext} context
  */
 function renderPackageStatusGridElement(context) {
-  const rows = rowsFor(context, 'overview-managed-packages');
-  const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`;
+  const rows = rowsFor(context, 'overview-managed-packages')
+  const headingId = `${context.pageId}-${slugify(context.title, 'element')}-heading`
   return h(
     'section',
     { className: 'overview-package-status', 'aria-labelledby': headingId },
@@ -279,44 +407,95 @@ function renderPackageStatusGridElement(context) {
       id: headingId,
       title: context.title,
       description: context.description,
-      headingTag: 'h2'
+      headingTag: 'h2',
     }),
     h(
       'div',
       { className: 'package-status-grid' },
       ...rows.map((row) => {
-        const liveCoveragePercent = Number(row['live-coverage-percent']);
-        const rolloutLiveRepositories = Number(row['rollout-live-repositories']);
-        const rolloutRepositories = Number(row['rollout-repositories']);
-        const coverageKnown = Number.isFinite(liveCoveragePercent) && Number.isFinite(rolloutLiveRepositories) && rolloutRepositories > 0;
-        const coveragePercent = coverageKnown ? clampPercent(liveCoveragePercent) : null;
-        const reviewRepositories = coverageKnown ? rolloutRepositories - rolloutLiveRepositories : null;
-        const dispatchCount = row['dispatch-count'] == null ? null : Number(row['dispatch-count']);
-        const runTelemetryUnavailable = context.sources.runs?.metadata?.availability === 'unavailable' || !context.sources.runs;
-        const outputCollectionUnavailable = context.sources.outcomes?.metadata?.availability === 'unavailable' || !context.sources.outcomes;
-        const dispatchStatus = packageDispatchStatus(row, dispatchCount, runTelemetryUnavailable);
-        const outputDispatchCount = row['dispatches-with-safe-output'] == null ? null : Number(row['dispatches-with-safe-output']);
+        const liveCoveragePercent = Number(row['live-coverage-percent'])
+        const rolloutLiveRepositories = Number(row['rollout-live-repositories'])
+        const rolloutRepositories = Number(row['rollout-repositories'])
+        const coverageKnown =
+          Number.isFinite(liveCoveragePercent) &&
+          Number.isFinite(rolloutLiveRepositories) &&
+          rolloutRepositories > 0
+        const coveragePercent = coverageKnown
+          ? clampPercent(liveCoveragePercent)
+          : null
+        const reviewRepositories = coverageKnown
+          ? rolloutRepositories - rolloutLiveRepositories
+          : null
+        const dispatchCount =
+          row['dispatch-count'] == null ? null : Number(row['dispatch-count'])
+        const runTelemetryUnavailable =
+          context.sources.runs?.metadata?.availability === 'unavailable' ||
+          !context.sources.runs
+        const outputCollectionUnavailable =
+          context.sources.outcomes?.metadata?.availability === 'unavailable' ||
+          !context.sources.outcomes
+        const dispatchStatus = packageDispatchStatus(
+          row,
+          dispatchCount,
+          runTelemetryUnavailable,
+        )
+        const outputDispatchCount =
+          row['dispatches-with-safe-output'] == null
+            ? null
+            : Number(row['dispatches-with-safe-output'])
         const dispatchText = Number.isFinite(dispatchCount)
           ? `${dispatchCount} dispatch${dispatchCount === 1 ? '' : 'es'}`
-          : runTelemetryUnavailable ? 'Run telemetry unavailable' : 'Dispatches unavailable';
-        const outputCountsKnown = dispatchCount !== null && outputDispatchCount !== null && Number.isFinite(dispatchCount) && Number.isFinite(outputDispatchCount);
+          : runTelemetryUnavailable
+            ? 'Run telemetry unavailable'
+            : 'Dispatches unavailable'
+        const outputCountsKnown =
+          dispatchCount !== null &&
+          outputDispatchCount !== null &&
+          Number.isFinite(dispatchCount) &&
+          Number.isFinite(outputDispatchCount)
         const outputText = outputCountsKnown
-          ? (dispatchCount ?? 0) > 0 ? `${outputDispatchCount}/${dispatchCount} produced output` : 'No output opportunity'
-          : outputCollectionUnavailable ? 'Output collection unavailable' : 'Outputs unavailable';
-        const noOutputWarning = outputCountsKnown && (dispatchCount ?? 0) > 0 && outputDispatchCount === 0;
-        const repoModes = Array.isArray(row['repository-modes']) ? row['repository-modes'].filter(isPlainObject) : [];
-        const repoEntries = repoModes.length > 0 ? repoModes.filter((entry) => typeof entry.repository === 'string' && entry.repository) : [];
-        const inventoryText = stringValue(row.inventory || 'Needs attention');
+          ? (dispatchCount ?? 0) > 0
+            ? `${outputDispatchCount}/${dispatchCount} produced output`
+            : 'No output opportunity'
+          : outputCollectionUnavailable
+            ? 'Output collection unavailable'
+            : 'Outputs unavailable'
+        const noOutputWarning =
+          outputCountsKnown &&
+          (dispatchCount ?? 0) > 0 &&
+          outputDispatchCount === 0
+        const repoModes = Array.isArray(row['repository-modes'])
+          ? row['repository-modes'].filter(isPlainObject)
+          : []
+        const repoEntries =
+          repoModes.length > 0
+            ? repoModes.filter(
+                (entry) =>
+                  typeof entry.repository === 'string' && entry.repository,
+              )
+            : []
+        const inventoryText = stringValue(row.inventory || 'Needs attention')
         return h(
           'article',
           {
-            className: `package-status-card package-status-${stringValue(row['inventory-state']) === 'inventory-ready' ? 'ready' : 'attention'}`
+            className: `package-status-card package-status-${stringValue(row['inventory-state']) === 'inventory-ready' ? 'ready' : 'attention'}`,
           },
           h(
             'header',
             { className: 'package-status-header' },
-            h('strong', null, renderIdentityLink({ href: stringValue(row.href), icon: stringValue(row.icon) || 'package', label: stringValue(row.title), className: 'package-status-identity' })),
-            inventoryText === 'Ready' ? null : h('span', { className: 'package-status-state' }, inventoryText)
+            h(
+              'strong',
+              null,
+              renderIdentityLink({
+                href: stringValue(row.href),
+                icon: stringValue(row.icon) || 'package',
+                label: stringValue(row.title),
+                className: 'package-status-identity',
+              }),
+            ),
+            inventoryText === 'Ready'
+              ? null
+              : h('span', { className: 'package-status-state' }, inventoryText),
           ),
           h(
             'div',
@@ -324,14 +503,31 @@ function renderPackageStatusGridElement(context) {
             h(
               'div',
               { className: 'package-status-live-coverage-heading' },
-              h('div', null, h('span', null, 'Rollout'), h('strong', null, coverageKnown ? `${rolloutLiveRepositories} live · ${reviewRepositories} review` : 'No target data')),
-              h('strong', null, coverageKnown ? `${coveragePercent}% live` : 'Unknown')
+              h(
+                'div',
+                null,
+                h('span', null, 'Rollout'),
+                h(
+                  'strong',
+                  null,
+                  coverageKnown
+                    ? `${rolloutLiveRepositories} live · ${reviewRepositories} review`
+                    : 'No target data',
+                ),
+              ),
+              h(
+                'strong',
+                null,
+                coverageKnown ? `${coveragePercent}% live` : 'Unknown',
+              ),
             ),
-            coverageKnown ? h('progress', {
-              max: 100,
-              value: coveragePercent,
-              'aria-label': `${rolloutLiveRepositories} of ${rolloutRepositories} target repositories are live`
-            }) : null
+            coverageKnown
+              ? h('progress', {
+                  max: 100,
+                  value: coveragePercent,
+                  'aria-label': `${rolloutLiveRepositories} of ${rolloutRepositories} target repositories are live`,
+                })
+              : null,
           ),
           h(
             'div',
@@ -340,23 +536,36 @@ function renderPackageStatusGridElement(context) {
               'div',
               { className: 'package-status-repository-heading' },
               h('span', null, 'Target repositories'),
-              h('span', null, 'Mode')
+              h('span', null, 'Mode'),
             ),
             renderListOrEmptyMessage(
               'package-status-repositories',
               repoEntries,
               (entry) => {
-                const repoMode = stringValue(entry.mode || 'review');
+                const repoMode = stringValue(entry.mode || 'review')
                 return h(
                   'li',
                   null,
-                  h('span', { className: 'package-status-repository-name' }, octicon('repo'), h('span', null, stringValue(entry.repository))),
-                  h('span', { className: `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim() }, octicon('dot-fill'), capitalize(repoMode))
-                );
+                  h(
+                    'span',
+                    { className: 'package-status-repository-name' },
+                    octicon('repo'),
+                    h('span', null, stringValue(entry.repository)),
+                  ),
+                  h(
+                    'span',
+                    {
+                      className:
+                        `mode-badge ${modeBadgeClassName(repoMode.toLowerCase())}`.trim(),
+                    },
+                    octicon('dot-fill'),
+                    capitalize(repoMode),
+                  ),
+                )
               },
               'package-status-repositories-empty',
-              'No repositories reported'
-            )
+              'No repositories reported',
+            ),
           ),
           h(
             'a',
@@ -364,34 +573,45 @@ function renderPackageStatusGridElement(context) {
               className: `package-status-activity${noOutputWarning ? ' package-status-activity-warning' : ''}`,
               href: `#page-package-dispatches?package=${encodeURIComponent(stringValue(row.package))}`,
               title: stringValue(row['activity-window']),
-              'aria-label': `Recent activity: ${dispatchStatus.detail}; ${dispatchText}; ${outputText}${noOutputWarning ? '; warning: dispatches produced no output' : ''}`
+              'aria-label': `Recent activity: ${dispatchStatus.detail}; ${dispatchText}; ${outputText}${noOutputWarning ? '; warning: dispatches produced no output' : ''}`,
             },
             h(
               'span',
               { className: 'package-status-activity-heading' },
-              h('span', { className: 'package-status-activity-label' }, 'Recent'),
+              h(
+                'span',
+                { className: 'package-status-activity-label' },
+                'Recent',
+              ),
               h(
                 'span',
                 {
                   className: `package-status-activity-state package-status-activity-state-${dispatchStatus.tone}`,
-                  title: dispatchStatus.detail
+                  title: dispatchStatus.detail,
                 },
                 octicon(dispatchStatus.icon),
-                dispatchStatus.label
-              )
+                dispatchStatus.label,
+              ),
             ),
-            h('span', null, octicon('paper-airplane'), h('strong', null, dispatchText)),
             h(
               'span',
-              noOutputWarning ? { title: 'Dispatched but produced no output' } : null,
+              null,
+              octicon('paper-airplane'),
+              h('strong', null, dispatchText),
+            ),
+            h(
+              'span',
+              noOutputWarning
+                ? { title: 'Dispatched but produced no output' }
+                : null,
               octicon(noOutputWarning ? 'alert' : 'shield-check'),
-              h('strong', null, outputText)
-            )
-          )
-        );
-      })
-    )
-  );
+              h('strong', null, outputText),
+            ),
+          ),
+        )
+      }),
+    ),
+  )
 }
 
 /**
@@ -399,162 +619,337 @@ function renderPackageStatusGridElement(context) {
  * @param {number | null} dispatchCount
  * @param {boolean} runTelemetryUnavailable
  */
-function packageDispatchStatus(row, dispatchCount, runTelemetryUnavailable = false) {
-  const successful = row['dispatch-success-count'] == null ? null : Number(row['dispatch-success-count']);
-  const failed = row['dispatch-failure-count'] == null ? null : Number(row['dispatch-failure-count']);
-  const approval = row['dispatch-approval-count'] == null ? null : Number(row['dispatch-approval-count']);
-  const pending = row['dispatch-pending-count'] == null ? null : Number(row['dispatch-pending-count']);
-  if (![dispatchCount, successful, failed, approval, pending].every(Number.isFinite)) {
+function packageDispatchStatus(
+  row,
+  dispatchCount,
+  runTelemetryUnavailable = false,
+) {
+  const successful =
+    row['dispatch-success-count'] == null
+      ? null
+      : Number(row['dispatch-success-count'])
+  const failed =
+    row['dispatch-failure-count'] == null
+      ? null
+      : Number(row['dispatch-failure-count'])
+  const approval =
+    row['dispatch-approval-count'] == null
+      ? null
+      : Number(row['dispatch-approval-count'])
+  const pending =
+    row['dispatch-pending-count'] == null
+      ? null
+      : Number(row['dispatch-pending-count'])
+  if (
+    ![dispatchCount, successful, failed, approval, pending].every(
+      Number.isFinite,
+    )
+  ) {
     return {
       tone: 'unknown',
       icon: 'circle',
       label: 'Unknown',
       detail: runTelemetryUnavailable
         ? 'Recent dispatch status is unavailable because run telemetry was not collected.'
-        : 'Recent dispatch status unavailable'
-    };
+        : 'Recent dispatch status unavailable',
+    }
   }
 
-  const other = Math.max(0, Number(dispatchCount) - Number(successful) - Number(failed) - Number(approval) - Number(pending));
+  const other = Math.max(
+    0,
+    Number(dispatchCount) -
+      Number(successful) -
+      Number(failed) -
+      Number(approval) -
+      Number(pending),
+  )
   const details = [
     Number(successful) > 0 ? `${successful} succeeded` : '',
     Number(failed) > 0 ? `${failed} failed` : '',
     Number(approval) > 0 ? `${approval} awaiting approval` : '',
     Number(pending) > 0 ? `${pending} in progress` : '',
-    other > 0 ? `${other} other` : ''
-  ].filter(Boolean);
-  const detail = details.join(', ') || 'No recent dispatches';
-  if (Number(failed) > 0) return { tone: 'failed', icon: 'x-circle', label: `${failed} failed`, detail };
-  if (Number(approval) > 0) return { tone: 'attention', icon: 'clock', label: `${approval} awaiting approval`, detail };
-  if (Number(pending) > 0) return { tone: 'attention', icon: 'sync', label: `${pending} in progress`, detail };
-  if (other > 0) return { tone: 'unknown', icon: 'alert', label: `${other} other`, detail };
-  if (Number(dispatchCount) > 0) return { tone: 'success', icon: 'check-circle', label: `${successful} succeeded`, detail };
-  return { tone: 'unknown', icon: 'dash', label: 'None', detail };
+    other > 0 ? `${other} other` : '',
+  ].filter(Boolean)
+  const detail = details.join(', ') || 'No recent dispatches'
+  if (Number(failed) > 0)
+    return {
+      tone: 'failed',
+      icon: 'x-circle',
+      label: `${failed} failed`,
+      detail,
+    }
+  if (Number(approval) > 0)
+    return {
+      tone: 'attention',
+      icon: 'clock',
+      label: `${approval} awaiting approval`,
+      detail,
+    }
+  if (Number(pending) > 0)
+    return {
+      tone: 'attention',
+      icon: 'sync',
+      label: `${pending} in progress`,
+      detail,
+    }
+  if (other > 0)
+    return { tone: 'unknown', icon: 'alert', label: `${other} other`, detail }
+  if (Number(dispatchCount) > 0)
+    return {
+      tone: 'success',
+      icon: 'check-circle',
+      label: `${successful} succeeded`,
+      detail,
+    }
+  return { tone: 'unknown', icon: 'dash', label: 'None', detail }
 }
 
 /** @param {ElementRenderContext} context */
 function renderSummaryGridElement(context) {
   const rows = rowsFor(context, context.sourceNames[0]).map((row) => ({
     label: stringValue(row.label),
-    value: stringValue(row.value)
-  }));
-  return renderDefinitionList('summary-grid', rows);
+    value: stringValue(row.value),
+  }))
+  return renderDefinitionList('summary-grid', rows)
 }
 
 /** @param {ElementRenderContext} context */
 function renderDataHealthDomainListElement(context) {
-  const rows = rowsFor(context, context.sourceNames[0]);
+  const rows = rowsFor(context, context.sourceNames[0])
   if (rows.length === 0) {
-    return h('p', { className: 'data-health-domain-list-empty' }, 'No dashboard domain contracts are available.');
+    return h(
+      'p',
+      { className: 'data-health-domain-list-empty' },
+      'No dashboard domain contracts are available.',
+    )
   }
   return h(
     'dl',
     { className: 'data-health-domain-list' },
-    ...rows.map((row) => renderDlRow(
-      stringValue(row.domain),
-      h(
-        'div',
-        { className: 'data-health-domain-value' },
-        renderStatusBadge(row.confidence),
-        h('span', { className: 'data-health-domain-reason' }, stringValue(row.reason)),
-        h('span', { className: 'data-health-domain-action' }, stringValue(row['next-action']))
-      )
-    ))
-  );
+    ...rows.map((row) =>
+      renderDlRow(
+        stringValue(row.domain),
+        h(
+          'div',
+          { className: 'data-health-domain-value' },
+          renderStatusBadge(row.confidence),
+          h(
+            'span',
+            { className: 'data-health-domain-reason' },
+            stringValue(row.reason),
+          ),
+          h(
+            'span',
+            { className: 'data-health-domain-action' },
+            stringValue(row['next-action']),
+          ),
+        ),
+      ),
+    ),
+  )
 }
 
 /** @param {ElementRenderContext} context */
 function renderReadinessVerdictElement(context) {
-  const rows = rowsFor(context, context.sourceNames[0]);
-  const verdict = stringValue(rows.find((row) => row.label === 'Control plane')?.value) || 'Evidence incomplete';
-  const tone = verdict === 'Ready to ship' ? 'ready' : verdict === 'Not ready' ? 'blocked' : 'unknown';
-  const checks = rowsFor(context, 'readiness-checks');
-  const signals = rowsFor(context, 'readiness-signals');
-  const observations = rowsFor(context, 'readiness-observations');
-  const metadata = context.sources[context.sourceNames[0]]?.metadata;
-  const blocking = signals.filter((row) => stringValue(row.tone) === 'critical' || Number(row.priority) === 0);
-  const stateLabel = tone === 'ready' ? 'READY' : tone === 'blocked' ? 'BLOCKED' : 'UNKNOWN';
-  const icon = tone === 'ready' ? 'check-circle' : tone === 'blocked' ? 'x-circle' : 'question';
-  const evidenceRows = rows.filter((row) => row.label !== 'Control plane' && row.label !== 'Unblock first');
+  const rows = rowsFor(context, context.sourceNames[0])
+  const verdict =
+    stringValue(rows.find((row) => row.label === 'Control plane')?.value) ||
+    'Evidence incomplete'
+  const tone =
+    verdict === 'Ready to ship'
+      ? 'ready'
+      : verdict === 'Not ready'
+        ? 'blocked'
+        : 'unknown'
+  const checks = rowsFor(context, 'readiness-checks')
+  const signals = rowsFor(context, 'readiness-signals')
+  const observations = rowsFor(context, 'readiness-observations')
+  const metadata = context.sources[context.sourceNames[0]]?.metadata
+  const blocking = signals.filter(
+    (row) => stringValue(row.tone) === 'critical' || Number(row.priority) === 0,
+  )
+  const stateLabel =
+    tone === 'ready' ? 'READY' : tone === 'blocked' ? 'BLOCKED' : 'UNKNOWN'
+  const icon =
+    tone === 'ready'
+      ? 'check-circle'
+      : tone === 'blocked'
+        ? 'x-circle'
+        : 'question'
+  const evidenceRows = rows.filter(
+    (row) => row.label !== 'Control plane' && row.label !== 'Unblock first',
+  )
   return h(
     'section',
-    { className: `readiness-verdict readiness-verdict-${tone}`, role: 'status', 'aria-label': 'Control-plane readiness' },
+    {
+      className: `readiness-verdict readiness-verdict-${tone}`,
+      role: 'status',
+      'aria-label': 'Control-plane readiness',
+    },
     h(
       'div',
       { className: 'readiness-verdict-primary' },
-      h('div', { className: 'readiness-hero' },
+      h(
+        'div',
+        { className: 'readiness-hero' },
         h('small', null, 'Control-plane readiness'),
-        h('div', { className: 'readiness-state' },
+        h(
+          'div',
+          { className: 'readiness-state' },
           renderIconSpan('readiness-verdict-icon', icon, { ariaHidden: true }),
-          h('strong', null, stateLabel)
+          h('strong', null, stateLabel),
         ),
-        h('p', null, tone === 'ready'
-          ? 'The control plane is ready to execute the next scheduled operation.'
-          : tone === 'blocked'
-            ? 'The control plane should not be treated as ready for the next operation.'
-            : 'Current readiness cannot be determined reliably.'),
-        h('div', { className: 'readiness-snapshot-meta' },
+        h(
+          'p',
+          null,
+          tone === 'ready'
+            ? 'The control plane is ready to execute the next scheduled operation.'
+            : tone === 'blocked'
+              ? 'The control plane should not be treated as ready for the next operation.'
+              : 'Current readiness cannot be determined reliably.',
+        ),
+        h(
+          'div',
+          { className: 'readiness-snapshot-meta' },
           renderLabeledSpan('Snapshot', ` ${snapshotAge(metadata)}`),
-          renderLabeledSpan('Evidence', ` ${evidenceState(metadata)}`)
+          renderLabeledSpan('Evidence', ` ${evidenceState(metadata)}`),
         ),
-        h('span', { className: 'readiness-verdict-legacy' }, verdict)
+        h('span', { className: 'readiness-verdict-legacy' }, verdict),
       ),
-      h('div', { className: 'readiness-verdict-summary' },
-        h('strong', null, tone === 'ready' ? 'All required readiness gates passed.' : tone === 'blocked' ? `${blocking.length} blocking gate${blocking.length === 1 ? '' : 's'}` : 'Evidence is stale or incomplete.'),
-        h('span', null, `${signals.filter((row) => stringValue(row.tone) === 'warning').length} warning${signals.filter((row) => stringValue(row.tone) === 'warning').length === 1 ? '' : 's'}`)
-      )
+      h(
+        'div',
+        { className: 'readiness-verdict-summary' },
+        h(
+          'strong',
+          null,
+          tone === 'ready'
+            ? 'All required readiness gates passed.'
+            : tone === 'blocked'
+              ? `${blocking.length} blocking gate${blocking.length === 1 ? '' : 's'}`
+              : 'Evidence is stale or incomplete.',
+        ),
+        h(
+          'span',
+          null,
+          `${signals.filter((row) => stringValue(row.tone) === 'warning').length} warning${signals.filter((row) => stringValue(row.tone) === 'warning').length === 1 ? '' : 's'}`,
+        ),
+      ),
     ),
-    h('div', { className: 'readiness-verdict-details' },
-      readinessBlock('Unblock first', blocking.length > 0
-        ? blocking.map((row) => h('article', { className: 'readiness-blocker' },
-          h('strong', null, stringValue(row.title || row.kind)),
-          h('p', null, stringValue(row.detail)),
-          h('small', null, stringValue(row.evidence))
-        ))
-        : rows.find((row) => row.label === 'Unblock first')
-          ? [h('p', { className: 'readiness-clear' }, stringValue(rows.find((row) => row.label === 'Unblock first')?.value))]
-        : [h('p', { className: 'readiness-clear' }, 'No blocking conditions.')]),
-      readinessBlock('Readiness gates', checks.map((row) => h('div', { className: `readiness-gate readiness-gate-${stringValue(row['readiness-state']).toLowerCase()}` },
-        octicon(stringValue(row['readiness-state']) === 'Ready' ? 'check-circle' : stringValue(row['readiness-state']) === 'Blocked' ? 'stop' : 'question'),
-        h('span', null, h('strong', null, stringValue(row.check)), h('small', null, stringValue(row.detail)))
-      ))),
-      readinessBlock(observations.length > 0 ? 'Other observations' : 'Evidence', observations.length > 0
-        ? observations.map((row) => h('div', { className: 'readiness-observation' },
-          h('strong', null, stringValue(row.signal)),
-          h('span', null, stringValue(row.detail))
-        ))
-        : evidenceRows.map((row) => h('div', { className: 'readiness-evidence-row' },
-          h('span', null, stringValue(row.label)),
-          h('strong', null, stringValue(row.value))
-        )))
-    )
-  );
+    h(
+      'div',
+      { className: 'readiness-verdict-details' },
+      readinessBlock(
+        'Unblock first',
+        blocking.length > 0
+          ? blocking.map((row) =>
+              h(
+                'article',
+                { className: 'readiness-blocker' },
+                h('strong', null, stringValue(row.title || row.kind)),
+                h('p', null, stringValue(row.detail)),
+                h('small', null, stringValue(row.evidence)),
+              ),
+            )
+          : rows.find((row) => row.label === 'Unblock first')
+            ? [
+                h(
+                  'p',
+                  { className: 'readiness-clear' },
+                  stringValue(
+                    rows.find((row) => row.label === 'Unblock first')?.value,
+                  ),
+                ),
+              ]
+            : [
+                h(
+                  'p',
+                  { className: 'readiness-clear' },
+                  'No blocking conditions.',
+                ),
+              ],
+      ),
+      readinessBlock(
+        'Readiness gates',
+        checks.map((row) =>
+          h(
+            'div',
+            {
+              className: `readiness-gate readiness-gate-${stringValue(row['readiness-state']).toLowerCase()}`,
+            },
+            octicon(
+              stringValue(row['readiness-state']) === 'Ready'
+                ? 'check-circle'
+                : stringValue(row['readiness-state']) === 'Blocked'
+                  ? 'stop'
+                  : 'question',
+            ),
+            h(
+              'span',
+              null,
+              h('strong', null, stringValue(row.check)),
+              h('small', null, stringValue(row.detail)),
+            ),
+          ),
+        ),
+      ),
+      readinessBlock(
+        observations.length > 0 ? 'Other observations' : 'Evidence',
+        observations.length > 0
+          ? observations.map((row) =>
+              h(
+                'div',
+                { className: 'readiness-observation' },
+                h('strong', null, stringValue(row.signal)),
+                h('span', null, stringValue(row.detail)),
+              ),
+            )
+          : evidenceRows.map((row) =>
+              h(
+                'div',
+                { className: 'readiness-evidence-row' },
+                h('span', null, stringValue(row.label)),
+                h('strong', null, stringValue(row.value)),
+              ),
+            ),
+      ),
+    ),
+  )
 }
 
 /** @param {string} title @param {Array<HTMLElement|string|null>} content */
 function readinessBlock(title, content) {
-  return h('section', { className: 'readiness-block' }, h('h3', null, title), h('div', { className: 'readiness-block-content' }, ...content));
+  return h(
+    'section',
+    { className: 'readiness-block' },
+    h('h3', null, title),
+    h('div', { className: 'readiness-block-content' }, ...content),
+  )
 }
 
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function snapshotAge(metadata) {
-  const value = metadata?.['as-of'] || metadata?.['retrieved-at'];
-  if (!value) return 'Unavailable';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC · ${elapsedSince(date)}`;
+  const value = metadata?.['as-of'] || metadata?.['retrieved-at']
+  if (!value) return 'Unavailable'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC · ${elapsedSince(date)}`
 }
 
 /** @param {Date} date */
 function elapsedSince(date) {
-  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
-  return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
+  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000))
+  return minutes < 60
+    ? `${minutes}m ago`
+    : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`
 }
 
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function evidenceState(metadata) {
-  if (!metadata || metadata.availability === 'unavailable') return 'Unavailable';
-  if (metadata.completeness !== 'complete' || metadata.freshness !== 'fresh') return 'Incomplete';
-  return '✓ Complete';
+  if (!metadata || metadata.availability === 'unavailable') return 'Unavailable'
+  if (metadata.completeness !== 'complete' || metadata.freshness !== 'fresh')
+    return 'Incomplete'
+  return '✓ Complete'
 }
 
 /**
@@ -563,25 +958,30 @@ function evidenceState(metadata) {
 function renderContextSummaryElement(context) {
   const rows = context.sourceNames
     .flatMap((sourceName) => rowsFor(context, sourceName))
-    .filter(isContextSummaryRow);
+    .filter(isContextSummaryRow)
   return h(
     'dl',
     { className: 'context-summary', 'aria-label': context.title },
-    ...rows.map((row) => renderDlRow(stringValue(row.label), renderContextSummaryValue(row)))
-  );
+    ...rows.map((row) =>
+      renderDlRow(stringValue(row.label), renderContextSummaryValue(row)),
+    ),
+  )
 }
 
 /** @param {ElementRenderContext} context */
 function renderAnomalyReadinessElement(context) {
-  const sourceName = context.sourceNames[0];
-  const row = sourceName ? rowsFor(context, sourceName)[0] : undefined;
-  return row ? renderAnomalyReadiness(row) : null;
+  const sourceName = context.sourceNames[0]
+  const row = sourceName ? rowsFor(context, sourceName)[0] : undefined
+  return row ? renderAnomalyReadiness(row) : null
 }
 
 /** @param {Record<string, unknown>} row */
 function isContextSummaryRow(row) {
-  return typeof row.label === 'string'
-    && (['string', 'number', 'boolean'].includes(typeof row.value) || Array.isArray(row.items));
+  return (
+    typeof row.label === 'string' &&
+    (['string', 'number', 'boolean'].includes(typeof row.value) ||
+      Array.isArray(row.items))
+  )
 }
 
 /**
@@ -589,39 +989,44 @@ function isContextSummaryRow(row) {
  * @returns {Array<string | HTMLElement | null>}
  */
 function renderContextSummaryValue(row) {
-  if (!Array.isArray(row.items)) return [stringValue(row.value)];
+  if (!Array.isArray(row.items)) return [stringValue(row.value)]
   return row.items.filter(isPlainObject).flatMap((item, index) => {
-    const label = stringValue(item.label);
-    const href = safeNavigationHref(item['navigation-href']);
-    return [
-      index > 0 ? ', ' : null,
-      href ? h('a', { href }, label) : label
-    ];
-  });
+    const label = stringValue(item.label)
+    const href = safeNavigationHref(item['navigation-href'])
+    return [index > 0 ? ', ' : null, href ? h('a', { href }, label) : label]
+  })
 }
 
 /** @param {ElementRenderContext} context */
 function renderSignalListElement(context) {
-  const sourceName = context.sourceNames[0];
-  const rows = rowsFor(context, sourceName);
+  const sourceName = context.sourceNames[0]
+  const rows = rowsFor(context, sourceName)
   const list = h(
     'div',
     { className: 'signal-list-region' },
-    context.description ? h('p', { className: 'signal-boundary-note' }, context.description) : null,
+    context.description
+      ? h('p', { className: 'signal-boundary-note' }, context.description)
+      : null,
     h(
       'ol',
       { className: 'signal-list' },
       ...(rows.length > 0
         ? rows.map((row, index) => renderSignal(row, index, false))
-        : [h(
-          'li',
-          { className: 'signal-clear' },
-          renderIconSpan('signal-icon', 'check-circle'),
-          h('span', { className: 'signal-copy' }, h('strong', null, 'No signals require attention'))
-        )])
-    )
-  );
-  return list;
+        : [
+            h(
+              'li',
+              { className: 'signal-clear' },
+              renderIconSpan('signal-icon', 'check-circle'),
+              h(
+                'span',
+                { className: 'signal-copy' },
+                h('strong', null, 'No signals require attention'),
+              ),
+            ),
+          ]),
+    ),
+  )
+  return list
 }
 
 /**
@@ -631,81 +1036,111 @@ function renderSignalListElement(context) {
  */
 function renderSignal(row, index, isCanonicalAttention = false) {
   const link = isCanonicalAttention
-    ? findLink(row, 'evidence-link') ?? findLink(row, 'run-link') ?? findLink(row, 'external-link')
-    : findLink(row, 'run-link') ?? findLink(row, 'external-link');
-  const navigationHref = safeNavigationHref(row['navigation-href']);
-  const navigationPage = stringValue(row['navigation-page']);
-  const consequence = stringValue(row['consequence-tier']);
-  const urgency = stringValue(row.urgency) || consequence;
-  const kind = stringValue(row.kind) || humanizeSignalLabel(row['signal-type']);
-  const title = stringValue(row.title) || stringValue(row.objective);
-  const reason = stringValue(row.detail) || stringValue(row.reason);
-  const scope = isCanonicalAttention ? stringValue(row.scope) : '';
-  const ageSeconds = Number(row['age-seconds']);
-  const age = isCanonicalAttention && Number.isFinite(ageSeconds)
-    ? `${formatClockDuration(ageSeconds * 1000)} old`
-    : '';
-  const evidence = stringValue(row.evidence) || (isCanonicalAttention
-    ? [stringValue(row['expected-actor']), age].filter(Boolean).join(' · ')
-    : '');
-  const tone = stringValue(row.tone) || canonicalAttentionTone(consequence);
+    ? (findLink(row, 'evidence-link') ??
+      findLink(row, 'run-link') ??
+      findLink(row, 'external-link'))
+    : (findLink(row, 'run-link') ?? findLink(row, 'external-link'))
+  const navigationHref = safeNavigationHref(row['navigation-href'])
+  const navigationPage = stringValue(row['navigation-page'])
+  const consequence = stringValue(row['consequence-tier'])
+  const urgency = stringValue(row.urgency) || consequence
+  const kind = stringValue(row.kind) || humanizeSignalLabel(row['signal-type'])
+  const title = stringValue(row.title) || stringValue(row.objective)
+  const reason = stringValue(row.detail) || stringValue(row.reason)
+  const scope = isCanonicalAttention ? stringValue(row.scope) : ''
+  const ageSeconds = Number(row['age-seconds'])
+  const age =
+    isCanonicalAttention && Number.isFinite(ageSeconds)
+      ? `${formatClockDuration(ageSeconds * 1000)} old`
+      : ''
+  const evidence =
+    stringValue(row.evidence) ||
+    (isCanonicalAttention
+      ? [stringValue(row['expected-actor']), age].filter(Boolean).join(' · ')
+      : '')
+  const tone = stringValue(row.tone) || canonicalAttentionTone(consequence)
   const content = [
     isCanonicalAttention
       ? h(
           'span',
-          { className: 'signal-rank signal-priority-rank', 'aria-hidden': 'true' },
+          {
+            className: 'signal-rank signal-priority-rank',
+            'aria-hidden': 'true',
+          },
           h('strong', null, String(index + 1)),
-          h('small', null, 'Priority')
+          h('small', null, 'Priority'),
         )
-      : h('span', { className: 'signal-rank', 'aria-hidden': 'true' }, String(index + 1)),
+      : h(
+          'span',
+          { className: 'signal-rank', 'aria-hidden': 'true' },
+          String(index + 1),
+        ),
     renderIconSpan('signal-icon', stringValue(row.icon) || 'issue'),
     h(
       'span',
       { className: 'signal-copy' },
       h('span', null, [urgency, kind].filter(Boolean).join(' · ')),
       h('strong', null, title),
-      h('small', null, [scope, reason].filter(Boolean).join(' · '))
+      h('small', null, [scope, reason].filter(Boolean).join(' · ')),
     ),
     h(
       'span',
       { className: 'signal-evidence' },
       h('strong', null, evidence),
-      h('small', null, stringValue(row.action) || 'View details')
-    )
-  ];
-  const className = `signal-item signal-${tone || 'informational'}${isCanonicalAttention ? ' canonical-attention-item' : ''}`;
+      h('small', null, stringValue(row.action) || 'View details'),
+    ),
+  ]
+  const className = `signal-item signal-${tone || 'informational'}${isCanonicalAttention ? ' canonical-attention-item' : ''}`
   if (link) {
-    return h('li', { className }, h('a', { href: link.href, 'aria-label': link.label }, ...content));
+    return h(
+      'li',
+      { className },
+      h('a', { href: link.href, 'aria-label': link.label }, ...content),
+    )
   }
   if (navigationPage) {
-    return h('li', { className }, h('a', { href: `#page-${navigationPage}`, dataset: { navPageId: navigationPage } }, ...content));
+    return h(
+      'li',
+      { className },
+      h(
+        'a',
+        {
+          href: `#page-${navigationPage}`,
+          dataset: { navPageId: navigationPage },
+        },
+        ...content,
+      ),
+    )
   }
   if (navigationHref) {
-    return h('li', { className }, h('a', { href: navigationHref }, ...content));
+    return h('li', { className }, h('a', { href: navigationHref }, ...content))
   }
-  return h('li', { className }, h('div', null, ...content));
+  return h('li', { className }, h('div', null, ...content))
 }
 
 /** @param {unknown} value */
 function humanizeSignalLabel(value) {
-  return stringValue(value).replace(/[-_]+/g, ' ');
+  return stringValue(value).replace(/[-_]+/g, ' ')
 }
 
 /** @param {string} consequence */
 function canonicalAttentionTone(consequence) {
-  if (['critical', 'high'].includes(consequence.toLowerCase())) return 'critical';
-  if (consequence.toLowerCase() === 'low') return 'informational';
-  return 'action';
+  if (['critical', 'high'].includes(consequence.toLowerCase()))
+    return 'critical'
+  if (consequence.toLowerCase() === 'low') return 'informational'
+  return 'action'
 }
 
 /** @param {unknown} value */
 function safeNavigationHref(value) {
-  if (typeof value !== 'string' || !value.startsWith('#')) return null;
+  if (typeof value !== 'string' || !value.startsWith('#')) return null
   try {
-    const url = new URL(value, 'https://dashboard.invalid/');
-    return url.origin === 'https://dashboard.invalid' && url.hash === value ? value : null;
+    const url = new URL(value, 'https://dashboard.invalid/')
+    return url.origin === 'https://dashboard.invalid' && url.hash === value
+      ? value
+      : null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -714,19 +1149,21 @@ function safeNavigationHref(value) {
  * @param {string} sourceName
  */
 function rowsFor(context, sourceName) {
-  return rowsForSource(context.sources, sourceName);
+  return rowsForSource(context.sources, sourceName)
 }
 
 /**
  * @param {unknown} value
  */
 function stringValue(value) {
-  return value == null ? '' : String(value);
+  return value == null ? '' : String(value)
 }
 
 /**
  * @param {string} value
  */
 function capitalize(value) {
-  return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+  return value.length === 0
+    ? value
+    : `${value.charAt(0).toUpperCase()}${value.slice(1)}`
 }

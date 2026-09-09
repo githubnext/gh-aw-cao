@@ -4,18 +4,18 @@
  * duplicated as hardcoded literals across the overview and packages views.
  */
 
-import runConclusionClassification from './run-conclusion-classification.json' with { type: 'json' };
-import packageAicUtilizationThresholds from './package-aic-utilization-thresholds.json' with { type: 'json' };
+import runConclusionClassification from './run-conclusion-classification.json' with { type: 'json' }
+import packageAicUtilizationThresholds from './package-aic-utilization-thresholds.json' with { type: 'json' }
 
-const FAILURE_CONCLUSIONS = new Set(runConclusionClassification.failure ?? []);
-const APPROVAL_CONCLUSIONS = new Set(runConclusionClassification.approval ?? []);
+const FAILURE_CONCLUSIONS = new Set(runConclusionClassification.failure ?? [])
+const APPROVAL_CONCLUSIONS = new Set(runConclusionClassification.approval ?? [])
 
 /**
  * @param {unknown} conclusion
  * @returns {boolean}
  */
 export function isFailureConclusion(conclusion) {
-  return FAILURE_CONCLUSIONS.has(String(conclusion));
+  return FAILURE_CONCLUSIONS.has(String(conclusion))
 }
 
 /**
@@ -23,7 +23,7 @@ export function isFailureConclusion(conclusion) {
  * @returns {boolean}
  */
 export function isApprovalConclusion(conclusion) {
-  return APPROVAL_CONCLUSIONS.has(String(conclusion));
+  return APPROVAL_CONCLUSIONS.has(String(conclusion))
 }
 
 /**
@@ -37,14 +37,17 @@ export function isApprovalConclusion(conclusion) {
 export function classifyUtilizationRatio(ratio) {
   for (const rule of packageAicUtilizationThresholds) {
     if (typeof rule.max !== 'number' || ratio < rule.max) {
-      return rule.status;
+      return rule.status
     }
   }
-  const lastRule = packageAicUtilizationThresholds[packageAicUtilizationThresholds.length - 1];
+  const lastRule =
+    packageAicUtilizationThresholds[packageAicUtilizationThresholds.length - 1]
   if (!lastRule) {
-    throw new Error('package-aic-utilization-thresholds.json must define at least one rule.');
+    throw new Error(
+      'package-aic-utilization-thresholds.json must define at least one rule.',
+    )
   }
   // Reachable only if every rule (including the last) declares a numeric `max`, which is a
   // misconfiguration: the last rule is expected to be an unbounded fallback with no `max`.
-  return lastRule.status;
+  return lastRule.status
 }

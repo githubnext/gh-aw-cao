@@ -10,13 +10,13 @@
  */
 export function keyed(items, renderItem, key) {
   /** @type {Comment | null} */
-  let start = null;
+  let start = null
   /** @type {Comment | null} */
-  let end = null;
+  let end = null
   /** @type {Node | null} */
-  let parent = null;
+  let parent = null
   /** @type {Map<string, Node>} */
-  const nodeByKey = new Map();
+  const nodeByKey = new Map()
 
   /** @type {KeyedListDescriptor} */
   const descriptor = {
@@ -26,54 +26,54 @@ export function keyed(items, renderItem, key) {
     key,
     render() {
       if (!start || !end || !parent) {
-        return;
+        return
       }
 
-      const nextKeys = new Set();
+      const nextKeys = new Set()
       /** @type {Node[]} */
-      const nextNodes = [];
+      const nextNodes = []
 
       descriptor.items.forEach((item, index) => {
-        const itemKey = descriptor.key(item, index);
-        nextKeys.add(itemKey);
-        let node = nodeByKey.get(itemKey);
+        const itemKey = descriptor.key(item, index)
+        nextKeys.add(itemKey)
+        let node = nodeByKey.get(itemKey)
         if (!node) {
-          node = descriptor.renderItem(item, index);
-          nodeByKey.set(itemKey, node);
+          node = descriptor.renderItem(item, index)
+          nodeByKey.set(itemKey, node)
         }
-        nextNodes.push(node);
-      });
+        nextNodes.push(node)
+      })
 
       for (const [itemKey, node] of [...nodeByKey.entries()]) {
         if (!nextKeys.has(itemKey)) {
           if (node.parentNode) {
-            node.parentNode.removeChild(node);
+            node.parentNode.removeChild(node)
           }
-          nodeByKey.delete(itemKey);
+          nodeByKey.delete(itemKey)
         }
       }
 
-      let anchor = start.nextSibling;
+      let anchor = start.nextSibling
       for (const node of nextNodes) {
         if (node !== anchor) {
-          parent.insertBefore(node, anchor ?? end);
+          parent.insertBefore(node, anchor ?? end)
         } else {
-          anchor = anchor?.nextSibling ?? end;
+          anchor = anchor?.nextSibling ?? end
         }
-        anchor = node.nextSibling;
+        anchor = node.nextSibling
       }
     },
     _attach(nextParent) {
-      parent = nextParent;
-      start = document.createComment('keyed-start');
-      end = document.createComment('keyed-end');
-      appendNode(parent, start);
-      appendNode(parent, end);
-      descriptor.render();
-    }
-  };
+      parent = nextParent
+      start = document.createComment('keyed-start')
+      end = document.createComment('keyed-end')
+      appendNode(parent, start)
+      appendNode(parent, end)
+      descriptor.render()
+    },
+  }
 
-  return descriptor;
+  return descriptor
 }
 
 const SVG_TAGS = new Set([
@@ -90,11 +90,11 @@ const SVG_TAGS = new Set([
   'polygon',
   'text',
   'tspan',
-  'title'
-]);
+  'title',
+])
 
-const FORM_CONTROL_TAGS = new Set(['input', 'select', 'textarea']);
-let generatedFormControlId = 0;
+const FORM_CONTROL_TAGS = new Set(['input', 'select', 'textarea'])
+let generatedFormControlId = 0
 
 /**
  * @param {string} name
@@ -104,14 +104,22 @@ let generatedFormControlId = 0;
  */
 export function h(name, props, ...children) {
   const element = SVG_TAGS.has(name)
-    ? /** @type {HTMLElement} */ (/** @type {unknown} */ (document.createElementNS('http://www.w3.org/2000/svg', name)))
-    : document.createElement(name);
-  applyProps(element, props ?? {});
-  if (FORM_CONTROL_TAGS.has(name) && !element.hasAttribute('id') && !element.hasAttribute('name')) {
-    element.id = `cao-field-${++generatedFormControlId}`;
+    ? /** @type {HTMLElement} */ (
+        /** @type {unknown} */ (
+          document.createElementNS('http://www.w3.org/2000/svg', name)
+        )
+      )
+    : document.createElement(name)
+  applyProps(element, props ?? {})
+  if (
+    FORM_CONTROL_TAGS.has(name) &&
+    !element.hasAttribute('id') &&
+    !element.hasAttribute('name')
+  ) {
+    element.id = `cao-field-${++generatedFormControlId}`
   }
-  appendChildren(element, flattenChildren(children));
-  return element;
+  appendChildren(element, flattenChildren(children))
+  return element
 }
 
 /**
@@ -121,35 +129,37 @@ export function h(name, props, ...children) {
 function applyProps(element, props) {
   for (const [key, value] of Object.entries(props)) {
     if (value == null) {
-      continue;
+      continue
     }
     if (key === 'className') {
-      element.setAttribute('class', String(value));
-      continue;
+      element.setAttribute('class', String(value))
+      continue
     }
     if (key.startsWith('on') && typeof value === 'function') {
       element.addEventListener(
         key.slice(2).toLowerCase(),
-        /** @type {EventListener} */ (value)
-      );
-      continue;
+        /** @type {EventListener} */ (value),
+      )
+      continue
     }
     if (key === 'dataset' && typeof value === 'object' && value !== null) {
-      for (const [dataKey, dataValue] of Object.entries(/** @type {Record<string, unknown>} */ (value))) {
-        element.setAttribute(`data-${toKebabCase(dataKey)}`, String(dataValue));
+      for (const [dataKey, dataValue] of Object.entries(
+        /** @type {Record<string, unknown>} */ (value),
+      )) {
+        element.setAttribute(`data-${toKebabCase(dataKey)}`, String(dataValue))
       }
-      continue;
+      continue
     }
     if (key in element) {
       try {
         // @ts-expect-error dynamic DOM property assignment
-        element[key] = value;
-        continue;
+        element[key] = value
+        continue
       } catch {
         // fall through to attribute
       }
     }
-    element.setAttribute(key, String(value));
+    element.setAttribute(key, String(value))
   }
 }
 
@@ -160,13 +170,13 @@ function applyProps(element, props) {
 function appendChildren(parent, children) {
   for (const child of children) {
     if (child == null || child === false) {
-      continue;
+      continue
     }
     if (isKeyedListDescriptor(child)) {
-      child._attach(parent);
-      continue;
+      child._attach(parent)
+      continue
     }
-    appendNode(parent, normalizeChild(child));
+    appendNode(parent, normalizeChild(child))
   }
 }
 
@@ -175,7 +185,9 @@ function appendChildren(parent, children) {
  * @param {Node | string} child
  */
 function appendNode(parent, child) {
-  parent.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+  parent.appendChild(
+    typeof child === 'string' ? document.createTextNode(child) : child,
+  )
 }
 
 /**
@@ -183,7 +195,7 @@ function appendNode(parent, child) {
  * @returns {child is KeyedListDescriptor}
  */
 function isKeyedListDescriptor(child) {
-  return typeof child === 'object' && child !== null && '__keyedList' in child;
+  return typeof child === 'object' && child !== null && '__keyedList' in child
 }
 
 /**
@@ -192,9 +204,9 @@ function isKeyedListDescriptor(child) {
  */
 function normalizeChild(child) {
   if (child instanceof Node) {
-    return child;
+    return child
   }
-  return String(child);
+  return String(child)
 }
 
 /**
@@ -202,7 +214,9 @@ function normalizeChild(child) {
  * @returns {unknown[]}
  */
 function flattenChildren(children) {
-  return children.flatMap((child) => Array.isArray(child) ? flattenChildren(child) : [child]);
+  return children.flatMap((child) =>
+    Array.isArray(child) ? flattenChildren(child) : [child],
+  )
 }
 
 /**
@@ -210,5 +224,5 @@ function flattenChildren(children) {
  * @returns {string}
  */
 function toKebabCase(value) {
-  return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }

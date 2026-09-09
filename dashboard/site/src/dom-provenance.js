@@ -18,31 +18,40 @@
  * @param {import('./presenter.js').PresentationDocument} document
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
-export function enableDashboardDomProvenance(root, document, getBuiltInPagePayload) {
-  annotateDashboardDom(root, document, getBuiltInPagePayload);
-  const pagesById = new Map(document.dashboard.pages.map((page, pageIndex) => [page.id, { page, pageIndex }]));
+export function enableDashboardDomProvenance(
+  root,
+  document,
+  getBuiltInPagePayload,
+) {
+  annotateDashboardDom(root, document, getBuiltInPagePayload)
+  const pagesById = new Map(
+    document.dashboard.pages.map((page, pageIndex) => [
+      page.id,
+      { page, pageIndex },
+    ]),
+  )
   const observer = new MutationObserver((mutations) => {
-    const pagesToAnnotate = new Set();
-    const provenanceRoots = [];
+    const pagesToAnnotate = new Set()
+    const provenanceRoots = []
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue;
-        const element = /** @type {Element} */ (node);
+        if (node.nodeType !== Node.ELEMENT_NODE) continue
+        const element = /** @type {Element} */ (node)
         if (!queueAffectedPageDom(element, pagesToAnnotate)) {
-          provenanceRoots.push(element);
+          provenanceRoots.push(element)
         }
       }
     }
     for (const renderedPage of pagesToAnnotate) {
-      annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload);
+      annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload)
     }
     for (const node of provenanceRoots) {
       if (!isInsideElementSet(node, pagesToAnnotate)) {
-        propagateDashboardDomProvenance(node);
+        propagateDashboardDomProvenance(node)
       }
     }
-  });
-  observer.observe(root, { childList: true, subtree: true });
+  })
+  observer.observe(root, { childList: true, subtree: true })
 }
 
 /**
@@ -51,17 +60,17 @@ export function enableDashboardDomProvenance(root, document, getBuiltInPagePaylo
  * @returns {boolean}
  */
 function queueAffectedPageDom(element, pagesToAnnotate) {
-  if (!hasProvenanceBoundary(element)) return false;
-  const page = element.closest('[data-page-id]');
+  if (!hasProvenanceBoundary(element)) return false
+  const page = element.closest('[data-page-id]')
   if (page) {
-    pagesToAnnotate.add(page);
-    return true;
+    pagesToAnnotate.add(page)
+    return true
   }
-  const pages = [...element.querySelectorAll('[data-page-id]')];
+  const pages = [...element.querySelectorAll('[data-page-id]')]
   for (const renderedPage of pages) {
-    if (hasProvenanceBoundary(renderedPage)) pagesToAnnotate.add(renderedPage);
+    if (hasProvenanceBoundary(renderedPage)) pagesToAnnotate.add(renderedPage)
   }
-  return pages.length > 0;
+  return pages.length > 0
 }
 
 /**
@@ -69,8 +78,12 @@ function queueAffectedPageDom(element, pagesToAnnotate) {
  * @returns {boolean}
  */
 function hasProvenanceBoundary(element) {
-  return element.matches('[data-view-id], [data-section-id], [data-page-id]')
-    || element.querySelector('[data-view-id], [data-section-id], [data-page-id]') !== null;
+  return (
+    element.matches('[data-view-id], [data-section-id], [data-page-id]') ||
+    element.querySelector(
+      '[data-view-id], [data-section-id], [data-page-id]',
+    ) !== null
+  )
 }
 
 /**
@@ -78,12 +91,21 @@ function hasProvenanceBoundary(element) {
  * @param {Map<string, { page: import('./presenter.js').PresentableBuiltInPage | import('./presenter.js').PresentableCustomPage, pageIndex: number }>} pagesById
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
-function annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload) {
-  const pageId = renderedPage.getAttribute('data-page-id');
-  if (!pageId) return;
-  const entry = pagesById.get(pageId);
-  if (!entry) return;
-  annotatePageDom(renderedPage, entry.page, entry.pageIndex, getBuiltInPagePayload);
+function annotateRenderedPageDom(
+  renderedPage,
+  pagesById,
+  getBuiltInPagePayload,
+) {
+  const pageId = renderedPage.getAttribute('data-page-id')
+  if (!pageId) return
+  const entry = pagesById.get(pageId)
+  if (!entry) return
+  annotatePageDom(
+    renderedPage,
+    entry.page,
+    entry.pageIndex,
+    getBuiltInPagePayload,
+  )
 }
 
 /**
@@ -93,9 +115,9 @@ function annotateRenderedPageDom(renderedPage, pagesById, getBuiltInPagePayload)
  */
 function isInsideElementSet(element, elements) {
   for (const candidate of elements) {
-    if (candidate.contains(element)) return true;
+    if (candidate.contains(element)) return true
   }
-  return false;
+  return false
 }
 
 /**
@@ -107,10 +129,14 @@ function isInsideElementSet(element, elements) {
  * @param {Element} node
  */
 function propagateDashboardDomProvenance(node) {
-  if (node.hasAttribute('data-json-path')) return;
-  const owner = node.parentElement?.closest('[data-json-path]');
-  if (!owner) return;
-  annotateDomTree(node, /** @type {string} */ (owner.getAttribute('data-json-path')), owner.getAttribute('data-js-view') ?? undefined);
+  if (node.hasAttribute('data-json-path')) return
+  const owner = node.parentElement?.closest('[data-json-path]')
+  if (!owner) return
+  annotateDomTree(
+    node,
+    /** @type {string} */ (owner.getAttribute('data-json-path')),
+    owner.getAttribute('data-js-view') ?? undefined,
+  )
 }
 
 /**
@@ -119,31 +145,39 @@ function propagateDashboardDomProvenance(node) {
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
 function annotateDashboardDom(root, document, getBuiltInPagePayload) {
-  annotateDomTree(root, '$.dashboard');
+  annotateDomTree(root, '$.dashboard')
 
-  const callouts = Array.isArray(document.dashboard.callouts) ? document.dashboard.callouts : [];
+  const callouts = Array.isArray(document.dashboard.callouts)
+    ? document.dashboard.callouts
+    : []
   for (const element of root.querySelectorAll('[data-site-callout]')) {
-    const index = callouts.findIndex((callout) => callout.id === element.getAttribute('data-site-callout'));
-    if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`);
+    const index = callouts.findIndex(
+      (callout) => callout.id === element.getAttribute('data-site-callout'),
+    )
+    if (index >= 0) annotateDomTree(element, `$.dashboard.callouts[${index}]`)
   }
 
-  const navLinks = [...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]')];
-  const pageElements = [...root.querySelectorAll('[data-page-id]')];
+  const navLinks = [
+    ...root.querySelectorAll('[data-nav-page-id], [data-mobile-nav-page-id]'),
+  ]
+  const pageElements = [...root.querySelectorAll('[data-page-id]')]
   document.dashboard.pages.forEach((page, pageIndex) => {
-    const pagePath = `$.dashboard.pages[${pageIndex}]`;
+    const pagePath = `$.dashboard.pages[${pageIndex}]`
     for (const element of navLinks) {
       if (
-        element.getAttribute('data-nav-page-id') === page.id
-        || element.getAttribute('data-mobile-nav-page-id') === page.id
+        element.getAttribute('data-nav-page-id') === page.id ||
+        element.getAttribute('data-mobile-nav-page-id') === page.id
       ) {
-        annotateDomTree(element, pagePath);
+        annotateDomTree(element, pagePath)
       }
     }
 
-    const renderedPage = pageElements.find((element) => element.getAttribute('data-page-id') === page.id);
-    if (!renderedPage) return;
-    annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload);
-  });
+    const renderedPage = pageElements.find(
+      (element) => element.getAttribute('data-page-id') === page.id,
+    )
+    if (!renderedPage) return
+    annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload)
+  })
 }
 
 /**
@@ -152,33 +186,46 @@ function annotateDashboardDom(root, document, getBuiltInPagePayload) {
  * @param {number} pageIndex
  * @param {(page: import('./presenter.js').PresentableBuiltInPage) => import('./presenter.js').PresentableCustomPage} getBuiltInPagePayload
  */
-export function annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePayload) {
-  const pagePath = `$.dashboard.pages[${pageIndex}]`;
-  annotateDomTree(renderedPage, pagePath);
+export function annotatePageDom(
+  renderedPage,
+  page,
+  pageIndex,
+  getBuiltInPagePayload,
+) {
+  const pagePath = `$.dashboard.pages[${pageIndex}]`
+  annotateDomTree(renderedPage, pagePath)
 
-  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
-  const definitionPath = page.kind === 'built-in' ? `${pagePath}.definition` : pagePath;
-  const sections = Array.isArray(payload.sections) ? payload.sections : [];
-  const sectionElements = [...renderedPage.querySelectorAll('[data-section-id]')];
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page
+  const definitionPath =
+    page.kind === 'built-in' ? `${pagePath}.definition` : pagePath
+  const sections = Array.isArray(payload.sections) ? payload.sections : []
+  const sectionElements = [
+    ...renderedPage.querySelectorAll('[data-section-id]'),
+  ]
   sections.forEach((section, sectionIndex) => {
     for (const element of sectionElements) {
       if (element.getAttribute('data-section-id') === section.id) {
-        annotateDomTree(element, `${definitionPath}.sections[${sectionIndex}]`);
+        annotateDomTree(element, `${definitionPath}.sections[${sectionIndex}]`)
       }
     }
-  });
+  })
 
-  const views = Array.isArray(payload.views) ? payload.views : [];
-  const viewElements = [...renderedPage.querySelectorAll('[data-view-id]')];
+  const views = Array.isArray(payload.views) ? payload.views : []
+  const viewElements = [...renderedPage.querySelectorAll('[data-view-id]')]
   views.forEach((view, viewIndex) => {
-    if (!isPlainObject(view)) return;
-    const viewId = typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`;
+    if (!isPlainObject(view)) return
+    const viewId =
+      typeof view.id === 'string' ? view.id : `view-${viewIndex + 1}`
     for (const element of viewElements) {
-      if (element.getAttribute('data-view-id') !== viewId) continue;
-      const viewRoot = element.closest('.custom-view') ?? element;
-      annotateDomTree(viewRoot, `${definitionPath}.views[${viewIndex}]`, typeof view.element === 'string' ? view.element : undefined);
+      if (element.getAttribute('data-view-id') !== viewId) continue
+      const viewRoot = element.closest('.custom-view') ?? element
+      annotateDomTree(
+        viewRoot,
+        `${definitionPath}.views[${viewIndex}]`,
+        typeof view.element === 'string' ? view.element : undefined,
+      )
     }
-  });
+  })
 }
 
 /**
@@ -188,11 +235,11 @@ export function annotatePageDom(renderedPage, page, pageIndex, getBuiltInPagePay
  */
 function annotateDomTree(root, jsonPath, javascriptView) {
   for (const element of [root, ...root.querySelectorAll('*')]) {
-    element.setAttribute('data-json-path', jsonPath);
+    element.setAttribute('data-json-path', jsonPath)
     if (javascriptView) {
-      element.setAttribute('data-js-view', javascriptView);
+      element.setAttribute('data-js-view', javascriptView)
     } else {
-      element.removeAttribute('data-js-view');
+      element.removeAttribute('data-js-view')
     }
   }
 }
@@ -202,5 +249,5 @@ function annotateDomTree(root, jsonPath, javascriptView) {
  * @returns {value is Record<string, unknown>}
  */
 function isPlainObject(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

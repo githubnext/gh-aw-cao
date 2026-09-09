@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 5;
+export const CANONICAL_SCHEMA_VERSION = 5
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'repository',
@@ -8,8 +8,8 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'session',
   'event',
   'work-item',
-  'finding'
-]);
+  'finding',
+])
 
 /** @typedef {typeof ENTITY_KINDS[number]} EntityKind */
 
@@ -44,9 +44,9 @@ export const ENTITY_KINDS = /** @type {const} */ ([
  */
 export function requiredString(value, field) {
   if (typeof value !== 'string' || !value.trim()) {
-    throw new TypeError(`${field} is required`);
+    throw new TypeError(`${field} is required`)
   }
-  return value.trim();
+  return value.trim()
 }
 
 /**
@@ -55,10 +55,11 @@ export function requiredString(value, field) {
  * @returns {string}
  */
 export function canonicalTimestamp(value, field) {
-  const input = requiredString(value, field);
-  const milliseconds = Date.parse(input);
-  if (!Number.isFinite(milliseconds)) throw new TypeError(`${field} must be a valid timestamp`);
-  return new Date(milliseconds).toISOString();
+  const input = requiredString(value, field)
+  const milliseconds = Date.parse(input)
+  if (!Number.isFinite(milliseconds))
+    throw new TypeError(`${field} must be a valid timestamp`)
+  return new Date(milliseconds).toISOString()
 }
 
 /**
@@ -70,24 +71,26 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
-  const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
-  const jobsById = new Map(batch.jobs.map((record) => [record.id, record]));
+  const workflowsById = new Map(
+    batch.workflows.map((record) => [record.id, record]),
+  )
+  const jobsById = new Map(batch.jobs.map((record) => [record.id, record]))
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
     workflows: new Set(batch.workflows.map((record) => record.id)),
     runs: new Set(batch.runs.map((record) => record.id)),
     jobs: new Set(batch.jobs.map((record) => record.id)),
-    sessions: new Set(batch.sessions.map((record) => record.id))
-  };
+    sessions: new Set(batch.sessions.map((record) => record.id)),
+  }
   const entityNames = {
     repositories: 'repository',
     workflows: 'workflow',
     runs: 'run',
     jobs: 'job',
-    sessions: 'session'
-  };
+    sessions: 'session',
+  }
   /** @type {string[]} */
-  const errors = [];
+  const errors = []
 
   /**
    * @param {Record<string, unknown>} record
@@ -95,40 +98,50 @@ export function relationshipErrors(batch) {
    * @param {keyof typeof ids} collection
    */
   const requireReference = (record, field, collection) => {
-    const id = String(record.id ?? '<unknown>');
-    const reference = record[field];
-    if (typeof reference !== 'string' || !reference || !ids[collection].has(reference)) {
-      errors.push(`${id}.${field} does not reference an existing ${entityNames[collection]}`);
+    const id = String(record.id ?? '<unknown>')
+    const reference = record[field]
+    if (
+      typeof reference !== 'string' ||
+      !reference ||
+      !ids[collection].has(reference)
+    ) {
+      errors.push(
+        `${id}.${field} does not reference an existing ${entityNames[collection]}`,
+      )
     }
-  };
+  }
 
   for (const workflow of batch.workflows) {
-    requireReference(workflow, 'repositoryId', 'repositories');
+    requireReference(workflow, 'repositoryId', 'repositories')
   }
   for (const run of batch.runs) {
-    requireReference(run, 'repositoryId', 'repositories');
-    requireReference(run, 'workflowId', 'workflows');
-    const workflow = workflowsById.get(run.workflowId);
+    requireReference(run, 'repositoryId', 'repositories')
+    requireReference(run, 'workflowId', 'workflows')
+    const workflow = workflowsById.get(run.workflowId)
     if (workflow && workflow.repositoryId !== run.repositoryId) {
-      errors.push(`${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`);
+      errors.push(
+        `${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`,
+      )
     }
   }
   for (const job of batch.jobs) {
-    requireReference(job, 'runId', 'runs');
+    requireReference(job, 'runId', 'runs')
   }
   for (const session of batch.sessions) {
-    requireReference(session, 'runId', 'runs');
+    requireReference(session, 'runId', 'runs')
     if (session.jobId !== undefined && session.jobId !== null) {
-      requireReference(session, 'jobId', 'jobs');
-      const job = jobsById.get(session.jobId);
+      requireReference(session, 'jobId', 'jobs')
+      const job = jobsById.get(session.jobId)
       if (job && job.runId !== session.runId) {
-        errors.push(`${String(session.id ?? '<unknown>')}.jobId references a job from another run`);
+        errors.push(
+          `${String(session.id ?? '<unknown>')}.jobId references a job from another run`,
+        )
       }
     }
   }
   for (const event of batch.events) {
-    requireReference(event, 'sessionId', 'sessions');
+    requireReference(event, 'sessionId', 'sessions')
   }
 
-  return errors;
+  return errors
 }

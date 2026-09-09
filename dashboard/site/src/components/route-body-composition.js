@@ -17,7 +17,8 @@
  * @returns {T}
  */
 export function selectConfigBody(config, selected) {
-  return typeof selected === 'string' && config.values.includes(/** @type {T} */ (selected))
+  return typeof selected === 'string' &&
+    config.values.includes(/** @type {T} */ (selected))
     ? /** @type {T} */ (selected)
-    : config.fallback;
+    : config.fallback
 }

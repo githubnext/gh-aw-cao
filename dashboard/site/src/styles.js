@@ -2173,7 +2173,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .app-shell { display: block; }
   main.dashboard-prototype { width: 100%; overflow: visible; padding: 0; }
   a { color: inherit; text-decoration: underline; }
-}`;
+}`
 }
 
-export const getPrimerStyles = primerStylesheet;
+export const getPrimerStyles = primerStylesheet

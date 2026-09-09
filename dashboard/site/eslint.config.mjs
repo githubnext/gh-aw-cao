@@ -1,9 +1,9 @@
-import js from '@eslint/js';
-import globals from 'globals';
+import js from '@eslint/js'
+import globals from 'globals'
 
 export default [
   {
-    ignores: ['node_modules/**', 'coverage/**']
+    ignores: ['node_modules/**', 'coverage/**'],
   },
   js.configs.recommended,
   {
@@ -13,19 +13,19 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
-        ...globals.node
-      }
+        ...globals.node,
+      },
     },
     rules: {
-      'no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
-    }
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
   {
     files: ['test/**/*.js'],
     languageOptions: {
       globals: {
-        ...globals.node
-      }
-    }
-  }
-];
+        ...globals.node,
+      },
+    },
+  },
+]

@@ -1,19 +1,19 @@
-const MAX_PROGRESS = 0.94;
-const INITIAL_PROGRESS = 0.08;
-const MIN_DELAY = 180;
-const DELAY_VARIANCE = 420;
-const MIN_BURST = 0.08;
-const BURST_VARIANCE = 0.22;
-const COMPLETION_DURATION = 240;
+const MAX_PROGRESS = 0.94
+const INITIAL_PROGRESS = 0.08
+const MIN_DELAY = 180
+const DELAY_VARIANCE = 420
+const MIN_BURST = 0.08
+const BURST_VARIANCE = 0.22
+const COMPLETION_DURATION = 240
 
 /**
  * @param {Document} document
  */
 function installStyles(document) {
-  if (document.querySelector('style[data-loading-progress-styles]')) return;
+  if (document.querySelector('style[data-loading-progress-styles]')) return
 
-  const style = document.createElement('style');
-  style.dataset.loadingProgressStyles = '';
+  const style = document.createElement('style')
+  style.dataset.loadingProgressStyles = ''
   style.textContent = `
 .loading-progress {
   position: fixed;
@@ -54,8 +54,8 @@ function installStyles(document) {
   .loading-progress::after {
     animation: none;
   }
-}`;
-  document.head.append(style);
+}`
+  document.head.append(style)
 }
 
 /**
@@ -65,35 +65,38 @@ function installStyles(document) {
  * @returns {{ complete: () => void }}
  */
 export function startLoadingProgress(document) {
-  installStyles(document);
+  installStyles(document)
 
-  const bar = document.createElement('div');
-  bar.className = 'loading-progress';
-  bar.setAttribute('aria-hidden', 'true');
+  const bar = document.createElement('div')
+  bar.className = 'loading-progress'
+  bar.setAttribute('aria-hidden', 'true')
 
-  let progress = INITIAL_PROGRESS;
-  let timer = 0;
-  let completed = false;
+  let progress = INITIAL_PROGRESS
+  let timer = 0
+  let completed = false
 
   const advance = () => {
-    const burst = MIN_BURST + Math.random() * BURST_VARIANCE;
-    progress += (MAX_PROGRESS - progress) * burst;
-    bar.style.transform = `scaleX(${progress})`;
-    timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE);
-  };
+    const burst = MIN_BURST + Math.random() * BURST_VARIANCE
+    progress += (MAX_PROGRESS - progress) * burst
+    bar.style.transform = `scaleX(${progress})`
+    timer = window.setTimeout(
+      advance,
+      MIN_DELAY + Math.random() * DELAY_VARIANCE,
+    )
+  }
 
-  bar.style.transform = `scaleX(${progress})`;
-  document.body.prepend(bar);
-  timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE);
+  bar.style.transform = `scaleX(${progress})`
+  document.body.prepend(bar)
+  timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE)
 
   return {
     complete() {
-      if (completed) return;
-      completed = true;
-      window.clearTimeout(timer);
-      bar.classList.add('loading-progress-complete');
-      bar.style.transform = 'scaleX(1)';
-      window.setTimeout(() => bar.remove(), COMPLETION_DURATION);
+      if (completed) return
+      completed = true
+      window.clearTimeout(timer)
+      bar.classList.add('loading-progress-complete')
+      bar.style.transform = 'scaleX(1)'
+      window.setTimeout(() => bar.remove(), COMPLETION_DURATION)
     },
-  };
+  }
 }

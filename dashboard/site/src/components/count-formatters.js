@@ -14,7 +14,7 @@ export function titleCase(value) {
     .split(/[-_]/)
     .filter(Boolean)
     .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
-    .join(' ');
+    .join(' ')
 }
 
 /**
@@ -25,7 +25,7 @@ export function titleCase(value) {
  * @returns {string}
  */
 export function textValue(value) {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' ? value.trim() : ''
 }
 
 /**
@@ -34,7 +34,7 @@ export function textValue(value) {
  * @returns {string}
  */
 export function formatCount(value) {
-  return new Intl.NumberFormat('en').format(Number(value) || 0);
+  return new Intl.NumberFormat('en').format(Number(value) || 0)
 }
 
 /**
@@ -45,8 +45,8 @@ export function formatCount(value) {
  * @returns {string}
  */
 export function formatCountNoun(value, singular, plural) {
-  const count = Number(value) || 0;
-  return `${formatCount(count)} ${count === 1 ? singular : plural}`;
+  const count = Number(value) || 0
+  return `${formatCount(count)} ${count === 1 ? singular : plural}`
 }
 
 /**
@@ -56,7 +56,7 @@ export function formatCountNoun(value, singular, plural) {
  * @returns {string}
  */
 export function pluralSuffix(value) {
-  return Number(value) === 1 ? '' : 's';
+  return Number(value) === 1 ? '' : 's'
 }
 
 /**
@@ -66,7 +66,7 @@ export function pluralSuffix(value) {
  * @returns {string}
  */
 export function text(value) {
-  return value == null ? '' : String(value);
+  return value == null ? '' : String(value)
 }
 
 /**
@@ -77,7 +77,7 @@ export function text(value) {
  * @returns {number | null}
  */
 export function computeObservationCoverage(usable, excluded) {
-  return usable + excluded > 0 ? usable / (usable + excluded) : null;
+  return usable + excluded > 0 ? usable / (usable + excluded) : null
 }
 
 /**
@@ -89,7 +89,7 @@ export function computeObservationCoverage(usable, excluded) {
  * @returns {string}
  */
 export function formatCoveragePercent(coverage, unknown = '—') {
-  return coverage === null ? unknown : `${(coverage * 100).toFixed(1)}%`;
+  return coverage === null ? unknown : `${(coverage * 100).toFixed(1)}%`
 }
 
 /**
@@ -101,7 +101,9 @@ export function formatCoveragePercent(coverage, unknown = '—') {
  * @returns {string}
  */
 export function formatRoundedPercent(ratio, unknown = '—') {
-  return ratio === null || !Number.isFinite(ratio) ? unknown : `${Math.round(ratio * 100)}%`;
+  return ratio === null || !Number.isFinite(ratio)
+    ? unknown
+    : `${Math.round(ratio * 100)}%`
 }
 
 /**
@@ -112,7 +114,7 @@ export function formatRoundedPercent(ratio, unknown = '—') {
  * @returns {number}
  */
 export function clampPercent(value) {
-  return Math.max(0, Math.min(100, value));
+  return Math.max(0, Math.min(100, value))
 }
 
 /**
@@ -124,7 +126,12 @@ export function clampPercent(value) {
  * @returns {string}
  */
 export function slugify(value, fallback = '') {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || fallback
+  )
 }
 
 /**
@@ -136,10 +143,10 @@ export function slugify(value, fallback = '') {
  * @returns {Map<string, number>}
  */
 export function countBy(rows, key) {
-  const counts = new Map();
+  const counts = new Map()
   for (const row of rows) {
-    const value = key(row);
-    counts.set(value, (counts.get(value) ?? 0) + 1);
+    const value = key(row)
+    counts.set(value, (counts.get(value) ?? 0) + 1)
   }
-  return counts;
+  return counts
 }

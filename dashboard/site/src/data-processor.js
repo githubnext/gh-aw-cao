@@ -1,15 +1,15 @@
-import { tidy } from './data-operations.js';
-import { summarizeTableColumns } from './table-summary-data.js';
-import { clusterScatterPoints } from './scatter-clustering.js';
-import { deriveDataHealthSources } from './data-health.js';
-import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
-import { normalize } from './data/normalize/index.js';
+import { tidy } from './data-operations.js'
+import { summarizeTableColumns } from './table-summary-data.js'
+import { clusterScatterPoints } from './scatter-clustering.js'
+import { deriveDataHealthSources } from './data-health.js'
+import { adaptDashboardSources } from './data/adapters/dashboard-sources.js'
+import { normalize } from './data/normalize/index.js'
 
 /** @type {Worker | null} */
-let worker = null;
-let nextRequestId = 0;
+let worker = null
+let nextRequestId = 0
 /** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void }>} */
-const pending = new Map();
+const pending = new Map()
 
 /**
  * Runs a serializable tidy pipeline in a Web Worker when the environment supports it.
@@ -18,10 +18,7 @@ const pending = new Map();
  * @returns {Array<Record<string, unknown>>|Promise<Array<Record<string, unknown>>>}
  */
 export function processRows(data, operators) {
-  return processRequest(
-    { data, operators },
-    () => tidy(data, operators)
-  );
+  return processRequest({ data, operators }, () => tidy(data, operators))
 }
 
 /**
@@ -30,10 +27,9 @@ export function processRows(data, operators) {
  * @returns {import('./table-summary-data.js').TableColumnSummary[]|Promise<import('./table-summary-data.js').TableColumnSummary[]>}
  */
 export function processTableSummaries(columns) {
-  return processRequest(
-    { operation: 'summarize-table-columns', columns },
-    () => summarizeTableColumns(columns)
-  );
+  return processRequest({ operation: 'summarize-table-columns', columns }, () =>
+    summarizeTableColumns(columns),
+  )
 }
 
 /**
@@ -44,8 +40,8 @@ export function processTableSummaries(columns) {
 export function processScatterPoints(points, limit) {
   return processRequest(
     { operation: 'cluster-scatter-points', data: points, limit },
-    () => clusterScatterPoints(points, limit)
-  );
+    () => clusterScatterPoints(points, limit),
+  )
 }
 
 /**
@@ -57,8 +53,8 @@ export function processScatterPoints(points, limit) {
 export function processDataHealthSources(sources, context) {
   return processRequest(
     { operation: 'derive-data-health', sources, context },
-    () => deriveDataHealthSources(sources, context)
-  );
+    () => deriveDataHealthSources(sources, context),
+  )
 }
 
 /**
@@ -68,7 +64,7 @@ export function processDataHealthSources(sources, context) {
  * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
  */
 export function processCanonicalDashboardSources(sources, generation) {
-  return normalize(adaptDashboardSources(sources).observations, { generation });
+  return normalize(adaptDashboardSources(sources).observations, { generation })
 }
 
 /**
@@ -81,11 +77,21 @@ export function processCanonicalDashboardSources(sources, generation) {
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context) {
-  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context },
-    () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
-    false
-  ));
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (
+    processRequest(
+      {
+        operation: 'load-canonical-dashboard',
+        sourceUrl,
+        sourceNames,
+        context,
+      },
+      () =>
+        Promise.reject(
+          new Error('Live canonical dashboard loading requires a data worker.'),
+        ),
+      false,
+    )
+  )
 }
 
 /**
@@ -95,11 +101,16 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context) {
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function loadCanonicalDashboardPage(sourceNames, context) {
-  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'query-canonical-dashboard', sourceNames, context },
-    () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
-    false
-  ));
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (
+    processRequest(
+      { operation: 'query-canonical-dashboard', sourceNames, context },
+      () =>
+        Promise.reject(
+          new Error('Live canonical dashboard queries require a data worker.'),
+        ),
+      false,
+    )
+  )
 }
 
 /**
@@ -110,36 +121,41 @@ export function loadCanonicalDashboardPage(sourceNames, context) {
  * @returns {T|Promise<T>}
  */
 function processRequest(request, fallback, recoverWorkerError = true) {
-  const processor = getWorker();
-  if (!processor) return fallback();
-  const id = ++nextRequestId;
+  const processor = getWorker()
+  if (!processor) return fallback()
+  const id = ++nextRequestId
   const result = new Promise((resolve, reject) => {
     pending.set(id, {
       resolve: (value) => resolve(/** @type {T} */ (value)),
-      reject
-    });
-    processor.postMessage({ id, ...request });
-  });
-  return recoverWorkerError ? result.catch(fallback) : result;
+      reject,
+    })
+    processor.postMessage({ id, ...request })
+  })
+  return recoverWorkerError ? result.catch(fallback) : result
 }
 
 /** @returns {Worker | null} */
 function getWorker() {
-  if (worker) return worker;
-  if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:')) return null;
-  worker = new Worker(new URL('./data-worker.js', import.meta.url), { type: 'module' });
+  if (worker) return worker
+  if (typeof Worker === 'undefined' || import.meta.url.startsWith('data:'))
+    return null
+  worker = new Worker(new URL('./data-worker.js', import.meta.url), {
+    type: 'module',
+  })
   worker.addEventListener('message', (event) => {
-    const request = pending.get(event.data?.id);
-    if (!request) return;
-    pending.delete(event.data.id);
-    if (typeof event.data.error === 'string') request.reject(new Error(event.data.error));
-    else request.resolve(event.data.data);
-  });
+    const request = pending.get(event.data?.id)
+    if (!request) return
+    pending.delete(event.data.id)
+    if (typeof event.data.error === 'string')
+      request.reject(new Error(event.data.error))
+    else request.resolve(event.data.data)
+  })
   worker.addEventListener('error', (event) => {
-    for (const request of pending.values()) request.reject(new Error(event.message || 'Data worker failed.'));
-    pending.clear();
-    worker?.terminate();
-    worker = null;
-  });
-  return worker;
+    for (const request of pending.values())
+      request.reject(new Error(event.message || 'Data worker failed.'))
+    pending.clear()
+    worker?.terminate()
+    worker = null
+  })
+  return worker
 }

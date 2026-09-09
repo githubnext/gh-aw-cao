@@ -10,5 +10,5 @@ export {
   renderExperimentDecisionSurface,
   renderExperimentDecisionSurfaceSection,
   renderExperimentFilters,
-  syncExperimentDecisionDeepLink
-} from './experiment-decision-surface.js';
+  syncExperimentDecisionDeepLink,
+} from './experiment-decision-surface.js'

@@ -2,7 +2,7 @@
  * Shared workflow-route body registry.
  */
 
-import { renderWorkflowRuntimeBody } from './workflow-runtime.js';
+import { renderWorkflowRuntimeBody } from './workflow-runtime.js'
 
 /**
  * @typedef {'insights'|'reports'|'runs'} WorkflowRouteBody
@@ -18,7 +18,8 @@ import { renderWorkflowRuntimeBody } from './workflow-runtime.js';
 
 /** @type {Readonly<Record<WorkflowRouteBody, WorkflowRouteBodyRenderer | undefined>>} */
 export const WORKFLOW_ROUTE_BODY_RENDERERS = {
-  insights: ({ context, workflow }) => renderWorkflowRuntimeBody(context, workflow),
+  insights: ({ context, workflow }) =>
+    renderWorkflowRuntimeBody(context, workflow),
   reports: undefined,
-  runs: undefined
-};
+  runs: undefined,
+}

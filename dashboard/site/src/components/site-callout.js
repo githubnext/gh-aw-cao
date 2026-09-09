@@ -2,10 +2,10 @@
  * Site-wide dashboard notices with volatile dismissal state.
  */
 
-import { h } from '../dom.js';
-import { renderCloseButton, renderIconSpan } from './ui-primitives.js';
+import { h } from '../dom.js'
+import { renderCloseButton, renderIconSpan } from './ui-primitives.js'
 
-const dismissedCalloutIds = new Set();
+const dismissedCalloutIds = new Set()
 
 /**
  * @typedef {{ id: string, title: string, description: string, icon?: string, ['navigation-page']?: string, ['visible-when']?: { source: string, field: string, equals: unknown } }} SiteCallout
@@ -21,16 +21,18 @@ const dismissedCalloutIds = new Set();
  * @returns {HTMLElement | null}
  */
 export function renderSiteCallouts(callouts, sources) {
-  if (!Array.isArray(callouts)) return null;
-  const visibleCallouts = callouts.filter((callout) => (
-    !dismissedCalloutIds.has(callout.id) && matchesVisibility(callout['visible-when'], sources)
-  ));
-  if (visibleCallouts.length === 0) return null;
+  if (!Array.isArray(callouts)) return null
+  const visibleCallouts = callouts.filter(
+    (callout) =>
+      !dismissedCalloutIds.has(callout.id) &&
+      matchesVisibility(callout['visible-when'], sources),
+  )
+  if (visibleCallouts.length === 0) return null
   return h(
     'section',
     { className: 'site-callouts', 'aria-label': 'Dashboard notices' },
-    visibleCallouts.map(renderSiteCallout)
-  );
+    visibleCallouts.map(renderSiteCallout),
+  )
 }
 
 /**
@@ -38,8 +40,8 @@ export function renderSiteCallouts(callouts, sources) {
  * @returns {HTMLElement}
  */
 export function renderSiteCallout(callout) {
-  const headingId = `site-callout-${callout.id}-heading`;
-  const descriptionId = `site-callout-${callout.id}-description`;
+  const headingId = `site-callout-${callout.id}-heading`
+  const descriptionId = `site-callout-${callout.id}-description`
   const content = h(
     'span',
     { className: 'site-callout-content' },
@@ -48,11 +50,14 @@ export function renderSiteCallout(callout) {
     callout['navigation-page']
       ? h(
           'a',
-          { href: `#page-${callout['navigation-page']}`, className: 'site-callout-link' },
-          `View ${callout['navigation-page'].replaceAll('-', ' ')}`
+          {
+            href: `#page-${callout['navigation-page']}`,
+            className: 'site-callout-link',
+          },
+          `View ${callout['navigation-page'].replaceAll('-', ' ')}`,
         )
-      : null
-  );
+      : null,
+  )
   const element = h(
     'aside',
     {
@@ -60,20 +65,23 @@ export function renderSiteCallout(callout) {
       role: 'status',
       'aria-labelledby': headingId,
       'aria-describedby': descriptionId,
-      'data-site-callout': callout.id
+      'data-site-callout': callout.id,
     },
-    renderIconSpan('site-callout-icon', typeof callout.icon === 'string' ? callout.icon : 'info'),
+    renderIconSpan(
+      'site-callout-icon',
+      typeof callout.icon === 'string' ? callout.icon : 'info',
+    ),
     content,
     renderCloseButton({
       className: 'site-callout-dismiss',
       label: `Dismiss ${callout.title}`,
       onClick: () => {
-        dismissedCalloutIds.add(callout.id);
-        element.remove();
-      }
-    })
-  );
-  return element;
+        dismissedCalloutIds.add(callout.id)
+        element.remove()
+      },
+    }),
+  )
+  return element
 }
 
 /**
@@ -82,6 +90,8 @@ export function renderSiteCallout(callout) {
  * @returns {boolean}
  */
 function matchesVisibility(visibility, sources) {
-  if (!visibility) return true;
-  return (sources[visibility.source]?.rows ?? []).some((row) => row[visibility.field] === visibility.equals);
+  if (!visibility) return true
+  return (sources[visibility.source]?.rows ?? []).some(
+    (row) => row[visibility.field] === visibility.equals,
+  )
 }

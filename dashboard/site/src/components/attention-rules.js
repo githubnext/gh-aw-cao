@@ -4,7 +4,7 @@
  * editing attention-rules.json rather than editing rendering logic.
  */
 
-import attentionRules from './attention-rules.json' with { type: 'json' };
+import attentionRules from './attention-rules.json' with { type: 'json' }
 
 /**
  * @typedef {{ icon: string, tone: string, title: string, detail: string }} AttentionItem
@@ -23,9 +23,15 @@ export function buildAttentionItems(metricsByRule) {
     .map(({ rule, values }) => ({
       icon: rule.icon,
       tone: rule.tone,
-      title: renderAttentionTemplate(rule.title, /** @type {Record<string, unknown>} */ (values)),
-      detail: renderAttentionTemplate(rule.detail, /** @type {Record<string, unknown>} */ (values))
-    }));
+      title: renderAttentionTemplate(
+        rule.title,
+        /** @type {Record<string, unknown>} */ (values),
+      ),
+      detail: renderAttentionTemplate(
+        rule.detail,
+        /** @type {Record<string, unknown>} */ (values),
+      ),
+    }))
 }
 
 /**
@@ -36,10 +42,13 @@ export function buildAttentionItems(metricsByRule) {
  * @returns {string}
  */
 function renderAttentionTemplate(template, values) {
-  return template.replace(/\{\{([a-zA-Z-]+)(?::suffix:([^:{}]*):([^:{}]*))?\}\}/g, (match, key, singular, plural) => {
-    if (singular !== undefined) {
-      return Number(values[key]) === 1 ? singular : plural;
-    }
-    return values[key] != null ? String(values[key]) : '';
-  });
+  return template.replace(
+    /\{\{([a-zA-Z-]+)(?::suffix:([^:{}]*):([^:{}]*))?\}\}/g,
+    (match, key, singular, plural) => {
+      if (singular !== undefined) {
+        return Number(values[key]) === 1 ? singular : plural
+      }
+      return values[key] != null ? String(values[key]) : ''
+    },
+  )
 }

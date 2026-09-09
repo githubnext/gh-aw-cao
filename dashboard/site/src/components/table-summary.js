@@ -2,13 +2,16 @@
  * Observable-inspired table column summaries.
  */
 
-import { h } from '../dom.js';
-import { effect, state } from '../reactive.js';
-import { renderHistogramBins } from './histogram.js';
-import { formatCount, formatCountNoun } from './count-formatters.js';
-import { renderDefinitionListRows } from './view-chrome.js';
-import { formatMediumUtcDateTime, renderTableSummaryEmpty } from './ui-primitives.js';
-import { formatClockDuration, formatPercent } from '../view-formatters.js';
+import { h } from '../dom.js'
+import { effect, state } from '../reactive.js'
+import { renderHistogramBins } from './histogram.js'
+import { formatCount, formatCountNoun } from './count-formatters.js'
+import { renderDefinitionListRows } from './view-chrome.js'
+import {
+  formatMediumUtcDateTime,
+  renderTableSummaryEmpty,
+} from './ui-primitives.js'
+import { formatClockDuration, formatPercent } from '../view-formatters.js'
 
 /**
  * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string }} RenderableTableColumnSummary
@@ -19,15 +22,19 @@ import { formatClockDuration, formatPercent } from '../view-formatters.js';
  * @returns {HTMLTableRowElement}
  */
 export function renderTableSummaryRow(columns) {
-  return /** @type {HTMLTableRowElement} */ (h(
-    'tr',
-    { className: 'table-summary-row' },
-    ...columns.map((column) => h(
-      'th',
-      { scope: 'col', className: 'table-summary-cell' },
-      renderColumnSummary(column)
-    ))
-  ));
+  return /** @type {HTMLTableRowElement} */ (
+    h(
+      'tr',
+      { className: 'table-summary-row' },
+      ...columns.map((column) =>
+        h(
+          'th',
+          { scope: 'col', className: 'table-summary-cell' },
+          renderColumnSummary(column),
+        ),
+      ),
+    )
+  )
 }
 
 /**
@@ -36,14 +43,24 @@ export function renderTableSummaryRow(columns) {
  * @returns {HTMLTableRowElement}
  */
 export function renderReactiveTableSummaryRow(columns, pendingSummaries) {
-  const summaries = state(/** @type {import('../table-summary-data.js').TableColumnSummary[] | null} */ (null));
-  const row = /** @type {HTMLTableRowElement} */ (h(
-    'tr',
-    { className: 'table-summary-row' },
-    ...columns.map((column, index) => renderReactiveTableSummaryCell(column, index, summaries))
-  ));
-  pendingSummaries.then((value) => summaries.set(value)).catch(() => summaries.set([]));
-  return row;
+  const summaries = state(
+    /** @type {import('../table-summary-data.js').TableColumnSummary[] | null} */ (
+      null
+    ),
+  )
+  const row = /** @type {HTMLTableRowElement} */ (
+    h(
+      'tr',
+      { className: 'table-summary-row' },
+      ...columns.map((column, index) =>
+        renderReactiveTableSummaryCell(column, index, summaries),
+      ),
+    )
+  )
+  pendingSummaries
+    .then((value) => summaries.set(value))
+    .catch(() => summaries.set([]))
+  return row
 }
 
 /**
@@ -53,21 +70,23 @@ export function renderReactiveTableSummaryRow(columns, pendingSummaries) {
  * @returns {HTMLTableCellElement}
  */
 function renderReactiveTableSummaryCell(column, index, summaries) {
-  const cell = /** @type {HTMLTableCellElement} */ (h(
-    'th',
-    { scope: 'col', className: 'table-summary-cell', 'aria-busy': 'true' },
-    renderTableSummarySkeleton()
-  ));
+  const cell = /** @type {HTMLTableCellElement} */ (
+    h(
+      'th',
+      { scope: 'col', className: 'table-summary-cell', 'aria-busy': 'true' },
+      renderTableSummarySkeleton(),
+    )
+  )
   const handle = effect(() => {
-    const value = summaries.get();
-    if (value === null) return;
-    const summary = value[index] ?? { kind: 'none' };
-    const content = renderColumnSummary({ ...summary, label: column.label });
-    cell.replaceChildren(...(content ? [content] : []));
-    cell.removeAttribute('aria-busy');
-    handle.stop();
-  });
-  return cell;
+    const value = summaries.get()
+    if (value === null) return
+    const summary = value[index] ?? { kind: 'none' }
+    const content = renderColumnSummary({ ...summary, label: column.label })
+    cell.replaceChildren(...(content ? [content] : []))
+    cell.removeAttribute('aria-busy')
+    handle.stop()
+  })
+  return cell
 }
 
 /**
@@ -79,8 +98,8 @@ function renderTableSummarySkeleton() {
     { className: 'table-summary-skeleton', 'aria-hidden': 'true' },
     h('span'),
     h('span'),
-    h('span')
-  );
+    h('span'),
+  )
 }
 
 /**
@@ -88,26 +107,26 @@ function renderTableSummarySkeleton() {
  * @returns {HTMLElement | null}
  */
 function renderColumnSummary(column) {
-  if (column.kind === 'none') return null;
-  if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
+  if (column.kind === 'none') return null
+  if (column.kind === 'empty') return renderTableSummaryEmpty(column.message)
   if (column.kind === 'boolean') {
     return h(
       'div',
       { className: 'table-summary-boolean' },
       h('strong', null, formatPercent(column.ratio)),
-      h('span', null, ' true')
-    );
+      h('span', null, ' true'),
+    )
   }
   if (column.kind === 'quantitative') {
-    return renderQuantitativeSummary(column);
+    return renderQuantitativeSummary(column)
   }
   if (column.kind === 'temporal') {
-    return renderTemporalSummary(column.start, column.stop);
+    return renderTemporalSummary(column.start, column.stop)
   }
   if (column.kind === 'count') {
-    return renderCountSummary(column.count);
+    return renderCountSummary(column.count)
   }
-  return renderCategoricalSummary(column.values);
+  return renderCategoricalSummary(column.values)
 }
 
 /**
@@ -118,8 +137,8 @@ function renderCountSummary(count) {
   return h(
     'div',
     { className: 'table-summary-count' },
-    formatCountNoun(count, 'item', 'items')
-  );
+    formatCountNoun(count, 'item', 'items'),
+  )
 }
 
 /**
@@ -129,14 +148,19 @@ function renderCountSummary(count) {
 function renderCategoricalSummary(values) {
   return h(
     'ol',
-    { className: 'table-summary-categories', 'aria-label': 'Most common values' },
-    ...values.map((value) => h(
-      'li',
-      null,
-      h('span', { title: value.label }, value.label),
-      h('strong', null, formatPercent(value.ratio))
-    ))
-  );
+    {
+      className: 'table-summary-categories',
+      'aria-label': 'Most common values',
+    },
+    ...values.map((value) =>
+      h(
+        'li',
+        null,
+        h('span', { title: value.label }, value.label),
+        h('strong', null, formatPercent(value.ratio)),
+      ),
+    ),
+  )
 }
 
 /**
@@ -149,17 +173,23 @@ function renderQuantitativeSummary(summary) {
     { className: 'table-summary-quantitative' },
     renderHistogramBins({
       bins: summary.bins,
-      label: `${summary.label} distribution, ${formatCount(summary.count)} values`
+      label: `${summary.label} distribution, ${formatCount(summary.count)} values`,
     }),
     h(
       'dl',
       null,
       ...renderDefinitionListRows([
         { label: 'Mean', value: formatStatistic(summary.mean) },
-        { label: 'Stddev', value: summary.deviation === null ? 'N/A' : formatStatistic(summary.deviation) }
-      ])
-    )
-  );
+        {
+          label: 'Stddev',
+          value:
+            summary.deviation === null
+              ? 'N/A'
+              : formatStatistic(summary.deviation),
+        },
+      ]),
+    ),
+  )
 }
 
 /**
@@ -174,9 +204,9 @@ function renderTemporalSummary(start, stop) {
     ...renderDefinitionListRows([
       { label: 'Start', value: formatTimestamp(start) },
       { label: 'Stop', value: formatTimestamp(stop) },
-      { label: 'Duration', value: formatDuration(stop - start) }
-    ])
-  );
+      { label: 'Duration', value: formatDuration(stop - start) },
+    ]),
+  )
 }
 
 /**
@@ -184,7 +214,7 @@ function renderTemporalSummary(start, stop) {
  * @returns {string}
  */
 function formatTimestamp(timestamp) {
-  return formatMediumUtcDateTime(timestamp);
+  return formatMediumUtcDateTime(timestamp)
 }
 
 /**
@@ -192,7 +222,7 @@ function formatTimestamp(timestamp) {
  * @returns {string}
  */
 function formatDuration(duration) {
-  return formatClockDuration(duration);
+  return formatClockDuration(duration)
 }
 
 /**
@@ -200,5 +230,5 @@ function formatDuration(duration) {
  * @returns {string}
  */
 function formatStatistic(value) {
-  return value.toLocaleString('en', { maximumFractionDigits: 2 });
+  return value.toLocaleString('en', { maximumFractionDigits: 2 })
 }

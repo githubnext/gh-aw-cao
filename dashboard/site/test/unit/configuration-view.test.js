@@ -1,18 +1,19 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { renderConfigurationView } from '../../src/components/configuration-view.js'
 
-const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
-  'source-id': 'configuration-fixture',
-  'source-kind': 'fixture',
-  'as-of': '2026-09-05T09:00:00Z',
-  'retrieved-at': '2026-09-05T09:01:00Z',
-  completeness: 'complete',
-  freshness: 'fresh',
-  availability: 'available'
-});
+const metadata =
+  /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
+    'source-id': 'configuration-fixture',
+    'source-kind': 'fixture',
+    'as-of': '2026-09-05T09:00:00Z',
+    'retrieved-at': '2026-09-05T09:01:00Z',
+    completeness: 'complete',
+    freshness: 'fresh',
+    availability: 'available',
+  })
 
 /** @param {Record<string, unknown>} row */
 function context(row) {
@@ -25,140 +26,214 @@ function context(row) {
       'configuration-policy': {
         source: 'configuration-policy',
         rows: [row],
-        metadata
-      }
+        metadata,
+      },
     },
     contextDetails: [],
-    headingTag: 'h3'
-  });
+    headingTag: 'h3',
+  })
 }
 
 describe('Configuration dashboard view', () => {
   it('exposes Control in the clean navigation without a chart', () => {
-    const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
-    const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
-    const cleanNavigation = dashboard.navigation.find((/** @type {{ label?: string }} */ candidate) => !candidate.label);
+    const dashboard = JSON.parse(
+      readFileSync(resolve('dashboard.json'), 'utf8'),
+    ).dashboard
+    const page = dashboard.pages.find(
+      (/** @type {{ id: string }} */ candidate) =>
+        candidate.id === 'configuration',
+    )
+    const cleanNavigation = dashboard.navigation.find(
+      (/** @type {{ label?: string }} */ candidate) => !candidate.label,
+    )
 
-    expect(page.title).toBe('Settings');
-    expect(page.icon).toBe('gear');
-    expect(cleanNavigation.pages.at(-1)).toBe('configuration');
-    expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
-    expect(page.views).toHaveLength(1);
-    expect(page.views[0].id).toBe('configuration-policy');
-  });
+    expect(page.title).toBe('Settings')
+    expect(page.icon).toBe('gear')
+    expect(cleanNavigation.pages.at(-1)).toBe('configuration')
+    expect(
+      page.views.every(
+        (/** @type {{ mark: string }} */ view) => view.mark !== 'chart',
+      ),
+    ).toBe(true)
+    expect(page.views).toHaveLength(1)
+    expect(page.views[0].id).toBe('configuration-policy')
+  })
 
   it('renders cao.json entries as editable settings', () => {
-    const rendered = renderConfigurationView(context({
-      document: { version: 1, 'control-plane': { defaults: { mode: 'review' } } },
-      raw: '',
-      diagnostics: []
-    }));
-    if (!rendered) throw new Error('configuration view did not render');
+    const rendered = renderConfigurationView(
+      context({
+        document: {
+          version: 1,
+          'control-plane': { defaults: { mode: 'review' } },
+        },
+        raw: '',
+        diagnostics: [],
+      }),
+    )
+    if (!rendered) throw new Error('configuration view did not render')
 
-    expect(rendered.querySelector('.configuration-editor')).not.toBeNull();
-    expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('input[type="number"]'))?.value).toBe('1');
-    expect(rendered.querySelector('select')?.value).toBe('review');
-    expect(rendered.textContent).toContain('Sets the inherited execution mode.');
-    expect(rendered.textContent).not.toContain('Suggested changes');
-    expect(rendered.textContent).not.toContain('Raw JSON');
-  });
+    expect(rendered.querySelector('.configuration-editor')).not.toBeNull()
+    expect(
+      /** @type {HTMLInputElement | null} */ (
+        rendered.querySelector('input[type="number"]')
+      )?.value,
+    ).toBe('1')
+    expect(rendered.querySelector('select')?.value).toBe('review')
+    expect(rendered.textContent).toContain('Sets the inherited execution mode.')
+    expect(rendered.textContent).not.toContain('Suggested changes')
+    expect(rendered.textContent).not.toContain('Raw JSON')
+  })
 
   it('defers settings inside collapsed groups until they are expanded', () => {
-    const targets = Object.fromEntries(Array.from({ length: 100 }, (_, index) => [
-      `githubnext/repository-${index}`,
-      { mode: 'review' }
-    ]));
-    const rendered = renderConfigurationView(context({
-      document: { 'control-plane': { packages: { maintenance: { targets } } } },
-      raw: '',
-      diagnostics: []
-    }));
-    if (!rendered) throw new Error('configuration view did not render');
+    const targets = Object.fromEntries(
+      Array.from({ length: 100 }, (_, index) => [
+        `githubnext/repository-${index}`,
+        { mode: 'review' },
+      ]),
+    )
+    const rendered = renderConfigurationView(
+      context({
+        document: {
+          'control-plane': { packages: { maintenance: { targets } } },
+        },
+        raw: '',
+        diagnostics: [],
+      }),
+    )
+    if (!rendered) throw new Error('configuration view did not render')
 
-    const maintenanceGroup = [...rendered.querySelectorAll('details')]
-      .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Maintenance');
-    if (!(maintenanceGroup instanceof HTMLDetailsElement)) throw new Error('maintenance group did not render');
-    expect(maintenanceGroup.open).toBe(false);
-    expect(rendered.textContent).not.toContain('Targets');
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    const maintenanceGroup = [...rendered.querySelectorAll('details')].find(
+      (group) =>
+        group.querySelector(':scope > summary span')?.textContent ===
+        'Maintenance',
+    )
+    if (!(maintenanceGroup instanceof HTMLDetailsElement))
+      throw new Error('maintenance group did not render')
+    expect(maintenanceGroup.open).toBe(false)
+    expect(rendered.textContent).not.toContain('Targets')
+    expect(
+      rendered.querySelectorAll('.configuration-setting-row'),
+    ).toHaveLength(0)
 
-    maintenanceGroup.open = true;
-    maintenanceGroup.dispatchEvent(new Event('toggle'));
-    const targetsGroup = [...maintenanceGroup.querySelectorAll('details')]
-      .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Targets');
-    if (!(targetsGroup instanceof HTMLDetailsElement)) throw new Error('targets group did not render');
-    expect(targetsGroup.open).toBe(false);
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    maintenanceGroup.open = true
+    maintenanceGroup.dispatchEvent(new Event('toggle'))
+    const targetsGroup = [...maintenanceGroup.querySelectorAll('details')].find(
+      (group) =>
+        group.querySelector(':scope > summary span')?.textContent === 'Targets',
+    )
+    if (!(targetsGroup instanceof HTMLDetailsElement))
+      throw new Error('targets group did not render')
+    expect(targetsGroup.open).toBe(false)
+    expect(
+      rendered.querySelectorAll('.configuration-setting-row'),
+    ).toHaveLength(0)
 
-    targetsGroup.open = true;
-    targetsGroup.dispatchEvent(new Event('toggle'));
-    expect(targetsGroup.querySelectorAll(':scope > .configuration-setting-children > details')).toHaveLength(100);
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
-  });
+    targetsGroup.open = true
+    targetsGroup.dispatchEvent(new Event('toggle'))
+    expect(
+      targetsGroup.querySelectorAll(
+        ':scope > .configuration-setting-children > details',
+      ),
+    ).toHaveLength(100)
+    expect(
+      rendered.querySelectorAll('.configuration-setting-row'),
+    ).toHaveLength(0)
+  })
 
   it('edits lists without losing the nested policy path', () => {
-    const rendered = renderConfigurationView(context({
-      document: {
-        'control-plane': {
-          scope: { 'allowed-owners': ['githubnext', 'octodemo'] }
-        }
-      },
-      raw: '',
-      diagnostics: []
-    }));
-    if (!rendered) throw new Error('configuration view did not render');
+    const rendered = renderConfigurationView(
+      context({
+        document: {
+          'control-plane': {
+            scope: { 'allowed-owners': ['githubnext', 'octodemo'] },
+          },
+        },
+        raw: '',
+        diagnostics: [],
+      }),
+    )
+    if (!rendered) throw new Error('configuration view did not render')
 
-    const owners = rendered.querySelector('textarea');
-    if (!(owners instanceof HTMLTextAreaElement)) throw new Error('owner list did not render');
-    expect(owners.value).toBe('githubnext\noctodemo');
-    expect(owners.id).toContain('control-plane-scope-allowed-owners');
-    owners.value = 'githubnext\ngithub';
-    owners.dispatchEvent(new Event('input'));
-    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
-  });
+    const owners = rendered.querySelector('textarea')
+    if (!(owners instanceof HTMLTextAreaElement))
+      throw new Error('owner list did not render')
+    expect(owners.value).toBe('githubnext\noctodemo')
+    expect(owners.id).toContain('control-plane-scope-allowed-owners')
+    owners.value = 'githubnext\ngithub'
+    owners.dispatchEvent(new Event('input'))
+    expect(
+      rendered.querySelector('.configuration-edit-status')?.textContent,
+    ).toBe('Modified locally')
+  })
 
   it('preserves typed values when editing non-string arrays', () => {
-    const rendered = renderConfigurationView(context({
-      document: { values: [1, true, { mode: 'review' }] },
-      raw: '',
-      diagnostics: []
-    }));
-    if (!rendered) throw new Error('configuration view did not render');
+    const rendered = renderConfigurationView(
+      context({
+        document: { values: [1, true, { mode: 'review' }] },
+        raw: '',
+        diagnostics: [],
+      }),
+    )
+    if (!rendered) throw new Error('configuration view did not render')
 
-    const values = rendered.querySelector('.configuration-setting-json');
-    if (!(values instanceof HTMLTextAreaElement)) throw new Error('typed array editor did not render');
-    values.value = '[2, false, {"mode":"live"}]';
-    values.dispatchEvent(new Event('input'));
-    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('Modified locally');
-    expect(values.value).toBe('[2, false, {"mode":"live"}]');
-  });
+    const values = rendered.querySelector('.configuration-setting-json')
+    if (!(values instanceof HTMLTextAreaElement))
+      throw new Error('typed array editor did not render')
+    values.value = '[2, false, {"mode":"live"}]'
+    values.dispatchEvent(new Event('input'))
+    expect(
+      rendered.querySelector('.configuration-edit-status')?.textContent,
+    ).toBe('Modified locally')
+    expect(values.value).toBe('[2, false, {"mode":"live"}]')
+  })
 
   it('can discard local changes without offering JSON copy', () => {
-    const rendered = renderConfigurationView(context({
-      document: { version: 1, 'control-plane': { defaults: { 'max-repositories': 7 } } },
-      raw: '',
-      diagnostics: []
-    }));
-    if (!rendered) throw new Error('configuration view did not render');
+    const rendered = renderConfigurationView(
+      context({
+        document: {
+          version: 1,
+          'control-plane': { defaults: { 'max-repositories': 7 } },
+        },
+        raw: '',
+        diagnostics: [],
+      }),
+    )
+    if (!rendered) throw new Error('configuration view did not render')
 
-    const input = rendered.querySelector('#configuration-control-plane-defaults-max-repositories');
-    if (!(input instanceof HTMLInputElement)) throw new Error('number setting did not render');
-    input.value = '12';
-    input.dispatchEvent(new Event('input'));
-    expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
+    const input = rendered.querySelector(
+      '#configuration-control-plane-defaults-max-repositories',
+    )
+    if (!(input instanceof HTMLInputElement))
+      throw new Error('number setting did not render')
+    input.value = '12'
+    input.dispatchEvent(new Event('input'))
+    expect(rendered.querySelector('.configuration-copy-button')).toBeNull()
 
-    const resetButton = rendered.querySelector('.configuration-reset-button');
-    if (!(resetButton instanceof HTMLButtonElement)) throw new Error('reset button did not render');
-    resetButton.click();
-    expect(rendered.querySelector('.configuration-edit-status')?.textContent).toBe('No changes');
-    expect(/** @type {HTMLInputElement | null} */ (rendered.querySelector('#configuration-control-plane-defaults-max-repositories'))?.value).toBe('7');
-  });
+    const resetButton = rendered.querySelector('.configuration-reset-button')
+    if (!(resetButton instanceof HTMLButtonElement))
+      throw new Error('reset button did not render')
+    resetButton.click()
+    expect(
+      rendered.querySelector('.configuration-edit-status')?.textContent,
+    ).toBe('No changes')
+    expect(
+      /** @type {HTMLInputElement | null} */ (
+        rendered.querySelector(
+          '#configuration-control-plane-defaults-max-repositories',
+        )
+      )?.value,
+    ).toBe('7')
+  })
 
   it('does not offer editing controls for invalid structured content', () => {
-    const rendered = renderConfigurationView(context({ document: null, raw: '{bad json', diagnostics: [] }));
-    if (!rendered) throw new Error('configuration view did not render');
+    const rendered = renderConfigurationView(
+      context({ document: null, raw: '{bad json', diagnostics: [] }),
+    )
+    if (!rendered) throw new Error('configuration view did not render')
 
-    expect(rendered.textContent).toContain('The policy cannot be edited until it contains valid JSON.');
-    expect(rendered.querySelector('.configuration-copy-button')).toBeNull();
-  });
-});
+    expect(rendered.textContent).toContain(
+      'The policy cannot be edited until it contains valid JSON.',
+    )
+    expect(rendered.querySelector('.configuration-copy-button')).toBeNull()
+  })
+})

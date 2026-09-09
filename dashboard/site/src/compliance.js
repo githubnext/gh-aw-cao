@@ -2,10 +2,13 @@
  * Compliance fixtures and machine-readable conformance helpers for the dashboard validator and presenter.
  */
 
-import { validateDashboardDocument, validateLogicalSources } from './validator.js';
-import { renderDashboard } from './presenter.js';
+import {
+  validateDashboardDocument,
+  validateLogicalSources,
+} from './validator.js'
+import { renderDashboard } from './presenter.js'
 
-export const IMPLEMENTATION_VERSION = '0.1.0-prototype';
+export const IMPLEMENTATION_VERSION = '0.1.0-prototype'
 
 /** @typedef {'pass'|'fail'} ComplianceStatus */
 /** @typedef {{ testId: string, requirementId: string, implementationVersion: string, status: ComplianceStatus, failureEvidence: string | null }} ComplianceResult */
@@ -166,7 +169,7 @@ dashboard:
                 type: quantitative
                 aggregate: sum
                 as: sum-aic
-`;
+`
 
 export const appendixCFixtures = {
   multipleDocuments: {
@@ -177,7 +180,7 @@ dashboard: {}
 language-version: "0.1.0"
 dashboard: {}
 `,
-    expectedCode: 'DLS-E002'
+    expectedCode: 'DLS-E002',
   },
   nonCanonicalId: {
     requirementId: 'DLS-DOC-005',
@@ -187,7 +190,7 @@ dashboard:
   title: Agentic Operations
   pages: []
 `,
-    expectedCode: 'DLS-E005'
+    expectedCode: 'DLS-E005',
   },
   forbiddenJoinAndExpression: {
     requirementId: 'DLS-DOC-007',
@@ -208,7 +211,7 @@ dashboard:
             value:
               expression: raw-token-count * rate
 `,
-    expectedCode: 'DLS-E004'
+    expectedCode: 'DLS-E004',
   },
   incompatibleMeasure: {
     requirementId: 'DLS-AGG-005',
@@ -230,7 +233,7 @@ dashboard:
               field: operational-value
               aggregate: sum
 `,
-    expectedCode: 'DLS-E010'
+    expectedCode: 'DLS-E010',
   },
   invalidWorkflowRelationship: {
     requirementId: 'DLS-SEM-003',
@@ -253,7 +256,7 @@ dashboard:
             columns:
               - field: repository
 `,
-    expectedCode: 'DLS-E004'
+    expectedCode: 'DLS-E004',
   },
   invalidRunUnknownConclusion: {
     requirementId: 'DLS-SEM-006',
@@ -276,7 +279,7 @@ dashboard:
             columns:
               - field: run
 `,
-    expectedCode: 'DLS-E005'
+    expectedCode: 'DLS-E005',
   },
   invalidRolloutMode: {
     requirementId: 'DLS-SEM-021',
@@ -299,7 +302,7 @@ dashboard:
             columns:
               - field: run
 `,
-    expectedCode: 'DLS-E005'
+    expectedCode: 'DLS-E005',
   },
   invalidTimeRangeCombination: {
     requirementId: 'DLS-CTX-009',
@@ -326,97 +329,132 @@ dashboard:
               type: quantitative
               aggregate: sum
 `,
-    expectedCode: 'DLS-E010'
-  }
-};
+    expectedCode: 'DLS-E010',
+  },
+}
 
 /**
  * @returns {ComplianceResult[]}
  */
 export function runComplianceSmokeSuite() {
   /** @type {ComplianceResult[]} */
-  const results = [];
+  const results = []
 
-  const appendixAValidation = validateDashboardDocument(appendixAFixture);
-  const appendixASources = createAppendixASources();
-  results.push(createResult(
-    'T-DOC-001',
-    'DLS-DOC-001',
-    appendixAValidation.ok,
-    appendixAValidation.ok ? null : summarizeErrors(appendixAValidation.errors)
-  ));
-  results.push(createResult(
-    'T-PAGE-001',
-    'DLS-PAGE-001',
-    appendixAValidation.ok,
-    appendixAValidation.ok ? null : summarizeErrors(appendixAValidation.errors)
-  ));
-  results.push(createResult(
-    'T-TEST-001',
-    'DLS-TEST-003',
-    fixtureIncludesExactTimeAndMissingDataCoverage(),
-    fixtureIncludesExactTimeAndMissingDataCoverage() ? null : 'Appendix A fixture metadata did not include exact time and explicit missing-data distinctions.'
-  ));
-  results.push(...runSemanticComplianceChecks());
-  results.push(...runContextComplianceChecks());
+  const appendixAValidation = validateDashboardDocument(appendixAFixture)
+  const appendixASources = createAppendixASources()
+  results.push(
+    createResult(
+      'T-DOC-001',
+      'DLS-DOC-001',
+      appendixAValidation.ok,
+      appendixAValidation.ok
+        ? null
+        : summarizeErrors(appendixAValidation.errors),
+    ),
+  )
+  results.push(
+    createResult(
+      'T-PAGE-001',
+      'DLS-PAGE-001',
+      appendixAValidation.ok,
+      appendixAValidation.ok
+        ? null
+        : summarizeErrors(appendixAValidation.errors),
+    ),
+  )
+  results.push(
+    createResult(
+      'T-TEST-001',
+      'DLS-TEST-003',
+      fixtureIncludesExactTimeAndMissingDataCoverage(),
+      fixtureIncludesExactTimeAndMissingDataCoverage()
+        ? null
+        : 'Appendix A fixture metadata did not include exact time and explicit missing-data distinctions.',
+    ),
+  )
+  results.push(...runSemanticComplianceChecks())
+  results.push(...runContextComplianceChecks())
 
   for (const fixture of Object.values(appendixCFixtures)) {
-    const result = validateDashboardDocument(fixture.yaml);
-    const hasExpectedCode = !result.ok && result.errors.some((error) => error.code === fixture.expectedCode);
-    results.push(createResult(
-      fixtureToTestId(fixture.requirementId),
-      fixture.requirementId,
-      hasExpectedCode,
-      hasExpectedCode ? null : summarizeErrors(result.ok ? [] : result.errors)
-    ));
+    const result = validateDashboardDocument(fixture.yaml)
+    const hasExpectedCode =
+      !result.ok &&
+      result.errors.some((error) => error.code === fixture.expectedCode)
+    results.push(
+      createResult(
+        fixtureToTestId(fixture.requirementId),
+        fixture.requirementId,
+        hasExpectedCode,
+        hasExpectedCode
+          ? null
+          : summarizeErrors(result.ok ? [] : result.errors),
+      ),
+    )
   }
 
   if (appendixAValidation.ok) {
     const element = renderDashboard({
       document: appendixAValidation.value,
-      sources: appendixASources
-    });
-    const summaryText = element.textContent || '';
-    const exposesDataState = summaryText.includes('Availability') && summaryText.includes('Completeness') && summaryText.includes('Freshness');
-    results.push(createResult(
-      'T-DATA-001',
-      'DLS-DATA-003',
-      exposesDataState,
-      exposesDataState ? null : 'Rendered Appendix A fixture did not expose page or view source metadata and data-state text.'
-    ));
-    results.push(...runPageComplianceChecks(appendixAValidation.value, appendixASources));
-    results.push(...runLinkComplianceChecks(appendixAValidation.value, appendixASources));
+      sources: appendixASources,
+    })
+    const summaryText = element.textContent || ''
+    const exposesDataState =
+      summaryText.includes('Availability') &&
+      summaryText.includes('Completeness') &&
+      summaryText.includes('Freshness')
+    results.push(
+      createResult(
+        'T-DATA-001',
+        'DLS-DATA-003',
+        exposesDataState,
+        exposesDataState
+          ? null
+          : 'Rendered Appendix A fixture did not expose page or view source metadata and data-state text.',
+      ),
+    )
+    results.push(
+      ...runPageComplianceChecks(appendixAValidation.value, appendixASources),
+    )
+    results.push(
+      ...runLinkComplianceChecks(appendixAValidation.value, appendixASources),
+    )
   } else {
-    results.push(createResult(
-      'T-DATA-001',
-      'DLS-DATA-003',
-      false,
-      summarizeErrors(appendixAValidation.errors)
-    ));
-    results.push(createResult(
-      'T-PAGE-001',
-      'DLS-PAGE-014',
-      false,
-      summarizeErrors(appendixAValidation.errors)
-    ));
-    results.push(createResult(
-      'T-LINK-001',
-      'DLS-LINK-006',
-      false,
-      summarizeErrors(appendixAValidation.errors)
-    ));
+    results.push(
+      createResult(
+        'T-DATA-001',
+        'DLS-DATA-003',
+        false,
+        summarizeErrors(appendixAValidation.errors),
+      ),
+    )
+    results.push(
+      createResult(
+        'T-PAGE-001',
+        'DLS-PAGE-014',
+        false,
+        summarizeErrors(appendixAValidation.errors),
+      ),
+    )
+    results.push(
+      createResult(
+        'T-LINK-001',
+        'DLS-LINK-006',
+        false,
+        summarizeErrors(appendixAValidation.errors),
+      ),
+    )
   }
 
-  return results;
+  return results
 }
 
 /**
  * @returns {ComplianceResult[]}
  */
 function runSemanticComplianceChecks() {
-  const validDocument = validateDashboardDocument(semanticFoundationsFixture);
-  const semanticSources = createSemanticFixtureSources();
-  const validSources = validateLogicalSources(semanticSources);
+  const validDocument = validateDashboardDocument(semanticFoundationsFixture)
+  const semanticSources = createSemanticFixtureSources()
+  const validSources = validateLogicalSources(semanticSources)
   const semanticAcceptanceRequirements = [
     'DLS-SEM-001',
     'DLS-SEM-002',
@@ -432,44 +470,63 @@ function runSemanticComplianceChecks() {
     'DLS-SEM-015',
     'DLS-SEM-016',
     'DLS-SEM-017',
-    'DLS-SEM-021'
-  ];
+    'DLS-SEM-021',
+  ]
 
   /** @type {ComplianceResult[]} */
-  const results = semanticAcceptanceRequirements.map((requirementId) => createResult(
-    requirementToTestId(requirementId),
-    requirementId,
-    validDocument.ok,
-    validDocument.ok ? null : summarizeErrors(validDocument.errors)
-  ));
+  const results = semanticAcceptanceRequirements.map((requirementId) =>
+    createResult(
+      requirementToTestId(requirementId),
+      requirementId,
+      validDocument.ok,
+      validDocument.ok ? null : summarizeErrors(validDocument.errors),
+    ),
+  )
 
   const presenterElement = validDocument.ok
-    ? renderDashboard({ document: validDocument.value, sources: semanticSources })
-    : null;
-  const presenterText = presenterElement?.textContent || '';
-  const hasNonCausationStatement = presenterText.includes('without implying causation');
-  results.push(createResult(
-    'T-SEM-002',
-    'DLS-SEM-014',
-    hasNonCausationStatement,
-    hasNonCausationStatement ? null : 'Presenter output did not include the required non-causation statement for experiments.'
-  ));
+    ? renderDashboard({
+        document: validDocument.value,
+        sources: semanticSources,
+      })
+    : null
+  const presenterText = presenterElement?.textContent || ''
+  const hasNonCausationStatement = presenterText.includes(
+    'without implying causation',
+  )
+  results.push(
+    createResult(
+      'T-SEM-002',
+      'DLS-SEM-014',
+      hasNonCausationStatement,
+      hasNonCausationStatement
+        ? null
+        : 'Presenter output did not include the required non-causation statement for experiments.',
+    ),
+  )
 
   const invalidMembership = validateLogicalSources({
     workflows: {
       rows: [
         { workflow: 'orchestrator.yml', 'workflow-role': 'orchestrator' },
-        { workflow: 'standalone.yml', 'workflow-role': 'standalone', package: 'invalid-package' }
-      ]
-    }
-  });
-  const packageMembershipCovered = validSources.ok && !invalidMembership.ok;
-  results.push(createResult(
-    'T-SEM-003',
-    'DLS-SEM-022',
-    packageMembershipCovered,
-    packageMembershipCovered ? null : 'Package workflow role and membership fixtures did not produce the expected acceptance and rejection results.'
-  ));
+        {
+          workflow: 'standalone.yml',
+          'workflow-role': 'standalone',
+          package: 'invalid-package',
+        },
+      ],
+    },
+  })
+  const packageMembershipCovered = validSources.ok && !invalidMembership.ok
+  results.push(
+    createResult(
+      'T-SEM-003',
+      'DLS-SEM-022',
+      packageMembershipCovered,
+      packageMembershipCovered
+        ? null
+        : 'Package workflow role and membership fixtures did not produce the expected acceptance and rejection results.',
+    ),
+  )
 
   const invalidNegativeAllowance = validateLogicalSources({
     workflows: {
@@ -480,11 +537,11 @@ function runSemanticComplianceChecks() {
           package: 'daily-ops',
           workflow: 'orchestrator.yml',
           'workflow-role': 'orchestrator',
-          'max-ai-credits': -1
-        }
-      ]
-    }
-  });
+          'max-ai-credits': -1,
+        },
+      ],
+    },
+  })
   const invalidMismatchedAllowance = validateLogicalSources({
     workflows: {
       rows: [
@@ -495,42 +552,51 @@ function runSemanticComplianceChecks() {
           workflow: 'orchestrator.yml',
           'workflow-role': 'orchestrator',
           'max-ai-credits': 100,
-          'package-aic-allowance': 99
-        }
-      ]
-    }
-  });
-  const packageAllowanceCovered = validSources.ok && !invalidNegativeAllowance.ok && !invalidMismatchedAllowance.ok;
-  results.push(createResult(
-    'T-SEM-003',
-    'DLS-SEM-023',
-    packageAllowanceCovered,
-    packageAllowanceCovered ? null : 'Package allowance fixtures did not produce the expected non-negative and summed-limit validation results.'
-  ));
+          'package-aic-allowance': 99,
+        },
+      ],
+    },
+  })
+  const packageAllowanceCovered =
+    validSources.ok &&
+    !invalidNegativeAllowance.ok &&
+    !invalidMismatchedAllowance.ok
+  results.push(
+    createResult(
+      'T-SEM-003',
+      'DLS-SEM-023',
+      packageAllowanceCovered,
+      packageAllowanceCovered
+        ? null
+        : 'Package allowance fixtures did not produce the expected non-negative and summed-limit validation results.',
+    ),
+  )
 
-  return results;
+  return results
 }
 
 /**
  * @returns {ComplianceResult[]}
  */
 function runContextComplianceChecks() {
-  const validDocument = validateDashboardDocument(contextFixture);
+  const validDocument = validateDashboardDocument(contextFixture)
   const requirements = [
     'DLS-CTX-001',
     'DLS-CTX-002',
     'DLS-CTX-004',
     'DLS-CTX-005',
     'DLS-CTX-006',
-    'DLS-CTX-009'
-  ];
+    'DLS-CTX-009',
+  ]
 
-  return requirements.map((requirementId) => createResult(
-    requirementToTestId(requirementId),
-    requirementId,
-    validDocument.ok,
-    validDocument.ok ? null : summarizeErrors(validDocument.errors)
-  ));
+  return requirements.map((requirementId) =>
+    createResult(
+      requirementToTestId(requirementId),
+      requirementId,
+      validDocument.ok,
+      validDocument.ok ? null : summarizeErrors(validDocument.errors),
+    ),
+  )
 }
 
 /**
@@ -539,29 +605,36 @@ function runContextComplianceChecks() {
  * @returns {ComplianceResult[]}
  */
 function runPageComplianceChecks(document, sources) {
-  const rendered = renderDashboard({ document, sources });
-  const text = rendered.textContent || '';
-  const exposesAvailability = text.includes('Availability');
-  const exposesCompleteness = text.includes('Completeness');
-  const exposesFreshness = text.includes('Freshness');
-  const hasIndependentDataStates = exposesAvailability && exposesCompleteness && exposesFreshness;
-  const pageTitles = ['Overview', 'Workflows', 'Usage by Repository'];
-  const hasRequiredPageTitles = pageTitles.every((title) => text.includes(title));
+  const rendered = renderDashboard({ document, sources })
+  const text = rendered.textContent || ''
+  const exposesAvailability = text.includes('Availability')
+  const exposesCompleteness = text.includes('Completeness')
+  const exposesFreshness = text.includes('Freshness')
+  const hasIndependentDataStates =
+    exposesAvailability && exposesCompleteness && exposesFreshness
+  const pageTitles = ['Overview', 'Workflows', 'Usage by Repository']
+  const hasRequiredPageTitles = pageTitles.every((title) =>
+    text.includes(title),
+  )
 
   return [
     createResult(
       'T-PAGE-001',
       'DLS-PAGE-001',
       hasRequiredPageTitles,
-      hasRequiredPageTitles ? null : 'Rendered Appendix A fixture did not expose the expected built-in and custom page titles.'
+      hasRequiredPageTitles
+        ? null
+        : 'Rendered Appendix A fixture did not expose the expected built-in and custom page titles.',
     ),
     createResult(
-    'T-PAGE-001',
-    'DLS-PAGE-014',
-    hasIndependentDataStates,
-    hasIndependentDataStates ? null : 'Rendered built-in fixture did not expose independent availability, completeness, and freshness text.'
-    )
-  ];
+      'T-PAGE-001',
+      'DLS-PAGE-014',
+      hasIndependentDataStates,
+      hasIndependentDataStates
+        ? null
+        : 'Rendered built-in fixture did not expose independent availability, completeness, and freshness text.',
+    ),
+  ]
 }
 
 /**
@@ -570,46 +643,66 @@ function runPageComplianceChecks(document, sources) {
  * @returns {ComplianceResult[]}
  */
 function runLinkComplianceChecks(document, sources) {
-  const rendered = renderDashboard({ document, sources });
-  const pageSections = [...rendered.querySelectorAll('.dashboard-page')]
-    .filter((page) => page instanceof HTMLElement && !page.hidden);
-  const activePage = pageSections[0] ?? rendered;
-  const linkElements = [...activePage.querySelectorAll('a[href]')];
+  const rendered = renderDashboard({ document, sources })
+  const pageSections = [...rendered.querySelectorAll('.dashboard-page')].filter(
+    (page) => page instanceof HTMLElement && !page.hidden,
+  )
+  const activePage = pageSections[0] ?? rendered
+  const linkElements = [...activePage.querySelectorAll('a[href]')]
   const anchorsByLabel = new Map(
-    linkElements.map((element) => [element.textContent?.trim() || '', element])
-  );
+    linkElements.map((element) => [element.textContent?.trim() || '', element]),
+  )
   const expectedLinks = [
-    { label: 'Issue #7', href: 'https://github.com/octo-org/platform/issues/7' },
+    {
+      label: 'Issue #7',
+      href: 'https://github.com/octo-org/platform/issues/7',
+    },
     { label: 'PR #12', href: 'https://github.com/octo-org/platform/pull/12' },
-    { label: 'Run 1001', href: 'https://github.com/octo-org/platform/actions/runs/1001' }
-  ];
+    {
+      label: 'Run 1001',
+      href: 'https://github.com/octo-org/platform/actions/runs/1001',
+    },
+  ]
   /**
    * @param {string | null | undefined} text
    * @returns {string}
    */
-  const normalizeAnchorText = (text) => String(text || '').replace(/\s+/g, ' ').trim();
+  const normalizeAnchorText = (text) =>
+    String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim()
   const missingLinks = expectedLinks.filter(({ label, href }) => {
-    const anchor = anchorsByLabel.get(label)
-      ?? linkElements.find((element) => normalizeAnchorText(element.textContent) === label)
-      ?? null;
-    return !(anchor instanceof HTMLAnchorElement) || anchor.getAttribute('href') !== href;
-  });
-  const passes = missingLinks.length === 0;
+    const anchor =
+      anchorsByLabel.get(label) ??
+      linkElements.find(
+        (element) => normalizeAnchorText(element.textContent) === label,
+      ) ??
+      null
+    return (
+      !(anchor instanceof HTMLAnchorElement) ||
+      anchor.getAttribute('href') !== href
+    )
+  })
+  const passes = missingLinks.length === 0
 
   return [
     createResult(
       'T-LINK-001',
       'DLS-LINK-003',
       passes,
-      passes ? null : `Rendered fixture did not expose required available associations: ${missingLinks.map(({ label }) => label).join(', ')}`
+      passes
+        ? null
+        : `Rendered fixture did not expose required available associations: ${missingLinks.map(({ label }) => label).join(', ')}`,
     ),
     createResult(
       'T-LINK-001',
       'DLS-LINK-006',
       passes,
-      passes ? null : `Rendered fixture did not render every available GitHub-addressable entity as a link: ${missingLinks.map(({ label }) => label).join(', ')}`
-    )
-  ];
+      passes
+        ? null
+        : `Rendered fixture did not render every available GitHub-addressable entity as a link: ${missingLinks.map(({ label }) => label).join(', ')}`,
+    ),
+  ]
 }
 
 /**
@@ -618,22 +711,26 @@ function runLinkComplianceChecks(document, sources) {
  */
 function requirementToTestId(requirementId) {
   if (requirementId.startsWith('DLS-SEM-')) {
-    const numeric = Number.parseInt(requirementId.slice('DLS-SEM-'.length), 10);
-    return numeric >= 17 ? 'T-SEM-003' : numeric >= 8 ? 'T-SEM-002' : 'T-SEM-001';
+    const numeric = Number.parseInt(requirementId.slice('DLS-SEM-'.length), 10)
+    return numeric >= 17
+      ? 'T-SEM-003'
+      : numeric >= 8
+        ? 'T-SEM-002'
+        : 'T-SEM-001'
   }
   if (requirementId.startsWith('DLS-CTX-')) {
-    return 'T-CTX-001';
+    return 'T-CTX-001'
   }
   if (requirementId.startsWith('DLS-LINK-')) {
-    return 'T-LINK-001';
+    return 'T-LINK-001'
   }
   if (requirementId.startsWith('DLS-PAGE-')) {
-    return 'T-PAGE-001';
+    return 'T-PAGE-001'
   }
   if (requirementId.startsWith('DLS-VAL-')) {
-    return 'T-VAL-001';
+    return 'T-VAL-001'
   }
-  return 'T-DOC-001';
+  return 'T-DOC-001'
 }
 
 /**
@@ -641,7 +738,7 @@ function requirementToTestId(requirementId) {
  * @returns {string}
  */
 function fixtureToTestId(requirementId) {
-  return requirementToTestId(requirementId);
+  return requirementToTestId(requirementId)
 }
 
 /**
@@ -657,8 +754,10 @@ function createResult(testId, requirementId, passed, failureEvidence) {
     requirementId,
     implementationVersion: IMPLEMENTATION_VERSION,
     status: passed ? 'pass' : 'fail',
-    failureEvidence: passed ? null : failureEvidence || 'No failure evidence recorded.'
-  };
+    failureEvidence: passed
+      ? null
+      : failureEvidence || 'No failure evidence recorded.',
+  }
 }
 
 /**
@@ -667,23 +766,26 @@ function createResult(testId, requirementId, passed, failureEvidence) {
  */
 function summarizeErrors(errors) {
   if (errors.length === 0) {
-    return 'Expected a validation failure but no coded errors were produced.';
+    return 'Expected a validation failure but no coded errors were produced.'
   }
-  return errors.map((error) => `${error.code} at ${error.path}: ${error.message}`).join('; ');
+  return errors
+    .map((error) => `${error.code} at ${error.path}: ${error.message}`)
+    .join('; ')
 }
 
 /**
  * @returns {boolean}
  */
 function fixtureIncludesExactTimeAndMissingDataCoverage() {
-  const sources = createAppendixASources();
-  return Object.values(sources).every((source) => (
-    typeof source.metadata['as-of'] === 'string'
-    && typeof source.metadata['retrieved-at'] === 'string'
-    && typeof source.metadata.availability === 'string'
-    && typeof source.metadata.completeness === 'string'
-    && typeof source.metadata.freshness === 'string'
-  ));
+  const sources = createAppendixASources()
+  return Object.values(sources).every(
+    (source) =>
+      typeof source.metadata['as-of'] === 'string' &&
+      typeof source.metadata['retrieved-at'] === 'string' &&
+      typeof source.metadata.availability === 'string' &&
+      typeof source.metadata.completeness === 'string' &&
+      typeof source.metadata.freshness === 'string',
+  )
 }
 
 const semanticFoundationsFixture = `language-version: "0.1.0"
@@ -823,7 +925,7 @@ dashboard:
               - field: evidence-cutoff
               - field: maturity-at
               - field: maturity-status
-`;
+`
 
 const contextFixture = `language-version: "0.1.0"
 dashboard:
@@ -869,7 +971,7 @@ dashboard:
               - field: run
               - field: rollout-mode
               - field: run-status
-`;
+`
 
 /**
  * @returns {Record<string, import('./presenter.js').LogicalSourceInput>}
@@ -885,7 +987,7 @@ function createAppendixASources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -894,9 +996,9 @@ function createAppendixASources() {
           workflow: '.github/workflows/ci.yml',
           'workflow-active': 'true',
           'rollout-mode': 'review',
-          'observed-at': '2026-08-29T11:00:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T11:00:00Z',
+        },
+      ],
     },
     runs: {
       source: 'runs',
@@ -907,7 +1009,7 @@ function createAppendixASources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'partial',
-        freshness: 'stale'
+        freshness: 'stale',
       },
       rows: [
         {
@@ -921,9 +1023,9 @@ function createAppendixASources() {
           engine: 'github-models',
           'requested-model': 'gpt-4.1',
           'resolved-model': 'gpt-4.1-mini',
-          'started-at': '2026-08-29T10:00:00Z'
-        }
-      ]
+          'started-at': '2026-08-29T10:00:00Z',
+        },
+      ],
     },
     usage: {
       source: 'usage',
@@ -934,9 +1036,9 @@ function createAppendixASources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'empty',
         completeness: 'unknown',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
-      rows: []
+      rows: [],
     },
     outcomes: {
       source: 'outcomes',
@@ -947,14 +1049,14 @@ function createAppendixASources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
           run: '1001',
-          'outcome-state': 'accepted'
-        }
-      ]
+          'outcome-state': 'accepted',
+        },
+      ],
     },
     findings: {
       source: 'findings',
@@ -965,7 +1067,7 @@ function createAppendixASources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -981,20 +1083,20 @@ function createAppendixASources() {
           'issue-link': {
             relation: 'issue',
             href: 'https://github.com/octo-org/platform/issues/7',
-            label: 'Issue #7'
+            label: 'Issue #7',
           },
           'pull-request-link': {
             relation: 'pull-request',
             href: 'https://github.com/octo-org/platform/pull/12',
-            label: 'PR #12'
+            label: 'PR #12',
           },
           'run-link': {
             relation: 'run',
             href: 'https://github.com/octo-org/platform/actions/runs/1001',
-            label: 'Run 1001'
-          }
-        }
-      ]
+            label: 'Run 1001',
+          },
+        },
+      ],
     },
     'operational-values': {
       source: 'operational-values',
@@ -1005,11 +1107,11 @@ function createAppendixASources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'unavailable',
         completeness: 'unknown',
-        freshness: 'unknown'
+        freshness: 'unknown',
       },
-      rows: []
-    }
-  };
+      rows: [],
+    },
+  }
 }
 
 /**
@@ -1026,7 +1128,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1036,7 +1138,7 @@ function createSemanticFixtureSources() {
           workflow: '.github/workflows/daily-ops.yml',
           'workflow-role': 'orchestrator',
           'max-ai-credits': 100,
-          'package-aic-allowance': 250
+          'package-aic-allowance': 250,
         },
         {
           organization: 'octo-org',
@@ -1045,15 +1147,15 @@ function createSemanticFixtureSources() {
           workflow: '.github/workflows/daily-ops-worker.yml',
           'workflow-role': 'worker',
           'max-ai-credits': 150,
-          'package-aic-allowance': 250
+          'package-aic-allowance': 250,
         },
         {
           organization: 'octo-org',
           repository: 'target-service',
           workflow: '.github/workflows/ci.yml',
-          'workflow-role': 'standalone'
-        }
-      ]
+          'workflow-role': 'standalone',
+        },
+      ],
     },
     experiments: {
       source: 'experiments',
@@ -1064,15 +1166,15 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
           experiment: 'exp-1',
           'experiment-name': 'Variant Selection',
-          'observed-at': '2026-08-29T09:00:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T09:00:00Z',
+        },
+      ],
     },
     'experiment-assignments': {
       source: 'experiment-assignments',
@@ -1083,7 +1185,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1093,9 +1195,9 @@ function createSemanticFixtureSources() {
           run: '2001',
           experiment: 'exp-1',
           variant: 'treatment-a',
-          'observed-at': '2026-08-29T09:05:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T09:05:00Z',
+        },
+      ],
     },
     'grader-observations': {
       source: 'grader-observations',
@@ -1106,7 +1208,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1119,7 +1221,7 @@ function createSemanticFixtureSources() {
           value: 0.91,
           status: 'pass',
           'rollout-mode': 'review',
-          'observed-at': '2026-08-29T09:10:00Z'
+          'observed-at': '2026-08-29T09:10:00Z',
         },
         {
           organization: 'octo-org',
@@ -1131,9 +1233,9 @@ function createSemanticFixtureSources() {
           value: null,
           status: 'unavailable',
           'rollout-mode': 'unknown',
-          'observed-at': '2026-08-29T09:15:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T09:15:00Z',
+        },
+      ],
     },
     'eval-observations': {
       source: 'eval-observations',
@@ -1144,7 +1246,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1158,7 +1260,7 @@ function createSemanticFixtureSources() {
           'requested-model': 'gpt-4.1',
           'resolved-model': 'gpt-4.1-mini',
           'rollout-mode': 'review',
-          'observed-at': '2026-08-29T09:12:00Z'
+          'observed-at': '2026-08-29T09:12:00Z',
         },
         {
           organization: 'octo-org',
@@ -1171,9 +1273,9 @@ function createSemanticFixtureSources() {
           'requested-model': 'gpt-4.1',
           'resolved-model': 'unknown',
           'rollout-mode': 'unknown',
-          'observed-at': '2026-08-29T09:18:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T09:18:00Z',
+        },
+      ],
     },
     outcomes: {
       source: 'outcomes',
@@ -1184,7 +1286,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1195,9 +1297,9 @@ function createSemanticFixtureSources() {
           'safe-output': 'pr-1',
           'outcome-state': 'lifecycle-close',
           'evidence-strength': 'high',
-          'observed-at': '2026-08-29T09:20:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T09:20:00Z',
+        },
+      ],
     },
     usage: {
       source: 'usage',
@@ -1208,7 +1310,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1227,9 +1329,9 @@ function createSemanticFixtureSources() {
           'cache-write-tokens': 5,
           'reasoning-tokens': 3,
           aic: 1.75,
-          'observed-at': '2026-08-29T09:08:00Z'
-        }
-      ]
+          'observed-at': '2026-08-29T09:08:00Z',
+        },
+      ],
     },
     'operational-values': {
       source: 'operational-values',
@@ -1240,7 +1342,7 @@ function createSemanticFixtureSources() {
         'retrieved-at': '2026-08-29T12:05:00Z',
         availability: 'available',
         completeness: 'complete',
-        freshness: 'fresh'
+        freshness: 'fresh',
       },
       rows: [
         {
@@ -1263,10 +1365,10 @@ function createSemanticFixtureSources() {
           'evidence-link': {
             relation: 'evidence',
             href: 'https://example.com/evidence/1',
-            label: 'Evidence 1'
-          }
-        }
-      ]
-    }
-  };
+            label: 'Evidence 1',
+          },
+        },
+      ],
+    },
+  }
 }

@@ -2,8 +2,8 @@
  * Shared canonical body selection helpers for declarative route elements.
  */
 
-import { selectNamedComposition } from './route-composition.js';
-import { selectConfigBody } from './route-body-composition.js';
+import { selectNamedComposition } from './route-composition.js'
+import { selectConfigBody } from './route-body-composition.js'
 
 /**
  * @template {string} T
@@ -22,10 +22,11 @@ export function createRouteBodyConfig(values, fallback) {
     values,
     fallback,
     body: (value) => selectConfigBody({ values, fallback }, value),
-    composition: (compositions, value) => selectNamedComposition(
-      compositions,
-      selectConfigBody({ values, fallback }, value),
-      fallback
-    )
-  };
+    composition: (compositions, value) =>
+      selectNamedComposition(
+        compositions,
+        selectConfigBody({ values, fallback }, value),
+        fallback,
+      ),
+  }
 }

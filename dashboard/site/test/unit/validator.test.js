@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
-import { packageDashboardSources } from '../package-dashboard-documents.js';
+import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import {
+  validateDashboardDocument,
+  validateLogicalSources,
+} from '../../src/validator.js'
+import { packageDashboardSources } from '../package-dashboard-documents.js'
 
-const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
+const authoritativeDashboardSource = readFileSync(
+  `${process.cwd()}/dashboard.json`,
+  'utf8',
+)
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
@@ -30,82 +36,123 @@ dashboard:
             value:
               field: run
               aggregate: count
-`;
+`
 
 describe('dashboard document validation', () => {
   it('accepts the authoritative built-in overview view definition', () => {
-    const accepted = validateDashboardDocument(authoritativeDashboardSource);
-    expect(accepted.ok).toBe(true);
-  });
+    const accepted = validateDashboardDocument(authoritativeDashboardSource)
+    expect(accepted.ok).toBe(true)
+  })
 
   it('defines Overview child pages with exact attention filters and GitHub evidence links', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const pages = Object.fromEntries(document.dashboard.pages.map(
-      (/** @type {{ id: string }} */ page) => [page.id, page]
-    ));
+    const document = JSON.parse(authoritativeDashboardSource)
+    const pages = Object.fromEntries(
+      document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [
+        page.id,
+        page,
+      ]),
+    )
 
     for (const pageId of [
       'overview-failed-runs',
       'overview-blocked-work',
       'overview-awaiting-review',
-      'overview-security-findings'
+      'overview-security-findings',
     ]) {
-      expect(pages[pageId].route).toEqual({ 'navigation-page': 'overview' });
-      expect(pages[pageId].views).toHaveLength(1);
-      expect(pages[pageId].views[0].mark).toBe('table');
-      expect(pages[pageId].views[0].layout).toBe('full-view');
-      expect(pages[pageId].views[0]['column-summaries']).toBe(true);
+      expect(pages[pageId].route).toEqual({ 'navigation-page': 'overview' })
+      expect(pages[pageId].views).toHaveLength(1)
+      expect(pages[pageId].views[0].mark).toBe('table')
+      expect(pages[pageId].views[0].layout).toBe('full-view')
+      expect(pages[pageId].views[0]['column-summaries']).toBe(true)
     }
 
     expect(pages['overview-failed-runs'].views[0]).toMatchObject({
-      data: { source: 'failed-runs', filters: { 'run-conclusion': ['failure', 'startup-failure', 'stale', 'timed-out'] } },
+      data: {
+        source: 'failed-runs',
+        filters: {
+          'run-conclusion': [
+            'failure',
+            'startup-failure',
+            'stale',
+            'timed-out',
+          ],
+        },
+      },
       encoding: {
         columns: [
           { field: 'started-at', type: 'temporal', title: 'Date' },
           { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'failure-detail', type: 'nominal', title: 'Error', display: 'run-link' }
-        ]
-      }
-    });
-    expect(pages['overview-failed-runs'].views[0].encoding.href).toBeUndefined();
+          {
+            field: 'failure-detail',
+            type: 'nominal',
+            title: 'Error',
+            display: 'run-link',
+          },
+        ],
+      },
+    })
+    expect(pages['overview-failed-runs'].views[0].encoding.href).toBeUndefined()
     expect(pages['overview-blocked-work'].views[0]).toMatchObject({
       data: { source: 'work-items', filters: { 'lifecycle-state': 'blocked' } },
       encoding: {
         columns: [
           { field: 'waiting-since', type: 'temporal', title: 'Date' },
           { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'reason', type: 'nominal', title: 'Blocked by', display: 'run-link' }
-        ]
-      }
-    });
-    expect(pages['overview-blocked-work'].views[0].encoding.href).toBeUndefined();
+          {
+            field: 'reason',
+            type: 'nominal',
+            title: 'Blocked by',
+            display: 'run-link',
+          },
+        ],
+      },
+    })
+    expect(
+      pages['overview-blocked-work'].views[0].encoding.href,
+    ).toBeUndefined()
     expect(pages['overview-awaiting-review'].views[0]).toMatchObject({
       data: { source: 'work-items', filters: { 'lifecycle-state': 'review' } },
       encoding: {
         columns: [
           { field: 'waiting-since', type: 'temporal', title: 'Date' },
           { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'objective', type: 'nominal', title: 'Work', display: 'evidence-link' }
-        ]
-      }
-    });
-    expect(pages['overview-awaiting-review'].views[0].encoding.href).toBeUndefined();
+          {
+            field: 'objective',
+            type: 'nominal',
+            title: 'Work',
+            display: 'evidence-link',
+          },
+        ],
+      },
+    })
+    expect(
+      pages['overview-awaiting-review'].views[0].encoding.href,
+    ).toBeUndefined()
     expect(pages['overview-security-findings'].views[0]).toMatchObject({
       data: { source: 'security-findings' },
       encoding: {
         columns: [
           { field: 'observed-at', type: 'temporal', title: 'Date' },
           { field: 'repository', type: 'nominal', title: 'Repository' },
-          { field: 'smell-name', type: 'nominal', title: 'Finding', display: 'run-link' }
-        ]
-      }
-    });
-    expect(pages['overview-security-findings'].views[0].encoding.href).toBeUndefined();
-  });
+          {
+            field: 'smell-name',
+            type: 'nominal',
+            title: 'Finding',
+            display: 'run-link',
+          },
+        ],
+      },
+    })
+    expect(
+      pages['overview-security-findings'].views[0].encoding.href,
+    ).toBeUndefined()
+  })
 
   it('accepts the GitHub API full-view lazy-list table', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const apiPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const apiPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'github-api',
+    )
 
     expect(apiPage.views).toEqual([
       expect.objectContaining({
@@ -113,70 +160,93 @@ describe('dashboard document validation', () => {
         mark: 'table',
         controls: 'interactive',
         'lazy-list': true,
-        layout: 'full-view'
-      })
-    ]);
+        layout: 'full-view',
+      }),
+    ])
     expect(apiPage.views[0].data).toMatchObject({
-      source: 'github-api-rate-limits'
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      source: 'github-api-rate-limits',
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('defines every editable experimental page as one full-view lazy table', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const experimentalIds = new Set(document.dashboard.navigation
-      .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
-      .flatMap((/** @type {{ pages: string[] }} */ section) => section.pages));
+    const document = JSON.parse(authoritativeDashboardSource)
+    const experimentalIds = new Set(
+      document.dashboard.navigation
+        .filter(
+          (/** @type {{ experimental?: boolean }} */ section) =>
+            section.experimental,
+        )
+        .flatMap((/** @type {{ pages: string[] }} */ section) => section.pages),
+    )
 
     for (const page of document.dashboard.pages.filter(
-      (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
+      (/** @type {{ id: string }} */ candidate) =>
+        experimentalIds.has(candidate.id),
     )) {
-      const definition = page.definition ?? page;
+      const definition = page.definition ?? page
       const editableViews = (definition.views ?? []).filter(
-        (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
-      );
-      if (editableViews.length === 0) continue;
-      expect(definition.sections, page.id).toBeUndefined();
-      expect(editableViews, page.id).toHaveLength(1);
+        (/** @type {{ locked?: boolean }} */ view) => view.locked !== true,
+      )
+      if (editableViews.length === 0) continue
+      expect(definition.sections, page.id).toBeUndefined()
+      expect(editableViews, page.id).toHaveLength(1)
       expect(editableViews[0], page.id).toMatchObject({
         mark: 'table',
         controls: 'interactive',
         'lazy-list': true,
-        layout: 'full-view'
-      });
+        layout: 'full-view',
+      })
     }
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('accepts canonical route body values and rejects non-canonical config.body values', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const workflowRouteView = document.dashboard.pages.find((/** @type {{ id: string, views: Array<any> }} */ page) => page.id === 'workflow-detail')
-      .views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-reports-route');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const workflowRouteView = document.dashboard.pages
+      .find(
+        (/** @type {{ id: string, views: Array<any> }} */ page) =>
+          page.id === 'workflow-detail',
+      )
+      .views.find(
+        (/** @type {{ id: string }} */ view) =>
+          view.id === 'workflow-reports-route',
+      )
 
     expect(workflowRouteView).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
-      config: { body: 'reports' }
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+      config: { body: 'reports' },
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
-    workflowRouteView.config.body = 'report';
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    expect(rejected.errors).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'workflow-route-page config.body must use one canonical route body value.' })
-    ]));
-  });
+    workflowRouteView.config.body = 'report'
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
+    expect(rejected.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message:
+            'workflow-route-page config.body must use one canonical route body value.',
+        }),
+      ]),
+    )
+  })
 
   it('defines firewall as one full-view lazy domain table', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
-    expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Explore'
-    ).pages).toContain('firewall');
-    expect(firewall.sections).toBeUndefined();
-    expect(firewall.views).toHaveLength(1);
-    const [domains] = firewall.views;
+    const document = JSON.parse(authoritativeDashboardSource)
+    const firewall = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'firewall',
+    )
+    expect(
+      document.dashboard.navigation.find(
+        (/** @type {{ label: string }} */ section) =>
+          section.label === 'Explore',
+      ).pages,
+    ).toContain('firewall')
+    expect(firewall.sections).toBeUndefined()
+    expect(firewall.views).toHaveLength(1)
+    const [domains] = firewall.views
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
       mark: 'table',
@@ -188,32 +258,73 @@ describe('dashboard document validation', () => {
         source: 'firewall-observations',
         time: { range: '30d' },
         filters: { decision: ['allowed', 'denied'] },
-        'order-by': [{ field: 'requests', direction: 'desc' }]
-      }
-    });
+        'order-by': [{ field: 'requests', direction: 'desc' }],
+      },
+    })
     expect(domains.encoding.columns).toEqual([
       { field: 'domain', type: 'nominal' },
-      { field: 'request-count', type: 'quantitative', aggregate: 'sum', as: 'requests', title: 'Requests' },
-      { field: 'run', type: 'nominal', aggregate: 'distinct-count', as: 'runs', title: 'Runs' },
-      { field: 'repository', type: 'nominal', aggregate: 'distinct-count', as: 'repositories', title: 'Repositories' },
-      { field: 'workflow', type: 'nominal', aggregate: 'distinct-count', as: 'workflows', title: 'Workflows' },
-      { field: 'decision', type: 'nominal', aggregate: 'distinct-count', as: 'decisions', title: 'Policy decisions' },
-      { field: 'policy-rule-id', type: 'nominal', aggregate: 'distinct-count', as: 'policy-rules', title: 'Policy rules' }
-    ]);
-    const serialized = JSON.stringify(firewall).toLowerCase();
-    expect(serialized).not.toContain('blocked = failure');
-    expect(serialized).not.toContain('allowed = safe');
-    expect(serialized).not.toContain('risk score');
-    expect(serialized).not.toContain('allow domain');
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      {
+        field: 'request-count',
+        type: 'quantitative',
+        aggregate: 'sum',
+        as: 'requests',
+        title: 'Requests',
+      },
+      {
+        field: 'run',
+        type: 'nominal',
+        aggregate: 'distinct-count',
+        as: 'runs',
+        title: 'Runs',
+      },
+      {
+        field: 'repository',
+        type: 'nominal',
+        aggregate: 'distinct-count',
+        as: 'repositories',
+        title: 'Repositories',
+      },
+      {
+        field: 'workflow',
+        type: 'nominal',
+        aggregate: 'distinct-count',
+        as: 'workflows',
+        title: 'Workflows',
+      },
+      {
+        field: 'decision',
+        type: 'nominal',
+        aggregate: 'distinct-count',
+        as: 'decisions',
+        title: 'Policy decisions',
+      },
+      {
+        field: 'policy-rule-id',
+        type: 'nominal',
+        aggregate: 'distinct-count',
+        as: 'policy-rules',
+        title: 'Policy rules',
+      },
+    ])
+    const serialized = JSON.stringify(firewall).toLowerCase()
+    expect(serialized).not.toContain('blocked = failure')
+    expect(serialized).not.toContain('allowed = safe')
+    expect(serialized).not.toContain('risk score')
+    expect(serialized).not.toContain('allow domain')
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('defines MCP diagnostics in a dedicated Explore page', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const mcps = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'mcps');
-    expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Explore'
-    ).pages).toContain('mcps');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const mcps = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'mcps',
+    )
+    expect(
+      document.dashboard.navigation.find(
+        (/** @type {{ label: string }} */ section) =>
+          section.label === 'Explore',
+      ).pages,
+    ).toContain('mcps')
     expect(mcps).toMatchObject({
       kind: 'custom',
       'navigation-label': 'MCPs',
@@ -226,13 +337,17 @@ describe('dashboard document validation', () => {
           layout: 'full-view',
           data: {
             source: 'mcp-calls',
-            'order-by': [{ field: 'observed-at', direction: 'desc' }]
-          }
-        }
-      ]
-    });
-    expect(mcps.views).toHaveLength(1);
-    expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+            'order-by': [{ field: 'observed-at', direction: 'desc' }],
+          },
+        },
+      ],
+    })
+    expect(mcps.views).toHaveLength(1)
+    expect(
+      mcps.views[0].encoding.columns.map(
+        (/** @type {{ field: string }} */ column) => column.field,
+      ),
+    ).toEqual([
       'mcp-server',
       'mcp-tool',
       'mcp-server-version',
@@ -243,19 +358,24 @@ describe('dashboard document validation', () => {
       'repository',
       'workflow',
       'run',
-      'observed-at'
-    ]);
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      'observed-at',
+    ])
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('defines detection results as a full-view lazy table in Explore', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const detection = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'detection');
-    expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Explore'
-    ).pages).toContain('detection');
-    expect(detection.views).toHaveLength(1);
-    expect(detection).not.toHaveProperty('sections');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const detection = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'detection',
+    )
+    expect(
+      document.dashboard.navigation.find(
+        (/** @type {{ label: string }} */ section) =>
+          section.label === 'Explore',
+      ).pages,
+    ).toContain('detection')
+    expect(detection.views).toHaveLength(1)
+    expect(detection).not.toHaveProperty('sections')
     expect(detection.views[0]).toMatchObject({
       id: 'detection-results',
       mark: 'table',
@@ -265,14 +385,14 @@ describe('dashboard document validation', () => {
       layout: 'full-view',
       data: {
         source: 'detection-observations',
-        'order-by': [
-          { field: 'observed-at', direction: 'desc' }
-        ]
-      }
-    });
-    expect(detection.views[0].encoding.columns.map(
-      (/** @type {{ field: string }} */ column) => column.field
-    )).toEqual([
+        'order-by': [{ field: 'observed-at', direction: 'desc' }],
+      },
+    })
+    expect(
+      detection.views[0].encoding.columns.map(
+        (/** @type {{ field: string }} */ column) => column.field,
+      ),
+    ).toEqual([
       'detection-state',
       'detection-signal',
       'inspection-warning',
@@ -283,43 +403,63 @@ describe('dashboard document validation', () => {
       'repository',
       'workflow',
       'run',
-      'observed-at'
-    ]);
-    expect(detection.views[0].encoding.href).toEqual({ field: 'run-link', type: 'nominal' });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      'observed-at',
+    ])
+    expect(detection.views[0].encoding.href).toEqual({
+      field: 'run-link',
+      type: 'nominal',
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('defines safe-output diagnostics as one full-view lazy table in Explore', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const safeOutputs = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'safe-outputs',
+    )
 
-    expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Explore'
-    ).pages).toContain('safe-outputs');
-    expect(safeOutputs.views).toHaveLength(1);
+    expect(
+      document.dashboard.navigation.find(
+        (/** @type {{ label: string }} */ section) =>
+          section.label === 'Explore',
+      ).pages,
+    ).toContain('safe-outputs')
+    expect(safeOutputs.views).toHaveLength(1)
     expect(safeOutputs.views[0]).toMatchObject({
       id: 'safe-output-diagnostics',
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,
       layout: 'full-view',
-      data: { source: 'safe-output-performance' }
-    });
-    expect(safeOutputs.views[0].encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'safe-output-kind', title: 'Signal' }),
-      expect.objectContaining({ field: 'safe-output-status', display: 'status' }),
-      expect.objectContaining({ field: 'safe-output-count', title: 'Items' }),
-      expect.objectContaining({ field: 'run-conclusion', display: 'status' })
-    ]));
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      data: { source: 'safe-output-performance' },
+    })
+    expect(safeOutputs.views[0].encoding.columns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'safe-output-kind', title: 'Signal' }),
+        expect.objectContaining({
+          field: 'safe-output-status',
+          display: 'status',
+        }),
+        expect.objectContaining({ field: 'safe-output-count', title: 'Items' }),
+        expect.objectContaining({ field: 'run-conclusion', display: 'status' }),
+      ]),
+    )
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('validates declarative table intents without author-defined context templating', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runs');
-    const runsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-table');
-    const detailsView = runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-run-details');
-    const runsPageIndex = document.dashboard.pages.indexOf(runsPage);
+    const document = JSON.parse(authoritativeDashboardSource)
+    const runsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runs',
+    )
+    const runsView = runsPage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-table',
+    )
+    const detailsView = runsPage.views.find(
+      (/** @type {{ id: string }} */ view) =>
+        view.id === 'workflow-run-details',
+    )
+    const runsPageIndex = document.dashboard.pages.indexOf(runsPage)
     expect(runsView).toMatchObject({
       description: expect.any(String),
       controls: 'static',
@@ -328,18 +468,24 @@ describe('dashboard document validation', () => {
           { field: 'run' },
           { field: 'run-status' },
           { field: 'run-conclusion' },
-          { field: 'rollout-mode' }
-        ]
-      }
-    });
+          { field: 'rollout-mode' },
+        ],
+      },
+    })
 
     expect(detailsView).toMatchObject({
       disclosure: 'supplemental',
       controls: 'static',
-      description: expect.any(String)
-    });
-    expect(detailsView.description).toContain('after the run-status table answers the current state');
-    expect(detailsView.encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
+      description: expect.any(String),
+    })
+    expect(detailsView.description).toContain(
+      'after the run-status table answers the current state',
+    )
+    expect(
+      detailsView.encoding.columns.map(
+        (/** @type {{ field: string }} */ column) => column.field,
+      ),
+    ).toEqual([
       'run',
       'run-title',
       'event',
@@ -347,89 +493,118 @@ describe('dashboard document validation', () => {
       'requested-model',
       'resolved-model',
       'started-at',
-      'ended-at'
-    ]);
-    expect(detailsView.encoding.actions).toEqual([{
-      intent: 'Investigate this failed workflow run.',
-      presentation: 'copy-prompt',
-      icon: 'search',
-      label: 'Investigate',
-      context: [
-        'run',
-        'run-title',
-        'repository',
-        'workflow',
-        'run-conclusion',
-        'failure-job',
-        'failure-message',
-        'failure-step',
-        'run-link'
-      ],
-      when: { field: 'run-conclusion', equals: 'failure' }
-    }]);
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+      'ended-at',
+    ])
+    expect(detailsView.encoding.actions).toEqual([
+      {
+        intent: 'Investigate this failed workflow run.',
+        presentation: 'copy-prompt',
+        icon: 'search',
+        label: 'Investigate',
+        context: [
+          'run',
+          'run-title',
+          'repository',
+          'workflow',
+          'run-conclusion',
+          'failure-job',
+          'failure-message',
+          'failure-step',
+          'run-link',
+        ],
+        when: { field: 'run-conclusion', equals: 'failure' },
+      },
+    ])
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
-    detailsView.encoding.actions[0].presentation = 'copy-command';
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
-    detailsView.encoding.actions[0].presentation = 'copy-prompt';
+    detailsView.encoding.actions[0].presentation = 'copy-command'
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false)
+    detailsView.encoding.actions[0].presentation = 'copy-prompt'
 
-    detailsView.encoding.actions[0].context.push('not-a-run-field');
-    const invalidContext = validateDashboardDocument(JSON.stringify(document));
-    expect(invalidContext.ok).toBe(false);
+    detailsView.encoding.actions[0].context.push('not-a-run-field')
+    const invalidContext = validateDashboardDocument(JSON.stringify(document))
+    expect(invalidContext.ok).toBe(false)
     if (!invalidContext.ok) {
-      expect(invalidContext.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E010',
-        path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].context[9]`
-      }));
+      expect(invalidContext.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].context[9]`,
+        }),
+      )
     }
-    detailsView.encoding.actions[0].context.pop();
+    detailsView.encoding.actions[0].context.pop()
 
-    detailsView.encoding.actions[0].context.push('run');
-    const duplicateContext = validateDashboardDocument(JSON.stringify(document));
-    expect(duplicateContext.ok).toBe(false);
+    detailsView.encoding.actions[0].context.push('run')
+    const duplicateContext = validateDashboardDocument(JSON.stringify(document))
+    expect(duplicateContext.ok).toBe(false)
     if (!duplicateContext.ok) {
-      expect(duplicateContext.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].context[9]`
-      }));
+      expect(duplicateContext.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].context[9]`,
+        }),
+      )
     }
-    detailsView.encoding.actions[0].context.pop();
+    detailsView.encoding.actions[0].context.pop()
 
-    detailsView.encoding.actions[0].when.field = 'not-a-run-field';
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
+    detailsView.encoding.actions[0].when.field = 'not-a-run-field'
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E010',
-        path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].when.field`
-      }));
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: `$.dashboard.pages[${runsPageIndex}].views[3].encoding.actions[0].when.field`,
+        }),
+      )
     }
-  });
+  })
 
   it('defines workflow route composition through a reusable workflow-route-page element', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const reportsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-detail');
-    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runs');
-    const runtimePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const reportsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'workflow-detail',
+    )
+    const runsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runs',
+    )
+    const runtimePage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime',
+    )
 
-    expect(reportsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-reports-route')).toMatchObject({
+    expect(
+      reportsPage.views.find(
+        (/** @type {{ id: string }} */ view) =>
+          view.id === 'workflow-reports-route',
+      ),
+    ).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
-      config: { body: 'reports' }
-    });
+      config: { body: 'reports' },
+    })
 
-    expect(runsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runs-route')).toMatchObject({
+    expect(
+      runsPage.views.find(
+        (/** @type {{ id: string }} */ view) =>
+          view.id === 'workflow-runs-route',
+      ),
+    ).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
-      config: { body: 'runs' }
-    });
-    expect(runtimePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runtime-route')).toMatchObject({
+      config: { body: 'runs' },
+    })
+    expect(
+      runtimePage.views.find(
+        (/** @type {{ id: string }} */ view) =>
+          view.id === 'workflow-runtime-route',
+      ),
+    ).toMatchObject({
       mark: 'element',
       element: 'workflow-route-page',
-      config: { body: 'insights' }
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      config: { body: 'insights' },
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('accepts workflow-route-page on multiple pages without page-specific JavaScript routing', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -463,36 +638,44 @@ dashboard:
           element: workflow-route-page
           config:
             body: runs
-`);
-    expect(accepted.ok).toBe(true);
-  });
+`)
+    expect(accepted.ok).toBe(true)
+  })
 
   it('defines packages, workflows, and runs as declarative full-view lazy tables', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
-    const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
-    const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const packagesPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'packages',
+    )
+    const workflowsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'workflows',
+    )
+    const runsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'runs',
+    )
 
-    const packagesView = packagesPage.definition.views[0];
-    const workflowsView = workflowsPage.definition.views[0];
-    const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
+    const packagesView = packagesPage.definition.views[0]
+    const workflowsView = workflowsPage.definition.views[0]
+    const runsView = runsPage.definition.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source',
+    )
     for (const view of [packagesView, workflowsView, runsView]) {
       expect(view).toMatchObject({
         mark: 'table',
         controls: 'interactive',
         'lazy-list': true,
         'column-summaries': true,
-        layout: 'full-view'
-      });
+        layout: 'full-view',
+      })
     }
-    expect(packagesView.data.source).toBe('package-inventory');
-    expect(workflowsView.data.source).toBe('workflow-inventory');
-    expect(runsView.data.source).toBe('runs');
-    expect(packagesPage.definition.views).toHaveLength(1);
-    expect(workflowsPage.definition.views).toHaveLength(1);
-    expect(runsPage.definition.views).toHaveLength(1);
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+    expect(packagesView.data.source).toBe('package-inventory')
+    expect(workflowsView.data.source).toBe('workflow-inventory')
+    expect(runsView.data.source).toBe('runs')
+    expect(packagesPage.definition.views).toHaveLength(1)
+    expect(workflowsPage.definition.views).toHaveLength(1)
+    expect(runsPage.definition.views).toHaveLength(1)
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('accepts workflow-route-page config.body and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -513,8 +696,8 @@ dashboard:
           element: workflow-route-page
           config:
             body: reports
-`);
-    expect(accepted.ok).toBe(true);
+`)
+    expect(accepted.ok).toBe(true)
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -534,15 +717,17 @@ dashboard:
           element: workflow-route-page
           config:
             body: summary
-`);
-    expect(invalidBody.ok).toBe(false);
+`)
+    expect(invalidBody.ok).toBe(false)
     if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
+      expect(invalidBody.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.body',
+        }),
+      )
     }
-  });
+  })
 
   it('accepts package-route config.body and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -563,8 +748,8 @@ dashboard:
           element: package-route
           config:
             body: dispatches
-`);
-    expect(accepted.ok).toBe(true);
+`)
+    expect(accepted.ok).toBe(true)
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -584,15 +769,17 @@ dashboard:
           element: package-route
           config:
             body: runs
-`);
-    expect(invalidBody.ok).toBe(false);
+`)
+    expect(invalidBody.ok).toBe(false)
     if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
+      expect(invalidBody.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.body',
+        }),
+      )
     }
-  });
+  })
 
   it('accepts outcome-detail-section config.body and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -613,8 +800,8 @@ dashboard:
           element: outcome-detail-section
           config:
             body: metadata
-`);
-    expect(accepted.ok).toBe(true);
+`)
+    expect(accepted.ok).toBe(true)
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -634,15 +821,17 @@ dashboard:
           element: outcome-detail-section
           config:
             body: summary
-`);
-    expect(invalidBody.ok).toBe(false);
+`)
+    expect(invalidBody.ok).toBe(false)
     if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
+      expect(invalidBody.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.body',
+        }),
+      )
     }
-  });
+  })
 
   it('accepts experiments-evaluation config.body and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -661,8 +850,8 @@ dashboard:
           element: experiments-evaluation
           config:
             body: table
-`);
-    expect(accepted.ok).toBe(true);
+`)
+    expect(accepted.ok).toBe(true)
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -680,15 +869,17 @@ dashboard:
           element: experiments-evaluation
           config:
             body: filters
-`);
-    expect(invalidBody.ok).toBe(false);
+`)
+    expect(invalidBody.ok).toBe(false)
     if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
+      expect(invalidBody.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.body',
+        }),
+      )
     }
-  });
+  })
 
   it('accepts experiments-evaluation config.sections and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -707,8 +898,8 @@ dashboard:
           element: experiments-evaluation
           config:
             sections: [detail]
-`);
-    expect(accepted.ok).toBe(true);
+`)
+    expect(accepted.ok).toBe(true)
 
     const invalid = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -726,15 +917,17 @@ dashboard:
           element: experiments-evaluation
           config:
             sections: [filters]
-`);
-    expect(invalid.ok).toBe(false);
+`)
+    expect(invalid.ok).toBe(false)
     if (!invalid.ok) {
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
-      }));
+      expect(invalid.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.sections[0]',
+        }),
+      )
     }
-  });
+  })
 
   it('accepts work-project-view config and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -753,8 +946,8 @@ dashboard:
           element: work-project-view
           config:
             sections: [board, tasks]
-`);
-    expect(accepted.ok).toBe(true);
+`)
+    expect(accepted.ok).toBe(true)
 
     const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -772,13 +965,15 @@ dashboard:
           element: work-project-view
           config:
             body: backlog
-`);
-    expect(invalidBody.ok).toBe(false);
+`)
+    expect(invalidBody.ok).toBe(false)
     if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
+      expect(invalidBody.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.body',
+        }),
+      )
     }
 
     const invalidSection = validateDashboardDocument(`language-version: "0.1.0"
@@ -797,63 +992,74 @@ dashboard:
           element: work-project-view
           config:
             sections: [backlog]
-`);
-    expect(invalidSection.ok).toBe(false);
+`)
+    expect(invalidSection.ok).toBe(false)
     if (!invalidSection.ok) {
-      expect(invalidSection.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
-      }));
+      expect(invalidSection.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].config.sections[0]',
+        }),
+      )
     }
-  });
+  })
 
   it('defines work-project-view composition through canonical body values', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const pages = new Map(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]));
+    const document = JSON.parse(authoritativeDashboardSource)
+    const pages = new Map(
+      document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [
+        page.id,
+        page,
+      ]),
+    )
 
     expect(pages.get('work')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'board' }
-    });
+      config: { body: 'board' },
+    })
     expect(pages.get('work-tasks')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'tasks' }
-    });
+      config: { body: 'tasks' },
+    })
     expect(pages.get('work-roadmap')?.views[0]).toMatchObject({
       mark: 'element',
       element: 'work-project-view',
-      config: { body: 'roadmap' }
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      config: { body: 'roadmap' },
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('defines experiments as a full-view interactive lazy-list table', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const experimentsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'experiments');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const experimentsPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'experiments',
+    )
 
-    expect(experimentsPage.definition.views).toHaveLength(1);
+    expect(experimentsPage.definition.views).toHaveLength(1)
     expect(experimentsPage.definition.views[0]).toMatchObject({
       id: 'experiments-list',
       data: { source: 'experiments' },
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,
-      layout: 'full-view'
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-  });
+      layout: 'full-view',
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+  })
 
   it('accepts every package dashboard document', () => {
     for (const source of packageDashboardSources) {
-      expect(validateDashboardDocument(source).ok).toBe(true);
+      expect(validateDashboardDocument(source).ok).toBe(true)
     }
-  });
+  })
 
   it('DLS-VIEW-005 accepts automatically binned histograms and rejects ambiguous histogram channels', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const costPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'cost',
+    )
     const histogram = /** @type {any} */ ({
       id: 'cost-per-run-distribution',
       data: { source: 'usage' },
@@ -861,35 +1067,39 @@ dashboard:
       chart: 'histogram',
       encoding: {
         x: { field: 'run', type: 'nominal' },
-        y: { field: 'aic', type: 'quantitative', aggregate: 'sum' }
-      }
-    });
-    costPage.views.push(histogram);
+        y: { field: 'aic', type: 'quantitative', aggregate: 'sum' },
+      },
+    })
+    costPage.views.push(histogram)
 
     expect(histogram).toMatchObject({
       chart: 'histogram',
       encoding: {
         x: { field: 'run', type: 'nominal' },
-        y: { field: 'aic', type: 'quantitative', aggregate: 'sum' }
-      }
-    });
+        y: { field: 'aic', type: 'quantitative', aggregate: 'sum' },
+      },
+    })
 
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
-    histogram.encoding.color = { field: 'repository', type: 'nominal' };
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
+    histogram.encoding.color = { field: 'repository', type: 'nominal' }
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E010',
-        path: expect.stringContaining('.encoding.color')
-      }));
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: expect.stringContaining('.encoding.color'),
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-005 accepts bounded heatmaps and rejects invalid axes, values, and limits', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const performance = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'performance');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const performance = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'performance',
+    )
     const heatmap = {
       id: 'job-duration-by-job-runner',
       data: { source: 'job-performance', limit: 100 },
@@ -898,10 +1108,14 @@ dashboard:
       encoding: {
         x: { field: 'job', type: 'nominal' },
         y: { field: 'runner', type: 'nominal' },
-        color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
-      }
-    };
-    performance.views.push(heatmap);
+        color: {
+          field: 'job-duration-seconds',
+          type: 'quantitative',
+          aggregate: 'mean',
+        },
+      },
+    }
+    performance.views.push(heatmap)
 
     expect(heatmap).toMatchObject({
       chart: 'heatmap',
@@ -909,68 +1123,97 @@ dashboard:
       encoding: {
         x: { field: 'job', type: 'nominal' },
         y: { field: 'runner', type: 'nominal' },
-        color: { field: 'job-duration-seconds', type: 'quantitative', aggregate: 'mean' }
-      }
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+        color: {
+          field: 'job-duration-seconds',
+          type: 'quantitative',
+          aggregate: 'mean',
+        },
+      },
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
-    heatmap.data.limit = 101;
-    heatmap.encoding.y.type = 'quantitative';
-    heatmap.encoding.color.aggregate = 'none';
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
+    heatmap.data.limit = 101
+    heatmap.encoding.y.type = 'quantitative'
+    heatmap.encoding.color.aggregate = 'none'
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ path: expect.stringContaining('.data.limit') }),
-        expect.objectContaining({ path: expect.stringContaining('.encoding.y.type') }),
-        expect.objectContaining({ path: expect.stringContaining('.encoding.color.aggregate') })
-      ]));
+      expect(rejected.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: expect.stringContaining('.data.limit'),
+          }),
+          expect.objectContaining({
+            path: expect.stringContaining('.encoding.y.type'),
+          }),
+          expect.objectContaining({
+            path: expect.stringContaining('.encoding.color.aggregate'),
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('keeps one focused custom dashboard for every operation package', () => {
-    const documents = packageDashboardSources.map((source) => JSON.parse(source));
+    const documents = packageDashboardSources.map((source) =>
+      JSON.parse(source),
+    )
     const packagePageIds = [
       'aw-doctor-dashboard',
       'dependabot-dashboard',
       'uk-ai-advisory-dashboard',
       'eu-cra-compliance-dashboard',
-      'optimization-dashboard'
-    ];
-    expect(documents).toHaveLength(packagePageIds.length);
+      'optimization-dashboard',
+    ]
+    expect(documents).toHaveLength(packagePageIds.length)
     for (const pageId of packagePageIds) {
-      const document = documents.find((candidate) => candidate.dashboard.pages[0].id === pageId);
-      if (!document) throw new Error(`Missing package dashboard page ${pageId}`);
-      const page = document.dashboard.pages[0];
-      expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', experimental: true, pages: [pageId] }]);
-      expect(page).toMatchObject({ kind: 'custom' });
-      expect(page.views).toHaveLength(4);
+      const document = documents.find(
+        (candidate) => candidate.dashboard.pages[0].id === pageId,
+      )
+      if (!document) throw new Error(`Missing package dashboard page ${pageId}`)
+      const page = document.dashboard.pages[0]
+      expect(document.dashboard.navigation).toEqual([
+        { label: 'Package operations', experimental: true, pages: [pageId] },
+      ])
+      expect(page).toMatchObject({ kind: 'custom' })
+      expect(page.views).toHaveLength(4)
       const tables = page.views.filter(
-        (/** @type {{ mark?: string }} */ view) => view.mark === 'table'
-      );
-      expect(tables.filter(
-        (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'essential'
-      )).toHaveLength(1);
-      expect(tables.filter(
-        (/** @type {{ disclosure?: string }} */ view) => view.disclosure === 'supplemental'
-      )).toHaveLength(tables.length - 1);
+        (/** @type {{ mark?: string }} */ view) => view.mark === 'table',
+      )
+      expect(
+        tables.filter(
+          (/** @type {{ disclosure?: string }} */ view) =>
+            view.disclosure === 'essential',
+        ),
+      ).toHaveLength(1)
+      expect(
+        tables.filter(
+          (/** @type {{ disclosure?: string }} */ view) =>
+            view.disclosure === 'supplemental',
+        ),
+      ).toHaveLength(tables.length - 1)
       const sources = page.views.map(
-        (/** @type {{ data: { source: string } }} */ view) => view.data.source
-      );
-      expect(sources.sort()).toEqual(['operational-values', 'operational-values', 'outcomes', 'runs'].sort());
+        (/** @type {{ data: { source: string } }} */ view) => view.data.source,
+      )
+      expect(sources.sort()).toEqual(
+        ['operational-values', 'operational-values', 'outcomes', 'runs'].sort(),
+      )
     }
-  });
+  })
 
   it('keeps the AW Doctor run inventory aligned with the built-in run table', () => {
-    const builtInDocument = JSON.parse(authoritativeDashboardSource);
+    const builtInDocument = JSON.parse(authoritativeDashboardSource)
     const builtInRunView = builtInDocument.dashboard.pages
       .find((/** @type {{ id: string }} */ page) => page.id === 'runs')
-      .definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
+      .definition.views.find(
+        (/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source',
+      )
     const awMaintenanceDocument = packageDashboardSources
       .map((source) => JSON.parse(source))
-      .find((document) => document.dashboard.id === 'aw-doctor-dashboard');
-    const runView = awMaintenanceDocument.dashboard.pages[0].views
-      .find((/** @type {{ id: string }} */ view) => view.id === 'aw-doctor-runs');
+      .find((document) => document.dashboard.id === 'aw-doctor-dashboard')
+    const runView = awMaintenanceDocument.dashboard.pages[0].views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'aw-doctor-runs',
+    )
 
     expect(runView).toMatchObject({
       mark: 'table',
@@ -978,83 +1221,103 @@ dashboard:
       encoding: {
         href: builtInRunView.encoding.href,
         columns: builtInRunView.encoding.columns.filter(
-          (/** @type {{ field: string }} */ column) => column.field !== 'engine-version'
-        )
-      }
-    });
-    expect(runView.description).toContain('which AW Doctor failures need attention first');
-    expect(runView.encoding.columns.some(
-      (/** @type {{ field: string }} */ column) => column.field === 'engine-version'
-    )).toBe(false);
-  });
+          (/** @type {{ field: string }} */ column) =>
+            column.field !== 'engine-version',
+        ),
+      },
+    })
+    expect(runView.description).toContain(
+      'which AW Doctor failures need attention first',
+    )
+    expect(
+      runView.encoding.columns.some(
+        (/** @type {{ field: string }} */ column) =>
+          column.field === 'engine-version',
+      ),
+    ).toBe(false)
+  })
 
   it('validates source-free JSON callouts with canonical icons', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const costPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const costPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'cost',
+    )
     const callout = /** @type {any} */ ({
       id: 'cost-evaluation-boundary',
       title: 'Budget and anomaly verdicts unavailable',
-      description: 'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
+      description:
+        'Budget and anomaly verdicts require complete, comparable evidence; partial AI Credit telemetry is insufficient.',
       mark: 'callout',
-      callout: { label: 'Evaluation boundary', icon: 'meter' }
-    });
-    costPage.views.push(callout);
+      callout: { label: 'Evaluation boundary', icon: 'meter' },
+    })
+    costPage.views.push(callout)
     expect(callout).toMatchObject({
       mark: 'callout',
-      callout: { label: 'Evaluation boundary', icon: 'meter' }
-    });
-    expect(callout.description).toContain('partial AI Credit telemetry');
+      callout: { label: 'Evaluation boundary', icon: 'meter' },
+    })
+    expect(callout.description).toContain('partial AI Credit telemetry')
     const valuePage = document.dashboard.pages.find(
-      (/** @type {{ id: string }} */ page) => page.id === 'operational-value'
-    );
-    expect(valuePage).toBeDefined();
+      (/** @type {{ id: string }} */ page) => page.id === 'operational-value',
+    )
+    expect(valuePage).toBeDefined()
     const valueCallout = {
       id: 'experiment-evidence-boundary',
       title: 'Experiment comparisons unavailable',
-      description: 'Experiment evidence cannot be established from partial AI Credit telemetry.',
+      description:
+        'Experiment evidence cannot be established from partial AI Credit telemetry.',
       mark: 'callout',
-      callout: { label: 'Experiment evidence boundary', icon: 'beaker' }
-    };
-    valuePage.views.push(valueCallout);
-    expect(valueCallout).toBeDefined();
-    expect(valueCallout.description).toContain('partial AI Credit telemetry');
-    expect(callout.data).toBeUndefined();
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-
-    callout.callout.icon = 'not-an-octicon';
-    callout.data = { source: 'usage' };
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: expect.stringContaining('.callout.icon')
-      }));
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: expect.stringContaining('.data'),
-        message: 'callout views must not declare data.'
-      }));
+      callout: { label: 'Experiment evidence boundary', icon: 'beaker' },
     }
-  });
+    valuePage.views.push(valueCallout)
+    expect(valueCallout).toBeDefined()
+    expect(valueCallout.description).toContain('partial AI Credit telemetry')
+    expect(callout.data).toBeUndefined()
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+
+    callout.callout.icon = 'not-an-octicon'
+    callout.data = { source: 'usage' }
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: expect.stringContaining('.callout.icon'),
+        }),
+      )
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: expect.stringContaining('.data'),
+          message: 'callout views must not declare data.',
+        }),
+      )
+    }
+  })
 
   it('DLS-PAGE-017 rejects obsolete page filter-bar configuration', () => {
-    const accepted = validateDashboardDocument(authoritativeDashboardSource);
-    expect(accepted.ok).toBe(true);
+    const accepted = validateDashboardDocument(authoritativeDashboardSource)
+    expect(accepted.ok).toBe(true)
 
-    const obsoleteConfiguration = JSON.parse(authoritativeDashboardSource);
-    const costPage = obsoleteConfiguration.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'cost');
-    costPage['filter-bar'] = { filters: [] };
+    const obsoleteConfiguration = JSON.parse(authoritativeDashboardSource)
+    const costPage = obsoleteConfiguration.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'cost',
+    )
+    costPage['filter-bar'] = { filters: [] }
 
-    const rejected = validateDashboardDocument(JSON.stringify(obsoleteConfiguration));
-    expect(rejected.ok).toBe(false);
+    const rejected = validateDashboardDocument(
+      JSON.stringify(obsoleteConfiguration),
+    )
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: '$.dashboard.pages[3].filter-bar'
-      }));
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: '$.dashboard.pages[3].filter-bar',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-024 validates custom page section layout and complete ordered view placement', () => {
     const document = {
@@ -1062,254 +1325,340 @@ dashboard:
       dashboard: {
         id: 'sectioned-dashboard',
         title: 'Sectioned Dashboard',
-        pages: [{
-          id: 'summary',
-          kind: 'custom',
-          views: [
-            {
-              id: 'run-count',
-              data: { source: 'runs' },
-              mark: 'metric',
-              encoding: { value: { field: 'run', aggregate: 'count' } }
-            },
-            {
-              id: 'usage-total',
-              data: { source: 'usage' },
-              mark: 'metric',
-              encoding: { value: { field: 'aic', aggregate: 'sum' } }
-            }
-          ],
-          sections: [
-            { id: 'headline', layout: 'wide', views: ['run-count'] },
-            { id: 'details', title: 'Usage details', layout: 'narrow', views: ['usage-total'] }
-          ]
-        }]
-      }
-    };
-
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-
-    document.dashboard.pages[0].sections[1].views = ['run-count'];
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        path: '$.dashboard.pages[0].sections[1].views[0]',
-        message: 'each page view may appear in only one layout section.'
-      }));
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        path: '$.dashboard.pages[0].sections',
-        message: 'layout sections must reference every page view exactly once and preserve view order.'
-      }));
+        pages: [
+          {
+            id: 'summary',
+            kind: 'custom',
+            views: [
+              {
+                id: 'run-count',
+                data: { source: 'runs' },
+                mark: 'metric',
+                encoding: { value: { field: 'run', aggregate: 'count' } },
+              },
+              {
+                id: 'usage-total',
+                data: { source: 'usage' },
+                mark: 'metric',
+                encoding: { value: { field: 'aic', aggregate: 'sum' } },
+              },
+            ],
+            sections: [
+              { id: 'headline', layout: 'wide', views: ['run-count'] },
+              {
+                id: 'details',
+                title: 'Usage details',
+                layout: 'narrow',
+                views: ['usage-total'],
+              },
+            ],
+          },
+        ],
+      },
     }
-  });
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+
+    document.dashboard.pages[0].sections[1].views = ['run-count']
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
+    if (!rejected.ok) {
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          path: '$.dashboard.pages[0].sections[1].views[0]',
+          message: 'each page view may appear in only one layout section.',
+        }),
+      )
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          path: '$.dashboard.pages[0].sections',
+          message:
+            'layout sections must reference every page view exactly once and preserve view order.',
+        }),
+      )
+    }
+  })
 
   it('DLS-VIEW-026 accepts custom page route and navigation allocation and rejects malformed declarations', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail');
-    const repositoryPage = document.dashboard.pages[repositoryPageIndex];
-    expect(repositoryPage.route).toEqual({ 'hash-query-parameter': 'repository', 'navigation-page': 'repositories' });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    repositoryPage.route = { 'navigation-page': 'repositories' };
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
-    repositoryPage.route = { 'navigation-page': 'missing-page' };
-    const missingNavigationPage = validateDashboardDocument(JSON.stringify(document));
-    expect(missingNavigationPage.ok).toBe(false);
+    const document = JSON.parse(authoritativeDashboardSource)
+    const repositoryPageIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ id: string }} */ page) => page.id === 'repository-detail',
+    )
+    const repositoryPage = document.dashboard.pages[repositoryPageIndex]
+    expect(repositoryPage.route).toEqual({
+      'hash-query-parameter': 'repository',
+      'navigation-page': 'repositories',
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+    repositoryPage.route = { 'navigation-page': 'repositories' }
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
+    repositoryPage.route = { 'navigation-page': 'missing-page' }
+    const missingNavigationPage = validateDashboardDocument(
+      JSON.stringify(document),
+    )
+    expect(missingNavigationPage.ok).toBe(false)
     if (!missingNavigationPage.ok) {
-      expect(missingNavigationPage.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: `$.dashboard.pages[${repositoryPageIndex}].route.navigation-page`
-      }));
+      expect(missingNavigationPage.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: `$.dashboard.pages[${repositoryPageIndex}].route.navigation-page`,
+        }),
+      )
     }
-    repositoryPage.route = { 'navigation-page': 'repository-detail' };
-    const selfNavigationPage = validateDashboardDocument(JSON.stringify(document));
-    expect(selfNavigationPage.ok).toBe(false);
+    repositoryPage.route = { 'navigation-page': 'repository-detail' }
+    const selfNavigationPage = validateDashboardDocument(
+      JSON.stringify(document),
+    )
+    expect(selfNavigationPage.ok).toBe(false)
     if (!selfNavigationPage.ok) {
-      expect(selfNavigationPage.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        message: 'route navigation-page must reference a different dashboard page.'
-      }));
+      expect(selfNavigationPage.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          message:
+            'route navigation-page must reference a different dashboard page.',
+        }),
+      )
     }
 
-    repositoryPage.route = { 'hash-query-parameter': 'Repository Name' };
-    const malformed = validateDashboardDocument(JSON.stringify(document));
-    expect(malformed.ok).toBe(false);
+    repositoryPage.route = { 'hash-query-parameter': 'Repository Name' }
+    const malformed = validateDashboardDocument(JSON.stringify(document))
+    expect(malformed.ok).toBe(false)
     if (!malformed.ok) {
-      expect(malformed.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: `$.dashboard.pages[${repositoryPageIndex}].route.hash-query-parameter`
-      }));
+      expect(malformed.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: `$.dashboard.pages[${repositoryPageIndex}].route.hash-query-parameter`,
+        }),
+      )
     }
 
-    repositoryPage.route = { parameter: 'repository' };
-    const unknownKey = validateDashboardDocument(JSON.stringify(document));
-    expect(unknownKey.ok).toBe(false);
+    repositoryPage.route = { parameter: 'repository' }
+    const unknownKey = validateDashboardDocument(JSON.stringify(document))
+    expect(unknownKey.ok).toBe(false)
     if (!unknownKey.ok) {
-      expect(unknownKey.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: `$.dashboard.pages[${repositoryPageIndex}].route.parameter`
-      }));
+      expect(unknownKey.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: `$.dashboard.pages[${repositoryPageIndex}].route.parameter`,
+        }),
+      )
     }
 
-    repositoryPage.route = {};
-    const missingParameter = validateDashboardDocument(JSON.stringify(document));
-    expect(missingParameter.ok).toBe(false);
+    repositoryPage.route = {}
+    const missingParameter = validateDashboardDocument(JSON.stringify(document))
+    expect(missingParameter.ok).toBe(false)
     if (!missingParameter.ok) {
-      expect(missingParameter.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: `$.dashboard.pages[${repositoryPageIndex}].route`,
-        message: 'route must declare hash-query-parameter or navigation-page.'
-      }));
+      expect(missingParameter.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: `$.dashboard.pages[${repositoryPageIndex}].route`,
+          message:
+            'route must declare hash-query-parameter or navigation-page.',
+        }),
+      )
     }
 
-    repositoryPage.route = 'repository';
-    const invalidShape = validateDashboardDocument(JSON.stringify(document));
-    expect(invalidShape.ok).toBe(false);
+    repositoryPage.route = 'repository'
+    const invalidShape = validateDashboardDocument(JSON.stringify(document))
+    expect(invalidShape.ok).toBe(false)
     if (!invalidShape.ok) {
-      expect(invalidShape.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: `$.dashboard.pages[${repositoryPageIndex}].route`,
-        message: 'route must be a mapping.'
-      }));
+      expect(invalidShape.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: `$.dashboard.pages[${repositoryPageIndex}].route`,
+          message: 'route must be a mapping.',
+        }),
+      )
     }
 
-    repositoryPage.route = { 'hash-query-parameter': 'repository' };
-    const builtInPage = document.dashboard.pages.find((/** @type {{ kind: string }} */ page) => page.kind === 'built-in');
-    builtInPage.route = { 'hash-query-parameter': 'repository' };
-    const builtInRoute = validateDashboardDocument(JSON.stringify(document));
-    expect(builtInRoute.ok).toBe(false);
+    repositoryPage.route = { 'hash-query-parameter': 'repository' }
+    const builtInPage = document.dashboard.pages.find(
+      (/** @type {{ kind: string }} */ page) => page.kind === 'built-in',
+    )
+    builtInPage.route = { 'hash-query-parameter': 'repository' }
+    const builtInRoute = validateDashboardDocument(JSON.stringify(document))
+    expect(builtInRoute.ok).toBe(false)
     if (!builtInRoute.ok) {
-      expect(builtInRoute.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: '$.dashboard.pages[0].route'
-      }));
+      expect(builtInRoute.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: '$.dashboard.pages[0].route',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-030 validates route fields against the selected logical source', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const repositoryPageIndex = document.dashboard.pages.findIndex((/** @type {{ id: string }} */ page) => page.id === 'repository-detail');
-    const repositoryPage = document.dashboard.pages[repositoryPageIndex];
-    expect(repositoryPage.views.every((/** @type {{ data: { 'route-field'?: string } }} */ view) => view.data['route-field'] === 'repository')).toBe(true);
+    const document = JSON.parse(authoritativeDashboardSource)
+    const repositoryPageIndex = document.dashboard.pages.findIndex(
+      (/** @type {{ id: string }} */ page) => page.id === 'repository-detail',
+    )
+    const repositoryPage = document.dashboard.pages[repositoryPageIndex]
+    expect(
+      repositoryPage.views.every(
+        (/** @type {{ data: { 'route-field'?: string } }} */ view) =>
+          view.data['route-field'] === 'repository',
+      ),
+    ).toBe(true)
 
-    repositoryPage.views[0].data['route-field'] = 'missing-field';
-    const invalid = validateDashboardDocument(JSON.stringify(document));
+    repositoryPage.views[0].data['route-field'] = 'missing-field'
+    const invalid = validateDashboardDocument(JSON.stringify(document))
 
-    expect(invalid.ok).toBe(false);
+    expect(invalid.ok).toBe(false)
     if (!invalid.ok) {
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E010',
-        path: `$.dashboard.pages[${repositoryPageIndex}].views[0].data.route-field`
-      }));
+      expect(invalid.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: `$.dashboard.pages[${repositoryPageIndex}].views[0].data.route-field`,
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-031 validates JSON-configured title links against one selected source', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const outcomePage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'outcome-detail');
-    const outcomeView = outcomePage.views.find((/** @type {{ id: string }} */ view) => view.id === 'outcome-record');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const outcomePage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'outcome-detail',
+    )
+    const outcomeView = outcomePage.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'outcome-record',
+    )
     expect(outcomeView['title-link']).toEqual({
       'href-field': 'external-link',
-      'identifier-field': 'outcome-number'
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+      'identifier-field': 'outcome-number',
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
     outcomeView['title-link'] = {
       'href-field': 'run-link',
-      'identifier-field': 'run'
-    };
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+      'identifier-field': 'run',
+    }
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
     outcomeView['title-link'] = {
       'href-field': 'outcome-title',
-      'identifier-field': 'external-link'
-    };
-    const invalid = validateDashboardDocument(JSON.stringify(document));
-    expect(invalid.ok).toBe(false);
-    if (!invalid.ok) {
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E009',
-        path: expect.stringMatching(/\.title-link\.href-field$/)
-      }));
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E010',
-        path: expect.stringMatching(/\.title-link\.identifier-field$/)
-      }));
+      'identifier-field': 'external-link',
     }
-  });
+    const invalid = validateDashboardDocument(JSON.stringify(document))
+    expect(invalid.ok).toBe(false)
+    if (!invalid.ok) {
+      expect(invalid.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E009',
+          path: expect.stringMatching(/\.title-link\.href-field$/),
+        }),
+      )
+      expect(invalid.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: expect.stringMatching(/\.title-link\.identifier-field$/),
+        }),
+      )
+    }
+  })
 
   it('validates dashboard.navigation references declared pages at most once', () => {
-    const withUnknownPage = JSON.parse(authoritativeDashboardSource);
-    withUnknownPage.dashboard.navigation[2].pages.push('does-not-exist');
-    const unknownPageResult = validateDashboardDocument(JSON.stringify(withUnknownPage));
-    expect(unknownPageResult.ok).toBe(false);
+    const withUnknownPage = JSON.parse(authoritativeDashboardSource)
+    withUnknownPage.dashboard.navigation[2].pages.push('does-not-exist')
+    const unknownPageResult = validateDashboardDocument(
+      JSON.stringify(withUnknownPage),
+    )
+    expect(unknownPageResult.ok).toBe(false)
     if (!unknownPageResult.ok) {
-      expect(unknownPageResult.errors).toContainEqual(expect.objectContaining({
-        message: 'navigation section page must reference a declared dashboard page id.'
-      }));
+      expect(unknownPageResult.errors).toContainEqual(
+        expect.objectContaining({
+          message:
+            'navigation section page must reference a declared dashboard page id.',
+        }),
+      )
     }
 
-    const withDuplicatePage = JSON.parse(authoritativeDashboardSource);
-    withDuplicatePage.dashboard.navigation[1].pages.push('overview');
-    const duplicatePageResult = validateDashboardDocument(JSON.stringify(withDuplicatePage));
-    expect(duplicatePageResult.ok).toBe(false);
+    const withDuplicatePage = JSON.parse(authoritativeDashboardSource)
+    withDuplicatePage.dashboard.navigation[1].pages.push('overview')
+    const duplicatePageResult = validateDashboardDocument(
+      JSON.stringify(withDuplicatePage),
+    )
+    expect(duplicatePageResult.ok).toBe(false)
     if (!duplicatePageResult.ok) {
-      expect(duplicatePageResult.errors).toContainEqual(expect.objectContaining({
-        message: 'each dashboard page may appear in only one navigation section.'
-      }));
+      expect(duplicatePageResult.errors).toContainEqual(
+        expect.objectContaining({
+          message:
+            'each dashboard page may appear in only one navigation section.',
+        }),
+      )
     }
 
-    const withMissingCoverage = JSON.parse(authoritativeDashboardSource);
-    withMissingCoverage.dashboard.navigation[2].pages.pop();
-    const missingCoverageResult = validateDashboardDocument(JSON.stringify(withMissingCoverage));
-    expect(missingCoverageResult.ok).toBe(true);
+    const withMissingCoverage = JSON.parse(authoritativeDashboardSource)
+    withMissingCoverage.dashboard.navigation[2].pages.pop()
+    const missingCoverageResult = validateDashboardDocument(
+      JSON.stringify(withMissingCoverage),
+    )
+    expect(missingCoverageResult.ok).toBe(true)
 
-    const withInvalidNavigationLabel = JSON.parse(authoritativeDashboardSource);
-    withInvalidNavigationLabel.dashboard.pages[0]['navigation-label'] = 42;
-    const invalidNavigationLabelResult = validateDashboardDocument(JSON.stringify(withInvalidNavigationLabel));
-    expect(invalidNavigationLabelResult.ok).toBe(false);
+    const withInvalidNavigationLabel = JSON.parse(authoritativeDashboardSource)
+    withInvalidNavigationLabel.dashboard.pages[0]['navigation-label'] = 42
+    const invalidNavigationLabelResult = validateDashboardDocument(
+      JSON.stringify(withInvalidNavigationLabel),
+    )
+    expect(invalidNavigationLabelResult.ok).toBe(false)
     if (!invalidNavigationLabelResult.ok) {
-      expect(invalidNavigationLabelResult.errors).toContainEqual(expect.objectContaining({
-        path: '$.dashboard.pages[0].navigation-label'
-      }));
+      expect(invalidNavigationLabelResult.errors).toContainEqual(
+        expect.objectContaining({
+          path: '$.dashboard.pages[0].navigation-label',
+        }),
+      )
     }
 
-    const withUnknownKey = JSON.parse(authoritativeDashboardSource);
-    withUnknownKey.dashboard.navigation[0].icon = 'server';
-    const unknownKeyResult = validateDashboardDocument(JSON.stringify(withUnknownKey));
-    expect(unknownKeyResult.ok).toBe(false);
+    const withUnknownKey = JSON.parse(authoritativeDashboardSource)
+    withUnknownKey.dashboard.navigation[0].icon = 'server'
+    const unknownKeyResult = validateDashboardDocument(
+      JSON.stringify(withUnknownKey),
+    )
+    expect(unknownKeyResult.ok).toBe(false)
     if (!unknownKeyResult.ok) {
-      expect(unknownKeyResult.errors).toContainEqual(expect.objectContaining({
-        path: '$.dashboard.navigation[0].icon'
-      }));
+      expect(unknownKeyResult.errors).toContainEqual(
+        expect.objectContaining({
+          path: '$.dashboard.navigation[0].icon',
+        }),
+      )
     }
 
-    const withInvalidExperimental = JSON.parse(authoritativeDashboardSource);
-    withInvalidExperimental.dashboard.navigation[0].experimental = 'true';
-    const invalidExperimentalResult = validateDashboardDocument(JSON.stringify(withInvalidExperimental));
-    expect(invalidExperimentalResult.ok).toBe(false);
+    const withInvalidExperimental = JSON.parse(authoritativeDashboardSource)
+    withInvalidExperimental.dashboard.navigation[0].experimental = 'true'
+    const invalidExperimentalResult = validateDashboardDocument(
+      JSON.stringify(withInvalidExperimental),
+    )
+    expect(invalidExperimentalResult.ok).toBe(false)
     if (!invalidExperimentalResult.ok) {
-      expect(invalidExperimentalResult.errors).toContainEqual(expect.objectContaining({
-        message: 'navigation section experimental must be a boolean.',
-        path: '$.dashboard.navigation[0].experimental'
-      }));
+      expect(invalidExperimentalResult.errors).toContainEqual(
+        expect.objectContaining({
+          message: 'navigation section experimental must be a boolean.',
+          path: '$.dashboard.navigation[0].experimental',
+        }),
+      )
     }
 
-    const withoutLabel = JSON.parse(authoritativeDashboardSource);
-    delete withoutLabel.dashboard.navigation[0].label;
-    const withoutLabelResult = validateDashboardDocument(JSON.stringify(withoutLabel));
-    expect(withoutLabelResult.ok).toBe(true);
+    const withoutLabel = JSON.parse(authoritativeDashboardSource)
+    delete withoutLabel.dashboard.navigation[0].label
+    const withoutLabelResult = validateDashboardDocument(
+      JSON.stringify(withoutLabel),
+    )
+    expect(withoutLabelResult.ok).toBe(true)
 
-    const withEmptyLabel = JSON.parse(authoritativeDashboardSource);
-    withEmptyLabel.dashboard.navigation[0].label = '';
-    const withEmptyLabelResult = validateDashboardDocument(JSON.stringify(withEmptyLabel));
-    expect(withEmptyLabelResult.ok).toBe(false);
+    const withEmptyLabel = JSON.parse(authoritativeDashboardSource)
+    withEmptyLabel.dashboard.navigation[0].label = ''
+    const withEmptyLabelResult = validateDashboardDocument(
+      JSON.stringify(withEmptyLabel),
+    )
+    expect(withEmptyLabelResult.ok).toBe(false)
     if (!withEmptyLabelResult.ok) {
-      expect(withEmptyLabelResult.errors).toContainEqual(expect.objectContaining({
-        path: '$.dashboard.navigation[0].label'
-      }));
+      expect(withEmptyLabelResult.errors).toContainEqual(
+        expect.objectContaining({
+          path: '$.dashboard.navigation[0].label',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-016 DLS-VIEW-017 DLS-VAL-005 enforces canonical disclosure and at most four essential views', () => {
     const overloaded = `language-version: "0.1.0"
@@ -1341,35 +1690,43 @@ dashboard:
           data: { source: runs }
           mark: metric
           encoding: { value: { field: run, aggregate: count } }
-`;
+`
 
-    const rejected = validateDashboardDocument(overloaded);
-    expect(rejected.ok).toBe(false);
+    const rejected = validateDashboardDocument(overloaded)
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E013',
-        path: '$.dashboard.pages[0].views'
-      }));
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E013',
+          path: '$.dashboard.pages[0].views',
+        }),
+      )
     }
 
     const disclosed = overloaded.replace(
       '        - id: metric-five\n',
-      '        - id: metric-five\n          disclosure: supplemental\n'
-    );
-    expect(validateDashboardDocument(disclosed).ok).toBe(true);
+      '        - id: metric-five\n          disclosure: supplemental\n',
+    )
+    expect(validateDashboardDocument(disclosed).ok).toBe(true)
 
-    const nonCanonical = validateDashboardDocument(disclosed.replace('disclosure: supplemental', 'disclosure: hidden'));
-    expect(nonCanonical.ok).toBe(false);
+    const nonCanonical = validateDashboardDocument(
+      disclosed.replace('disclosure: supplemental', 'disclosure: hidden'),
+    )
+    expect(nonCanonical.ok).toBe(false)
     if (!nonCanonical.ok) {
-      expect(nonCanonical.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[4].disclosure'
-      }));
-      expect(nonCanonical.errors).not.toContainEqual(expect.objectContaining({
-        code: 'DLS-E013'
-      }));
+      expect(nonCanonical.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[4].disclosure',
+        }),
+      )
+      expect(nonCanonical.errors).not.toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E013',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-039 allows only one table to be open by default on a page', () => {
     const source = `language-version: "0.1.0"
@@ -1390,72 +1747,84 @@ dashboard:
           mark: table
           encoding:
             columns: [{ field: run, type: nominal }]
-`;
+`
 
-    const rejected = validateDashboardDocument(source);
-    expect(rejected.ok).toBe(false);
+    const rejected = validateDashboardDocument(source)
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E013',
-        path: '$.dashboard.pages[0].views[1].disclosure'
-      }));
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E013',
+          path: '$.dashboard.pages[0].views[1].disclosure',
+        }),
+      )
     }
 
     const accepted = source.replace(
       '        - id: supporting-table\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n'
-    );
-    expect(validateDashboardDocument(accepted).ok).toBe(true);
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n',
+    )
+    expect(validateDashboardDocument(accepted).ok).toBe(true)
 
     const supplementalElement = accepted.replace(
       '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [data-health-domains] }\n          mark: element\n          element: data-health-domain-list\n'
-    );
-    expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [data-health-domains] }\n          mark: element\n          element: data-health-domain-list\n',
+    )
+    expect(validateDashboardDocument(supplementalElement).ok).toBe(true)
 
     const primaryElementWithLabel = supplementalElement.replace(
       '          disclosure: supplemental\n',
-      ''
-    );
-    const primaryElementResult = validateDashboardDocument(primaryElementWithLabel);
-    expect(primaryElementResult.ok).toBe(false);
+      '',
+    )
+    const primaryElementResult = validateDashboardDocument(
+      primaryElementWithLabel,
+    )
+    expect(primaryElementResult.ok).toBe(false)
     if (!primaryElementResult.ok) {
-      expect(primaryElementResult.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E013',
-        path: '$.dashboard.pages[0].views[1].disclosure-label'
-      }));
+      expect(primaryElementResult.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E013',
+          path: '$.dashboard.pages[0].views[1].disclosure-label',
+        }),
+      )
     }
 
-    const emptyLabel = validateDashboardDocument(accepted.replace(
-      'disclosure-label: Supporting table',
-      'disclosure-label: ""'
-    ));
-    expect(emptyLabel.ok).toBe(false);
+    const emptyLabel = validateDashboardDocument(
+      accepted.replace(
+        'disclosure-label: Supporting table',
+        'disclosure-label: ""',
+      ),
+    )
+    expect(emptyLabel.ok).toBe(false)
     if (!emptyLabel.ok) {
-      expect(emptyLabel.errors).toContainEqual(expect.objectContaining({
-        path: '$.dashboard.pages[0].views[1].disclosure-label'
-      }));
+      expect(emptyLabel.errors).toContainEqual(
+        expect.objectContaining({
+          path: '$.dashboard.pages[0].views[1].disclosure-label',
+        }),
+      )
     }
 
     const titledSupplemental = accepted.replace(
       '          disclosure-label: Supporting table\n',
-      '          disclosure-label: Supporting table\n          title: Supporting table\n'
-    );
-    const titledResult = validateDashboardDocument(titledSupplemental);
-    expect(titledResult.ok).toBe(false);
+      '          disclosure-label: Supporting table\n          title: Supporting table\n',
+    )
+    const titledResult = validateDashboardDocument(titledSupplemental)
+    expect(titledResult.ok).toBe(false)
     if (!titledResult.ok) {
-      expect(titledResult.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E013',
-        path: '$.dashboard.pages[0].views[1].title'
-      }));
+      expect(titledResult.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E013',
+          path: '$.dashboard.pages[0].views[1].title',
+        }),
+      )
     }
 
     const locked = source.replace(
       '        - id: supporting-table\n',
-      '        - id: supporting-table\n          locked: true\n'
-    );
-    expect(validateDashboardDocument(locked).ok).toBe(true);
-  });
+      '        - id: supporting-table\n          locked: true\n',
+    )
+    expect(validateDashboardDocument(locked).ok).toBe(true)
+  })
 
   it('ignores graphical layout rules for designated dashboard pages', () => {
     const source = `language-version: "0.1.0"
@@ -1477,13 +1846,25 @@ dashboard:
           mark: table
           encoding:
             columns: [{ field: run, type: nominal }]
-`;
+`
 
-    for (const pageId of ['overview', 'agent', 'agents', 'work', 'evidence', 'insights']) {
-      expect(validateDashboardDocument(source.replace('id: home', `id: ${pageId}`)).ok).toBe(true);
+    for (const pageId of [
+      'overview',
+      'agent',
+      'agents',
+      'work',
+      'evidence',
+      'insights',
+    ]) {
+      expect(
+        validateDashboardDocument(source.replace('id: home', `id: ${pageId}`))
+          .ok,
+      ).toBe(true)
     }
-    expect(validateDashboardDocument(source.replace('id: home', 'id: summary')).ok).toBe(false);
-  });
+    expect(
+      validateDashboardDocument(source.replace('id: home', 'id: summary')).ok,
+    ).toBe(false)
+  })
 
   it('DLS-VIEW-038 rejects nested view boxes while ignoring SVG chart internals', () => {
     const source = `language-version: "0.1.0"
@@ -1500,164 +1881,217 @@ dashboard:
           encoding:
             columns: [{ field: run, type: nominal }]
           views: []
-`;
+`
 
-    const rejected = validateDashboardDocument(source);
-    expect(rejected.ok).toBe(false);
+    const rejected = validateDashboardDocument(source)
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E014',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
-      expect(rejected.errors).not.toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
+      expect(rejected.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E014',
+          path: '$.dashboard.pages[0].views[0].views',
+        }),
+      )
+      expect(rejected.errors).not.toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: '$.dashboard.pages[0].views[0].views',
+        }),
+      )
     }
 
     const chart = source
       .replace('mark: table', 'mark: chart\n          chart: pie')
-      .replace('columns: [{ field: run, type: nominal }]', 'color: { field: run-conclusion, type: nominal }\n            value: { field: run, type: quantitative, aggregate: count }');
-    const chartResult = validateDashboardDocument(chart);
-    expect(chartResult.ok).toBe(false);
+      .replace(
+        'columns: [{ field: run, type: nominal }]',
+        'color: { field: run-conclusion, type: nominal }\n            value: { field: run, type: quantitative, aggregate: count }',
+      )
+    const chartResult = validateDashboardDocument(chart)
+    expect(chartResult.ok).toBe(false)
     if (!chartResult.ok) {
-      expect(chartResult.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
-      expect(chartResult.errors).not.toContainEqual(expect.objectContaining({
-        code: 'DLS-E014',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
+      expect(chartResult.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: '$.dashboard.pages[0].views[0].views',
+        }),
+      )
+      expect(chartResult.errors).not.toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E014',
+          path: '$.dashboard.pages[0].views[0].views',
+        }),
+      )
     }
 
-    const malformedNestedViews = source.replace('          views: []', '          views: {}');
-    const malformedResult = validateDashboardDocument(malformedNestedViews);
-    expect(malformedResult.ok).toBe(false);
+    const malformedNestedViews = source.replace(
+      '          views: []',
+      '          views: {}',
+    )
+    const malformedResult = validateDashboardDocument(malformedNestedViews)
+    expect(malformedResult.ok).toBe(false)
     if (!malformedResult.ok) {
-      expect(malformedResult.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E014',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
-      expect(malformedResult.errors).not.toContainEqual(expect.objectContaining({
-        code: 'DLS-E004',
-        path: '$.dashboard.pages[0].views[0].views'
-      }));
+      expect(malformedResult.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E014',
+          path: '$.dashboard.pages[0].views[0].views',
+        }),
+      )
+      expect(malformedResult.errors).not.toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: '$.dashboard.pages[0].views[0].views',
+        }),
+      )
     }
 
     const locked = source.replace(
       '        - id: primary-table\n',
-      '        - id: primary-table\n          locked: true\n'
-    );
-    expect(validateDashboardDocument(locked).ok).toBe(true);
-  });
+      '        - id: primary-table\n          locked: true\n',
+    )
+    expect(validateDashboardDocument(locked).ok).toBe(true)
+  })
 
   it('DLS-DOC-002 DLS-DOC-003 DLS-DOC-004 accepts the minimal structural document shape', () => {
-    const result = validateDashboardDocument(validDocument.replace(`
+    const result = validateDashboardDocument(
+      validDocument.replace(
+        `
     - id: usage
       kind: built-in
       page: usage
-      title: Usage`, ''));
+      title: Usage`,
+        '',
+      ),
+    )
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.value.languageVersion).toBe('0.1.0');
-      expect(result.value.dashboard.id).toBe('agentic-operations');
-      expect(result.value.dashboard.pages).toHaveLength(1);
+      expect(result.value.languageVersion).toBe('0.1.0')
+      expect(result.value.dashboard.id).toBe('agentic-operations')
+      expect(result.value.dashboard.pages).toHaveLength(1)
     }
-  });
+  })
 
   it('DLS-DOC-011 accepts a safe github-url-base and rejects unsafe or malformed values with DLS-E003', () => {
-    const baseDocument = validDocument.replace(`
+    const baseDocument = validDocument.replace(
+      `
     - id: usage
       kind: built-in
       page: usage
-      title: Usage`, '');
+      title: Usage`,
+      '',
+    )
 
     const withGithubUrlBase = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  github-url-base: https://github.example.com\n'
-    );
-    const accepted = validateDashboardDocument(withGithubUrlBase);
-    expect(accepted.ok).toBe(true);
+      '  title: Agentic Operations\n  github-url-base: https://github.example.com\n',
+    )
+    const accepted = validateDashboardDocument(withGithubUrlBase)
+    expect(accepted.ok).toBe(true)
 
     const withCredentials = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  github-url-base: "https://user:pass@github.example.com"\n'
-    );
-    const rejectedCredentials = validateDashboardDocument(withCredentials);
-    expect(rejectedCredentials.ok).toBe(false);
+      '  title: Agentic Operations\n  github-url-base: "https://user:pass@github.example.com"\n',
+    )
+    const rejectedCredentials = validateDashboardDocument(withCredentials)
+    expect(rejectedCredentials.ok).toBe(false)
     if (!rejectedCredentials.ok) {
       expect(rejectedCredentials.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.github-url-base' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.github-url-base',
+        }),
+      )
     }
 
     const withQuery = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  github-url-base: https://github.example.com?foo=bar\n'
-    );
-    const rejectedQuery = validateDashboardDocument(withQuery);
-    expect(rejectedQuery.ok).toBe(false);
+      '  title: Agentic Operations\n  github-url-base: https://github.example.com?foo=bar\n',
+    )
+    const rejectedQuery = validateDashboardDocument(withQuery)
+    expect(rejectedQuery.ok).toBe(false)
     if (!rejectedQuery.ok) {
       expect(rejectedQuery.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.github-url-base' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.github-url-base',
+        }),
+      )
     }
 
     const withHttp = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  github-url-base: http://github.example.com\n'
-    );
-    const rejectedHttp = validateDashboardDocument(withHttp);
-    expect(rejectedHttp.ok).toBe(false);
+      '  title: Agentic Operations\n  github-url-base: http://github.example.com\n',
+    )
+    const rejectedHttp = validateDashboardDocument(withHttp)
+    expect(rejectedHttp.ok).toBe(false)
     if (!rejectedHttp.ok) {
       expect(rejectedHttp.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.github-url-base' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.github-url-base',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-014 accepts horizon help text and rejects incomplete or unknown horizon fields', () => {
-    const baseDocument = validDocument.replace(`
+    const baseDocument = validDocument.replace(
+      `
     - id: usage
       kind: built-in
       page: usage
-      title: Usage`, '');
+      title: Usage`,
+      '',
+    )
     const withHorizon = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  horizon:\n    label: Horizon\n    tooltip:\n      label: Horizon details\n      description: Explains the resolved data window.\n      icon: question\n'
-    );
+      '  title: Agentic Operations\n  horizon:\n    label: Horizon\n    tooltip:\n      label: Horizon details\n      description: Explains the resolved data window.\n      icon: question\n',
+    )
 
-    expect(validateDashboardDocument(withHorizon).ok).toBe(true);
+    expect(validateDashboardDocument(withHorizon).ok).toBe(true)
 
     const missingDescription = validateDashboardDocument(
-      withHorizon.replace('      description: Explains the resolved data window.\n', '')
-    );
-    expect(missingDescription.ok).toBe(false);
+      withHorizon.replace(
+        '      description: Explains the resolved data window.\n',
+        '',
+      ),
+    )
+    expect(missingDescription.ok).toBe(false)
     if (!missingDescription.ok) {
       expect(missingDescription.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.horizon.tooltip.description' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.horizon.tooltip.description',
+        }),
+      )
     }
 
     const unknownField = validateDashboardDocument(
-      withHorizon.replace('      description:', '      placement: top\n      description:')
-    );
-    expect(unknownField.ok).toBe(false);
+      withHorizon.replace(
+        '      description:',
+        '      placement: top\n      description:',
+      ),
+    )
+    expect(unknownField.ok).toBe(false)
     if (!unknownField.ok) {
       expect(unknownField.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.horizon.tooltip.placement' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E004',
+          path: '$.dashboard.horizon.tooltip.placement',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-015 validates site-wide callouts and source-row visibility conditions', () => {
-    const baseDocument = validDocument.replace(`
+    const baseDocument = validDocument.replace(
+      `
     - id: usage
       kind: built-in
       page: usage
-      title: Usage`, '');
+      title: Usage`,
+      '',
+    )
     const withCallout = baseDocument.replace(
       '  title: Agentic Operations\n',
       [
@@ -1672,135 +2106,174 @@ dashboard:
         '        source: coverage-diagnostics',
         '        field: kind',
         '        equals: github-api-rate-limit-403',
-        ''
-      ].join('\n')
-    );
-    expect(validateDashboardDocument(withCallout).ok).toBe(true);
+        '',
+      ].join('\n'),
+    )
+    expect(validateDashboardDocument(withCallout).ok).toBe(true)
 
-    const invalidNavigation = validateDashboardDocument(withCallout.replace('      navigation-page: custom-summary', '      navigation-page: missing-page'));
-    expect(invalidNavigation.ok).toBe(false);
+    const invalidNavigation = validateDashboardDocument(
+      withCallout.replace(
+        '      navigation-page: custom-summary',
+        '      navigation-page: missing-page',
+      ),
+    )
+    expect(invalidNavigation.ok).toBe(false)
     if (!invalidNavigation.ok) {
-      expect(invalidNavigation.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: '$.dashboard.callouts[0].navigation-page'
-      }));
+      expect(invalidNavigation.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.callouts[0].navigation-page',
+        }),
+      )
     }
 
-    const invalidField = validateDashboardDocument(withCallout.replace('        field: kind', '        field: missing'));
-    expect(invalidField.ok).toBe(false);
+    const invalidField = validateDashboardDocument(
+      withCallout.replace('        field: kind', '        field: missing'),
+    )
+    expect(invalidField.ok).toBe(false)
     if (!invalidField.ok) {
-      expect(invalidField.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E010',
-        path: '$.dashboard.callouts[0].visible-when.field'
-      }));
+      expect(invalidField.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.callouts[0].visible-when.field',
+        }),
+      )
     }
 
-    const invalidIcon = validateDashboardDocument(withCallout.replace('      icon: alert', '      icon: not-an-octicon'));
-    expect(invalidIcon.ok).toBe(false);
+    const invalidIcon = validateDashboardDocument(
+      withCallout.replace('      icon: alert', '      icon: not-an-octicon'),
+    )
+    expect(invalidIcon.ok).toBe(false)
     if (!invalidIcon.ok) {
-      expect(invalidIcon.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.callouts[0].icon'
-      }));
+      expect(invalidIcon.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.callouts[0].icon',
+        }),
+      )
     }
 
-    const duplicateId = validateDashboardDocument(withCallout.replace(
-      '  callouts:\n',
-      '  callouts:\n    - id: partial-data\n      title: Another notice\n      description: Another description.\n'
-    ));
-    expect(duplicateId.ok).toBe(false);
+    const duplicateId = validateDashboardDocument(
+      withCallout.replace(
+        '  callouts:\n',
+        '  callouts:\n    - id: partial-data\n      title: Another notice\n      description: Another description.\n',
+      ),
+    )
+    expect(duplicateId.ok).toBe(false)
     if (!duplicateId.ok) {
-      expect(duplicateId.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: '$.dashboard.callouts[1].id'
-      }));
+      expect(duplicateId.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.callouts[1].id',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-012 accepts a safe owner/repo repository slug and rejects malformed or blank-scoped values with DLS-E003', () => {
-    const baseDocument = validDocument.replace(`
+    const baseDocument = validDocument.replace(
+      `
     - id: usage
       kind: built-in
       page: usage
-      title: Usage`, '');
+      title: Usage`,
+      '',
+    )
 
     const withRepository = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: octo-org/agentic-operations\n'
-    );
-    const accepted = validateDashboardDocument(withRepository);
-    expect(accepted.ok).toBe(true);
+      '  title: Agentic Operations\n  repository: octo-org/agentic-operations\n',
+    )
+    const accepted = validateDashboardDocument(withRepository)
+    expect(accepted.ok).toBe(true)
 
     const withoutOwner = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: agentic-operations\n'
-    );
-    const rejectedMissingOwner = validateDashboardDocument(withoutOwner);
-    expect(rejectedMissingOwner.ok).toBe(false);
+      '  title: Agentic Operations\n  repository: agentic-operations\n',
+    )
+    const rejectedMissingOwner = validateDashboardDocument(withoutOwner)
+    expect(rejectedMissingOwner.ok).toBe(false)
     if (!rejectedMissingOwner.ok) {
       expect(rejectedMissingOwner.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.repository' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.repository',
+        }),
+      )
     }
 
     const withBlank = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: ""\n'
-    );
-    const rejectedBlank = validateDashboardDocument(withBlank);
-    expect(rejectedBlank.ok).toBe(false);
+      '  title: Agentic Operations\n  repository: ""\n',
+    )
+    const rejectedBlank = validateDashboardDocument(withBlank)
+    expect(rejectedBlank.ok).toBe(false)
     if (!rejectedBlank.ok) {
       expect(rejectedBlank.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.repository' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.repository',
+        }),
+      )
     }
 
     const withCredentials = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: "octo-org/agentic-operations?token=abc"\n'
-    );
-    const rejectedCredentials = validateDashboardDocument(withCredentials);
-    expect(rejectedCredentials.ok).toBe(false);
+      '  title: Agentic Operations\n  repository: "octo-org/agentic-operations?token=abc"\n',
+    )
+    const rejectedCredentials = validateDashboardDocument(withCredentials)
+    expect(rejectedCredentials.ok).toBe(false)
     if (!rejectedCredentials.ok) {
       expect(rejectedCredentials.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.repository' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.repository',
+        }),
+      )
     }
 
     const withConsecutiveDots = baseDocument.replace(
       '  title: Agentic Operations\n',
-      '  title: Agentic Operations\n  repository: "octo-org/agentic..operations"\n'
-    );
-    const rejectedConsecutiveDots = validateDashboardDocument(withConsecutiveDots);
-    expect(rejectedConsecutiveDots.ok).toBe(false);
+      '  title: Agentic Operations\n  repository: "octo-org/agentic..operations"\n',
+    )
+    const rejectedConsecutiveDots =
+      validateDashboardDocument(withConsecutiveDots)
+    expect(rejectedConsecutiveDots.ok).toBe(false)
     if (!rejectedConsecutiveDots.ok) {
       expect(rejectedConsecutiveDots.errors).toContainEqual(
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.repository' })
-      );
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.repository',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-001 rejects multiple YAML documents with DLS-E002', () => {
-    const result = validateDashboardDocument(`${validDocument}\n---\n${validDocument}`);
+    const result = validateDashboardDocument(
+      `${validDocument}\n---\n${validDocument}`,
+    )
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E002', path: '$' })
-      ]);
+        expect.objectContaining({ code: 'DLS-E002', path: '$' }),
+      ])
     }
-  });
+  })
 
   it('DLS-DOC-001 DLS-SAFE-001 rejects invalid YAML syntax with DLS-E001', () => {
-    const result = validateDashboardDocument('language-version: "0.1.0"\ndashboard: [unterminated');
+    const result = validateDashboardDocument(
+      'language-version: "0.1.0"\ndashboard: [unterminated',
+    )
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E001', path: '$' })
-      ]);
+        expect.objectContaining({ code: 'DLS-E001', path: '$' }),
+      ])
     }
-  });
+  })
 
   it('DLS-DOC-002 DLS-DOC-007 rejects unknown and duplicate root keys with DLS-E004', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -1819,49 +2292,60 @@ dashboard:
     - id: repositories
       kind: built-in
       page: repositories
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ code: 'DLS-E004', path: '$.extra-root' }),
-          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard' })
-        ])
-      );
+          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard' }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-003 DLS-DOC-006 rejects non-canonical language-version with DLS-E005', () => {
-    const result = validateDashboardDocument(validDocument.replace('"0.1.0"', '"0.1"'));
+    const result = validateDashboardDocument(
+      validDocument.replace('"0.1.0"', '"0.1"'),
+    )
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.language-version' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.language-version',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-004 DLS-DOC-010 rejects missing title and empty pages with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: agentic-operations
   pages: []
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.title' }),
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.title',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-005 rejects non-canonical dashboard page and view identifiers with DLS-E005', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -1873,19 +2357,25 @@ dashboard:
       kind: custom
       views:
         - id: RunCount
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.id' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].id' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].id' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].id',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].id',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-005 rejects duplicate page ids and duplicate view ids with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -1901,18 +2391,24 @@ dashboard:
       views:
         - id: duplicate-view
         - id: duplicate-view
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[1].id' }),
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[1].views[1].id' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[1].id',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[1].views[1].id',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-008 rejects unknown defaults keys with DLS-E004', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -1926,17 +2422,20 @@ dashboard:
     - id: usage
       kind: built-in
       page: usage
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.defaults.timezone' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E004',
+            path: '$.dashboard.defaults.timezone',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-DOC-009 rejects invalid page kinds and built-in page names with DLS-E005', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -1950,18 +2449,24 @@ dashboard:
     - id: runs
       kind: built-in
       page: invalid-page
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].kind' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[1].page' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].kind',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[1].page',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-001 DLS-PAGE-010 DLS-PAGE-014 accepts an omitted built-in page title when the page name is canonical', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2000,10 +2505,10 @@ dashboard:
                 - field: workflow
                 - field: rollout-mode
                 - field: observed-at
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-PAGE-001 rejects an omitted built-in page title when the page name is non-canonical', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2014,17 +2519,20 @@ dashboard:
     - id: usage
       kind: built-in
       page: Usage
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].page' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].page',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-003 DLS-PAGE-004 DLS-PAGE-005 DLS-PAGE-007 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 reject built-in page definitions that omit required sources', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2050,36 +2558,40 @@ dashboard:
               value:
                 field: organization
                 aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "organizations" definition must include at least one view for source "repositories".'
+            message:
+              'built-in page "organizations" definition must include at least one view for source "repositories".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "organizations" definition must include at least one view for source "workflows".'
+            message:
+              'built-in page "organizations" definition must include at least one view for source "workflows".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "organizations" definition must include at least one view for source "runs".'
+            message:
+              'built-in page "organizations" definition must include at least one view for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "organizations" definition must include at least one view for source "usage".'
-          })
-        ])
-      );
+            message:
+              'built-in page "organizations" definition must include at least one view for source "usage".',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-001 DLS-PAGE-011 DLS-PAGE-014 accepts an explicit built-in page title when it matches the canonical title default', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2141,18 +2653,20 @@ dashboard:
                 - field: min-engine-version
                 - field: max-engine-version
                 - field: models
-`);
-    expect(result.ok).toBe(true);
-  });
+`)
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-PAGE-001 accepts a non-empty built-in page title that differs from the canonical default', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const operations = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operations');
-    operations.title = 'Fleet Operations';
-    const result = validateDashboardDocument(JSON.stringify(document));
+    const document = JSON.parse(authoritativeDashboardSource)
+    const operations = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'operations',
+    )
+    operations.title = 'Fleet Operations'
+    const result = validateDashboardDocument(JSON.stringify(document))
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-PAGE-002 rejects an overview built-in page without declarative built-in source definitions with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2163,15 +2677,18 @@ dashboard:
     - id: overview
       kind: built-in
       page: overview
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].definition' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].definition',
+          }),
+        ]),
+      )
       expect(result.errors.map((error) => error.message)).toEqual(
         expect.arrayContaining([
           'built-in page "overview" requires declarative definitions for source "repositories".',
@@ -2179,11 +2696,11 @@ dashboard:
           'built-in page "overview" requires declarative definitions for source "runs".',
           'built-in page "overview" requires declarative definitions for source "usage".',
           'built-in page "overview" requires declarative definitions for source "findings".',
-          'built-in page "overview" requires declarative definitions for source "operational-values".'
-        ])
-      );
+          'built-in page "overview" requires declarative definitions for source "operational-values".',
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-006 rejects a runs built-in page without declarative built-in source definitions with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2194,21 +2711,22 @@ dashboard:
     - id: runs
       kind: built-in
       page: runs
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition',
-            message: 'built-in page "runs" requires declarative definitions for source "runs".'
-          })
-        ])
-      );
+            message:
+              'built-in page "runs" requires declarative definitions for source "runs".',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-015 rejects a packages built-in page without declarative built-in source definitions with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2219,20 +2737,21 @@ dashboard:
     - id: packages
       kind: built-in
       page: packages
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
-            message: 'built-in page "packages" requires declarative definitions for source "package-inventory".'
-          })
-        ])
-      );
+            message:
+              'built-in page "packages" requires declarative definitions for source "package-inventory".',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-006 DLS-PAGE-014 rejects a runs built-in page definition that omits required run fields and run links with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2259,56 +2778,64 @@ dashboard:
                 - field: run
                 - field: run-status
                 - field: run-conclusion
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "organization" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "organization" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "repository" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "repository" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "workflow" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "workflow" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "rollout-mode" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "rollout-mode" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "engine" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "engine" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "requested-model" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "requested-model" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "resolved-model" for source "runs".'
+            message:
+              'built-in page "runs" definition must expose field "resolved-model" for source "runs".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "runs" definition must expose field "started-at" for source "runs".'
-          })
-        ])
-      );
+            message:
+              'built-in page "runs" definition must expose field "started-at" for source "runs".',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-002 DLS-PAGE-014 rejects an overview built-in page definition that omits linked findings and operational-value timeline coverage with DLS-E003', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2367,36 +2894,40 @@ dashboard:
               columns:
                 - field: operational-value
                 - field: observed-at
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "issue-link" for source "findings".'
+            message:
+              'built-in page "overview" definition must expose field "issue-link" for source "findings".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "pull-request-link" for source "findings".'
+            message:
+              'built-in page "overview" definition must expose field "pull-request-link" for source "findings".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "run-link" for source "findings".'
+            message:
+              'built-in page "overview" definition must expose field "run-link" for source "findings".',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.views',
-            message: 'built-in page "overview" definition must expose field "operational-value-definition" for source "operational-values".'
-          })
-        ])
-      );
+            message:
+              'built-in page "overview" definition must expose field "operational-value-definition" for source "operational-values".',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-014 rejects a built-in page definition that does not expose independent availability, completeness, and freshness', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2430,21 +2961,22 @@ dashboard:
                 - field: workflow
                 - field: rollout-mode
                 - field: observed-at
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state',
-            message: 'built-in page definition must expose independent availability, completeness, and freshness state.'
-          })
-        ])
-      );
+            message:
+              'built-in page definition must expose independent availability, completeness, and freshness state.',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-014 rejects a built-in page definition with non-canonical independent data-state markers', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2483,32 +3015,38 @@ dashboard:
                 - field: workflow
                 - field: rollout-mode
                 - field: observed-at
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.pages[0].definition.data-state.extra-axis' }),
+          expect.objectContaining({
+            code: 'DLS-E004',
+            path: '$.dashboard.pages[0].definition.data-state.extra-axis',
+          }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.availability',
-            message: 'built-in page definition must expose independent availability state with canonical boolean true.'
+            message:
+              'built-in page definition must expose independent availability state with canonical boolean true.',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.completeness',
-            message: 'built-in page definition must expose independent completeness state with canonical boolean true.'
+            message:
+              'built-in page definition must expose independent completeness state with canonical boolean true.',
           }),
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.freshness',
-            message: 'built-in page definition must expose independent freshness state with canonical boolean true.'
-          })
-        ])
-      );
+            message:
+              'built-in page definition must expose independent freshness state with canonical boolean true.',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-PAGE-002 DLS-PAGE-006 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 accepts built-in definitions that conservatively cover required fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2723,10 +3261,10 @@ dashboard:
                 - field: issue-link
                 - field: pull-request-link
                 - field: run-link
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-PAGE-002 DLS-PAGE-014 accepts built-in overview page definitions that conservatively expose provenance and freshness coverage through source metadata-bearing views', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -2875,10 +3413,10 @@ dashboard:
                 aggregate: max
               color:
                 field: operational-value-definition
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-SEM-017 accepts every canonical Section 5.1 source name', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3001,10 +3539,10 @@ dashboard:
             value:
               field: operational-value
               aggregate: max
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-SEM-017 rejects unknown source names with DLS-E005', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3023,15 +3561,18 @@ dashboard:
             value:
               field: repository
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.source' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].data.source',
+        }),
+      ])
     }
-  });
+  })
 
   it('DLS-SEM-021 accepts rollout-mode canonical values and rejects non-canonical spellings', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -3055,9 +3596,9 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(accepted.ok).toBe(true);
+    expect(accepted.ok).toBe(true)
 
     const rejected = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -3079,15 +3620,18 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(rejected.ok).toBe(false);
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
       expect(rejected.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.rollout-mode[1]' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].data.filters.rollout-mode[1]',
+        }),
+      ])
     }
-  });
+  })
 
   it('DLS-SEM-022 accepts workflow-role canonical values and rejects unknown roles', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -3111,9 +3655,9 @@ dashboard:
             value:
               field: workflow
               aggregate: count
-`);
+`)
 
-    expect(accepted.ok).toBe(true);
+    expect(accepted.ok).toBe(true)
 
     const rejected = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -3135,15 +3679,18 @@ dashboard:
             value:
               field: workflow
               aggregate: count
-`);
+`)
 
-    expect(rejected.ok).toBe(false);
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
       expect(rejected.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.workflow-role[1]' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E005',
+          path: '$.dashboard.pages[0].views[0].data.filters.workflow-role[1]',
+        }),
+      ])
     }
-  });
+  })
 
   it('DLS-SEM-022 DLS-SEM-023 validates package membership and configured allowances in logical workflow sources', () => {
     const accepted = validateLogicalSources({
@@ -3157,7 +3704,7 @@ dashboard:
             workflow: 'orchestrator.yml',
             'workflow-role': 'orchestrator',
             'max-ai-credits': 100,
-            'package-aic-allowance': 250
+            'package-aic-allowance': 250,
           },
           {
             organization: 'octo-org',
@@ -3166,30 +3713,34 @@ dashboard:
             workflow: 'worker.yml',
             'workflow-role': 'worker',
             'max-ai-credits': 150,
-            'package-aic-allowance': 250
+            'package-aic-allowance': 250,
           },
           {
             organization: 'octo-org',
             repository: 'target-service',
             workflow: 'ci.yml',
-            'workflow-role': 'standalone'
-          }
-        ]
-      }
-    });
+            'workflow-role': 'standalone',
+          },
+        ],
+      },
+    })
 
-    expect(accepted.ok).toBe(true);
+    expect(accepted.ok).toBe(true)
 
     const rejected = validateLogicalSources({
       workflows: {
         rows: [
           { workflow: 'worker.yml', 'workflow-role': 'worker' },
-          { package: 'invalid', workflow: 'standalone.yml', 'workflow-role': 'standalone' },
+          {
+            package: 'invalid',
+            workflow: 'standalone.yml',
+            'workflow-role': 'standalone',
+          },
           {
             package: 'negative',
             workflow: 'negative.yml',
             'workflow-role': 'orchestrator',
-            'max-ai-credits': -1
+            'max-ai-credits': -1,
           },
           {
             package: 'mismatch',
@@ -3197,23 +3748,40 @@ dashboard:
             workflow: 'mismatch.yml',
             'workflow-role': 'orchestrator',
             'max-ai-credits': 100,
-            'package-aic-allowance': 99
-          }
-        ]
-      }
-    });
+            'package-aic-allowance': 99,
+          },
+        ],
+      },
+    })
 
-    expect(rejected.ok).toBe(false);
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
-      expect(rejected.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[0].package' }),
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[1].package' }),
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[2].max-ai-credits' }),
-        expect.objectContaining({ code: 'DLS-E005', path: '$.sources.workflows.rows[3].package-icon' }),
-        expect.objectContaining({ code: 'DLS-E011', path: '$.sources.workflows.rows[3].package-aic-allowance' })
-      ]));
+      expect(rejected.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E011',
+            path: '$.sources.workflows.rows[0].package',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E011',
+            path: '$.sources.workflows.rows[1].package',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E011',
+            path: '$.sources.workflows.rows[2].max-ai-credits',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.sources.workflows.rows[3].package-icon',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E011',
+            path: '$.sources.workflows.rows[3].package-aic-allowance',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-CTX-009 DLS-CTX-002 accepts valid scope and time context shapes', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3252,10 +3820,10 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-CTX-009 rejects invalid time.range forms and mixing range with start/end using DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3277,18 +3845,24 @@ dashboard:
             value:
               field: run
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.time.range' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.time' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].data.time.range',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].data.time',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-CTX-002 rejects non-RFC-3339 timestamps with DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3310,15 +3884,18 @@ dashboard:
             value:
               field: run
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.time.start' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[0].views[0].data.time.start',
+        }),
+      ])
     }
-  });
+  })
 
   it('DLS-CTX-002 rejects non-increasing start/end bounds with DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3340,15 +3917,18 @@ dashboard:
             value:
               field: run
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.time' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[0].views[0].data.time',
+        }),
+      ])
     }
-  });
+  })
 
   it('DLS-CTX-004 rejects invalid scope, filter, limit, and order-by shapes using DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3383,22 +3963,40 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.defaults.scope.organizations' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.defaults.filters.rollout-mode' }),
-          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.pages[0].views[0].data.scope.invalid-scope' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.filters.repository[1]' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.limit' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.order-by[0].direction' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.defaults.scope.organizations',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.defaults.filters.rollout-mode',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E004',
+            path: '$.dashboard.pages[0].views[0].data.scope.invalid-scope',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].data.filters.repository[1]',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].data.limit',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].data.order-by[0].direction',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-CTX-004 DLS-CTX-006 accepts canonical filter dimensions for scalar and sequence values', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3423,10 +4021,10 @@ dashboard:
             value:
               field: finding
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-028 validates the table column-summaries option', () => {
     const valid = validateDashboardDocument(`language-version: "0.1.0"
@@ -3445,7 +4043,7 @@ dashboard:
           encoding:
             columns:
               - field: run
-`);
+`)
     const invalid = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: invalid-column-summaries
@@ -3463,18 +4061,21 @@ dashboard:
             value:
               field: run
               aggregate: count
-`);
+`)
 
-    expect(valid.ok).toBe(true);
-    expect(invalid.ok).toBe(false);
+    expect(valid.ok).toBe(true)
+    expect(invalid.ok).toBe(false)
     if (!invalid.ok) {
       expect(invalid.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].column-summaries' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[0].column-summaries',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-032 rejects chart data tables', () => {
     const invalid = validateDashboardDocument(`language-version: "0.1.0"
@@ -3497,17 +4098,20 @@ dashboard:
             y:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(invalid.ok).toBe(false);
+    expect(invalid.ok).toBe(false)
     if (!invalid.ok) {
       expect(invalid.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.pages[0].views[0].table' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E004',
+            path: '$.dashboard.pages[0].views[0].table',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-SEM-004 DLS-SEM-005 DLS-SEM-006 DLS-SEM-008 DLS-SEM-009 DLS-SEM-015 reject non-canonical intrinsic enumerations in filters', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3533,22 +4137,40 @@ dashboard:
             value:
               field: run
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.workflow-active' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.run-status' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.run-conclusion' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.status' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.eval-result' }),
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].data.filters.outcome-state' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].data.filters.workflow-active',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].data.filters.run-status',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].data.filters.run-conclusion',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].data.filters.status',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].data.filters.eval-result',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].data.filters.outcome-state',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-001 accepts custom pages without explicit titles when ids are canonical defaults', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3567,10 +4189,10 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-AGG-002 DLS-AGG-005 DLS-VIEW-006 DLS-VIEW-008 DLS-VIEW-009 accept canonical aggregates aliases and temporal bucketing for line and bar chart defaults', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3623,10 +4245,10 @@ dashboard:
               field: aic
               aggregate: sum
               type: quantitative
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-002 DLS-VIEW-008 DLS-VIEW-022 DLS-VIEW-023 accepts declarative UI elements, page icons, and field displays', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3651,10 +4273,10 @@ dashboard:
             columns:
               - field: run-conclusion
                 display: status
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-034 accepts inert element intent and rejects empty or non-element intent', () => {
     const elementDocument = `language-version: "0.1.0"
@@ -3671,21 +4293,23 @@ dashboard:
             sources: [workflows]
           mark: element
           element: summary-grid
-`;
-    expect(validateDashboardDocument(elementDocument).ok).toBe(true);
+`
+    expect(validateDashboardDocument(elementDocument).ok).toBe(true)
 
     const emptyIntent = validateDashboardDocument(
       elementDocument.replace(
         'intent: Help operators identify workflow states that require attention.',
-        'intent: ""'
-      )
-    );
-    expect(emptyIntent.ok).toBe(false);
+        'intent: ""',
+      ),
+    )
+    expect(emptyIntent.ok).toBe(false)
     if (!emptyIntent.ok) {
-      expect(emptyIntent.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: '$.dashboard.pages[0].views[0].intent'
-      }));
+      expect(emptyIntent.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.pages[0].views[0].intent',
+        }),
+      )
     }
 
     const nonElementIntent = validateDashboardDocument(
@@ -3699,17 +4323,19 @@ dashboard:
           mark: table
           encoding:
             columns:
-              - field: run-conclusion`
-      )
-    );
-    expect(nonElementIntent.ok).toBe(false);
+              - field: run-conclusion`,
+      ),
+    )
+    expect(nonElementIntent.ok).toBe(false)
     if (!nonElementIntent.ok) {
-      expect(nonElementIntent.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E007',
-        path: '$.dashboard.pages[0].views[0].intent'
-      }));
+      expect(nonElementIntent.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E007',
+          path: '$.dashboard.pages[0].views[0].intent',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-035 accepts Boolean view-lock hints and rejects non-Boolean values', () => {
     const lockedDocument = `language-version: "0.1.0"
@@ -3726,19 +4352,27 @@ dashboard:
             sources: [workflows]
           mark: element
           element: summary-grid
-`;
-    expect(validateDashboardDocument(lockedDocument).ok).toBe(true);
-    expect(validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: false')).ok).toBe(true);
+`
+    expect(validateDashboardDocument(lockedDocument).ok).toBe(true)
+    expect(
+      validateDashboardDocument(
+        lockedDocument.replace('locked: true', 'locked: false'),
+      ).ok,
+    ).toBe(true)
 
-    const invalid = validateDashboardDocument(lockedDocument.replace('locked: true', 'locked: fixed'));
-    expect(invalid.ok).toBe(false);
+    const invalid = validateDashboardDocument(
+      lockedDocument.replace('locked: true', 'locked: fixed'),
+    )
+    expect(invalid.ok).toBe(false)
     if (!invalid.ok) {
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: '$.dashboard.pages[0].views[0].locked'
-      }));
+      expect(invalid.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.pages[0].views[0].locked',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-002 DLS-VIEW-008 DLS-VIEW-022 DLS-VIEW-023 rejects inferred or unknown UI declarations', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3774,22 +4408,48 @@ dashboard:
               field: run
               aggregate: count
               display: status
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].icon' }),
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].element' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].data.source' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].data.limit' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[0].encoding' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[1].data.sources' }),
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[1].encoding.columns[0].display' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[2].encoding.value.display' })
-      ]));
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].icon',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].element',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[0].data.source',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[0].data.limit',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[0].encoding',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[1].data.sources',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[1].encoding.columns[0].display',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[2].encoding.value.display',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-002 DLS-VIEW-003 DLS-VIEW-004 DLS-VIEW-005 reject unknown marks and invalid mark-channel combinations', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3842,21 +4502,36 @@ dashboard:
               type: nominal
             columns:
               - field: repository
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].mark' }),
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[1].encoding.x' }),
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[2].encoding.value' }),
-          expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.pages[0].views[3].encoding.columns' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[3].encoding.y.type' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].mark',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[1].encoding.x',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[2].encoding.value',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.pages[0].views[3].encoding.columns',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[3].encoding.y.type',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-005 DLS-VIEW-006 reject invalid chart default shapes with DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3891,18 +4566,24 @@ dashboard:
               field: aic
               aggregate: sum
               type: quantitative
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.x' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[1].encoding.x.type' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.x',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[1].encoding.x.type',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-AGG-002 DLS-AGG-005 DLS-VIEW-007 DLS-VIEW-008 DLS-VIEW-009 reject invalid field definitions and aggregate compatibility with DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3930,21 +4611,36 @@ dashboard:
             href:
               field: run-link
               as: not-allowed
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].encoding.x.time-unit' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.x.time-unit' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.y.aggregate' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.color.field' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.href.as' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].encoding.x.time-unit',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.x.time-unit',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.y.aggregate',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.color.field',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.href.as',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-003 rejects metric value encodings with non-quantitative type or time-unit using DLS-E010', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -3964,18 +4660,24 @@ dashboard:
               field: observed-at
               type: temporal
               time-unit: day
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.value.type' }),
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.value.time-unit' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.value.type',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.value.time-unit',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-UNIT-001 DLS-UNIT-002 DLS-UNIT-004 accepts declared units referenced by field definitions', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4006,10 +4708,10 @@ dashboard:
               type: quantitative
               aggregate: sum
               unit: aic
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-008 accepts workflow-relative-path formatting on nominal fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4032,10 +4734,10 @@ dashboard:
               - field: repository
                 type: nominal
                 format: workflow-run-url
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-008 rejects unknown field formats and workflow path formatting on quantitative fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4058,16 +4760,24 @@ dashboard:
               - field: workflow
                 type: quantitative
                 format: workflow-relative-path
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].encoding.columns[0].format' }),
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' })
-      ]));
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].encoding.columns[0].format',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.columns[1].format',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-008 rejects workflow path formatting without a type on non-nominal fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4088,16 +4798,24 @@ dashboard:
                 format: workflow-relative-path
               - field: observed-at
                 format: workflow-relative-path
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[0].format' }),
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' })
-      ]));
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.columns[0].format',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.columns[1].format',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-UNIT-004 rejects unknown formats and invalid duration unit definitions', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4119,16 +4837,24 @@ dashboard:
     - id: summary
       kind: built-in
       page: overview
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.units.invalid-duration.format' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.units.malformed-duration' })
-      ]));
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.units.invalid-duration.format',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.units.malformed-duration',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-UNIT-001 DLS-UNIT-002 rejects malformed unit definitions and unknown references', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4155,20 +4881,40 @@ dashboard:
               type: quantitative
               aggregate: sum
               unit: missing
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.units.bad_unit' }),
-        expect.objectContaining({ code: 'DLS-E004', path: '$.dashboard.units.bad_unit.extra' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.units.bad_unit.name' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.units.bad_unit.symbol' }),
-        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.units.bad_unit.significant' }),
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.value.unit' })
-      ]));
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.units.bad_unit',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E004',
+            path: '$.dashboard.units.bad_unit.extra',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.units.bad_unit.name',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.units.bad_unit.symbol',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E003',
+            path: '$.dashboard.units.bad_unit.significant',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.value.unit',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-LINK-001 DLS-LINK-005 DLS-VIEW-007 DLS-VIEW-014 accept relation-specific href fields and reject non-link href fields with DLS-E009', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
@@ -4191,9 +4937,9 @@ dashboard:
               - field: finding-severity
             href:
               field: pull-request-link
-`);
+`)
 
-    expect(accepted.ok).toBe(true);
+    expect(accepted.ok).toBe(true)
 
     const rejected = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -4212,15 +4958,18 @@ dashboard:
               - field: finding-summary
             href:
               field: finding-summary
-`);
+`)
 
-    expect(rejected.ok).toBe(false);
+    expect(rejected.ok).toBe(false)
     if (!rejected.ok) {
       expect(rejected.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E009', path: '$.dashboard.pages[0].views[0].encoding.href.field' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E009',
+          path: '$.dashboard.pages[0].views[0].encoding.href.field',
+        }),
+      ])
     }
-  });
+  })
 
   it('DLS-DATA-001 accepts inline source-metadata with the required Section 8 fields and canonical data-state values', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4253,13 +5002,14 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-LINK-001 DLS-SAFE-004 DLS-DATA-001 rejects invalid source-metadata provenance and data-state values with DLS-E012', () => {
-    const invalidMetadataLink = validateDashboardDocument(`language-version: "0.1.0"
+    const invalidMetadataLink =
+      validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: invalid-source-metadata
   title: Invalid Source Metadata
@@ -4289,21 +5039,36 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(invalidMetadataLink.ok).toBe(false);
+    expect(invalidMetadataLink.ok).toBe(false)
     if (!invalidMetadataLink.ok) {
       expect(invalidMetadataLink.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E012', path: '$.dashboard.pages[0].views[0].data.source-metadata' }),
-          expect.objectContaining({ code: 'DLS-E012', path: '$.dashboard.pages[0].views[0].data.source-metadata.availability' }),
-          expect.objectContaining({ code: 'DLS-E012', path: '$.dashboard.pages[0].views[0].data.source-metadata.completeness' }),
-          expect.objectContaining({ code: 'DLS-E012', path: '$.dashboard.pages[0].views[0].data.source-metadata.freshness' }),
-          expect.objectContaining({ code: 'DLS-E012', path: '$.dashboard.pages[0].views[0].data.source-metadata.provenance-link.href' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E012',
+            path: '$.dashboard.pages[0].views[0].data.source-metadata',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E012',
+            path: '$.dashboard.pages[0].views[0].data.source-metadata.availability',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E012',
+            path: '$.dashboard.pages[0].views[0].data.source-metadata.completeness',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E012',
+            path: '$.dashboard.pages[0].views[0].data.source-metadata.freshness',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E012',
+            path: '$.dashboard.pages[0].views[0].data.source-metadata.provenance-link.href',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-AGG-009 DLS-AGG-010 rejects ambiguous aggregate outputs and order fields absent from the output grain', () => {
     const ambiguousOutput = validateDashboardDocument(`language-version: "0.1.0"
@@ -4326,13 +5091,16 @@ dashboard:
               - field: repository
                 aggregate: distinct-count
                 as: total
-`);
+`)
 
-    expect(ambiguousOutput.ok).toBe(false);
+    expect(ambiguousOutput.ok).toBe(false)
     if (!ambiguousOutput.ok) {
       expect(ambiguousOutput.errors).toEqual([
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1]' })
-      ]);
+        expect.objectContaining({
+          code: 'DLS-E010',
+          path: '$.dashboard.pages[0].views[0].encoding.columns[1]',
+        }),
+      ])
     }
 
     const invalidOrderBy = validateDashboardDocument(`language-version: "0.1.0"
@@ -4358,17 +5126,20 @@ dashboard:
                 aggregate: count
               - field: repository
               - field: workflow
-`);
+`)
 
-    expect(invalidOrderBy.ok).toBe(false);
+    expect(invalidOrderBy.ok).toBe(false)
     if (!invalidOrderBy.ok) {
       expect(invalidOrderBy.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].data.order-by[1].field' })
-        ])
-      );
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].data.order-by[1].field',
+          }),
+        ]),
+      )
     }
-  });
+  })
 
   it('DLS-SAFE-005 DLS-VAL-004 rejects secret-bearing provenance metadata without echoing the secret value', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4394,18 +5165,23 @@ dashboard:
             value:
               field: aic
               aggregate: sum
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ code: 'DLS-E012', path: '$.dashboard.pages[0].views[0].data.source-metadata.source-id' })
-        ])
-      );
-      expect(result.errors.map((error) => error.message).join('\n')).not.toContain('ghp_secretToken123456789');
+          expect.objectContaining({
+            code: 'DLS-E012',
+            path: '$.dashboard.pages[0].views[0].data.source-metadata.source-id',
+          }),
+        ]),
+      )
+      expect(
+        result.errors.map((error) => error.message).join('\n'),
+      ).not.toContain('ghp_secretToken123456789')
     }
-  });
+  })
 
   it('DLS-VAL-001 reports code message and YAML path for each detected error', () => {
     const result = validateDashboardDocument(`language-version: "0.1"
@@ -4414,17 +5190,17 @@ dashboard:
   title: 42
   defaults: []
   pages: []
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
       for (const error of result.errors) {
-        expect(error.code).toMatch(/^DLS-E\d{3}$/);
-        expect(error.message.length).toBeGreaterThan(0);
-        expect(error.path.startsWith('$')).toBe(true);
+        expect(error.code).toMatch(/^DLS-E\d{3}$/)
+        expect(error.message.length).toBeGreaterThan(0)
+        expect(error.path.startsWith('$')).toBe(true)
       }
     }
-  });
+  })
 
   it('DLS-VIEW-005 DLS-VIEW-006 accepts explicit line and pie chart widgets with structural layout hints', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4464,10 +5240,10 @@ dashboard:
               field: run
               type: quantitative
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-006 accepts a full-view interactive table with lazy-list rendering', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4489,10 +5265,10 @@ dashboard:
             columns:
               - field: repository
                 type: nominal
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('rejects lazy-list rendering on a static table', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4513,16 +5289,18 @@ dashboard:
             columns:
               - field: repository
                 type: nominal
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E003',
-        path: '$.dashboard.pages[0].views[0].lazy-list'
-      }));
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.pages[0].views[0].lazy-list',
+        }),
+      )
     }
-  });
+  })
 
   it('DLS-VIEW-005 accepts temporal dot charts with quantitative references', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4551,10 +5329,10 @@ dashboard:
             reference:
               field: limit
               type: quantitative
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('DLS-VIEW-005 accepts temporal scatter charts with unbucketed observations', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4580,53 +5358,71 @@ dashboard:
             color:
               field: maximum-lane
               type: nominal
-`);
+`)
 
-    expect(result.ok).toBe(true);
-  });
+    expect(result.ok).toBe(true)
+  })
 
   it('accepts unbucketed categorical swimlanes and rejects quantitative or aggregated lanes', () => {
-    const document = JSON.parse(authoritativeDashboardSource);
-    const overview = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operations');
-    const overviewSwimlane = overview.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'overview-run-health');
-    const workflowRuntime = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime');
-    const swimlane = workflowRuntime.views.find((/** @type {{ id: string }} */ view) => view.id === 'workflow-runtime-health');
-    const routeChrome = workflowRuntime.views.find((/** @type {{ id: string, element?: string }} */ view) => view.id === 'workflow-runtime-route');
+    const document = JSON.parse(authoritativeDashboardSource)
+    const overview = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'operations',
+    )
+    const overviewSwimlane = overview.definition.views.find(
+      (/** @type {{ id: string }} */ view) => view.id === 'overview-run-health',
+    )
+    const workflowRuntime = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'workflow-runtime',
+    )
+    const swimlane = workflowRuntime.views.find(
+      (/** @type {{ id: string }} */ view) =>
+        view.id === 'workflow-runtime-health',
+    )
+    const routeChrome = workflowRuntime.views.find(
+      (/** @type {{ id: string, element?: string }} */ view) =>
+        view.id === 'workflow-runtime-route',
+    )
 
     expect(overviewSwimlane).toMatchObject({
       chart: 'swimlane',
       encoding: {
         x: { field: 'started-at', type: 'temporal' },
         y: { field: 'run-conclusion', type: 'ordinal' },
-        href: { field: 'run-link' }
-      }
-    });
+        href: { field: 'run-link' },
+      },
+    })
     expect(swimlane).toMatchObject({
       chart: 'swimlane',
       encoding: {
         x: { field: 'started-at', type: 'temporal' },
         y: { field: 'run-conclusion', type: 'ordinal' },
-        href: { field: 'run-link' }
-      }
-    });
+        href: { field: 'run-link' },
+      },
+    })
     expect(routeChrome).toMatchObject({
       mark: 'element',
-      element: 'workflow-route-page'
-    });
-    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+      element: 'workflow-route-page',
+    })
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true)
 
-    swimlane.encoding.y = { field: 'run', type: 'quantitative', aggregate: 'count' };
-    const rejected = validateDashboardDocument(JSON.stringify(document));
-    expect(rejected.ok).toBe(false);
-    if (!rejected.ok) {
-      expect(rejected.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          code: 'DLS-E010',
-          path: expect.stringContaining('.encoding.y')
-        })
-      ]));
+    swimlane.encoding.y = {
+      field: 'run',
+      type: 'quantitative',
+      aggregate: 'count',
     }
-  });
+    const rejected = validateDashboardDocument(JSON.stringify(document))
+    expect(rejected.ok).toBe(false)
+    if (!rejected.ok) {
+      expect(rejected.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: expect.stringContaining('.encoding.y'),
+          }),
+        ]),
+      )
+    }
+  })
 
   it('DLS-VIEW-005 DLS-VIEW-006 rejects incompatible chart widgets and unknown layout hints', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
@@ -4651,14 +5447,22 @@ dashboard:
               field: run
               type: quantitative
               aggregate: count
-`);
+`)
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors).toEqual(expect.arrayContaining([
-        expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].layout' }),
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.x.type' })
-      ]));
+      expect(result.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'DLS-E005',
+            path: '$.dashboard.pages[0].views[0].layout',
+          }),
+          expect.objectContaining({
+            code: 'DLS-E010',
+            path: '$.dashboard.pages[0].views[0].encoding.x.type',
+          }),
+        ]),
+      )
     }
-  });
-});
+  })
+})

@@ -2,12 +2,12 @@
  * Shared workflow-route shell primitives for declarative composition.
  */
 
-import { h } from '../dom.js';
-import { text } from './count-formatters.js';
-import { renderWorkflowIdentity } from './workflow-identity.js';
-import { createRoutePageShell } from './route-page-shell.js';
-import { rowsFor } from './source-rows.js';
-import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
+import { h } from '../dom.js'
+import { text } from './count-formatters.js'
+import { renderWorkflowIdentity } from './workflow-identity.js'
+import { createRoutePageShell } from './route-page-shell.js'
+import { rowsFor } from './source-rows.js'
+import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js'
 
 /**
  * @typedef {{
@@ -36,7 +36,7 @@ import { parseWorkflowRoute, workflowRouteValue } from './workflow-route.js';
  * @returns {HTMLElement}
  */
 export function renderWorkflowRouteShell(context, config) {
-  const workflows = rowsFor(context.sources, 'workflows');
+  const workflows = rowsFor(context.sources, 'workflows')
   return createRoutePageShell(context, {
     rootClassName: config.rootClassName,
     datasetKey: 'workflow',
@@ -46,26 +46,28 @@ export function renderWorkflowRouteShell(context, config) {
     currentTab: config.currentTab,
     tabListClassName: 'repository-tabs workflow-tabs',
     tabListAriaLabel: (title, routeValue) => {
-      const route = parseWorkflowRoute(routeValue);
-      return `${config.currentTab === 'workflow-runtime' ? title : route?.workflow ?? title} views`;
+      const route = parseWorkflowRoute(routeValue)
+      return `${config.currentTab === 'workflow-runtime' ? title : (route?.workflow ?? title)} views`
     },
     tabs: ({ routeValue, title }) => workflowTabs(routeValue, title),
     renderMatched: (routeValue) => {
-      const route = parseWorkflowRoute(routeValue);
+      const route = parseWorkflowRoute(routeValue)
       const workflow = route
-        ? workflows.find((candidate) => (
-            qualifiedRepository(candidate).toLowerCase() === route.repository.toLowerCase()
-            && text(candidate.workflow) === route.workflow
-          ))
-        : null;
-      if (!workflow || !route) return null;
-      const name = workflowName(workflow);
+        ? workflows.find(
+            (candidate) =>
+              qualifiedRepository(candidate).toLowerCase() ===
+                route.repository.toLowerCase() &&
+              text(candidate.workflow) === route.workflow,
+          )
+        : null
+      if (!workflow || !route) return null
+      const name = workflowName(workflow)
       return {
         allocation: workflowRouteAllocation(config, route, workflow, name),
-        content: renderWorkflowContent(context, config, route, workflow)
-      };
-    }
-  });
+        content: renderWorkflowContent(context, config, route, workflow),
+      }
+    },
+  })
 }
 
 /**
@@ -83,16 +85,22 @@ function workflowRouteAllocation(config, route, workflow, title) {
     ...(['review', 'live'].includes(text(workflow['rollout-mode']))
       ? { mode: text(workflow['rollout-mode']) }
       : {}),
-    navigationPage: config.navigationPage === 'packages' && workflow.package ? 'packages' : 'repositories',
+    navigationPage:
+      config.navigationPage === 'packages' && workflow.package
+        ? 'packages'
+        : 'repositories',
     ...(config.breadcrumbs
       ? {
           breadcrumbs: config.breadcrumbs.map((crumb) => ({
             label: crumb.label.replace('{repository}', route.repository),
-            href: crumb.href.replace('{repository-encoded}', encodeURIComponent(route.repository))
-          }))
+            href: crumb.href.replace(
+              '{repository-encoded}',
+              encodeURIComponent(route.repository),
+            ),
+          })),
         }
-      : {})
-  };
+      : {}),
+  }
 }
 
 /**
@@ -100,14 +108,14 @@ function workflowRouteAllocation(config, route, workflow, title) {
  * @param {string} _displayName
  */
 function workflowTabs(routeValue, _displayName) {
-  const route = parseWorkflowRoute(routeValue);
-  if (!route) return [];
-  const workflowQuery = `?workflow=${encodeURIComponent(workflowRouteValue(route.repository, route.workflow))}`;
+  const route = parseWorkflowRoute(routeValue)
+  if (!route) return []
+  const workflowQuery = `?workflow=${encodeURIComponent(workflowRouteValue(route.repository, route.workflow))}`
   return [
     workflowTab('workflow-runtime', 'Insights', 'graph', workflowQuery),
     workflowTab('workflow-detail', 'Reports', 'issue', workflowQuery),
-    workflowTab('workflow-runs', 'Runs', 'play', workflowQuery)
-  ];
+    workflowTab('workflow-runs', 'Runs', 'play', workflowQuery),
+  ]
 }
 
 /**
@@ -122,8 +130,8 @@ function workflowTab(pageId, label, icon, workflowQuery) {
     id: pageId,
     label,
     icon,
-    href: `#page-${pageId}${workflowQuery}`
-  };
+    href: `#page-${pageId}${workflowQuery}`,
+  }
 }
 
 /**
@@ -137,19 +145,25 @@ function renderWorkflowContent(context, config, route, workflow) {
     'div',
     { className: config.contentClassName },
     renderWorkflowIdentity(workflow),
-    config.bodyRenderer?.({ context, route, workflow }) ?? null
-  );
+    config.bodyRenderer?.({ context, route, workflow }) ?? null,
+  )
 }
 
 /** @param {Record<string, unknown>} row */
 function qualifiedRepository(row) {
-  const repository = text(row.repository);
-  if (repository.includes('/')) return repository;
-  const organization = text(row.organization);
-  return organization && repository ? `${organization}/${repository}` : repository;
+  const repository = text(row.repository)
+  if (repository.includes('/')) return repository
+  const organization = text(row.organization)
+  return organization && repository
+    ? `${organization}/${repository}`
+    : repository
 }
 
 /** @param {Record<string, unknown>} workflow */
 function workflowName(workflow) {
-  return text(workflow['workflow-name']) || text(workflow.workflow) || 'Unknown workflow';
+  return (
+    text(workflow['workflow-name']) ||
+    text(workflow.workflow) ||
+    'Unknown workflow'
+  )
 }

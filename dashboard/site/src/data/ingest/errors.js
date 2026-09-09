@@ -3,8 +3,8 @@ export const INGESTION_ERROR_CODES = /** @type {const} */ ({
   transactionAborted: 'TRANSACTION_ABORTED',
   quotaExceeded: 'QUOTA_EXCEEDED',
   generationIncomplete: 'GENERATION_INCOMPLETE',
-  generationValidationFailed: 'GENERATION_VALIDATION_FAILED'
-});
+  generationValidationFailed: 'GENERATION_VALIDATION_FAILED',
+})
 
 export class CanonicalIngestionError extends Error {
   /**
@@ -14,12 +14,12 @@ export class CanonicalIngestionError extends Error {
    * @param {unknown} cause
    */
   constructor(code, phase, generation, cause) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    super(`${code} during ${phase}: ${detail}`, { cause });
-    this.name = 'CanonicalIngestionError';
-    this.code = code;
-    this.phase = phase;
-    this.generation = generation;
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    super(`${code} during ${phase}: ${detail}`, { cause })
+    this.name = 'CanonicalIngestionError'
+    this.code = code
+    this.phase = phase
+    this.generation = generation
   }
 }
 
@@ -29,17 +29,17 @@ export class CanonicalIngestionError extends Error {
  */
 export function classifyIngestionError(error, phase) {
   if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-    return INGESTION_ERROR_CODES.quotaExceeded;
+    return INGESTION_ERROR_CODES.quotaExceeded
   }
-  const message = error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error)
   if (message.includes('relationship validation failed')) {
-    return INGESTION_ERROR_CODES.generationValidationFailed;
+    return INGESTION_ERROR_CODES.generationValidationFailed
   }
   if (message.includes('is incomplete')) {
-    return INGESTION_ERROR_CODES.generationIncomplete;
+    return INGESTION_ERROR_CODES.generationIncomplete
   }
   if (phase === 'adapting' || phase === 'normalizing') {
-    return INGESTION_ERROR_CODES.normalizationFailed;
+    return INGESTION_ERROR_CODES.normalizationFailed
   }
-  return INGESTION_ERROR_CODES.transactionAborted;
+  return INGESTION_ERROR_CODES.transactionAborted
 }

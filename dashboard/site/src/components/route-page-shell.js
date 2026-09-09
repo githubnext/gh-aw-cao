@@ -2,9 +2,9 @@
  * Shared route page shell primitives for declarative route compositions.
  */
 
-import { h } from '../dom.js';
-import { createRouteView } from './route-empty-state.js';
-import { renderRouteTabSet } from './route-tab-set.js';
+import { h } from '../dom.js'
+import { createRouteView } from './route-empty-state.js'
+import { renderRouteTabSet } from './route-tab-set.js'
 
 /**
  * @typedef {{ id: string, label: string, icon: string, href: string }} RoutePageTab
@@ -51,17 +51,20 @@ export function createRoutePageShell(context, options) {
     isUnavailable: options.isUnavailable,
     hasSelection: options.hasSelection,
     renderMatched: (routeValue) => {
-      const match = options.renderMatched(routeValue, root);
-      if (!match) return null;
-      const allocation = match.allocation;
-      const title = typeof allocation.title === 'string' ? allocation.title : '';
-      root.dispatchEvent(new CustomEvent('dashboard-route-allocation', {
-        bubbles: true,
-        detail: allocation
-      }));
-      const tabs = typeof options.tabs === 'function'
-        ? options.tabs({ routeValue, title })
-        : options.tabs;
+      const match = options.renderMatched(routeValue, root)
+      if (!match) return null
+      const allocation = match.allocation
+      const title = typeof allocation.title === 'string' ? allocation.title : ''
+      root.dispatchEvent(
+        new CustomEvent('dashboard-route-allocation', {
+          bubbles: true,
+          detail: allocation,
+        }),
+      )
+      const tabs =
+        typeof options.tabs === 'function'
+          ? options.tabs({ routeValue, title })
+          : options.tabs
       return h(
         'div',
         null,
@@ -69,11 +72,11 @@ export function createRoutePageShell(context, options) {
           className: options.tabListClassName,
           ariaLabel: options.tabListAriaLabel(title, routeValue),
           currentTab: options.currentTab,
-          tabs
+          tabs,
         }),
-        match.content
-      );
-    }
-  });
-  return root;
+        match.content,
+      )
+    },
+  })
+  return root
 }

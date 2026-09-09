@@ -2,8 +2,8 @@
  * Presentation-only reusable UI primitives shared across dashboard components.
  */
 
-import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
+import { h } from '../dom.js'
+import { octicon } from '../octicons.js'
 
 /**
  * @typedef {{
@@ -26,7 +26,7 @@ export function renderSectionHeading({
   title,
   description,
   summary,
-  headingTag = 'h3'
+  headingTag = 'h3',
 }) {
   return h(
     'div',
@@ -36,10 +36,10 @@ export function renderSectionHeading({
       null,
       h('span', { className: 'scope-kicker' }, kicker),
       h(headingTag, { id }, title),
-      description ? h('p', null, description) : null
+      description ? h('p', null, description) : null,
     ),
-    summary ? h('strong', null, summary) : null
-  );
+    summary ? h('strong', null, summary) : null,
+  )
 }
 
 /**
@@ -53,13 +53,18 @@ export function renderSectionHeading({
  * @param {{ className?: string }} [options]
  * @returns {HTMLElement}
  */
-export function renderPanelHeader(headingId, heading, description, options = {}) {
+export function renderPanelHeader(
+  headingId,
+  heading,
+  description,
+  options = {},
+) {
   return h(
     'header',
     options.className ? { className: options.className } : null,
     h('h3', { id: headingId }, heading),
-    description ? h('p', null, description) : null
-  );
+    description ? h('p', null, description) : null,
+  )
 }
 
 /**
@@ -71,7 +76,11 @@ export function renderPanelHeader(headingId, heading, description, options = {})
  * @returns {HTMLElement}
  */
 export function renderTableHeadRow(labels) {
-  return h('tr', null, ...labels.map((label) => h('th', { scope: 'col' }, label)));
+  return h(
+    'tr',
+    null,
+    ...labels.map((label) => h('th', { scope: 'col' }, label)),
+  )
 }
 
 /**
@@ -85,7 +94,13 @@ export function renderTableHeadRow(labels) {
  * @returns {HTMLElement}
  */
 export function renderDlRow(term, description, detail) {
-  return h('div', null, h('dt', null, ...(Array.isArray(term) ? term : [term])), h('dd', null, description), detail ? h('p', null, detail) : null);
+  return h(
+    'div',
+    null,
+    h('dt', null, ...(Array.isArray(term) ? term : [term])),
+    h('dd', null, description),
+    detail ? h('p', null, detail) : null,
+  )
 }
 
 /**
@@ -95,7 +110,7 @@ export function renderDlRow(term, description, detail) {
  * @returns {HTMLElement}
  */
 export function renderVitalStat(label, value, detail) {
-  return renderDlRow(label, value, detail);
+  return renderDlRow(label, value, detail)
 }
 
 /**
@@ -108,7 +123,7 @@ export function renderVitalStat(label, value, detail) {
  * @returns {HTMLElement}
  */
 export function renderLabeledSpan(label, value) {
-  return h('span', null, h('strong', null, label), value);
+  return h('span', null, h('strong', null, label), value)
 }
 
 /**
@@ -125,17 +140,17 @@ export function renderTooltip({ id, label, description, icon, content }) {
         type: 'button',
         className: 'tooltip-trigger',
         'aria-label': label,
-        'aria-describedby': id
+        'aria-describedby': id,
       },
-      icon
+      icon,
     ),
     h(
       'span',
       { id, className: 'tooltip-content', role: 'tooltip' },
       h('span', { className: 'tooltip-description' }, description),
-      content
-    )
-  );
+      content,
+    ),
+  )
 }
 
 /**
@@ -146,11 +161,11 @@ export function renderTooltip({ id, label, description, icon, content }) {
  * @returns {number | null}
  */
 export function coverageWindowHours(metadata) {
-  const start = Date.parse(String(metadata?.['coverage-start'] ?? ''));
-  const end = Date.parse(String(metadata?.['coverage-end'] ?? ''));
+  const start = Date.parse(String(metadata?.['coverage-start'] ?? ''))
+  const end = Date.parse(String(metadata?.['coverage-end'] ?? ''))
   return Number.isFinite(start) && Number.isFinite(end) && end > start
     ? Math.round((end - start) / 3_600_000)
-    : null;
+    : null
 }
 
 /**
@@ -163,9 +178,10 @@ export function coverageWindowHours(metadata) {
  * @returns {string}
  */
 export function completenessCaveat(completeness, subject) {
-  if (completeness === 'partial') return `Partial ${subject} coverage.`;
-  if (completeness === 'unknown') return `${subject[0].toUpperCase()}${subject.slice(1)} coverage is unknown.`;
-  return '';
+  if (completeness === 'partial') return `Partial ${subject} coverage.`
+  if (completeness === 'unknown')
+    return `${subject[0].toUpperCase()}${subject.slice(1)} coverage is unknown.`
+  return ''
 }
 
 /**
@@ -179,8 +195,12 @@ export function completenessCaveat(completeness, subject) {
  * @returns {string}
  */
 export function formatShortDate(input, locale = undefined) {
-  const date = input instanceof Date ? input : new Date(input);
-  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const date = input instanceof Date ? input : new Date(input)
+  return date.toLocaleDateString(locale, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 /**
@@ -194,8 +214,8 @@ export function formatMediumUtcDateTime(input) {
   return new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
     timeStyle: 'short',
-    timeZone: 'UTC'
-  }).format(input instanceof Date ? input : new Date(input));
+    timeZone: 'UTC',
+  }).format(input instanceof Date ? input : new Date(input))
 }
 
 /**
@@ -209,8 +229,8 @@ export function formatMediumUtcDateTime(input) {
 export function formatMediumUtcDate(input) {
   return new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
-    timeZone: 'UTC'
-  }).format(input instanceof Date ? input : new Date(input));
+    timeZone: 'UTC',
+  }).format(input instanceof Date ? input : new Date(input))
 }
 
 /**
@@ -218,9 +238,9 @@ export function formatMediumUtcDate(input) {
  * @returns {string}
  */
 export function formatUtcDateTime(value) {
-  const parsed = Date.parse(value == null ? '' : String(value));
-  if (!Number.isFinite(parsed)) return 'Time unavailable';
-  return formatMediumUtcDateTime(parsed);
+  const parsed = Date.parse(value == null ? '' : String(value))
+  if (!Number.isFinite(parsed)) return 'Time unavailable'
+  return formatMediumUtcDateTime(parsed)
 }
 
 /**
@@ -233,8 +253,8 @@ export function formatUtcDateTime(value) {
  * @returns {HTMLElement | null}
  */
 export function renderDigest(value) {
-  const text = value == null ? '' : String(value);
-  return text ? h('code', null, text.slice(0, 12)) : null;
+  const text = value == null ? '' : String(value)
+  return text ? h('code', null, text.slice(0, 12)) : null
 }
 
 /**
@@ -244,7 +264,7 @@ export function renderDigest(value) {
  * @returns {HTMLElement}
  */
 export function renderTableSummaryEmpty(message) {
-  return h('span', { className: 'table-summary-empty' }, message);
+  return h('span', { className: 'table-summary-empty' }, message)
 }
 
 /**
@@ -255,7 +275,7 @@ export function renderTableSummaryEmpty(message) {
  * @returns {HTMLElement}
  */
 export function renderEmptyMessage(message, extraAttrs) {
-  return h('p', { className: 'empty', ...extraAttrs }, message);
+  return h('p', { className: 'empty', ...extraAttrs }, message)
 }
 
 /**
@@ -273,10 +293,16 @@ export function renderEmptyMessage(message, extraAttrs) {
  * @param {string} emptyMessage
  * @returns {HTMLElement}
  */
-export function renderListOrEmptyMessage(listClassName, items, renderItem, emptyClassName, emptyMessage) {
+export function renderListOrEmptyMessage(
+  listClassName,
+  items,
+  renderItem,
+  emptyClassName,
+  emptyMessage,
+) {
   return items.length > 0
     ? h('ul', { className: listClassName }, ...items.map(renderItem))
-    : h('p', { className: emptyClassName }, emptyMessage);
+    : h('p', { className: emptyClassName }, emptyMessage)
 }
 
 /**
@@ -288,7 +314,7 @@ export function renderListOrEmptyMessage(listClassName, items, renderItem, empty
  * @returns {HTMLElement}
  */
 export function renderEmptyTableRow(colSpan, message) {
-  return h('tr', null, h('td', { colSpan }, message));
+  return h('tr', null, h('td', { colSpan }, message))
 }
 
 /**
@@ -301,7 +327,11 @@ export function renderEmptyTableRow(colSpan, message) {
  * @returns {HTMLElement}
  */
 export function renderCountBadge(count, ariaLabel) {
-  return h('span', { className: 'count-badge', 'aria-label': ariaLabel }, String(count));
+  return h(
+    'span',
+    { className: 'count-badge', 'aria-label': ariaLabel },
+    String(count),
+  )
 }
 
 /**
@@ -314,11 +344,22 @@ export function renderCountBadge(count, ariaLabel) {
  * @param {(left: string, right: string) => number} [compareFn]
  * @returns {HTMLSelectElement}
  */
-export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareFn) {
-  return /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': ariaLabel },
-    h('option', { value: '' }, placeholderLabel),
-    ...[...new Set(values)].sort(compareFn).map((value) => h('option', { value }, value))
-  ));
+export function renderFilterSelect(
+  ariaLabel,
+  placeholderLabel,
+  values,
+  compareFn,
+) {
+  return /** @type {HTMLSelectElement} */ (
+    h(
+      'select',
+      { 'aria-label': ariaLabel },
+      h('option', { value: '' }, placeholderLabel),
+      ...[...new Set(values)]
+        .sort(compareFn)
+        .map((value) => h('option', { value }, value)),
+    )
+  )
 }
 
 /**
@@ -331,9 +372,15 @@ export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareF
  * @returns {HTMLInputElement}
  */
 export function renderSearchInput(label, value = '') {
-  return /** @type {HTMLInputElement} */ (h('input', {
-    type: 'search', value, placeholder: label, 'aria-label': label, spellcheck: 'false'
-  }));
+  return /** @type {HTMLInputElement} */ (
+    h('input', {
+      type: 'search',
+      value,
+      placeholder: label,
+      'aria-label': label,
+      spellcheck: 'false',
+    })
+  )
 }
 
 /**
@@ -346,7 +393,7 @@ export function renderSearchInput(label, value = '') {
  * @returns {HTMLElement}
  */
 export function renderDisclosure(className, summaryLabel, ...body) {
-  return h('details', { className }, h('summary', null, summaryLabel), ...body);
+  return h('details', { className }, h('summary', null, summaryLabel), ...body)
 }
 
 /**
@@ -365,27 +412,42 @@ export function renderDisclosure(className, summaryLabel, ...body) {
  *   on the `<summary>` element
  * @returns {HTMLDetailsElement}
  */
-export function renderLazyDisclosure(className, summaryContent, bodyContainer, populateBody, options = {}) {
-  const initiallyOpen = options.open === true;
-  const eagerContent = options.eagerContent === undefined ? [] : [options.eagerContent].flat();
-  let populated = false;
+export function renderLazyDisclosure(
+  className,
+  summaryContent,
+  bodyContainer,
+  populateBody,
+  options = {},
+) {
+  const initiallyOpen = options.open === true
+  const eagerContent =
+    options.eagerContent === undefined ? [] : [options.eagerContent].flat()
+  let populated = false
   const populateOnce = () => {
-    if (populated) return;
-    populateBody(bodyContainer);
-    populated = true;
-  };
-  if (initiallyOpen) populateOnce();
-  const details = /** @type {HTMLDetailsElement} */ (h(
-    'details',
-    { className, open: initiallyOpen },
-    h('summary', options.summaryClassName ? { className: options.summaryClassName } : null, ...[summaryContent].flat()),
-    ...eagerContent,
-    bodyContainer
-  ));
+    if (populated) return
+    populateBody(bodyContainer)
+    populated = true
+  }
+  if (initiallyOpen) populateOnce()
+  const details = /** @type {HTMLDetailsElement} */ (
+    h(
+      'details',
+      { className, open: initiallyOpen },
+      h(
+        'summary',
+        options.summaryClassName
+          ? { className: options.summaryClassName }
+          : null,
+        ...[summaryContent].flat(),
+      ),
+      ...eagerContent,
+      bodyContainer,
+    )
+  )
   details.addEventListener('toggle', () => {
-    if (details.open) populateOnce();
-  });
-  return details;
+    if (details.open) populateOnce()
+  })
+  return details
 }
 
 /**
@@ -398,12 +460,19 @@ export function renderLazyDisclosure(className, summaryContent, bodyContainer, p
  * @param {string} fallbackMessage
  * @returns {HTMLElement}
  */
-export function renderListWithFallback(className, items, renderItem, fallbackMessage) {
+export function renderListWithFallback(
+  className,
+  items,
+  renderItem,
+  fallbackMessage,
+) {
   return h(
     'ul',
     { className },
-    items.length > 0 ? items.map((item) => h('li', null, renderItem(item))) : [h('li', null, fallbackMessage)]
-  );
+    items.length > 0
+      ? items.map((item) => h('li', null, renderItem(item)))
+      : [h('li', null, fallbackMessage)],
+  )
 }
 
 /**
@@ -413,8 +482,19 @@ export function renderListWithFallback(className, items, renderItem, fallbackMes
  * @param {{ href: string, icon: string, label: string, className?: string, labelTag?: 'span'|'strong' }} options
  * @returns {HTMLElement}
  */
-export function renderIdentityLink({ href, icon, label, className, labelTag = 'span' }) {
-  return h('a', className ? { href, className } : { href }, octicon(icon), h(labelTag, null, label));
+export function renderIdentityLink({
+  href,
+  icon,
+  label,
+  className,
+  labelTag = 'span',
+}) {
+  return h(
+    'a',
+    className ? { href, className } : { href },
+    octicon(icon),
+    h(labelTag, null, label),
+  )
 }
 
 /**
@@ -424,7 +504,7 @@ export function renderIdentityLink({ href, icon, label, className, labelTag = 's
  * @returns {HTMLElement}
  */
 export function renderLegendSwatch(className) {
-  return h('i', { className, 'aria-hidden': 'true' });
+  return h('i', { className, 'aria-hidden': 'true' })
 }
 
 /**
@@ -441,17 +521,25 @@ export function renderLegendSwatch(className) {
  * @param {Record<string, unknown>} [extraAttrs]
  * @returns {HTMLElement}
  */
-export function renderLegendList(className, items, swatchClassName, renderContent, extraAttrs) {
+export function renderLegendList(
+  className,
+  items,
+  swatchClassName,
+  renderContent,
+  extraAttrs,
+) {
   return h(
     'ul',
     { className, ...extraAttrs },
-    items.map((item, index) => h(
-      'li',
-      null,
-      renderLegendSwatch(swatchClassName(item, index)),
-      ...renderContent(item, index)
-    ))
-  );
+    items.map((item, index) =>
+      h(
+        'li',
+        null,
+        renderLegendSwatch(swatchClassName(item, index)),
+        ...renderContent(item, index),
+      ),
+    ),
+  )
 }
 
 /**
@@ -467,8 +555,8 @@ export function renderIconSpan(className, iconName, options = {}) {
   return h(
     'span',
     options.ariaHidden ? { className, 'aria-hidden': 'true' } : { className },
-    octicon(iconName)
-  );
+    octicon(iconName),
+  )
 }
 
 /**
@@ -479,17 +567,19 @@ export function renderIconSpan(className, iconName, options = {}) {
  * @returns {HTMLButtonElement}
  */
 export function renderCloseButton({ className, label, onClick }) {
-  return /** @type {HTMLButtonElement} */ (h(
-    'button',
-    {
-      type: 'button',
-      className,
-      title: label,
-      'aria-label': label,
-      onClick
-    },
-    octicon('x')
-  ));
+  return /** @type {HTMLButtonElement} */ (
+    h(
+      'button',
+      {
+        type: 'button',
+        className,
+        title: label,
+        'aria-label': label,
+        onClick,
+      },
+      octicon('x'),
+    )
+  )
 }
 
 /**
@@ -502,23 +592,25 @@ export function renderCloseButton({ className, label, onClick }) {
  * @returns {{ dialog: HTMLDialogElement, open: () => void, close: () => void }}
  */
 export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
-  const dialog = /** @type {HTMLDialogElement} */ (h('dialog', { className, 'aria-label': ariaLabel }));
+  const dialog = /** @type {HTMLDialogElement} */ (
+    h('dialog', { className, 'aria-label': ariaLabel })
+  )
   const open = () => {
     if (typeof dialog.showModal === 'function') {
-      dialog.showModal();
+      dialog.showModal()
     } else {
-      dialog.setAttribute('open', '');
+      dialog.setAttribute('open', '')
     }
-  };
+  }
   const close = () => {
     if (typeof dialog.close === 'function' && dialog.open) {
-      dialog.close();
+      dialog.close()
     } else {
-      dialog.removeAttribute('open');
-      onFallbackClose?.();
+      dialog.removeAttribute('open')
+      onFallbackClose?.()
     }
-  };
-  return { dialog, open, close };
+  }
+  return { dialog, open, close }
 }
 
 /**
@@ -531,15 +623,19 @@ export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
  * @param {{ expandedClass: string, onExpand?: (expanded: boolean) => void }} options
  * @returns {(expanded: boolean) => void} setExpanded
  */
-export function createExpandableToggle(toggle, panel, { expandedClass, onExpand }) {
+export function createExpandableToggle(
+  toggle,
+  panel,
+  { expandedClass, onExpand },
+) {
   /** @param {boolean} expanded */
   const setExpanded = (expanded) => {
-    toggle.setAttribute('aria-expanded', String(expanded));
-    panel.classList.toggle(expandedClass, expanded);
-    if (onExpand) onExpand(expanded);
-  };
-  setExpanded(false);
-  return setExpanded;
+    toggle.setAttribute('aria-expanded', String(expanded))
+    panel.classList.toggle(expandedClass, expanded)
+    if (onExpand) onExpand(expanded)
+  }
+  setExpanded(false)
+  return setExpanded
 }
 
 /**
@@ -553,13 +649,19 @@ export function createExpandableToggle(toggle, panel, { expandedClass, onExpand 
  * @returns {HTMLLabelElement}
  */
 export function renderLabeledControl(label, control, options = {}) {
-  return /** @type {HTMLLabelElement} */ (h(
-    'label',
-    options.className ? { className: options.className } : null,
-    options.prefix,
-    h('span', options.visuallyHiddenLabel ? { className: 'sr-only' } : null, label),
-    control
-  ));
+  return /** @type {HTMLLabelElement} */ (
+    h(
+      'label',
+      options.className ? { className: options.className } : null,
+      options.prefix,
+      h(
+        'span',
+        options.visuallyHiddenLabel ? { className: 'sr-only' } : null,
+        label,
+      ),
+      control,
+    )
+  )
 }
 
 /**
@@ -571,12 +673,12 @@ export function renderLabeledControl(label, control, options = {}) {
  * @returns {Promise<boolean>}
  */
 export async function copyTextToClipboard(content) {
-  if (typeof navigator?.clipboard?.writeText !== 'function') return false;
+  if (typeof navigator?.clipboard?.writeText !== 'function') return false
   try {
-    await navigator.clipboard.writeText(content);
-    return true;
+    await navigator.clipboard.writeText(content)
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -606,35 +708,39 @@ export function createCopyControl(options) {
     statusClassName,
     successText = 'Copied.',
     failureText = 'Copy unavailable.',
-    trackState = false
-  } = options;
-  const status = /** @type {HTMLOutputElement} */ (h('output', { className: statusClassName, 'aria-live': 'polite' }));
-  const button = /** @type {HTMLButtonElement} */ (h(
-    'button',
-    {
-      type: 'button',
-      className: buttonClassName,
-      onClick: async () => {
-        if (trackState) {
-          button.disabled = true;
-          status.textContent = '';
-        }
-        const copied = await copyTextToClipboard(getContent());
-        if (trackState) {
-          button.disabled = false;
-          button.setAttribute('data-copy-state', copied ? 'success' : 'error');
-        }
-        status.textContent = copied ? successText : failureText;
-      }
-    },
-    octicon('copy'),
-    label
-  ));
+    trackState = false,
+  } = options
+  const status = /** @type {HTMLOutputElement} */ (
+    h('output', { className: statusClassName, 'aria-live': 'polite' })
+  )
+  const button = /** @type {HTMLButtonElement} */ (
+    h(
+      'button',
+      {
+        type: 'button',
+        className: buttonClassName,
+        onClick: async () => {
+          if (trackState) {
+            button.disabled = true
+            status.textContent = ''
+          }
+          const copied = await copyTextToClipboard(getContent())
+          if (trackState) {
+            button.disabled = false
+            button.setAttribute('data-copy-state', copied ? 'success' : 'error')
+          }
+          status.textContent = copied ? successText : failureText
+        },
+      },
+      octicon('copy'),
+      label,
+    )
+  )
   const reset = () => {
-    status.textContent = '';
-    button.removeAttribute('data-copy-state');
-  };
-  return { button, status, reset };
+    status.textContent = ''
+    button.removeAttribute('data-copy-state')
+  }
+  return { button, status, reset }
 }
 
 /**
@@ -650,13 +756,18 @@ export function createCopyControl(options) {
  * @param {IntersectionObserverInit} [observerOptions]
  * @returns {IntersectionObserver | null}
  */
-export function observeLoadMoreBoundary(observerCtor, boundaryElement, onLoadMore, observerOptions) {
-  if (typeof observerCtor !== 'function') return null;
+export function observeLoadMoreBoundary(
+  observerCtor,
+  boundaryElement,
+  onLoadMore,
+  observerOptions,
+) {
+  if (typeof observerCtor !== 'function') return null
   const observer = new observerCtor((entries) => {
-    if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
-  }, observerOptions);
-  observer.observe(boundaryElement);
-  return observer;
+    if (entries.some((entry) => entry.isIntersecting)) onLoadMore()
+  }, observerOptions)
+  observer.observe(boundaryElement)
+  return observer
 }
 
 /**
@@ -667,12 +778,12 @@ export function observeLoadMoreBoundary(observerCtor, boundaryElement, onLoadMor
  * @returns {boolean}
  */
 export function isSafeHttpsUrl(value) {
-  if (typeof value !== 'string' || value.length === 0) return false;
+  if (typeof value !== 'string' || value.length === 0) return false
   try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && !url.username && !url.password;
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -681,5 +792,5 @@ export function isSafeHttpsUrl(value) {
  * @returns {value is Record<string, any>}
  */
 export function isPlainObject(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

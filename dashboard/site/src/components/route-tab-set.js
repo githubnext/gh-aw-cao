@@ -2,7 +2,7 @@
  * Shared tab navigation for route-scoped detail pages.
  */
 
-import { renderLinkTabs } from './tab-nav.js';
+import { renderLinkTabs } from './tab-nav.js'
 
 /**
  * @typedef {{ id: string, label: string, icon: string, href: string }} RouteTab
@@ -25,7 +25,7 @@ export function renderRouteTabSet(options) {
       label: tab.label,
       icon: tab.icon,
       href: tab.href,
-      current: tab.id === options.currentTab
-    }))
-  });
+      current: tab.id === options.currentTab,
+    })),
+  })
 }

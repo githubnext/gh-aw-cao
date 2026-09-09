@@ -2,8 +2,8 @@
  * Reusable statistical-anomaly evaluation boundary widget.
  */
 
-import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
+import { h } from '../dom.js'
+import { octicon } from '../octicons.js'
 
 /**
  * @param {Record<string, unknown>} row
@@ -17,13 +17,13 @@ export function renderAnomalyReadiness(row) {
       'span',
       null,
       octicon(stringValue(row.icon) || 'pulse'),
-      h('strong', null, stringValue(row.title))
+      h('strong', null, stringValue(row.title)),
     ),
-    h('p', null, stringValue(row.detail))
-  );
+    h('p', null, stringValue(row.detail)),
+  )
 }
 
 /** @param {unknown} value */
 function stringValue(value) {
-  return value == null ? '' : String(value);
+  return value == null ? '' : String(value)
 }

@@ -2,7 +2,7 @@
  * Shared declarative view-element composition selection helpers.
  */
 
-import { selectNamedComposition } from './route-composition.js';
+import { selectNamedComposition } from './route-composition.js'
 
 /**
  * @template {string} T
@@ -11,7 +11,7 @@ import { selectNamedComposition } from './route-composition.js';
  * @returns {{ values: ReadonlyArray<T>, fallback: T }}
  */
 export function createElementCompositionConfig(values, fallback) {
-  return { values, fallback };
+  return { values, fallback }
 }
 
 /**
@@ -23,8 +23,10 @@ export function createElementCompositionConfig(values, fallback) {
  * @returns {V}
  */
 export function selectElementComposition(compositions, config, selected) {
-  const key = typeof selected === 'string' && config.values.includes(/** @type {T} */ (selected))
-    ? /** @type {T} */ (selected)
-    : config.fallback;
-  return selectNamedComposition(compositions, key, config.fallback);
+  const key =
+    typeof selected === 'string' &&
+    config.values.includes(/** @type {T} */ (selected))
+      ? /** @type {T} */ (selected)
+      : config.fallback
+  return selectNamedComposition(compositions, key, config.fallback)
 }

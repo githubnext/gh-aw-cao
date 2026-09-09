@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { renderPackageNavigation } from '../../src/components/package-detail.js';
-import { renderPackageRouteVariant, renderPackageRouteView } from '../../src/components/package-route-view.js';
+import { describe, expect, it } from 'vitest'
+import { renderPackageNavigation } from '../../src/components/package-detail.js'
+import {
+  renderPackageRouteVariant,
+  renderPackageRouteView,
+} from '../../src/components/package-route-view.js'
 
 const metadata = {
   'source-id': 'fixture',
@@ -10,8 +13,8 @@ const metadata = {
   'retrieved-at': '2026-08-31T18:01:00Z',
   completeness: /** @type {'complete'} */ ('complete'),
   freshness: /** @type {'fresh'} */ ('fresh'),
-  availability: /** @type {'available'} */ ('available')
-};
+  availability: /** @type {'available'} */ ('available'),
+}
 
 const workflows = [
   {
@@ -25,19 +28,21 @@ const workflows = [
     'rollout-mode': 'review',
     'package-description': 'Keeps repository guidance current.',
     'package-readme-path': 'ambient-context/README.md',
-    'package-readme': '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
+    'package-readme':
+      '# Ambient Context\n\nKeeps shared guidance current. See the [guide](docs/guide.md).\n\n## Capabilities\n\n- Reviews context\n- Proposes updates',
     'repository-link': {
       relation: 'repository',
       href: 'https://ghe.example/githubnext/gh-aw-cao',
-      label: 'View githubnext/gh-aw-cao'
+      label: 'View githubnext/gh-aw-cao',
     },
     'workflow-link': {
       relation: 'workflow',
       href: 'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/ambient-context.md',
       label: 'View Ambient Context',
-      'dashboard-href': '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
-      'dashboard-label': 'View Ambient Context workflow dashboard'
-    }
+      'dashboard-href':
+        '#page-workflow-runtime?workflow=githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fambient-context.md',
+      'dashboard-label': 'View Ambient Context workflow dashboard',
+    },
   },
   {
     package: 'ambient-context',
@@ -47,7 +52,7 @@ const workflows = [
     workflow: '.github/workflows/ambient-context-agents-md-curator.md',
     'workflow-name': 'Ambient Context / AGENTS.md',
     'workflow-role': 'worker',
-    'rollout-mode': 'review'
+    'rollout-mode': 'review',
   },
   {
     package: 'other',
@@ -55,9 +60,9 @@ const workflows = [
     workflow: '.github/workflows/other.md',
     'workflow-name': 'Other',
     'workflow-role': 'orchestrator',
-    'rollout-mode': 'live'
-  }
-];
+    'rollout-mode': 'live',
+  },
+]
 
 const operationalValues = [
   {
@@ -70,7 +75,7 @@ const operationalValues = [
     'evaluator-digest': 'sha256:current',
     'requested-evidence-at': '2026-08-17T18:00:00Z',
     'observed-at': '2026-08-24T18:00:00Z',
-    'maturity-status': 'matured'
+    'maturity-status': 'matured',
   },
   {
     organization: 'githubnext',
@@ -82,7 +87,7 @@ const operationalValues = [
     'evaluator-digest': 'sha256:current',
     'requested-evidence-at': '2026-08-24T18:00:00Z',
     'observed-at': '2026-08-31T18:00:00Z',
-    'maturity-status': 'matured'
+    'maturity-status': 'matured',
   },
   {
     organization: 'githubnext',
@@ -94,9 +99,9 @@ const operationalValues = [
     'evaluator-digest': 'sha256:other',
     'requested-evidence-at': '2026-08-24T18:00:00Z',
     'observed-at': '2026-08-31T18:00:00Z',
-    'maturity-status': 'matured'
-  }
-];
+    'maturity-status': 'matured',
+  },
+]
 
 const outcomes = [
   {
@@ -109,7 +114,7 @@ const outcomes = [
     'outcome-category': 'issue',
     'outcome-state': 'pending',
     'rollout-mode': 'review',
-    'observed-at': '2026-08-31T17:00:00Z'
+    'observed-at': '2026-08-31T17:00:00Z',
   },
   {
     package: 'ambient-context',
@@ -122,7 +127,7 @@ const outcomes = [
     'outcome-status': 'closed',
     'outcome-state': 'lifecycle-close',
     'rollout-mode': 'live',
-    'observed-at': '2026-08-30T16:00:00Z'
+    'observed-at': '2026-08-30T16:00:00Z',
   },
   {
     package: 'other',
@@ -134,9 +139,9 @@ const outcomes = [
     'outcome-category': 'issue',
     'outcome-status': 'open',
     'rollout-mode': 'live',
-    'observed-at': '2026-08-29T15:00:00Z'
-  }
-];
+    'observed-at': '2026-08-29T15:00:00Z',
+  },
+]
 
 function context() {
   return {
@@ -149,9 +154,13 @@ function context() {
     sources: {
       workflows: { source: 'workflows', metadata, rows: workflows },
       outcomes: { source: 'outcomes', metadata, rows: outcomes },
-      'operational-values': { source: 'operational-values', metadata, rows: operationalValues }
-    }
-  };
+      'operational-values': {
+        source: 'operational-values',
+        metadata,
+        rows: operationalValues,
+      },
+    },
+  }
 }
 
 describe('renderPackageNavigation', () => {
@@ -160,162 +169,273 @@ describe('renderPackageNavigation', () => {
       ...context(),
       pageId: 'package-insights',
       sourceNames: ['workflows', 'operational-values'],
-      elementConfig: { body: 'insights' }
-    });
-    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
-    }));
+      elementConfig: { body: 'insights' },
+    })
+    rendered.dispatchEvent(
+      new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'package', value: 'ambient-context' },
+      }),
+    )
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-insights?package=ambient-context');
-    expect(rendered.querySelector('.value-report h2')?.textContent).toBe('Ambient Context / AGENTS.md');
-    expect(rendered.querySelector('.value-score')?.textContent).toContain('75%');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Outcome change from first observation');
-    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain('Primary operational value+25.0 pts');
-    expect(rendered.querySelector('.value-attainment')?.textContent).toContain('Weekly operational attainment');
-    expect(rendered.querySelector('.value-attainment .primary-weekly')).not.toBeNull();
-    expect(rendered.textContent).not.toContain('github/other');
-  });
+    expect(
+      rendered
+        .querySelector('.package-tabs [aria-current="page"]')
+        ?.getAttribute('href'),
+    ).toBe('#page-package-insights?package=ambient-context')
+    expect(rendered.querySelector('.value-report h2')?.textContent).toBe(
+      'Ambient Context / AGENTS.md',
+    )
+    expect(rendered.querySelector('.value-score')?.textContent).toContain('75%')
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
+      'Outcome change from first observation',
+    )
+    expect(rendered.querySelector('.value-outcomes')?.textContent).toContain(
+      'Primary operational value+25.0 pts',
+    )
+    expect(rendered.querySelector('.value-attainment')?.textContent).toContain(
+      'Weekly operational attainment',
+    )
+    expect(
+      rendered.querySelector('.value-attainment .primary-weekly'),
+    ).not.toBeNull()
+    expect(rendered.textContent).not.toContain('github/other')
+  })
 
   it('renders reusable navigation for the selected package workflow view', () => {
-    const rendered = renderPackageNavigation(context());
-    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
-    }));
+    const rendered = renderPackageNavigation(context())
+    rendered.dispatchEvent(
+      new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'package', value: 'ambient-context' },
+      }),
+    )
 
-    expect(rendered.dataset.package).toBe('ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('InsightsWorkflowsDispatchesReports');
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
-    expect(rendered.querySelector('.package-readme h1')?.textContent).toBe('Ambient Context');
-    expect(rendered.querySelector('.package-readme h2')?.textContent).toBe('Capabilities');
-    expect(rendered.querySelectorAll('.package-readme li')).toHaveLength(2);
-    expect(rendered.querySelector('.package-readme-about')?.textContent).toContain('Keeps repository guidance current.');
-    expect(rendered.querySelector('.package-marketplace-detail')?.getAttribute('data-package')).toBe('ambient-context');
-    expect(rendered.querySelector('.package-marketplace-title')?.textContent).toBe('Ambient ContextPackage');
-    expect(rendered.querySelector('.package-rollout')?.textContent).toBe('review');
-    expect(rendered.querySelector('.package-marketplace-actions a')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md');
-    expect([...rendered.querySelectorAll('.package-readme a')].find((link) => link.textContent === 'guide')?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md');
-    const resources = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.package-readme-resources'));
-    expect(resources.open).toBe(false);
-    expect(resources.querySelector('summary')?.textContent).toBe('ResourcesShow details');
-    resources.open = true;
-    expect(resources.textContent).toContain('Source repository');
-    expect([...resources.querySelectorAll('a')].at(-1)?.getAttribute('href')).toBe('https://ghe.example/githubnext/gh-aw-cao');
-    expect(rendered.textContent).not.toContain('Other');
-  });
+    expect(rendered.dataset.package).toBe('ambient-context')
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe(
+      'InsightsWorkflowsDispatchesReports',
+    )
+    expect(
+      rendered
+        .querySelector('.package-tabs [aria-current="page"]')
+        ?.getAttribute('href'),
+    ).toBe('#page-package-detail?package=ambient-context')
+    expect(rendered.querySelector('.package-readme h1')?.textContent).toBe(
+      'Ambient Context',
+    )
+    expect(rendered.querySelector('.package-readme h2')?.textContent).toBe(
+      'Capabilities',
+    )
+    expect(rendered.querySelectorAll('.package-readme li')).toHaveLength(2)
+    expect(
+      rendered.querySelector('.package-readme-about')?.textContent,
+    ).toContain('Keeps repository guidance current.')
+    expect(
+      rendered
+        .querySelector('.package-marketplace-detail')
+        ?.getAttribute('data-package'),
+    ).toBe('ambient-context')
+    expect(
+      rendered.querySelector('.package-marketplace-title')?.textContent,
+    ).toBe('Ambient ContextPackage')
+    expect(rendered.querySelector('.package-rollout')?.textContent).toBe(
+      'review',
+    )
+    expect(
+      rendered
+        .querySelector('.package-marketplace-actions a')
+        ?.getAttribute('href'),
+    ).toBe(
+      'https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/README.md',
+    )
+    expect(
+      [...rendered.querySelectorAll('.package-readme a')]
+        .find((link) => link.textContent === 'guide')
+        ?.getAttribute('href'),
+    ).toBe(
+      'https://ghe.example/githubnext/gh-aw-cao/blob/HEAD/ambient-context/docs/guide.md',
+    )
+    const resources = /** @type {HTMLDetailsElement} */ (
+      rendered.querySelector('.package-readme-resources')
+    )
+    expect(resources.open).toBe(false)
+    expect(resources.querySelector('summary')?.textContent).toBe(
+      'ResourcesShow details',
+    )
+    resources.open = true
+    expect(resources.textContent).toContain('Source repository')
+    expect(
+      [...resources.querySelectorAll('a')].at(-1)?.getAttribute('href'),
+    ).toBe('https://ghe.example/githubnext/gh-aw-cao')
+    expect(rendered.textContent).not.toContain('Other')
+  })
 
   it('renders workflow tab composition through the reusable package route variant primitive', () => {
-    const rendered = renderPackageRouteVariant(context(), 'workflows');
-    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
-    }));
+    const rendered = renderPackageRouteVariant(context(), 'workflows')
+    rendered.dispatchEvent(
+      new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'package', value: 'ambient-context' },
+      }),
+    )
 
-    expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-detail?package=ambient-context');
-    expect(rendered.querySelector('.package-tabs')?.textContent).toBe('InsightsWorkflowsDispatchesReports');
-  });
+    expect(
+      rendered
+        .querySelector('.package-tabs [aria-current="page"]')
+        ?.getAttribute('href'),
+    ).toBe('#page-package-detail?package=ambient-context')
+    expect(rendered.querySelector('.package-tabs')?.textContent).toBe(
+      'InsightsWorkflowsDispatchesReports',
+    )
+  })
 
   describe('dispatch navigation', () => {
     it('renders package-scoped dispatch navigation and identity', () => {
-      const host = document.createElement('div');
-      const rendered = renderPackageRouteView({ ...context(), pageId: 'package-dispatches', elementConfig: { body: 'dispatches' } });
-      host.append(rendered);
-      let detail;
+      const host = document.createElement('div')
+      const rendered = renderPackageRouteView({
+        ...context(),
+        pageId: 'package-dispatches',
+        elementConfig: { body: 'dispatches' },
+      })
+      host.append(rendered)
+      let detail
       host.addEventListener('dashboard-route-allocation', (event) => {
-        if (event instanceof CustomEvent) detail = event.detail;
-      });
+        if (event instanceof CustomEvent) detail = event.detail
+      })
 
-      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
-      }));
+      rendered.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'ambient-context' },
+        }),
+      )
 
-      expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-dispatches?package=ambient-context');
+      expect(
+        rendered
+          .querySelector('.package-tabs [aria-current="page"]')
+          ?.getAttribute('href'),
+      ).toBe('#page-package-dispatches?package=ambient-context')
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Workflow dispatch runs for the Ambient Context package.',
         mode: 'review',
-        navigationPage: 'packages'
-      });
-    });
+        navigationPage: 'packages',
+      })
+    })
 
     it('uses the trusted target mode for package navigation', () => {
-      const host = document.createElement('div');
-      const targetModeWorkflows = workflows.map((workflow) => workflow.package === 'ambient-context'
-        ? { ...workflow, 'package-targets': [{ repository: 'githubnext/gh-aw-cao', mode: 'live' }] }
-        : workflow);
+      const host = document.createElement('div')
+      const targetModeWorkflows = workflows.map((workflow) =>
+        workflow.package === 'ambient-context'
+          ? {
+              ...workflow,
+              'package-targets': [
+                { repository: 'githubnext/gh-aw-cao', mode: 'live' },
+              ],
+            }
+          : workflow,
+      )
       const rendered = renderPackageNavigation({
         ...context(),
-        sources: { ...context().sources, workflows: { source: 'workflows', metadata, rows: targetModeWorkflows } }
-      });
-      host.append(rendered);
-      let detail;
+        sources: {
+          ...context().sources,
+          workflows: {
+            source: 'workflows',
+            metadata,
+            rows: targetModeWorkflows,
+          },
+        },
+      })
+      host.append(rendered)
+      let detail
       host.addEventListener('dashboard-route-allocation', (event) => {
-        if (event instanceof CustomEvent) detail = event.detail;
-      });
+        if (event instanceof CustomEvent) detail = event.detail
+      })
 
-      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
-      }));
+      rendered.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'ambient-context' },
+        }),
+      )
 
-      expect(detail).toEqual(expect.objectContaining({ mode: 'live' }));
-    });
-  });
+      expect(detail).toEqual(expect.objectContaining({ mode: 'live' }))
+    })
+  })
 
   it('reallocates package title, description, mode, and parent navigation', () => {
-    const host = document.createElement('div');
-    const rendered = renderPackageNavigation(context());
-    host.append(rendered);
-    let detail;
+    const host = document.createElement('div')
+    const rendered = renderPackageNavigation(context())
+    host.append(rendered)
+    let detail
     host.addEventListener('dashboard-route-allocation', (event) => {
-      if (event instanceof CustomEvent) detail = event.detail;
-    });
+      if (event instanceof CustomEvent) detail = event.detail
+    })
 
-    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'ambient-context' }
-    }));
+    rendered.dispatchEvent(
+      new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'package', value: 'ambient-context' },
+      }),
+    )
 
     expect(detail).toEqual({
       title: 'Ambient Context',
-      description: 'Orchestrator and worker workflows in the Ambient Context package.',
+      description:
+        'Orchestrator and worker workflows in the Ambient Context package.',
       mode: 'review',
-      navigationPage: 'packages'
-    });
-  });
+      navigationPage: 'packages',
+    })
+  })
 
   describe('report navigation', () => {
     it('renders route-scoped package navigation', () => {
-      const rendered = renderPackageRouteView({ ...context(), pageId: 'package-reports', elementConfig: { body: 'reports' } });
-      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
-      }));
+      const rendered = renderPackageRouteView({
+        ...context(),
+        pageId: 'package-reports',
+        elementConfig: { body: 'reports' },
+      })
+      rendered.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'ambient-context' },
+        }),
+      )
 
-      expect(rendered.querySelector('.package-tabs [aria-current="page"]')?.getAttribute('href')).toBe('#page-package-reports?package=ambient-context');
-      expect(rendered.getAttribute('data-route-view')).not.toBeNull();
-    });
+      expect(
+        rendered
+          .querySelector('.package-tabs [aria-current="page"]')
+          ?.getAttribute('href'),
+      ).toBe('#page-package-reports?package=ambient-context')
+      expect(rendered.getAttribute('data-route-view')).not.toBeNull()
+    })
 
     it('reallocates package report identity and renders explicit empty states', () => {
-      const host = document.createElement('div');
-      const rendered = renderPackageRouteView({ ...context(), pageId: 'package-reports', elementConfig: { body: 'reports' } });
-      host.append(rendered);
-      let detail;
+      const host = document.createElement('div')
+      const rendered = renderPackageRouteView({
+        ...context(),
+        pageId: 'package-reports',
+        elementConfig: { body: 'reports' },
+      })
+      host.append(rendered)
+      let detail
       host.addEventListener('dashboard-route-allocation', (event) => {
-        if (event instanceof CustomEvent) detail = event.detail;
-      });
+        if (event instanceof CustomEvent) detail = event.detail
+      })
 
-      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
-      }));
+      rendered.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'ambient-context' },
+        }),
+      )
       expect(detail).toEqual({
         title: 'Ambient Context',
         description: 'Durable reports produced by the Ambient Context package.',
         mode: 'review',
-        navigationPage: 'packages'
-      });
+        navigationPage: 'packages',
+      })
 
-      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'missing' }
-      }));
-      expect(rendered.textContent).toBe('Package not found.');
+      rendered.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'missing' },
+        }),
+      )
+      expect(rendered.textContent).toBe('Package not found.')
 
-      const unavailableContext = context();
+      const unavailableContext = context()
       const unavailable = renderPackageRouteView({
         ...unavailableContext,
         elementConfig: { body: 'reports' },
@@ -324,37 +444,50 @@ describe('renderPackageNavigation', () => {
           ...unavailableContext.sources,
           workflows: {
             ...unavailableContext.sources.workflows,
-            metadata: { ...metadata, availability: /** @type {'unavailable'} */ ('unavailable') },
-            rows: []
-          }
-        }
-      });
-      unavailable.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
-      }));
-      expect(unavailable.textContent).toBe('Package data is unavailable.');
-    });
-  });
+            metadata: {
+              ...metadata,
+              availability: /** @type {'unavailable'} */ ('unavailable'),
+            },
+            rows: [],
+          },
+        },
+      })
+      unavailable.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'ambient-context' },
+        }),
+      )
+      expect(unavailable.textContent).toBe('Package data is unavailable.')
+    })
+  })
 
   it('renders explicit empty states for missing and invalid package routes', () => {
-    const rendered = renderPackageNavigation(context());
-    expect(rendered.textContent).toBe('Select a package to view its workflows.');
+    const rendered = renderPackageNavigation(context())
+    expect(rendered.textContent).toBe('Select a package to view its workflows.')
 
-    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: '<invalid>' }
-    }));
-    expect(rendered.textContent).toBe('Select a package to view its workflows.');
+    rendered.dispatchEvent(
+      new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'package', value: '<invalid>' },
+      }),
+    )
+    expect(rendered.textContent).toBe('Select a package to view its workflows.')
 
-    rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-      detail: { parameter: 'package', value: 'missing' }
-    }));
-    expect(rendered.textContent).toBe('Package not found.');
-  });
+    rendered.dispatchEvent(
+      new CustomEvent('dashboard-route-change', {
+        detail: { parameter: 'package', value: 'missing' },
+      }),
+    )
+    expect(rendered.textContent).toBe('Package not found.')
+  })
 
   it('renders the same unavailable state for workflow and report navigation', () => {
-    const unavailableContext = context();
+    const unavailableContext = context()
 
-    for (const selectedView of /** @type {const} */ (['workflows', 'dispatches', 'reports'])) {
+    for (const selectedView of /** @type {const} */ ([
+      'workflows',
+      'dispatches',
+      'reports',
+    ])) {
       const rendered = renderPackageRouteView({
         ...unavailableContext,
         elementConfig: { body: selectedView },
@@ -362,15 +495,20 @@ describe('renderPackageNavigation', () => {
           ...unavailableContext.sources,
           workflows: {
             ...unavailableContext.sources.workflows,
-            metadata: { ...metadata, availability: /** @type {'unavailable'} */ ('unavailable') },
-            rows: []
-          }
-        }
-      });
-      rendered.dispatchEvent(new CustomEvent('dashboard-route-change', {
-        detail: { parameter: 'package', value: 'ambient-context' }
-      }));
-      expect(rendered.textContent).toBe('Package data is unavailable.');
+            metadata: {
+              ...metadata,
+              availability: /** @type {'unavailable'} */ ('unavailable'),
+            },
+            rows: [],
+          },
+        },
+      })
+      rendered.dispatchEvent(
+        new CustomEvent('dashboard-route-change', {
+          detail: { parameter: 'package', value: 'ambient-context' },
+        }),
+      )
+      expect(rendered.textContent).toBe('Package data is unavailable.')
     }
-  });
-});
+  })
+})

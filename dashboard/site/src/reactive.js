@@ -8,7 +8,7 @@
  */
 
 /** @type {EffectHandle | null} */
-let activeEffect = null;
+let activeEffect = null
 
 /**
  * @param {() => void} fn
@@ -16,42 +16,42 @@ let activeEffect = null;
  */
 export function effect(fn) {
   /** @type {Set<() => void>} */
-  const cleanups = new Set();
+  const cleanups = new Set()
 
   /** @type {EffectHandle} */
   const handle = {
     run() {
       for (const cleanup of cleanups) {
-        cleanup();
+        cleanup()
       }
-      cleanups.clear();
-      const previous = activeEffect;
-      activeEffect = handle;
+      cleanups.clear()
+      const previous = activeEffect
+      activeEffect = handle
       try {
-        fn();
+        fn()
       } finally {
-        activeEffect = previous;
+        activeEffect = previous
       }
     },
     schedule() {
-      handle.run();
+      handle.run()
     },
     stop() {
       for (const cleanup of cleanups) {
-        cleanup();
+        cleanup()
       }
-      cleanups.clear();
+      cleanups.clear()
       if (activeEffect === handle) {
-        activeEffect = null;
+        activeEffect = null
       }
     },
     _registerCleanup(cleanup) {
-      cleanups.add(cleanup);
-    }
-  };
+      cleanups.add(cleanup)
+    },
+  }
 
-  handle.run();
-  return handle;
+  handle.run()
+  return handle
 }
 
 /**
@@ -60,42 +60,43 @@ export function effect(fn) {
  * @returns {State<T>}
  */
 export function state(initialValue) {
-  let current = initialValue;
+  let current = initialValue
   /** @type {Set<() => void>} */
-  const listeners = new Set();
+  const listeners = new Set()
 
   return {
     get() {
       if (activeEffect) {
-        const subscriber = activeEffect;
-        const listener = () => subscriber.schedule();
-        listeners.add(listener);
+        const subscriber = activeEffect
+        const listener = () => subscriber.schedule()
+        listeners.add(listener)
         subscriber._registerCleanup(() => {
-          listeners.delete(listener);
-        });
+          listeners.delete(listener)
+        })
       }
-      return current;
+      return current
     },
     set(value) {
-      const next = typeof value === 'function'
-        ? /** @type {(current: T) => T} */ (value)(current)
-        : value;
+      const next =
+        typeof value === 'function'
+          ? /** @type {(current: T) => T} */ (value)(current)
+          : value
       if (Object.is(current, next)) {
-        return current;
+        return current
       }
-      current = next;
+      current = next
       for (const listener of [...listeners]) {
-        listener();
+        listener()
       }
-      return current;
+      return current
     },
     subscribe(listener) {
-      listeners.add(listener);
+      listeners.add(listener)
       return () => {
-        listeners.delete(listener);
-      };
-    }
-  };
+        listeners.delete(listener)
+      }
+    },
+  }
 }
 
 /**
@@ -109,17 +110,17 @@ export function state(initialValue) {
  * @returns {Derived<T>}
  */
 export function derived(compute) {
-  const value = state(compute());
+  const value = state(compute())
   const handle = effect(() => {
-    value.set(compute());
-  });
+    value.set(compute())
+  })
 
   return {
     get() {
-      return value.get();
+      return value.get()
     },
     dispose() {
-      handle.stop();
-    }
-  };
+      handle.stop()
+    },
+  }
 }

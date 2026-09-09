@@ -1,5 +1,5 @@
-import { h } from '../dom.js';
-import { renderIconSpan } from './ui-primitives.js';
+import { h } from '../dom.js'
+import { renderIconSpan } from './ui-primitives.js'
 
 /**
  * @typedef {{
@@ -19,14 +19,18 @@ export function renderWorkViewNavigation(items, activeKey) {
   return h(
     'nav',
     { className: 'work-project-tabs', 'aria-label': 'Work views' },
-    ...items.map((item) => h(
-      'a',
-      {
-        href: item.href,
-        'aria-current': item.key === activeKey ? 'page' : undefined
-      },
-      renderIconSpan('work-project-tab-icon', item.icon, { ariaHidden: true }),
-      item.title
-    ))
-  );
+    ...items.map((item) =>
+      h(
+        'a',
+        {
+          href: item.href,
+          'aria-current': item.key === activeKey ? 'page' : undefined,
+        },
+        renderIconSpan('work-project-tab-icon', item.icon, {
+          ariaHidden: true,
+        }),
+        item.title,
+      ),
+    ),
+  )
 }

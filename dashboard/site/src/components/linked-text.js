@@ -2,7 +2,7 @@
  * Reusable presentation-only linked text helpers for dashboard views.
  */
 
-import { renderSafeLink } from './link-content.js';
+import { renderSafeLink } from './link-content.js'
 
 /**
  * Renders text as an external link when a safe link is available, otherwise as plain text.
@@ -11,7 +11,7 @@ import { renderSafeLink } from './link-content.js';
  * @returns {string | HTMLElement}
  */
 export function renderLinkedText(text, link) {
-  return renderSafeLink(text, link);
+  return renderSafeLink(text, link)
 }
 
 /**
@@ -21,7 +21,12 @@ export function renderLinkedText(text, link) {
  * @param {(value: unknown) => string} toText
  * @returns {(column: string | { field: string, display?: unknown, format?: unknown, type?: unknown }, value: unknown, row: Record<string, unknown>) => string | HTMLElement}
  */
-export function createEntityAwareCellRenderer(entityLinkFields, findLink, renderTableCellValue, toText) {
+export function createEntityAwareCellRenderer(
+  entityLinkFields,
+  findLink,
+  renderTableCellValue,
+  toText,
+) {
   /**
    * @param {string | { field: string, display?: unknown, format?: unknown, type?: unknown }} column
    * @param {unknown} value
@@ -29,23 +34,27 @@ export function createEntityAwareCellRenderer(entityLinkFields, findLink, render
    * @returns {string | HTMLElement}
    */
   return function renderEntityAwareCellValue(column, value, row) {
-    const field = typeof column === 'string' ? column : column.field;
-    const display = typeof column === 'string' ? undefined : column.display;
-    const renderedValue = renderTableCellValue(display, value, column);
-    const linkField = Object.prototype.hasOwnProperty.call(entityLinkFields, field)
+    const field = typeof column === 'string' ? column : column.field
+    const display = typeof column === 'string' ? undefined : column.display
+    const renderedValue = renderTableCellValue(display, value, column)
+    const linkField = Object.prototype.hasOwnProperty.call(
+      entityLinkFields,
+      field,
+    )
       ? entityLinkFields[/** @type {keyof typeof entityLinkFields} */ (field)]
-      : null;
+      : null
     if (linkField) {
-      const link = findLink(row, linkField);
+      const link = findLink(row, linkField)
       if (link) {
-        const linkedText = typeof column !== 'string'
-          && column.format !== undefined
-          && typeof renderedValue === 'string'
-          ? renderedValue
-          : toText(value);
-        return renderLinkedText(linkedText, link);
+        const linkedText =
+          typeof column !== 'string' &&
+          column.format !== undefined &&
+          typeof renderedValue === 'string'
+            ? renderedValue
+            : toText(value)
+        return renderLinkedText(linkedText, link)
       }
     }
-    return renderedValue;
-  };
+    return renderedValue
+  }
 }
