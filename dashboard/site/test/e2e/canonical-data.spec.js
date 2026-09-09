@@ -94,6 +94,11 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
           organization: 'githubnext', repository: 'gh-aw-cao',
           workflow: '.github/workflows/dashboard.md', run,
           domain: 'api.github.com', decision: 'denied', 'request-count': 2
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md', run,
+          domain: 'removed.example', decision: 'unknown', 'request-count': null
         }
       ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }

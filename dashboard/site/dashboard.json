@@ -73,8 +73,20 @@
     "queries": [
       {
         "name": "firewall-domain-totals",
+        "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
         "from": "firewall-observations",
+        "filter": {
+          "predicates": [
+            {
+              "field": "decision",
+              "in": [
+                "allowed",
+                "denied"
+              ]
+            }
+          ]
+        },
         "compute": [
           {
             "as": "is-accepted",
@@ -1013,6 +1025,14 @@
                 {
                   "field": "blocked",
                   "direction": "desc"
+                },
+                {
+                  "field": "accepted",
+                  "direction": "desc"
+                },
+                {
+                  "field": "domain",
+                  "direction": "asc"
                 }
               ]
             },

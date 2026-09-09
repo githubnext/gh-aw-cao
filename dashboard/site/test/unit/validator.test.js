@@ -179,7 +179,9 @@ describe('dashboard document validation', () => {
     expect(firewall.views).toHaveLength(1);
     expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
       name: 'firewall-domain-totals',
+      intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
       from: 'firewall-observations',
+      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] },
       aggregate: {
         by: ['domain'],
         values: [
@@ -199,7 +201,11 @@ describe('dashboard document validation', () => {
       layout: 'full-view',
       data: {
         source: 'firewall-domain-totals',
-        'order-by': [{ field: 'blocked', direction: 'desc' }]
+        'order-by': [
+          { field: 'blocked', direction: 'desc' },
+          { field: 'accepted', direction: 'desc' },
+          { field: 'domain', direction: 'asc' }
+        ]
       }
     });
     expect(domains.encoding.columns).toEqual([
