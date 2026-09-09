@@ -239,6 +239,33 @@
         ]
       },
       {
+        "name": "runs-table",
+        "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
+        "description": "Observed workflow runs ordered from newest to oldest.",
+        "from": "runs",
+        "select": [
+          { "field": "run" },
+          { "field": "run-status" },
+          { "field": "run-conclusion" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "rollout-mode" },
+          { "field": "engine" },
+          { "field": "engine-version" },
+          { "field": "requested-model" },
+          { "field": "resolved-model" },
+          { "field": "started-at" },
+          { "field": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "workflow-run-totals",
         "intent": "Summarize observed run counts by declared workflow.",
         "description": "Observed run totals for each declared workflow.",
@@ -3032,11 +3059,41 @@
           },
           "views": [
             {
+              "id": "runs-health-trend",
+              "title": "Run health trend",
+              "description": "Daily run conclusions show execution health across the configured repository scope.",
+              "data": {
+                "source": "runs",
+                "time": {
+                  "range": "30d"
+                }
+              },
+              "mark": "chart",
+              "chart": "line",
+              "layout": "full",
+              "encoding": {
+                "x": {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "time-unit": "day"
+                },
+                "y": {
+                  "field": "run",
+                  "type": "quantitative",
+                  "aggregate": "count"
+                },
+                "color": {
+                  "field": "run-conclusion",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
               "id": "runs-runs-source",
               "title": "Runs",
               "description": "Observed workflow runs across the configured repository scope.",
               "data": {
-                "source": "runs"
+                "source": "runs-table"
               },
               "mark": "table",
               "controls": "interactive",
