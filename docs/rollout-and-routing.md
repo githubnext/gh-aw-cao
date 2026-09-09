@@ -34,7 +34,6 @@ Each package under `control-plane.packages` has its own mode and limits. Review 
 | Output mode | `mode` | `review` |
 | Scheduled absolute cap | `max-repositories` | `1` |
 | Rollout percentage | `rollout-percent` | `100` |
-| Monthly AIC budget | `monthly-ai-credit-budget` | `0` (disabled) |
 | Exact target mode | `targets.<owner/repository>.mode` | Package mode |
 | Worker workflow identity | `workers.<worker>.workflow` | Required workflow slug |
 | Worker kill switch | `workers.<worker>.enabled` | `true` |

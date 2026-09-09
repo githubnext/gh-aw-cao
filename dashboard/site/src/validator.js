@@ -1038,7 +1038,8 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
           ));
         }
         seenSources.add(sourceName);
-        sourceFieldCoverage.set(sourceName, new Set(getBuiltInRequiredFields(pageName, sourceName)));
+        const coverageSource = sourceName;
+        sourceFieldCoverage.set(coverageSource, new Set(getBuiltInRequiredFields(pageName, coverageSource)));
       }
       continue;
     }
@@ -1052,11 +1053,12 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
-    if (!sourceFieldCoverage.has(data.source)) {
-      sourceFieldCoverage.set(data.source, new Set());
+    const coverageSource = data.source;
+    if (!sourceFieldCoverage.has(coverageSource)) {
+      sourceFieldCoverage.set(coverageSource, new Set());
     }
 
-    collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(data.source));
+    collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(coverageSource));
   }
 
   for (const sourceName of BUILT_IN_PAGE_REQUIRED_SOURCES[pageName]) {

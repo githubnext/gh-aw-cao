@@ -1,0 +1,6 @@
+{"type":"session.start","id":"session-505","timestamp":"2026-09-09T04:00:00Z","data":{}}
+{"type":"user.message","id":"message-1","timestamp":"2026-09-09T04:00:01Z","data":{}}
+{"type":"tool.execution_start","id":"tool-1-start","timestamp":"2026-09-09T04:00:02.100Z","data":{"mcpServerName":"github","toolName":"get_file","toolCallId":"call-1"}}
+{"type":"tool.execution_complete","id":"tool-1-done","timestamp":"2026-09-09T04:00:02.900Z","data":{"mcpServerName":"github","toolName":"get_file","toolCallId":"call-1","success":true}}
+{"type":"assistant.message","id":"message-2","timestamp":"2026-09-09T04:00:04Z","data":{}}
+{"type":"session.shutdown","id":"session-505-end","timestamp":"2026-09-09T04:00:05Z","data":{}}

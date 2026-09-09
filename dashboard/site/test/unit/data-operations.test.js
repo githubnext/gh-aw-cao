@@ -106,6 +106,28 @@ describe('dashboard data operations', () => {
     expect(result).not.toHaveProperty('runs');
   });
 
+  it('canonicalizes dashboard sources through the worker request boundary', () => {
+    const source = {
+      rows: [{ organization: 'acme', repository: 'app', visibility: 'private' }],
+      metadata: {
+        'artifact-generation': 'generation-a',
+        'as-of': '2026-09-08T00:00:00Z'
+      }
+    };
+    const result = /** @type {any} */ (processDataRequest({
+      operation: 'canonicalize-dashboard-sources',
+      generation: 'generation-a',
+      sources: { repositories: source }
+    }));
+
+    expect(result.repositories).toMatchObject([{
+      generation: 'generation-a',
+      owner: 'acme',
+      name: 'app',
+      fullName: 'acme/app'
+    }]);
+  });
+
   it('clusters 100,000 scatter points to a bounded worker result while preserving series', () => {
     const start = Date.parse('2026-09-01T00:00:00Z');
     const points = Array.from({ length: 100_000 }, (_, index) => ({

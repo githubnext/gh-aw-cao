@@ -498,9 +498,8 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
   assert.match(precompute, /id % cellCount/);
   assert.match(precompute, /dispatch_max must be an integer from 1 through 1000/);
   assert.match(precompute, /Math\.floor\(context\.dispatchMaximum \/ eligibleWorkers\)/);
-  assert.match(precompute, /Math\.min\(result\.effective_max_repos, targetCap\)/);
-  assert.match(precompute, /monthly_credit_budget must be a non-negative integer/);
-  assert.match(precompute, /"aw", "logs", workflowId, "--start-date", monthStart, "--json", "-c", "1000"/);
+  assert.doesNotMatch(precompute, /monthly_credit_budget must be a non-negative integer/);
+  assert.doesNotMatch(precompute, /gh", \["aw", "logs"/);
   assert.doesNotMatch(precompute, /--paginate/);
   assert.doesNotMatch(`${control}\n${precompute}`, /vars\.CENTRAL_AGENTIC_OPS_|repositories: \["\*"\]/);
 });
@@ -581,6 +580,7 @@ test("control workflows deny before activation through one shared admission cont
     assert.match(preActivation, /cao_authorized: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/, generatedName);
     assert.match(preActivation, /Evaluate Central Agentic Ops admission/, generatedName);
     assert.match(preActivation, /Generate CAO pre-activation GitHub App token/, generatedName);
+    assert.doesNotMatch(preActivation, /github\/gh-aw-actions\/setup-cli@/, generatedName);
     assert.match(preActivation, /CAO admission blocked: GitHub API limited until/, generatedName);
     assert.match(preActivation, /CAO precompute blocked: GitHub API limited until/, generatedName);
     assert.match(stepBlock(preActivation, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /::warning title=CAO precompute could not verify GitHub API capacity/);
@@ -2623,8 +2623,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /sparse-checkout: \.github\/cao\/src/);
       assert.match(preActivation, /fetch-depth: 1/);
       assert.doesNotMatch(preActivation, /contents\/\.github\/cao\/src\/(?:control|policy)\.mjs/);
-      assert.match(preActivation, /github\/gh-aw-actions\/setup-cli@/);
-      assert.match(preActivation, /steps\.cao_admission\.outputs\.monthly_credit_budget != '0'/);
+      assert.doesNotMatch(preActivation, /github\/gh-aw-actions\/setup-cli@/);
+      assert.doesNotMatch(preActivation, /steps\.cao_admission\.outputs\.monthly_credit_budget != '0'/);
       assert.match(preActivation, /name: Run CAO control precompute/);
       assert.match(preActivation, /CAO_DISPATCH_MAX: "\d+"/);
       assert.match(preActivation, /CAO_ORCHESTRATOR_CREDITS: "\d+"/);
@@ -2959,7 +2959,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp"/);
+  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent"/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
   assert.match(activityLogs, /"--start-date", `-\$\{windowDays\}d`, "--cache-before", `-\$\{windowDays\}d`/);
   assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "15"/);
