@@ -120,7 +120,6 @@ control-plane-inventory.json
 control-settings.json
 dashboard-records.json
 deployed-workflows.json
-gh-aw-logs/
 gh-aw-logs.json
 gh-aw-logs-state.json
 operational-values.json

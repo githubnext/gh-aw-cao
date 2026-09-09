@@ -39,7 +39,6 @@ $RUNNER_TEMP/cao-activity/
 ├── control-settings.json
 ├── dashboard-records.json
 ├── deployed-workflows.json
-├── gh-aw-logs/
 ├── gh-aw-logs.json
 ├── gh-aw-logs-state.json
 └── operational-values.json
@@ -51,7 +50,7 @@ GitHub-backed collection operations record quota observations in `cao-gh.jsonl`;
 
 Consumers should restore the prefix before downloading workflow-run history or collecting dashboard data. If the cache is absent, stale for the consumer's evidence window, incomplete, or outside the required repository scope, they must fetch the missing evidence. The scheduled and manually dispatchable `.github/workflows/activity.yml` workflow is the only cache publisher. When dashboard report resources are not installed, a focused activity installation publishes only `deployed-workflows.json`.
 
-Immediately after restoring the cache, the activity refresh removes any `agent` directories left in cached log run folders, then runs `gh aw logs --json --audit --cached-json <snapshot>` once for the compiled workflows checked out in the control repository. gh-aw reads and refreshes that same cached JSON snapshot, avoiding repeated downloads for runs already collected. It requests only usage, detection, evaluation, experiment, firewall, GitHub API telemetry, grader, and MCP artifacts; heavy agent artifacts are excluded. The downloader also retrieves bounded Actions job metadata for uncached runs so performance views can bind job timing and runner dimensions. It retains the raw JSON, collection state, downloaded artifacts, and per-run `audit.json` payloads under `gh-aw-logs*`. The indexer is then a local-only transformer: it combines checked-out workflow metadata with that snapshot and performs no direct GitHub API operations. AI Credit, security, agent-smell, and operational-value collectors consume the same snapshot without starting additional gh-aw history scans or audits.
+After restoring the cache, the activity refresh runs `gh aw logs --audit --cached-json <snapshot>` once for the compiled workflows checked out in the control repository. gh-aw reads and rewrites that cached JSON snapshot, avoiding repeated downloads for runs already collected. It requests only usage, detection, evaluation, experiment, firewall, GitHub API telemetry, grader, MCP, and agent artifacts. Downloaded run folders remain temporary for same-run collectors; only the refreshed JSON snapshot is retained in the activity cache. The downloader also retrieves bounded Actions job metadata for uncached runs so performance views can bind job timing and runner dimensions. The indexer is then a local-only transformer: it combines checked-out workflow metadata with that snapshot and performs no direct GitHub API operations. AI Credit, security, agent-smell, and operational-value collectors consume the same snapshot without starting additional gh-aw history scans or audits.
 
 Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-managed cache entries, including entries that use legacy CAO cache keys.
 

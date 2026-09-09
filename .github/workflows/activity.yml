@@ -120,7 +120,7 @@ jobs:
           CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
           CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
           REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
-          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-activity/gh-aw-logs
+          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.json
           REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
           REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json

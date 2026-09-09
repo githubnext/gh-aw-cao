@@ -38,7 +38,7 @@ function shellQuote(argument) {
 function runGhAw(targets, outputDirectory, cachedJsonPath, windowDays, runLimit, execute = spawn) {
   return new Promise((resolve, reject) => {
     const args = [
-      "aw", "logs", "--json", "--audit",
+      "aw", "logs", "--audit",
       "--output", outputDirectory, "--summary-file", "", "--cached-json", cachedJsonPath,
       "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
@@ -48,22 +48,12 @@ function runGhAw(targets, outputDirectory, cachedJsonPath, windowDays, runLimit,
     ];
     log.info`Calling command: ${["gh", ...args].map(shellQuote).join(" ")}`;
     const child = execute("gh", args, { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
-    const stdout = [];
     const stderr = [];
-    let outputBytes = 0;
-    child.stdout.on("data", (chunk) => {
-      outputBytes += chunk.length;
-      if (outputBytes > 50 * 1024 * 1024) child.kill();
-      else stdout.push(chunk);
-    });
+    child.stdout.resume();
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on("error", reject);
     child.on("close", (code, signal) => {
-      const output = Buffer.concat(stdout).toString("utf8");
-      if (code === 0 && !signal) resolve({
-        output,
-        stderr: Buffer.concat(stderr).toString("utf8").trim(),
-      });
+      if (code === 0 && !signal) resolve(Buffer.concat(stderr).toString("utf8").trim());
       else reject(new Error(
         Buffer.concat(stderr).toString("utf8").trim()
           || `gh aw logs exited with ${signal || code}`,
@@ -303,9 +293,9 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       .map((entry) => `${repository}/.github/workflows/${entry.name}`)
       .sort();
     const workflowLabel = targets.length === 1 ? "workflow" : "workflows";
-    const { output: raw, stderr } = await runGhAw(targets, outputDirectory, logsPath, windowDays, runLimit, execute);
+    const stderr = await runGhAw(targets, outputDirectory, logsPath, windowDays, runLimit, execute);
     if (stderr) log.info`${stderr}`;
-    const snapshot = JSON.parse(raw);
+    const snapshot = JSON.parse(await readFile(logsPath, "utf8"));
     if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");
     const reusedJobRuns = reuseCachedJobs(snapshot.runs, cachedRuns, repository);
     const jobDetails = await collectJobDetails(snapshot.runs, repository, execute);
