@@ -3,6 +3,7 @@
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
+      import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
 
@@ -65,6 +66,8 @@
       let renderedSourcesPrepared = false;
       /** @type {((pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedPageSourceLoader;
+      /** @type {(() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
+      let renderedHorizonSourceLoader;
       const previewMode = new URLSearchParams(window.location.search).get("local-preview");
       const localViewer = previewMode
         ? await fetch("./viewer.json")
@@ -159,12 +162,21 @@
        * @param {'ready' | 'loading' | 'cached' | 'stale'} [state]
        * @param {boolean} [prepared]
        * @param {(pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
+       * @param {() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadHorizonSources]
        */
-      const renderSources = (sources, state = "ready", prepared = false, loadPageSources) => {
+      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources) => {
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
-        const dashboard = renderDashboard({ document: dashboardDocument, sources, viewer: localViewer, prepared, loadPageSources });
+        renderedHorizonSourceLoader = loadHorizonSources;
+        const dashboard = renderDashboard({
+          document: dashboardDocument,
+          sources,
+          viewer: localViewer,
+          prepared,
+          loadPageSources,
+          loadHorizonSources,
+        });
         if (state === "loading") {
           dashboard.classList.add("dashboard-loading");
           dashboard.setAttribute("aria-busy", "true");
@@ -211,7 +223,7 @@
             languageVersion: schema["language-version"],
             dashboard: schema.dashboard,
           };
-          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader));
+          updateWithViewTransition(document, () => renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader));
           if (traceId && dashboardSocket?.readyState === WebSocket.OPEN) {
             dashboardSocket.send(JSON.stringify({
               type: "browser.trace",
@@ -230,7 +242,7 @@
           let recoveryErrorLog = "";
           dashboardDocument = previousDashboardDocument;
           try {
-            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader);
+            renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader);
             recovered = true;
           } catch (recoveryError) {
             recoveryErrorLog = recoveryError instanceof Error && recoveryError.stack
@@ -919,6 +931,10 @@
           };
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
+          const loadHorizonSources = () => loadCanonicalDashboardPage(
+            DASHBOARD_HORIZON_COUNT_SOURCES,
+            dashboardContext,
+          );
           /**
            * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
            */
@@ -939,7 +955,7 @@
 
           if (cachedSources) {
             const displayedSources = cachedSources;
-            renderSources(displayedSources, "cached", true, loadPageSources);
+            renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
             loadingProgress.complete();
             cancelCommand.complete();
             const refresh = loadInitialSources(
@@ -953,14 +969,14 @@
             void refresh.then(
               (sources) => updateWithViewTransition(
                 document,
-                () => renderSources(sources, "ready", true, loadPageSources),
+                () => renderSources(sources, "ready", true, loadPageSources, loadHorizonSources),
               ),
               (error) => {
                 const message = error instanceof Error ? error.message : String(error);
                 console.error(`Unable to refresh live dashboard data: ${message}`);
                 updateWithViewTransition(
                   document,
-                  () => renderSources(displayedSources, "stale", true, loadPageSources),
+                  () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources),
                 );
               },
             );
@@ -977,6 +993,7 @@
               "ready",
               true,
               loadPageSources,
+              loadHorizonSources,
             );
           }
         } catch (error) {

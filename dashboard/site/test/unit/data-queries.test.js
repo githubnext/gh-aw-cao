@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   DASHBOARD_QUERY_LIMITS,
@@ -64,6 +64,24 @@ const usage = {
 const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('counts database entities through the declared horizon queries', () => {
+    const sources = {
+      workflows,
+      runs: { source: 'runs', rows: [{ run: '1' }, { run: '2' }], metadata: metadata('runs') },
+      events: { source: 'events', rows: [{ event: 'a' }, { event: 'b' }, { event: 'c' }], metadata: metadata('events') }
+    };
+
+    const result = executeDashboardQueries(
+      dashboardQueries,
+      sources,
+      ['database-workflow-count', 'database-run-count', 'database-event-count']
+    );
+
+    expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
+    expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
+    expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);
+  });
+
   it('continues query results without exposing cursors in query definitions', () => {
     const sources = {
       runs: {
@@ -193,6 +211,70 @@ describe('declarative dashboard queries', () => {
     expect(result.metadata.availability).toBe('available');
   });
 
+  it('times each query execution pipeline stage with console markers', () => {
+    const start = vi.spyOn(console, 'time').mockImplementation(() => {});
+    const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
+
+    try {
+      executeDashboardQuery({
+        name: 'timed-inventory',
+        from: 'workflows',
+        joins: [{
+          source: 'usage',
+          type: 'left',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'aic' }]
+        }],
+        filter: { predicates: [{ field: 'organization', equals: 'githubnext' }] },
+        compute: [{ as: 'observed-aic', function: 'coalesce', args: [{ field: 'aic' }, { value: 0 }] }],
+        aggregate: { by: ['repository'], values: [{ field: 'observed-aic', as: 'aic', reducer: 'sum' }] },
+        select: [{ field: 'repository' }, { field: 'aic' }],
+        'order-by': [{ field: 'aic', direction: 'desc' }],
+        limit: 1
+      }, { workflows, usage: { ...usage, rows: [usage.rows[0]] } });
+
+      const labels = [
+        'from',
+        'join:usage',
+        'filter',
+        'compute',
+        'aggregate',
+        'select',
+        'order-by',
+        'limit'
+      ].map((stage) => `[dashboard-query:timed-inventory] ${stage}`);
+      expect(start.mock.calls.map(([label]) => label)).toEqual(labels);
+      expect(end.mock.calls.map(([label]) => label)).toEqual(labels);
+    } finally {
+      start.mockRestore();
+      end.mockRestore();
+    }
+  });
+
+  it('ends a query stage timer when execution fails', () => {
+    const start = vi.spyOn(console, 'time').mockImplementation(() => {});
+    const end = vi.spyOn(console, 'timeEnd').mockImplementation(() => {});
+
+    try {
+      const result = executeDashboardQuery({
+        name: 'failed-timer',
+        from: 'workflows',
+        joins: [{
+          source: 'usage',
+          on: [{ left: 'workflow', right: 'workflow' }],
+          fields: [{ field: 'aic', as: 'aic' }]
+        }]
+      }, { workflows, usage });
+
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(start).toHaveBeenCalledWith('[dashboard-query:failed-timer] join:usage');
+      expect(end).toHaveBeenCalledWith('[dashboard-query:failed-timer] join:usage');
+    } finally {
+      start.mockRestore();
+      end.mockRestore();
+    }
+  });
+
   it('aggregates, joins, and computes derived fields across sources', () => {
     const derived = executeDashboardQueries(
       [
@@ -300,6 +382,75 @@ describe('declarative dashboard queries', () => {
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
+    });
+  });
+
+  it('groups the Safe Outputs view by declared output type', () => {
+    const outcomes = {
+      source: 'outcomes',
+      rows: [
+        { 'safe-output': 'issue-1', 'safe-output-kind': 'create-issue' },
+        { 'safe-output': 'issue-2', 'safe-output-kind': 'create-issue' },
+        { 'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request' }
+      ],
+      metadata: metadata('outcomes')
+    };
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { outcomes },
+      ['safe-outputs-by-type']
+    );
+
+    expect(Object.keys(derived)).toEqual(['safe-outputs-by-type']);
+    expect(derived['safe-outputs-by-type'].rows).toEqual([
+      { 'safe-output-kind': 'create-issue', 'safe-output-count': 2 },
+      { 'safe-output-kind': 'create-pull-request', 'safe-output-count': 1 }
+    ]);
+  });
+
+  it('projects MCP activity entirely from declarative event queries', () => {
+      const events = {
+        source: 'events',
+        rows: [
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+            'event-type': 'tool.call', 'event-summary': 'github/search_issues',
+            'event-timestamp': '2026-09-01T00:00:00Z', 'correlation-id': 'call-1'
+          },
+          { 'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': 'call-1' },
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+            'event-type': 'tool.call', 'event-summary': 'github/create_issue',
+            'event-timestamp': '2026-09-02T00:00:00Z', 'correlation-id': 'call-2'
+          },
+          { 'event-type': 'tool.error', 'event-status': 'failure', 'correlation-id': 'call-2' }
+        ],
+        metadata: metadata('events')
+      };
+      const runs = {
+        source: 'runs',
+        rows: [
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'run-link': { href: 'run-1' } },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, 'run-link': { href: 'run-2' } }
+        ],
+        metadata: metadata('runs')
+      };
+
+      const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['mcp-tool-activity']);
+
+      expect(Object.keys(derived)).toEqual(['mcp-tool-activity']);
+      expect(derived['mcp-tool-activity']).toMatchObject({
+        rows: [
+          {
+            'mcp-tool': 'github/create_issue', 'mcp-status': 'failure',
+            repository: 'gh-aw-cao', run: '2', 'run-link': { href: 'run-2' }
+          },
+          {
+            'mcp-tool': 'github/search_issues', 'mcp-status': 'success',
+            repository: 'gh-aw-cao', run: '1', 'run-link': { href: 'run-1' }
+          }
+        ],
+        metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
     });
   });
 

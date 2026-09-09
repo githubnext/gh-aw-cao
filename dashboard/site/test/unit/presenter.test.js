@@ -1423,7 +1423,12 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('gpt-5.4');
   });
 
-  it('applies the JSON horizon against one evaluated time while retaining timeless rows', () => {
+  it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
+    const loadHorizonSources = vi.fn().mockResolvedValue({
+      'database-workflow-count': { rows: [{ workflows: 4 }] },
+      'database-run-count': { rows: [{ runs: 12 }] },
+      'database-event-count': { rows: [{ events: 89 }] }
+    });
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -1473,7 +1478,8 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      },
+      loadHorizonSources
     });
 
     const table = rendered.querySelector('.custom-table');
@@ -1487,6 +1493,19 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
+    expect(loadHorizonSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent).toBe('Database counts load on hover');
+
+    rendered.querySelector('.horizon-summary')?.dispatchEvent(new Event('pointerenter'));
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
+        .toBe('4 workflows · 12 runs · 89 events');
+    });
+    expect(loadHorizonSources).toHaveBeenCalledOnce();
+
+    rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(loadHorizonSources).toHaveBeenCalledOnce();
   });
 
   it('renders Security assurance records as one full-view lazy table', async () => {
@@ -2331,7 +2350,8 @@ describe('presenter built-in and custom pages', () => {
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
-    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source)).toEqual(['runs']);
+    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
+      .toEqual(['runs', 'runs-table']);
 
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
@@ -2395,7 +2415,7 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({
       document,
-      sources: {
+      sources: applyDashboardQueries({
         runs: {
           source: 'runs',
           rows: [
@@ -2441,11 +2461,11 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      }, ['runs-table'])
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
-    expect(headings).toEqual(['Runs']);
+    expect(headings).toEqual(['Run health trend', 'Runs']);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });

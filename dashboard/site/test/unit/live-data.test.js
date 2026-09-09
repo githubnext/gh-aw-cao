@@ -19,9 +19,10 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js"');
+    expect(preview).toContain('loadCanonicalDashboardPage(\n            DASHBOARD_HORIZON_COUNT_SOURCES,');
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
-    expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources)');
-    expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources)');
+    expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
+    expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources)');
     expect(preview).toContain("Showing cached data because the latest dashboard data could not be loaded.");
     expect(preview).toContain("void refresh.then(");
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
@@ -33,7 +34,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');
-    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)');
+    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader)');
     expect(preview).toContain('event: "preview.rendered"');
     expect(preview).toContain('get("local-preview")');
     expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/);
