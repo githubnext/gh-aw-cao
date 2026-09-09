@@ -3107,6 +3107,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
 
   assert.match(workflow, /pull_request:[\s\S]*?dashboard\/\*\*/);
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
+  assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);
   assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
   assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
@@ -3129,6 +3130,11 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /mobile-dashboard\.png/);
   assert.match(mobileTest, /minimumTargetSize/);
   assert.match(mobileTest, /horizontal page scrolling/);
+  const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
+  assert.match(deployedDataTest, /ingestDashboardSources\(indexedDB, sources\)/);
+  for (const source of ["workflows", "runs", "events"]) {
+    assert.match(deployedDataTest, new RegExp(`readActiveCollection\\(indexedDB, "${source}"\\)`));
+  }
   assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
 });
