@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { formatNumber, formatPercent } from '../view-formatters.js';
-import { pluralSuffix, titleCase } from './count-formatters.js';
+import { formatAic, pluralSuffix, titleCase } from './count-formatters.js';
 import { classifyUtilizationRatio, isFailureConclusion } from './run-classification.js';
 import { completenessCaveat, coverageWindowHours, formatMediumUtcDate, formatMediumUtcDateTime, renderEmptyMessage, renderEmptyTableRow, renderIdentityLink, renderLegendSwatch, renderPanelHeader, renderTableHeadRow } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
@@ -743,14 +743,6 @@ function scopedEntityKey(row, field) {
  */
 function isNonNegativeNumber(value) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
-}
-
-/**
- * @param {number} value
- * @returns {string}
- */
-function formatAic(value) {
-  return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value);
 }
 
 /**
