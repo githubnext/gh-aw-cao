@@ -44,7 +44,7 @@ $RUNNER_TEMP/cao-activity/
 └── operational-values.json
 ```
 
-Snapshots use the immutable key `cao-activity-${github.run_id}-${github.run_attempt}` and the restore prefix `cao-activity-`. Dispatching consumers wait for the exact activity run and reconstruct its immutable key from the returned run ID and attempt. Cache scope and eviction follow [GitHub Actions cache restrictions](https://docs.github.com/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache). The cache is an optimization, not durable historical authority.
+Snapshots use the immutable key `cao-activity-v2-${github.run_id}-${github.run_attempt}` and the restore prefix `cao-activity-v2-`. Dispatching consumers wait for the exact activity run and reconstruct its immutable key from the returned run ID and attempt. Cache scope and eviction follow [GitHub Actions cache restrictions](https://docs.github.com/actions/using-workflows/caching-dependencies-to-speed-up-workflows#restrictions-for-accessing-a-cache). The cache is an optimization, not durable historical authority.
 
 GitHub-backed collection operations record quota observations in `cao-gh.jsonl`; the `gh aw logs` call also downloads gh-aw's GitHub API telemetry artifact. Ledger entries contain a stable operation ID, a non-secret credential alias or role and class (`app`, `builtin`, or `unknown`), current `gh api rate_limit` resources, operation outcome, and aggregate activity-cache hydration metadata. Cache file names and per-file metadata are never collected. Credential values are never recorded. Reporting keeps quota observations separate from collector/cache health and uploads this ledger as the 30-day `cao-gh` artifact.
 

@@ -2154,7 +2154,9 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.match(source, /\n\s+agent:\n\s+pre-steps:/);
   assert.equal((source.match(/actions\/cache\/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9/g) || []).length, 2);
   assert.equal((source.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity/g) || []).length, 2);
-  assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-/g) || []).length, 2);
+  assert.equal((source.match(/key: cao-activity-v2-lookup-/g) || []).length, 2);
+  assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-v2-/g) || []).length, 2);
+  assert.doesNotMatch(source, /cao-activity-(?!v2-)/);
   assert.doesNotMatch(source, /actions\/cache\/save@/);
 
   for (const name of [
@@ -2913,8 +2915,10 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
-  assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
-  assert.match(buildWorkflow, /key: \$\{\{ format\('cao-activity-\{0\}-\{1\}', needs\.activity\.outputs\.run-id, needs\.activity\.outputs\.run-attempt\) \}\}/);
+  assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v2-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
+  assert.match(buildWorkflow, /key: \$\{\{ format\('cao-activity-v2-\{0\}-\{1\}', needs\.activity\.outputs\.run-id, needs\.activity\.outputs\.run-attempt\) \}\}/);
+  assert.doesNotMatch(activityWorkflow, /cao-activity-(?!v2-)/);
+  assert.doesNotMatch(buildWorkflow, /cao-activity-(?!v2-)/);
   assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?Refresh authoritative control policy[\s\S]*?control-settings\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?Assemble Dashboard Language site/);
   assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
@@ -3050,7 +3054,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /await runner\.main\(\{ core, github, context, exec, io, getOctokit \}\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Run activity workflow[\s\S]*?List activity cache files/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
-  assert.match(workflow, /cao-activity-\$\{\{ github\.run_id \}\}-/);
+  assert.match(workflow, /cao-activity-v2-\$\{\{ github\.run_id \}\}-/);
   assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
   assert.match(readme, /schemaVersion: 1/);
   assert.match(readme, /Consumers must use the top-level completeness fields/);
