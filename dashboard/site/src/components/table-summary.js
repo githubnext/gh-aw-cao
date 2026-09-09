@@ -7,9 +7,9 @@ import { effect, state } from '../reactive.js';
 import { renderHistogramBins } from './histogram.js';
 import { formatCount, formatCountNoun } from './count-formatters.js';
 import { renderDefinitionListRows } from './view-chrome.js';
-import { formatMediumUtcDateTime, renderTableSummaryEmpty } from './ui-primitives.js';
+import { formatMediumUtcDateTime, renderLegendList, renderTableSummaryEmpty } from './ui-primitives.js';
 import { formatClockDuration, formatPercent } from '../view-formatters.js';
-import { renderChartWidget, renderPieLegend } from './chart-elements.js';
+import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
 
 /**
  * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string }} RenderableTableColumnSummary
@@ -92,17 +92,18 @@ function renderColumnSummary(column) {
   if (column.kind === 'none') return null;
   if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
   if (column.kind === 'boolean') {
+    const observedCount = column.count - column.missingCount;
+    if (observedCount === 0) return null;
     /** @type {Array<[string, number]>} */
     const entries = [
-      ['true', column.trueCount],
-      ['false', column.count - column.trueCount - column.missingCount],
-      ['missing', column.missingCount]
+      ['yes', column.trueCount],
+      ['no', observedCount - column.trueCount]
     ];
     return h(
       'div',
       { className: 'table-summary-boolean' },
-      renderChartWidget('pie', [], [], { entries, total: column.count }, 'Values'),
-      renderPieLegend(entries, column.count)
+      renderChartWidget('pie', [], [], { entries, total: observedCount }, 'Values'),
+      renderBooleanLegend(entries, observedCount)
     );
   }
   if (column.kind === 'quantitative') {
@@ -115,6 +116,25 @@ function renderColumnSummary(column) {
     return renderCountSummary(column.count);
   }
   return renderCategoricalSummary(column.values);
+}
+
+/**
+ * @param {Array<[string, number]>} entries
+ * @param {number} total
+ * @returns {HTMLElement}
+ */
+function renderBooleanLegend(entries, total) {
+  return renderLegendList(
+    'chart-legend chart-legend-pie',
+    entries,
+    ([label], index) => chartSeriesClassName(label, index),
+    ([label, value]) => [
+      h('span', { 'aria-label': label }, label === 'yes' ? '✓' : '×'),
+      h('strong', null, formatCount(value)),
+      h('small', null, formatPercent(value / total))
+    ],
+    { 'data-chart-legend': 'visual' }
+  );
 }
 
 /**

@@ -76,7 +76,7 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.textContent).toBe('No timestamps');
   });
 
-  it('auto-detects boolean values and summarizes them with a pie chart and legend', () => {
+  it('auto-detects boolean values and summarizes observed values with a pie chart and compact legend', () => {
     const rendered = renderSummaries([{
       label: 'Ready',
       type: 'nominal',
@@ -84,12 +84,12 @@ describe('renderTableSummaryRow', () => {
     }]);
 
     expect(rendered.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: true 2, false 1, missing 1');
+    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: yes 2, no 1');
     expect([...rendered.querySelectorAll('.chart-legend li')].map((item) => item.textContent)).toEqual([
-      'true250.0%',
-      'false125.0%',
-      'missing125.0%'
+      '✓267%',
+      '×133%'
     ]);
+    expect([...rendered.querySelectorAll('.chart-legend li span')].map((item) => item.getAttribute('aria-label'))).toEqual(['yes', 'no']);
   });
 
   it('treats zero and one values as booleans', () => {
@@ -99,22 +99,22 @@ describe('renderTableSummaryRow', () => {
       values: [1, 0, 1, 1]
     }]);
 
-    expect(rendered.querySelector('[data-chart-category="true"]')).not.toBeNull();
-    expect(rendered.querySelector('[data-chart-category="false"]')).not.toBeNull();
-    expect(rendered.textContent).toContain('true375.0%');
-    expect(rendered.textContent).toContain('false125.0%');
-    expect(rendered.textContent).toContain('missing00.0%');
+    expect(rendered.querySelector('[data-chart-category="yes"]')).not.toBeNull();
+    expect(rendered.querySelector('[data-chart-category="no"]')).not.toBeNull();
+    expect(rendered.textContent).toContain('✓375%');
+    expect(rendered.textContent).toContain('×125%');
+    expect(rendered.textContent).not.toContain('missing');
   });
 
-  it('renders missing as the only category when a typed boolean column has no values', () => {
+  it('leaves the summary empty when a typed boolean column has no observed values', () => {
     const rendered = renderSummaries([{
       label: 'Ready',
       type: 'boolean',
       values: [null, undefined, '']
     }]);
 
-    expect(rendered.querySelector('[data-chart-category="missing"]')).not.toBeNull();
-    expect(rendered.textContent).toContain('missing3100.0%');
+    expect(rendered.querySelector('[data-chart-widget="pie"]')).toBeNull();
+    expect(rendered.querySelector('.table-summary-cell')?.textContent).toBe('');
   });
 
   it('leaves the summary empty when the column type is unknown', () => {
