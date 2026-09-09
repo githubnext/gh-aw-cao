@@ -22,9 +22,6 @@ const POLICY_PATH = ".github/workflows/cao.json";
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const SHA_PATTERN = /^[0-9a-fA-F]{40,64}$/;
 const MINIMUM_GITHUB_API_REQUESTS = 100;
-const ORCHESTRATOR_FREE_DISK_MEGABYTES = 2048;
-const WORKER_FREE_DISK_MEGABYTES = 6144;
-const GITHUB_RUNNER_SPECIFICATION_DOCS = "https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners";
 const GITHUB_API_CACHE_DURATION = "60s";
 const GITHUB_RATE_LIMIT_DOCS = "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api";
 const GITHUB_REST_BEST_PRACTICES = "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api";
@@ -42,7 +39,6 @@ const ADMISSION_CHECKS = [
   ["Mode input", "Any supplied `safe_output_mode` does not exceed the checked-in mode ceiling."],
   ["Run limits", "Any supplied `max_repos` and `rollout_percent` do not exceed checked-in limits."],
   ["GitHub API capacity", "The exact credential selected for control precompute has enough primary REST API capacity before activation."],
-  ["Runner disk capacity", "The runner reports enough free disk space for checkouts, tooling, and temporary files before activation."],
 ];
 
 class ControlError extends Error {}
@@ -169,31 +165,6 @@ GitHub says not to retry primary-limit failures until \`x-ratelimit-reset\`; con
 `;
 }
 
-function diskGuidance(capacity) {
-  if (!capacity || capacity.status === "available") return "";
-  if (capacity.status === "unavailable") {
-    return `
-> [!CAUTION]
-> Runner free disk space could not be determined for \`${capacity.path}\`. Activation stopped before repository discovery.
-
-### What to do now
-
-1. Confirm the runner exposes the workspace and temporary directories used by this job, then rerun on a healthy runner.
-2. Compare the runner image against the [GitHub-hosted runner specifications](${GITHUB_RUNNER_SPECIFICATION_DOCS}); a self-hosted runner must provide at least the same free disk space.
-`;
-  }
-  return `
-> [!CAUTION]
-> Runner free disk space is too low for this run: ${capacity.available} MB free on \`${capacity.path}\`; at least ${capacity.required} MB are required.
-
-### What to do now
-
-1. Free disk space on the runner, or move the operation to a larger runner. See the [GitHub-hosted runner specifications](${GITHUB_RUNNER_SPECIFICATION_DOCS}).
-2. On a self-hosted runner, remove stale workspaces, caches, and container images left by earlier or concurrent jobs before rerunning.
-3. Narrow the run so fewer repositories are checked out at once by lowering \`max_repos\` or the checked-in \`max-repositories\`.
-`;
-}
-
 function failedAdmissionCheckIndex(reason) {
   if (!reason) return -1;
   if (reason.startsWith("cannot read")) return 0; // Runtime revision
@@ -210,7 +181,6 @@ function failedAdmissionCheckIndex(reason) {
   if (reason === "safe_output_mode exceeds checked-in policy" || reason === "safe_output_mode must be review or live") return 7; // Mode input
   if (reason.startsWith("max_repositories") || reason.startsWith("rollout_percent")) return 8; // Run limits
   if (reason === "github-api-capacity-insufficient" || reason === "github-api-capacity-unavailable") return 9; // GitHub API capacity
-  if (reason === "runner-disk-capacity-insufficient" || reason === "runner-disk-capacity-unavailable") return 10; // Runner disk capacity
   return -1;
 }
 
@@ -222,18 +192,14 @@ function admissionCheckHeading(title, index, authorized, failedIndex) {
   return title;
 }
 
-function writeAdmissionSummary({ authorized, packageName, role, reason, apiCapacity, diskCapacity }) {
+function writeAdmissionSummary({ authorized, packageName, role, reason, apiCapacity }) {
   const summaryPath = environment("GITHUB_STEP_SUMMARY");
   if (!summaryPath) return;
   const status = apiCapacity?.status === "limited"
     ? `Blocked package \`${packageName}\` as \`${role}\` before activation: insufficient GitHub REST API capacity.`
     : apiCapacity?.status === "unavailable"
       ? `Blocked package \`${packageName}\` as \`${role}\` before activation: GitHub REST API capacity is unavailable.`
-      : diskCapacity?.status === "limited"
-        ? `Blocked package \`${packageName}\` as \`${role}\` before activation: insufficient runner disk space.`
-        : diskCapacity?.status === "unavailable"
-          ? `Blocked package \`${packageName}\` as \`${role}\` before activation: runner disk space is unavailable.`
-          : authorized
+      : authorized
     ? `Authorized package \`${packageName}\` as \`${role}\`.`
     : `Skipped package \`${packageName}\` as \`${role}\`: ${reason}`;
   const failedIndex = authorized ? -1 : failedAdmissionCheckIndex(reason);
@@ -242,7 +208,7 @@ function writeAdmissionSummary({ authorized, packageName, role, reason, apiCapac
   )).join("\n");
   writeFileSync(
     summaryPath,
-    `<details>\n<summary><h3>Central Agentic Ops admission</h3></summary>\n\n${status}\n${capacityGuidance(apiCapacity)}${diskGuidance(diskCapacity)}\n${checks}\n\n</details>\n`,
+    `<details>\n<summary><h3>Central Agentic Ops admission</h3></summary>\n\n${status}\n${capacityGuidance(apiCapacity)}\n${checks}\n\n</details>\n`,
     { flag: "a" },
   );
 }
