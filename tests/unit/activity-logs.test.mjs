@@ -76,7 +76,7 @@ if (args[0] === "aw") {
     assert.deepEqual(args.slice(0, 4), ["aw", "logs", "--json", "--audit"]);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
-      "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
+      "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     assert.deepEqual(args.slice(args.indexOf("--cached-json"), args.indexOf("--cached-json") + 2), [
@@ -109,7 +109,7 @@ if (args[0] === "aw") {
       "Calling command: gh aw logs --json --audit "
       + `--output ${item.outputPath} --summary-file '' `
       + `--cached-json ${item.logsPath} `
-      + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent ",
+      + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp ",
     ));
     assert.ok(stdout.includes("githubnext/gh-aw-cao/.github/workflows/sample.lock.yml"));
     assert.match(stdout, /Fetched 1 run/);

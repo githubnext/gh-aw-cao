@@ -2951,7 +2951,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent"/);
+  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp"/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
   assert.match(activityLogs, /"--start-date", `-\$\{windowDays\}d`, "--cache-before", `-\$\{windowDays\}d`/);
   assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "15"/);
@@ -3037,7 +3037,9 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /pull-requests: read/);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 4);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 3);
+  assert.match(workflow, /Install gh-aw CLI[\s\S]*?GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(workflow, /CAO_GITHUB_CREDENTIAL_ID: \$\{\{ steps\.activity-app-token\.outputs\.app-slug \|\| 'github-actions' \}\}/);
   assert.match(workflow, /name: cao-gh[\s\S]*?cao-gh\.jsonl/);
   assert.match(workflow, /DASHBOARD_COLLECTION=false/);
   assert.match(workflow, /DASHBOARD_COLLECTION=true/);

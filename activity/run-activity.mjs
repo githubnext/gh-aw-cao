@@ -19,15 +19,19 @@ async function removeCachedAgentDirectories(directory) {
     throw error;
   }
   for (const entry of entries) {
-    if (!entry.isDirectory() || !/^run-\d+$/.test(entry.name)) continue;
-    const agentDirectory = path.join(directory, entry.name, "agent");
-    const stats = await lstat(agentDirectory).catch((error) => {
-      if (error.code === "ENOENT") return undefined;
-      throw error;
-    });
-    if (!stats?.isDirectory()) continue;
-    await rm(agentDirectory, { recursive: true, force: true });
-    log.info`Removed cached agent logs from ${entry.name}`;
+    if (!entry.isDirectory()) continue;
+    const child = path.join(directory, entry.name);
+    if (entry.name === "agent" && /^run-\d+$/.test(path.basename(directory))) {
+      const stats = await lstat(child).catch((error) => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (!stats?.isDirectory()) continue;
+      await rm(child, { recursive: true, force: true });
+      log.info`Removed cached agent logs from ${path.basename(directory)}`;
+      continue;
+    }
+    await removeCachedAgentDirectories(child);
   }
 }
 
@@ -61,11 +65,6 @@ export async function runActivity(actions = {}) {
     importModule(indexerModulePath),
   ]);
 
-  await removeCachedAgentDirectories(
-    path.resolve(process.env.REPORT_AIC_CACHE || "_activity/gh-aw-logs"),
-  );
-  const collectionOutcome = await logs.main(actions);
-
   // Preparing telemetry history is required for later recording; let a
   // failure here abort the run, matching the original unprotected step.
   await telemetry.main(actions, [
@@ -73,8 +72,18 @@ export async function runActivity(actions = {}) {
     path.join(runnerTemp, "cao-activity", "cao-gh.jsonl"),
   ]);
 
-  // Recording telemetry is best-effort and must not fail the run, matching
-  // the original step's continue-on-error behavior.
+  // Recording telemetry is best-effort and must not fail the run.
+  try {
+    await telemetry.main(actions, ["before", COLLECT_GH_AW_LOGS_OPERATION]);
+  } catch (error) {
+    log.warning`Recording GitHub API telemetry for ${COLLECT_GH_AW_LOGS_OPERATION} failed: ${error instanceof Error ? error.message : error}`;
+  }
+
+  await removeCachedAgentDirectories(
+    path.resolve(process.env.REPORT_AIC_CACHE || "_activity/gh-aw-logs"),
+  );
+  const collectionOutcome = await logs.main(actions);
+
   try {
     await telemetry.main(actions, ["after", COLLECT_GH_AW_LOGS_OPERATION, collectionOutcome]);
   } catch (error) {

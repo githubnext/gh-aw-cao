@@ -91,10 +91,11 @@ test("runActivity skips dashboard-only steps when collection is disabled", async
   try {
     await runActivity({});
     const calls = await readCalls(item.callsPath);
-    assert.deepEqual(calls.map((call) => call.name), ["logs", "telemetry", "telemetry", "indexer"]);
-    assert.equal(calls[1].args[0], "prepare");
-    assert.equal(calls[2].args[0], "after");
-    assert.equal(calls[2].args[2], "success");
+    assert.deepEqual(calls.map((call) => call.name), ["telemetry", "telemetry", "logs", "telemetry", "indexer"]);
+    assert.equal(calls[0].args[0], "prepare");
+    assert.equal(calls[1].args[0], "before");
+    assert.equal(calls[3].args[0], "after");
+    assert.equal(calls[3].args[2], "success");
   } finally {
     for (const key of Object.keys(process.env)) {
       if (!(key in originalEnv)) delete process.env[key];
@@ -107,9 +108,10 @@ test("runActivity removes cached agent directories before collecting logs", asyn
   const item = await fixture();
   const originalEnv = { ...process.env };
   const cachePath = path.join(item.root, "gh-aw-logs");
-  const agentPath = path.join(cachePath, "run-42", "agent");
-  const agentFilePath = path.join(cachePath, "run-43", "agent");
-  const retainedPath = path.join(cachePath, "run-42", "usage", "usage.json");
+  const workflowPath = path.join(cachePath, "repo-githubnext-gh-aw-cao", "workflow-sample");
+  const agentPath = path.join(workflowPath, "run-42", "agent");
+  const agentFilePath = path.join(workflowPath, "run-43", "agent");
+  const retainedPath = path.join(workflowPath, "run-42", "usage", "usage.json");
   const unrelatedPath = path.join(cachePath, "agent", "retained.json");
   await mkdir(agentPath, { recursive: true });
   await mkdir(path.dirname(agentFilePath), { recursive: true });
@@ -171,8 +173,9 @@ test("runActivity runs dashboard collection steps in order when enabled", async 
     await runActivity({});
     const calls = await readCalls(item.callsPath);
     assert.deepEqual(calls.map((call) => call.name), [
-      "logs",
       "telemetry",
+      "telemetry",
+      "logs",
       "telemetry",
       "control-settings",
       "inventory",
@@ -202,7 +205,7 @@ test("runActivity swallows telemetry recording failures without stopping the run
   try {
     await runActivity({});
     const calls = await readCalls(item.callsPath);
-    assert.deepEqual(calls.map((call) => call.name), ["logs", "telemetry", "telemetry", "indexer"]);
+    assert.deepEqual(calls.map((call) => call.name), ["telemetry", "telemetry", "logs", "telemetry", "indexer"]);
   } finally {
     for (const key of Object.keys(process.env)) {
       if (!(key in originalEnv)) delete process.env[key];
