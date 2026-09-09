@@ -385,6 +385,52 @@ describe('declarative dashboard queries', () => {
     });
   });
 
+  it('projects MCP activity entirely from declarative event queries', () => {
+      const events = {
+        source: 'events',
+        rows: [
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+            'event-type': 'tool.call', 'event-summary': 'github/search_issues',
+            'event-timestamp': '2026-09-01T00:00:00Z', 'correlation-id': 'call-1'
+          },
+          { 'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': 'call-1' },
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+            'event-type': 'tool.call', 'event-summary': 'github/create_issue',
+            'event-timestamp': '2026-09-02T00:00:00Z', 'correlation-id': 'call-2'
+          },
+          { 'event-type': 'tool.error', 'event-status': 'failure', 'correlation-id': 'call-2' }
+        ],
+        metadata: metadata('events')
+      };
+      const runs = {
+        source: 'runs',
+        rows: [
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1, 'run-link': { href: 'run-1' } },
+          { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1, 'run-link': { href: 'run-2' } }
+        ],
+        metadata: metadata('runs')
+      };
+
+      const derived = executeDashboardQueries(dashboardQueries, { events, runs }, ['mcp-tool-activity']);
+
+      expect(Object.keys(derived)).toEqual(['mcp-tool-activity']);
+      expect(derived['mcp-tool-activity']).toMatchObject({
+        rows: [
+          {
+            'mcp-tool': 'github/create_issue', 'mcp-status': 'failure',
+            repository: 'gh-aw-cao', run: '2', 'run-link': { href: 'run-2' }
+          },
+          {
+            'mcp-tool': 'github/search_issues', 'mcp-status': 'success',
+            repository: 'gh-aw-cao', run: '1', 'run-link': { href: 'run-1' }
+          }
+        ],
+        metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
+    });
+  });
+
   it('projects the event inspection view from its request-scoped dashboard query', () => {
       const events = {
         source: 'events',

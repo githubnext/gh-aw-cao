@@ -79,6 +79,20 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         },
         {
           organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `tool-call-${run}`,
+          'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
+          'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
+          'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `tool-result-${run}`,
+          'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
+          'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
+          'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
           'run-attempt': 2, session: `session-${run}`, event: `github-api-${run}`,
           'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'github-api',
           'event-type': 'github-api.response', 'event-summary': 'GET /rate_limit',
@@ -386,6 +400,40 @@ test('data worker returns the Models & agents query on initial and navigated req
         'observed-at': '2026-09-09T04:01:00Z'
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
+    });
+  }
+});
+
+test('data worker returns declarative MCP activity on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['mcp-tool-activity'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['mcp-tool-activity'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['mcp-tool-activity']);
+    expect(payload['mcp-tool-activity']).toMatchObject({
+      source: 'mcp-tool-activity',
+      rows: [{
+        'mcp-tool': 'github/search_issues',
+        'mcp-status': 'success',
+        repository: 'gh-aw-cao',
+        run: '12345'
+      }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
     });
   }
 });
