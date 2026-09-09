@@ -280,11 +280,50 @@ describe('renderTableRegion', () => {
     const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
     expect(rendered.hasAttribute('data-lazy-list')).toBe(true);
     expect(more.textContent).toBe('Load more rows');
-    expect(rows.filter((row) => !row.hidden)).toHaveLength(25);
+    expect(rows.filter((row) => row.parentElement)).toHaveLength(25);
 
     more.click();
-    expect(rows.filter((row) => !row.hidden)).toHaveLength(50);
+    expect(rows.filter((row) => row.parentElement)).toHaveLength(50);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 50 of 60 results');
+  });
+
+  it('unloads lazy-list prefix rows without moving the retained rows', () => {
+    const rows = Array.from({ length: 100 }, (_, index) => h(
+      'tr',
+      null,
+      h('td', null, String(index + 1))
+    ));
+    for (const row of rows) {
+      vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(
+        /** @type {DOMRect} */ ({ top: Number(row.textContent) * 20, height: 20 })
+      );
+    }
+    vi.mocked(rows[25].getBoundingClientRect)
+      .mockReturnValueOnce(/** @type {DOMRect} */ ({ top: 520, height: 20 }))
+      .mockReturnValueOnce(/** @type {DOMRect} */ ({ top: 500, height: 20 }));
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No repositories available.',
+      colSpan: 1,
+      headCells: ['Repository'],
+      bodyRows: rows,
+      filterLabel: 'Filter repositories',
+      lazyList: true
+    });
+    const scroll = /** @type {HTMLElement} */ (rendered.querySelector('.table-scroll'));
+    const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
+    scroll.scrollTop = 400;
+
+    more.click();
+    more.click();
+
+    const loadedRows = [...rendered.querySelectorAll('tbody > tr:not([data-lazy-list-spacer])')];
+    expect(loadedRows).toHaveLength(50);
+    expect(loadedRows[0]?.textContent).toBe('26');
+    expect(loadedRows.at(-1)?.textContent).toBe('75');
+    expect(rendered.querySelector('[data-lazy-list-spacer] td')?.style.height).toBe('500px');
+    expect(scroll.scrollTop).toBe(380);
+    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 75 of 100 results');
   });
 
   it('defers table summary computation to the data worker', async () => {

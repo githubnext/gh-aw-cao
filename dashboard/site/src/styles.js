@@ -1607,6 +1607,7 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter-result { flex: none; padding-bottom: 7px; color: var(--muted); font-size: .75rem; }
 .table-filter-more { min-height: 32px; margin: 10px 14px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .table-filter-more:hover { background: var(--neutral-muted); }
+.table-lazy-spacer td { padding: 0; border: 0; }
 table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: .875rem; }
 caption { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); color: var(--muted); text-align: left; font-weight: 600; font-size: .8125rem; }
 th, td { padding: 10px 14px; border-bottom: 1px solid var(--border-muted); text-align: left; font-variant-numeric: tabular-nums; }
