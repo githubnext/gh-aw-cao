@@ -6,6 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { activeGenerationMetadata } from './data/storage/indexeddb.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -16,6 +17,17 @@ import { deriveDashboardLinkSources } from './inferred-sources.js';
 
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
 let liveDashboard = null;
+
+async function loadActiveDashboard() {
+  if (liveDashboard) return liveDashboard;
+  const active = await activeGenerationMetadata(indexedDB);
+  if (!active) throw new Error('Canonical dashboard data has not been loaded.');
+  liveDashboard = {
+    logicalSources: {},
+    generation: active.generation
+  };
+  return liveDashboard;
+}
 
 /**
  * @param {unknown} sourceNames
@@ -44,18 +56,26 @@ function pageScopedSources(sources, requested) {
  * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  */
 async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}) {
-  if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
+  const dashboard = await loadActiveDashboard();
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
-    liveDashboard.logicalSources,
-    liveDashboard.generation,
+    dashboard.logicalSources,
+    dashboard.generation,
     required
   );
+  const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
+  if (!hasPublishedSources) {
+    return paginateDashboardSources(
+      deriveDashboardLinkSources(pageScopedSources(canonicalPayload, requested), context),
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
+      continuationRevision(context.queries, dashboard.generation)
+    );
+  }
   const derivedSources = deriveRuntimeSources(
     deriveRepositorySources(
       deriveOverviewSources(
-        deriveWorkflowSources({ ...liveDashboard.logicalSources, ...canonicalPayload })
+        deriveWorkflowSources({ ...dashboard.logicalSources, ...canonicalPayload })
       )
     )
   );
@@ -69,7 +89,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-    continuationRevision(context.queries, liveDashboard.generation)
+    continuationRevision(context.queries, dashboard.generation)
   );
 }
 
@@ -94,7 +114,7 @@ function dashboardContext(value) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -126,21 +146,25 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
+      const hadPublishedSources = Object.keys(liveDashboard?.logicalSources ?? {}).length > 0;
       const sources = await loadDashboardSources(fetch, sourceUrl.href);
-      const { generation } = await ingestDashboardSources(indexedDB, sources, {
+      const { generation, activated } = await ingestDashboardSources(indexedDB, sources, {
         storage: globalThis.navigator?.storage
       });
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         generation
       };
-      return queryLiveDashboard(
+      const projected = await queryLiveDashboard(
         requested,
         context,
         /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
         signal,
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
+      return request.reportActivation
+        ? { sources: projected, changed: activated || !hadPublishedSources }
+        : projected;
     })();
   }
   if (request?.operation === 'execute-dashboard-queries') {
