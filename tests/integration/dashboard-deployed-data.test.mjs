@@ -22,6 +22,20 @@ function runAttempt(row) {
   return Number.isInteger(attempt) && attempt > 0 ? attempt : 1;
 }
 
+function assertPublishedEventsStored(sourceEvents, databaseEvents, label, predicate) {
+  const published = sourceEvents.filter(predicate);
+  if (published.length === 0) return;
+  const storedById = new Map(databaseEvents.map((event) => [event.id, event]));
+  for (const event of published) {
+    const stored = storedById.get(String(event.event));
+    assert.deepEqual(
+      { id: stored?.id, source: stored?.source, type: stored?.type },
+      { id: String(event.event), source: event["event-source"], type: event["event-type"] },
+      `${label} event ${event.event} was not preserved`,
+    );
+  }
+}
+
 test("deployed dashboard sources populate canonical workflows, runs, and events", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
@@ -53,6 +67,32 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
     assert.deepEqual(sorted(workflows.map(({ id }) => id)), sorted(expectedWorkflows));
     assert.deepEqual(sorted(runs.map(({ id }) => id)), sorted(expectedRuns));
     assert.deepEqual(sorted(events.map(({ id }) => id)), sorted(expectedEvents));
+
+    assertPublishedEventsStored(
+      sources.events.rows,
+      events,
+      "firewall",
+      (event) => event["event-source"] === "firewall" || /^net_/.test(String(event["event-type"])),
+    );
+    assertPublishedEventsStored(
+      sources.events.rows,
+      events,
+      "tool",
+      (event) => /tool/.test(String(event["event-type"])),
+    );
+    assertPublishedEventsStored(
+      sources.events.rows,
+      events,
+      "GitHub API rate-limit",
+      (event) => {
+        const identity = [
+          event["event-source"],
+          event["event-type"],
+          event["event-summary"],
+        ].join(" ").toLowerCase();
+        return /github[-_ ]?api/.test(identity) && /rate[-_ ]?limit/.test(identity);
+      },
+    );
   } finally {
     await deleteCanonicalDatabase(indexedDB);
   }
