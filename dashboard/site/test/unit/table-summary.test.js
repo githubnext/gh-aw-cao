@@ -84,10 +84,11 @@ describe('renderTableSummaryRow', () => {
     }]);
 
     expect(rendered.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: true 2, false 1');
+    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: true 2, false 1, missing 1');
     expect([...rendered.querySelectorAll('.chart-legend li')].map((item) => item.textContent)).toEqual([
-      'true266.7%',
-      'false133.3%'
+      'true250.0%',
+      'false125.0%',
+      'missing125.0%'
     ]);
   });
 
@@ -102,6 +103,18 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.querySelector('[data-chart-category="false"]')).not.toBeNull();
     expect(rendered.textContent).toContain('true375.0%');
     expect(rendered.textContent).toContain('false125.0%');
+    expect(rendered.textContent).toContain('missing00.0%');
+  });
+
+  it('renders missing as the only category when a typed boolean column has no values', () => {
+    const rendered = renderSummaries([{
+      label: 'Ready',
+      type: 'boolean',
+      values: [null, undefined, '']
+    }]);
+
+    expect(rendered.querySelector('[data-chart-category="missing"]')).not.toBeNull();
+    expect(rendered.textContent).toContain('missing3100.0%');
   });
 
   it('leaves the summary empty when the column type is unknown', () => {

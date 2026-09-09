@@ -95,7 +95,8 @@ function renderColumnSummary(column) {
     /** @type {Array<[string, number]>} */
     const entries = [
       ['true', column.trueCount],
-      ['false', column.count - column.trueCount]
+      ['false', column.count - column.trueCount - column.missingCount],
+      ['missing', column.missingCount]
     ];
     return h(
       'div',
