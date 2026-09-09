@@ -70,6 +70,18 @@ export function text(value) {
 }
 
 /**
+ * Formats an AI Credit (AIC) amount for UI text, rounding to at most one
+ * fractional digit. Shared by the overview attention/health summaries and
+ * the packages utilization view, which both render measured and allowed AIC
+ * quantities inline in prose.
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatAic(value) {
+  return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value);
+}
+
+/**
  * Computes the fraction of usable observations out of usable + excluded,
  * returning `null` when there are no observations to divide.
  * @param {number} usable
