@@ -53,21 +53,22 @@ if (args[0] === "aw") {
       await writeFile(path.join(activityCache, "gh-aw-logs.json"), '{"runs":[]}\n');
     }
     const artifacts = path.join(runnerTemp, "cao-gh-aw-logs");
+    const exitCodePath = path.join(runnerTemp, "gh-aw-logs-exit-code");
     const cachedRunsPath = path.join(runnerTemp, "cached-runs.json");
-    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
-      cwd: path.resolve("."),
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
-        REPORT_ROOT: repository,
-        REPORT_GH_AW_LOGS: path.join(activityCache, "gh-aw-logs.json"),
-        REPORT_GH_AW_LOGS_STATE: path.join(activityCache, "gh-aw-logs-state.json"),
-        REPORT_AIC_CACHE: artifacts,
-        FAKE_RUN_ID: String(40 + runNumber),
-        CACHED_RUNS_PATH: cachedRunsPath,
-      },
-    });
+    const env = {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH}`,
+      GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+      REPORT_ROOT: repository,
+      REPORT_GH_AW_LOGS: path.join(activityCache, "gh-aw-logs.json"),
+      REPORT_GH_AW_LOGS_STATE: path.join(activityCache, "gh-aw-logs-state.json"),
+      REPORT_GH_AW_LOGS_EXIT_CODE: exitCodePath,
+      REPORT_AIC_CACHE: artifacts,
+      FAKE_RUN_ID: String(40 + runNumber),
+      CACHED_RUNS_PATH: cachedRunsPath,
+    };
+    await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { cwd: path.resolve("."), env });
+    await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { cwd: path.resolve("."), env });
     await rm(savedCache, { recursive: true, force: true });
     await cp(activityCache, savedCache, { recursive: true });
     return { activityCache, artifacts, cachedRunsPath };

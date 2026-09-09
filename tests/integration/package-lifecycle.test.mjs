@@ -31,6 +31,7 @@ const activityExpectedFiles = [
   ".github/aw/activity/admission-evidence.mjs",
   ".github/aw/activity/actions-context.mjs",
   ".github/aw/activity/actions-log.mjs",
+  ".github/aw/activity/collect-logs.sh",
   ".github/aw/activity/failure-evidence.mjs",
   ".github/aw/activity/github-telemetry.mjs",
   ".github/aw/activity/index.mjs",

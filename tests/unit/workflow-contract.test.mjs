@@ -2887,6 +2887,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   const deployWorkflow = readFileSync(join(root, "dashboard", "dashboard.yml"), "utf8");
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
   const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
+  const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
   const activityLogs = readFileSync(join(root, "activity", "logs.mjs"), "utf8");
   const activityRunner = readFileSync(join(root, "activity", "run-activity.mjs"), "utf8");
   const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
@@ -2956,18 +2957,21 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent"/);
+  assert.match(activityCollector, /--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
-  assert.match(activityLogs, /"--start-date", `-\$\{windowDays\}d`, "--cache-before", `-\$\{windowDays\}d`/);
-  assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "15"/);
-  assert.match(activityLogs, /"--max-github-api-rate-limit", "-2000", "--max-storage", "1200"/);
-  assert.match(activityLogs, /"--prune-older-runs"/);
-  assert.equal((activityLogs.match(/"aw", "logs"/g) || []).length, 1);
+  assert.match(activityCollector, /--start-date "-\$\{window_days\}d"/);
+  assert.match(activityCollector, /--cache-before "-\$\{window_days\}d"/);
+  assert.match(activityCollector, /--count "\$run_limit"/);
+  assert.match(activityCollector, /--max-github-api-rate-limit -2000/);
+  assert.match(activityCollector, /--max-storage 1200/);
+  assert.match(activityCollector, /--prune-older-runs/);
+  assert.equal((activityCollector.match(/gh aw logs/g) || []).length, 1);
+  assert.doesNotMatch(activityLogs, /gh aw logs --audit|runGhAw/);
   assert.doesNotMatch(aicUsage, /spawn|runGhAw|"aw", "logs"|--stdin|mapWithConcurrency|REPORT_AIC_CONCURRENCY/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
-  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 1);
+  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 2);
   assert.match(aicUsage, /Processing \$\{result\.runs\.length\} cached gh-aw log records/);
   assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/operational-values\.json/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -3025,6 +3029,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "admission-evidence.mjs", destination: ".github/aw/activity/admission-evidence.mjs" },
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
+    { source: "collect-logs.sh", destination: ".github/aw/activity/collect-logs.sh" },
     { source: "failure-evidence.mjs", destination: ".github/aw/activity/failure-evidence.mjs" },
     { source: "index.mjs", destination: ".github/aw/activity/index.mjs" },
     { source: "logs.mjs", destination: ".github/aw/activity/logs.mjs" },
@@ -3047,14 +3052,14 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /pull-requests: read/);
   assert.match(workflow, /Generate GitHub App token for activity[\s\S]*?GH_AW_GITHUB_READ_APP_ID[\s\S]*?GH_AW_GITHUB_READ_APP_PRIVATE_KEY/);
   assert.match(workflow, /actions\/create-github-app-token@[0-9a-f]{40}/);
-  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 4);
+  assert.equal((workflow.match(/steps\.activity-app-token\.outputs\.token \|\| github\.token/g) || []).length, 5);
   assert.match(workflow, /name: cao-gh[\s\S]*?cao-gh\.jsonl/);
   assert.match(workflow, /DASHBOARD_COLLECTION=false/);
   assert.match(workflow, /DASHBOARD_COLLECTION=true/);
   assert.equal((workflow.match(/uses: actions\/github-script@[0-9a-f]{40}/g) || []).length, 1);
   assert.doesNotMatch(workflow, /run:\s+node "\$(?:ACTIVITY_INDEXER|ACTIVITY_LOGS|GITHUB_TELEMETRY|ACTIVITY_RUNNER)"/);
   assert.match(workflow, /await runner\.main\(\{ core, github, context, exec, io, getOctokit \}\)/);
-  assert.match(workflow, /Restore activity cache[\s\S]*?Run activity workflow[\s\S]*?List activity cache files/);
+  assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Run activity workflow[\s\S]*?List activity cache files/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
   assert.match(workflow, /cao-activity-v2-\$\{\{ github\.run_id \}\}-/);
   for (const script of ["activity:local", "activity:local:node", "activity:run-workflow:local"]) {

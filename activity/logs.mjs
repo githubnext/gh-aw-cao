@@ -9,7 +9,7 @@ import { actionsLog as log } from "./actions-log.mjs";
 import { performanceJobRecord } from "./failure-evidence.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
-const DEFAULT_RUN_LIMIT = 100;
+const DEFAULT_RUN_LIMIT = 200;
 const ACTIONS_API_CONCURRENCY = 4;
 const ACTIONS_JOB_PAGE_LIMIT = 10;
 
@@ -27,39 +27,6 @@ async function writeOutcome(outcome) {
   if (process.env.GITHUB_OUTPUT) {
     await appendFile(process.env.GITHUB_OUTPUT, `collection-outcome=${outcome}\n`);
   }
-}
-
-function shellQuote(argument) {
-  if (argument === "") return "''";
-  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(argument)) return argument;
-  return `'${argument.replaceAll("'", "'\\''")}'`;
-}
-
-function runGhAw(targets, outputDirectory, cachedJsonPath, windowDays, runLimit, execute = spawn) {
-  return new Promise((resolve, reject) => {
-    const args = [
-      "aw", "logs", "--audit",
-      "--output", outputDirectory, "--summary-file", "", "--cached-json", cachedJsonPath,
-      "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
-      "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
-      "--count", String(runLimit), "--timeout", "15",
-      "--max-github-api-rate-limit", "-2000", "--max-storage", "1200", "--prune-older-runs",
-      ...targets,
-    ];
-    log.info`Calling command: ${["gh", ...args].map(shellQuote).join(" ")}`;
-    const child = execute("gh", args, { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
-    const stderr = [];
-    child.stdout.resume();
-    child.stderr.on("data", (chunk) => stderr.push(chunk));
-    child.on("error", reject);
-    child.on("close", (code, signal) => {
-      if (code === 0 && !signal) resolve(Buffer.concat(stderr).toString("utf8").trim());
-      else reject(new Error(
-        Buffer.concat(stderr).toString("utf8").trim()
-          || `gh aw logs exited with ${signal || code}`,
-      ));
-    });
-  });
 }
 
 function runGhApi(target, repository, windowStart, runLimit, execute = spawn) {
@@ -266,18 +233,17 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
   const root = path.resolve(process.env.REPORT_ROOT || ".");
   const logsPath = path.resolve(process.env.REPORT_GH_AW_LOGS || "_activity/gh-aw-logs.json");
   const statePath = path.resolve(process.env.REPORT_GH_AW_LOGS_STATE || "_activity/gh-aw-logs-state.json");
-  const outputDirectory = path.resolve(process.env.REPORT_AIC_CACHE || "_activity/gh-aw-logs");
+  const exitCodePath = path.resolve(process.env.REPORT_GH_AW_LOGS_EXIT_CODE || "_activity/gh-aw-logs-exit-code");
   const windowDays = Number(process.env.REPORT_RUN_WINDOW_DAYS || DEFAULT_WINDOW_DAYS);
   const runLimit = Number(process.env.REPORT_RUN_LIMIT || DEFAULT_RUN_LIMIT);
   if (!repository) throw new Error("GITHUB_REPOSITORY is required");
   if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 31) {
     throw new Error("REPORT_RUN_WINDOW_DAYS must be an integer from 1 through 31");
   }
-  if (!Number.isInteger(runLimit) || runLimit < 1 || runLimit > 1000) {
-    throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 1000");
+  if (!Number.isInteger(runLimit) || runLimit < 1 || runLimit > 200) {
+    throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 200");
   }
 
-  await mkdir(outputDirectory, { recursive: true });
   await mkdir(path.dirname(logsPath), { recursive: true });
   await mkdir(path.dirname(statePath), { recursive: true });
 
@@ -293,8 +259,10 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       .map((entry) => `${repository}/.github/workflows/${entry.name}`)
       .sort();
     const workflowLabel = targets.length === 1 ? "workflow" : "workflows";
-    const stderr = await runGhAw(targets, outputDirectory, logsPath, windowDays, runLimit, execute);
-    if (stderr) log.info`${stderr}`;
+    const exitCode = Number((await readFile(exitCodePath, "utf8")).trim());
+    if (!Number.isInteger(exitCode) || exitCode !== 0) {
+      throw new Error(`gh aw logs exited with ${Number.isInteger(exitCode) ? exitCode : "an unknown status"}`);
+    }
     const snapshot = JSON.parse(await readFile(logsPath, "utf8"));
     if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");
     const reusedJobRuns = reuseCachedJobs(snapshot.runs, cachedRuns, repository);

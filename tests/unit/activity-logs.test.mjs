@@ -58,20 +58,21 @@ if (args[0] === "aw") {
 `);
   await chmod(ghPath, 0o755);
   try {
-    const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
-      env: {
-        ...process.env,
-        PATH: `${item.bin}:${process.env.PATH}`,
-        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
-        REPORT_ROOT: item.root,
-        REPORT_GH_AW_LOGS: item.logsPath,
-        REPORT_GH_AW_LOGS_STATE: item.statePath,
-        REPORT_AIC_CACHE: item.outputPath,
-        GH_ARGS_PATH: item.argumentsPath,
-        GH_JOB_ARGS_PATH: path.join(item.root, "job-arguments.json"),
-        GITHUB_OUTPUT: item.githubOutput,
-      },
-    });
+    const env = {
+      ...process.env,
+      PATH: `${item.bin}:${process.env.PATH}`,
+      GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+      REPORT_ROOT: item.root,
+      REPORT_GH_AW_LOGS: item.logsPath,
+      REPORT_GH_AW_LOGS_STATE: item.statePath,
+      REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
+      REPORT_AIC_CACHE: item.outputPath,
+      GH_ARGS_PATH: item.argumentsPath,
+      GH_JOB_ARGS_PATH: path.join(item.root, "job-arguments.json"),
+      GITHUB_OUTPUT: item.githubOutput,
+    };
+    const collection = await execFileAsync("bash", [path.resolve("activity/collect-logs.sh")], { env });
+    const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], { env });
     const args = JSON.parse(await readFile(item.argumentsPath, "utf8"));
     assert.deepEqual(args.slice(0, 3), ["aw", "logs", "--audit"]);
     assert.equal(args.includes("--json"), false);
@@ -85,6 +86,7 @@ if (args[0] === "aw") {
       item.logsPath,
     ]);
     assert.equal(args.filter((value) => value === "logs").length, 1);
+    assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "200"]);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     const snapshot = JSON.parse(await readFile(item.logsPath, "utf8"));
     assert.deepEqual(snapshot.runs[0].jobs, [{
@@ -106,14 +108,7 @@ if (args[0] === "aw") {
     assert.equal(state.complete, true);
     assert.equal(state.jobDetails.observedRuns, 1);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
-    assert.ok(stdout.includes(
-      "Calling command: gh aw logs --audit "
-      + `--output ${item.outputPath} --summary-file '' `
-      + `--cached-json ${item.logsPath} `
-      + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent ",
-    ));
-    assert.ok(stdout.includes("githubnext/gh-aw-cao/.github/workflows/sample.lock.yml"));
-    assert.match(stdout, /Fetched 1 run/);
+    assert.match(collection.stderr, /Fetched 1 run/);
     assert.match(stdout, /Collected snapshot with 1 run across 1 workflow/);
   } finally {
     await rm(item.root, { recursive: true, force: true });
@@ -128,6 +123,7 @@ test("activity logs preserves cached runs and records collection failure", async
   await mkdir(path.dirname(item.logsPath), { recursive: true });
   await writeFile(item.logsPath, '{"runs":[{"database_id":7}]}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
+  await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
@@ -137,6 +133,7 @@ test("activity logs preserves cached runs and records collection failure", async
         REPORT_ROOT: item.root,
         REPORT_GH_AW_LOGS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
         GITHUB_OUTPUT: item.githubOutput,
       },
@@ -191,6 +188,7 @@ if (args.some((arg) => arg.endsWith("/jobs"))) {
   await mkdir(path.dirname(item.logsPath), { recursive: true });
   await writeFile(item.logsPath, '{"runs":[{"database_id":42,"failure_message":"cached detail"}]}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
+  await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
@@ -200,6 +198,7 @@ if (args.some((arg) => arg.endsWith("/jobs"))) {
         REPORT_ROOT: item.root,
         REPORT_GH_AW_LOGS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
         GITHUB_OUTPUT: item.githubOutput,
       },
@@ -247,6 +246,8 @@ setTimeout(() => {
 }, 100);
 `);
   await chmod(ghPath, 0o755);
+  await mkdir(path.dirname(item.logsPath), { recursive: true });
+  await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
@@ -256,6 +257,7 @@ setTimeout(() => {
         REPORT_ROOT: item.root,
         REPORT_GH_AW_LOGS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
         GITHUB_OUTPUT: item.githubOutput,
         CONCURRENCY_PATH: concurrencyPath,
@@ -278,6 +280,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
   await mkdir(path.dirname(item.logsPath), { recursive: true });
   await writeFile(item.logsPath, '{"runs":[{"database_id":7}]}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
+  await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
       env: {
@@ -286,6 +289,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
         REPORT_ROOT: item.root,
         REPORT_GH_AW_LOGS: item.logsPath,
         REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_GH_AW_LOGS_EXIT_CODE: path.join(item.root, "cache", "gh-aw-logs-exit-code"),
         REPORT_AIC_CACHE: item.outputPath,
         GITHUB_OUTPUT: item.githubOutput,
       },
