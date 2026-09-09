@@ -1001,7 +1001,8 @@ dashboard:
       const queryByName = new Map(document.dashboard.queries.map(
         (/** @type {{ name: string, from: string }} */ query) => [query.name, query]
       ));
-      const canonicalSource = (/** @type {string} */ source) => {
+      /** @param {string} source @returns {string} */
+      const canonicalSource = (source) => {
         const query = queryByName.get(source);
         return query ? canonicalSource(query.from) : source;
       };
