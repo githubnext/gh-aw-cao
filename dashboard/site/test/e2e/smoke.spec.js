@@ -2099,8 +2099,13 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
   await filterBar.locator('.horizon-toggle').click();
   const expandedHorizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
-  const timeRangeBox = await filterBar.locator('.time-window-control').boundingBox();
+  const tuningControls = filterBar.locator('.filter-tuning-controls');
+  const timeRangeBox = await tuningControls.locator('.time-window-control').boundingBox();
+  const tuningControlsBox = await tuningControls.boundingBox();
   expect(timeRangeBox?.y).toBeGreaterThanOrEqual((expandedHorizonBox?.y ?? 0) + (expandedHorizonBox?.height ?? 0));
+  expect(tuningControlsBox?.x).toBeGreaterThanOrEqual(0);
+  expect((tuningControlsBox?.x ?? 0) + (tuningControlsBox?.width ?? 0)).toBeLessThanOrEqual(400);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(400);
 });
 
 test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state in browser', async ({ page }) => {

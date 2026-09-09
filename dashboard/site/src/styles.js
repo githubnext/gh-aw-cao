@@ -1801,10 +1801,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-root.dashboard-full-view { height: 100dvh; min-height: 0; overflow: hidden; }
   .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
   .org-sidebar { height: auto; display: block; overflow: visible; padding: 14px 12px 10px; border-right: 0; border-bottom: 1px solid var(--border); }
-  .sidebar-header { margin: 0 0 8px; }
+  .sidebar-header { position: relative; margin: 0 0 8px; }
   .sidebar-brand { font-size: 1rem; }
   .mobile-report-actions { min-width: 0; display: flex; align-items: center; margin-left: auto; }
-  .mobile-report-actions .report-actions { width: auto; margin-left: 0; gap: 6px; }
+  .mobile-report-actions .report-actions { width: auto; position: static; margin-left: 0; gap: 6px; }
   .mobile-report-actions .dashboard-horizon { max-width: 130px; }
   .mobile-report-actions .horizon-summary { position: static; }
   .mobile-report-actions .horizon-tooltip { top: calc(100% + 64px); right: 0; }
