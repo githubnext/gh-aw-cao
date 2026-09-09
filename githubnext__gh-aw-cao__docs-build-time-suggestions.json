@@ -1,14 +1,1 @@
-{
-  "source_sha": "1b6b80c3fb9653850e823e7e4c7bd729c0dcb936",
-  "next_category": "dependency installation and caching",
-  "evaluations": [
-    {
-      "evaluated_at": "2026-09-09T13:00:10Z",
-      "worker_run_id": 34353985336,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions workflow-run evidence could not be collected because the GitHub API rate limit was already exceeded before run listing succeeded; fewer than five comparable successful docs.yml runs could be verified.",
-      "suggestion_fingerprint": ""
-    }
-  ]
-}
+{"source_sha":"a02cfe2d1b8fbf1792bba16f50a7d01e615ba31f","next_category":"dependency installation and caching","evaluations":[{"evaluated_at":"2026-09-09T13:00:10Z","worker_run_id":34353985336,"category":"dependency installation and caching","evidence_run_ids":[],"outcome":"incomplete: GitHub Actions workflow-run evidence could not be collected because the GitHub API rate limit was already exceeded before run listing succeeded; fewer than five comparable successful docs.yml runs could be verified.","suggestion_fingerprint":""},{"evaluated_at":"2026-09-09T13:27:00Z","worker_run_id":34356795496,"category":"dependency installation and caching","evidence_run_ids":[34356814511,34356512646,34355129849,34351757030,34351606718,34346012893,34345182997,34343367088,34341957606,34340838821,34340006581,34335678483,34334693840,34332404246],"outcome":"no-op: collected enough successful docs.yml runs to inspect, but GitHub read failures (HTTP 502 from gh while listing open issues and re-reading workflow runs) prevented duplicate-check verification required before making a non-repeated suggestion. Kept category unchanged for a later complete evaluation.","suggestion_fingerprint":""}]}
