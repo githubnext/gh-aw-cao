@@ -3,6 +3,19 @@ import { CANONICAL_SCHEMA_VERSION, relationshipErrors } from '../model/schema.js
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
 export const DATABASE_VERSION = 4;
 
+/**
+ * @param {IDBFactory} indexedDB
+ * @returns {Promise<void>}
+ */
+export function deleteCanonicalDatabase(indexedDB) {
+  const request = indexedDB.deleteDatabase(DATABASE_NAME);
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error('Unable to delete canonical dashboard data'));
+    request.onblocked = () => reject(new Error('Deleting canonical dashboard data was blocked'));
+  });
+}
+
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
   'workflows',

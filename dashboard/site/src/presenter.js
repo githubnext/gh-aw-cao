@@ -17,6 +17,7 @@ import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from '
 import { renderDataView } from './components/data-view.js';
 import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
+import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { processDataHealthSources, processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -774,7 +775,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   h('button', { type: 'button', dataset: { themeValue: 'light' }, 'aria-pressed': 'false' }, octicon('sun'), h('span', null, 'Light')),
                   h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
-              )
+              ),
+              renderResetDashboardControl()
             )
           )
         )
