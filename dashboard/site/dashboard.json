@@ -251,6 +251,102 @@
         }
       },
       {
+        "name": "event-inspection",
+        "intent": "Inspect observed workflow events with their execution context and run navigation.",
+        "description": "Observed workflow events ordered from newest to oldest with their source, status, identity, and run context.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "event-source" },
+          { "field": "event-type" },
+          { "field": "event-status" },
+          { "field": "event-summary" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-attempt" },
+          { "field": "session" },
+          { "field": "event" },
+          { "field": "correlation-id" },
+          { "field": "source-sequence" },
+          { "field": "linked-run", "as": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "engines-models-usage",
+        "intent": "List agent events with their run-level engine, model, version, rollout, and navigation context.",
+        "description": "Observed agent events joined with their engine, model, version, and rollout metadata.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "engine", "as": "run-engine" },
+              { "field": "engine-version", "as": "run-engine-version" },
+              { "field": "requested-model", "as": "run-requested-model" },
+              { "field": "resolved-model", "as": "run-resolved-model" },
+              { "field": "rollout-mode", "as": "run-rollout-mode" },
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "event-source", "equals": "agent" }
+          ]
+        },
+        "select": [
+          { "field": "run-engine", "as": "engine" },
+          { "field": "run-engine-version", "as": "engine-version" },
+          { "field": "run-requested-model", "as": "requested-model" },
+          { "field": "run-resolved-model", "as": "resolved-model" },
+          { "field": "run-rollout-mode", "as": "rollout-mode" },
+          { "field": "event-type" },
+          { "field": "event-summary" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "linked-run", "as": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "workflow-inventory",
         "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
@@ -3647,6 +3743,101 @@
         }
       },
       {
+        "id": "events",
+        "kind": "custom",
+        "title": "Events",
+        "icon": "pulse",
+        "description": "Inspect observed workflow events and their execution context.",
+        "views": [
+          {
+            "id": "event-inspection",
+            "title": "Event inspection",
+            "description": "Observed events ordered from newest to oldest with source, status, identity, and run context.",
+            "data": {
+              "source": "event-inspection"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No workflow events were observed in the current run window.",
+            "layout": "full-view",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "event-source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "event-type",
+                  "type": "nominal",
+                  "title": "Event type"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status"
+                },
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Summary"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "session",
+                  "type": "nominal",
+                  "title": "Session"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Event"
+                },
+                {
+                  "field": "correlation-id",
+                  "type": "nominal",
+                  "title": "Correlation"
+                },
+                {
+                  "field": "source-sequence",
+                  "type": "quantitative",
+                  "title": "Sequence"
+                }
+              ]
+            },
+            "lazy-list": true
+          }
+        ]
+      },
+      {
         "id": "engines-models",
         "kind": "custom",
         "title": "Engines Models",
@@ -3655,15 +3846,9 @@
             {
               "id": "engines-models-usage",
               "title": "Engines and models",
-              "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
+              "description": "Observed agent events with engine, model, version, and rollout metadata.",
               "data": {
-                "source": "usage",
-                "order-by": [
-                  {
-                    "field": "observed-at",
-                    "direction": "desc"
-                  }
-                ]
+                "source": "engines-models-usage"
               },
               "mark": "table",
               "controls": "interactive",
@@ -3702,10 +3887,14 @@
                     "display": "mode"
                   },
                   {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
+                    "field": "event-type",
+                    "type": "nominal",
+                    "title": "Agent event"
+                  },
+                  {
+                    "field": "event-summary",
+                    "type": "nominal",
+                    "title": "Summary"
                   },
                   {
                     "field": "repository",
@@ -3728,7 +3917,7 @@
             }
           ],
         "navigation-label": "Models & agents",
-        "description": "Compare observed AI Credit allocation by model and agentic engine/version where usage telemetry provides that metadata."
+        "description": "Compare observed model selection by agentic engine and version from agent events."
       },
       {
         "id": "operational-value",
@@ -4815,6 +5004,7 @@
           "dispatches",
           "firewall",
           "mcps",
+          "events",
           "engines-models"
         ]
       }

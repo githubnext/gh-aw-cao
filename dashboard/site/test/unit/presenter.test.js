@@ -231,11 +231,10 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('Accepted');
     expect(text).toContain('Blocked');
     expect(text).not.toContain('firewall failure');
-    expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
     rendered.remove();
   });
 
-  it('warns that firewall data is corrupted when firewall totals are unavailable', async () => {
+  it('renders the configured empty state when the firewall data binding is empty', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
@@ -247,18 +246,20 @@ describe('presenter built-in and custom pages', () => {
             'source-kind': 'fixture',
             'as-of': '2026-09-05T11:00:00Z',
             'retrieved-at': '2026-09-05T11:05:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
           }
         }
       }
     });
 
     const page = await activatePage(rendered, 'firewall');
-    const warning = page?.querySelector('[data-firewall-data-warning]');
-    expect(warning?.getAttribute('role')).toBe('alert');
-    expect(warning?.textContent).toContain('Firewall data is corrupted');
+    const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
+    expect(view?.getAttribute('data-view-layout')).toBe('full-view');
+    expect(view?.querySelector('.table-region')?.textContent).toContain(
+      'No observed firewall domains are available for this selection.'
+    );
     rendered.remove();
   });
 
@@ -418,12 +419,12 @@ describe('presenter built-in and custom pages', () => {
           ],
           metadata
         },
-        usage: {
-          source: 'usage',
+        'engines-models-usage': {
+          source: 'engines-models-usage',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', invocation: 'a', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', aic: 10 },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', run: '1002', invocation: 'b', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', aic: 15 },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.yml', run: '1003', invocation: 'c', engine: 'copilot', 'engine-version': '1.2.0', 'requested-model': 'claude-sonnet-5', 'resolved-model': 'claude-sonnet-5', aic: 5 }
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'event-type': 'agent_turn', 'event-summary': 'Daily agent turn' },
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'event-type': 'assistant_message', 'event-summary': 'Review response' },
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.yml', engine: 'copilot', 'engine-version': '1.2.0', 'requested-model': 'claude-sonnet-5', 'resolved-model': 'claude-sonnet-5', 'event-type': 'agent_turn', 'event-summary': 'Audit agent turn' }
           ],
           metadata
         },
@@ -435,11 +436,48 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
-    expect(page?.textContent).toContain('15 AIC');
+    expect(page?.textContent).toContain('Review response');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('0.87.6');
     expect(page?.textContent).toContain('0.87.9');
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
+  });
+
+  it('renders event inspection as one full-view lazy table', async () => {
+    const metadata = {
+      'source-id': 'event-inspection-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'event-inspection': {
+          source: 'event-inspection',
+          rows: [
+            {
+              'observed-at': '2026-09-02T12:00:00Z', 'event-source': 'agent', 'event-type': 'assistant_message',
+              'event-status': 'completed', 'event-summary': 'Produced a review', repository: 'gh-aw-cao',
+              workflow: '.github/workflows/review.yml', run: '1002', 'run-attempt': 1, session: 'session-1',
+              event: 'event-1', 'correlation-id': 'correlation-1', 'source-sequence': 3,
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1002', label: 'View run 1002' }
+            }
+          ],
+          metadata
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'events');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.textContent).toContain('Produced a review');
+    expect(page?.textContent).toContain('assistant_message');
+    expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
   });
 
   it('explains when engine and model usage data is missing', async () => {
@@ -456,7 +494,7 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {
         runs: { source: 'runs', rows: [], metadata },
-        usage: { source: 'usage', rows: [], metadata },
+        'engines-models-usage': { source: 'engines-models-usage', rows: [], metadata },
         outcomes: { source: 'outcomes', rows: [], metadata }
       }
     });
@@ -958,6 +996,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1282,6 +1321,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',

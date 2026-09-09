@@ -1,9 +1,10 @@
-      import { dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
+      import { dashboardPageLazySourceNames, dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
+      import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
 
       /**
@@ -896,20 +897,43 @@
             pages: dashboardDocument.dashboard.pages,
             queries: dashboardQueries,
           };
-          /** @param {string} pageId */
-          const loadPageSources = (pageId) => loadCanonicalDashboardPage(
-            dashboardPageSourceNames(dashboardDocument, pageId),
-            dashboardContext,
+          /**
+           * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+           * @param {string[]} sourceNames
+           */
+          const bindContinuations = (sources, sourceNames) => bindSourceContinuations(
+            sources,
+            sourceNames,
+            (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
           );
+          /** @param {string} pageId */
+          const loadPageSources = async (pageId) => {
+            const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
+            const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
+            return bindContinuations(
+              await loadCanonicalDashboardPage(
+                sourceNames,
+                dashboardContext,
+                continuationRequests(lazySources),
+              ),
+              lazySources,
+            );
+          };
+          const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
+          const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
           const loadHorizonSources = () => loadCanonicalDashboardPage(
             DASHBOARD_HORIZON_COUNT_SOURCES,
             dashboardContext,
           );
           renderSources(
-            await loadCanonicalDashboardSources(
-              sourceUrl,
-              dashboardPageSourceNames(dashboardDocument, initialPageId),
-              dashboardContext,
+            bindContinuations(
+              await loadCanonicalDashboardSources(
+                sourceUrl,
+                initialSources,
+                dashboardContext,
+                continuationRequests(initialLazySources),
+              ),
+              initialLazySources,
             ),
             "ready",
             true,
