@@ -395,7 +395,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   await expect(page.locator('.nav-section-label').filter({ hasText: 'Experimental' })).toBeVisible();
   await expect(readinessPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
   await expect(readinessPage.locator('[data-lazy-list]')).toBeVisible();
-  await expect(readinessPage.locator('[data-chart-widget]')).toHaveCount(0);
+  await expect(readinessPage.locator('.chart-view-pie')).toHaveCount(0);
   await expect(readinessPage).toContainText('Worker failures');
   await expect(readinessPage).toContainText('Worker warnings');
   await expect(readinessPage).toContainText('No-op reports');

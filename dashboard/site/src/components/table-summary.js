@@ -92,6 +92,7 @@ function renderColumnSummary(column) {
   if (column.kind === 'none') return null;
   if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
   if (column.kind === 'boolean') {
+    /** @type {Array<[string, number]>} */
     const entries = [
       ['true', column.trueCount],
       ['false', column.count - column.trueCount]
