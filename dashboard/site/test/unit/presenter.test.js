@@ -2292,7 +2292,8 @@ describe('presenter built-in and custom pages', () => {
     }
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
-    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source)).toEqual(['runs']);
+    expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
+      .toEqual(['runs', 'runs-table']);
 
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
@@ -2406,7 +2407,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
-    expect(headings).toEqual(['Runs']);
+    expect(headings).toEqual(['Run health trend', 'Runs']);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });
