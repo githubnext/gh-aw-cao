@@ -41,8 +41,9 @@ function pageScopedSources(sources, requested) {
  * @param {ReturnType<typeof dashboardContext>} context
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
  * @param {{ aborted?: boolean }} [signal]
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  */
-async function queryLiveDashboard(requested, context, requestContext, signal, pagination) {
+async function queryLiveDashboard(requested, context, requestContext, signal, pagination = {}) {
   if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
   const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
@@ -105,7 +106,7 @@ export function processDataRequest(request, signal) {
       context,
       /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
       signal,
-      request.pagination
+      /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
     );
   }
   if (request?.operation === 'load-canonical-dashboard') {
@@ -137,7 +138,7 @@ export function processDataRequest(request, signal) {
         context,
         /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
         signal,
-        request.pagination
+        /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
     })();
   }

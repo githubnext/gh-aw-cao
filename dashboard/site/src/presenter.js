@@ -37,7 +37,7 @@ import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-
  */
 
 /**
- * @typedef {{ source: string, rows: Array<Record<string, unknown>>, metadata: SourceMetadata }} LogicalSourceInput
+ * @typedef {{ source: string, rows: Array<Record<string, unknown>>, metadata: SourceMetadata, continuationToken?: string, loadContinuation?: (token: string) => Promise<LogicalSourceInput> }} LogicalSourceInput
  */
 
 /**
@@ -151,6 +151,7 @@ export function dashboardPageSourceNames(document, pageId) {
   for (const view of payload.views ?? []) {
     for (const sourceName of getViewSources(view)) names.add(sourceName);
   }
+
   for (const section of payload.sections ?? []) {
     if (typeof section['count-source'] === 'string') names.add(section['count-source']);
   }
@@ -158,6 +159,21 @@ export function dashboardPageSourceNames(document, pageId) {
     if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
   }
   return [...names];
+}
+
+/**
+ * Returns sources rendered by lazy-list views without exposing pagination in
+ * the dashboard query language.
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ */
+export function dashboardPageLazySourceNames(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return [];
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  return [...new Set((payload.views ?? []).flatMap((view) =>
+    isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
+  ))];
 }
 
 /**
@@ -1959,7 +1975,22 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     prepareTableRows,
     buildChartPoints,
     prepareChartPoints,
-    toText
+    toText,
+    continuation: view['lazy-list'] === true
+      && sourceInput.continuationToken
+      && sourceInput.loadContinuation
+      ? {
+          token: sourceInput.continuationToken,
+          totalRows: Number(sourceInput.metadata?.['total-row-count']) || filteredRows.length,
+          load: async (token) => {
+            const next = await sourceInput.loadContinuation?.(token);
+            return {
+              rows: filterRowsForView(next?.rows ?? [], view.data),
+              continuationToken: next?.continuationToken
+            };
+          }
+        }
+      : undefined
   });
   if (rendered) return rendered;
 

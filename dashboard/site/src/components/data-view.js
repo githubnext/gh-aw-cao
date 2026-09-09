@@ -58,7 +58,8 @@ const RUN_LINK_FIELD = 'run-link';
  *   prepareTableRows: (rows: Array<Record<string, unknown>>, columns: TableField[], data: unknown) => Array<Record<string, unknown>>,
  *   buildChartPoints: (pageId: string, title: string, rows: Array<Record<string, unknown>>, x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, hrefField: string | null) => ChartPoint[],
  *   prepareChartPoints: (points: ChartPoint[], x: Record<string, any> | null, y: Record<string, any> | null, color: Record<string, any> | null, data: unknown) => ChartPoint[],
- *   toText: (value: unknown) => string
+ *   toText: (value: unknown) => string,
+ *   continuation?: { token: string, totalRows: number, load: (token: string) => Promise<{ rows: Array<Record<string, unknown>>, continuationToken?: string }> }
  * }} DataViewContext
  */
 
@@ -136,10 +137,10 @@ function renderTableView(context) {
     ),
     toText
   );
-  const bodyRows = displayedRows.map(({ row, depth }, rowIndex) => h(
+  const renderBodyRows = (/** @type {Array<{ row: Record<string, unknown>, depth: number }>} */ rows, keyOffset = 0) => rows.map(({ row, depth }, rowIndex) => h(
     'tr',
     {
-      'data-custom-row-key': `${pageId}-${title}-${rowIndex}`,
+      'data-custom-row-key': `${pageId}-${title}-${keyOffset + rowIndex}`,
       ...(tree ? { 'aria-level': String(depth + 1), 'data-tree-row': '' } : {})
     },
     ...actions.map((action) => actionMatches(action, row)
@@ -191,6 +192,9 @@ function renderTableView(context) {
       return h('td', cellAttributes, renderCellContent(value));
     })
   ));
+  const bodyRows = renderBodyRows(displayedRows);
+  let renderedRowCount = bodyRows.length;
+  const continuation = context.continuation;
 
   const interactive = view.controls !== 'static';
   return renderPageSection(pageId, title, [
@@ -232,6 +236,25 @@ function renderTableView(context) {
       )),
       bodyRows,
       lazyList: view['lazy-list'] === true,
+      continuation: continuation
+        ? {
+            ...continuation,
+            load: async (token) => {
+              const next = await continuation.load(token);
+              const nextTableRows = prepareTableRows(next.rows, columns, view.data);
+              const nextDisplayedRows = tree
+                ? arrangeTreeRows(nextTableRows, tree['id-field'], tree['parent-field'])
+                : nextTableRows.map((row) => ({ row, depth: 0 }));
+              const rows = renderBodyRows(nextDisplayedRows, renderedRowCount)
+                .filter((row) => row instanceof HTMLTableRowElement);
+              renderedRowCount += rows.length;
+              return {
+                rows,
+                continuationToken: next.continuationToken
+              };
+            }
+          }
+        : undefined,
       sortable: interactive
     })
   ], headingTag, view.description);

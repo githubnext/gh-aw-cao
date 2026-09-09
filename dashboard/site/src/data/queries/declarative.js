@@ -404,16 +404,61 @@ export function executeDashboardQueries(definitions, sources, requested, options
   const index = dashboardQueryIndex(definitions);
   if (index.size === 0) return {};
   const defects = dashboardQueryDefects(definitions);
-  const wanted = requested ? new Set(resolveDashboardQuerySources(definitions, requested)) : null;
   const budget = options.budget ?? createDashboardQueryBudget(options);
+  if (requested) {
+    /** @type {Record<string, LogicalSourceInput>} */
+    const requestedResults = {};
+    for (const name of new Set(requested)) {
+      if (!index.has(name)) continue;
+      const compiled = compileDashboardQuery(name, index, sources, defects, budget);
+      requestedResults[name] = compiled[name];
+    }
+    return paginateDashboardSources(requestedResults, options.pagination);
+  }
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
   for (const [name, definition] of index) {
-    if (wanted && !wanted.has(name)) continue;
     budget.checkpoint();
     derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name), budget);
   }
   return paginateDashboardSources(derived, options.pagination);
+}
+
+/**
+ * Recompiles one requested query and its dependencies in an isolated working
+ * set. Shared dependencies may be recomputed for another requested query so
+ * completed result graphs do not accumulate in worker memory.
+ *
+ * @param {string} name
+ * @param {Map<string, DashboardQuery>} index
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {Map<string, string>} defects
+ * @param {QueryBudget} budget
+ */
+function compileDashboardQuery(name, index, sources, defects, budget) {
+  /** @type {Record<string, LogicalSourceInput>} */
+  const compiled = {};
+  const visiting = new Set();
+  /** @param {string} queryName */
+  const compile = (queryName) => {
+    if (compiled[queryName] || visiting.has(queryName)) return;
+    const definition = index.get(queryName);
+    if (!definition) return;
+    visiting.add(queryName);
+    for (const input of queryInputNames(definition)) {
+      if (index.has(input)) compile(input);
+    }
+    visiting.delete(queryName);
+    budget.checkpoint();
+    compiled[queryName] = executeDashboardQuery(
+      definition,
+      { ...sources, ...compiled },
+      defects.get(queryName),
+      budget
+    );
+  };
+  compile(name);
+  return compiled;
 }
 
 /**

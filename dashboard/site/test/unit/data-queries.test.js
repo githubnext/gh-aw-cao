@@ -405,6 +405,17 @@ describe('declarative dashboard queries', () => {
     expect(defects.has('late')).toBe(false);
   });
 
+  it('reports a requested cyclic query as unavailable without recursing', () => {
+    const result = executeDashboardQueries(
+      [{ name: 'cyclic', from: 'cyclic' }],
+      {},
+      ['cyclic']
+    );
+
+    expect(result.cyclic.metadata.availability).toBe('unavailable');
+    expect(result.cyclic.metadata['query-diagnostic']).toContain('reads itself');
+  });
+
   it('rejects duplicate query names instead of resolving one arbitrarily', () => {
     const definitions = [
       { name: 'inventory', from: 'workflows' },
