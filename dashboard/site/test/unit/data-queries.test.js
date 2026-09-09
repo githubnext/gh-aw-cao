@@ -123,9 +123,34 @@ describe('declarative dashboard queries', () => {
   });
 
   it('projects the Models & agents view from its request-scoped dashboard query', () => {
+    const events = {
+      source: 'events',
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+          'event-source': 'agent', 'event-type': 'agent_turn', 'event-summary': 'First turn',
+          'event-timestamp': '2026-09-01T00:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+          'event-source': 'agent', 'event-type': 'assistant_message', 'event-summary': 'Second turn',
+          'event-timestamp': '2026-09-02T00:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+          'event-source': 'gateway', 'event-type': 'tool_call', 'event-timestamp': '2026-09-02T00:01:00Z'
+        }
+      ],
+      metadata: metadata('events')
+    };
+    const runs = {
+      source: 'runs',
+      rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
+      metadata: metadata('runs')
+    };
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { usage },
+      { events, runs },
       ['engines-models-usage']
     );
 
@@ -139,7 +164,8 @@ describe('declarative dashboard queries', () => {
           'requested-model': 'model-b',
           'resolved-model': 'model-b',
           'rollout-mode': 'live',
-          aic: 6,
+          'event-type': 'assistant_message',
+          'event-summary': 'Second turn',
           repository: 'gh-aw-cao',
           workflow: 'a.md',
           'observed-at': '2026-09-02T00:00:00Z',
@@ -151,7 +177,8 @@ describe('declarative dashboard queries', () => {
           'requested-model': 'model-a',
           'resolved-model': 'model-b',
           'rollout-mode': 'review',
-          aic: 4,
+          'event-type': 'agent_turn',
+          'event-summary': 'First turn',
           repository: 'gh-aw-cao',
           workflow: 'a.md',
           'observed-at': '2026-09-01T00:00:00Z',

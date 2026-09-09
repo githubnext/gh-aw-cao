@@ -49,7 +49,32 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'run-attempt': 2,
         'run-status': 'completed',
         'run-conclusion': 'failure',
-        'started-at': '2026-09-09T04:00:00Z'
+        'started-at': '2026-09-09T04:00:00Z',
+        'rollout-mode': 'review',
+        engine: 'copilot',
+        'engine-version': '1.2.3',
+        'requested-model': 'model-a',
+        'resolved-model': 'model-b',
+        'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}` }
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    sessions: {
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+        'run-attempt': 2, session: `session-${run}`, 'session-kind': 'unified-operational-log',
+        'session-status': 'completed', 'started-at': '2026-09-09T04:00:00Z',
+        'observed-at': '2026-09-09T05:00:00Z'
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
+    events: {
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+        'run-attempt': 2, session: `session-${run}`, event: `event-${run}`,
+        'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
+        'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
+        'observed-at': '2026-09-09T05:00:00Z'
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
@@ -324,10 +349,11 @@ test('data worker returns the Models & agents query on initial and navigated req
         'requested-model': 'model-a',
         'resolved-model': 'model-b',
         'rollout-mode': 'review',
-        aic: 17,
+        'event-type': 'agent_turn',
+        'event-summary': 'Processed the dashboard request',
         repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md',
-        'observed-at': '2026-09-09T04:00:00Z'
+        'observed-at': '2026-09-09T04:01:00Z'
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
