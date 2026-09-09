@@ -64,6 +64,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/model/schema.js
   - source: site/src/data/normalize/index.js
     destination: .github/aw/dashboard/site/src/data/normalize/index.js
+  - source: site/src/data/queries/declarative.js
+    destination: .github/aw/dashboard/site/src/data/queries/declarative.js
   - source: site/src/data/queries/index.js
     destination: .github/aw/dashboard/site/src/data/queries/index.js
   - source: site/src/data/queries/view-sources.js
