@@ -1614,11 +1614,23 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   });
 
   const defaultView = root.ownerDocument.defaultView;
+  let fullViewScrollFrame = 0;
   root.addEventListener('scroll', (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
     const scroll = event.target.closest('.custom-view[data-view-layout="full-view"] .table-scroll');
     if (scroll === event.target) {
-      root.classList.toggle('dashboard-full-view-scrolled', event.target.scrollTop > 0);
+      const syncScrolledState = () => {
+        fullViewScrollFrame = 0;
+        if (scroll.isConnected && root.classList.contains('dashboard-full-view')) {
+          root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > 0);
+        }
+      };
+      if (defaultView?.requestAnimationFrame) {
+        if (fullViewScrollFrame) defaultView.cancelAnimationFrame(fullViewScrollFrame);
+        fullViewScrollFrame = defaultView.requestAnimationFrame(syncScrolledState);
+      } else {
+        queueMicrotask(syncScrolledState);
+      }
     }
   }, true);
   const onHashChange = () => {

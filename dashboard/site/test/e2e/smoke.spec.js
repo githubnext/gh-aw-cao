@@ -1527,12 +1527,27 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
 
   for (let cycle = 0; cycle < 3; cycle += 1) {
+    await scroll.evaluate((element) => {
+      element.scrollTop = 100;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
     for (const firstRepository of [26, 1]) {
-      await scroll.evaluate((element) => { element.scrollTop = 0; });
-      await scroll.dispatchEvent('scroll');
+      const stayedCompact = await scroll.evaluate((element) => {
+        element.scrollTop = 0;
+        element.dispatchEvent(new Event('scroll'));
+        return element.closest('.dashboard-root')?.classList.contains('dashboard-full-view-scrolled');
+      });
+      expect(stayedCompact).toBe(true);
       await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
+      await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
       await expect(view.locator('tbody > tr')).toHaveCount(50);
     }
+    await scroll.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
     for (const firstRepository of [26, 51]) {
       await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
       await scroll.dispatchEvent('scroll');
