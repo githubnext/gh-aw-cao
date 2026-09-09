@@ -148,12 +148,12 @@ describe('canonical view sources', () => {
       indexedDB,
       sources,
       metadata['artifact-generation'],
-      ['firewall-events']
+      ['firewall-observations']
     );
 
-    expect(Object.keys(projected)).toEqual(['firewall-events']);
-    expect(projected['firewall-events']).toMatchObject({
-      source: 'firewall-events',
+    expect(Object.keys(projected)).toEqual(['firewall-observations']);
+    expect(projected['firewall-observations']).toMatchObject({
+      source: 'firewall-observations',
       rows: [
         { domain: 'api.github.com', run: '42', accepted: 1, blocked: 0 },
         { domain: 'example.com', run: '42', accepted: 0, blocked: 1 }

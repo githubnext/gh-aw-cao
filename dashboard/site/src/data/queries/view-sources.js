@@ -282,7 +282,7 @@ function securityFindingsSource(findings, sources) {
  */
 function firewallEventsSource(events, sessionsById, runsById, sources) {
   return {
-    source: 'firewall-events',
+    source: 'firewall-observations',
     rows: events.map((event) => {
       const session = sessionsById.get(event.sessionId) ?? {};
       const run = runsById.get(session.runId) ?? {};
@@ -294,7 +294,7 @@ function firewallEventsSource(events, sessionsById, runsById, sources) {
         blocked: event.type === 'net_blocked' ? 1 : 0
       };
     }),
-    metadata: projectionMetadata(sources, 'events', 'firewall-events', true)
+    metadata: projectionMetadata(sources, 'events', 'firewall-observations', true)
   };
 }
 
@@ -351,7 +351,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources, gen
       'failed-runs',
       'work-items',
       'security-findings',
-      'firewall-events'
+      'firewall-observations'
     ])
   };
 }
@@ -381,13 +381,13 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     requested.has('work-items') ? queries.workItems.list() : [],
     requested.has('security-findings') ? queries.findings.list() : [],
-    requested.has('firewall-events') ? queries.events.firewallActivity() : []
+    requested.has('firewall-observations') ? queries.events.firewallActivity() : []
   ]);
-  const firewallSessions = requested.has('firewall-events')
+  const firewallSessions = requested.has('firewall-observations')
     ? (await Promise.all([...new Set(firewallEvents.map((event) => String(event.sessionId)))]
       .map((id) => queries.sessions.get(id)))).filter(Boolean)
     : [];
-  const firewallRuns = requested.has('firewall-events')
+  const firewallRuns = requested.has('firewall-observations')
     ? (await Promise.all([...new Set(firewallSessions.map((session) => String(session.runId)))]
       .map((id) => queries.runs.get(id)))).filter(Boolean)
     : [];
@@ -403,8 +403,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('work-items')) projected['work-items'] = workItemsSource(workItems, sources);
   if (requested.has('security-findings')) projected['security-findings'] = securityFindingsSource(findings, sources);
-  if (requested.has('firewall-events')) {
-    projected['firewall-events'] = firewallEventsSource(
+  if (requested.has('firewall-observations')) {
+    projected['firewall-observations'] = firewallEventsSource(
       firewallEvents,
       new Map(firewallSessions.map((session) => [session.id, session])),
       new Map(firewallRuns.map((run) => [run.id, run])),
