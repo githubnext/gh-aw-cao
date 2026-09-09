@@ -339,8 +339,8 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         },
-        usage: {
-          source: 'usage',
+        'engines-models-usage': {
+          source: 'engines-models-usage',
           rows: [],
           metadata: {
             'source-id': 'usage-fixture',
@@ -473,7 +473,7 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {
         runs: { source: 'runs', rows: [], metadata },
-        usage: { source: 'usage', rows: [], metadata },
+        'engines-models-usage': { source: 'engines-models-usage', rows: [], metadata },
         outcomes: { source: 'outcomes', rows: [], metadata }
       }
     });
