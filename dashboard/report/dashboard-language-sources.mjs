@@ -92,6 +92,13 @@ function link(relation, href, label) {
     : undefined;
 }
 
+function issueSearchLink(organization, issueLabel, workflowName) {
+  if (!organization || !issueLabel) return undefined;
+  const query = `org:${organization} is:issue label:"${issueLabel}"`;
+  const href = `https://github.com/search?q=${encodeURIComponent(query)}&type=issues`;
+  return link("external", href, `View issues created by ${workflowName || issueLabel}`);
+}
+
 function workflowRunUrl(repository, runId) {
   const parts = String(repository || "").split("/");
   const id = String(runId ?? "");
@@ -559,6 +566,9 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
       details.set(workflowPath, {
         maxAiCredits: workflow.maxAiCredits,
         inventoryReady: workflow.compiled,
+        ...(Array.isArray(workflow.issueLabels) && workflow.issueLabels.length > 0
+          ? { issueLabel: workflow.issueLabels.at(-1) }
+          : {}),
       });
     }
   }
@@ -648,6 +658,7 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
     const packageTargets = (details?.packageTargets ?? [])
       .filter((target) => target.explicit || target.repository.toLowerCase() !== workflowRepository)
       .map(({ repository, mode }) => ({ repository, mode }));
+    const issueLink = issueSearchLink(names.organization, details?.issueLabel, workflow.name || workflow.path);
     return {
      ...names,
      ...(membership ? { package: membership.id, "package-name": membership.name } : {}),
@@ -665,6 +676,7 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
      ...(typeof details?.inventoryReady === "boolean" ? { "inventory-ready": details.inventoryReady } : {}),
      ...(details?.admissionStatus ? { "admission-status": details.admissionStatus } : {}),
      ...(details?.admissionReason ? { "admission-reason": details.admissionReason } : {}),
+     ...(issueLink ? { "external-link": issueLink } : {}),
      "workflow-role": workflow.role || (membership ? "worker" : "standalone"),
       workflow: workflow.path?.replace(/\.lock\.yml$/, ".md") || "",
       "workflow-name": workflow.name || workflow.path || "Unknown workflow",
