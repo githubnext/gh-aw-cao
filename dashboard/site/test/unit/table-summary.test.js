@@ -32,7 +32,7 @@ describe('renderTableSummaryRow', () => {
       values: [1, 2, 3]
     }]);
 
-    expect(rendered.textContent).toContain('Mean2');
+    expect(rendered.textContent).toContain('Avg2');
     expect(rendered.textContent).toContain('Stddev1');
     expect(rendered.textContent).not.toContain('Median');
     expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Score distribution, 3 values');

@@ -3,7 +3,7 @@
  */
 
 import { formatPercent } from './view-formatters.js';
-import { titleCase } from './components/count-formatters.js';
+import { formatCount, titleCase } from './components/count-formatters.js';
 import { summarizeWorkflowAic } from './workflow-data.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'timed-out']);
@@ -297,12 +297,6 @@ function qualifiedRepository(row) {
   return organization ? `${organization}/${repository}` : repository;
 }
 
-/** @param {number} value */
-function formatCount(value) {
-  return new Intl.NumberFormat('en').format(value);
-}
-
-/** @param {number} value */
 /** @param {import('./presenter.js').SourceMetadata | undefined} metadata */
 function coverageHours(metadata) {
   const start = Date.parse(metadata?.['coverage-start'] ?? '');

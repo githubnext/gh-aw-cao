@@ -7,8 +7,10 @@ import { deriveOverviewSources } from "../../src/overview-data.js";
 
 describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
-    const preview = readFileSync(resolve("index.html"), "utf8");
+    const shell = readFileSync(resolve("index.html"), "utf8");
+    const preview = readFileSync(resolve("src/main.js"), "utf8");
 
+    expect(shell).toContain('<script type="module" src="./src/main.js"></script>');
     expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("await loadCanonicalDashboardSources("));
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
@@ -16,11 +18,11 @@ describe("live Dashboard Language sources", () => {
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
-    expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./src/data-processor.js"');
+    expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js"');
     expect(preview).toMatch(/await loadCanonicalDashboardSources\(\s*sourceUrl,\s*dashboardPageSourceNames\(dashboardDocument, initialPageId\),\s*dashboardContext/);
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
-    expect(preview).not.toContain('./src/source-cache.js');
+    expect(preview).not.toContain('./source-cache.js');
     expect(preview).not.toContain('Showing cached data.');
     expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {');
     expect(preview).toContain('storage: navigator.storage');
@@ -34,7 +36,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('viewer: localViewer');
     expect(preview).toContain('new URL("./__dashboard_socket", window.location.href)');
     expect(preview).toContain('previewMode === "copilot"');
-    expect(preview).toContain('await import("./src/copilot-prompt.js")');
+    expect(preview).toContain('await import("./copilot-prompt.js")');
     expect(preview).toContain('copilotPrompt = renderCopilotPrompt(dashboardSocket)');
     expect(preview).toContain('dashboard.classList.add("dashboard-copilot-enabled")');
     expect(preview).toContain('octicon(open ? "chevron-down" : "chevron-up")');

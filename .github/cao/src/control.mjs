@@ -700,7 +700,13 @@ function createInventory(context, repositories) {
   requireNonNegativeInteger(batchIndex, "batch_index must be a non-negative integer");
   requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
-  const sorted = [...repositories].sort((left, right) => left.id - right.id || left.full_name.localeCompare(right.full_name));
+  const uniqueRepositories = new Map();
+  for (const repository of repositories) {
+    const identity = repository.id ?? repository.full_name.toLowerCase();
+    uniqueRepositories.set(identity, repository);
+  }
+  const sorted = [...uniqueRepositories.values()]
+    .sort((left, right) => left.id - right.id || left.full_name.localeCompare(right.full_name));
   const version = inventoryDigest(sorted);
   const cell = context.targetRepository ? sorted : sorted.filter(({ id }) => id % cellCount === cellIndex);
   const batchCount = Math.ceil(cell.length / batchSize);

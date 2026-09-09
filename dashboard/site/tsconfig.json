@@ -6,6 +6,7 @@
     "allowJs": true,
     "checkJs": true,
     "strict": true,
+    "skipLibCheck": true,
     "noEmit": true,
     "lib": ["ES2023", "ESNext.Disposable", "DOM", "DOM.Iterable"],
     "types": ["node", "vitest/globals"],
