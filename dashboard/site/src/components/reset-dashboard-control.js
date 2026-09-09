@@ -12,12 +12,20 @@ export async function resetLocalDashboardData(storage, indexedDB) {
   storage.clear();
 }
 
+function browserStorage() {
+  try {
+    return globalThis.window?.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * @param {{ storage?: Storage, indexedDB?: IDBFactory, reload?: () => void }} [options]
  * @returns {HTMLElement}
  */
 export function renderResetDashboardControl(options = {}) {
-  const storage = options.storage ?? globalThis.window?.localStorage;
+  const storage = options.storage ?? browserStorage();
   const indexedDB = options.indexedDB ?? globalThis.window?.indexedDB;
   const reload = options.reload ?? (() => globalThis.window?.location.reload());
   /** @type {HTMLButtonElement} */
