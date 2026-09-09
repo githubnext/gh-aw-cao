@@ -155,6 +155,9 @@ import {
  */
 let declaredQueries = new Map();
 
+/** @type {Map<string, Set<string>>} */
+let declaredQuerySources = new Map();
+
 /**
  * @param {string} source
  * @returns {ValidationResult}
@@ -200,6 +203,7 @@ export function validateDashboardDocument(source) {
     validateDashboard(dashboard, getValueNodeByKey(document.contents, 'dashboard'), errors);
   } finally {
     declaredQueries = new Map();
+    declaredQuerySources = new Map();
   }
 
   if (errors.length > 0) {
@@ -1085,12 +1089,13 @@ function validateBuiltInPageDefinition(pageName, definition, path, errors) {
       continue;
     }
 
-    const coverageSource = data.source;
-    if (!sourceFieldCoverage.has(coverageSource)) {
-      sourceFieldCoverage.set(coverageSource, new Set());
+    const coverageSources = new Set([data.source, ...(declaredQuerySources.get(data.source) ?? [])]);
+    for (const coverageSource of coverageSources) {
+      if (!sourceFieldCoverage.has(coverageSource)) {
+        sourceFieldCoverage.set(coverageSource, new Set());
+      }
+      collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(coverageSource));
     }
-
-    collectBuiltInDefinitionFieldCoverage(view.encoding, sourceFieldCoverage.get(coverageSource));
   }
 
   for (const sourceName of BUILT_IN_PAGE_REQUIRED_SOURCES[pageName]) {
@@ -2137,7 +2142,17 @@ function validateQueries(queries, queriesNode, errors) {
       ));
     }
     const fields = validateQueryClauses(query, queryNode, path, declared, errors);
-    if (name) declared.set(name, fields);
+    if (name) {
+      declared.set(name, fields);
+      const inputs = [query.from, ...(Array.isArray(query.joins) ? query.joins.map((join) => join?.source) : [])];
+      const sources = new Set();
+      for (const input of inputs) {
+        if (typeof input !== 'string') continue;
+        if (SOURCE_VALUES.includes(input)) sources.add(input);
+        for (const source of declaredQuerySources.get(input) ?? []) sources.add(source);
+      }
+      declaredQuerySources.set(name, sources);
+    }
   }
   return declared;
 }
