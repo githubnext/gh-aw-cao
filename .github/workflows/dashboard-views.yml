@@ -29,7 +29,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('package-lock.json') }}-chromium
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # Playwright's system dependencies come from the Ubuntu archives. The runner
+        # image also configures Google's Chrome repository, whose index intermittently
+        # fails checksum verification and breaks `apt-get update`; CI never installs
+        # from it, so drop it before resolving dependencies.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
       - name: Select affected pull request views
         id: selection
         if: github.event_name == 'pull_request'

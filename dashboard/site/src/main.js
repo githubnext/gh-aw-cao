@@ -1,6 +1,7 @@
       import { dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
-      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources } from "./data-processor.js";
+      import { offerCancelCommand } from "./cancel-command.js";
+      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { octicon } from "./octicons.js";
 
@@ -39,6 +40,7 @@
       }));
 
       const loadingProgress = startLoadingProgress(document);
+      const cancelCommand = offerCancelCommand(document);
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error(`Unable to load dashboard.json: ${response.status}`);
@@ -46,6 +48,7 @@
         })
         .catch((error) => {
           loadingProgress.complete();
+          cancelCommand.complete();
           throw error;
         });
       /** @type {import('./presenter.js').PresentationDocument} */
@@ -53,6 +56,7 @@
         languageVersion: dashboardSchema["language-version"],
         dashboard: dashboardSchema.dashboard,
       };
+      const dashboardQueries = dashboardSchema.dashboard.queries ?? [];
       const root = document.querySelector("#root");
       if (!(root instanceof HTMLElement)) throw new Error("Dashboard root element is missing.");
       /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */
@@ -859,8 +863,13 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
-        renderSources(await withCanonicalViewSources(fixtureSources, true));
+        const fixtureProjection = await withCanonicalViewSources(fixtureSources, true);
+        renderSources({
+          ...fixtureProjection,
+          ...await processDashboardQueries(dashboardQueries, fixtureProjection),
+        });
         loadingProgress.complete();
+        cancelCommand.complete();
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./sources.json", window.location.href).href;
@@ -873,6 +882,7 @@
             githubUrlBase: dashboardDocument.dashboard["github-url-base"],
             dashboardRepository: dashboardDocument.dashboard.repository,
             pages: dashboardDocument.dashboard.pages,
+            queries: dashboardQueries,
           };
           /** @param {string} pageId */
           const loadPageSources = (pageId) => loadCanonicalDashboardPage(
@@ -896,5 +906,6 @@
           throw failure;
         } finally {
           loadingProgress.complete();
+          cancelCommand.complete();
         }
       }

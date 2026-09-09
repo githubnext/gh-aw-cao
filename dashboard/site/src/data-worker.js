@@ -6,6 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { DashboardQueryCancelledError, executeDashboardQueries, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -39,14 +40,16 @@ function pageScopedSources(sources, requested) {
  * @param {Set<string>} requested
  * @param {ReturnType<typeof dashboardContext>} context
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} requestContext
+ * @param {{ aborted?: boolean }} [signal]
  */
-async function queryLiveDashboard(requested, context, requestContext) {
+async function queryLiveDashboard(requested, context, requestContext, signal) {
   if (!liveDashboard) throw new Error('Canonical dashboard data has not been loaded.');
+  const required = resolveDashboardQuerySources(context.queries, requested);
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
     liveDashboard.logicalSources,
     liveDashboard.generation,
-    [...requested]
+    required
   );
   const derivedSources = deriveRuntimeSources(
     deriveRepositorySources(
@@ -55,9 +58,13 @@ async function queryLiveDashboard(requested, context, requestContext) {
       )
     )
   );
-  const querySources = [...requested].some((name) => name.startsWith('data-health-'))
+  const healthSources = [...requested].some((name) => name.startsWith('data-health-'))
     ? { ...derivedSources, ...deriveDataHealthSources(derivedSources, requestContext) }
     : derivedSources;
+  const querySources = {
+    ...healthSources,
+    ...executeDashboardQueries(context.queries, healthSources, requested, { signal })
+  };
   return deriveDashboardLinkSources(pageScopedSources(querySources, requested), context);
 }
 
@@ -66,29 +73,35 @@ function dashboardContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new TypeError('Canonical dashboard queries require a dashboard context.');
   }
-  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown }} */ (value);
+  const context = /** @type {{ githubUrlBase?: unknown, pages?: unknown, queries?: unknown }} */ (value);
   if (!Array.isArray(context.pages)) {
     throw new TypeError('Canonical dashboard context requires pages.');
+  }
+  if (context.queries !== undefined && !Array.isArray(context.queries)) {
+    throw new TypeError('Canonical dashboard queries must be an array.');
   }
   return {
     githubUrlBase: typeof context.githubUrlBase === 'string' && context.githubUrlBase
       ? context.githubUrlBase : 'https://github.com',
-    pages: /** @type {import('./inferred-sources.js').DashboardPage[]} */ (context.pages)
+    pages: /** @type {import('./inferred-sources.js').DashboardPage[]} */ (context.pages),
+    queries: /** @type {unknown[]} */ (context.queries ?? [])
   };
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown }} request
+ * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
-export function processDataRequest(request) {
+export function processDataRequest(request, signal) {
   if (request?.operation === 'query-canonical-dashboard') {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return queryLiveDashboard(
       requested,
       context,
-      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
+      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
+      signal
     );
   }
   if (request?.operation === 'load-canonical-dashboard') {
@@ -118,9 +131,24 @@ export function processDataRequest(request) {
       return queryLiveDashboard(
         requested,
         context,
-        /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
+        /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {}),
+        signal
       );
     })();
+  }
+  if (request?.operation === 'execute-dashboard-queries') {
+    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
+      throw new TypeError('Dashboard query requests require a sources object.');
+    }
+    if (!Array.isArray(request.queries)) {
+      throw new TypeError('Dashboard query requests require a queries array.');
+    }
+    return executeDashboardQueries(
+      request.queries,
+      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
+      undefined,
+      { signal }
+    );
   }
   if (request?.operation === 'summarize-table-columns') {
     if (!Array.isArray(request.columns)) {
@@ -169,16 +197,48 @@ export function processDataRequest(request) {
   return tidy(request.data, request.operators);
 }
 
+/** @type {Map<number, AbortController>} */
+const inFlight = new Map();
+
+/**
+ * Cancels the identified in-flight requests, or every in-flight request when
+ * no identifier is supplied.
+ * @param {unknown} ids
+ */
+function cancelInFlight(ids) {
+  const targets = Array.isArray(ids) && ids.length
+    ? ids.filter((id) => inFlight.has(/** @type {number} */ (id)))
+    : [...inFlight.keys()];
+  for (const id of targets) inFlight.get(/** @type {number} */ (id))?.abort();
+  return targets.length;
+}
+
 if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessage' in self) {
   self.addEventListener('message', (event) => {
     const id = event.data?.id;
+    if (event.data?.operation === 'cancel-data-processing') {
+      const cancelled = cancelInFlight(event.data.ids);
+      self.postMessage({ id, data: { cancelled } });
+      return;
+    }
+    const controller = new AbortController();
+    inFlight.set(id, controller);
+    const settle = (/** @type {Record<string, unknown>} */ message) => {
+      inFlight.delete(id);
+      self.postMessage({ id, ...message });
+    };
+    /** @param {unknown} error */
+    const failure = (error) => ({
+      error: error instanceof Error ? error.message : String(error),
+      cancelled: error instanceof DashboardQueryCancelledError
+    });
     try {
-      Promise.resolve(processDataRequest(event.data)).then(
-        (data) => self.postMessage({ id, data }),
-        (error) => self.postMessage({ id, error: error instanceof Error ? error.message : String(error) })
+      Promise.resolve(processDataRequest(event.data, controller.signal)).then(
+        (data) => settle({ data }),
+        (error) => settle(failure(error))
       );
     } catch (error) {
-      self.postMessage({ id, error: error instanceof Error ? error.message : String(error) });
+      settle(failure(error));
     }
   });
 }
