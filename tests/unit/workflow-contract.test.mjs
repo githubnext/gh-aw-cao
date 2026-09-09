@@ -3013,6 +3013,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const readme = readFileSync(join(root, "activity", "README.md"), "utf8");
+  const packageDocument = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
   assert.equal(activityManifest.name, "CAO Activity");
   assert.deepEqual(activityManifest.includes, [
@@ -3055,6 +3056,11 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /Restore activity cache[\s\S]*?Run activity workflow[\s\S]*?List activity cache files/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
   assert.match(workflow, /cao-activity-v2-\$\{\{ github\.run_id \}\}-/);
+  for (const script of ["activity:local", "activity:local:node", "activity:run-workflow:local"]) {
+    assert.match(packageDocument.scripts[script], /REPORT_AIC_CACHE=\$\{RUNNER_TEMP:-\$\{TMPDIR:-\/tmp\}\}\/cao-gh-aw-logs/);
+    assert.match(packageDocument.scripts[script], /REPORT_GH_AW_LOGS=_activity\/gh-aw-logs\.json/);
+    assert.doesNotMatch(packageDocument.scripts[script], /REPORT_AIC_CACHE=_activity/);
+  }
   assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
   assert.match(readme, /schemaVersion: 1/);
   assert.match(readme, /Consumers must use the top-level completeness fields/);
