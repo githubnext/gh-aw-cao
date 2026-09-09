@@ -317,11 +317,11 @@ describe('renderTableRegion', () => {
     more.click();
     more.click();
 
-    const loadedRows = [...rendered.querySelectorAll('tbody > tr:not([data-lazy-list-spacer])')];
+    const loadedRows = [...rendered.querySelectorAll('tbody > tr')];
     expect(loadedRows).toHaveLength(50);
     expect(loadedRows[0]?.textContent).toBe('26');
     expect(loadedRows.at(-1)?.textContent).toBe('75');
-    expect(rendered.querySelector('[data-lazy-list-spacer] td')?.style.height).toBe('500px');
+    expect(rendered.querySelector('[data-lazy-list-spacer]')).toBeNull();
     expect(scroll.scrollTop).toBe(380);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 75 of 100 results');
   });

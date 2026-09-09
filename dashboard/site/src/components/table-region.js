@@ -155,7 +155,7 @@ export function renderTableRegion(options) {
     const rows = [...region.querySelectorAll('tbody > tr')]
       .filter((row) => row instanceof HTMLTableRowElement);
     if (sortable) enableTableSort(region, rows);
-    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural, colSpan }, rows);
+    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural }, rows);
   } else if (hasRows && sortable) {
     enableTableSort(region);
   }
@@ -228,7 +228,7 @@ function cellText(row, columnIndex) {
  */
 /**
  * @param {HTMLElement} region
- * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string, colSpan: number }} options
+ * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string }} options
  * @param {HTMLTableRowElement[]} rows
  */
 function enableTableFilter(region, options, rows) {
@@ -262,17 +262,6 @@ function enableTableFilter(region, options, rows) {
 
   let limit = options.pageSize;
   let revision = 0;
-  /** @type {HTMLTableRowElement[]} */
-  let renderedRows = [];
-  /** @type {WeakMap<HTMLTableRowElement, number>} */
-  const rowHeights = new WeakMap();
-  const spacer = h(
-    'tr',
-    { className: 'table-lazy-spacer', 'data-lazy-list-spacer': '', 'aria-hidden': 'true' },
-    h('td', { colSpan: options.colSpan })
-  );
-  const spacerCell = /** @type {HTMLTableCellElement} */ (spacer.firstElementChild);
-
   /**
    * @param {HTMLTableRowElement[]} matchedRows
    * @param {number} shown
@@ -285,16 +274,9 @@ function enableTableFilter(region, options, rows) {
     const anchor = !reset && windowStart > 0 ? nextRows[0] : null;
     const anchorTop = anchor?.parentNode === body ? anchor.getBoundingClientRect().top : null;
 
-    for (const row of renderedRows) {
-      if (nextRows.includes(row) || rowHeights.has(row)) continue;
-      rowHeights.set(row, row.getBoundingClientRect().height);
-    }
-    const prefixHeight = matchedRows
-      .slice(0, windowStart)
-      .reduce((height, row) => height + (rowHeights.get(row) ?? 0), 0);
-    spacerCell.style.height = `${prefixHeight}px`;
-    body.replaceChildren(...(prefixHeight > 0 ? [spacer] : []), ...nextRows);
-    renderedRows = nextRows;
+    const nextRowSet = new Set(nextRows);
+    for (const row of rows) row.hidden = !nextRowSet.has(row);
+    body.replaceChildren(...nextRows);
 
     if (anchor && anchorTop !== null && scroll instanceof HTMLElement) {
       scroll.scrollTop += anchor.getBoundingClientRect().top - anchorTop;

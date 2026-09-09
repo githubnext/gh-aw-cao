@@ -1455,7 +1455,7 @@ test('JSON full-view mode fills the viewport and hides chrome while scrolling', 
       const sources = {
         inventory: {
           source: 'inventory',
-          rows: Array.from({ length: 60 }, (_, index) => ({
+          rows: Array.from({ length: 100 }, (_, index) => ({
             organization: 'githubnext',
             repository: \`repository-\${index + 1}\`
           })),
@@ -1508,6 +1508,15 @@ test('JSON full-view mode fills the viewport and hides chrome while scrolling', 
   expect(await lazyList.evaluate((element) => getComputedStyle(element).borderWidth)).toBe('0px');
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(780);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+
+  const scroll = view.locator('.table-scroll');
+  const more = view.locator('[data-table-more]');
+  await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  await expect(view.locator('tbody > tr')).toHaveCount(50);
+  await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
+  await expect(view.locator('tbody > tr')).toHaveCount(50);
+  expect(await view.locator('tbody > tr').first().evaluate((row) => row.textContent)).not.toContain('repository-1');
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
