@@ -108,10 +108,9 @@ test("runActivity removes cached agent directories before collecting logs", asyn
   const item = await fixture();
   const originalEnv = { ...process.env };
   const cachePath = path.join(item.root, "gh-aw-logs");
-  const workflowPath = path.join(cachePath, "repo-githubnext-gh-aw-cao", "workflow-sample");
-  const agentPath = path.join(workflowPath, "run-42", "agent");
-  const agentFilePath = path.join(workflowPath, "run-43", "agent");
-  const retainedPath = path.join(workflowPath, "run-42", "usage", "usage.json");
+  const agentPath = path.join(cachePath, "run-42", "agent");
+  const agentFilePath = path.join(cachePath, "run-43", "agent");
+  const retainedPath = path.join(cachePath, "run-42", "usage", "usage.json");
   const unrelatedPath = path.join(cachePath, "agent", "retained.json");
   await mkdir(agentPath, { recursive: true });
   await mkdir(path.dirname(agentFilePath), { recursive: true });

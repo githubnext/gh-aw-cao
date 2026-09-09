@@ -10,7 +10,7 @@ on:
         required: false
         type: string
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "7,37 * * * *"
 
 permissions:
   actions: read

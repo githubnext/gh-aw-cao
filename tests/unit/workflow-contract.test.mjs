@@ -2951,10 +2951,10 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp"/);
+  assert.match(activityLogs, /"--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent"/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
   assert.match(activityLogs, /"--start-date", `-\$\{windowDays\}d`, "--cache-before", `-\$\{windowDays\}d`/);
-  assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "15"/);
+  assert.match(activityLogs, /"--count", String\(runLimit\), "--timeout", "25"/);
   assert.match(activityLogs, /"--max-github-api-rate-limit", "-2000", "--max-storage", "1200"/);
   assert.match(activityLogs, /"--prune-older-runs"/);
   assert.equal((activityLogs.match(/"aw", "logs"/g) || []).length, 1);
@@ -3028,6 +3028,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   ]);
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
+  assert.match(workflow, /cron: "7,37 \* \* \* \*"/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: true/);

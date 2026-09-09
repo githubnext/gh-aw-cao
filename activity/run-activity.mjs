@@ -19,19 +19,15 @@ async function removeCachedAgentDirectories(directory) {
     throw error;
   }
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const child = path.join(directory, entry.name);
-    if (entry.name === "agent" && /^run-\d+$/.test(path.basename(directory))) {
-      const stats = await lstat(child).catch((error) => {
-        if (error.code === "ENOENT") return undefined;
-        throw error;
-      });
-      if (!stats?.isDirectory()) continue;
-      await rm(child, { recursive: true, force: true });
-      log.info`Removed cached agent logs from ${path.basename(directory)}`;
-      continue;
-    }
-    await removeCachedAgentDirectories(child);
+    if (!entry.isDirectory() || !/^run-\d+$/.test(entry.name)) continue;
+    const agentDirectory = path.join(directory, entry.name, "agent");
+    const stats = await lstat(agentDirectory).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (!stats?.isDirectory()) continue;
+    await rm(agentDirectory, { recursive: true, force: true });
+    log.info`Removed cached agent logs from ${entry.name}`;
   }
 }
 
