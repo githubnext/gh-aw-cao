@@ -272,6 +272,42 @@ esac
   });
 }
 
+test("orchestrator discovery collapses renamed repository aliases", () => {
+  const result = runPrecompute(
+    {
+      ROLE: "orchestrator",
+      TARGET_REPO: "",
+    },
+    `
+case "$*" in
+  *contents/.github/workflows/dependabot.md*)
+    printf '%s\\n' '---
+safe-outputs:
+  dispatch-workflow:
+    workflows: [dependabot-release-train-updater]
+---' | base64 | tr -d '\\n'
+    ;;
+  *actions/workflows*)
+    printf '{"id":1,"name":"Dependabot worker","path":".github/workflows/dependabot-release-train-updater.lock.yml","state":"active"}\\n'
+    ;;
+  *repos/acme/old-target*|*repos/acme/target*)
+    printf '{"id":7,"full_name":"acme/target","archived":false,"disabled":false,"private":true,"pushed_at":"2026-09-03T00:00:00Z","default_branch":"main"}\\n'
+    ;;
+  *) printf 'true\\n' ;;
+esac
+`,
+    controlPolicy({
+      scope: { "allowed-repositories": ["acme/old-target", "acme/target"] },
+      packagePolicy: { "max-repositories": 2 },
+    }),
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  const precompute = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
+  assert.deepEqual(precompute.candidate_repositories.map(({ full_name }) => full_name), ["acme/target"]);
+  assert.equal(precompute.inventory_repository_count, 1);
+});
+
 test("control precompute rejects a public non-central review destination", () => {
   const result = runPrecompute(
     { SAFE_OUTPUT_REPO: "acme/review" },

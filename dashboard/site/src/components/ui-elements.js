@@ -11,7 +11,7 @@ import { renderPackageRouteVariant, renderPackageRouteView } from './package-rou
 import { renderOutcomeDetail } from './outcome-detail.js';
 import { isOutcomeDetailSectionConfig, renderOutcomeDetailSection } from './outcome-detail-sections.js';
 import { renderSectionHeading, isPlainObject, renderIdentityLink, renderDlRow, renderIconSpan, renderLabeledSpan, renderListOrEmptyMessage } from './ui-primitives.js';
-import { slugify, clampPercent } from './count-formatters.js';
+import { slugify, clampPercent, text as stringValue } from './count-formatters.js';
 import { renderDefinitionList } from './view-chrome.js';
 import { renderAnomalyReadiness } from './anomaly-readiness.js';
 import { renderWorkflowRouteView } from './workflow-route-view.js';
@@ -715,13 +715,6 @@ function safeNavigationHref(value) {
  */
 function rowsFor(context, sourceName) {
   return rowsForSource(context.sources, sourceName);
-}
-
-/**
- * @param {unknown} value
- */
-function stringValue(value) {
-  return value == null ? '' : String(value);
 }
 
 /**
