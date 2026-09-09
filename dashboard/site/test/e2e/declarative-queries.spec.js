@@ -488,3 +488,28 @@ test('scenario 12: a dependency cycle rejects every query in the cycle and every
     expect(payload[name].metadata.availability).toBe('unavailable');
   }
 });
+
+test('scenario 13: cancels an in-flight computation and recovers for later work', async ({ page }) => {
+  const outcome = await page.evaluate(async () => {
+    const { cancelDataProcessing, loadCanonicalDashboardSources, processDashboardQueries } =
+      await import(`${location.origin}/src/data-processor.js`);
+    const queries = [{ name: 'workflow-list', from: 'workflows' }];
+    await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['workflows'],
+      { githubUrlBase: 'https://github.com', pages: [], queries: [] }
+    );
+    const sources = { workflows: { source: 'workflows', rows: [{ workflow: 'a.md' }], metadata: {} } };
+
+    const pending = processDashboardQueries(queries, sources);
+    const cancelled = cancelDataProcessing('Data processing was cancelled.');
+    const settled = await pending.then(() => 'resolved', (/** @type {Error} */ error) => error.name);
+    const recovered = await processDashboardQueries(queries, sources);
+
+    return { cancelled, settled, recovered: recovered['workflow-list'].rows.length };
+  });
+
+  expect(outcome.cancelled).toBe(1);
+  expect(['resolved', 'DataProcessingCancelledError']).toContain(outcome.settled);
+  expect(outcome.recovered).toBe(1);
+});

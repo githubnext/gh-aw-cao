@@ -1,5 +1,6 @@
       import { dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./presenter.js";
       import { startLoadingProgress } from "./loading-progress.js";
+      import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
       import { octicon } from "./octicons.js";
@@ -39,6 +40,7 @@
       }));
 
       const loadingProgress = startLoadingProgress(document);
+      const cancelCommand = offerCancelCommand(document);
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error(`Unable to load dashboard.json: ${response.status}`);
@@ -46,6 +48,7 @@
         })
         .catch((error) => {
           loadingProgress.complete();
+          cancelCommand.complete();
           throw error;
         });
       /** @type {import('./presenter.js').PresentationDocument} */
@@ -866,6 +869,7 @@
           ...await processDashboardQueries(dashboardQueries, fixtureProjection),
         });
         loadingProgress.complete();
+        cancelCommand.complete();
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./sources.json", window.location.href).href;
@@ -902,5 +906,6 @@
           throw failure;
         } finally {
           loadingProgress.complete();
+          cancelCommand.complete();
         }
       }

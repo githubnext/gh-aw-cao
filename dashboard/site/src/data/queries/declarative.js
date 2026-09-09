@@ -42,8 +42,82 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-input-rows': 200000,
   'max-join-rows': 200000,
   'max-output-rows': 100000,
-  'max-joins': 4
+  'max-joins': 4,
+  'max-operations': 5000000,
+  'max-duration-ms': 60000
 };
+
+/** Rows processed between cancellation checkpoints inside a join. */
+const CANCELLATION_CHECK_INTERVAL = 4096;
+
+/**
+ * @typedef {ReturnType<typeof createDashboardQueryBudget>} QueryBudget
+ */
+
+/**
+ * Raised when execution stops before it finished, either because the caller
+ * aborted it, the deadline elapsed, or the operation budget was exhausted.
+ * It is distinct from a query fault: no partial result is reported.
+ */
+export class DashboardQueryCancelledError extends Error {
+  /** @param {string} message @param {'aborted'|'timeout'|'budget'} kind */
+  constructor(message, kind) {
+    super(message);
+    this.name = 'DashboardQueryCancelledError';
+    this.kind = kind;
+  }
+}
+
+/**
+ * Bounds one execution by wall-clock time, by the number of row operations it
+ * performs, and by an external abort signal. Every bound is checked at the
+ * same checkpoints, so a runaway computation stops on whichever bound it
+ * reaches first.
+ *
+ * @param {{ signal?: { aborted?: boolean, reason?: unknown }, timeout?: number, maxOperations?: number, now?: () => number }} [options]
+ */
+export function createDashboardQueryBudget(options = {}) {
+  const timeout = Number.isFinite(options.timeout) && Number(options.timeout) > 0
+    ? Number(options.timeout)
+    : DASHBOARD_QUERY_LIMITS['max-duration-ms'];
+  const maxOperations = Number.isFinite(options.maxOperations) && Number(options.maxOperations) > 0
+    ? Number(options.maxOperations)
+    : DASHBOARD_QUERY_LIMITS['max-operations'];
+  const now = options.now ?? (() => Date.now());
+  const startedAt = now();
+  let operations = 0;
+  return {
+    get operations() {
+      return operations;
+    },
+    /**
+     * Records row operations and stops execution when the budget is spent.
+     * @param {number} count
+     */
+    spend(count) {
+      operations += Math.max(0, count);
+      if (operations > maxOperations) {
+        throw new DashboardQueryCancelledError(
+          `dashboard queries exceeded the max-operations budget of ${maxOperations}`,
+          'budget'
+        );
+      }
+      this.checkpoint();
+    },
+    /** Stops execution when the caller aborted it or the deadline elapsed. */
+    checkpoint() {
+      if (options.signal?.aborted) {
+        throw new DashboardQueryCancelledError('dashboard queries were cancelled', 'aborted');
+      }
+      if (now() - startedAt > timeout) {
+        throw new DashboardQueryCancelledError(
+          `dashboard queries exceeded the max-duration-ms limit of ${timeout}`,
+          'timeout'
+        );
+      }
+    }
+  };
+}
 
 /** Supported join types. */
 export const DASHBOARD_QUERY_JOIN_TYPES = ['inner', 'left'];
@@ -237,18 +311,21 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
  * @param {unknown} definitions
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Iterable<string>} [requested] only these queries are executed when provided
+ * @param {{ signal?: { aborted?: boolean }, timeout?: number, maxOperations?: number, budget?: QueryBudget }} [options]
  * @returns {Record<string, LogicalSourceInput>}
  */
-export function executeDashboardQueries(definitions, sources, requested) {
+export function executeDashboardQueries(definitions, sources, requested, options = {}) {
   const index = dashboardQueryIndex(definitions);
   if (index.size === 0) return {};
   const defects = dashboardQueryDefects(definitions);
   const wanted = requested ? new Set(resolveDashboardQuerySources(definitions, requested)) : null;
+  const budget = options.budget ?? createDashboardQueryBudget(options);
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
   for (const [name, definition] of index) {
     if (wanted && !wanted.has(name)) continue;
-    derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name));
+    budget.checkpoint();
+    derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name), budget);
   }
   return derived;
 }
@@ -257,9 +334,10 @@ export function executeDashboardQueries(definitions, sources, requested) {
  * @param {DashboardQuery} definition
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {string} [defect] a rejected query pattern detected before execution
+ * @param {QueryBudget} [budget] shared cancellation, deadline, and operation budget
  * @returns {LogicalSourceInput}
  */
-export function executeDashboardQuery(definition, sources, defect) {
+export function executeDashboardQuery(definition, sources, defect, budget = createDashboardQueryBudget()) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
   const rejected = defect ?? queryStructuralDefect(definition);
   if (rejected) {
@@ -277,9 +355,10 @@ export function executeDashboardQuery(definition, sources, defect) {
     );
   }
   try {
-    const rows = runDashboardQuery(definition, sources);
+    const rows = runDashboardQuery(definition, sources, budget);
     return { source: definition.name, rows, metadata: composedMetadata(definition.name, inputs, rows.length) };
   } catch (error) {
+    if (error instanceof DashboardQueryCancelledError) throw error;
     return unavailableResult(
       definition,
       composedMetadata(definition.name, inputs, 0),
@@ -291,16 +370,20 @@ export function executeDashboardQuery(definition, sources, defect) {
 /**
  * @param {DashboardQuery} definition
  * @param {Record<string, LogicalSourceInput>} sources
+ * @param {QueryBudget} budget
  * @returns {Row[]}
  */
-function runDashboardQuery(definition, sources) {
+function runDashboardQuery(definition, sources, budget) {
   const input = /** @type {Row[]} */ (sources[definition.from].rows);
   enforceLimit(input.length, 'max-input-rows', definition.from);
+  budget.spend(input.length);
   let rows = input.map((row) => ({ ...row }));
   for (const join of definition.joins ?? []) {
-    rows = applyJoin(rows, join, /** @type {Row[]} */ (sources[join.source].rows), join.source);
+    rows = applyJoin(rows, join, /** @type {Row[]} */ (sources[join.source].rows), join.source, budget);
   }
-  rows = tidy(rows, compileRowOperators(definition));
+  const operators = compileRowOperators(definition);
+  budget.spend(rows.length * Math.max(1, operators.length));
+  rows = tidy(rows, operators);
   enforceLimit(rows.length, 'max-output-rows', definition.name);
   return rows;
 }
@@ -335,10 +418,12 @@ export function compileRowOperators(definition) {
  * @param {NonNullable<DashboardQuery['joins']>[number]} join
  * @param {Row[]} joinedRows
  * @param {string} sourceName
+ * @param {QueryBudget} budget
  * @returns {Row[]}
  */
-function applyJoin(rows, join, joinedRows, sourceName) {
+function applyJoin(rows, join, joinedRows, sourceName, budget) {
   enforceLimit(joinedRows.length, 'max-input-rows', sourceName);
+  budget.spend(joinedRows.length);
   /** @type {Map<string, Row>} */
   const byKey = new Map();
   for (const row of joinedRows) {
@@ -353,6 +438,7 @@ function applyJoin(rows, join, joinedRows, sourceName) {
   /** @type {Row[]} */
   const joined = [];
   for (const row of rows) {
+    if (joined.length % CANCELLATION_CHECK_INTERVAL === 0) budget.checkpoint();
     const key = joinKey(row, join.on.map((pair) => pair.left));
     const match = key === null ? undefined : byKey.get(key);
     if (!match && type === 'inner') continue;
@@ -362,6 +448,7 @@ function applyJoin(rows, join, joinedRows, sourceName) {
     });
   }
   enforceLimit(joined.length, 'max-join-rows', sourceName);
+  budget.spend(joined.length);
   return joined;
 }
 

@@ -5,11 +5,42 @@ import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
 
+/** Milliseconds a cooperative cancellation is given before the worker is terminated. */
+const CANCELLATION_GRACE_MS = 250;
+
 /** @type {Worker | null} */
 let worker = null;
 let nextRequestId = 0;
 /** @type {Map<number, { resolve: (value: unknown) => void, reject: (reason: Error) => void }>} */
 const pending = new Map();
+
+/**
+ * Cancels every in-flight data-worker request. The worker is first asked to
+ * stop cooperatively; if it does not acknowledge within the grace period it is
+ * blocked in a runaway computation and is terminated instead. A terminated
+ * worker is recreated on the next request.
+ *
+ * @param {string} [reason]
+ * @returns {number} the number of requests that were cancelled
+ */
+export function cancelDataProcessing(reason = 'Data processing was cancelled.') {
+  const ids = [...pending.keys()];
+  if (!ids.length) return 0;
+  const processor = worker;
+  if (processor) processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids });
+  const cancellation = new Error(reason);
+  cancellation.name = 'DataProcessingCancelledError';
+  setTimeout(() => {
+    if (!ids.some((id) => pending.has(id))) return;
+    for (const id of ids) {
+      pending.get(id)?.reject(cancellation);
+      pending.delete(id);
+    }
+    processor?.terminate();
+    if (worker === processor) worker = null;
+  }, CANCELLATION_GRACE_MS);
+  return ids.length;
+}
 
 /**
  * Runs a serializable tidy pipeline in a Web Worker when the environment supports it.
@@ -76,13 +107,15 @@ export function processCanonicalDashboardSources(sources, generation) {
  * There is no main-thread fallback: queries either run in the worker or fail.
  * @param {unknown[]} queries
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @param {{ signal?: AbortSignal }} [options] cancels the request from outside
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
-export function processDashboardQueries(queries, sources) {
+export function processDashboardQueries(queries, sources, options = {}) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
     { operation: 'execute-dashboard-queries', queries, sources },
     () => Promise.reject(new Error('Declarative dashboard queries require a data worker.')),
-    false
+    false,
+    options.signal
   ));
 }
 
@@ -122,9 +155,10 @@ export function loadCanonicalDashboardPage(sourceNames, context) {
  * @param {Record<string, unknown>} request
  * @param {() => T} fallback
  * @param {boolean} [recoverWorkerError]
+ * @param {AbortSignal} [signal]
  * @returns {T|Promise<T>}
  */
-function processRequest(request, fallback, recoverWorkerError = true) {
+function processRequest(request, fallback, recoverWorkerError = true, signal) {
   const processor = getWorker();
   if (!processor) return fallback();
   const id = ++nextRequestId;
@@ -134,6 +168,11 @@ function processRequest(request, fallback, recoverWorkerError = true) {
       reject
     });
     processor.postMessage({ id, ...request });
+    const onAbort = () => {
+      if (pending.has(id)) processor.postMessage({ id: ++nextRequestId, operation: 'cancel-data-processing', ids: [id] });
+    };
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener('abort', onAbort, { once: true });
   });
   return recoverWorkerError ? result.catch(fallback) : result;
 }
@@ -147,8 +186,13 @@ function getWorker() {
     const request = pending.get(event.data?.id);
     if (!request) return;
     pending.delete(event.data.id);
-    if (typeof event.data.error === 'string') request.reject(new Error(event.data.error));
-    else request.resolve(event.data.data);
+    if (typeof event.data.error === 'string') {
+      const error = new Error(event.data.error);
+      if (event.data.cancelled) error.name = 'DataProcessingCancelledError';
+      request.reject(error);
+    } else {
+      request.resolve(event.data.data);
+    }
   });
   worker.addEventListener('error', (event) => {
     for (const request of pending.values()) request.reject(new Error(event.message || 'Data worker failed.'));

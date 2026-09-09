@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DASHBOARD_QUERY_LIMITS,
+  DashboardQueryCancelledError,
+  createDashboardQueryBudget,
   dashboardQueryDefects,
   dashboardQueryOutputFields,
   executeDashboardQueries,
@@ -316,6 +318,73 @@ describe('declarative dashboard queries', () => {
 
     expect(fields).toEqual(['workflow', 'aic']);
     expect(dashboardQueryOutputFields({ name: 'unknown-input', from: 'mystery' }, () => undefined)).toBeUndefined();
+  });
+});
+
+describe('query cancellation, deadlines, and operation budgets', () => {
+  /** @type {import('../../src/data/queries/declarative.js').DashboardQuery} */
+  const totals = {
+    name: 'totals',
+    from: 'usage',
+    aggregate: { by: ['workflow'], values: [{ field: 'aic', as: 'aic', reducer: 'sum' }] }
+  };
+
+  it('stops execution when the caller aborts the signal', () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    expect(() => executeDashboardQueries([totals], { usage }, undefined, { signal: controller.signal }))
+      .toThrow(DashboardQueryCancelledError);
+  });
+
+  it('reports an abort as a cancellation rather than a query fault', () => {
+    const controller = new AbortController();
+    controller.abort();
+    try {
+      executeDashboardQueries([totals], { usage }, undefined, { signal: controller.signal });
+      expect.unreachable('cancelled execution must not return a projection');
+    } catch (error) {
+      expect(/** @type {DashboardQueryCancelledError} */ (error).kind).toBe('aborted');
+      expect(/** @type {Error} */ (error).message).toBe('dashboard queries were cancelled');
+    }
+  });
+
+  it('stops execution once the deadline elapses', () => {
+    let clock = 0;
+    const budget = createDashboardQueryBudget({ timeout: 60000, now: () => (clock += 40000) });
+
+    expect(() => executeDashboardQueries([totals], { usage }, undefined, { budget }))
+      .toThrow(/max-duration-ms limit of 60000/);
+  });
+
+  it('stops a runaway computation once the operation budget is spent', () => {
+    const budget = createDashboardQueryBudget({ maxOperations: 1 });
+
+    expect(() => executeDashboardQueries([totals], { usage }, undefined, { budget }))
+      .toThrow(/max-operations budget of 1/);
+  });
+
+  it('counts the row operations a query performs', () => {
+    const budget = createDashboardQueryBudget();
+    executeDashboardQueries([totals], { usage }, undefined, { budget });
+
+    expect(budget.operations).toBe(4);
+  });
+
+  it('defaults to the documented one-minute deadline and operation cap', () => {
+    expect(DASHBOARD_QUERY_LIMITS['max-duration-ms']).toBe(60000);
+    expect(DASHBOARD_QUERY_LIMITS['max-operations']).toBe(5000000);
+  });
+
+  it('cancels an in-flight worker request through the data worker handler', () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    expect(() => processDataRequest({
+      operation: 'execute-dashboard-queries',
+      queries: [totals],
+      sources: { usage }
+    }, controller.signal)).toThrow(DashboardQueryCancelledError);
   });
 });
 

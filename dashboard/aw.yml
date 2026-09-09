@@ -78,6 +78,8 @@ resources:
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js
     destination: .github/aw/dashboard/site/src/compliance.js
+  - source: site/src/cancel-command.js
+    destination: .github/aw/dashboard/site/src/cancel-command.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/dom.js
