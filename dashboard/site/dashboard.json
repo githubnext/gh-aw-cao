@@ -2439,36 +2439,6 @@
             },
             "layout": "full-view",
             "lazy-list": true
-          },
-          {
-            "id": "data-health-schema",
-            "title": "Indexed workflow database schema",
-            "description": "Inferred field shapes show the records available in each indexed dashboard source.",
-            "intent": "Inspect the indexed dashboard source schema when diagnosing workflow data.",
-            "disclosure": "supplemental",
-            "disclosure-label": "Database schema",
-            "data": {
-              "source": "data-health-schema"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No indexed source schema available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "schema",
-                  "type": "nominal",
-                  "title": "Schema"
-                }
-              ]
-            },
-            "layout": "full",
-            "lazy-list": true
           }
         ]
       },
@@ -3381,6 +3351,35 @@
               ]
             },
             "layout": "full-view",
+            "lazy-list": true
+          },
+          {
+            "id": "data-health-schema",
+            "locked": true,
+            "description": "Inferred field shapes show the records available in each indexed dashboard source.",
+            "disclosure": "supplemental",
+            "disclosure-label": "Indexed workflow database schema",
+            "data": {
+              "source": "data-health-schema"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No indexed source schema available.",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "schema",
+                  "type": "nominal",
+                  "title": "Schema"
+                }
+              ]
+            },
+            "layout": "full",
             "lazy-list": true
           }
         ]

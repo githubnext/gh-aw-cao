@@ -122,6 +122,29 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
+  it('defines the indexed workflow database schema as a Data Health diagnostic', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const dataHealth = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'data-health');
+    const schema = dataHealth.views.find((/** @type {{ id: string }} */ view) => view.id === 'data-health-schema');
+
+    expect(schema).toMatchObject({
+      locked: true,
+      disclosure: 'supplemental',
+      'disclosure-label': 'Indexed workflow database schema',
+      data: { source: 'data-health-schema' },
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full',
+      encoding: {
+        columns: [
+          { field: 'source', type: 'nominal', title: 'Source' },
+          { field: 'schema', type: 'nominal', title: 'Schema' }
+        ]
+      }
+    });
+  });
+
   it('defines every editable experimental page as one full-view lazy table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
