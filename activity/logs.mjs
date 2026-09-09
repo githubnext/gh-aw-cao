@@ -9,7 +9,7 @@ import { actionsLog as log } from "./actions-log.mjs";
 import { performanceJobRecord } from "./failure-evidence.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
-const DEFAULT_RUN_LIMIT = 2000;
+const DEFAULT_RUN_LIMIT = 200;
 const ACTIONS_API_CONCURRENCY = 4;
 const ACTIONS_JOB_PAGE_LIMIT = 10;
 
@@ -240,8 +240,8 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
   if (!Number.isInteger(windowDays) || windowDays < 1 || windowDays > 31) {
     throw new Error("REPORT_RUN_WINDOW_DAYS must be an integer from 1 through 31");
   }
-  if (!Number.isInteger(runLimit) || runLimit < 1 || runLimit > 2000) {
-    throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 2000");
+  if (!Number.isInteger(runLimit) || runLimit < 1 || runLimit > 200) {
+    throw new Error("REPORT_RUN_LIMIT must be an integer from 1 through 200");
   }
 
   await mkdir(path.dirname(logsPath), { recursive: true });

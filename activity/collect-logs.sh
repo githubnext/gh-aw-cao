@@ -8,7 +8,7 @@ logs_path="${REPORT_GH_AW_LOGS:-_activity/gh-aw-logs.json}"
 output_directory="${REPORT_AIC_CACHE:-_activity/gh-aw-logs}"
 exit_code_path="${REPORT_GH_AW_LOGS_EXIT_CODE:-_activity/gh-aw-logs-exit-code}"
 window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
-run_limit="${REPORT_RUN_LIMIT:-2000}"
+run_limit="${REPORT_RUN_LIMIT:-200}"
 
 mkdir -p "$output_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_path")"
 
