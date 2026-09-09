@@ -15,22 +15,17 @@ const metadata = {
 };
 
 /** @param {Record<string, unknown>} [overrides] @returns {Record<string, unknown>} */
-function rateLimitRow(overrides = {}) {
+function githubApiEvent(overrides = {}) {
   return {
-    'observation-id': 'run-1:after:reader:core:2026-09-04T12:00:00Z',
-    'operation-execution-id': 'run-1',
     'observed-at': '2026-09-04T12:00:00Z',
-    phase: 'after',
-    operation: 'refresh-activity',
-    credential: 'reader',
-    resource: 'core',
-    remaining: 4_875,
-    limit: 5_000,
-    used: 125,
-    'remaining-percent': 97.5,
-    'reset-at': '2026-09-04T13:00:00Z',
-    'consumed-since-previous': 25,
-    'attribution-status': 'available',
+    'event-type': 'github-api.response',
+    'event-summary': 'GET /rate_limit',
+    'event-status': '200',
+    organization: 'githubnext',
+    repository: 'gh-aw-cao',
+    workflow: '.github/workflows/dashboard.md',
+    run: '1',
+    'correlation-id': 'request-1',
     'run-link': {
       relation: 'run',
       href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1',
@@ -45,8 +40,8 @@ async function renderApiPage(rows) {
   const rendered = renderDashboard({
     document: dashboard,
     sources: {
-      'github-api-rate-limits': {
-        source: 'github-api-rate-limits',
+      'github-api-events': {
+        source: 'github-api-events',
         metadata,
         rows
       }
@@ -61,27 +56,25 @@ async function renderApiPage(rows) {
   return rendered.querySelector('[data-page-id="github-api"]');
 }
 
-describe('GitHub API rate-limit dashboard', () => {
-  it('defines one full-view lazy-list table of raw quota observations', () => {
+describe('GitHub API event dashboard', () => {
+  it('defines one declarative full-view lazy-list table of canonical events', () => {
     const apiPage = dashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'github-api');
 
     expect(apiPage).toMatchObject({
       kind: 'custom',
-      title: 'GitHub API Rate Limits',
+      title: 'GitHub API',
       icon: 'meter',
       views: [{
         id: 'github-api-observations',
-        title: 'Raw quota observations',
+        title: 'GitHub API events',
         mark: 'table',
         controls: 'interactive',
         'lazy-list': true,
         layout: 'full-view',
         data: {
-          source: 'github-api-rate-limits',
+          source: 'github-api-events',
           'order-by': [
-            { field: 'observed-at', direction: 'desc' },
-            { field: 'resource', direction: 'asc' },
-            { field: 'credential', direction: 'asc' }
+            { field: 'observed-at', direction: 'desc' }
           ]
         }
       }]
@@ -89,28 +82,31 @@ describe('GitHub API rate-limit dashboard', () => {
     expect(apiPage.sections).toBeUndefined();
     expect(apiPage.views).toHaveLength(1);
     expect(apiPage.views[0].data.limit).toBeUndefined();
+    expect(dashboard.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'github-api-events',
+      from: 'events',
+      filter: { predicates: [{ field: 'event-type', includes: 'github-api.' }] }
+    }));
   });
 
-  it('renders raw quota values and run links', async () => {
-    const page = await renderApiPage([rateLimitRow()]);
+  it('renders API event context and run links', async () => {
+    const page = await renderApiPage([githubApiEvent()]);
 
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('tbody td:first-child a')?.getAttribute('href'))
       .toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1');
-    expect(page?.textContent).toContain('Raw quota observations');
-    expect(page?.textContent).toContain('4875');
-    expect(page?.textContent).toContain('5000');
-    expect(page?.textContent).toContain('available');
+    expect(page?.textContent).toContain('GitHub API events');
+    expect(page?.textContent).toContain('github-api.response');
+    expect(page?.textContent).toContain('GET /rate_limit');
+    expect(page?.textContent).toContain('request-1');
   });
 
   it('enables lazy-list rendering for high-cardinality observations', async () => {
-    const rows = Array.from({ length: 1_000 }, (_, index) => rateLimitRow({
-      'observation-id': `run-${index}:after:reader:resource-${index}`,
-      'operation-execution-id': `run-${index}`,
+    const rows = Array.from({ length: 1_000 }, (_, index) => githubApiEvent({
       'observed-at': new Date(Date.parse('2026-09-04T12:00:00Z') - index * 60_000).toISOString(),
-      operation: `operation-${index}`,
-      resource: `resource-${index}`
+      'event-summary': `request-${index}`,
+      'correlation-id': `correlation-${index}`
     }));
     const page = await renderApiPage(rows);
 
@@ -122,8 +118,8 @@ describe('GitHub API rate-limit dashboard', () => {
     const page = renderDashboard({
       document: dashboard,
       sources: {
-        'github-api-rate-limits': {
-          source: 'github-api-rate-limits',
+        'github-api-events': {
+          source: 'github-api-events',
           metadata: {
             ...metadata,
             completeness: 'partial',
