@@ -72,6 +72,21 @@ export function processCanonicalDashboardSources(sources, generation) {
 }
 
 /**
+ * Executes declarative dashboard queries exclusively in the data worker.
+ * There is no main-thread fallback: queries either run in the worker or fail.
+ * @param {unknown[]} queries
+ * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
+ * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
+ */
+export function processDashboardQueries(queries, sources) {
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
+    { operation: 'execute-dashboard-queries', queries, sources },
+    () => Promise.reject(new Error('Declarative dashboard queries require a data worker.')),
+    false
+  ));
+}
+
+/**
  * Loads and hydrates the live canonical dashboard entirely in the data worker.
  * The main thread sends only a URL and receives the query projection needed by
  * the renderer.

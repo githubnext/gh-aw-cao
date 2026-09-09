@@ -70,6 +70,273 @@
         "significant": 0.001
       }
     },
+    "queries": [
+      {
+        "name": "workflow-run-totals",
+        "description": "Observed run totals for each declared workflow.",
+        "from": "runs",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "runs",
+              "reducer": "distinct-count"
+            }
+          ]
+        }
+      },
+      {
+        "name": "workflow-aic-totals",
+        "description": "Observed AI Credit totals for each declared workflow.",
+        "from": "usage",
+        "aggregate": {
+          "by": [
+            "organization",
+            "repository",
+            "workflow"
+          ],
+          "values": [
+            {
+              "field": "aic",
+              "as": "aic",
+              "reducer": "sum"
+            }
+          ]
+        }
+      },
+      {
+        "name": "workflow-inventory",
+        "description": "Central package and repository-owned workflow inventory with observed execution totals.",
+        "from": "workflows",
+        "joins": [
+          {
+            "source": "workflow-run-totals",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "runs",
+                "as": "observed-runs"
+              }
+            ]
+          },
+          {
+            "source": "workflow-aic-totals",
+            "type": "left",
+            "on": [
+              {
+                "left": "organization",
+                "right": "organization"
+              },
+              {
+                "left": "repository",
+                "right": "repository"
+              },
+              {
+                "left": "workflow",
+                "right": "workflow"
+              }
+            ],
+            "fields": [
+              {
+                "field": "aic",
+                "as": "observed-aic"
+              }
+            ]
+          }
+        ],
+        "compute": [
+          {
+            "as": "package-title",
+            "function": "title-case",
+            "args": [
+              {
+                "field": "package"
+              }
+            ]
+          },
+          {
+            "as": "package-display-name",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "package-name"
+              },
+              {
+                "field": "package-title"
+              },
+              {
+                "value": "Repository-owned"
+              }
+            ]
+          },
+          {
+            "as": "repository-slug",
+            "function": "concat",
+            "args": [
+              {
+                "field": "organization"
+              },
+              {
+                "value": "/"
+              },
+              {
+                "field": "repository"
+              }
+            ]
+          },
+          {
+            "as": "workflow-display-name",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "workflow-name"
+              },
+              {
+                "field": "workflow"
+              }
+            ]
+          },
+          {
+            "as": "declared-role",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "workflow-role"
+              },
+              {
+                "value": "standalone"
+              }
+            ]
+          },
+          {
+            "as": "declared-mode",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "rollout-mode"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "declared-registration",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "workflow-active"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "total-runs",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-runs"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "total-aic",
+            "function": "coalesce",
+            "args": [
+              {
+                "field": "observed-aic"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "select": [
+          {
+            "field": "package"
+          },
+          {
+            "field": "package-display-name",
+            "as": "package-name"
+          },
+          {
+            "field": "organization"
+          },
+          {
+            "field": "repository-slug",
+            "as": "repository"
+          },
+          {
+            "field": "workflow"
+          },
+          {
+            "field": "workflow-display-name",
+            "as": "workflow-name"
+          },
+          {
+            "field": "declared-role",
+            "as": "workflow-role"
+          },
+          {
+            "field": "declared-mode",
+            "as": "rollout-mode"
+          },
+          {
+            "field": "declared-registration",
+            "as": "workflow-active"
+          },
+          {
+            "field": "total-aic",
+            "as": "aic"
+          },
+          {
+            "field": "total-runs",
+            "as": "runs"
+          },
+          {
+            "field": "repository-link"
+          },
+          {
+            "field": "workflow-link"
+          }
+        ],
+        "order-by": [
+          {
+            "field": "repository",
+            "direction": "asc"
+          },
+          {
+            "field": "workflow",
+            "direction": "asc"
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "operations",

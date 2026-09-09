@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderDashboard } from '../../src/presenter.js';
+import { applyDashboardQueries } from '../workflow-inventory-query.js';
 
 describe('linked text refactor behavior preservation', () => {
   it('preserves derived links in declarative workflow inventory tables', () => {
@@ -31,7 +32,33 @@ describe('linked text refactor behavior preservation', () => {
 
     const rendered = renderDashboard({
       document,
-      sources: {
+      sources: applyDashboardQueries({
+        runs: {
+          source: 'runs',
+          rows: [],
+          metadata: {
+            'source-id': 'workflow-runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-08-30T08:00:00Z',
+            'retrieved-at': '2026-08-30T08:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
+        usage: {
+          source: 'usage',
+          rows: [],
+          metadata: {
+            'source-id': 'workflow-usage-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-08-30T08:00:00Z',
+            'retrieved-at': '2026-08-30T08:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
         workflows: {
           source: 'workflows',
           rows: [
@@ -48,7 +75,7 @@ describe('linked text refactor behavior preservation', () => {
             availability: 'available'
           }
         }
-      }
+      })
     });
 
     expect(rendered.outerHTML).toContain('id="workflows-workflows-heading"');

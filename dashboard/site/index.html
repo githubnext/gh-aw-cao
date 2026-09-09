@@ -15,7 +15,7 @@
     <script type="module">
       import { dashboardPageSourceNames, disposeDashboard, renderDashboard, updateWithViewTransition } from "./src/presenter.js";
       import { startLoadingProgress } from "./src/loading-progress.js";
-      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources } from "./src/data-processor.js";
+      import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries } from "./src/data-processor.js";
       import { loadCanonicalViewSources } from "./src/data/queries/view-sources.js";
       import { octicon } from "./src/octicons.js";
 
@@ -61,6 +61,7 @@
         languageVersion: dashboardSchema["language-version"],
         dashboard: dashboardSchema.dashboard,
       };
+      const dashboardQueries = dashboardSchema.dashboard.queries ?? [];
       const root = document.querySelector("#root");
       let renderedSources = {};
       let renderedSourcesPrepared = false;
@@ -847,7 +848,11 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
-        renderSources(await withCanonicalViewSources(fixtureSources, true));
+        const fixtureProjection = await withCanonicalViewSources(fixtureSources, true);
+        renderSources({
+          ...fixtureProjection,
+          ...await processDashboardQueries(dashboardQueries, fixtureProjection),
+        });
         loadingProgress.complete();
       } else {
         renderSources({}, "loading");
@@ -861,6 +866,7 @@
             githubUrlBase: dashboardDocument.dashboard["github-url-base"],
             dashboardRepository: dashboardDocument.dashboard.repository,
             pages: dashboardDocument.dashboard.pages,
+            queries: dashboardQueries,
           };
           const loadPageSources = (pageId) => loadCanonicalDashboardPage(
             dashboardPageSourceNames(dashboardDocument, pageId),

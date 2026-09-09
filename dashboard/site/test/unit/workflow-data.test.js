@@ -50,7 +50,7 @@ describe('deriveWorkflowSources', () => {
       expect.objectContaining({ repository: 'githubnext/target', workflow: 'local.md' })
     ]);
     expect(sources['packaged-workflows'].metadata).toBe(metadata);
-    expect(sources['workflow-inventory'].rows).toHaveLength(3);
+    expect(sources['workflow-inventory']).toBeUndefined();
     expect(sources['package-inventory'].rows).toEqual([
       expect.objectContaining({
         'package-name': 'Dependabot',

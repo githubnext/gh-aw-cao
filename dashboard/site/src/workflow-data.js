@@ -35,15 +35,6 @@ export function deriveWorkflowSources(sources) {
     .sort(compareStandaloneWorkflows);
   const packages = new Set(packaged.map((row) => text(row.package)));
   const metadata = sources.workflows?.metadata ?? unavailableMetadata();
-  const workflowInventory = /** @type {Row[]} */ ([...packaged, ...standalone])
-    .map((row) => /** @type {Row} */ ({
-      ...row,
-      'package-name': text(row['package-name']) || 'Repository-owned',
-      'workflow-role': text(row['workflow-role']) || 'standalone'
-    }))
-    .sort((left, right) => text(left.repository).localeCompare(text(right.repository))
-      || text(left.workflow).localeCompare(text(right.workflow)));
-
   return {
     ...sources,
     'workflow-topology-summary': {
@@ -63,11 +54,6 @@ export function deriveWorkflowSources(sources) {
     'package-inventory': {
       source: 'package-inventory',
       rows: summarizePackageInventory(packaged),
-      metadata
-    },
-    'workflow-inventory': {
-      source: 'workflow-inventory',
-      rows: workflowInventory,
       metadata
     },
     'standalone-workflows': {

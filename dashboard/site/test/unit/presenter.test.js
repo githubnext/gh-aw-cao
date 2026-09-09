@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation } from '../../src/presenter.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
+import { applyDashboardQueries } from '../workflow-inventory-query.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -501,7 +502,20 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({
       document,
-      sources: {
+      sources: applyDashboardQueries({
+        runs: {
+          source: 'runs',
+          rows: [],
+          metadata: {
+            'source-id': 'workflow-runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-08-30T08:00:00Z',
+            'retrieved-at': '2026-08-30T08:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
         workflows: {
           source: 'workflows',
           rows: [
@@ -551,7 +565,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      })
     });
 
     const page = rendered.querySelector('[data-page-name="workflows"]');
@@ -607,7 +621,33 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({
       document,
-      sources: {
+      sources: applyDashboardQueries({
+        runs: {
+          source: 'runs',
+          rows: [],
+          metadata: {
+            'source-id': 'workflow-runs-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-08-30T08:00:00Z',
+            'retrieved-at': '2026-08-30T08:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
+        usage: {
+          source: 'usage',
+          rows: [],
+          metadata: {
+            'source-id': 'workflow-usage-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-08-30T08:00:00Z',
+            'retrieved-at': '2026-08-30T08:01:00Z',
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'available'
+          }
+        },
         workflows: {
           source: 'workflows',
           rows: [
@@ -624,7 +664,7 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      })
     });
 
     const links = [...rendered.querySelectorAll('[data-page-name="workflows"] table a')]
