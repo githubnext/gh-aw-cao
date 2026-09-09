@@ -23,7 +23,7 @@ export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 
-export const QUERY_KEYS = ['name', 'description', 'from', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];

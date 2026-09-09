@@ -108,6 +108,26 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
+    'firewall-observations': {
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md', run,
+          domain: 'api.github.com', decision: 'allowed', 'request-count': 4
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md', run,
+          domain: 'api.github.com', decision: 'denied', 'request-count': 2
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md', run,
+          domain: 'removed.example', decision: 'unknown', 'request-count': null
+        }
+      ],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
     usage: {
       rows: [{
         organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
@@ -356,6 +376,34 @@ test('data worker returns the Models & agents query on initial and navigated req
         'observed-at': '2026-09-09T04:01:00Z'
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
+    });
+  }
+});
+
+test('data worker queries firewall domain totals on initial and navigated requests', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const initial = await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['firewall-domain-totals'],
+      context
+    );
+    const navigated = await loadCanonicalDashboardPage(['firewall-domain-totals'], context);
+    return { initial, navigated };
+  });
+
+  for (const payload of [result.initial, result.navigated]) {
+    expect(Object.keys(payload)).toEqual(['firewall-domain-totals']);
+    expect(payload['firewall-domain-totals']).toMatchObject({
+      rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
+      metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
     });
   }
 });

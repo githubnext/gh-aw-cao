@@ -72,7 +72,117 @@
     },
     "queries": [
       {
+        "name": "firewall-domain-totals",
+        "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
+        "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
+        "from": "firewall-observations",
+        "filter": {
+          "predicates": [
+            {
+              "field": "decision",
+              "in": [
+                "allowed",
+                "denied"
+              ]
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "is-accepted",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "decision"
+              },
+              {
+                "value": "allowed"
+              }
+            ]
+          },
+          {
+            "as": "accepted",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-accepted"
+              },
+              {
+                "field": "request-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "is-blocked",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "decision"
+              },
+              {
+                "value": "denied"
+              }
+            ]
+          },
+          {
+            "as": "blocked",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-blocked"
+              },
+              {
+                "field": "request-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "domain"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "run",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "accepted",
+              "as": "accepted",
+              "reducer": "sum"
+            },
+            {
+              "field": "blocked",
+              "as": "blocked",
+              "reducer": "sum"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "blocked",
+            "direction": "desc"
+          },
+          {
+            "field": "accepted",
+            "direction": "desc"
+          },
+          {
+            "field": "domain",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "workflow-run-totals",
+        "intent": "Summarize observed run counts by declared workflow.",
         "description": "Observed run totals for each declared workflow.",
         "from": "runs",
         "aggregate": {
@@ -92,6 +202,7 @@
       },
       {
         "name": "workflow-aic-totals",
+        "intent": "Summarize observed AI Credit usage by declared workflow.",
         "description": "Observed AI Credit totals for each declared workflow.",
         "from": "usage",
         "aggregate": {
@@ -162,6 +273,7 @@
       },
       {
         "name": "workflow-inventory",
+        "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
         "from": "workflows",
         "joins": [
@@ -389,6 +501,7 @@
       },
       {
         "name": "repository-workflow-totals",
+        "intent": "Summarize declared and disabled workflow counts by repository.",
         "description": "Declared and disabled workflow totals for each repository.",
         "from": "workflows",
         "compute": [
@@ -411,6 +524,7 @@
       },
       {
         "name": "repository-report-totals",
+        "intent": "Summarize published outcome report counts by repository.",
         "description": "Published report totals for each repository.",
         "from": "outcomes",
         "aggregate": {
@@ -422,6 +536,7 @@
       },
       {
         "name": "repository-evaluated-workflow-totals",
+        "intent": "Summarize distinct workflows with operational-value evaluations by repository.",
         "description": "Distinct evaluated workflow totals for each repository.",
         "from": "operational-values",
         "aggregate": {
@@ -433,6 +548,7 @@
       },
       {
         "name": "repository-run-totals",
+        "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
         "description": "Distinct run and conclusion totals for each repository.",
         "from": "runs",
         "compute": [
@@ -466,6 +582,7 @@
       },
       {
         "name": "repository-aic-totals",
+        "intent": "Summarize observed AI Credit usage by repository.",
         "description": "Observed AI Credit totals for each repository.",
         "from": "usage",
         "aggregate": {
@@ -477,6 +594,7 @@
       },
       {
         "name": "repository-activity-core",
+        "intent": "Join each repository with its workflow, report, evaluation, and run totals.",
         "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
         "from": "repositories",
         "joins": [
@@ -531,6 +649,7 @@
       },
       {
         "name": "repository-activity",
+        "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
         "description": "Repository-local execution health and attributed outcome totals.",
         "from": "repository-activity-core",
         "joins": [
@@ -593,6 +712,7 @@
       },
       {
         "name": "package-inventory",
+        "intent": "Summarize centrally managed packages with their workflow, repository, rollout, run, and AI Credit totals.",
         "description": "Centrally managed package inventory and observed execution totals.",
         "from": "workflow-inventory",
         "filter": {
@@ -949,22 +1069,21 @@
           {
             "id": "security-firewall-domains",
             "title": "Domains",
-            "description": "Aggregate observed requests, runs, repositories, workflows, policy decisions, and policy rules by normalized domain over the requested 30-day horizon.",
+            "description": "Observed runs and accepted and blocked requests by normalized domain.",
             "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "decision": [
-                  "allowed",
-                  "denied"
-                ]
-              },
+              "source": "firewall-domain-totals",
               "order-by": [
                 {
-                  "field": "requests",
+                  "field": "blocked",
                   "direction": "desc"
+                },
+                {
+                  "field": "accepted",
+                  "direction": "desc"
+                },
+                {
+                  "field": "domain",
+                  "direction": "asc"
                 }
               ]
             },
@@ -981,46 +1100,19 @@
                   "type": "nominal"
                 },
                 {
-                  "field": "request-count",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "requests",
-                  "title": "Requests"
-                },
-                {
                   "field": "run",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "runs",
-                  "title": "Runs"
+                  "type": "quantitative",
+                  "title": "Run"
                 },
                 {
-                  "field": "repository",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "repositories",
-                  "title": "Repositories"
+                  "field": "accepted",
+                  "type": "quantitative",
+                  "title": "Accepted"
                 },
                 {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "workflows",
-                  "title": "Workflows"
-                },
-                {
-                  "field": "decision",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "decisions",
-                  "title": "Policy decisions"
-                },
-                {
-                  "field": "policy-rule-id",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "policy-rules",
-                  "title": "Policy rules"
+                  "field": "blocked",
+                  "type": "quantitative",
+                  "title": "Blocked"
                 }
               ]
             }
