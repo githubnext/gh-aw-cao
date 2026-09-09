@@ -205,6 +205,46 @@ function jobsSource(jobs, runsById, sources) {
   };
 }
 
+/**
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Map<unknown, Record<string, unknown>>} workflowsById
+ * @param {Map<unknown, Record<string, unknown>>} repositoriesById
+ * @param {Record<string, unknown>} sources
+ */
+function eventsSource(events, sessionsById, runsById, workflowsById, repositoriesById, sources) {
+  return {
+    source: 'events',
+    rows: events.map((event) => {
+      const session = sessionsById.get(event.sessionId) ?? {};
+      const run = runsById.get(session.runId) ?? {};
+      const workflow = workflowsById.get(run.workflowId) ?? {};
+      const repository = repositoriesById.get(run.repositoryId) ?? {};
+      return {
+        organization: repository.owner,
+        repository: repository.name,
+        workflow: workflow.path,
+        run: String(run.githubRunId ?? ''),
+        'run-attempt': run.attempt,
+        session: session.id,
+        event: event.id,
+        'event-timestamp': event.timestamp,
+        'event-source': event.source,
+        'event-type': event.type,
+        'event-summary': event.summary,
+        'event-status': event.status,
+        'correlation-id': event.correlationId,
+        'payload-ref': event.payloadRef,
+        'source-sequence': event.sequence,
+        'observed-at': event.observedAt,
+        'run-link': run.runLink
+      };
+    }),
+    metadata: projectionMetadata(sources, 'events', 'events', true)
+  };
+}
+
 /** @param {Record<string, unknown>[]} workItems @param {Record<string, unknown>} sources */
 function workItemsSource(workItems, sources) {
   return {
@@ -348,17 +388,21 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
-  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings] = await Promise.all([
-    requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
-    requested.has('workflows') ? queries.workflows.list() : [],
-    requested.has('runs') || requested.has('job-performance') ? queries.runs.list() : [],
+  const [repositories, workflows, runs, jobs, sessions, events, failedRuns, workItems, findings] = await Promise.all([
+    requested.has('repositories') || requested.has('workflows') || requested.has('events') ? queries.repositories.list() : [],
+    requested.has('workflows') || requested.has('events') ? queries.workflows.list() : [],
+    requested.has('runs') || requested.has('job-performance') || requested.has('events') ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
+    requested.has('events') ? queries.sessions.list() : [],
+    requested.has('events') ? queries.events.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     requested.has('work-items') ? queries.workItems.list() : [],
     requested.has('security-findings') ? queries.findings.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
+  const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
   const sources = namedLogicalSources(logicalSources);
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {};
@@ -367,6 +411,9 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
   if (requested.has('runs')) projected.runs = runsSource(runs, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
+  if (requested.has('events')) projected.events = eventsSource(
+    events, sessionsById, runsById, workflowsById, repositoriesById, sources
+  );
   if (requested.has('work-items')) projected['work-items'] = workItemsSource(workItems, sources);
   if (requested.has('security-findings')) projected['security-findings'] = securityFindingsSource(findings, sources);
   return projected;

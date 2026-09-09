@@ -118,7 +118,7 @@ describe('dashboard document validation', () => {
       })
     ]);
     expect(apiPage.views[0].data).toMatchObject({
-      source: 'github-api-rate-limits'
+      source: 'github-api-events'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

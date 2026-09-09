@@ -19,6 +19,25 @@ const sources = {
     }],
     metadata
   },
+  sessions: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', 'session-status': 'completed',
+      'observed-at': '2026-09-09T04:00:00Z'
+    }],
+    metadata
+  },
+  events: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', event: 'event-42',
+      'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'github-api',
+      'event-type': 'github-api.response', 'event-summary': 'GET /rate_limit',
+      'event-status': '200', 'correlation-id': 'request-42', 'source-sequence': 3,
+      'observed-at': '2026-09-09T04:01:00Z'
+    }],
+    metadata
+  },
   'job-performance': {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -119,6 +138,34 @@ describe('canonical view sources', () => {
     await expect(queries.findings.bySeverity('high')).resolves.toEqual([
       expect.objectContaining({ observationId: 'threat-detection:observation-1', severity: 'high' })
     ]);
+  });
+
+  it('projects canonical events with renderer and run context', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      sources,
+      metadata['artifact-generation'],
+      ['events']
+    );
+
+    expect(Object.keys(projected)).toEqual(['events']);
+    expect(projected.events).toMatchObject({
+      source: 'events',
+      rows: [{
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '42',
+        'run-attempt': 2,
+        'event-type': 'github-api.response',
+        'event-summary': 'GET /rate_limit',
+        'correlation-id': 'request-42',
+        'run-link': { href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42' }
+      }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {
