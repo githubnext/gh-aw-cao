@@ -248,11 +248,10 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('Requests');
     expect(text).toContain('Runs');
     expect(text).not.toContain('firewall failure');
-    expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
     rendered.remove();
   });
 
-  it('warns that firewall data is corrupted when firewall observations are unavailable', async () => {
+  it('renders the configured empty state when the firewall data binding is empty', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
@@ -264,18 +263,20 @@ describe('presenter built-in and custom pages', () => {
             'source-kind': 'fixture',
             'as-of': '2026-09-05T11:00:00Z',
             'retrieved-at': '2026-09-05T11:05:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
           }
         }
       }
     });
 
     const page = await activatePage(rendered, 'firewall');
-    const warning = page?.querySelector('[data-firewall-data-warning]');
-    expect(warning?.getAttribute('role')).toBe('alert');
-    expect(warning?.textContent).toContain('Firewall data is corrupted');
+    const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
+    expect(view?.getAttribute('data-view-layout')).toBe('full-view');
+    expect(view?.querySelector('.table-region')?.textContent).toContain(
+      'No observed firewall domains are available for this selection.'
+    );
     rendered.remove();
   });
 
