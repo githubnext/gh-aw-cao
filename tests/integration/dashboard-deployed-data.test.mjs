@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import "fake-indexeddb/auto";
+import { readRunTimeline } from "../../dashboard/report/aic-usage.mjs";
 import { loadDashboardSources } from "../../dashboard/site/src/source-loader.js";
 import { ingestDashboardSources } from "../../dashboard/site/src/data/ingest/coordinator.js";
 import { runId, sourceId } from "../../dashboard/site/src/data/model/ids.js";
@@ -12,6 +17,8 @@ import {
 
 const deployedSourcesUrl = process.env.DASHBOARD_DATA_URL
   || "https://githubnext.github.io/gh-aw-cao/cao/sources.json";
+const deployedLogsUrl = process.env.GH_AW_LOGS_URL
+  || new URL("gh-aw-logs.json", deployedSourcesUrl).href;
 
 function sorted(values) {
   return [...values].sort((left, right) => left.localeCompare(right));
@@ -34,6 +41,31 @@ function assertPublishedEventsStored(sourceEvents, databaseEvents, label, predic
       `${label} event ${event.event} was not preserved`,
     );
   }
+}
+
+function collectFirewallArtifacts(cachedJson, outputDirectory, runUrl) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("gh", [
+      "aw", "logs",
+      "--stdin",
+      "--audit",
+      "--artifacts", "firewall",
+      "--cached-json", cachedJson,
+      "--output", outputDirectory,
+      "--summary-file", "",
+    ], {
+      env: process.env,
+      stdio: ["pipe", "ignore", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`gh aw logs exited with ${code}: ${stderr.trim()}`));
+    });
+    child.stdin.end(`${runUrl}\n`);
+  });
 }
 
 test("deployed dashboard sources populate canonical workflows, runs, and events", async () => {
@@ -112,5 +144,72 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
     );
   } finally {
     await deleteCanonicalDatabase(indexedDB);
+  }
+});
+
+test("deployed gh-aw logs produce the published firewall events", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "deployed-firewall-"));
+  try {
+    const [sources, logsResponse] = await Promise.all([
+      loadDashboardSources(
+        (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(60_000) }),
+        deployedSourcesUrl,
+      ),
+      fetch(deployedLogsUrl, { signal: AbortSignal.timeout(60_000) }),
+    ]);
+    assert.equal(logsResponse.ok, true, `failed to download ${deployedLogsUrl}: ${logsResponse.status}`);
+    const logs = await logsResponse.json();
+    assert.ok(Array.isArray(logs.runs), "deployed gh-aw logs must contain runs");
+
+    const firewallEvents = sources.events.rows.filter(
+      (event) => event["event-source"] === "firewall" || /^net_/.test(String(event["event-type"])),
+    );
+    assert.ok(firewallEvents.length > 0, "deployed events must contain firewall events");
+    const run = logs.runs.find((candidate) => firewallEvents.some(
+      (event) => String(event.run) === String(candidate.database_id ?? candidate.run_id ?? candidate.id),
+    ));
+    assert.ok(run, "deployed gh-aw logs must contain a run with published firewall events");
+
+    const runId = String(run.database_id ?? run.run_id ?? run.id);
+    const published = firewallEvents.filter((event) => String(event.run) === runId);
+    const repository = String(run.repository ?? run.repository_name ?? "");
+    assert.match(repository, /^[^/]+\/[^/]+$/, `run ${runId} must identify its repository`);
+
+    const cachedJson = path.join(root, "gh-aw-logs.json");
+    const outputDirectory = path.join(root, "logs");
+    await writeFile(cachedJson, `${JSON.stringify(logs)}\n`);
+    await collectFirewallArtifacts(
+      cachedJson,
+      outputDirectory,
+      `https://github.com/${repository}/actions/runs/${runId}`,
+    );
+
+    const collected = (await readRunTimeline(
+      outputDirectory,
+      runId,
+      String(published[0].session),
+    )).filter((event) => event.source === "firewall");
+    assert.ok(collected.length > 0, `gh aw logs must collect firewall events for run ${runId}`);
+    const collectedPayload = collected.map((event) => ({
+      event: sourceId("event", "gh-aw-logs", event.sourceId),
+      source: event.source,
+      type: event.type,
+      summary: event.summary,
+      status: event.status,
+      payloadRef: event.payloadRef,
+      sourceSequence: event.sourceSequence,
+    })).toSorted((left, right) => left.event.localeCompare(right.event));
+    const publishedPayload = published.map((event) => ({
+      event: String(event.event),
+      source: event["event-source"],
+      type: event["event-type"],
+      summary: event["event-summary"],
+      status: event["event-status"],
+      payloadRef: event["payload-ref"],
+      sourceSequence: event["source-sequence"],
+    })).toSorted((left, right) => left.event.localeCompare(right.event));
+    assert.deepEqual(collectedPayload, publishedPayload);
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });

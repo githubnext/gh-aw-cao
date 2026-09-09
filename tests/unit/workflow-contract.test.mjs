@@ -2923,7 +2923,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
   assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
-  assert.match(buildWorkflow, /Require collected activity data[\s\S]*?control-settings\.json control-plane-inventory\.json deployed-workflows\.json aic-usage\.json operational-values\.json dashboard-records\.json/);
+  assert.match(buildWorkflow, /Require collected activity data[\s\S]*?control-settings\.json control-plane-inventory\.json deployed-workflows\.json aic-usage\.json operational-values\.json dashboard-records\.json gh-aw-logs\.json/);
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
   assert.match(buildWorkflow, /name: Cache dashboard artifact for the dispatching workflow[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\n\s+key: cao-dashboard-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(buildWorkflow, /actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: [^\n]*cao-activity|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
@@ -2935,6 +2935,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(buildWorkflow, /REPORT_RECORDS: \$\{\{ runner\.temp \}\}\/cao-activity\/dashboard-records\.json/);
   assert.match(buildWorkflow, /REPORT_DEPLOYED_WORKFLOWS: \$\{\{ runner\.temp \}\}\/cao-activity\/deployed-workflows\.json/);
   assert.match(buildWorkflow, /REPORT_DASHBOARD_SOURCES: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\/\$\{\{ inputs\.site-path \}\}\/sources\.json/);
+  assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.json" "\$REPORT_OUTPUT\/gh-aw-logs\.json"/);
   assert.match(buildWorkflow, /name: central-agentic-ops-dashboard-data[\s\S]*?\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(buildWorkflow, /legacy dashboard redirects|redirects\.mjs/);
@@ -3138,6 +3139,9 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /horizontal page scrolling/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
   assert.match(deployedDataTest, /ingestDashboardSources\(indexedDB, sources\)/);
+  assert.match(deployedDataTest, /new URL\("gh-aw-logs\.json", deployedSourcesUrl\)/);
+  assert.match(deployedDataTest, /"aw", "logs"[\s\S]*?"--artifacts", "firewall"/);
+  assert.match(deployedDataTest, /readRunTimeline\(/);
   for (const source of ["workflows", "runs", "events"]) {
     assert.match(deployedDataTest, new RegExp(`readActiveCollection\\(indexedDB, "${source}"\\)`));
   }
