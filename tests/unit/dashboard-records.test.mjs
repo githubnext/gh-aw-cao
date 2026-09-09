@@ -247,13 +247,17 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   let failNextDownload = false;
   let rateLimitNextDownload = false;
   let lockDownloads = 0;
+  let renamedRepositoryMetadataRequests = 0;
   const fetchImpl = async (input) => {
     const url = new URL(input);
     if (url.pathname === "/repos/acme/control") {
-      return new Response(JSON.stringify(publicRepositoryMetadata), { status: 200 });
+      return new Response(JSON.stringify({ ...publicRepositoryMetadata, id: 1, full_name: "acme/control" }), { status: 200 });
     }
-    if (url.pathname === "/repos/acme/service") {
+    if (url.pathname === "/repos/acme/service" || url.pathname === "/repos/acme/old-service") {
+      if (url.pathname.endsWith("/old-service")) renamedRepositoryMetadataRequests += 1;
       return new Response(JSON.stringify({
+        id: 2,
+        full_name: "acme/service",
         private: false,
         visibility: "public",
         default_branch: "main",
@@ -307,7 +311,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   const output = await collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/service"] },
+    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
     inventory,
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     fetchImpl,
@@ -348,10 +352,11 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
     workflowsObserved: 1,
     failures: [],
   });
+  assert.equal(renamedRepositoryMetadataRequests, 1);
   const cachedOutput = await collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/service"] },
+    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
     inventory,
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     previousSnapshot: output,
@@ -365,7 +370,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   const failedRefresh = await collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/service"] },
+    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
     inventory,
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     previousSnapshot: cachedOutput,
@@ -377,7 +382,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   const retriedRefresh = await collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/service"] },
+    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
     inventory,
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     previousSnapshot: failedRefresh,
@@ -392,7 +397,7 @@ test("dashboard records discover gh-aw workflows in allowed repositories", async
   const rateLimitedRefresh = await collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/service"] },
+    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
     inventory,
     deployedInventory: { workflows: [{ repository: "acme/control" }] },
     previousSnapshot: retriedRefresh,
