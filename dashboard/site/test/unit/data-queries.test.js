@@ -385,6 +385,29 @@ describe('declarative dashboard queries', () => {
     });
   });
 
+  it('groups the Safe Outputs view by declared output type', () => {
+    const outcomes = {
+      source: 'outcomes',
+      rows: [
+        { 'safe-output': 'issue-1', 'safe-output-kind': 'create-issue' },
+        { 'safe-output': 'issue-2', 'safe-output-kind': 'create-issue' },
+        { 'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request' }
+      ],
+      metadata: metadata('outcomes')
+    };
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { outcomes },
+      ['safe-outputs-by-type']
+    );
+
+    expect(Object.keys(derived)).toEqual(['safe-outputs-by-type']);
+    expect(derived['safe-outputs-by-type'].rows).toEqual([
+      { 'safe-output-kind': 'create-issue', 'safe-output-count': 2 },
+      { 'safe-output-kind': 'create-pull-request', 'safe-output-count': 1 }
+    ]);
+  });
+
   it('projects MCP activity entirely from declarative event queries', () => {
       const events = {
         source: 'events',
