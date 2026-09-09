@@ -143,6 +143,10 @@ graders:
     run: .github/graders/dependabot-release-train-updater-operational-value.sh
 
 safe-outputs:
+  github-app:
+    client-id: ${{ '' }}
+    private-key: ${{ '' }}
+    ignore-if-missing: true
   create-pull-request:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[dependabot-agent] "

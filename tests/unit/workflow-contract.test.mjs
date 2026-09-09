@@ -1356,6 +1356,15 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(authentication, /does not support `COPILOT_GITHUB_TOKEN` inference fallback/);
 });
 
+test("Dependabot live safe outputs retain cross-repository PAT authentication", () => {
+  const source = workflow("dependabot-release-train-updater.md");
+  const compiled = workflow("dependabot-release-train-updater.lock.yml");
+
+  assert.match(source, /safe-outputs:\n\s+github-app:\n\s+client-id: \$\{\{ '' \}\}\n\s+private-key: \$\{\{ '' \}\}\n\s+ignore-if-missing: true/);
+  assert.match(compiled, /id: safe-outputs-app-token\n\s+if: \$\{\{ '' != '' \}\}/);
+  assert.match(compiled, /GIT_TOKEN: \$\{\{ steps\.safe-outputs-app-token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/);
+});
+
 test("live workers use central policy as the activation authority", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
