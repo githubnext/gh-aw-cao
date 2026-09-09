@@ -55,11 +55,28 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
       runAttempt(row),
     )));
     const expectedEvents = new Set(sources.events.rows.map((row) => String(row.event)));
-    const [workflows, runs, events] = await Promise.all([
+    const [repositories, workflows, runs, jobs, sessions, events, workItems, findings] = await Promise.all([
+      readActiveCollection(indexedDB, "repositories"),
       readActiveCollection(indexedDB, "workflows"),
       readActiveCollection(indexedDB, "runs"),
+      readActiveCollection(indexedDB, "jobs"),
+      readActiveCollection(indexedDB, "sessions"),
       readActiveCollection(indexedDB, "events"),
+      readActiveCollection(indexedDB, "workItems"),
+      readActiveCollection(indexedDB, "findings"),
     ]);
+    for (const [table, entries] of Object.entries({
+      repositories,
+      workflows,
+      runs,
+      jobs,
+      sessions,
+      events,
+      workItems,
+      findings,
+    })) {
+      assert.ok(entries.length > 0, `canonical ${table} table must contain an entry`);
+    }
 
     assert.ok(expectedWorkflows.size > 0, "deployed data must contain workflows");
     assert.ok(expectedRuns.size > 0, "deployed data must contain runs");
