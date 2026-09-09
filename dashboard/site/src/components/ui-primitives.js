@@ -350,6 +350,45 @@ export function renderDisclosure(className, summaryLabel, ...body) {
 }
 
 /**
+ * Renders a `<details>` disclosure whose body is deferred until the panel is
+ * first expanded, then cached for the life of the element. Shared by the
+ * configuration policy tree (nested setting groups) and the notifications
+ * repeated-cause clusters, both of which defer populating a body container
+ * until a reader actually opens the panel.
+ * @param {string} className
+ * @param {Node | Node[]} summaryContent
+ * @param {HTMLElement} bodyContainer container appended once, then populated on first expand
+ * @param {(bodyContainer: HTMLElement) => void} populateBody called once, the first time the panel opens
+ * @param {{ open?: boolean, eagerContent?: Node | Node[], summaryClassName?: string }} [options]
+ *   `open: true` renders (and immediately populates) expanded; `eagerContent` renders immediately
+ *   between the summary and the lazily-populated body container; `summaryClassName` sets a class
+ *   on the `<summary>` element
+ * @returns {HTMLDetailsElement}
+ */
+export function renderLazyDisclosure(className, summaryContent, bodyContainer, populateBody, options = {}) {
+  const initiallyOpen = options.open === true;
+  const eagerContent = options.eagerContent === undefined ? [] : [options.eagerContent].flat();
+  let populated = false;
+  const populateOnce = () => {
+    if (populated) return;
+    populateBody(bodyContainer);
+    populated = true;
+  };
+  if (initiallyOpen) populateOnce();
+  const details = /** @type {HTMLDetailsElement} */ (h(
+    'details',
+    { className, open: initiallyOpen },
+    h('summary', options.summaryClassName ? { className: options.summaryClassName } : null, ...[summaryContent].flat()),
+    ...eagerContent,
+    bodyContainer
+  ));
+  details.addEventListener('toggle', () => {
+    if (details.open) populateOnce();
+  });
+  return details;
+}
+
+/**
  * Renders the shared "`<ul>` of items, or a single fallback `<li>`" pattern
  * used by summary and provenance lists when there is no data to display.
  * @template T

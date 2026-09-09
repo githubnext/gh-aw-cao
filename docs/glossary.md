@@ -42,6 +42,10 @@ The bounded handoff by which a coordinator starts a worker with one selected tar
 
 The runtime and provider integration used to execute an AI agent. The engine is selected in workflow frontmatter and is distinct from the agent's reasoning role, the workflow being executed, and the operation being supervised. See the canonical gh-aw definition of [Engine](https://github.github.com/gh-aw/reference/glossary/#engine).
 
+## Live authority
+
+The control repository's exclusive right to admit a `live` worker for an operation and target, decided solely from `.github/workflows/cao.json` at the exact workflow SHA. A target repository's files cannot widen, narrow, or veto this decision.
+
 ## Operation
 
 A bounded repository-management capability that an operator configures, supervises, and evaluates. An operation is implemented by one coordinator and one or more workers. Examples include Dependabot review, workflow optimization, and compliance assessment.
@@ -68,7 +72,7 @@ A declared, bounded way for a workflow to produce an external effect, such as cr
 
 ## Target repository
 
-A repository enrolled for an operation. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows.
+A repository enrolled for an operation. A target can provide data and receive declared safe outputs, but does not run the control plane's workflows and does not declare live authority in its own files.
 
 ## Worker
 

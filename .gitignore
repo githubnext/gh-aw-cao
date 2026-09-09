@@ -6,6 +6,7 @@ test-results/
 public/cao/
 
 # Local dashboard preview
+/_activity/
 /.cao-dashboard-preview-*/
 /.cao-dashboard-e2e-*/
 /.cao-dashboard-traces/

@@ -2583,6 +2583,18 @@ function validateEncoding(encodingNode, encoding, mark, chart, sourceName, data,
       ));
     }
   }
+  const filterForbiddenChannels = markValue === 'table'
+    ? ['href']
+    : ['value', 'x', 'y', 'color', 'reference', 'href'];
+  for (const channel of filterForbiddenChannels) {
+    if (isPlainObject(encoding[channel]) && encoding[channel].filter !== undefined) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'filter is allowed only on table column field definitions.',
+        `${viewPath}.encoding.${channel}.filter`
+      ));
+    }
+  }
 
   if (markValue === 'metric') {
     validateMetricEncoding(encodingNode, encoding, sourceName, `${viewPath}.encoding`, aggregateOutputIds, errors);
@@ -2952,6 +2964,13 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
   validateOptionalStringField(fieldDefinition.title, `${path}.title`, errors);
   if (fieldDefinition.unit !== undefined) {
     validateStringField(fieldDefinition.unit, `${path}.unit`, true, errors);
+  }
+  if (fieldDefinition.filter !== undefined && typeof fieldDefinition.filter !== 'boolean') {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'filter must be a boolean.',
+      `${path}.filter`
+    ));
   }
 
   const aggregate = fieldDefinition.aggregate ?? 'none';

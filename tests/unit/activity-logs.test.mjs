@@ -101,7 +101,12 @@ if (args[0] === "aw") {
     assert.equal(state.complete, true);
     assert.equal(state.jobDetails.observedRuns, 1);
     assert.equal(await readFile(item.githubOutput, "utf8"), "collection-outcome=success\n");
-    assert.ok(stdout.includes(`Calling gh aw logs with arguments: ${JSON.stringify(args.slice(2))}`));
+    assert.ok(stdout.includes(
+      "Calling command: gh aw logs --json --audit "
+      + `--output ${item.outputPath} --summary-file '' `
+      + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp ",
+    ));
+    assert.ok(stdout.includes("githubnext/gh-aw-cao/.github/workflows/sample.lock.yml"));
     assert.match(stdout, /Fetched 1 run/);
     assert.match(stdout, /Collected snapshot with 1 run across 1 workflow/);
   } finally {
