@@ -443,6 +443,43 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
   });
 
+  it('renders event inspection as one full-view lazy table', async () => {
+    const metadata = {
+      'source-id': 'event-inspection-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'event-inspection': {
+          source: 'event-inspection',
+          rows: [
+            {
+              'observed-at': '2026-09-02T12:00:00Z', 'event-source': 'agent', 'event-type': 'assistant_message',
+              'event-status': 'completed', 'event-summary': 'Produced a review', repository: 'gh-aw-cao',
+              workflow: '.github/workflows/review.yml', run: '1002', 'run-attempt': 1, session: 'session-1',
+              event: 'event-1', 'correlation-id': 'correlation-1', 'source-sequence': 3,
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1002', label: 'View run 1002' }
+            }
+          ],
+          metadata
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'events');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.textContent).toContain('Produced a review');
+    expect(page?.textContent).toContain('assistant_message');
+    expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
+  });
+
   it('explains when engine and model usage data is missing', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
@@ -959,6 +996,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1283,6 +1321,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1384,7 +1423,12 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.textContent).toContain('gpt-5.4');
   });
 
-  it('applies the JSON horizon against one evaluated time while retaining timeless rows', () => {
+  it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
+    const loadHorizonSources = vi.fn().mockResolvedValue({
+      'database-workflow-count': { rows: [{ workflows: 4 }] },
+      'database-run-count': { rows: [{ runs: 12 }] },
+      'database-event-count': { rows: [{ events: 89 }] }
+    });
     const rendered = renderDashboard({
       document: {
         languageVersion: '0.1.0',
@@ -1434,7 +1478,8 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }
+      },
+      loadHorizonSources
     });
 
     const table = rendered.querySelector('.custom-table');
@@ -1448,6 +1493,19 @@ describe('presenter built-in and custom pages', () => {
     );
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
+    expect(loadHorizonSources).not.toHaveBeenCalled();
+    expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent).toBe('Database counts load on hover');
+
+    rendered.querySelector('.horizon-summary')?.dispatchEvent(new Event('pointerenter'));
+
+    await vi.waitFor(() => {
+      expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
+        .toBe('4 workflows · 12 runs · 89 events');
+    });
+    expect(loadHorizonSources).toHaveBeenCalledOnce();
+
+    rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(loadHorizonSources).toHaveBeenCalledOnce();
   });
 
   it('renders Security assurance records as one full-view lazy table', async () => {
