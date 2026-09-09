@@ -267,7 +267,9 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
 
 test('the authored Safe Outputs query groups canonical outcomes by type', async ({ page }) => {
   const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
-  const query = dashboard.dashboard.queries.find(({ name }) => name === 'safe-outputs-by-type');
+  const query = dashboard.dashboard.queries.find(
+    (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-outputs-by-type'
+  );
   const payload = await loadThroughWorker(page, [query], ['safe-outputs-by-type']);
 
   expect(payload['safe-outputs-by-type'].rows).toEqual([

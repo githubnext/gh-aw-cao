@@ -3048,23 +3048,20 @@
             "data": {
               "source": "safe-outputs-by-type"
             },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
+            "mark": "chart",
+            "chart": "pie",
             "empty-message": "No retained safe outputs were reported in the selected horizon.",
             "encoding": {
-              "columns": [
-                {
-                  "field": "safe-output-kind",
-                  "type": "nominal",
-                  "title": "Type"
-                },
-                {
-                  "field": "safe-output-count",
-                  "type": "quantitative",
-                  "title": "Safe outputs"
-                }
-              ]
+              "x": {
+                "field": "safe-output-kind",
+                "type": "nominal",
+                "title": "Type"
+              },
+              "y": {
+                "field": "safe-output-count",
+                "type": "quantitative",
+                "title": "Safe outputs"
+              }
             }
           }
         ]
