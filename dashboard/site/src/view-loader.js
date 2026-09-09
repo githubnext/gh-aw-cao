@@ -1,10 +1,12 @@
 const pageLoads = new WeakMap();
 
+/** @typedef {(url: URL) => Promise<{ ok: boolean, status: number, json: () => Promise<unknown> }>} ViewFetch */
+
 /**
  * Resolves the external view definitions for one dashboard page.
  * @param {{ dashboard?: { pages?: unknown[] } }} document
  * @param {string} pageId
- * @param {{ baseUrl?: string, fetch?: typeof globalThis.fetch }} [options]
+ * @param {{ baseUrl?: string, fetch?: ViewFetch }} [options]
  */
 export function resolveDashboardPageViews(document, pageId, options = {}) {
   const page = document.dashboard?.pages?.find((candidate) => (
@@ -27,8 +29,11 @@ export function resolveDashboardPageViews(document, pageId, options = {}) {
     return Promise.reject(new Error(`Unable to load dashboard views for ${pageId}: fetch is unavailable`));
   }
   const baseUrl = options.baseUrl ?? globalThis.location?.href;
-  const load = Promise.all(owner.views.map(async (view) => {
+  const load = Promise.all(owner.views.map(async (/** @type {unknown} */ view) => {
     if (!isViewReference(view)) return view;
+    if (!/^\.\/views\/[a-z0-9][a-z0-9/-]*\.json$/.test(view.$ref) || view.$ref.includes('..')) {
+      throw new Error(`Dashboard view reference is not allowed: ${view.$ref}`);
+    }
     const url = new URL(view.$ref, baseUrl);
     const response = await fetchView(url);
     if (!response.ok) {
@@ -56,7 +61,10 @@ export function isViewReference(value) {
     && typeof value.$ref === 'string';
 }
 
-/** @param {unknown} value */
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

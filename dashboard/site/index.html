@@ -63,6 +63,19 @@
         languageVersion: dashboardSchema["language-version"],
         dashboard: dashboardSchema.dashboard,
       };
+      const startupPageId = () => {
+        let hashPageId = "";
+        try {
+          hashPageId = window.location.hash.startsWith("#page-")
+            ? decodeURIComponent(window.location.hash.slice("#page-".length).split("?")[0])
+            : "";
+        } catch {}
+        return dashboardDocument.dashboard.pages.some((page) => page.id === hashPageId)
+          ? hashPageId
+          : dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
+            ?? dashboardDocument.dashboard.pages[0]?.id
+            ?? "";
+      };
       const root = document.querySelector("#root");
       let renderedSources = {};
       let renderedSourcesPrepared = false;
@@ -193,9 +206,7 @@
             languageVersion: schema["language-version"],
             dashboard: schema.dashboard,
           };
-          const activePageId = window.location.hash.startsWith("#page-")
-            ? decodeURIComponent(window.location.hash.slice("#page-".length).split("?")[0])
-            : dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id;
+          const activePageId = startupPageId();
           if (activePageId) {
             await resolveDashboardPageViews(dashboardDocument, activePageId, { baseUrl: dashboardUrl.href });
           }
@@ -855,9 +866,7 @@
       }
 
       if (new URLSearchParams(window.location.search).has("fixtures")) {
-        const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
-          ?? dashboardDocument.dashboard.pages[0]?.id
-          ?? "";
+        const initialPageId = startupPageId();
         await resolveDashboardPageViews(dashboardDocument, initialPageId, { baseUrl: dashboardUrl.href });
         renderSources(await withCanonicalViewSources(fixtureSources, true));
         loadingProgress.complete();
@@ -866,9 +875,7 @@
         const sourceUrl = new URL("./sources.json", window.location.href).href;
 
         try {
-          const initialPageId = dashboardDocument.dashboard.pages.find((page) => page.id !== "configuration")?.id
-            ?? dashboardDocument.dashboard.pages[0]?.id
-            ?? "";
+          const initialPageId = startupPageId();
           const dashboardContext = {
             githubUrlBase: dashboardDocument.dashboard["github-url-base"],
             dashboardRepository: dashboardDocument.dashboard.repository,

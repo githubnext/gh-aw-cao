@@ -35,6 +35,31 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('dashboard view references load only when their page is requested', async ({ page }) => {
+  /** @type {string[]} */
+  const requests = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/views/')) requests.push(new URL(request.url()).pathname);
+  });
+  await page.setContent(`
+    <script type="module">
+      import { resolveDashboardPageViews } from ${JSON.stringify('http://dashboard.test/src/view-loader.js')};
+      const dashboard = await fetch(${JSON.stringify('http://dashboard.test/dashboard.json')}).then((response) => response.json());
+      await resolveDashboardPageViews(dashboard, 'operations', {
+        baseUrl: ${JSON.stringify('http://dashboard.test/dashboard.json')}
+      });
+      window.resolvedDashboard = dashboard;
+    </script>
+  `);
+
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).resolvedDashboard?.dashboard.pages[0].definition.views[0].id))
+    .toBe('overview-run-health');
+  expect(requests).toEqual([
+    '/views/operations/overview-run-health.json',
+    '/views/operations/overview-attention-domains.json'
+  ]);
+});
+
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
   await page.setContent(`
     <style>

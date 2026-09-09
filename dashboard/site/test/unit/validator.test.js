@@ -3,7 +3,17 @@ import { readFileSync } from 'node:fs';
 import { validateDashboardDocument, validateLogicalSources } from '../../src/validator.js';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 
-const authoritativeDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
+const referencedDashboardSource = readFileSync(`${process.cwd()}/dashboard.json`, 'utf8');
+const authoritativeDashboard = JSON.parse(referencedDashboardSource);
+for (const page of authoritativeDashboard.dashboard.pages) {
+  const owner = page.kind === 'built-in' ? page.definition : page;
+  owner.views = owner.views.map((/** @type {any} */ view) => (
+    typeof view?.$ref === 'string'
+      ? JSON.parse(readFileSync(new URL(view.$ref, `file://${process.cwd()}/dashboard.json`), 'utf8'))
+      : view
+  ));
+}
+const authoritativeDashboardSource = JSON.stringify(authoritativeDashboard);
 
 const validDocument = `language-version: "0.1.0"
 dashboard:
@@ -33,6 +43,9 @@ dashboard:
 `;
 
 describe('dashboard document validation', () => {
+  it('accepts external view references in the authoritative dashboard index', () => {
+    expect(validateDashboardDocument(referencedDashboardSource).ok).toBe(true);
+  });
   it('accepts the authoritative built-in overview view definition', () => {
     const accepted = validateDashboardDocument(authoritativeDashboardSource);
     expect(accepted.ok).toBe(true);

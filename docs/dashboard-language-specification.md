@@ -765,6 +765,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-038:** Views are top-level graphical boxes and **MUST NOT** contain nested views. A validator **MUST** report nested views using `DLS-E014`. SVG content rendered by a `chart` view and locked views are excluded from this graphical nesting rule.
 - **DLS-VIEW-039:** A page **MUST NOT** expose more than one unlocked `table` view initially. Every additional unlocked table **MUST** use `disclosure: supplemental`.
 - **DLS-VIEW-040:** A supplemental `table` view **MUST NOT** declare `title`. It **MAY** declare a non-empty `disclosure-label`; otherwise, its presenter **MUST** derive the disclosure label from the view identifier. The presenter **MUST NOT** repeat that label as a visible heading inside the expanded table. Other views **MUST NOT** declare `disclosure-label`.
+- **DLS-VIEW-041:** A page's `views` sequence **MAY** contain only view references instead of inline views. Each reference **MUST** contain exactly one `$ref` whose value is a relative JSON path below `./views/`. A presenter **MUST** resolve the referenced view mappings before hydrating that page and **MUST NOT** fetch references owned by other pages until those pages are requested.
 
 ---
 

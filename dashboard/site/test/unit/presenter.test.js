@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation } from '../../src/presenter.js';
+import { renderDashboard as renderDashboardDocument, enableDashboardKeyboardNavigation, enableDashboardPageNavigation } from '../../src/presenter.js';
+import { resolveDashboardPageViews } from '../../src/view-loader.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 
@@ -11,11 +12,37 @@ const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
   readFileSync(resolve(fixtureDirectory, '../../dashboard.json'), 'utf8')
 );
+for (const page of builtInDashboardDocument.dashboard.pages) {
+  await resolveDashboardPageViews(builtInDashboardDocument, page.id, {
+    baseUrl: pathToFileURL(resolve(fixtureDirectory, '../../dashboard.json')).href,
+    fetch: async (url) => ({
+      ok: true,
+      status: 200,
+      json: async () => JSON.parse(readFileSync(fileURLToPath(url), 'utf8'))
+    })
+  });
+}
 const packageDashboardDocuments = packageDashboardSources.map((source) => JSON.parse(source));
 const authoritativeDashboardDocument = composeDashboardDocuments(
   builtInDashboardDocument,
   packageDashboardDocuments
 );
+
+/** @param {import('../../src/presenter.js').PresentationInput} input */
+function renderDashboard(input) {
+  for (const page of input.document.dashboard.pages) {
+    if (page.kind !== 'built-in') continue;
+    const canonical = builtInDashboardDocument.dashboard.pages.find((/** @type {any} */ candidate) => (
+      candidate.kind === 'built-in' && candidate.page === page.page
+    ));
+    if (canonical?.definition) {
+      page.definition = structuredClone(canonical.definition);
+      page.description ??= canonical.description;
+      page['class-name'] ??= canonical['class-name'];
+    }
+  }
+  return renderDashboardDocument(input);
+}
 
 /** @param {HTMLElement} rendered @param {string} pageId */
 async function activatePage(rendered, pageId) {

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -27,7 +27,12 @@ test("every production dashboard page starts with an executive summary or prescr
   for (const path of dashboardFiles) {
     const document = JSON.parse(readFileSync(path, "utf8"));
     for (const page of document.dashboard.pages) {
-      const views = page.kind === "built-in" ? page.definition?.views : page.views;
+      const declaredViews = page.kind === "built-in" ? page.definition?.views : page.views;
+      const views = declaredViews?.map((view) => (
+        typeof view?.$ref === "string"
+          ? JSON.parse(readFileSync(resolve(dirname(path), view.$ref), "utf8"))
+          : view
+      ));
       const summary = views?.[0];
       assert.ok(summary, `${path}: page "${page.id}" must contain a view`);
       const isSummaryTable = summary.mark === "table"

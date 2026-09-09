@@ -1387,6 +1387,32 @@ function validateCustomPage(page, pageNode, path, errors) {
 }
 
 /**
+ * @param {unknown[]} views
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validateViewReferences(views, path, errors) {
+  views.forEach((view, index) => {
+    const viewPath = `${path}[${index}]`;
+    if (!isViewReference(view)) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'view sequences must not mix inline views and view references.',
+        viewPath
+      ));
+      return;
+    }
+    if (!/^\.\/views\/[a-z0-9][a-z0-9/-]*\.json$/.test(view.$ref) || view.$ref.includes('..')) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'view $ref must be a relative path under ./views ending in .json.',
+        `${viewPath}.$ref`
+      ));
+    }
+  });
+}
+
+/**
  * @param {unknown} view
  * @param {unknown} viewNode
  * @param {string} path
@@ -1401,32 +1427,6 @@ function validateView(view, viewNode, path, viewIds, errors) {
       path
     ));
     return;
-  }
-
-  /**
-   * @param {unknown[]} views
-   * @param {string} path
-   * @param {ValidationError[]} errors
-   */
-  function validateViewReferences(views, path, errors) {
-    views.forEach((view, index) => {
-      const viewPath = `${path}[${index}]`;
-      if (!isViewReference(view)) {
-        errors.push(createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'view sequences must not mix inline views and view references.',
-          viewPath
-        ));
-        return;
-      }
-      if (!/^\.\/views\/[a-z0-9][a-z0-9/-]*\.json$/.test(view.$ref) || view.$ref.includes('..')) {
-        errors.push(createError(
-          ERROR_CODES.missingOrInvalidRequiredField,
-          'view $ref must be a relative path under ./views ending in .json.',
-          `${viewPath}.$ref`
-        ));
-      }
-    });
   }
 
   if (view.title === undefined && typeof view.id === 'string' && !IDENTIFIER_PATTERN.test(view.id)) {
@@ -3587,7 +3587,10 @@ function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** @param {unknown} value */
+/**
+ * @param {unknown} value
+ * @returns {value is { $ref: string }}
+ */
 function isViewReference(value) {
   return isPlainObject(value)
     && Object.keys(value).length === VIEW_REFERENCE_KEYS.length

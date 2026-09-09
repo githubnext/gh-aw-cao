@@ -42,8 +42,176 @@ resources:
     destination: .github/aw/dashboard/site/favicon.svg
   - source: site/dashboard.json
     destination: .github/aw/dashboard/site/dashboard.json
-  - source: site/views
-    destination: .github/aw/dashboard/site/views
+  - source: site/views/admission/admission-decision-ledger.json
+    destination: .github/aw/dashboard/site/views/admission/admission-decision-ledger.json
+  - source: site/views/agents/agents-marketplace.json
+    destination: .github/aw/dashboard/site/views/agents/agents-marketplace.json
+  - source: site/views/configuration/configuration-policy.json
+    destination: .github/aw/dashboard/site/views/configuration/configuration-policy.json
+  - source: site/views/cost/cost-usage-records.json
+    destination: .github/aw/dashboard/site/views/cost/cost-usage-records.json
+  - source: site/views/coverage/coverage-by-organization.json
+    destination: .github/aw/dashboard/site/views/coverage/coverage-by-organization.json
+  - source: site/views/coverage/coverage-diagnostics.json
+    destination: .github/aw/dashboard/site/views/coverage/coverage-diagnostics.json
+  - source: site/views/coverage/coverage-summary.json
+    destination: .github/aw/dashboard/site/views/coverage/coverage-summary.json
+  - source: site/views/coverage/coverage-technical-details.json
+    destination: .github/aw/dashboard/site/views/coverage/coverage-technical-details.json
+  - source: site/views/data-health/data-health-sources.json
+    destination: .github/aw/dashboard/site/views/data-health/data-health-sources.json
+  - source: site/views/detection/detection-results.json
+    destination: .github/aw/dashboard/site/views/detection/detection-results.json
+  - source: site/views/dispatches/package-worker-dispatches.json
+    destination: .github/aw/dashboard/site/views/dispatches/package-worker-dispatches.json
+  - source: site/views/engines-models/engines-models-usage.json
+    destination: .github/aw/dashboard/site/views/engines-models/engines-models-usage.json
+  - source: site/views/evals/eval-results.json
+    destination: .github/aw/dashboard/site/views/evals/eval-results.json
+  - source: site/views/evals/evals-evals-source.json
+    destination: .github/aw/dashboard/site/views/evals/evals-evals-source.json
+  - source: site/views/evals/evals-observations-source.json
+    destination: .github/aw/dashboard/site/views/evals/evals-observations-source.json
+  - source: site/views/experiments/experiments-list.json
+    destination: .github/aw/dashboard/site/views/experiments/experiments-list.json
+  - source: site/views/findings/findings-by-severity.json
+    destination: .github/aw/dashboard/site/views/findings/findings-by-severity.json
+  - source: site/views/findings/findings-source.json
+    destination: .github/aw/dashboard/site/views/findings/findings-source.json
+  - source: site/views/firewall/security-firewall-domains.json
+    destination: .github/aw/dashboard/site/views/firewall/security-firewall-domains.json
+  - source: site/views/github-api/github-api-observations.json
+    destination: .github/aw/dashboard/site/views/github-api/github-api-observations.json
+  - source: site/views/graders/grader-observation-trend.json
+    destination: .github/aw/dashboard/site/views/graders/grader-observation-trend.json
+  - source: site/views/graders/graders-graders-source.json
+    destination: .github/aw/dashboard/site/views/graders/graders-graders-source.json
+  - source: site/views/graders/graders-observations-source.json
+    destination: .github/aw/dashboard/site/views/graders/graders-observations-source.json
+  - source: site/views/insights/insights-overview.json
+    destination: .github/aw/dashboard/site/views/insights/insights-overview.json
+  - source: site/views/mcps/mcp-tool-inventory.json
+    destination: .github/aw/dashboard/site/views/mcps/mcp-tool-inventory.json
+  - source: site/views/operational-value/operational-value-ledger.json
+    destination: .github/aw/dashboard/site/views/operational-value/operational-value-ledger.json
+  - source: site/views/operations/overview-attention-domains.json
+    destination: .github/aw/dashboard/site/views/operations/overview-attention-domains.json
+  - source: site/views/operations/overview-run-health.json
+    destination: .github/aw/dashboard/site/views/operations/overview-run-health.json
+  - source: site/views/organizations/organizations-by-aic.json
+    destination: .github/aw/dashboard/site/views/organizations/organizations-by-aic.json
+  - source: site/views/organizations/organizations-organizations-source.json
+    destination: .github/aw/dashboard/site/views/organizations/organizations-organizations-source.json
+  - source: site/views/organizations/organizations-repositories-source.json
+    destination: .github/aw/dashboard/site/views/organizations/organizations-repositories-source.json
+  - source: site/views/organizations/organizations-runs-source.json
+    destination: .github/aw/dashboard/site/views/organizations/organizations-runs-source.json
+  - source: site/views/organizations/organizations-usage-source.json
+    destination: .github/aw/dashboard/site/views/organizations/organizations-usage-source.json
+  - source: site/views/organizations/organizations-workflows-source.json
+    destination: .github/aw/dashboard/site/views/organizations/organizations-workflows-source.json
+  - source: site/views/outcome-detail/outcome-discussion.json
+    destination: .github/aw/dashboard/site/views/outcome-detail/outcome-discussion.json
+  - source: site/views/outcome-detail/outcome-disposition.json
+    destination: .github/aw/dashboard/site/views/outcome-detail/outcome-disposition.json
+  - source: site/views/outcome-detail/outcome-metadata.json
+    destination: .github/aw/dashboard/site/views/outcome-detail/outcome-metadata.json
+  - source: site/views/outcome-detail/outcome-record.json
+    destination: .github/aw/dashboard/site/views/outcome-detail/outcome-record.json
+  - source: site/views/overview/overview-attention.json
+    destination: .github/aw/dashboard/site/views/overview/overview-attention.json
+  - source: site/views/overview-awaiting-review/overview-awaiting-review-ledger.json
+    destination: .github/aw/dashboard/site/views/overview-awaiting-review/overview-awaiting-review-ledger.json
+  - source: site/views/overview-blocked-work/overview-blocked-work-ledger.json
+    destination: .github/aw/dashboard/site/views/overview-blocked-work/overview-blocked-work-ledger.json
+  - source: site/views/overview-failed-runs/overview-failed-runs-ledger.json
+    destination: .github/aw/dashboard/site/views/overview-failed-runs/overview-failed-runs-ledger.json
+  - source: site/views/overview-security-findings/overview-security-findings-ledger.json
+    destination: .github/aw/dashboard/site/views/overview-security-findings/overview-security-findings-ledger.json
+  - source: site/views/package-detail/package-workflow-navigation.json
+    destination: .github/aw/dashboard/site/views/package-detail/package-workflow-navigation.json
+  - source: site/views/package-detail/package-workflow-table.json
+    destination: .github/aw/dashboard/site/views/package-detail/package-workflow-table.json
+  - source: site/views/package-dispatches/package-dispatch-navigation.json
+    destination: .github/aw/dashboard/site/views/package-dispatches/package-dispatch-navigation.json
+  - source: site/views/package-dispatches/package-dispatch-status.json
+    destination: .github/aw/dashboard/site/views/package-dispatches/package-dispatch-status.json
+  - source: site/views/package-dispatches/package-dispatch-table.json
+    destination: .github/aw/dashboard/site/views/package-dispatches/package-dispatch-table.json
+  - source: site/views/package-dispatches/package-failed-dispatch-table.json
+    destination: .github/aw/dashboard/site/views/package-dispatches/package-failed-dispatch-table.json
+  - source: site/views/package-dispatches/package-failure-reason-distribution.json
+    destination: .github/aw/dashboard/site/views/package-dispatches/package-failure-reason-distribution.json
+  - source: site/views/package-insights/package-insights-by-workflow.json
+    destination: .github/aw/dashboard/site/views/package-insights/package-insights-by-workflow.json
+  - source: site/views/package-insights/package-operational-value.json
+    destination: .github/aw/dashboard/site/views/package-insights/package-operational-value.json
+  - source: site/views/package-reports/package-report-navigation.json
+    destination: .github/aw/dashboard/site/views/package-reports/package-report-navigation.json
+  - source: site/views/package-reports/package-report-status.json
+    destination: .github/aw/dashboard/site/views/package-reports/package-report-status.json
+  - source: site/views/package-reports/package-report-table.json
+    destination: .github/aw/dashboard/site/views/package-reports/package-report-table.json
+  - source: site/views/packages/packages-inventory.json
+    destination: .github/aw/dashboard/site/views/packages/packages-inventory.json
+  - source: site/views/performance/job-performance-records.json
+    destination: .github/aw/dashboard/site/views/performance/job-performance-records.json
+  - source: site/views/preview/preview-issue-ledger.json
+    destination: .github/aw/dashboard/site/views/preview/preview-issue-ledger.json
+  - source: site/views/readiness/readiness-operational-observations.json
+    destination: .github/aw/dashboard/site/views/readiness/readiness-operational-observations.json
+  - source: site/views/repositories/repositories-activity.json
+    destination: .github/aw/dashboard/site/views/repositories/repositories-activity.json
+  - source: site/views/repository-detail/repository-authored-workflows.json
+    destination: .github/aw/dashboard/site/views/repository-detail/repository-authored-workflows.json
+  - source: site/views/repository-detail/repository-run-health.json
+    destination: .github/aw/dashboard/site/views/repository-detail/repository-run-health.json
+  - source: site/views/repository-detail/repository-workflow-aic.json
+    destination: .github/aw/dashboard/site/views/repository-detail/repository-workflow-aic.json
+  - source: site/views/repository-detail/repository-workflow-count.json
+    destination: .github/aw/dashboard/site/views/repository-detail/repository-workflow-count.json
+  - source: site/views/repository-detail/repository-workflow-status.json
+    destination: .github/aw/dashboard/site/views/repository-detail/repository-workflow-status.json
+  - source: site/views/runs/runs-runs-source.json
+    destination: .github/aw/dashboard/site/views/runs/runs-runs-source.json
+  - source: site/views/runtime/runtime-execution-episodes.json
+    destination: .github/aw/dashboard/site/views/runtime/runtime-execution-episodes.json
+  - source: site/views/safe-outputs/safe-output-diagnostics.json
+    destination: .github/aw/dashboard/site/views/safe-outputs/safe-output-diagnostics.json
+  - source: site/views/security/security-output-ledger.json
+    destination: .github/aw/dashboard/site/views/security/security-output-ledger.json
+  - source: site/views/updates/workflow-updates.json
+    destination: .github/aw/dashboard/site/views/updates/workflow-updates.json
+  - source: site/views/usage/usage-by-model.json
+    destination: .github/aw/dashboard/site/views/usage/usage-by-model.json
+  - source: site/views/usage/usage-usage-source.json
+    destination: .github/aw/dashboard/site/views/usage/usage-usage-source.json
+  - source: site/views/work/work-project-board.json
+    destination: .github/aw/dashboard/site/views/work/work-project-board.json
+  - source: site/views/work-roadmap/work-project-roadmap.json
+    destination: .github/aw/dashboard/site/views/work-roadmap/work-project-roadmap.json
+  - source: site/views/work-tasks/work-project-tasks.json
+    destination: .github/aw/dashboard/site/views/work-tasks/work-project-tasks.json
+  - source: site/views/workflow-detail/workflow-report-status.json
+    destination: .github/aw/dashboard/site/views/workflow-detail/workflow-report-status.json
+  - source: site/views/workflow-detail/workflow-report-table.json
+    destination: .github/aw/dashboard/site/views/workflow-detail/workflow-report-table.json
+  - source: site/views/workflow-detail/workflow-reports-route.json
+    destination: .github/aw/dashboard/site/views/workflow-detail/workflow-reports-route.json
+  - source: site/views/workflow-runs/workflow-run-details.json
+    destination: .github/aw/dashboard/site/views/workflow-runs/workflow-run-details.json
+  - source: site/views/workflow-runs/workflow-run-health.json
+    destination: .github/aw/dashboard/site/views/workflow-runs/workflow-run-health.json
+  - source: site/views/workflow-runs/workflow-runs-route.json
+    destination: .github/aw/dashboard/site/views/workflow-runs/workflow-runs-route.json
+  - source: site/views/workflow-runs/workflow-runs-table.json
+    destination: .github/aw/dashboard/site/views/workflow-runs/workflow-runs-table.json
+  - source: site/views/workflow-runtime/workflow-runtime-health.json
+    destination: .github/aw/dashboard/site/views/workflow-runtime/workflow-runtime-health.json
+  - source: site/views/workflow-runtime/workflow-runtime-route.json
+    destination: .github/aw/dashboard/site/views/workflow-runtime/workflow-runtime-route.json
+  - source: site/views/workflows/workflows-inventory.json
+    destination: .github/aw/dashboard/site/views/workflows/workflows-inventory.json
   - source: site/src/data-operations.js
     destination: .github/aw/dashboard/site/src/data-operations.js
   - source: site/src/data-processor.js
