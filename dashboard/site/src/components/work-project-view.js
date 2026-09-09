@@ -3,7 +3,7 @@ import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
 import { textValue, titleCase } from './count-formatters.js';
-import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderDlRow, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -689,7 +689,7 @@ function decorateMobileWorkItem(element, item, choices, onUpdate, variant = 'boa
 
 /** @param {string} label @param {string} value */
 function mobileDetailRow(label, value) {
-  return h('div', null, h('dt', null, label), h('dd', null, value || 'Unavailable'));
+  return renderDlRow(label, value || 'Unavailable');
 }
 
 /**
