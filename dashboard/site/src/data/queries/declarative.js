@@ -47,6 +47,92 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-duration-ms': 60000
 };
 
+const CONTINUATION_TOKEN_VERSION = 1;
+
+/**
+ * Applies request-scoped pagination after query execution so query definitions
+ * remain independent of transport cursors. Tokens are stateless: continuing a
+ * query recompiles it and locates the last emitted run in the new result.
+ *
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ */
+export function paginateDashboardSources(sources, pagination = {}) {
+  return Object.fromEntries(Object.entries(sources).map(([name, source]) => {
+    const page = pagination[name];
+    if (!page) return [name, source];
+    if (!Number.isSafeInteger(page.limit) || page.limit <= 0
+        || page.limit > DASHBOARD_QUERY_LIMITS['max-output-rows']) {
+      throw new TypeError(`Pagination limit for "${name}" must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}.`);
+    }
+    const rows = Array.isArray(source.rows) ? source.rows : [];
+    const cursor = page.continuationToken
+      ? decodeContinuationToken(page.continuationToken, name)
+      : null;
+    let offset = cursor?.offset ?? 0;
+    if (cursor?.run !== undefined) {
+      const expected = rows[offset - 1];
+      if (runCursor(expected) !== cursor.run) {
+        const anchor = rows.findIndex((row) => runCursor(row) === cursor.run);
+        if (anchor < 0) throw new TypeError(`Continuation token for "${name}" no longer identifies a result row.`);
+        offset = anchor + 1;
+      }
+    }
+    const end = Math.min(rows.length, offset + page.limit);
+    const pageRows = rows.slice(offset, end);
+    const continuationToken = end < rows.length
+      ? encodeContinuationToken({
+          source: name,
+          offset: end,
+          run: runCursor(pageRows.at(-1))
+        })
+      : undefined;
+    return [name, {
+      ...source,
+      rows: pageRows,
+      ...(continuationToken ? { continuationToken } : {}),
+      metadata: { ...source.metadata, 'total-row-count': rows.length }
+    }];
+  }));
+}
+
+/** @param {Row | undefined} row */
+function runCursor(row) {
+  const run = row?.run;
+  return typeof run === 'string' && /^\d+$/.test(run) ? run : undefined;
+}
+
+/** @param {{ source: string, offset: number, run?: string }} cursor */
+function encodeContinuationToken(cursor) {
+  const bytes = new TextEncoder().encode(JSON.stringify({
+    version: CONTINUATION_TOKEN_VERSION,
+    ...cursor
+  }));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+
+/** @param {string} token @param {string} source */
+function decodeContinuationToken(token, source) {
+  try {
+    const encoded = token.replaceAll('-', '+').replaceAll('_', '/');
+    const binary = atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '='));
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const cursor = JSON.parse(new TextDecoder().decode(bytes));
+    if (cursor?.version !== CONTINUATION_TOKEN_VERSION
+        || cursor?.source !== source
+        || !Number.isSafeInteger(cursor?.offset)
+        || cursor.offset <= 0
+        || (cursor.run !== undefined && (typeof cursor.run !== 'string' || !/^\d+$/.test(cursor.run)))) {
+      throw new Error('invalid cursor');
+    }
+    return /** @type {{ source: string, offset: number, run?: string }} */ (cursor);
+  } catch {
+    throw new TypeError(`Invalid continuation token for "${source}".`);
+  }
+}
+
 /** Rows processed between cancellation checkpoints inside a join. */
 const CANCELLATION_CHECK_INTERVAL = 4096;
 
@@ -311,7 +397,7 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
  * @param {unknown} definitions
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Iterable<string>} [requested] only these queries are executed when provided
- * @param {{ signal?: { aborted?: boolean }, timeout?: number, maxOperations?: number, budget?: QueryBudget }} [options]
+ * @param {{ signal?: { aborted?: boolean }, timeout?: number, maxOperations?: number, budget?: QueryBudget, pagination?: Record<string, { limit: number, continuationToken?: string }> }} [options]
  * @returns {Record<string, LogicalSourceInput>}
  */
 export function executeDashboardQueries(definitions, sources, requested, options = {}) {
@@ -327,7 +413,7 @@ export function executeDashboardQueries(definitions, sources, requested, options
     budget.checkpoint();
     derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name), budget);
   }
-  return derived;
+  return paginateDashboardSources(derived, options.pagination);
 }
 
 /**

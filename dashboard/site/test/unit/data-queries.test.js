@@ -8,6 +8,7 @@ import {
   dashboardQueryOutputFields,
   executeDashboardQueries,
   executeDashboardQuery,
+  paginateDashboardSources,
   resolveDashboardQuerySources
 } from '../../src/data/queries/declarative.js';
 import { computeValue, tidy } from '../../src/data-operations.js';
@@ -53,6 +54,87 @@ const usage = {
 const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('continues query results without exposing cursors in query definitions', () => {
+    const sources = {
+      runs: {
+        source: 'runs',
+        rows: ['1005', '1004', '1003', '1002', '1001'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    };
+    const definitions = [{
+      name: 'recent-runs',
+      from: 'runs',
+      'order-by': [{ field: 'run', direction: 'desc' }]
+    }];
+
+    const first = executeDashboardQueries(definitions, sources, ['recent-runs'], {
+      pagination: { 'recent-runs': { limit: 2 } }
+    })['recent-runs'];
+    const second = executeDashboardQueries(definitions, sources, ['recent-runs'], {
+      pagination: {
+        'recent-runs': { limit: 2, continuationToken: first.continuationToken }
+      }
+    })['recent-runs'];
+    const third = executeDashboardQueries(definitions, sources, ['recent-runs'], {
+      pagination: {
+        'recent-runs': { limit: 2, continuationToken: second.continuationToken }
+      }
+    })['recent-runs'];
+
+    expect(first.rows).toEqual([{ run: '1005' }, { run: '1004' }]);
+    expect(second.rows).toEqual([{ run: '1003' }, { run: '1002' }]);
+    expect(third.rows).toEqual([{ run: '1001' }]);
+    expect(first.metadata['total-row-count']).toBe(5);
+    expect(first.continuationToken).toEqual(expect.any(String));
+    expect(second.continuationToken).toEqual(expect.any(String));
+    expect(third.continuationToken).toBeUndefined();
+    expect(definitions[0]).not.toHaveProperty('cursor');
+  });
+
+  it('uses the last monotonic run id to resume after newer runs arrive', () => {
+    const first = paginateDashboardSources({
+      runs: {
+        source: 'runs',
+        rows: ['1005', '1004', '1003'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    }, { runs: { limit: 2 } }).runs;
+    const continued = paginateDashboardSources({
+      runs: {
+        source: 'runs',
+        rows: ['1007', '1006', '1005', '1004', '1003'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    }, {
+      runs: { limit: 2, continuationToken: first.continuationToken }
+    }).runs;
+
+    expect(continued.rows).toEqual([{ run: '1003' }]);
+    expect(continued.continuationToken).toBeUndefined();
+  });
+
+  it('rejects invalid and cross-source continuation tokens', () => {
+    const page = paginateDashboardSources({
+      runs: {
+        source: 'runs',
+        rows: ['2', '1'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    }, { runs: { limit: 1 } }).runs;
+
+    expect(() => paginateDashboardSources({
+      usage: { source: 'usage', rows: [{ run: '2' }, { run: '1' }], metadata: metadata('usage') }
+    }, {
+      usage: { limit: 1, continuationToken: page.continuationToken }
+    })).toThrow('Invalid continuation token for "usage".');
+    expect(() => paginateDashboardSources({
+      runs: { source: 'runs', rows: [], metadata: metadata('runs') }
+    }, {
+      runs: { limit: 1, continuationToken: 'not-a-token' }
+    })).toThrow('Invalid continuation token for "runs".');
+  });
+
   it('projects, renames, and orders rows deterministically', () => {
     const result = executeDashboardQuery(
       {
