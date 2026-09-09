@@ -123,7 +123,7 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines every editable experimental page as one full-view lazy table', () => {
+  it('defines every other editable experimental page as one full-view lazy table', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const experimentalIds = new Set(document.dashboard.navigation
       .filter((/** @type {{ experimental?: boolean }} */ section) => section.experimental)
@@ -132,6 +132,7 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
+      if (page.id === 'safe-outputs') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
@@ -297,28 +298,34 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines safe-output diagnostics as one full-view lazy table in Explore', () => {
+  it('defines Safe Outputs as one declarative type summary in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs');
+    const safeOutputsQuery = document.dashboard.queries.find(
+      (/** @type {{ name: string }} */ query) => query.name === 'safe-outputs-by-type'
+    );
 
     expect(document.dashboard.navigation.find(
       (/** @type {{ label: string }} */ section) => section.label === 'Explore'
     ).pages).toContain('safe-outputs');
     expect(safeOutputs.views).toHaveLength(1);
     expect(safeOutputs.views[0]).toMatchObject({
-      id: 'safe-output-diagnostics',
-      mark: 'table',
-      controls: 'interactive',
-      'lazy-list': true,
-      layout: 'full-view',
-      data: { source: 'safe-output-performance' }
+      id: 'safe-outputs-by-type',
+      mark: 'chart',
+      chart: 'pie',
+      data: { source: 'safe-outputs-by-type' }
     });
-    expect(safeOutputs.views[0].encoding.columns).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: 'safe-output-kind', title: 'Signal' }),
-      expect.objectContaining({ field: 'safe-output-status', display: 'status' }),
-      expect.objectContaining({ field: 'safe-output-count', title: 'Items' }),
-      expect.objectContaining({ field: 'run-conclusion', display: 'status' })
-    ]));
+    expect(safeOutputs.views[0].encoding).toEqual({
+      x: expect.objectContaining({ field: 'safe-output-kind', title: 'Type' }),
+      y: expect.objectContaining({ field: 'safe-output-count', title: 'Safe outputs' })
+    });
+    expect(safeOutputsQuery).toMatchObject({
+      from: 'outcomes',
+      aggregate: {
+        by: ['safe-output-kind'],
+        values: [{ field: 'safe-output', as: 'safe-output-count', reducer: 'distinct-count' }]
+      }
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

@@ -211,6 +211,34 @@
         ]
       },
       {
+        "name": "safe-outputs-by-type",
+        "intent": "Summarize retained safe outputs by their declared output type.",
+        "description": "Distinct retained safe-output totals grouped by type.",
+        "from": "outcomes",
+        "aggregate": {
+          "by": [
+            "safe-output-kind"
+          ],
+          "values": [
+            {
+              "field": "safe-output",
+              "as": "safe-output-count",
+              "reducer": "distinct-count"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "safe-output-count",
+            "direction": "desc"
+          },
+          {
+            "field": "safe-output-kind",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "runs-table",
         "intent": "Show observed workflow runs in a table with execution, repository, workflow, engine, model, and navigation details.",
         "description": "Observed workflow runs ordered from newest to oldest.",
@@ -3249,77 +3277,30 @@
         "navigation-label": "Safe Outputs",
         "icon": "shield-check",
         "class-name": "safe-outputs-page",
-        "description": "Safe-output volume, diagnostic signals, and per-run delivery performance.",
+        "description": "Retained safe-output volume grouped by declared output type.",
         "views": [
           {
-            "id": "safe-output-diagnostics",
-            "description": "Run-level evidence for delivered outputs and explicit noop, missing_data, missing_tool, or report_incomplete signals.",
+            "id": "safe-outputs-by-type",
+            "title": "Safe outputs by type",
+            "description": "Distinct retained safe outputs grouped by their declared output type.",
             "data": {
-              "source": "safe-output-performance",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
+              "source": "safe-outputs-by-type"
             },
-            "mark": "table",
-            "controls": "interactive",
-            "column-summaries": true,
-            "empty-message": "No safe-output activity was reported in the selected horizon.",
+            "mark": "chart",
+            "chart": "pie",
+            "empty-message": "No retained safe outputs were reported in the selected horizon.",
             "encoding": {
-              "columns": [
-                {
-                  "field": "safe-output-kind",
-                  "type": "nominal",
-                  "title": "Signal"
-                },
-                {
-                  "field": "safe-output-status",
-                  "type": "nominal",
-                  "title": "Status",
-                  "display": "status"
-                },
-                {
-                  "field": "safe-output-count",
-                  "type": "quantitative",
-                  "title": "Items"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "run-conclusion",
-                  "type": "nominal",
-                  "title": "Conclusion",
-                  "display": "status"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "title": "Observed"
-                }
-              ],
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
+              "x": {
+                "field": "safe-output-kind",
+                "type": "nominal",
+                "title": "Type"
+              },
+              "y": {
+                "field": "safe-output-count",
+                "type": "quantitative",
+                "title": "Safe outputs"
               }
-            },
-            "layout": "full-view",
-            "lazy-list": true
+            }
           }
         ]
       },
