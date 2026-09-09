@@ -55,11 +55,17 @@ export function dashboardSourceGeneration(sources) {
   const repositories = sourceDocument(sources.repositories);
   const workflows = sourceDocument(sources.workflows);
   const runs = sourceDocument(sources.runs);
+  const artifactGenerations = new Set(Object.values(sources)
+    .map((source) => sourceDocument(source).metadata['artifact-generation'])
+    .filter((generation) => typeof generation === 'string' && generation));
+  if (artifactGenerations.size > 1) {
+    throw new Error('Dashboard sources contain multiple artifact generations');
+  }
   const metadata = Object.keys(repositories.metadata).length > 0
     ? repositories.metadata
     : Object.keys(workflows.metadata).length > 0 ? workflows.metadata : runs.metadata;
   return requiredString(
-    metadata['artifact-generation'] ?? metadata['as-of'] ?? metadata['retrieved-at'],
+    [...artifactGenerations][0] ?? metadata['as-of'] ?? metadata['retrieved-at'],
     'dashboard source generation'
   );
 }

@@ -119,6 +119,19 @@ describe('current dashboard source adapter', () => {
       .toThrow('dashboard source generation is required');
   });
 
+  it('rejects source documents containing multiple artifact generations', () => {
+    const sources = {
+      repositories: { rows: [], metadata },
+      runs: {
+        rows: [],
+        metadata: { ...metadata, 'artifact-generation': 'different-generation' }
+      }
+    };
+
+    expect(() => adaptDashboardSources(sources))
+      .toThrow('Dashboard sources contain multiple artifact generations');
+  });
+
   it('joins published transaction logs to canonical runs and jobs', () => {
     const sources = {
       repositories: {

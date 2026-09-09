@@ -39,7 +39,7 @@ async function ingestReplacementGeneration(indexedDB, generation, buildBatch, op
 
 /**
  * Builds a replacement canonical generation from the current published source
- * document. Rendering remains independent until views migrate to queries.
+ * document for the authoritative query-backed renderer.
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources

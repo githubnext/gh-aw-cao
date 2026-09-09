@@ -95,4 +95,22 @@ describe('canonical entity relationships', () => {
       'event:6.sessionId does not reference an existing session'
     ]);
   });
+
+  it('rejects relationships that cross canonical parent boundaries', () => {
+    const batch = completeGraph();
+    batch.repositories.push({ id: 'github:repository:7' });
+    batch.workflows.push({ id: 'github:workflow:8', repositoryId: 'github:repository:7' });
+    batch.runs[0].workflowId = 'github:workflow:8';
+    batch.runs.push({
+      id: 'github:run:9:attempt:1',
+      repositoryId: 'github:repository:1',
+      workflowId: 'github:workflow:2'
+    });
+    batch.jobs[0].runId = 'github:run:9:attempt:1';
+
+    expect(relationshipErrors(batch)).toEqual([
+      'github:run:3:attempt:1.workflowId references a workflow from another repository',
+      'session:5.jobId references a job from another run'
+    ]);
+  });
 });

@@ -68,6 +68,8 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
+  const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
+  const jobsById = new Map(batch.jobs.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
     workflows: new Set(batch.workflows.map((record) => record.id)),
@@ -104,6 +106,10 @@ export function relationshipErrors(batch) {
   for (const run of batch.runs) {
     requireReference(run, 'repositoryId', 'repositories');
     requireReference(run, 'workflowId', 'workflows');
+    const workflow = workflowsById.get(run.workflowId);
+    if (workflow && workflow.repositoryId !== run.repositoryId) {
+      errors.push(`${String(run.id ?? '<unknown>')}.workflowId references a workflow from another repository`);
+    }
   }
   for (const job of batch.jobs) {
     requireReference(job, 'runId', 'runs');
@@ -112,6 +118,10 @@ export function relationshipErrors(batch) {
     requireReference(session, 'runId', 'runs');
     if (session.jobId !== undefined && session.jobId !== null) {
       requireReference(session, 'jobId', 'jobs');
+      const job = jobsById.get(session.jobId);
+      if (job && job.runId !== session.runId) {
+        errors.push(`${String(session.id ?? '<unknown>')}.jobId references a job from another run`);
+      }
     }
   }
   for (const event of batch.events) {
