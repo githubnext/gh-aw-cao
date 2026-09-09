@@ -1,0 +1,31 @@
+{
+  "generation": "gh-aw-logs-2026-09-09-05",
+  "observedAt": "2026-09-09T05:00:00Z",
+  "repository": {
+    "githubId": "101",
+    "owner": "githubnext",
+    "name": "gh-aw-cao",
+    "visibility": "public"
+  },
+  "workflow": {
+    "githubId": "202",
+    "name": "Dashboard",
+    "path": ".github/workflows/dashboard.md",
+    "state": "active"
+  },
+  "run": {
+    "githubRunId": "303",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "startedAt": "2026-09-09T04:00:00Z",
+    "completedAt": "2026-09-09T04:01:00Z"
+  },
+  "job": {
+    "githubJobId": "404",
+    "name": "agent",
+    "status": "completed",
+    "conclusion": "success"
+  }
+}

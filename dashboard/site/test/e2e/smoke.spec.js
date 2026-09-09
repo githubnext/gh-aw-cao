@@ -2123,9 +2123,9 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
 
   await expect(page.getByRole('heading', { name: 'Evals', exact: true, level: 1 })).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Evals Evals Source' }).click();
-  await expect(page.getByRole('heading', { name: 'Evals Evals Source' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Evals Evals Source', exact: true })).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Evals Observations Source' }).click();
-  await expect(page.getByRole('heading', { name: 'Evals Observations Source' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Evals Observations Source', exact: true })).toBeVisible();
   await expect(page.locator('.data-state-summary')).toBeHidden();
   await expect(page.locator('[data-page-id="evals"] .custom-table').nth(0).locator('tbody tr')).toHaveCount(2);
   await expect(page.locator('[data-page-id="evals"] .custom-table').nth(1).locator('tbody tr')).toHaveCount(3);

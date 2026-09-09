@@ -116,7 +116,7 @@ Administrative setup (`.github/cao/setup-github-apps.mjs`), release workflows, C
 | gh-aw release list | `aw-maintenance-upgrade.md` | Later upgrade runs | 24-hour file cache restored by Actions cache |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |
 | GitHub API telemetry ledger (`cao-gh.jsonl`) | `activity/github-telemetry.mjs` | Next activity run's dashboard quota history and the `cao-gh` artifact | Rolling 24-hour window retained inside the `cao-activity` cache; trimmed on restore by `prepare`, not a fresh discard per run |
-| Dashboard source document | Dashboard browser | Later page loads | IndexedDB keyed by the `sources.json` URL; stale data is displayed while live static data loads |
+| Dashboard source document | Dashboard data worker | Current browser session and later page queries | Canonical generations in IndexedDB; noncanonical source rows retained only in worker memory and reconstructed after reload |
 | Dashboard data artifact | Dashboard build | Local server | Predownloaded once per local-server start; no local persistence contract |
 
 The activity snapshot is the shared collection boundary. It persists the bounded gh-aw logs JSON and downloaded artifacts beside derived AIC and operational-value records.

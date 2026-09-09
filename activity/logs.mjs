@@ -40,7 +40,7 @@ function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn
     const args = [
       "aw", "logs", "--json", "--audit",
       "--output", outputDirectory, "--summary-file", "",
-      "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp",
+      "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
       "--count", String(runLimit), "--timeout", "15",
       "--max-github-api-rate-limit", "-2000", "--max-storage", "1200", "--prune-older-runs",
