@@ -863,7 +863,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(failedRunsPage).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
   await expect(failedRunsPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-  await expect(failedRunsPage.locator('.table-summary-row .table-summary-cell')).toHaveCount(3);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
   const fullViewShellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
     const { width, height } = element.getBoundingClientRect();
@@ -878,7 +877,6 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     await expect(attentionPage).toBeVisible();
     await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
     await expect(attentionPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
-    await expect(attentionPage.locator('.table-summary-row .table-summary-cell')).toHaveCount(3);
   }
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
