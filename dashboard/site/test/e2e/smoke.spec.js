@@ -2033,6 +2033,12 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
         dashboard: {
           id: 'filter-bar-render',
           title: 'Central Agentic Ops',
+          callouts: [{
+            id: 'partial-data',
+            title: 'Dashboard data is partial',
+            description: 'Data Health reports a collection gap.',
+            'navigation-page': 'data-health'
+          }],
           pages: [{
             id: 'cost',
             kind: 'custom',
@@ -2099,6 +2105,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await filterBar.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 400, height: 900 });
+  expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
+    .toBeGreaterThanOrEqual(24);
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
   expect(horizonBox).not.toBeNull();
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
