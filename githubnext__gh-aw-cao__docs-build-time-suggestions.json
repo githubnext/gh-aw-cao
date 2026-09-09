@@ -1,15 +1,7 @@
 {
-  "source_sha": "9a528854574fa75f30bcd4fb8ffcf344799a178d",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "90f767ac57bf04c6ef09637bb0e79801653e2cab",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-09T13:00:10Z",
-      "worker_run_id": 34353985336,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions workflow-run evidence could not be collected because the GitHub API rate limit was already exceeded before run listing succeeded; fewer than five comparable successful docs.yml runs could be verified.",
-      "suggestion_fingerprint": ""
-    },
     {
       "evaluated_at": "2026-09-09T13:27:00Z",
       "worker_run_id": 34356795496,
@@ -305,6 +297,14 @@
         34390527200
       ],
       "outcome": "no-op: analyzed 5 comparable successful scheduled docs.yml runs from 2026-09-09T18:41:06Z to 2026-09-09T20:35:33Z for category 'reusable dashboard generation'. Parent workflow median queue time was 4s (p90 59.2s due to one 96s outlier) and median execution time was 108s (p90 162.6s). Parent job medians were dashboard 49s, build 35s, and deploy 10s; the parent dashboard step 'Dispatch dashboard build' had median 42s. In the dispatched dashboard-build workflow, activity median was 6s and build median was 22s, with 'Dispatch activity refresh' skipped on all 5 samples and 'Build Dashboard Language sources' median 3s. Logs and step metadata confirmed node_modules cache reuse in all 5 parent runs (Install dependencies skipped every time) and showed the parent dashboard cache key missed every time, so the parent always downloaded the dashboard artifact. No category-aligned workflow change met the >=60s or >=15% savings threshold without weakening freshness or deployment safety. Duplicate-open-issue verification could not be completed because gh issue list failed in this environment, so no suggestion was emitted.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-09T20:54:20Z",
+      "worker_run_id": 34403447238,
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: evaluation of category 'reusable dashboard generation' stopped after trusted workflow YAML reads because fresh docs.yml run listing failed with HTTP 403 API rate-limit exhaustion and the immediate retry failed with HTTP 502 resource-labeling errors; open-issue duplicate verification also failed. The required minimum of five comparable successful docs.yml runs, median and p90 workflow/job timings, step timings, and cache-hit verification could not be established safely.",
       "suggestion_fingerprint": ""
     }
   ]
