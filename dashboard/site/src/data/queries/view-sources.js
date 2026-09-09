@@ -274,30 +274,6 @@ function securityFindingsSource(findings, sources) {
   };
 }
 
-/**
- * @param {Record<string, unknown>[]} events
- * @param {Map<unknown, Record<string, unknown>>} sessionsById
- * @param {Map<unknown, Record<string, unknown>>} runsById
- * @param {Record<string, unknown>} sources
- */
-function firewallEventsSource(events, sessionsById, runsById, sources) {
-  return {
-    source: 'firewall-observations',
-    rows: events.map((event) => {
-      const session = sessionsById.get(event.sessionId) ?? {};
-      const run = runsById.get(session.runId) ?? {};
-      const domain = String(event.summary ?? '').trim().split(/\s+/, 1)[0] || 'unknown';
-      return {
-        domain,
-        run: String(run.githubRunId ?? ''),
-        accepted: event.type === 'net_allowed' ? 1 : 0,
-        blocked: event.type === 'net_blocked' ? 1 : 0
-      };
-    }),
-    metadata: projectionMetadata(sources, 'events', 'firewall-observations', true)
-  };
-}
-
 /** @param {unknown} source */
 function sourceRows(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
@@ -350,8 +326,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources, gen
       'job-performance',
       'failed-runs',
       'work-items',
-      'security-findings',
-      'firewall-observations'
+      'security-findings'
     ])
   };
 }
@@ -373,24 +348,15 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
-  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings, firewallEvents] = await Promise.all([
+  const [repositories, workflows, runs, jobs, failedRuns, workItems, findings] = await Promise.all([
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     requested.has('work-items') ? queries.workItems.list() : [],
-    requested.has('security-findings') ? queries.findings.list() : [],
-    requested.has('firewall-observations') ? queries.events.firewallActivity() : []
+    requested.has('security-findings') ? queries.findings.list() : []
   ]);
-  const firewallSessions = requested.has('firewall-observations')
-    ? (await Promise.all([...new Set(firewallEvents.map((event) => String(event.sessionId)))]
-      .map((id) => queries.sessions.get(id)))).filter(Boolean)
-    : [];
-  const firewallRuns = requested.has('firewall-observations')
-    ? (await Promise.all([...new Set(firewallSessions.map((session) => String(session.runId)))]
-      .map((id) => queries.runs.get(id)))).filter(Boolean)
-    : [];
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
   const sources = namedLogicalSources(logicalSources);
@@ -403,13 +369,5 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('work-items')) projected['work-items'] = workItemsSource(workItems, sources);
   if (requested.has('security-findings')) projected['security-findings'] = securityFindingsSource(findings, sources);
-  if (requested.has('firewall-observations')) {
-    projected['firewall-observations'] = firewallEventsSource(
-      firewallEvents,
-      new Map(firewallSessions.map((session) => [session.id, session])),
-      new Map(firewallRuns.map((run) => [run.id, run])),
-      sources
-    );
-  }
   return projected;
 }

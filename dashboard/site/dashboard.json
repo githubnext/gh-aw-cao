@@ -75,6 +75,62 @@
         "name": "firewall-domain-totals",
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
         "from": "firewall-observations",
+        "compute": [
+          {
+            "as": "is-accepted",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "decision"
+              },
+              {
+                "value": "allowed"
+              }
+            ]
+          },
+          {
+            "as": "accepted",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-accepted"
+              },
+              {
+                "field": "request-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "is-blocked",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "decision"
+              },
+              {
+                "value": "denied"
+              }
+            ]
+          },
+          {
+            "as": "blocked",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-blocked"
+              },
+              {
+                "field": "request-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
         "aggregate": {
           "by": [
             "domain"

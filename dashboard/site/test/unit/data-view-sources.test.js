@@ -57,26 +57,6 @@ const sources = {
     }],
     metadata
   },
-  sessions: {
-    rows: [{
-      session: 'session-42', run: '42', 'run-attempt': 2,
-      'session-status': 'completed', 'started-at': '2026-09-09T04:00:00Z'
-    }],
-    metadata
-  },
-  events: {
-    rows: [
-      {
-        event: 'event-allowed', session: 'session-42', 'event-timestamp': '2026-09-09T04:01:00Z',
-        'event-source': 'firewall', 'event-type': 'net_allowed', 'event-summary': 'api.github.com GET'
-      },
-      {
-        event: 'event-blocked', session: 'session-42', 'event-timestamp': '2026-09-09T04:02:00Z',
-        'event-source': 'firewall', 'event-type': 'net_blocked', 'event-summary': 'example.com CONNECT'
-      }
-    ],
-    metadata
-  },
   usage: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
     metadata
@@ -139,27 +119,6 @@ describe('canonical view sources', () => {
     await expect(queries.findings.bySeverity('high')).resolves.toEqual([
       expect.objectContaining({ observationId: 'threat-detection:observation-1', severity: 'high' })
     ]);
-  });
-
-  it('queries only firewall events and projects their run activity', async () => {
-    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
-
-    const projected = await queryCanonicalViewSources(
-      indexedDB,
-      sources,
-      metadata['artifact-generation'],
-      ['firewall-observations']
-    );
-
-    expect(Object.keys(projected)).toEqual(['firewall-observations']);
-    expect(projected['firewall-observations']).toMatchObject({
-      source: 'firewall-observations',
-      rows: [
-        { domain: 'api.github.com', run: '42', accepted: 1, blocked: 0 },
-        { domain: 'example.com', run: '42', accepted: 0, blocked: 1 }
-      ],
-      metadata: { 'source-kind': 'canonical-query' }
-    });
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {

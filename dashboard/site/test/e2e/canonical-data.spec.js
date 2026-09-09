@@ -83,24 +83,17 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
-    sessions: {
-      rows: [{
-        session: 'session-firewall', run, 'run-attempt': 2,
-        'session-status': 'completed', 'started-at': '2026-09-09T04:00:00Z'
-      }],
-      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
-    },
-    events: {
+    'firewall-observations': {
       rows: [
         {
-          event: 'event-firewall-allowed', session: 'session-firewall',
-          'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'firewall',
-          'event-type': 'net_allowed', 'event-summary': 'api.github.com GET'
+          organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md', run,
+          domain: 'api.github.com', decision: 'allowed', 'request-count': 4
         },
         {
-          event: 'event-firewall-blocked', session: 'session-firewall',
-          'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'firewall',
-          'event-type': 'net_blocked', 'event-summary': 'api.github.com CONNECT'
+          organization: 'githubnext', repository: 'gh-aw-cao',
+          workflow: '.github/workflows/dashboard.md', run,
+          domain: 'api.github.com', decision: 'denied', 'request-count': 2
         }
       ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -333,7 +326,7 @@ test('data worker queries firewall domain totals on initial and navigated reques
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload)).toEqual(['firewall-domain-totals']);
     expect(payload['firewall-domain-totals']).toMatchObject({
-      rows: [{ domain: 'api.github.com', run: 1, accepted: 1, blocked: 1 }],
+      rows: [{ domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 }],
       metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
     });
   }
