@@ -1,7 +1,7 @@
 import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 
-/** @type {Record<import('../model/schema.js').EntityKind, Exclude<keyof import('../model/schema.js').CanonicalBatch, 'sourceMetadata' | 'sourceRecords'>>} */
+/** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
 const COLLECTIONS = {
   repository: 'repositories',
   workflow: 'workflows',
@@ -102,7 +102,7 @@ function orderEvents(events) {
 export function normalize(observations, options) {
   const generation = requiredString(options?.generation, 'generation');
   const sourcePrecedence = options.sourcePrecedence ?? {};
-  /** @type {Record<Exclude<keyof import('../model/schema.js').CanonicalBatch, 'sourceMetadata' | 'sourceRecords'>, Map<string, Record<string, unknown>>>} */
+  /** @type {Record<keyof import('../model/schema.js').CanonicalBatch, Map<string, Record<string, unknown>>>} */
   const entities = {
     repositories: new Map(),
     workflows: new Map(),
@@ -140,7 +140,5 @@ export function normalize(observations, options) {
     ])
   ));
   batch.events = orderEvents(batch.events);
-  batch.sourceMetadata = [];
-  batch.sourceRecords = [];
   return batch;
 }

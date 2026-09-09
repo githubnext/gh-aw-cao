@@ -2090,6 +2090,8 @@ Tests SHOULD demonstrate:
 bounded chunk processing
 memory release between chunks
 responsive main thread
+page-scoped worker query results
+no whole-dashboard structured clone
 lazy event detail loading
 ```
 

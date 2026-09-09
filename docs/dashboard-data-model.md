@@ -8,7 +8,7 @@ description: Understand the canonical entities, relationships, identities, and l
 The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON observations into one source-neutral model. Views query this model instead of interpreting upstream formats directly.
 
 > [!NOTE]
-> The browser persists every published logical source in the same generation as normalized Repository, Workflow, Run, Job, Session, and Event records. Presentation receives only active-generation query results: normalized entity projections replace the repository, workflow, run, and job sources, while independent evidence sources are reconstructed from generation-scoped records. Downloaded source objects exist only at the ingestion boundary and never reach dashboard views.
+> IndexedDB persists only normalized Repository, Workflow, Run, Job, Session, and Event generations plus activation and checkpoint metadata. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
 
 ## Entity map
 
@@ -77,11 +77,11 @@ Every canonical row belongs to a generation. A replacement generation is normali
 - Session → Run and, when present, Job
 - Event → Session
 
-The same generation also stores logical-source metadata and rows for independent domains such as usage, outcomes, findings, admissions, security, and MCP evidence. These records retain their published domain schemas rather than being forced into unrelated entity tables. Activation and recovery therefore apply atomically to the complete dashboard dataset, not only to the core entity hierarchy.
+Independent domains such as usage, outcomes, findings, admissions, security, and MCP evidence retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them. Canonical activation and recovery apply atomically to the normalized entity hierarchy.
 
-Source adaptation and normalization run in a Web Worker when the browser supports workers, keeping large conversions off the rendering thread. Browser writes are committed in bounded transactions. A durable checkpoint is written only after every batch in the current dashboard-source document commits. Interrupted ingestion leaves the generation in `staging`; a restart can repeat committed writes idempotently and continue to activation. Activation requires the checkpoint, moves through `validating`, updates the versioned active pointer atomically, and marks the previous generation `retired` without immediately deleting it.
+Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker, keeping large object graphs and conversions off the rendering thread. Browser writes are committed in bounded transactions. A durable checkpoint is written only after every canonical batch in the current dashboard-source document commits. Interrupted ingestion leaves the generation in `staging`; a restart can repeat committed writes idempotently and continue to activation. Activation requires the checkpoint, moves through `validating`, updates the versioned active pointer atomically, and marks the previous generation `retired` without immediately deleting it.
 
-The browser path fully replaces the legacy data system. Worker errors abort the replacement instead of rerunning ingestion through an older path, an unusable generation raises an explicit loading error, and the former whole-source browser cache has been removed. There is no shadow, dual-read, alias, or fallback route. Views render only after the requested generation is active and queryable.
+The browser path fully replaces the legacy data system. Worker errors abort the replacement instead of rerunning ingestion through an older path, an unusable generation raises an explicit loading error, and the former whole-source browser cache has been removed. There is no shadow, dual-read, alias, or fallback route. Views render only after the requested generation is active and the worker returns that page's query projection.
 
 Before ingestion, the browser inspects its storage estimate and requests persistent storage when the API is available. Either request may be denied or fail without affecting correctness; quota recovery still protects the active generation and retries only after deleting expendable failed or retired generations.
 

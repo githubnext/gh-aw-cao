@@ -46,8 +46,6 @@ describe('canonical IndexedDB generations', () => {
       'repositories',
       'runs',
       'sessions',
-      'sourceMetadata',
-      'sourceRecords',
       'workflows'
     ]);
     database.close();

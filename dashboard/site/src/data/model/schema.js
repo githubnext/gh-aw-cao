@@ -31,8 +31,6 @@ export const ENTITY_KINDS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} jobs
  * @property {Record<string, unknown>[]} sessions
  * @property {Record<string, unknown>[]} events
- * @property {Record<string, unknown>[]} sourceMetadata
- * @property {Record<string, unknown>[]} sourceRecords
  */
 
 /**

@@ -71,7 +71,7 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -137,6 +137,28 @@ function getBuiltInPagePayload(page) {
 }
 
 /**
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ * @returns {string[]}
+ */
+export function dashboardPageSourceNames(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return [];
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  const names = new Set();
+  for (const view of payload.views ?? []) {
+    for (const sourceName of getViewSources(view)) names.add(sourceName);
+  }
+  for (const section of payload.sections ?? []) {
+    if (typeof section['count-source'] === 'string') names.add(section['count-source']);
+  }
+  for (const callout of document.dashboard.callouts ?? []) {
+    if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
+  }
+  return [...names];
+}
+
+/**
  * @param {PresentationInput} input
  * @returns {HTMLElement}
  */
@@ -152,14 +174,17 @@ export function renderDashboard(input) {
   const dashboardRepository = typeof document.dashboard.repository === 'string' && document.dashboard.repository.length > 0
     ? document.dashboard.repository
     : null;
-  const derivedSources = deriveWorkflowDashboardLinks(
-    deriveRepositoryDashboardLinks(
-      deriveRuntimeSources(deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(deriveEntityLinkSources(rawSources, githubUrlBase))))),
-      pages
-    ),
+  /** @param {Record<string, LogicalSourceInput>} sources */
+  const withDashboardLinks = (sources) => deriveWorkflowDashboardLinks(
+    deriveRepositoryDashboardLinks(deriveEntityLinkSources(sources, githubUrlBase), pages),
     pages
   );
-  const dataHealthSources = deriveDataHealthCalloutSources(rawSources);
+  const derivedSources = input.prepared
+    ? withDashboardLinks(rawSources)
+    : withDashboardLinks(deriveRuntimeSources(
+      deriveRepositorySources(deriveOverviewSources(deriveWorkflowSources(deriveEntityLinkSources(rawSources, githubUrlBase))))
+    ));
+  const dataHealthSources = input.prepared ? {} : deriveDataHealthCalloutSources(rawSources);
   const sources = {
     ...derivedSources,
     ...Object.fromEntries(
@@ -206,6 +231,9 @@ export function renderDashboard(input) {
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
       const render = (pageSources) => renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      if (input.loadPageSources) {
+        return input.loadPageSources(pageId).then((pageSources) => render(withDashboardLinks(pageSources)));
+      }
       /** @param {Record<string, LogicalSourceInput>} resolved */
       const withDataHealth = (resolved) => ({
         ...derivedSources,

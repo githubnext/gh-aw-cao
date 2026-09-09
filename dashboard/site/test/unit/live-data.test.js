@@ -9,19 +9,17 @@ describe("live Dashboard Language sources", () => {
   it("loads generated sources progressively and requires an explicit fixture opt-in", () => {
     const preview = readFileSync(resolve("index.html"), "utf8");
 
-    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadDashboardSources(fetch, sourceUrl)"));
+    expect(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })')).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources(sourceUrl, dashboardPageSourceNames"));
     expect(preview.indexOf("startLoadingProgress(document)")).toBeLessThan(preview.indexOf('fetch("./dashboard.json", { cache: "no-store" })'));
     expect(preview).toContain('renderSources({}, "loading")');
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("loadingProgress.complete()");
-    expect(preview).toContain('import { loadDashboardSources } from "./src/source-loader.js"');
-    expect(preview).toContain("loadDashboardSources(fetch, sourceUrl)");
-    expect(preview).toContain("await ingestDashboardSources(window.indexedDB, sources, {");
-    expect(preview).toContain("sources = null");
-    expect(preview).toContain("return readCanonicalViewSources(window.indexedDB, generation)");
-    expect(preview).toContain("renderSources(await loadLiveCanonicalViewSources(sourceUrl))");
+    expect(preview).toContain('import { loadCanonicalDashboardPage, loadCanonicalDashboardSources } from "./src/data-processor.js"');
+    expect(preview).toContain("await loadCanonicalDashboardSources(sourceUrl, dashboardPageSourceNames(dashboardDocument, initialPageId))");
+    expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
+    expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./src/source-cache.js');
     expect(preview).not.toContain('Showing cached data.');
     expect(preview).toContain('loadCanonicalViewSources(window.indexedDB, sources, {');
@@ -29,7 +27,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('has("fixtures")');
     expect(preview).toContain("Unable to load live dashboard data:");
     expect(preview).toContain('window.addEventListener("dashboard-preview-update"');
-    expect(preview).toContain("updateWithViewTransition(document, () => renderSources(renderedSources))");
+    expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader)');
     expect(preview).toContain('event: "preview.rendered"');
     expect(preview).toContain('get("local-preview")');
     expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/);

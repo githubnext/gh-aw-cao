@@ -15,36 +15,6 @@ function sourceDocument(value) {
   };
 }
 
-/**
- * Retains every published logical source as generation-scoped records. These
- * records are queried back before presentation; the input object is never a
- * renderer data source.
- *
- * @param {Record<string, unknown>} sources
- * @param {string} generation
- */
-export function snapshotDashboardSources(sources, generation) {
-  /** @type {Record<string, unknown>[]} */
-  const sourceMetadata = [];
-  /** @type {Record<string, unknown>[]} */
-  const sourceRecords = [];
-  for (const [sourceName, value] of Object.entries(sources).sort(([left], [right]) => left.localeCompare(right))) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
-    const source = /** @type {{ source?: unknown }} */ (value);
-    const document = sourceDocument(value);
-    sourceMetadata.push({
-      generation,
-      source: sourceName,
-      logicalSource: typeof source.source === 'string' ? source.source : sourceName,
-      metadata: document.metadata
-    });
-    document.rows.forEach((row, index) => {
-      sourceRecords.push({ generation, source: sourceName, index, row });
-    });
-  }
-  return { sourceMetadata, sourceRecords };
-}
-
 /** @param {Record<string, unknown>} metadata */
 function metadataTimestamp(metadata) {
   return requiredString(metadata['as-of'] ?? metadata['retrieved-at'], 'source metadata timestamp');

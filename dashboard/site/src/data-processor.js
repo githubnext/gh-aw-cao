@@ -2,7 +2,7 @@ import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { deriveDataHealthSources } from './data-health.js';
-import { adaptDashboardSources, snapshotDashboardSources } from './data/adapters/dashboard-sources.js';
+import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { normalize } from './data/normalize/index.js';
 
 /** @type {Worker | null} */
@@ -68,10 +68,37 @@ export function processDataHealthSources(sources, context) {
  * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
  */
 export function processCanonicalDashboardSources(sources, generation) {
-  return {
-    ...normalize(adaptDashboardSources(sources).observations, { generation }),
-    ...snapshotDashboardSources(sources, generation)
-  };
+  return normalize(adaptDashboardSources(sources).observations, { generation });
+}
+
+/**
+ * Loads and hydrates the live canonical dashboard entirely in the data worker.
+ * The main thread sends only a URL and receives the query projection needed by
+ * the renderer.
+ * @param {string} sourceUrl
+ * @param {string[]} sourceNames
+ * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
+ */
+export function loadCanonicalDashboardSources(sourceUrl, sourceNames) {
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
+    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames },
+    () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
+    false
+  ));
+}
+
+/**
+ * Queries one page from the live canonical dashboard retained by the worker.
+ * @param {string[]} sourceNames
+ * @param {{ githubUrlBase?: string, dashboardRepository?: string | null }} [context]
+ * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
+ */
+export function loadCanonicalDashboardPage(sourceNames, context = {}) {
+  return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
+    { operation: 'query-canonical-dashboard', sourceNames, context },
+    () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
+    false
+  ));
 }
 
 /**

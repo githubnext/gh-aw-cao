@@ -1,7 +1,7 @@
 import { CANONICAL_SCHEMA_VERSION, relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 2;
+export const DATABASE_VERSION = 3;
 
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
@@ -11,11 +11,7 @@ const ENTITY_STORES = /** @type {const} */ ([
   'sessions',
   'events'
 ]);
-const GENERATION_STORES = /** @type {const} */ ([
-  ...ENTITY_STORES,
-  'sourceMetadata',
-  'sourceRecords'
-]);
+const GENERATION_STORES = ENTITY_STORES;
 const META_STORE = 'meta';
 const ACTIVE_GENERATION_KEY = 'activeGeneration';
 const CHECKPOINT_STORE = 'ingestionCheckpoints';
@@ -100,17 +96,10 @@ function createSchema(database) {
 }
 
 /** @param {IDBDatabase} database */
-function createPublishedSourceSchema(database) {
-  const sourceMetadata = database.createObjectStore('sourceMetadata', {
-    keyPath: ['generation', 'source']
-  });
-  createIndex(sourceMetadata, 'generation', 'generation');
-
-  const sourceRecords = database.createObjectStore('sourceRecords', {
-    keyPath: ['generation', 'source', 'index']
-  });
-  createIndex(sourceRecords, 'generation', 'generation');
-  createIndex(sourceRecords, 'bySource', ['generation', 'source']);
+function deleteLegacySourceStores(database) {
+  for (const storeName of ['sourceMetadata', 'sourceRecords']) {
+    if (database.objectStoreNames.contains(storeName)) database.deleteObjectStore(storeName);
+  }
 }
 
 /**
@@ -122,7 +111,7 @@ export function openCanonicalDatabase(indexedDB) {
   return new Promise((resolve, reject) => {
     request.onupgradeneeded = (event) => {
       if (event.oldVersion < 1) createSchema(request.result);
-      if (event.oldVersion < 2) createPublishedSourceSchema(request.result);
+      if (event.oldVersion < 3) deleteLegacySourceStores(request.result);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));
@@ -430,35 +419,6 @@ export async function activeGenerationIsUsable(indexedDB, expectedGeneration) {
       transaction.objectStore(storeName).index('generation').count(expectedGeneration)
     )));
     return counts.reduce((total, count) => total + count, 0) === Number(checkpoint.recordCount);
-  } finally {
-    database.close();
-  }
-}
-
-/** @param {IDBFactory} indexedDB */
-export async function readActiveLogicalSources(indexedDB) {
-  const database = await openCanonicalDatabase(indexedDB);
-  try {
-    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
-    if (typeof active?.value !== 'string') return {};
-    const transaction = database.transaction(['sourceMetadata', 'sourceRecords']);
-    const [metadataRecords, rowRecords] = await Promise.all([
-      requestResult(transaction.objectStore('sourceMetadata').index('generation').getAll(active.value)),
-      requestResult(transaction.objectStore('sourceRecords').index('generation').getAll(active.value))
-    ]);
-    /** @type {Record<string, { source: string, rows: unknown[], metadata: Record<string, unknown> }>} */
-    const sources = {};
-    for (const record of metadataRecords) {
-      sources[record.source] = {
-        source: typeof record.logicalSource === 'string' ? record.logicalSource : record.source,
-        rows: [],
-        metadata: record.metadata && typeof record.metadata === 'object' ? record.metadata : {}
-      };
-    }
-    for (const record of rowRecords) {
-      if (sources[record.source]) sources[record.source].rows.push(record.row);
-    }
-    return sources;
   } finally {
     database.close();
   }

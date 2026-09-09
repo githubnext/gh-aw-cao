@@ -1,6 +1,6 @@
 import { dashboardSourceGeneration } from '../adapters/dashboard-sources.js';
 import { ingestDashboardSources } from '../ingest/coordinator.js';
-import { activeGenerationIsUsable, readActiveLogicalSources } from '../storage/indexeddb.js';
+import { activeGenerationIsUsable } from '../storage/indexeddb.js';
 import { createCanonicalQueries } from './index.js';
 
 /**
@@ -8,19 +8,26 @@ import { createCanonicalQueries } from './index.js';
  * @param {string} sourceName
  * @param {string} projectionName
  * @param {boolean} available
+ * @returns {import('../../presenter.js').SourceMetadata}
  */
 function projectionMetadata(sources, sourceName, projectionName, available) {
   const input = sources[sourceName] && typeof sources[sourceName] === 'object'
     ? /** @type {{ metadata?: Record<string, unknown> }} */ (sources[sourceName])
     : {};
-  return {
-    ...(input.metadata ?? {}),
+  const metadata = input.metadata ?? {};
+  const asOf = typeof metadata['as-of'] === 'string' ? metadata['as-of'] : '';
+  return /** @type {import('../../presenter.js').SourceMetadata} */ ({
+    ...metadata,
     'source-id': projectionName,
     'source-kind': 'canonical-query',
+    'as-of': asOf,
+    'retrieved-at': typeof metadata['retrieved-at'] === 'string' ? metadata['retrieved-at'] : asOf,
     availability: available ? 'available' : 'unavailable',
-    completeness: available ? input.metadata?.completeness ?? 'unknown' : 'unknown',
-    freshness: available ? input.metadata?.freshness ?? 'unknown' : 'unknown'
-  };
+    completeness: available && ['complete', 'partial'].includes(String(metadata.completeness))
+      ? metadata.completeness : 'unknown',
+    freshness: available && ['fresh', 'stale'].includes(String(metadata.freshness))
+      ? metadata.freshness : 'unknown'
+  });
 }
 
 /** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
@@ -208,6 +215,16 @@ function sourceRows(source) {
     : [];
 }
 
+/** @param {Record<string, unknown>} sources */
+function namedLogicalSources(sources) {
+  return Object.fromEntries(Object.entries(sources).map(([sourceName, value]) => [
+    sourceName,
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? { source: sourceName, ...value }
+      : value
+  ]));
+}
+
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
@@ -218,23 +235,24 @@ export async function loadCanonicalViewSources(indexedDB, sources, options = {})
   if (options.ingest) {
     await ingestDashboardSources(indexedDB, sources, { storage: options.storage });
   }
-  return readCanonicalViewSources(indexedDB, generation);
+  return projectCanonicalViewSources(indexedDB, sources, generation);
 }
 
 /**
- * Reads one already-ingested generation without retaining its source input.
- * Large live snapshots use this after releasing the fetched source object.
+ * Projects freshly downloaded logical sources through one active canonical
+ * generation. Source-shaped rows remain transient and are never cached in
+ * IndexedDB.
  *
  * @param {IDBFactory} indexedDB
+ * @param {Record<string, unknown>} logicalSources
  * @param {string} generation
  */
-export async function readCanonicalViewSources(indexedDB, generation) {
+export async function projectCanonicalViewSources(indexedDB, logicalSources, generation) {
   if (!await activeGenerationIsUsable(indexedDB, generation)) {
     throw new Error(`Canonical generation ${generation} is not active and usable`);
   }
   const queries = createCanonicalQueries(indexedDB);
-  const [logicalSources, repositories, workflows, runs, jobs, failedRuns] = await Promise.all([
-    readActiveLogicalSources(indexedDB),
+  const [repositories, workflows, runs, jobs, failedRuns] = await Promise.all([
     queries.repositories.list(),
     queries.workflows.list(),
     queries.runs.list(),
@@ -243,12 +261,13 @@ export async function readCanonicalViewSources(indexedDB, generation) {
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
+  const sources = namedLogicalSources(logicalSources);
   return {
-    ...logicalSources,
-    repositories: repositoriesSource(repositories, logicalSources),
-    workflows: workflowsSource(workflows, repositoriesById, logicalSources),
-    'job-performance': jobsSource(jobs, runsById, logicalSources),
-    runs: runsSource(runs, logicalSources),
-    'failed-runs': failedRunsSource(failedRuns, logicalSources)
+    ...sources,
+    repositories: repositoriesSource(repositories, sources),
+    workflows: workflowsSource(workflows, repositoriesById, sources),
+    'job-performance': jobsSource(jobs, runsById, sources),
+    runs: runsSource(runs, sources),
+    'failed-runs': failedRunsSource(failedRuns, sources)
   };
 }
