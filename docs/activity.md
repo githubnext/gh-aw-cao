@@ -88,7 +88,7 @@ The package manifest installs two GitHub Actions workflows:
 
 It also installs the JavaScript resources used to collect admission and failure
 evidence, download logs, record GitHub telemetry, build run-health snapshots,
-and execute the activity pipeline. The package requires `gh-aw` v0.88.6 or
+and execute the activity pipeline. The package requires `gh-aw` v0.89.0 or
 newer and is currently experimental.
 
 The root CAO package installs Activity automatically. A focused installation can

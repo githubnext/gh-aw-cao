@@ -79,6 +79,10 @@ if (args[0] === "aw") {
       "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
+    assert.deepEqual(args.slice(args.indexOf("--cached-json"), args.indexOf("--cached-json") + 2), [
+      "--cached-json",
+      item.logsPath,
+    ]);
     assert.equal(args.filter((value) => value === "logs").length, 1);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
     const snapshot = JSON.parse(await readFile(item.logsPath, "utf8"));
@@ -104,6 +108,7 @@ if (args[0] === "aw") {
     assert.ok(stdout.includes(
       "Calling command: gh aw logs --json --audit "
       + `--output ${item.outputPath} --summary-file '' `
+      + `--cached-json ${item.logsPath} `
       + "--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent ",
     ));
     assert.ok(stdout.includes("githubnext/gh-aw-cao/.github/workflows/sample.lock.yml"));

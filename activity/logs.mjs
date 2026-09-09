@@ -35,11 +35,11 @@ function shellQuote(argument) {
   return `'${argument.replaceAll("'", "'\\''")}'`;
 }
 
-function runGhAw(targets, outputDirectory, windowDays, runLimit, execute = spawn) {
+function runGhAw(targets, outputDirectory, cachedJsonPath, windowDays, runLimit, execute = spawn) {
   return new Promise((resolve, reject) => {
     const args = [
       "aw", "logs", "--json", "--audit",
-      "--output", outputDirectory, "--summary-file", "",
+      "--output", outputDirectory, "--summary-file", "", "--cached-json", cachedJsonPath,
       "--artifacts", "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
       "--start-date", `-${windowDays}d`, "--cache-before", `-${windowDays}d`,
       "--count", String(runLimit), "--timeout", "15",
@@ -303,7 +303,7 @@ export async function collectActivityLogs({ execute = spawn } = {}) {
       .map((entry) => `${repository}/.github/workflows/${entry.name}`)
       .sort();
     const workflowLabel = targets.length === 1 ? "workflow" : "workflows";
-    const { output: raw, stderr } = await runGhAw(targets, outputDirectory, windowDays, runLimit, execute);
+    const { output: raw, stderr } = await runGhAw(targets, outputDirectory, logsPath, windowDays, runLimit, execute);
     if (stderr) log.info`${stderr}`;
     const snapshot = JSON.parse(raw);
     if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");
