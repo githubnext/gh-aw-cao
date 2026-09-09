@@ -339,8 +339,8 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         },
-        'engines-models-usage': {
-          source: 'engines-models-usage',
+        usage: {
+          source: 'usage',
           rows: [],
           metadata: {
             'source-id': 'usage-fixture',
@@ -435,8 +435,8 @@ describe('presenter built-in and custom pages', () => {
           ],
           metadata
         },
-        usage: {
-          source: 'usage',
+        'engines-models-usage': {
+          source: 'engines-models-usage',
           rows: [
             { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', invocation: 'a', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', aic: 10 },
             { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', run: '1002', invocation: 'b', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', aic: 15 },
