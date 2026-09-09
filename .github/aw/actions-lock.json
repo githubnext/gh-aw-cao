@@ -5,18 +5,23 @@
       "version": "v7",
       "sha": "5fda3b95a4ea91299a34e894583c3862153e4b97"
     },
-    "github/gh-aw-actions/setup-cli@v0.88.7": {
+    "github/gh-aw-actions/setup-cli@v0.88.8": {
       "repo": "github/gh-aw-actions/setup-cli",
-      "version": "v0.88.7",
-      "sha": "0c4566ff6a133b81c2b1ecd6559623e1313a1927"
+      "version": "v0.88.8",
+      "sha": "5e508589e03a7757a7e05b26e834292f5445bfb6"
     },
-    "github/gh-aw-actions/setup@v0.88.7": {
+    "github/gh-aw-actions/setup@v0.88.8": {
       "repo": "github/gh-aw-actions/setup",
-      "version": "v0.88.7",
-      "sha": "0c4566ff6a133b81c2b1ecd6559623e1313a1927"
+      "version": "v0.88.8",
+      "sha": "5e508589e03a7757a7e05b26e834292f5445bfb6"
     }
   },
   "containers": {
+    "alpine:latest": {
+      "image": "alpine:latest",
+      "digest": "sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b",
+      "pinned_image": "alpine:latest@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"
+    },
     "ghcr.io/github/gh-aw-firewall/agent:0.28.1": {
       "image": "ghcr.io/github/gh-aw-firewall/agent:0.28.1",
       "digest": "sha256:5e3f6ee27eeae07195838b97ac4aa2f8aea42a7c55f1c0d3e17d8e88e294ad0d",
