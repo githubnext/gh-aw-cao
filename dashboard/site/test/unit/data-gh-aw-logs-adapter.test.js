@@ -36,9 +36,9 @@ describe('gh-aw logs adapter', () => {
     ]);
     expect(batch.events.map((event) => [event.sequence, event.source, event.type])).toEqual([
       [0, 'agent', 'agent_turn'],
-      [1, 'gateway', 'gateway.request'],
-      [2, 'agent', 'tool.call'],
-      [3, 'agent', 'tool.result'],
+      [1, 'gateway', 'tool_call'],
+      [2, 'agent', 'agent_tool_start'],
+      [3, 'agent', 'agent_tool_done'],
       [4, 'firewall', 'net_allowed'],
       [5, 'agent', 'assistant_message']
     ]);

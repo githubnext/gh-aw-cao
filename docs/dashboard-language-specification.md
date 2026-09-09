@@ -418,7 +418,6 @@ Computed fields use only the following typed, deterministic functions with the s
 | `coalesce` | 2–8 | first argument that is not null, empty text, or a structured value |
 | `concat` | 2–8 | text |
 | `lower`, `upper`, `title-case`, `trim`, `url-encode` | 1 | text |
-| `tool-server`, `tool-name` | 1 | the server or tool component of a `server/name` tool identity, or null |
 | `equals-any` | 2–8 | whether the first argument equals any later argument |
 | `greater-than` | 2 | whether the first numeric argument is greater than the second |
 | `if` | 3 | second argument when the first is true; otherwise the third |

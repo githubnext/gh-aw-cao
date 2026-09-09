@@ -69,13 +69,29 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     events: {
-      rows: [{
-        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
-        'run-attempt': 2, session: `session-${run}`, event: `event-${run}`,
-        'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
-        'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
-        'observed-at': '2026-09-09T05:00:00Z'
-      }],
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `event-${run}`,
+          'event-timestamp': '2026-09-09T04:01:00Z', 'event-source': 'agent',
+          'event-type': 'agent_turn', 'event-summary': 'Processed the dashboard request',
+          'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `tool-call-${run}`,
+          'event-timestamp': '2026-09-09T04:02:00Z', 'event-source': 'mcp',
+          'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': `call-${run}`,
+          'observed-at': '2026-09-09T05:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run,
+          'run-attempt': 2, session: `session-${run}`, event: `tool-result-${run}`,
+          'event-timestamp': '2026-09-09T04:02:01Z', 'event-source': 'mcp',
+          'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': `call-${run}`,
+          'observed-at': '2026-09-09T05:00:00Z'
+        }
+      ],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
     },
     'job-performance': {
@@ -149,36 +165,6 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
   };
 }
 
-function mcpCanonicalSources() {
-  const sources = /** @type {Record<string, { rows: Record<string, unknown>[], metadata: Record<string, unknown> }>} */ (
-    canonicalSources('mcp-browser-generation', '67890')
-  );
-  const event = {
-    organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
-    run: '67890', 'run-attempt': 2, session: 'session-67890',
-    'event-source': 'agent', 'observed-at': '2026-09-09T05:00:00Z'
-  };
-  sources.events.rows = [
-    {
-      ...event, event: 'tool-call-success', 'event-timestamp': '2026-09-09T04:01:00Z',
-      'event-type': 'tool.call', 'event-summary': 'github/search_issues', 'correlation-id': 'call-success'
-    },
-    {
-      ...event, event: 'tool-result', 'event-timestamp': '2026-09-09T04:01:01Z',
-      'event-type': 'tool.result', 'event-status': 'success', 'correlation-id': 'call-success'
-    },
-    {
-      ...event, event: 'tool-call-error', 'event-timestamp': '2026-09-09T04:02:00Z',
-      'event-type': 'tool.call', 'event-summary': 'github/create_issue', 'correlation-id': 'call-error'
-    },
-    {
-      ...event, event: 'tool-error', 'event-timestamp': '2026-09-09T04:02:01Z',
-      'event-type': 'tool.error', 'event-status': 'failure', 'correlation-id': 'call-error'
-    }
-  ];
-  return sources;
-}
-
 test.beforeEach(async ({ context, page }) => {
   await context.route('http://dashboard.test/**', async (route) => {
     const pathname = new URL(route.request().url()).pathname;
@@ -192,10 +178,6 @@ test.beforeEach(async ({ context, page }) => {
     }
     if (pathname === '/sources.json') {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(canonicalSources()) });
-      return;
-    }
-    if (pathname === '/mcp-sources.json') {
-      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(mcpCanonicalSources()) });
       return;
     }
     const filePath = join(siteRoot, pathname);
@@ -425,7 +407,7 @@ test('data worker returns declarative MCP activity on initial and navigated requ
       queries: dashboard.dashboard.queries
     };
     const initial = await loadCanonicalDashboardSources(
-      `${location.origin}/mcp-sources.json`,
+      `${location.origin}/sources.json`,
       ['mcp-tool-activity'],
       context
     );
@@ -437,16 +419,12 @@ test('data worker returns declarative MCP activity on initial and navigated requ
     expect(Object.keys(payload)).toEqual(['mcp-tool-activity']);
     expect(payload['mcp-tool-activity']).toMatchObject({
       source: 'mcp-tool-activity',
-      rows: [
-        {
-          'mcp-server': 'github', 'mcp-tool': 'create_issue', 'mcp-status': 'failure',
-          repository: 'gh-aw-cao', run: '67890'
-        },
-        {
-          'mcp-server': 'github', 'mcp-tool': 'search_issues', 'mcp-status': 'success',
-          repository: 'gh-aw-cao', run: '67890'
-        }
-      ],
+      rows: [{
+        'mcp-tool': 'github/search_issues',
+        'mcp-status': 'success',
+        repository: 'gh-aw-cao',
+        run: '12345'
+      }],
       metadata: { 'source-kind': 'derived', 'query-name': 'mcp-tool-activity' }
     });
   }
@@ -573,9 +551,9 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
   expect(result.sessions[0].kind).toBe('unified-operational-log');
   expect(result.events.map((/** @type {Record<string, unknown>} */ event) => [event.sequence, event.source, event.type])).toEqual([
     [0, 'agent', 'agent_turn'],
-    [1, 'gateway', 'gateway.request'],
-    [2, 'agent', 'tool.call'],
-    [3, 'agent', 'tool.result'],
+    [1, 'gateway', 'tool_call'],
+    [2, 'agent', 'agent_tool_start'],
+    [3, 'agent', 'agent_tool_done'],
     [4, 'firewall', 'net_allowed'],
     [5, 'agent', 'assistant_message']
   ]);

@@ -126,12 +126,12 @@ function agentEvents(sessionId, file) {
       case 'assistant.reasoning':
         return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'reasoning')];
       case 'tool.execution_start':
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'tool.call', {
+        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'agent_tool_start', {
           summary: detail([text(data.mcpServerName), text(data.toolName)]),
           correlationId: optionalString(data.toolCallId)
         })];
       case 'tool.execution_complete':
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', data.success === true ? 'tool.result' : 'tool.error', {
+        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'agent', 'agent_tool_done', {
           summary: detail([text(data.mcpServerName), text(data.toolName)]),
           status: data.success === true ? 'success' : 'error',
           correlationId: optionalString(data.toolCallId)
@@ -155,7 +155,7 @@ function gatewayEvents(sessionId, file, rpc) {
         })];
       }
       if (value.type === 'REQUEST' && value.direction === 'OUT') {
-        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'gateway.request', {
+        return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'tool_call', {
           summary: optionalString(value.method)
         })];
       }
@@ -174,7 +174,7 @@ function gatewayEvents(sessionId, file, rpc) {
       })];
     }
     if (value.event === 'tool_call') {
-      return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'gateway.request', {
+      return [eventObservation(sessionId, file.path, line, eventTimestamp, 'gateway', 'tool_call', {
         summary: detail([text(value.server_name), text(value.tool_name)]),
         status: value.error ? 'error' : optionalString(value.status),
         correlationId: optionalString(value.tool_call_id)

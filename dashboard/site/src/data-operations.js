@@ -33,8 +33,6 @@ export const COMPUTE_FUNCTION_ARITY = {
   'title-case': [1, 1],
   trim: [1, 1],
   'url-encode': [1, 1],
-  'tool-server': [1, 1],
-  'tool-name': [1, 1],
   'equals-any': [2, 8],
   'greater-than': [2, 2],
   if: [3, 3],
@@ -49,8 +47,7 @@ export const COMPUTE_FUNCTION_ARITY = {
 
 /** Computed-field functions whose result is always text or null. */
 export const TEXT_COMPUTE_FUNCTIONS = [
-  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'tool-server', 'tool-name',
-  'format-count', 'format-percent'
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'format-count', 'format-percent'
 ];
 
 /** Computed-field functions whose result is always a finite number or null. */
@@ -129,8 +126,6 @@ export function computeValue(row, definition) {
   if (definition.function === 'title-case') return titleCase(textValue(values[0]));
   if (definition.function === 'trim') return textValue(values[0]).trim();
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
-  if (definition.function === 'tool-server') return toolIdentity(values[0]).server;
-  if (definition.function === 'tool-name') return toolIdentity(values[0]).name;
   if (definition.function === 'equals-any') {
     return values.slice(1).some((value) => sameValue(values[0], value));
   }
@@ -158,17 +153,6 @@ export function computeValue(row, definition) {
 /** @param {unknown} value */
 function textValue(value) {
   return value == null || typeof value === 'object' ? '' : String(value);
-}
-
-/** @param {unknown} value */
-function toolIdentity(value) {
-  const identity = textValue(value).trim();
-  const separator = identity.indexOf('/');
-  if (separator <= 0 || separator === identity.length - 1) return { server: null, name: null };
-  return {
-    server: identity.slice(0, separator).trim() || null,
-    name: identity.slice(separator + 1).trim() || null
-  };
 }
 
 /** @param {unknown} value @returns {string | number | boolean | null} */
