@@ -761,7 +761,7 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshButton?.getAttribute('title')).toBeTruthy();
     expect(refreshButton?.getAttribute('aria-label')).toBeTruthy();
     expect(refreshButton?.closest('.account-menu')).not.toBeNull();
-    expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull();
+    expect(rendered.querySelector('.report-footer .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
     expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
