@@ -382,7 +382,8 @@ function derivePackagedWorkflow(row, runs, aic) {
       'dashboard-label': `View ${text(row['package-name']) || titleCase(packageId)} package dashboard`
     },
     ...(row['repository-link'] ? { 'repository-link': row['repository-link'] } : {}),
-    ...(row['workflow-link'] ? { 'workflow-link': row['workflow-link'] } : {})
+    ...(row['workflow-link'] ? { 'workflow-link': row['workflow-link'] } : {}),
+    ...(row['external-link'] ? { 'external-link': row['external-link'] } : {})
   };
 }
 

@@ -1914,17 +1914,21 @@
             "controls": "interactive",
             "empty-message": "No orchestrator or worker workflows are configured for this package.",
             "encoding": {
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              },
               "columns": [
+                {
+                  "field": "workflow-name",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
                 {
                   "field": "workflow-role",
                   "type": "ordinal",
                   "title": "Role",
                   "display": "label"
-                },
-                {
-                  "field": "workflow-name",
-                  "type": "nominal",
-                  "title": "Workflow"
                 },
                 {
                   "field": "workflow",

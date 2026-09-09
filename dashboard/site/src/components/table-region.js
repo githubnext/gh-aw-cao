@@ -151,12 +151,13 @@ export function renderTableRegion(options) {
     if (scroll && more) scroll.append(more);
   }
 
-  if (hasRows && sortable) {
-    enableTableSort(region);
-  }
-
   if (interactive) {
-    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural });
+    const rows = [...region.querySelectorAll('tbody > tr')]
+      .filter((row) => row instanceof HTMLTableRowElement);
+    if (sortable) enableTableSort(region, rows);
+    enableTableFilter(region, { filterId, lazyList, pageSize, resultNoun, resultNounPlural }, rows);
+  } else if (hasRows && sortable) {
+    enableTableSort(region);
   }
   return region;
 }
@@ -177,8 +178,9 @@ function renderDeferredTableSummaryRow(columns) {
  * Enables click-to-sort on column headers, cycling ascending then descending.
  *
  * @param {HTMLElement} region
+ * @param {HTMLTableRowElement[]} [sourceRows]
  */
-function enableTableSort(region) {
+function enableTableSort(region, sourceRows) {
   const body = region.querySelector('tbody');
   if (!(body instanceof HTMLTableSectionElement)) return;
   const headers = [...region.querySelectorAll('th[aria-sort]')]
@@ -194,14 +196,16 @@ function enableTableSort(region) {
       const requestRevision = ++revision;
       for (const other of headers) other.setAttribute('aria-sort', 'none');
       header.setAttribute('aria-sort', direction);
-      const rows = [...body.rows];
+      const rows = sourceRows ?? [...body.rows];
       const result = processRows(
         rows.map((row, index) => ({ index, value: cellText(row, columnIndex) })),
         [{ op: 'arrange', by: [{ field: 'value', direction: direction === 'descending' ? 'desc' : 'asc' }] }]
       );
       applyProcessed(result, (processed) => {
         if (requestRevision !== revision) return;
-        for (const item of processed) body.append(rows[Number(item.index)]);
+        const orderedRows = processed.map((item) => rows[Number(item.index)]).filter(Boolean);
+        if (sourceRows) sourceRows.splice(0, sourceRows.length, ...orderedRows);
+        for (const row of orderedRows) body.append(row);
         region.dispatchEvent(new Event('table-sorted'));
       });
     });
@@ -225,19 +229,21 @@ function cellText(row, columnIndex) {
 /**
  * @param {HTMLElement} region
  * @param {{ filterId?: string, lazyList: boolean, pageSize: number, resultNoun?: string, resultNounPlural?: string }} options
+ * @param {HTMLTableRowElement[]} rows
  */
-function enableTableFilter(region, options) {
+function enableTableFilter(region, options, rows) {
   const input = region.querySelector('[data-table-filter]');
   const output = region.querySelector('.table-filter-result');
   const more = region.querySelector('[data-table-more]');
+  const body = region.querySelector('tbody');
+  const scroll = region.querySelector('.table-scroll');
   const facets = [...region.querySelectorAll('[data-table-facet]')]
    .filter((facet) => facet instanceof HTMLSelectElement);
-  const currentRows = () => [...region.querySelectorAll('tbody > tr')]
-   .filter((row) => row instanceof HTMLTableRowElement);
   if (
    !(input instanceof HTMLInputElement)
    || !(output instanceof HTMLOutputElement)
    || !(more instanceof HTMLButtonElement)
+   || !(body instanceof HTMLTableSectionElement)
   ) return;
 
   const window = region.ownerDocument.defaultView;
@@ -256,11 +262,44 @@ function enableTableFilter(region, options) {
 
   let limit = options.pageSize;
   let revision = 0;
+  let lazyWindowStart = 0;
+  let lazyMatchedRows = /** @type {HTMLTableRowElement[]} */ ([]);
+  let lazyShown = 0;
+  /**
+   * @param {HTMLTableRowElement[]} matchedRows
+   * @param {number} shown
+   * @param {boolean} reset
+   * @param {number} [requestedStart]
+   */
+  const renderLazyWindow = (matchedRows, shown, reset, requestedStart) => {
+    const windowSize = options.pageSize * 2;
+    const lastWindowStart = Math.max(0, shown - windowSize);
+    const windowStart = reset
+      ? 0
+      : Math.min(requestedStart ?? lastWindowStart, lastWindowStart);
+    const nextRows = matchedRows.slice(windowStart, Math.min(shown, windowStart + windowSize));
+    const anchor = reset ? null : nextRows.find((row) => row.parentNode === body);
+    const anchorTop = anchor?.getBoundingClientRect().top ?? null;
+
+    const nextRowSet = new Set(nextRows);
+    for (const row of rows) row.hidden = !nextRowSet.has(row);
+    body.replaceChildren(...nextRows);
+    lazyWindowStart = windowStart;
+    lazyMatchedRows = matchedRows;
+    lazyShown = shown;
+
+    if (anchor && anchorTop !== null && scroll instanceof HTMLElement) {
+      scroll.scrollTop += anchor.getBoundingClientRect().top - anchorTop;
+    }
+  };
+
   const apply = (reset = false) => {
-   if (reset) limit = options.pageSize;
+   if (reset) {
+     limit = options.pageSize;
+     if (options.lazyList && scroll instanceof HTMLElement) scroll.scrollTop = 0;
+   }
    region.classList.toggle('table-region-expanded', !Number.isFinite(limit));
    const query = input.value.trim().toLocaleLowerCase('en');
-   const rows = currentRows();
    const requestRevision = ++revision;
    const predicates = facets
      .filter((facet) => facet.value !== '')
@@ -277,10 +316,16 @@ function enableTableFilter(region, options) {
      if (requestRevision !== revision) return;
      const matchedIndexes = new Set(processed.map((item) => Number(item.index)));
      let shown = 0;
-     for (const [index, row] of rows.entries()) {
-       const visible = matchedIndexes.has(index) && shown < limit;
-       row.hidden = !visible;
-       if (visible) shown += 1;
+     if (options.lazyList) {
+       const matchedRows = processed.map((item) => rows[Number(item.index)]).filter(Boolean);
+       shown = Math.min(matchedRows.length, limit);
+       renderLazyWindow(matchedRows, shown, reset);
+     } else {
+       for (const [index, row] of rows.entries()) {
+         const visible = matchedIndexes.has(index) && shown < limit;
+         row.hidden = !visible;
+         if (visible) shown += 1;
+       }
      }
      output.textContent = formatResultCount(shown, processed.length, options.resultNoun, options.resultNounPlural);
      more.hidden = shown >= processed.length;
@@ -315,10 +360,22 @@ function enableTableFilter(region, options) {
    apply();
   };
  more.addEventListener('click', loadMore);
- region.addEventListener('table-sorted', () => apply());
+ region.addEventListener('table-sorted', () => apply(true));
  apply();
  const Observer = region.ownerDocument.defaultView?.IntersectionObserver;
  if (options.lazyList) {
+  scroll?.addEventListener('scroll', () => {
+    if (!(scroll instanceof HTMLElement) || scroll.scrollHeight <= scroll.clientHeight) return;
+    const windowSize = options.pageSize * 2;
+    if (scroll.scrollTop <= 1 && lazyWindowStart > 0) {
+      renderLazyWindow(lazyMatchedRows, lazyShown, false, Math.max(0, lazyWindowStart - options.pageSize));
+    } else if (
+      scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 1
+      && lazyWindowStart + windowSize < lazyShown
+    ) {
+      renderLazyWindow(lazyMatchedRows, lazyShown, false, lazyWindowStart + options.pageSize);
+    }
+  });
   observeLoadMoreBoundary(Observer, more, () => {
     if (!more.hidden) loadMore();
   }, { root: region.querySelector('.table-scroll'), rootMargin: '200px 0px' });

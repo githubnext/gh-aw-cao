@@ -9,6 +9,7 @@ import { formatCount, formatCountNoun } from './count-formatters.js';
 import { renderDefinitionListRows } from './view-chrome.js';
 import { formatMediumUtcDateTime, renderTableSummaryEmpty } from './ui-primitives.js';
 import { formatClockDuration, formatPercent } from '../view-formatters.js';
+import { renderChartWidget, renderPieLegend } from './chart-elements.js';
 
 /**
  * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string }} RenderableTableColumnSummary
@@ -91,11 +92,17 @@ function renderColumnSummary(column) {
   if (column.kind === 'none') return null;
   if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
   if (column.kind === 'boolean') {
+    /** @type {Array<[string, number]>} */
+    const entries = [
+      ['true', column.trueCount],
+      ['false', column.count - column.trueCount - column.missingCount],
+      ['missing', column.missingCount]
+    ];
     return h(
       'div',
       { className: 'table-summary-boolean' },
-      h('strong', null, formatPercent(column.ratio)),
-      h('span', null, ' true')
+      renderChartWidget('pie', [], [], { entries, total: column.count }, 'Values'),
+      renderPieLegend(entries, column.count)
     );
   }
   if (column.kind === 'quantitative') {

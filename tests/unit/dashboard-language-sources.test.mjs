@@ -1601,6 +1601,60 @@ test("dashboard source bridge carries package memberships, allowance, and invent
   assert.equal(sources.outcomes.rows[0]["run-conclusion"], "failure");
 });
 
+test("dashboard source bridge exposes an issue search link for workflows that create labeled issues", () => {
+  const workflowPath = ".github/workflows/dependabot-release-train-updater.lock.yml";
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt: "2026-09-09T12:00:00Z",
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      workflows: [{
+        repository: "githubnext/gh-aw-cao",
+        path: workflowPath,
+        name: "Dependabot / Release Trains",
+        role: "worker",
+        state: "active",
+        runHealth: { runRecords: [] },
+      }],
+    },
+    usage: { available: true, complete: true, runs: [] },
+    operationalValues: { records: [] },
+    report: { generatedAt: "2026-09-09T12:00:00Z", records: [] },
+    inventory: {
+      workflows: [{
+        sourcePath: ".github/workflows/dependabot-release-train-updater.md",
+        lockPath: workflowPath,
+        compiled: true,
+        issueLabels: ["dependabot", "dependabot:release-train-updater"],
+      }],
+      bundles: [{
+        id: "dependabot",
+        name: "Dependabot",
+        workflow: ".github/workflows/dependabot.md",
+        controlPackage: "dependabot",
+        compiled: true,
+        missingWorkers: [],
+        workers: [{
+          sourcePath: ".github/workflows/dependabot-release-train-updater.md",
+          lockPath: workflowPath,
+          role: "worker",
+          issueLabels: ["dependabot", "dependabot:release-train-updater"],
+        }],
+      }],
+    },
+    controlSettings: { packages: { dependabot: { mode: "review" } } },
+  });
+
+  const row = sources.workflows.rows[0];
+  assert.equal(row["external-link"].relation, "external");
+  assert.equal(
+    row["external-link"].href,
+    'https://github.com/search?q=org%3Agithubnext%20is%3Aissue%20label%3A%22dependabot%3Arelease-train-updater%22&type=issues',
+  );
+  assert.match(row["external-link"].label, /Dependabot \/ Release Trains/);
+});
+
+
 test("dashboard source bridge merges remotely discovered allowed-repository workflows", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {

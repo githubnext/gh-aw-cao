@@ -357,7 +357,7 @@ describe('presenter built-in and custom pages', () => {
 
     const page = await activatePage(rendered, 'data-health');
     const sourceView = page?.querySelector('[data-view-id="data-health-sources"]');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
+    expect(page?.querySelector('.chart-view-pie')).toBeNull();
     expect(page?.querySelector('.layout-section')).toBeNull();
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(sourceView?.querySelector('[data-lazy-list]')).not.toBeNull();
@@ -404,7 +404,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'data-health');
-    expect(page?.querySelector('[data-chart-widget="pie"]')).toBeNull();
+    expect(page?.querySelector('.chart-view-pie')).toBeNull();
     expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull();
     expect(page?.textContent).toContain('insufficient');
     expect(page?.querySelector('[data-view-id="data-health-sources"] .status-danger')?.textContent).toBe('insufficient');

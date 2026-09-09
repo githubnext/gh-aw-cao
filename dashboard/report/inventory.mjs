@@ -40,6 +40,11 @@ function controlPackage(source) {
   return source.match(/uses:\s+shared\/control\.md[\s\S]*?package:\s+([a-z0-9][a-z0-9-]*)/)?.[1] || "";
 }
 
+function createIssueLabels(source) {
+  const block = source.match(/^[ \t]*create-issue:[ \t]*\n((?:^[ \t]+.*\n?)*)/m)?.[1] || "";
+  return inlineList(block, "labels");
+}
+
 function manifestIncludes(source) {
   const includes = [];
   const block = source.match(/^includes:\s*\n((?:^[ \t]+.*\n?)*)/m)?.[1] || "";
@@ -109,6 +114,7 @@ function discoverInventory() {
         compiled: existsSync(path.join(workflowDirectory, `${stem}.lock.yml`)),
         workers: role === "orchestrator" ? inlineList(source, "workflows") : [],
         package: packageByWorkflow.get(sourcePath) || null,
+        issueLabels: createIssueLabels(source),
       };
     });
   const workflowById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
@@ -123,6 +129,7 @@ function discoverInventory() {
     controlPackage: orchestrator.controlPackage,
     maxAiCredits: orchestrator.maxAiCredits,
     compiled: orchestrator.compiled,
+    issueLabels: orchestrator.issueLabels,
     workers: orchestrator.workers.map((workerId) => workflowById.get(workerId)).filter(Boolean),
     missingWorkers: orchestrator.workers.filter((workerId) => !workflowById.has(workerId)),
   }));
