@@ -206,33 +206,16 @@ describe('presenter built-in and custom pages', () => {
       freshness: 'fresh',
       availability: 'available'
     });
-    const base = {
-      organization: 'githubnext',
-      repository: 'gh-aw-cao',
-      workflow: '.github/workflows/security.md',
-      'rollout-mode': 'review',
-      'run-conclusion': 'success',
-      protocol: 'https',
-      port: 443,
-      'request-count': 1,
-      'policy-rule-id': 'unavailable',
-      'observed-at': '2026-09-05T11:00:00Z',
-      'evidence-completeness': 'complete',
-      'evidence-freshness': 'fresh'
-    };
     const rows = [
-      { ...base, run: '1', 'firewall-observation': '1', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'no-traffic', 'evidence-label': 'No observed traffic', domain: 'unknown', decision: 'unknown', 'decision-label': 'Unknown', 'drift-state': 'stable', 'drift-label': 'Stable', 'review-state': 'stable', 'review-label': 'Stable', 'review-priority': 9, 'request-count': null },
-      { ...base, run: '2', 'firewall-observation': '2', 'firewall-enabled': 'disabled', 'enforcement-label': 'Enforcement disabled', 'evidence-state': 'disabled', 'evidence-label': 'Enforcement disabled', domain: 'unknown', decision: 'unknown', 'decision-label': 'Unknown', 'drift-state': 'unknown', 'drift-label': 'Unknown', 'review-state': 'enforcement-disabled', 'review-label': 'Enforcement disabled', 'review-priority': 1, 'request-count': null },
-      { ...base, run: '3', 'firewall-observation': '3', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'unavailable', 'evidence-label': 'Evidence missing', 'evidence-completeness': 'unknown', domain: 'unknown', decision: 'unknown', 'decision-label': 'Unknown', 'drift-state': 'unknown', 'drift-label': 'Unknown', 'review-state': 'evidence-missing', 'review-label': 'Evidence missing', 'review-priority': 2, 'request-count': null },
-      { ...base, run: '4', 'firewall-observation': '4', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'api.github.com', decision: 'allowed', 'decision-label': 'Allowed by policy', 'drift-state': 'stable', 'drift-label': 'Stable', 'review-state': 'stable', 'review-label': 'Stable', 'review-priority': 9 },
-      { ...base, run: '5', 'firewall-observation': '5', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'new.example', decision: 'allowed', 'decision-label': 'Allowed by policy', 'current-decision': 'allowed', 'drift-state': 'newly-allowed', 'drift-label': 'Newly allowed', 'review-state': 'newly-allowed', 'review-label': 'Newly allowed', 'review-priority': 3 },
-      { ...base, run: '6', 'firewall-observation': '6', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'blocked.example', decision: 'denied', 'decision-label': 'Denied by policy', 'current-decision': 'denied', 'drift-state': 'stable', 'drift-label': 'Stable', 'review-state': 'stable', 'review-label': 'Stable', 'review-priority': 9, 'policy-rule-id': 'default-deny' },
-      { ...base, run: '7', 'firewall-observation': '7', 'firewall-enabled': 'enabled', 'enforcement-label': 'Enabled', 'evidence-state': 'available', 'evidence-label': 'Evidence available', domain: 'changed.example', decision: 'denied', 'decision-label': 'Denied by policy', 'previous-decision': 'allowed', 'current-decision': 'denied', 'drift-state': 'decision-changed', 'drift-label': 'Decision changed', 'review-state': 'decision-changed', 'review-label': 'Decision changed', 'review-priority': 4 }
+      { domain: 'api.github.com', run: 4, accepted: 12, blocked: 1 },
+      { domain: 'new.example', run: 2, accepted: 3, blocked: 0 },
+      { domain: 'blocked.example', run: 1, accepted: 0, blocked: 7 },
+      { domain: 'changed.example', run: 2, accepted: 1, blocked: 2 }
     ];
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'firewall-observations': { source: 'firewall-observations', rows, metadata },
+        'firewall-domain-totals': { source: 'firewall-domain-totals', rows, metadata },
         'firewall-policy-rules': { source: 'firewall-policy-rules', rows: [], metadata }
       }
     });
@@ -245,37 +228,38 @@ describe('presenter built-in and custom pages', () => {
     expect(text).toContain('new.example');
     expect(text).toContain('blocked.example');
     expect(text).toContain('changed.example');
-    expect(text).toContain('Requests');
-    expect(text).toContain('Runs');
+    expect(text).toContain('Accepted');
+    expect(text).toContain('Blocked');
     expect(text).not.toContain('firewall failure');
-    expect(page?.querySelector('[data-firewall-data-warning]')).toBeNull();
     rendered.remove();
   });
 
-  it('warns that firewall data is corrupted when firewall observations are unavailable', async () => {
+  it('renders the configured empty state when the firewall data binding is empty', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        'firewall-observations': {
-          source: 'firewall-observations',
+        'firewall-domain-totals': {
+          source: 'firewall-domain-totals',
           rows: [],
           metadata: {
             'source-id': 'firewall-fixture',
             'source-kind': 'fixture',
             'as-of': '2026-09-05T11:00:00Z',
             'retrieved-at': '2026-09-05T11:05:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
+            completeness: 'complete',
+            freshness: 'fresh',
+            availability: 'empty'
           }
         }
       }
     });
 
     const page = await activatePage(rendered, 'firewall');
-    const warning = page?.querySelector('[data-firewall-data-warning]');
-    expect(warning?.getAttribute('role')).toBe('alert');
-    expect(warning?.textContent).toContain('Firewall data is corrupted');
+    const view = page?.querySelector('[data-view-id="security-firewall-domains"]');
+    expect(view?.getAttribute('data-view-layout')).toBe('full-view');
+    expect(view?.querySelector('.table-region')?.textContent).toContain(
+      'No observed firewall domains are available for this selection.'
+    );
     rendered.remove();
   });
 
@@ -435,12 +419,12 @@ describe('presenter built-in and custom pages', () => {
           ],
           metadata
         },
-        usage: {
-          source: 'usage',
+        'engines-models-usage': {
+          source: 'engines-models-usage',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', run: '1001', invocation: 'a', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', aic: 10 },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', run: '1002', invocation: 'b', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', aic: 15 },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.yml', run: '1003', invocation: 'c', engine: 'copilot', 'engine-version': '1.2.0', 'requested-model': 'claude-sonnet-5', 'resolved-model': 'claude-sonnet-5', aic: 5 }
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', engine: 'copilot', 'engine-version': '0.87.6', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'event-type': 'agent_turn', 'event-summary': 'Daily agent turn' },
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', engine: 'copilot', 'engine-version': '0.87.9', 'requested-model': 'gpt-5.6-sol', 'resolved-model': 'gpt-5.6-sol', 'event-type': 'assistant_message', 'event-summary': 'Review response' },
+            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.yml', engine: 'copilot', 'engine-version': '1.2.0', 'requested-model': 'claude-sonnet-5', 'resolved-model': 'claude-sonnet-5', 'event-type': 'agent_turn', 'event-summary': 'Audit agent turn' }
           ],
           metadata
         },
@@ -452,11 +436,48 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
-    expect(page?.textContent).toContain('15 AIC');
+    expect(page?.textContent).toContain('Review response');
     expect(page?.textContent).toContain('copilot');
     expect(page?.textContent).toContain('0.87.6');
     expect(page?.textContent).toContain('0.87.9');
     expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
+  });
+
+  it('renders event inspection as one full-view lazy table', async () => {
+    const metadata = {
+      'source-id': 'event-inspection-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'event-inspection': {
+          source: 'event-inspection',
+          rows: [
+            {
+              'observed-at': '2026-09-02T12:00:00Z', 'event-source': 'agent', 'event-type': 'assistant_message',
+              'event-status': 'completed', 'event-summary': 'Produced a review', repository: 'gh-aw-cao',
+              workflow: '.github/workflows/review.yml', run: '1002', 'run-attempt': 1, session: 'session-1',
+              event: 'event-1', 'correlation-id': 'correlation-1', 'source-sequence': 3,
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1002', label: 'View run 1002' }
+            }
+          ],
+          metadata
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'events');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.textContent).toContain('Produced a review');
+    expect(page?.textContent).toContain('assistant_message');
+    expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
   });
 
   it('explains when engine and model usage data is missing', async () => {
@@ -473,7 +494,7 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {
         runs: { source: 'runs', rows: [], metadata },
-        usage: { source: 'usage', rows: [], metadata },
+        'engines-models-usage': { source: 'engines-models-usage', rows: [], metadata },
         outcomes: { source: 'outcomes', rows: [], metadata }
       }
     });
@@ -760,8 +781,8 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshButton?.tagName).toBe('BUTTON');
     expect(refreshButton?.getAttribute('title')).toBeTruthy();
     expect(refreshButton?.getAttribute('aria-label')).toBeTruthy();
-    expect(refreshButton?.closest('.report-footer')).not.toBeNull();
-    expect(rendered.querySelector('.report-actions .refresh-button')).toBeNull();
+    expect(refreshButton?.closest('.account-menu')).not.toBeNull();
+    expect(rendered.querySelector('.report-footer .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
     expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
@@ -788,7 +809,7 @@ describe('presenter built-in and custom pages', () => {
     expect(refreshLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations/actions/workflows/dashboard.yml');
     expect(refreshLink?.getAttribute('aria-label')).toBe('Open the dashboard workflow on GitHub Actions');
     expect(refreshLink?.getAttribute('title')).toBe('Open the dashboard workflow on GitHub Actions');
-    expect(refreshLink?.closest('.report-footer')).not.toBeNull();
+    expect(refreshLink?.closest('.account-menu')).not.toBeNull();
     const repositoryLink = rendered.querySelector('.repository-link');
     expect(repositoryLink).not.toBeNull();
     expect(repositoryLink?.getAttribute('href')).toBe('https://github.example.com/octo-org/agentic-operations');
@@ -975,6 +996,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1299,6 +1321,7 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
+      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',

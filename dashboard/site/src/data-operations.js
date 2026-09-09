@@ -4,13 +4,14 @@
  * Operators are plain data so the same pipeline can run in a Web Worker.
  */
 
-import { titleCase } from './components/count-formatters.js';
+import { formatCount, titleCase } from './components/count-formatters.js';
+import { formatPercent } from './view-formatters.js';
 
 /**
  * @typedef {Record<string, unknown>} Row
  * @typedef {{ field: string, equals?: unknown, in?: unknown[], includes?: string }} Predicate
  * @typedef {{ op: 'filter', predicates?: Predicate[], search?: { fields: string[], query: string } }} FilterOperator
- * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
+ * @typedef {{ op: 'summarize', by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'sum'|'mean'|'min'|'max' }> }} SummarizeOperator
  * @typedef {{ op: 'arrange', by: Array<{ field: string, direction?: 'asc'|'desc' }> }} ArrangeOperator
  * @typedef {{ op: 'slice', offset?: number, limit: number }} SliceOperator
  * @typedef {{ field: string } | { value: string|number|boolean|null }} ComputeArgument
@@ -32,6 +33,11 @@ export const COMPUTE_FUNCTION_ARITY = {
   'title-case': [1, 1],
   trim: [1, 1],
   'url-encode': [1, 1],
+  'equals-any': [2, 8],
+  'greater-than': [2, 2],
+  if: [3, 3],
+  'format-count': [1, 1],
+  'format-percent': [1, 1],
   number: [1, 1],
   sum: [2, 8],
   difference: [2, 2],
@@ -40,7 +46,9 @@ export const COMPUTE_FUNCTION_ARITY = {
 };
 
 /** Computed-field functions whose result is always text or null. */
-export const TEXT_COMPUTE_FUNCTIONS = ['concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode'];
+export const TEXT_COMPUTE_FUNCTIONS = [
+  'concat', 'lower', 'upper', 'title-case', 'trim', 'url-encode', 'format-count', 'format-percent'
+];
 
 /** Computed-field functions whose result is always a finite number or null. */
 export const NUMERIC_COMPUTE_FUNCTIONS = ['number', 'sum', 'difference', 'product', 'quotient'];
@@ -118,10 +126,23 @@ export function computeValue(row, definition) {
   if (definition.function === 'title-case') return titleCase(textValue(values[0]));
   if (definition.function === 'trim') return textValue(values[0]).trim();
   if (definition.function === 'url-encode') return encodeURIComponent(textValue(values[0]));
+  if (definition.function === 'equals-any') {
+    return values.slice(1).some((value) => sameValue(values[0], value));
+  }
+  if (definition.function === 'if') return scalarValue(values[0] === true ? values[1] : values[2]);
+  if (definition.function === 'format-count') {
+    const value = numericValue(values[0]);
+    return value === null ? null : formatCount(value);
+  }
+  if (definition.function === 'format-percent') {
+    const value = numericValue(values[0]);
+    return value === null ? null : formatPercent(value);
+  }
   const numbers = values.map(numericValue);
   if (numbers.some((value) => value === null)) return null;
   const finite = /** @type {number[]} */ (numbers);
   if (definition.function === 'number') return finite[0];
+  if (definition.function === 'greater-than') return finite[0] > finite[1];
   if (definition.function === 'sum') return finite.reduce((total, value) => total + value, 0);
   if (definition.function === 'difference') return finite[0] - finite[1];
   if (definition.function === 'product') return finite.reduce((total, value) => total * value, 1);
@@ -132,6 +153,13 @@ export function computeValue(row, definition) {
 /** @param {unknown} value */
 function textValue(value) {
   return value == null || typeof value === 'object' ? '' : String(value);
+}
+
+/** @param {unknown} value @returns {string | number | boolean | null} */
+function scalarValue(value) {
+  return value == null || typeof value === 'object'
+    ? null
+    : /** @type {string | number | boolean} */ (value);
 }
 
 /** @param {unknown} value @returns {number | null} */
@@ -197,6 +225,7 @@ function reduceValues(input, reducer) {
   const present = input.filter((value) => value != null && value !== '');
   if (reducer === 'count') return present.length;
   if (reducer === 'distinct-count') return new Set(present.map(String)).size;
+  if (reducer === 'distinct-list') return [...new Set(present.map(String))].sort().join(', ');
   const values = present.map(Number).filter(Number.isFinite);
   if (reducer === 'sum') return values.reduce((total, value) => total + value, 0);
   if (values.length === 0) return null;

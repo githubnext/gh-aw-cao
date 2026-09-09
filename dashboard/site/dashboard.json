@@ -72,7 +72,117 @@
     },
     "queries": [
       {
+        "name": "firewall-domain-totals",
+        "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
+        "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
+        "from": "firewall-observations",
+        "filter": {
+          "predicates": [
+            {
+              "field": "decision",
+              "in": [
+                "allowed",
+                "denied"
+              ]
+            }
+          ]
+        },
+        "compute": [
+          {
+            "as": "is-accepted",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "decision"
+              },
+              {
+                "value": "allowed"
+              }
+            ]
+          },
+          {
+            "as": "accepted",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-accepted"
+              },
+              {
+                "field": "request-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
+            "as": "is-blocked",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "decision"
+              },
+              {
+                "value": "denied"
+              }
+            ]
+          },
+          {
+            "as": "blocked",
+            "function": "if",
+            "args": [
+              {
+                "field": "is-blocked"
+              },
+              {
+                "field": "request-count"
+              },
+              {
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "domain"
+          ],
+          "values": [
+            {
+              "field": "run",
+              "as": "run",
+              "reducer": "distinct-count"
+            },
+            {
+              "field": "accepted",
+              "as": "accepted",
+              "reducer": "sum"
+            },
+            {
+              "field": "blocked",
+              "as": "blocked",
+              "reducer": "sum"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "blocked",
+            "direction": "desc"
+          },
+          {
+            "field": "accepted",
+            "direction": "desc"
+          },
+          {
+            "field": "domain",
+            "direction": "asc"
+          }
+        ]
+      },
+      {
         "name": "workflow-run-totals",
+        "intent": "Summarize observed run counts by declared workflow.",
         "description": "Observed run totals for each declared workflow.",
         "from": "runs",
         "aggregate": {
@@ -92,6 +202,7 @@
       },
       {
         "name": "workflow-aic-totals",
+        "intent": "Summarize observed AI Credit usage by declared workflow.",
         "description": "Observed AI Credit totals for each declared workflow.",
         "from": "usage",
         "aggregate": {
@@ -110,7 +221,104 @@
         }
       },
       {
+        "name": "event-inspection",
+        "intent": "Inspect observed workflow events with their execution context and run navigation.",
+        "description": "Observed workflow events ordered from newest to oldest with their source, status, identity, and run context.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "event-source" },
+          { "field": "event-type" },
+          { "field": "event-status" },
+          { "field": "event-summary" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-attempt" },
+          { "field": "session" },
+          { "field": "event" },
+          { "field": "correlation-id" },
+          { "field": "source-sequence" },
+          { "field": "linked-run", "as": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "engines-models-usage",
+        "intent": "List agent events with their run-level engine, model, version, rollout, and navigation context.",
+        "description": "Observed agent events joined with their engine, model, version, and rollout metadata.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "engine", "as": "run-engine" },
+              { "field": "engine-version", "as": "run-engine-version" },
+              { "field": "requested-model", "as": "run-requested-model" },
+              { "field": "resolved-model", "as": "run-resolved-model" },
+              { "field": "rollout-mode", "as": "run-rollout-mode" },
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "event-source", "equals": "agent" }
+          ]
+        },
+        "select": [
+          { "field": "run-engine", "as": "engine" },
+          { "field": "run-engine-version", "as": "engine-version" },
+          { "field": "run-requested-model", "as": "requested-model" },
+          { "field": "run-resolved-model", "as": "resolved-model" },
+          { "field": "run-rollout-mode", "as": "rollout-mode" },
+          { "field": "event-type" },
+          { "field": "event-summary" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "linked-run", "as": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "workflow-inventory",
+        "intent": "List declared workflows with their package, repository, configuration, and observed execution totals.",
         "description": "Central package and repository-owned workflow inventory with observed execution totals.",
         "from": "workflows",
         "joins": [
@@ -334,6 +542,243 @@
             "field": "workflow",
             "direction": "asc"
           }
+        ]
+      },
+      {
+        "name": "repository-workflow-totals",
+        "intent": "Summarize declared and disabled workflow counts by repository.",
+        "description": "Declared and disabled workflow totals for each repository.",
+        "from": "workflows",
+        "compute": [
+          {
+            "as": "disabled",
+            "function": "equals-any",
+            "args": [
+              { "field": "workflow-active" },
+              { "value": "false" }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "workflow", "as": "workflows", "reducer": "count" },
+            { "field": "disabled", "as": "disabled", "reducer": "sum" }
+          ]
+        }
+      },
+      {
+        "name": "repository-report-totals",
+        "intent": "Summarize published outcome report counts by repository.",
+        "description": "Published report totals for each repository.",
+        "from": "outcomes",
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "repository", "as": "reports", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "repository-evaluated-workflow-totals",
+        "intent": "Summarize distinct workflows with operational-value evaluations by repository.",
+        "description": "Distinct evaluated workflow totals for each repository.",
+        "from": "operational-values",
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "workflow", "as": "evaluated-workflows", "reducer": "distinct-count" }
+          ]
+        }
+      },
+      {
+        "name": "repository-run-totals",
+        "intent": "Summarize distinct runs, failures, and approval-required runs by repository.",
+        "description": "Distinct run and conclusion totals for each repository.",
+        "from": "runs",
+        "compute": [
+          {
+            "as": "failed",
+            "function": "equals-any",
+            "args": [
+              { "field": "run-conclusion" },
+              { "value": "failure" },
+              { "value": "startup-failure" },
+              { "value": "timed-out" }
+            ]
+          },
+          {
+            "as": "action-required",
+            "function": "equals-any",
+            "args": [
+              { "field": "run-conclusion" },
+              { "value": "action-required" }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "run", "as": "runs", "reducer": "distinct-count" },
+            { "field": "failed", "as": "failed", "reducer": "sum" },
+            { "field": "action-required", "as": "action-required", "reducer": "sum" }
+          ]
+        }
+      },
+      {
+        "name": "repository-aic-totals",
+        "intent": "Summarize observed AI Credit usage by repository.",
+        "description": "Observed AI Credit totals for each repository.",
+        "from": "usage",
+        "aggregate": {
+          "by": ["organization", "repository"],
+          "values": [
+            { "field": "aic", "as": "aic", "reducer": "sum" }
+          ]
+        }
+      },
+      {
+        "name": "repository-activity-core",
+        "intent": "Join each repository with its workflow, report, evaluation, and run totals.",
+        "description": "Repository inventory joined with workflow, report, evaluation, and run totals.",
+        "from": "repositories",
+        "joins": [
+          {
+            "source": "repository-workflow-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "workflows", "as": "observed-workflows" },
+              { "field": "disabled", "as": "observed-disabled" }
+            ]
+          },
+          {
+            "source": "repository-report-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "reports", "as": "observed-reports" }
+            ]
+          },
+          {
+            "source": "repository-evaluated-workflow-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "evaluated-workflows", "as": "observed-evaluated-workflows" }
+            ]
+          },
+          {
+            "source": "repository-run-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "runs", "as": "observed-runs" },
+              { "field": "failed", "as": "observed-failed" },
+              { "field": "action-required", "as": "observed-action-required" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "repository-activity",
+        "intent": "Show repository-level execution health, outcome activity, and AI Credit usage in an actionable inventory.",
+        "description": "Repository-local execution health and attributed outcome totals.",
+        "from": "repository-activity-core",
+        "joins": [
+          {
+            "source": "repository-aic-totals",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" }
+            ],
+            "fields": [
+              { "field": "aic", "as": "observed-aic" }
+            ]
+          }
+        ],
+        "compute": [
+          { "as": "repository-slug", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
+          { "as": "workflows", "function": "coalesce", "args": [{ "field": "observed-workflows" }, { "value": 0 }] },
+          { "as": "disabled", "function": "coalesce", "args": [{ "field": "observed-disabled" }, { "value": 0 }] },
+          { "as": "reports", "function": "coalesce", "args": [{ "field": "observed-reports" }, { "value": 0 }] },
+          { "as": "evaluated-workflows", "function": "coalesce", "args": [{ "field": "observed-evaluated-workflows" }, { "value": 0 }] },
+          { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
+          { "as": "failed", "function": "coalesce", "args": [{ "field": "observed-failed" }, { "value": 0 }] },
+          { "as": "action-required", "function": "coalesce", "args": [{ "field": "observed-action-required" }, { "value": 0 }] },
+          { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] },
+          { "as": "has-failures", "function": "greater-than", "args": [{ "field": "failed" }, { "value": 0 }] },
+          { "as": "has-action-required", "function": "greater-than", "args": [{ "field": "action-required" }, { "value": 0 }] },
+          { "as": "has-runs", "function": "greater-than", "args": [{ "field": "runs" }, { "value": 0 }] },
+          { "as": "has-disabled", "function": "greater-than", "args": [{ "field": "disabled" }, { "value": 0 }] },
+          { "as": "outcomes-observed", "function": "sum", "args": [{ "field": "reports" }, { "field": "evaluated-workflows" }] },
+          { "as": "has-outcomes", "function": "greater-than", "args": [{ "field": "outcomes-observed" }, { "value": 0 }] },
+          { "as": "failure-rate", "function": "quotient", "args": [{ "field": "failed" }, { "field": "runs" }] },
+          { "as": "failure-percent", "function": "format-percent", "args": [{ "field": "failure-rate" }] },
+          { "as": "failure-count", "function": "format-count", "args": [{ "field": "failed" }] },
+          { "as": "observed-failure-summary", "function": "concat", "args": [{ "field": "failure-percent" }, { "value": " · " }, { "field": "failure-count" }, { "value": " failed" }] },
+          { "as": "failure-summary", "function": "if", "args": [{ "field": "has-runs" }, { "field": "observed-failure-summary" }, { "value": "—" }] },
+          { "as": "outcome-status", "function": "if", "args": [{ "field": "has-outcomes" }, { "value": "Outcomes observed" }, { "value": "No recent activity" }] },
+          { "as": "disabled-status", "function": "if", "args": [{ "field": "has-disabled" }, { "value": "Disabled workflows" }, { "field": "outcome-status" }] },
+          { "as": "run-status", "function": "if", "args": [{ "field": "has-runs" }, { "value": "No failures observed" }, { "field": "disabled-status" }] },
+          { "as": "action-status", "function": "if", "args": [{ "field": "has-action-required" }, { "value": "Approval required" }, { "field": "run-status" }] },
+          { "as": "status", "function": "if", "args": [{ "field": "has-failures" }, { "value": "Needs attention" }, { "field": "action-status" }] }
+        ],
+        "select": [
+          { "field": "repository-slug", "as": "repository" },
+          { "field": "workflows" },
+          { "field": "reports" },
+          { "field": "evaluated-workflows" },
+          { "field": "runs" },
+          { "field": "failure-summary" },
+          { "field": "aic" },
+          { "field": "status" },
+          { "field": "repository-link" },
+          { "field": "failed" }
+        ],
+        "order-by": [
+          { "field": "failed", "direction": "desc" },
+          { "field": "runs", "direction": "desc" },
+          { "field": "repository", "direction": "asc" }
+        ]
+      },
+      {
+        "name": "package-inventory",
+        "intent": "Summarize centrally managed packages with their workflow, repository, rollout, run, and AI Credit totals.",
+        "description": "Centrally managed package inventory and observed execution totals.",
+        "from": "workflow-inventory",
+        "filter": {
+          "predicates": [
+            { "field": "workflow-role", "in": ["orchestrator", "worker"] }
+          ]
+        },
+        "aggregate": {
+          "by": ["package", "package-name"],
+          "values": [
+            { "field": "workflow", "as": "workflows", "reducer": "count" },
+            { "field": "repository", "as": "repositories", "reducer": "distinct-count" },
+            { "field": "workflow-role", "as": "roles", "reducer": "distinct-list" },
+            { "field": "rollout-mode", "as": "modes", "reducer": "distinct-list" },
+            { "field": "workflow-active", "as": "registration", "reducer": "distinct-list" },
+            { "field": "runs", "as": "runs", "reducer": "sum" },
+            { "field": "aic", "as": "aic", "reducer": "sum" }
+          ]
+        },
+        "order-by": [
+          { "field": "package-name", "direction": "asc" }
         ]
       }
     ],
@@ -669,22 +1114,21 @@
           {
             "id": "security-firewall-domains",
             "title": "Domains",
-            "description": "Aggregate observed requests, runs, repositories, workflows, policy decisions, and policy rules by normalized domain over the requested 30-day horizon.",
+            "description": "Observed runs and accepted and blocked requests by normalized domain.",
             "data": {
-              "source": "firewall-observations",
-              "time": {
-                "range": "30d"
-              },
-              "filters": {
-                "decision": [
-                  "allowed",
-                  "denied"
-                ]
-              },
+              "source": "firewall-domain-totals",
               "order-by": [
                 {
-                  "field": "requests",
+                  "field": "blocked",
                   "direction": "desc"
+                },
+                {
+                  "field": "accepted",
+                  "direction": "desc"
+                },
+                {
+                  "field": "domain",
+                  "direction": "asc"
                 }
               ]
             },
@@ -701,46 +1145,19 @@
                   "type": "nominal"
                 },
                 {
-                  "field": "request-count",
-                  "type": "quantitative",
-                  "aggregate": "sum",
-                  "as": "requests",
-                  "title": "Requests"
-                },
-                {
                   "field": "run",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "runs",
-                  "title": "Runs"
+                  "type": "quantitative",
+                  "title": "Run"
                 },
                 {
-                  "field": "repository",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "repositories",
-                  "title": "Repositories"
+                  "field": "accepted",
+                  "type": "quantitative",
+                  "title": "Accepted"
                 },
                 {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "workflows",
-                  "title": "Workflows"
-                },
-                {
-                  "field": "decision",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "decisions",
-                  "title": "Policy decisions"
-                },
-                {
-                  "field": "policy-rule-id",
-                  "type": "nominal",
-                  "aggregate": "distinct-count",
-                  "as": "policy-rules",
-                  "title": "Policy rules"
+                  "field": "blocked",
+                  "type": "quantitative",
+                  "title": "Blocked"
                 }
               ]
             }
@@ -3296,6 +3713,101 @@
         }
       },
       {
+        "id": "events",
+        "kind": "custom",
+        "title": "Events",
+        "icon": "pulse",
+        "description": "Inspect observed workflow events and their execution context.",
+        "views": [
+          {
+            "id": "event-inspection",
+            "title": "Event inspection",
+            "description": "Observed events ordered from newest to oldest with source, status, identity, and run context.",
+            "data": {
+              "source": "event-inspection"
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No workflow events were observed in the current run window.",
+            "layout": "full-view",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                },
+                {
+                  "field": "event-source",
+                  "type": "nominal",
+                  "title": "Source"
+                },
+                {
+                  "field": "event-type",
+                  "type": "nominal",
+                  "title": "Event type"
+                },
+                {
+                  "field": "event-status",
+                  "type": "nominal",
+                  "title": "Status"
+                },
+                {
+                  "field": "event-summary",
+                  "type": "nominal",
+                  "title": "Summary"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "session",
+                  "type": "nominal",
+                  "title": "Session"
+                },
+                {
+                  "field": "event",
+                  "type": "nominal",
+                  "title": "Event"
+                },
+                {
+                  "field": "correlation-id",
+                  "type": "nominal",
+                  "title": "Correlation"
+                },
+                {
+                  "field": "source-sequence",
+                  "type": "quantitative",
+                  "title": "Sequence"
+                }
+              ]
+            },
+            "lazy-list": true
+          }
+        ]
+      },
+      {
         "id": "engines-models",
         "kind": "custom",
         "title": "Engines Models",
@@ -3304,15 +3816,9 @@
             {
               "id": "engines-models-usage",
               "title": "Engines and models",
-              "description": "Observed engine and model selection with version, rollout, and AI Credit evidence.",
+              "description": "Observed agent events with engine, model, version, and rollout metadata.",
               "data": {
-                "source": "usage",
-                "order-by": [
-                  {
-                    "field": "observed-at",
-                    "direction": "desc"
-                  }
-                ]
+                "source": "engines-models-usage"
               },
               "mark": "table",
               "controls": "interactive",
@@ -3351,10 +3857,14 @@
                     "display": "mode"
                   },
                   {
-                    "field": "aic",
-                    "type": "quantitative",
-                    "title": "AIC",
-                    "unit": "aic"
+                    "field": "event-type",
+                    "type": "nominal",
+                    "title": "Agent event"
+                  },
+                  {
+                    "field": "event-summary",
+                    "type": "nominal",
+                    "title": "Summary"
                   },
                   {
                     "field": "repository",
@@ -3377,7 +3887,7 @@
             }
           ],
         "navigation-label": "Models & agents",
-        "description": "Compare observed AI Credit allocation by model and agentic engine/version where usage telemetry provides that metadata."
+        "description": "Compare observed model selection by agentic engine and version from agent events."
       },
       {
         "id": "operational-value",
@@ -4464,6 +4974,7 @@
           "dispatches",
           "firewall",
           "mcps",
+          "events",
           "engines-models"
         ]
       }

@@ -107,12 +107,12 @@ export function processCanonicalDashboardSources(sources, generation) {
  * There is no main-thread fallback: queries either run in the worker or fail.
  * @param {unknown[]} queries
  * @param {Record<string, import('./presenter.js').LogicalSourceInput>} sources
- * @param {{ signal?: AbortSignal }} [options] cancels the request from outside
+ * @param {{ signal?: AbortSignal, pagination?: Record<string, { limit: number, continuationToken?: string }> }} [options] cancels the request from outside
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
 export function processDashboardQueries(queries, sources, options = {}) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'execute-dashboard-queries', queries, sources },
+    { operation: 'execute-dashboard-queries', queries, sources, pagination: options.pagination },
     () => Promise.reject(new Error('Declarative dashboard queries require a data worker.')),
     false,
     options.signal
@@ -126,11 +126,12 @@ export function processDashboardQueries(queries, sources, options = {}) {
  * @param {string} sourceUrl
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
-export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context) {
+export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, pagination) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context },
+    { operation: 'load-canonical-dashboard', sourceUrl, sourceNames, context, pagination },
     () => Promise.reject(new Error('Live canonical dashboard loading requires a data worker.')),
     false
   ));
@@ -140,11 +141,12 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context) {
  * Queries one page from the live canonical dashboard retained by the worker.
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, dashboardRepository?: string | null, pages: unknown[] }} context
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
  * @returns {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>}
  */
-export function loadCanonicalDashboardPage(sourceNames, context) {
+export function loadCanonicalDashboardPage(sourceNames, context, pagination) {
   return /** @type {Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} */ (processRequest(
-    { operation: 'query-canonical-dashboard', sourceNames, context },
+    { operation: 'query-canonical-dashboard', sourceNames, context, pagination },
     () => Promise.reject(new Error('Live canonical dashboard queries require a data worker.')),
     false
   ));

@@ -27,7 +27,7 @@ import { tidy } from '../../data-operations.js';
  *   joins?: Array<{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }>,
  *   filter?: { predicates?: Array<{ field: string, equals?: unknown, in?: unknown[], includes?: string }> },
  *   compute?: import('../../data-operations.js').ComputedField[],
- *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'sum'|'mean'|'min'|'max' }> },
+ *   aggregate?: { by?: string[], values: Array<{ field: string, as: string, reducer: 'count'|'distinct-count'|'distinct-list'|'sum'|'mean'|'min'|'max' }> },
  *   select?: Array<{ field: string, as?: string }>,
  *   ['order-by']?: Array<{ field: string, direction?: 'asc'|'desc' }>,
  *   limit?: number
@@ -46,6 +46,132 @@ export const DASHBOARD_QUERY_LIMITS = {
   'max-operations': 5000000,
   'max-duration-ms': 60000
 };
+
+const CONTINUATION_TOKEN_VERSION = 2;
+
+/**
+ * Applies request-scoped pagination after query execution so query definitions
+ * remain independent of transport cursors. Tokens are stateless: continuing a
+ * query recompiles it and locates the last emitted run in the new result.
+ *
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {Record<string, { limit: number, continuationToken?: string }>} [pagination]
+ * @param {string} [revision]
+ */
+export function paginateDashboardSources(
+  sources,
+  pagination = {},
+  revision = continuationRevision(Object.fromEntries(
+    Object.entries(sources).map(([name, source]) => [name, source.metadata])
+  ))
+) {
+  return Object.fromEntries(Object.entries(sources).map(([name, source]) => {
+    const page = pagination[name];
+    if (!page) return [name, source];
+    if (!Number.isSafeInteger(page.limit) || page.limit <= 0
+        || page.limit > DASHBOARD_QUERY_LIMITS['max-output-rows']) {
+      throw new TypeError(`Pagination limit for "${name}" must be a positive integer no greater than ${DASHBOARD_QUERY_LIMITS['max-output-rows']}.`);
+    }
+    const rows = Array.isArray(source.rows) ? source.rows : [];
+    const cursor = page.continuationToken
+      ? decodeContinuationToken(page.continuationToken, name, revision)
+      : null;
+    let offset = cursor?.offset ?? 0;
+    if (cursor?.run !== undefined) {
+      const expected = rows[offset - 1];
+      if (runCursor(expected) !== cursor.run) {
+        const anchor = rows.findIndex((row) => runCursor(row) === cursor.run);
+        if (anchor < 0) throw new TypeError(`Continuation token for "${name}" no longer identifies a result row.`);
+        offset = anchor + 1;
+      }
+    }
+    const end = Math.min(rows.length, offset + page.limit);
+    const pageRows = rows.slice(offset, end);
+    const continuationToken = end < rows.length
+      ? encodeContinuationToken({
+          source: name,
+          offset: end,
+          run: runCursor(pageRows.at(-1)),
+          revision
+        })
+      : undefined;
+    return [name, {
+      ...source,
+      rows: pageRows,
+      ...(continuationToken ? { continuationToken } : {}),
+      metadata: { ...source.metadata, 'total-row-count': rows.length }
+    }];
+  }));
+}
+
+/** @param {Row | undefined} row */
+function runCursor(row) {
+  const run = row?.run;
+  return typeof run === 'string' && /^\d+$/.test(run) ? run : undefined;
+}
+
+/** @param {{ source: string, offset: number, run?: string, revision: string }} cursor */
+function encodeContinuationToken(cursor) {
+  const bytes = new TextEncoder().encode(JSON.stringify({
+    version: CONTINUATION_TOKEN_VERSION,
+    ...cursor
+  }));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+
+/** @param {string} token @param {string} source @param {string} revision */
+function decodeContinuationToken(token, source, revision) {
+  try {
+    const encoded = token.replaceAll('-', '+').replaceAll('_', '/');
+    const binary = atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '='));
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const cursor = JSON.parse(new TextDecoder().decode(bytes));
+    if (cursor?.version !== CONTINUATION_TOKEN_VERSION
+        || cursor?.source !== source
+        || cursor?.revision !== revision
+        || !Number.isSafeInteger(cursor?.offset)
+        || cursor.offset <= 0
+        || (cursor.run !== undefined && (typeof cursor.run !== 'string' || !/^\d+$/.test(cursor.run)))) {
+      throw new Error('invalid cursor');
+    }
+    return /** @type {{ source: string, offset: number, run?: string, revision: string }} */ (cursor);
+  } catch {
+    throw new TypeError(`Invalid or stale continuation token for "${source}".`);
+  }
+}
+
+/**
+ * Produces a deterministic, non-secret revision for stale-token detection.
+ * Query definitions and data generations are execution context, never cursor
+ * fields in the authored query language.
+ *
+ * @param {unknown} queryContext
+ * @param {unknown} [dataContext]
+ */
+export function continuationRevision(queryContext, dataContext) {
+  const text = stableJson([queryContext, dataContext]);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `v1-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+/** @param {unknown} value @returns {string} */
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .filter(([, item]) => typeof item !== 'function')
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
 
 /** Rows processed between cancellation checkpoints inside a join. */
 const CANCELLATION_CHECK_INTERVAL = 4096;
@@ -311,23 +437,71 @@ export function dashboardQueryOutputFields(definition, fieldsOf) {
  * @param {unknown} definitions
  * @param {Record<string, LogicalSourceInput>} sources
  * @param {Iterable<string>} [requested] only these queries are executed when provided
- * @param {{ signal?: { aborted?: boolean }, timeout?: number, maxOperations?: number, budget?: QueryBudget }} [options]
+ * @param {{ signal?: { aborted?: boolean }, timeout?: number, maxOperations?: number, budget?: QueryBudget, pagination?: Record<string, { limit: number, continuationToken?: string }> }} [options]
  * @returns {Record<string, LogicalSourceInput>}
  */
 export function executeDashboardQueries(definitions, sources, requested, options = {}) {
   const index = dashboardQueryIndex(definitions);
   if (index.size === 0) return {};
   const defects = dashboardQueryDefects(definitions);
-  const wanted = requested ? new Set(resolveDashboardQuerySources(definitions, requested)) : null;
   const budget = options.budget ?? createDashboardQueryBudget(options);
+  const revision = continuationRevision(definitions, Object.fromEntries(
+    Object.entries(sources).map(([name, source]) => [name, source.metadata])
+  ));
+  if (requested) {
+    /** @type {Record<string, LogicalSourceInput>} */
+    const requestedResults = {};
+    for (const name of new Set(requested)) {
+      if (!index.has(name)) continue;
+      const compiled = compileDashboardQuery(name, index, sources, defects, budget);
+      requestedResults[name] = compiled[name];
+    }
+    return paginateDashboardSources(requestedResults, options.pagination, revision);
+  }
   /** @type {Record<string, LogicalSourceInput>} */
   const derived = {};
   for (const [name, definition] of index) {
-    if (wanted && !wanted.has(name)) continue;
     budget.checkpoint();
     derived[name] = executeDashboardQuery(definition, { ...sources, ...derived }, defects.get(name), budget);
   }
-  return derived;
+  return paginateDashboardSources(derived, options.pagination, revision);
+}
+
+/**
+ * Recompiles one requested query and its dependencies in an isolated working
+ * set. Shared dependencies may be recomputed for another requested query so
+ * completed result graphs do not accumulate in worker memory.
+ *
+ * @param {string} name
+ * @param {Map<string, DashboardQuery>} index
+ * @param {Record<string, LogicalSourceInput>} sources
+ * @param {Map<string, string>} defects
+ * @param {QueryBudget} budget
+ */
+function compileDashboardQuery(name, index, sources, defects, budget) {
+  /** @type {Record<string, LogicalSourceInput>} */
+  const compiled = {};
+  const visiting = new Set();
+  /** @param {string} queryName */
+  const compile = (queryName) => {
+    if (compiled[queryName] || visiting.has(queryName)) return;
+    const definition = index.get(queryName);
+    if (!definition) return;
+    visiting.add(queryName);
+    for (const input of queryInputNames(definition)) {
+      if (index.has(input)) compile(input);
+    }
+    visiting.delete(queryName);
+    budget.checkpoint();
+    compiled[queryName] = executeDashboardQuery(
+      definition,
+      { ...sources, ...compiled },
+      defects.get(queryName),
+      budget
+    );
+  };
+  compile(name);
+  return compiled;
 }
 
 /**

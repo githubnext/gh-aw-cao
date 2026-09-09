@@ -733,7 +733,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
+  await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
+  await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toBeVisible();
+  await accountMenu.getByRole('button', { name: 'Reset local data' }).click();
+  const resetDialog = page.getByRole('dialog', { name: 'Reset dashboard confirmation' });
+  await expect(resetDialog).toBeVisible();
+  await expect(resetDialog).toContainText('This action cannot be undone.');
+  await resetDialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(resetDialog).not.toBeVisible();
   await expect(accountMenu.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.dashboard-root')).not.toHaveAttribute('data-theme');
   await accountMenu.getByRole('button', { name: 'Light' }).click();
@@ -1142,7 +1150,7 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
 
   await page.setViewportSize({ width: 393, height: 852 });
   await expect(details).toBeVisible();
-  await expect(page.locator('.refresh-button > span')).toBeHidden();
+  await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
     const bounds = item.getBoundingClientRect();
     return Math.round(bounds.top + bounds.height / 2);
@@ -2033,6 +2041,12 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
         dashboard: {
           id: 'filter-bar-render',
           title: 'Central Agentic Ops',
+          callouts: [{
+            id: 'partial-data',
+            title: 'Dashboard data is partial',
+            description: 'Data Health reports a collection gap.',
+            'navigation-page': 'data-health'
+          }],
           pages: [{
             id: 'cost',
             kind: 'custom',
@@ -2082,6 +2096,11 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   expect(await filterBar.getByRole('checkbox').evaluateAll(
     (inputs) => inputs.every((input) => /** @type {HTMLInputElement} */ (input).checked)
   )).toBe(true);
+  const desktopPanelBox = await filterBar.locator('.filter-tuning-controls').boundingBox();
+  const desktopTimeRangeBox = await filterBar.locator('.time-window-control').boundingBox();
+  expect(desktopTimeRangeBox?.x).toBeGreaterThanOrEqual(desktopPanelBox?.x ?? 0);
+  expect((desktopTimeRangeBox?.x ?? 0) + (desktopTimeRangeBox?.width ?? 0))
+    .toBeLessThanOrEqual((desktopPanelBox?.x ?? 0) + (desktopPanelBox?.width ?? 0));
   await expect(filterBar.getByRole('link', { name: 'Export JSON' })).toHaveCount(0);
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('2');
 
@@ -2094,13 +2113,20 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await filterBar.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 400, height: 900 });
+  expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
+    .toBeGreaterThanOrEqual(24);
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
   expect(horizonBox).not.toBeNull();
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
   await filterBar.locator('.horizon-toggle').click();
   const expandedHorizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
-  const timeRangeBox = await filterBar.locator('.time-window-control').boundingBox();
+  const tuningControls = filterBar.locator('.filter-tuning-controls');
+  const timeRangeBox = await tuningControls.locator('.time-window-control').boundingBox();
+  const tuningControlsBox = await tuningControls.boundingBox();
   expect(timeRangeBox?.y).toBeGreaterThanOrEqual((expandedHorizonBox?.y ?? 0) + (expandedHorizonBox?.height ?? 0));
+  expect(tuningControlsBox?.x).toBeGreaterThanOrEqual(0);
+  expect((tuningControlsBox?.x ?? 0) + (tuningControlsBox?.width ?? 0)).toBeLessThanOrEqual(400);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(400);
 });
 
 test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable definitions and observations, observed subject, YES/NO/UNKNOWN result, evaluation model when available, time, provenance, and independent data state in browser', async ({ page }) => {

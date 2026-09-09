@@ -177,6 +177,20 @@ describe('dashboard document validation', () => {
     ).pages).toContain('firewall');
     expect(firewall.sections).toBeUndefined();
     expect(firewall.views).toHaveLength(1);
+    expect(document.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'firewall-domain-totals',
+      intent: 'Show each observed firewall domain with the number of runs and total accepted and blocked requests.',
+      from: 'firewall-observations',
+      filter: { predicates: [{ field: 'decision', in: ['allowed', 'denied'] }] },
+      aggregate: {
+        by: ['domain'],
+        values: [
+          { field: 'run', as: 'run', reducer: 'distinct-count' },
+          { field: 'accepted', as: 'accepted', reducer: 'sum' },
+          { field: 'blocked', as: 'blocked', reducer: 'sum' }
+        ]
+      }
+    }));
     const [domains] = firewall.views;
     expect(domains).toMatchObject({
       id: 'security-firewall-domains',
@@ -186,20 +200,19 @@ describe('dashboard document validation', () => {
       'column-summaries': true,
       layout: 'full-view',
       data: {
-        source: 'firewall-observations',
-        time: { range: '30d' },
-        filters: { decision: ['allowed', 'denied'] },
-        'order-by': [{ field: 'requests', direction: 'desc' }]
+        source: 'firewall-domain-totals',
+        'order-by': [
+          { field: 'blocked', direction: 'desc' },
+          { field: 'accepted', direction: 'desc' },
+          { field: 'domain', direction: 'asc' }
+        ]
       }
     });
     expect(domains.encoding.columns).toEqual([
       { field: 'domain', type: 'nominal' },
-      { field: 'request-count', type: 'quantitative', aggregate: 'sum', as: 'requests', title: 'Requests' },
-      { field: 'run', type: 'nominal', aggregate: 'distinct-count', as: 'runs', title: 'Runs' },
-      { field: 'repository', type: 'nominal', aggregate: 'distinct-count', as: 'repositories', title: 'Repositories' },
-      { field: 'workflow', type: 'nominal', aggregate: 'distinct-count', as: 'workflows', title: 'Workflows' },
-      { field: 'decision', type: 'nominal', aggregate: 'distinct-count', as: 'decisions', title: 'Policy decisions' },
-      { field: 'policy-rule-id', type: 'nominal', aggregate: 'distinct-count', as: 'policy-rules', title: 'Policy rules' }
+      { field: 'run', type: 'quantitative', title: 'Run' },
+      { field: 'accepted', type: 'quantitative', title: 'Accepted' },
+      { field: 'blocked', type: 'quantitative', title: 'Blocked' }
     ]);
     const serialized = JSON.stringify(firewall).toLowerCase();
     expect(serialized).not.toContain('blocked = failure');
@@ -4481,7 +4494,7 @@ dashboard:
       views:
         - id: repository-table
           data:
-            source: repository-activity
+            source: repositories
           mark: table
           controls: interactive
           lazy-list: true
@@ -4670,7 +4683,11 @@ describe('declarative query validation', () => {
     dashboard: {
       id: 'query-dashboard',
       title: 'Query Dashboard',
-      queries,
+      queries: Array.isArray(queries)
+        ? queries.map(query => query && typeof query === 'object'
+          ? { intent: 'Preserve the original query request for future modifications.', ...query }
+          : query)
+        : queries,
       pages: [{
         id: 'derived',
         kind: 'custom',
@@ -4711,6 +4728,19 @@ describe('declarative query validation', () => {
 
   it('accepts a derived query used as a logical source', () => {
     expect(validateDashboardDocument(queryDocument([aicQuery, validQuery])).ok).toBe(true);
+  });
+
+  it('requires a non-empty original intent for every query', () => {
+    for (const intent of [undefined, '', 42]) {
+      const result = validateDashboardDocument(queryDocument([{ ...aicQuery, intent }]));
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.errors).toContainEqual(expect.objectContaining({
+          code: 'DLS-E003',
+          path: '$.dashboard.queries[0].intent'
+        }));
+      }
+    }
   });
 
   it('rejects unknown query sources, duplicate names, and canonical name shadowing', () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   DASHBOARD_QUERY_LIMITS,
   DashboardQueryCancelledError,
@@ -7,6 +8,7 @@ import {
   dashboardQueryOutputFields,
   executeDashboardQueries,
   executeDashboardQuery,
+  paginateDashboardSources,
   resolveDashboardQuerySources
 } from '../../src/data/queries/declarative.js';
 import { computeValue, tidy } from '../../src/data-operations.js';
@@ -44,13 +46,137 @@ const workflows = {
 const usage = {
   source: 'usage',
   rows: [
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', aic: 4 },
-    { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', aic: 6 }
+    {
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1',
+      engine: 'copilot', 'engine-version': '1.2.3', 'requested-model': 'model-a',
+      'resolved-model': 'model-b', 'rollout-mode': 'review', aic: 4,
+      'observed-at': '2026-09-01T00:00:00Z', 'run-link': { href: 'run-1' }
+    },
+    {
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2',
+      engine: 'copilot', 'engine-version': '1.2.4', 'requested-model': 'model-b',
+      'resolved-model': 'model-b', 'rollout-mode': 'live', aic: 6,
+      'observed-at': '2026-09-02T00:00:00Z', 'run-link': { href: 'run-2' }
+    }
   ],
   metadata: metadata('usage', { freshness: 'stale' })
 };
+const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.json`, 'utf8')).dashboard.queries;
 
 describe('declarative dashboard queries', () => {
+  it('continues query results without exposing cursors in query definitions', () => {
+    const sources = {
+      runs: {
+        source: 'runs',
+        rows: ['1005', '1004', '1003', '1002', '1001'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    };
+    const definitions = [{
+      name: 'recent-runs',
+      from: 'runs',
+      'order-by': [{ field: 'run', direction: 'desc' }]
+    }];
+
+    const first = executeDashboardQueries(definitions, sources, ['recent-runs'], {
+      pagination: { 'recent-runs': { limit: 2 } }
+    })['recent-runs'];
+    const second = executeDashboardQueries(definitions, sources, ['recent-runs'], {
+      pagination: {
+        'recent-runs': { limit: 2, continuationToken: first.continuationToken }
+      }
+    })['recent-runs'];
+    const third = executeDashboardQueries(definitions, sources, ['recent-runs'], {
+      pagination: {
+        'recent-runs': { limit: 2, continuationToken: second.continuationToken }
+      }
+    })['recent-runs'];
+
+    expect(first.rows).toEqual([{ run: '1005' }, { run: '1004' }]);
+    expect(second.rows).toEqual([{ run: '1003' }, { run: '1002' }]);
+    expect(third.rows).toEqual([{ run: '1001' }]);
+    expect(first.metadata['total-row-count']).toBe(5);
+    expect(first.continuationToken).toEqual(expect.any(String));
+    expect(second.continuationToken).toEqual(expect.any(String));
+    expect(third.continuationToken).toBeUndefined();
+    expect(definitions[0]).not.toHaveProperty('cursor');
+  });
+
+  it('uses the last monotonic run id to resume after newer runs arrive', () => {
+    const first = paginateDashboardSources({
+      runs: {
+        source: 'runs',
+        rows: ['1005', '1004', '1003'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    }, { runs: { limit: 2 } }).runs;
+    const continued = paginateDashboardSources({
+      runs: {
+        source: 'runs',
+        rows: ['1007', '1006', '1005', '1004', '1003'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    }, {
+      runs: { limit: 2, continuationToken: first.continuationToken }
+    }).runs;
+
+    expect(continued.rows).toEqual([{ run: '1003' }]);
+    expect(continued.continuationToken).toBeUndefined();
+  });
+
+  it('rejects invalid and cross-source continuation tokens', () => {
+    const page = paginateDashboardSources({
+      runs: {
+        source: 'runs',
+        rows: ['2', '1'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    }, { runs: { limit: 1 } }).runs;
+
+    expect(() => paginateDashboardSources({
+      usage: { source: 'usage', rows: [{ run: '2' }, { run: '1' }], metadata: metadata('usage') }
+    }, {
+      usage: { limit: 1, continuationToken: page.continuationToken }
+    })).toThrow('Invalid or stale continuation token for "usage".');
+    expect(() => paginateDashboardSources({
+      runs: { source: 'runs', rows: [], metadata: metadata('runs') }
+    }, {
+      runs: { limit: 1, continuationToken: 'not-a-token' }
+    })).toThrow('Invalid or stale continuation token for "runs".');
+  });
+
+  it('rejects continuations after query or data revisions change', () => {
+    const query = [{ name: 'recent-runs', from: 'runs' }];
+    const source = {
+      runs: {
+        source: 'runs',
+        rows: ['3', '2', '1'].map((run) => ({ run })),
+        metadata: metadata('runs')
+      }
+    };
+    const first = executeDashboardQueries(query, source, ['recent-runs'], {
+      pagination: { 'recent-runs': { limit: 1 } }
+    })['recent-runs'];
+
+    expect(() => executeDashboardQueries(
+      [{ ...query[0], select: [{ field: 'run' }] }],
+      source,
+      ['recent-runs'],
+      { pagination: { 'recent-runs': { limit: 1, continuationToken: first.continuationToken } } }
+    )).toThrow('Invalid or stale continuation token');
+    expect(() => executeDashboardQueries(
+      query,
+      {
+        runs: {
+          ...source.runs,
+          metadata: metadata('runs', { 'as-of': '2026-09-02T00:00:00Z' })
+        }
+      },
+      ['recent-runs'],
+      { pagination: { 'recent-runs': { limit: 1, continuationToken: first.continuationToken } } }
+    )).toThrow('Invalid or stale continuation token');
+  });
+
   it('projects, renames, and orders rows deterministically', () => {
     const result = executeDashboardQuery(
       {
@@ -108,6 +234,191 @@ describe('declarative dashboard queries', () => {
     ]);
     expect(derived.inventory.metadata.freshness).toBe('stale');
     expect(derived['aic-totals'].metadata['query-name']).toBe('aic-totals');
+  });
+
+  it('projects the Models & agents view from its request-scoped dashboard query', () => {
+    const events = {
+      source: 'events',
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+          'event-source': 'agent', 'event-type': 'agent_turn', 'event-summary': 'First turn',
+          'event-timestamp': '2026-09-01T00:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+          'event-source': 'agent', 'event-type': 'assistant_message', 'event-summary': 'Second turn',
+          'event-timestamp': '2026-09-02T00:00:00Z'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+          'event-source': 'gateway', 'event-type': 'tool_call', 'event-timestamp': '2026-09-02T00:01:00Z'
+        }
+      ],
+      metadata: metadata('events')
+    };
+    const runs = {
+      source: 'runs',
+      rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
+      metadata: metadata('runs')
+    };
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { events, runs },
+      ['engines-models-usage']
+    );
+
+    expect(Object.keys(derived)).toEqual(['engines-models-usage']);
+    expect(derived['engines-models-usage']).toMatchObject({
+      source: 'engines-models-usage',
+      rows: [
+        {
+          engine: 'copilot',
+          'engine-version': '1.2.4',
+          'requested-model': 'model-b',
+          'resolved-model': 'model-b',
+          'rollout-mode': 'live',
+          'event-type': 'assistant_message',
+          'event-summary': 'Second turn',
+          repository: 'gh-aw-cao',
+          workflow: 'a.md',
+          'observed-at': '2026-09-02T00:00:00Z',
+          'run-link': { href: 'run-2' }
+        },
+        {
+          engine: 'copilot',
+          'engine-version': '1.2.3',
+          'requested-model': 'model-a',
+          'resolved-model': 'model-b',
+          'rollout-mode': 'review',
+          'event-type': 'agent_turn',
+          'event-summary': 'First turn',
+          repository: 'gh-aw-cao',
+          workflow: 'a.md',
+          'observed-at': '2026-09-01T00:00:00Z',
+          'run-link': { href: 'run-1' }
+        }
+      ],
+      metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
+    });
+  });
+
+  it('projects the event inspection view from its request-scoped dashboard query', () => {
+      const events = {
+        source: 'events',
+        rows: [
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-attempt': 1,
+            session: 'session-1', event: 'event-1', 'event-source': 'agent', 'event-type': 'agent_turn',
+            'event-status': 'completed', 'event-summary': 'First turn', 'correlation-id': 'correlation-1',
+            'source-sequence': 1, 'event-timestamp': '2026-09-01T00:00:00Z'
+          },
+          {
+            organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-attempt': 1,
+            session: 'session-2', event: 'event-2', 'event-source': 'gateway', 'event-type': 'tool_call',
+            'event-status': 'started', 'event-summary': 'Second turn', 'correlation-id': 'correlation-2',
+            'source-sequence': 2, 'event-timestamp': '2026-09-02T00:00:00Z'
+          }
+        ],
+        metadata: metadata('events')
+      };
+      const runs = {
+        source: 'runs',
+        rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
+        metadata: metadata('runs')
+      };
+      const derived = executeDashboardQueries(
+        dashboardQueries,
+        { events, runs },
+        ['event-inspection']
+      );
+
+      expect(derived['event-inspection'].rows).toEqual([
+        expect.objectContaining({
+          event: 'event-2',
+          'event-source': 'gateway',
+          'event-type': 'tool_call',
+          'observed-at': '2026-09-02T00:00:00Z',
+          'run-link': { href: 'run-2' }
+        }),
+        expect.objectContaining({
+          event: 'event-1',
+          'event-source': 'agent',
+          'event-type': 'agent_turn',
+          'observed-at': '2026-09-01T00:00:00Z',
+          'run-link': { href: 'run-1' }
+        })
+      ]);
+    });
+
+  it('computes the Repositories and Packages view payloads from dashboard queries', () => {
+    const repositories = {
+      source: 'repositories',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'repository-link': { href: 'repo' } }],
+      metadata: metadata('repositories')
+    };
+    const queryWorkflows = {
+      source: 'workflows',
+      rows: [
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
+          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'orchestrator',
+          'rollout-mode': 'review', 'workflow-active': 'true'
+        },
+        {
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'b.md',
+          package: 'aw-doctor', 'package-name': 'AW Doctor', 'workflow-role': 'worker',
+          'rollout-mode': 'review', 'workflow-active': 'false'
+        }
+      ],
+      metadata: metadata('workflows')
+    };
+    const runs = {
+      source: 'runs',
+      rows: [
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-conclusion': 'failure' },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-conclusion': 'success' }
+      ],
+      metadata: metadata('runs')
+    };
+    const outcomes = {
+      source: 'outcomes',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'safe-output': 'report-1' }],
+      metadata: metadata('outcomes')
+    };
+    const operationalValues = {
+      source: 'operational-values',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', 'operational-value': 1 }],
+      metadata: metadata('operational-values')
+    };
+
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { repositories, workflows: queryWorkflows, runs, outcomes, 'operational-values': operationalValues, usage },
+      ['repository-activity', 'package-inventory']
+    );
+
+    expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
+      repository: 'githubnext/gh-aw-cao',
+      workflows: 2,
+      reports: 1,
+      'evaluated-workflows': 1,
+      runs: 2,
+      'failure-summary': '50% · 1 failed',
+      aic: 10,
+      status: 'Needs attention'
+    })]);
+    expect(derived['package-inventory'].rows).toEqual([{
+      package: 'aw-doctor',
+      'package-name': 'AW Doctor',
+      workflows: 2,
+      repositories: 1,
+      roles: 'orchestrator, worker',
+      modes: 'review',
+      registration: 'false, true',
+      runs: 2,
+      aic: 10
+    }]);
   });
 
   it('drops unmatched rows for inner joins and keeps them for left joins', () => {
@@ -249,6 +560,17 @@ describe('declarative dashboard queries', () => {
     expect(defects.get('left-cycle')).toBe('query "left-cycle" and input source "right-cycle" form a dependency cycle');
     expect(defects.get('right-cycle')).toBe('input source "left-cycle" is a rejected query');
     expect(defects.has('late')).toBe(false);
+  });
+
+  it('reports a requested cyclic query as unavailable without recursing', () => {
+    const result = executeDashboardQueries(
+      [{ name: 'cyclic', from: 'cyclic' }],
+      {},
+      ['cyclic']
+    );
+
+    expect(result.cyclic.metadata.availability).toBe('unavailable');
+    expect(result.cyclic.metadata['query-diagnostic']).toContain('reads itself');
   });
 
   it('rejects duplicate query names instead of resolving one arbitrarily', () => {
@@ -404,6 +726,14 @@ describe('computed field vocabulary', () => {
     expect(compute('trim', [{ value: '  spaced  ' }])).toBe('spaced');
     expect(compute('url-encode', [{ value: 'a/b' }])).toBe('a%2Fb');
     expect(compute('concat', [{ field: 'missing' }, { value: 'tail' }])).toBe('tail');
+    expect(compute('format-count', [{ value: 1234 }])).toBe('1,234');
+    expect(compute('format-percent', [{ value: 0.5 }])).toBe('50%');
+  });
+
+  it('evaluates conditional functions deterministically', () => {
+    expect(compute('equals-any', [{ value: 'failure' }, { value: 'failure' }, { value: 'success' }])).toBe(true);
+    expect(compute('greater-than', [{ value: 2 }, { value: 1 }])).toBe(true);
+    expect(compute('if', [{ value: true }, { value: 'yes' }, { value: 'no' }])).toBe('yes');
   });
 
   it('evaluates every numeric function and returns null for unusable inputs', () => {

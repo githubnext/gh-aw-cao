@@ -287,6 +287,40 @@ describe('renderTableRegion', () => {
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 50 of 60 results');
   });
 
+  it('loads lazy-list rows from a continuation token', async () => {
+    const load = vi.fn(async () => ({
+      rows: Array.from({ length: 5 }, (_, index) => h(
+        'tr',
+        null,
+        h('td', null, String(index + 6))
+      )).filter((row) => row instanceof HTMLTableRowElement),
+      continuationToken: undefined
+    }));
+    const rendered = renderTableRegion({
+      tableClassName: 'custom-table',
+      emptyMessage: 'No runs available.',
+      colSpan: 1,
+      headCells: ['Run'],
+      bodyRows: Array.from({ length: 5 }, (_, index) => h(
+        'tr',
+        null,
+        h('td', null, String(index + 1))
+      )),
+      filterLabel: 'Filter runs',
+      lazyList: true,
+      pageSize: 5,
+      continuation: { token: 'next-page', totalRows: 10, load }
+    });
+
+    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 5 of 10 results');
+    /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]')).click();
+    await vi.waitFor(() => expect(rendered.querySelectorAll('tbody > tr')).toHaveLength(10));
+
+    expect(load).toHaveBeenCalledWith('next-page');
+    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 10 of 10 results');
+    expect(rendered.querySelector('[data-table-more]')?.hasAttribute('hidden')).toBe(true);
+  });
+
   it('unloads lazy-list prefix rows without moving the retained rows', () => {
     const rows = Array.from({ length: 100 }, (_, index) => h(
       'tr',

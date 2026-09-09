@@ -809,6 +809,26 @@ Persistence SHALL occur separately:
 await writer.write(batch);
 ```
 
+## 15.1 Missing Data
+
+A missing canonical data point MUST NOT immediately be treated as zero, empty, or unavailable.
+
+Before classifying it as missing, an implementation agent SHALL inspect the current [`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json) and determine whether any field in the applicable output variant contains an authoritative observation that can be normalized into the canonical model. This inspection SHALL include nested and aggregate structures, not only fields whose names match the canonical property.
+
+This discovery and normalization SHALL run in the activity-package JavaScript invoked by `.github/workflows/activity.yml`, before the activity snapshot is published. The workflow YAML orchestrates that JavaScript and MUST NOT embed source-field mappings.
+
+When the schema exposes suitable data, the activity-package source adapter SHOULD normalize it. The mapping MUST:
+
+1. be explicit, deterministic, and covered by a fixture-based test;
+2. preserve source provenance and the schema revision used to establish the mapping;
+3. respect the field's scope, units, nullability, and required or optional status;
+4. distinguish an absent field from an explicit `null`, empty collection, zero, and `false`; and
+5. avoid deriving run-level facts from summaries unless the schema defines that attribution.
+
+The `gh aw logs` schema is a discovery surface for source adapters, not a canonical dashboard contract. Views MUST NOT read its fields directly, and similarity of field names alone is insufficient evidence for a mapping.
+
+If the schema defines a suitable field but the collected log does not contain it, the activity-package source adapter MUST preserve the data point as unknown and record why it is missing, including whether the cause is an unsupported schema variant, an older producer, an unavailable artifact, an uncollected optional field, or invalid source data. If no semantically valid field exists, the data point MUST remain explicitly unknown rather than being guessed or coerced.
+
 ---
 
 # 16. Canonical Identity
@@ -2567,6 +2587,8 @@ The implementation SHALL be guided by the following rules:
 
 **Central Agentic Ops dashboard source schemas** — Existing published dashboard JSON contracts SHALL be treated as source inputs during migration.
 
+**[`gh aw logs` schema](https://github.com/github/gh-aw/blob/main/schemas/logs.schema.json)** — The current command output contract SHALL be inspected for observations that can fill missing canonical data through source adapters.
+
 **gh-aw operational artifacts** — Agent, tool, gateway, firewall, safe-output, and execution observations provide candidate Session Event sources.
 
 ---
@@ -2580,6 +2602,7 @@ The implementation SHALL be guided by the following rules:
 * Defined canonical Repository → Workflow → Run → Job → Session → Event hierarchy.
 * Defined Session as heterogeneous operational transaction log.
 * Defined deterministic source adapters and normalization layer.
+* Defined missing-data discovery and normalization from the `gh aw logs` schema.
 * Defined IndexedDB as disposable derived state.
 * Added generation-aware browser storage.
 * Added staging and atomic active-generation replacement.

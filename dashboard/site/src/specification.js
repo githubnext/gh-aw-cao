@@ -23,7 +23,7 @@ export const ROOT_KEYS = ['language-version', 'dashboard'];
 export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
 
-export const QUERY_KEYS = ['name', 'description', 'from', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
+export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];
 export const QUERY_JOIN_TYPE_VALUES = ['inner', 'left'];
 export const QUERY_JOIN_ON_KEYS = ['left', 'right'];
@@ -34,7 +34,7 @@ export const QUERY_COMPUTE_KEYS = ['as', 'function', 'args'];
 export const QUERY_COMPUTE_ARGUMENT_KEYS = ['field', 'value'];
 export const QUERY_AGGREGATE_KEYS = ['by', 'values'];
 export const QUERY_AGGREGATE_VALUE_KEYS = ['field', 'as', 'reducer'];
-export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'sum', 'mean', 'min', 'max'];
+export const QUERY_REDUCER_VALUES = ['count', 'distinct-count', 'distinct-list', 'sum', 'mean', 'min', 'max'];
 export const QUERY_SELECT_KEYS = ['field', 'as'];
 export const QUERY_NUMERIC_REDUCER_VALUES = ['sum', 'mean', 'min', 'max'];
 export const INFERRED_FIELD_NAMES = ['package-link'];
@@ -314,6 +314,7 @@ export const SOURCE_VALUES = [
   'repositories',
   'workflows',
   'runs',
+  'events',
   'admissions',
   'admission-checks',
   'run-performance',
@@ -375,7 +376,6 @@ export const SOURCE_VALUES = [
   'dispatch-activation-summary',
   'package-dispatch-state',
   'repository-summary',
-  'repository-activity',
   'repository-detail-summary',
   'repository-workflow-status',
   'repository-workflow-usage',

@@ -17,6 +17,7 @@ import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from '
 import { renderDataView } from './components/data-view.js';
 import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
+import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { processDataHealthSources, processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -26,6 +27,7 @@ import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
+import { sourceContinuation } from './data/continuation.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -36,7 +38,7 @@ import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-
  */
 
 /**
- * @typedef {{ source: string, rows: Array<Record<string, unknown>>, metadata: SourceMetadata }} LogicalSourceInput
+ * @typedef {{ source: string, rows: Array<Record<string, unknown>>, metadata: SourceMetadata, continuationToken?: string, loadContinuation?: (token: string) => Promise<LogicalSourceInput> }} LogicalSourceInput
  */
 
 /**
@@ -150,6 +152,7 @@ export function dashboardPageSourceNames(document, pageId) {
   for (const view of payload.views ?? []) {
     for (const sourceName of getViewSources(view)) names.add(sourceName);
   }
+
   for (const section of payload.sections ?? []) {
     if (typeof section['count-source'] === 'string') names.add(section['count-source']);
   }
@@ -157,6 +160,21 @@ export function dashboardPageSourceNames(document, pageId) {
     if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
   }
   return [...names];
+}
+
+/**
+ * Returns sources rendered by lazy-list views without exposing pagination in
+ * the dashboard query language.
+ * @param {PresentationDocument} document
+ * @param {string} pageId
+ */
+export function dashboardPageLazySourceNames(document, pageId) {
+  const page = document.dashboard.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return [];
+  const payload = page.kind === 'built-in' ? getBuiltInPagePayload(page) : page;
+  return [...new Set((payload.views ?? []).flatMap((view) =>
+    isPlainObject(view) && view['lazy-list'] === true ? getViewSources(view) : []
+  ))];
 }
 
 /**
@@ -579,7 +597,7 @@ function enableThemeToggle(root) {
   if (!(menu instanceof HTMLDetailsElement)) return;
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
-    if (event.target.closest('.account-menu-settings') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
+    if (event.target.closest('.account-menu-action') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
   });
   menu.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -734,11 +752,35 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
               settingsPage
                 ? h(
                   'a',
-                  { className: 'account-menu-settings', href: `#page-${encodeURIComponent(settingsPage.id)}` },
+                  { className: 'account-menu-settings account-menu-action', href: `#page-${encodeURIComponent(settingsPage.id)}` },
                   octicon('gear'),
                   h('span', null, 'Settings')
                 )
                 : null,
+              dashboardRepository
+                ? h(
+                  'a',
+                  {
+                    className: 'refresh-button account-menu-action',
+                    href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
+                    title: REFRESH_WORKFLOW_DESCRIPTION,
+                    'aria-label': REFRESH_WORKFLOW_DESCRIPTION
+                  },
+                  octicon('sync'),
+                  h('span', null, 'Refresh')
+                )
+                : h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'refresh-button account-menu-action',
+                    title: REFRESH_CONTROL_DESCRIPTION,
+                    'aria-label': REFRESH_CONTROL_DESCRIPTION,
+                    onclick: () => window.location.reload()
+                  },
+                  octicon('sync'),
+                  h('span', null, 'Refresh')
+                ),
               h(
                 'fieldset',
                 { className: 'appearance-settings' },
@@ -750,7 +792,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   h('button', { type: 'button', dataset: { themeValue: 'light' }, 'aria-pressed': 'false' }, octicon('sun'), h('span', null, 'Light')),
                   h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
-              )
+              ),
+              renderResetDashboardControl()
             )
           )
         )
@@ -779,31 +822,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h('span', null, 'Last updated'),
         h('time', { dateTime: evaluatedAt }, `${formatReportDate(evaluatedAt)} UTC`),
         h('span', { className: 'report-footer-provenance' }, '· Generated deterministically from dashboard data.')
-      ),
-      dashboardRepository
-        ? h(
-          'a',
-          {
-            className: 'refresh-button',
-            href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
-            title: REFRESH_WORKFLOW_DESCRIPTION,
-            'aria-label': REFRESH_WORKFLOW_DESCRIPTION
-          },
-          octicon('sync'),
-          h('span', null, 'Refresh')
-        )
-        : h(
-          'button',
-          {
-            type: 'button',
-            className: 'refresh-button',
-            title: REFRESH_CONTROL_DESCRIPTION,
-            'aria-label': REFRESH_CONTROL_DESCRIPTION,
-            onclick: () => window.location.reload()
-          },
-          octicon('sync'),
-          h('span', null, 'Refresh')
-        )
+      )
     )
   );
 }
@@ -1167,7 +1186,6 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
       'data-route-navigation-page': routeNavigationPage
     },
     filterBar,
-    renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
@@ -1776,37 +1794,9 @@ async function renderCustomPageAsync(page, title, sources, units, dashboardDefau
       'data-route-navigation-page': routeNavigationPage
     },
     ...(filterBar ? [filterBar] : []),
-    renderFirewallDataWarning(page.id, sources),
     ...(renderedViews.length > 0
       ? [renderHiddenDataStateMetrics(summarizeDataState(pageSources)), renderedContent]
       : [h('p', null, 'No custom views available.')])
-  );
-}
-
-/**
- * @param {string} pageId
- * @param {Record<string, LogicalSourceInput>} sources
- * @returns {HTMLElement | null}
- */
-function renderFirewallDataWarning(pageId, sources) {
-  if (pageId !== 'firewall' || sources['firewall-observations']?.metadata?.availability === 'available') {
-    return null;
-  }
-  return h(
-    'aside',
-    { className: 'dashboard-callout firewall-data-warning', role: 'alert', 'data-firewall-data-warning': '' },
-    h(
-      'div',
-      { className: 'dashboard-callout-heading' },
-      octicon('alert'),
-      h(
-        'div',
-        null,
-        h('span', { className: 'scope-kicker' }, 'Data warning'),
-        h('h3', null, 'Firewall data is corrupted')
-      )
-    ),
-    h('p', null, 'Firewall evidence is unavailable. Refresh the dashboard data before relying on this view.')
   );
 }
 
@@ -1944,6 +1934,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
+  const sourcePage = view['lazy-list'] === true ? sourceContinuation(sourceInput) : undefined;
   const rendered = renderDataView(typeof view.mark === 'string' ? view.mark : '', {
     pageId,
     title,
@@ -1957,7 +1948,17 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     prepareTableRows,
     buildChartPoints,
     prepareChartPoints,
-    toText
+    toText,
+    continuation: sourcePage ? {
+      ...sourcePage,
+      load: async (token) => {
+        const next = await sourcePage.load(token);
+        return {
+          rows: filterRowsForView(next?.rows ?? [], view.data),
+          continuationToken: next?.continuationToken
+        };
+      }
+    } : undefined
   });
   if (rendered) return rendered;
 
