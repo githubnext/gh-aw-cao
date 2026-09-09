@@ -4,7 +4,7 @@
  */
 
 /**
- * @typedef {{ run: () => void, schedule: () => void, stop: () => void, _computed: boolean, _registerCleanup: (cleanup: () => void) => void }} EffectHandle
+ * @typedef {{ run: () => void, schedule: () => void, stop: () => void, _computed: boolean, _stopped: boolean, _registerCleanup: (cleanup: () => void) => void }} EffectHandle
  */
 
 /** @type {EffectHandle | null} */
@@ -62,17 +62,19 @@ export function onCleanup(cleanup) {
 
 /**
  * @param {() => void} fn
- * @param {{ computed?: boolean }} [options]
+ * @param {{ computed?: boolean, signal?: AbortSignal }} [options]
  * @returns {EffectHandle}
  */
 export function effect(fn, options = {}) {
   /** @type {Set<() => void>} */
   const cleanups = new Set();
   let stopped = false;
+  const stopFromSignal = () => handle.stop();
 
   /** @type {EffectHandle} */
   const handle = {
     _computed: options.computed === true,
+    _stopped: false,
     run() {
       if (stopped) return;
       for (const cleanup of cleanups) {
@@ -98,22 +100,28 @@ export function effect(fn, options = {}) {
     stop() {
       if (stopped) return;
       stopped = true;
+      handle._stopped = true;
+      options.signal?.removeEventListener('abort', stopFromSignal);
       pendingEffects.delete(handle);
       pendingComputations.delete(handle);
       for (const cleanup of cleanups) {
         cleanup();
       }
       cleanups.clear();
-      if (activeEffect === handle) {
-        activeEffect = null;
-      }
     },
     _registerCleanup(cleanup) {
-      cleanups.add(cleanup);
+      if (stopped) cleanup();
+      else cleanups.add(cleanup);
     }
   };
 
-  handle.run();
+  if (options.signal?.aborted) {
+    stopped = true;
+    handle._stopped = true;
+  } else {
+    options.signal?.addEventListener('abort', stopFromSignal, { once: true });
+    handle.run();
+  }
   return handle;
 }
 
@@ -129,7 +137,7 @@ export function state(initialValue) {
 
   return {
     get() {
-      if (activeEffect) {
+      if (activeEffect && !activeEffect._stopped) {
         const subscriber = activeEffect;
         const listener = () => subscriber.schedule();
         listeners.add(listener);

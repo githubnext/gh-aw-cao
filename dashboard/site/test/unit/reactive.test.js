@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { batch, derived, effect, onCleanup, state } from '../../src/reactive.js';
 import { h, keyed } from '../../src/dom.js';
 
@@ -102,6 +102,34 @@ describe('reactive core', () => {
 
     expect(cleaned).toEqual(['a', 'b']);
     expect(() => onCleanup(() => {})).toThrow('inside an effect');
+  });
+
+  it('DLS-CONF-004 stops effects when their owner signal aborts', () => {
+    const controller = new AbortController();
+    const value = state(1);
+    /** @type {number[]} */
+    const seen = [];
+    effect(() => seen.push(value.get()), { signal: controller.signal });
+
+    controller.abort();
+    value.set(2);
+
+    expect(seen).toEqual([1]);
+  });
+
+  it('DLS-CONF-004 completes cleanup when an effect aborts its owner while running', () => {
+    const controller = new AbortController();
+    const cleanup = vi.fn();
+    const value = state(1);
+
+    effect(() => {
+      controller.abort();
+      onCleanup(cleanup);
+      value.get();
+    }, { signal: controller.signal });
+    value.set(2);
+
+    expect(cleanup).toHaveBeenCalledOnce();
   });
 
   it('DLS-CONF-004 builds DOM trees with text and attributes', () => {

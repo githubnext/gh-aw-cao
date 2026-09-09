@@ -17,7 +17,7 @@ import { deriveDashboardLinkSources } from './inferred-sources.js';
 /** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
 let liveDashboard = null;
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }> }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, generation: string | null }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -112,15 +112,20 @@ async function flushDashboardSubscriptions() {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) return;
         try {
+          const pagination = subscription.generation === dashboard.generation
+            ? subscription.pagination
+            : resetPagination(subscription.pagination);
           const data = await queryLiveDashboard(
             new Set(subscription.sourceNames),
             subscription.context,
             subscription.requestContext,
             undefined,
-            subscription.pagination,
+            pagination,
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
+            subscription.generation = dashboard.generation;
+            subscription.pagination = pagination;
             self.postMessage({ subscriptionId: id, generation: dashboard.generation, data });
           }
         } catch (error) {
@@ -131,6 +136,14 @@ async function flushDashboardSubscriptions() {
               error: error instanceof Error ? error.message : String(error)
             });
           }
+        }
+
+        /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
+        function resetPagination(pagination) {
+          return Object.fromEntries(Object.entries(pagination).map(([source, request]) => [
+            source,
+            { limit: request.limit }
+          ]));
         }
       }));
     }
@@ -302,9 +315,10 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         sourceNames: [...requestedSourceNames(event.data.sourceNames)],
         context,
         requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
-        pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {})
+        pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
+        generation: liveDashboard?.generation ?? null
       });
-      scheduleDashboardSubscriptions([subscriptionId]);
+      if (liveDashboard) scheduleDashboardSubscriptions([subscriptionId]);
       return;
     }
     if (event.data?.operation === 'unsubscribe-canonical-dashboard') {
