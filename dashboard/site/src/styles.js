@@ -318,9 +318,9 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-icon { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
 .account-menu-icon:hover, .account-menu[open] .account-menu-icon { background: var(--neutral-muted); color: var(--fg); box-shadow: none; }
 .account-menu-popover { width: 260px; display: grid; gap: 8px; position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
-.account-menu-settings { min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; color: var(--fg); font-size: .8125rem; font-weight: 500; text-decoration: none; }
-.account-menu-settings:hover { background: var(--neutral-muted); }
-.account-menu-settings .octicon { width: 15px; height: 15px; color: var(--muted); }
+.account-menu-action { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+.account-menu-action:hover { background: var(--neutral-muted); }
+.account-menu-action .octicon { width: 15px; height: 15px; color: var(--muted); }
 .appearance-settings { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
 .appearance-settings legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1837,7 +1837,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .report-actions { width: 100%; position: relative; margin-left: 0; }
   .report-actions .tooltip-help { position: static; }
   .report-actions .tooltip-content { width: min(320px, 100%); right: auto; left: 0; }
-  .refresh-button > span { display: none; }
   .report-footer-provenance { display: none; }
   .overview-header { flex-basis: 100%; }
   .toolbar { align-items: stretch; flex-wrap: wrap; }
