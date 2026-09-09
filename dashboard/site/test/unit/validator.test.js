@@ -118,7 +118,7 @@ describe('dashboard document validation', () => {
       })
     ]);
     expect(apiPage.views[0].data).toMatchObject({
-      source: 'github-api-rate-limits'
+      source: 'github-api-events'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
@@ -240,21 +240,15 @@ describe('dashboard document validation', () => {
           'lazy-list': true,
           layout: 'full-view',
           data: {
-            source: 'mcp-calls',
-            'order-by': [{ field: 'observed-at', direction: 'desc' }]
+            source: 'mcp-tool-activity'
           }
         }
       ]
     });
     expect(mcps.views).toHaveLength(1);
     expect(mcps.views[0].encoding.columns.map((/** @type {{ field: string }} */ column) => column.field)).toEqual([
-      'mcp-server',
       'mcp-tool',
-      'mcp-server-version',
-      'mcp-protocol-version',
-      'gh-aw-version',
       'mcp-status',
-      'response-bytes',
       'repository',
       'workflow',
       'run',

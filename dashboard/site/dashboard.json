@@ -306,6 +306,129 @@
         }
       },
       {
+        "name": "mcp-tool-results",
+        "intent": "Identify completed MCP tool calls by correlation id.",
+        "description": "Successful tool results keyed to their originating call.",
+        "from": "events",
+        "filter": {
+          "predicates": [
+            { "field": "event-type", "equals": "tool.result" }
+          ]
+        },
+        "compute": [
+          {
+            "as": "result-status",
+            "function": "coalesce",
+            "args": [
+              { "field": "event-status" },
+              { "value": "success" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "correlation-id" },
+          { "field": "result-status" }
+        ]
+      },
+      {
+        "name": "mcp-tool-errors",
+        "intent": "Identify failed MCP tool calls by correlation id.",
+        "description": "Tool errors keyed to their originating call.",
+        "from": "events",
+        "filter": {
+          "predicates": [
+            { "field": "event-type", "equals": "tool.error" }
+          ]
+        },
+        "compute": [
+          {
+            "as": "error-status",
+            "function": "coalesce",
+            "args": [
+              { "field": "event-status" },
+              { "value": "failure" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "correlation-id" },
+          { "field": "error-status" }
+        ]
+      },
+      {
+        "name": "mcp-tool-activity",
+        "intent": "List MCP tool calls with their correlated result or error.",
+        "description": "Tool calls joined to completion events and projected for the MCP activity view.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          },
+          {
+            "source": "mcp-tool-results",
+            "type": "left",
+            "on": [
+              { "left": "correlation-id", "right": "correlation-id" }
+            ],
+            "fields": [
+              { "field": "result-status", "as": "tool-result-status" }
+            ]
+          },
+          {
+            "source": "mcp-tool-errors",
+            "type": "left",
+            "on": [
+              { "left": "correlation-id", "right": "correlation-id" }
+            ],
+            "fields": [
+              { "field": "error-status", "as": "tool-error-status" }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            { "field": "event-type", "equals": "tool.call" }
+          ]
+        },
+        "compute": [
+          {
+            "as": "mcp-status",
+            "function": "coalesce",
+            "args": [
+              { "field": "tool-error-status" },
+              { "field": "tool-result-status" },
+              { "value": "missing" }
+            ]
+          }
+        ],
+        "select": [
+          { "field": "event-summary", "as": "mcp-tool" },
+          { "field": "mcp-status" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "linked-run", "as": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
         "name": "event-inspection",
         "intent": "Inspect observed workflow events with their execution context and run navigation.",
         "description": "Observed workflow events ordered from newest to oldest with their source, status, identity, and run context.",
@@ -392,6 +515,54 @@
           { "field": "repository" },
           { "field": "workflow" },
           { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "linked-run", "as": "run-link" }
+        ],
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "github-api-events",
+        "intent": "List canonical GitHub API request, response, rate-limit, and error events.",
+        "description": "Observed GitHub API events with run and correlation context.",
+        "from": "events",
+        "joins": [
+          {
+            "source": "runs",
+            "type": "left",
+            "on": [
+              { "left": "organization", "right": "organization" },
+              { "left": "repository", "right": "repository" },
+              { "left": "workflow", "right": "workflow" },
+              { "left": "run", "right": "run" },
+              { "left": "run-attempt", "right": "run-attempt" }
+            ],
+            "fields": [
+              { "field": "run-link", "as": "linked-run" }
+            ]
+          }
+        ],
+        "filter": {
+          "predicates": [
+            {
+              "field": "event-type",
+              "includes": "github-api."
+            }
+          ]
+        },
+        "select": [
+          { "field": "event-timestamp", "as": "observed-at" },
+          { "field": "event-type" },
+          { "field": "event-summary" },
+          { "field": "event-status" },
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "correlation-id" },
           { "field": "linked-run", "as": "run-link" }
         ],
         "order-by": [
@@ -1001,30 +1172,22 @@
       {
         "id": "github-api",
         "kind": "custom",
-        "title": "GitHub API Rate Limits",
+        "title": "GitHub API",
         "navigation-label": "GitHub API",
         "icon": "meter",
         "class-name": "github-api-page",
-        "description": "Raw GitHub API quota checkpoints by resource and credential.",
+        "description": "Canonical GitHub API requests, responses, rate limits, and errors.",
         "views": [
           {
             "id": "github-api-observations",
-            "title": "Raw quota observations",
-            "description": "Detailed GitHub quota checkpoints retain calculation inputs and correlation state for diagnostics.",
+            "title": "GitHub API events",
+            "description": "Request, response, rate-limit, and error events retain run and correlation context for diagnostics.",
             "data": {
-              "source": "github-api-rate-limits",
+              "source": "github-api-events",
               "order-by": [
                 {
                   "field": "observed-at",
                   "direction": "desc"
-                },
-                {
-                  "field": "resource",
-                  "direction": "asc"
-                },
-                {
-                  "field": "credential",
-                  "direction": "asc"
                 }
               ]
             },
@@ -1032,7 +1195,7 @@
             "controls": "interactive",
             "lazy-list": true,
             "layout": "full-view",
-            "empty-message": "No rate-limit observations match the selected credential, resource, and time range.",
+            "empty-message": "No GitHub API events were observed in the selected time range.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -1045,65 +1208,39 @@
                   "title": "Observed"
                 },
                 {
-                  "field": "operation",
+                  "field": "event-type",
                   "type": "nominal",
-                  "title": "Operation"
+                  "title": "Event"
                 },
                 {
-                  "field": "phase",
+                  "field": "event-summary",
                   "type": "nominal",
-                  "title": "Phase"
+                  "title": "Summary"
                 },
                 {
-                  "field": "resource",
+                  "field": "event-status",
                   "type": "nominal",
-                  "title": "Resource"
+                  "title": "Status"
                 },
                 {
-                  "field": "remaining-percent",
-                  "type": "quantitative",
-                  "title": "Remaining",
-                  "unit": "percent"
-                },
-                {
-                  "field": "remaining",
-                  "type": "quantitative",
-                  "title": "Requests remaining"
-                },
-                {
-                  "field": "used",
-                  "type": "quantitative",
-                  "title": "Requests used"
-                },
-                {
-                  "field": "limit",
-                  "type": "quantitative",
-                  "title": "Limit"
-                },
-                {
-                  "field": "reset-at",
-                  "type": "temporal",
-                  "title": "Reset (UTC)"
-                },
-                {
-                  "field": "credential",
+                  "field": "repository",
                   "type": "nominal",
-                  "title": "Credential"
+                  "title": "Repository"
                 },
                 {
-                  "field": "operation-execution-id",
+                  "field": "workflow",
                   "type": "nominal",
-                  "title": "Execution"
+                  "title": "Workflow"
                 },
                 {
-                  "field": "consumed-since-previous",
-                  "type": "quantitative",
-                  "title": "Consumed since previous"
-                },
-                {
-                  "field": "attribution-status",
+                  "field": "run",
                   "type": "nominal",
-                  "title": "Attribution"
+                  "title": "Run"
+                },
+                {
+                  "field": "correlation-id",
+                  "type": "nominal",
+                  "title": "Correlation"
                 }
               ]
             }
@@ -1256,20 +1393,14 @@
         "navigation-label": "MCPs",
         "icon": "mcp",
         "class-name": "mcps-page",
-        "description": "Diagnose MCP reliability, response payload sizes, and observed server versions across agentic workflow runs.",
+        "description": "Diagnose MCP tool reliability across agentic workflow runs.",
         "views": [
           {
             "id": "mcp-tool-inventory",
             "title": "MCP tools",
-            "description": "Individual MCP tool calls, response payload sizes, and available server versions remain attributable to workflow runs.",
+            "description": "Individual MCP tool calls and outcomes remain attributable to workflow runs.",
             "data": {
-              "source": "mcp-calls",
-              "order-by": [
-                {
-                  "field": "observed-at",
-                  "direction": "desc"
-                }
-              ]
+              "source": "mcp-tool-activity"
             },
             "mark": "table",
             "controls": "interactive",
@@ -1279,40 +1410,15 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "mcp-server",
-                  "type": "nominal",
-                  "title": "MCP server"
-                },
-                {
                   "field": "mcp-tool",
                   "type": "nominal",
                   "title": "MCP tool"
-                },
-                {
-                  "field": "mcp-server-version",
-                  "type": "nominal",
-                  "title": "Server version"
-                },
-                {
-                  "field": "mcp-protocol-version",
-                  "type": "nominal",
-                  "title": "Protocol version"
-                },
-                {
-                  "field": "gh-aw-version",
-                  "type": "nominal",
-                  "title": "gh-aw version"
                 },
                 {
                   "field": "mcp-status",
                   "type": "ordinal",
                   "title": "Status",
                   "display": "status"
-                },
-                {
-                  "field": "response-bytes",
-                  "type": "quantitative",
-                  "title": "Response bytes"
                 },
                 {
                   "field": "repository",
