@@ -2126,6 +2126,7 @@ function validateQueries(queries, queriesNode, errors) {
     }
     validateObjectKeys(queryNode, QUERY_KEYS, path, errors);
     validateRequiredIdentifier(query.name, `${path}.name`, 'query name', errors);
+    validateStringField(query.intent, `${path}.intent`, true, errors);
     validateOptionalStringField(query.description, `${path}.description`, errors);
     const name = typeof query.name === 'string' ? query.name : null;
     if (name && (SOURCE_VALUES.includes(name) || declared.has(name))) {
