@@ -12,6 +12,31 @@ const FIREWALL_HORIZON_DAYS = 30;
 
 const MAX_SECURITY_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_SECURITY_FILES = 2_000;
+const MAX_SECURITY_DIRECTORIES = 2_000;
+
+async function resolveRunRoot(outputDirectory, runId) {
+  const target = `run-${runId}`;
+  const direct = path.join(outputDirectory, target);
+  const pending = [path.resolve(outputDirectory)];
+  let visited = 0;
+  while (pending.length > 0 && visited < MAX_SECURITY_DIRECTORIES) {
+    const current = pending.pop();
+    visited += 1;
+    let entries;
+    try {
+      entries = await readdir(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+      const candidate = path.join(current, entry.name);
+      if (entry.name === target) return candidate;
+      pending.push(candidate);
+    }
+  }
+  return direct;
+}
 
 async function securityFiles(root) {
   const files = [];
@@ -46,7 +71,7 @@ async function readBounded(file) {
 }
 
 export async function readRunTimeline(outputDirectory, runId, sessionId) {
-  const runRoot = path.join(outputDirectory, `run-${runId}`);
+  const runRoot = await resolveRunRoot(outputDirectory, runId);
   const files = await securityFiles(runRoot);
   const selected = files.filter((file) => {
     const relativePath = relativeEvidencePath(runRoot, file);
@@ -321,7 +346,7 @@ function validThreatVerdict(value) {
 
 export async function readRunSecurityTelemetry(outputDirectory, runId) {
   const telemetry = emptySecurityTelemetry();
-  const runRoot = path.join(outputDirectory, `run-${runId}`);
+  const runRoot = await resolveRunRoot(outputDirectory, runId);
   const files = await securityFiles(runRoot);
   const auditFile = files.find((file) => path.basename(file) === "audit.json");
   if (auditFile) {
@@ -448,7 +473,7 @@ function tokenUsage(run) {
 }
 
 async function readRunEvals(outputDirectory, runId) {
-  const runRoot = path.join(outputDirectory, `run-${runId}`);
+  const runRoot = await resolveRunRoot(outputDirectory, runId);
   const files = await securityFiles(runRoot);
   const evalFiles = files.filter((file) => path.basename(file) === "evals.jsonl");
   const observations = [];

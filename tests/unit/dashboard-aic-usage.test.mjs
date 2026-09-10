@@ -14,9 +14,13 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   const outputPath = path.join(root, "aic-usage.json");
   const logsPath = path.join(root, "gh-aw-logs.json");
   const cachePath = path.join(root, "cache");
-  await mkdir(path.join(cachePath, "run-42", "evals"), { recursive: true });
-  await writeFile(path.join(cachePath, "run-42", "evals", "evals.jsonl"),
+  const runPath = path.join(cachePath, "repo-githubnext-gh-aw-cao", "workflow-data", "run-42");
+  await mkdir(path.join(runPath, "evals"), { recursive: true });
+  await mkdir(path.join(runPath, "sandbox", "firewall", "logs"), { recursive: true });
+  await writeFile(path.join(runPath, "evals", "evals.jsonl"),
     `${JSON.stringify({ id: "quality", answer: "YES", runid: "42", timestamp: "2026-08-30T10:05:00Z" })}\n`);
+  await writeFile(path.join(runPath, "sandbox", "firewall", "logs", "audit.jsonl"),
+    `${JSON.stringify({ ts: 1788084300, host: "api.github.com:443", method: "CONNECT", status: 200, decision: "TCP_TUNNEL:HIER_DIRECT" })}\n`);
   await writeFile(inventoryPath, JSON.stringify({
     runHealth: { windowHours: 24 },
     workflows: [{
@@ -72,6 +76,9 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       runId: "42",
       timestamp: "2026-08-30T10:05:00Z",
     }]);
+    assert.deepEqual(usage.securityRuns[0].timeline.map((event) => [event.source, event.type]), [
+      ["firewall", "net_allowed"],
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
