@@ -469,6 +469,26 @@ export function renderLegendList(className, items, swatchClassName, renderConten
 }
 
 /**
+ * Derives up to `maxParts` uppercase initials from a name-like value, used
+ * for small circular avatar labels. Splits on whitespace, slashes,
+ * underscores, and hyphens (so `dependency-automation` yields `DA` and a
+ * plain `reviewer` yields `R` with `maxParts: 1`), and falls back to `?`
+ * for empty, missing, or placeholder values. Shared by the work-item card's
+ * owner avatar and the work-item timeline lane's actor avatar, which
+ * otherwise duplicated the same splitting and fallback logic under
+ * different names.
+ * @param {string | null | undefined} value
+ * @param {{ maxParts?: number, placeholder?: string }} [options]
+ * @returns {string}
+ */
+export function nameInitials(value, options = {}) {
+  const { maxParts = 2, placeholder = 'Unassigned' } = options;
+  if (!value || value === placeholder) return '?';
+  const parts = value.split(/[\s/_-]+/).filter(Boolean);
+  return parts.slice(0, maxParts).map((part) => part[0]?.toUpperCase()).join('') || '?';
+}
+
+/**
  * Renders a `<span>` wrapping a single octicon, used by the attention-domain
  * cards, readiness-verdict hero, and signal-list rows to present one
  * decorative or semantic icon inside a component-specific class name.

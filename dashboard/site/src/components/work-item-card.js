@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { renderLinkedValue } from './link-content.js';
-import { renderDlRow, renderIconSpan } from './ui-primitives.js';
+import { nameInitials, renderDlRow, renderIconSpan } from './ui-primitives.js';
 
 /** @import { SafeLink } from './link-content.js' */
 
@@ -34,7 +34,7 @@ export function renderWorkItemCard(item) {
         className: 'work-owner-avatar',
         'aria-label': `Owner: ${item.owner}`,
         title: `Owner: ${item.owner}`
-      }, ownerInitials(item.owner))
+      }, nameInitials(item.owner))
     ),
     h('p', null, item.repository),
     h('div', { className: 'work-card-labels', 'aria-label': 'Work labels' },
@@ -52,11 +52,4 @@ export function renderWorkItemCard(item) {
       ])
     )
   );
-}
-
-/** @param {string} owner */
-function ownerInitials(owner) {
-  if (!owner || owner === 'Unassigned') return '?';
-  const parts = owner.split(/[\s/_-]+/).filter(Boolean);
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
 }
