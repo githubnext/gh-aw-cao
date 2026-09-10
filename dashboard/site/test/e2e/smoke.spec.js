@@ -327,6 +327,88 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
+test('Runs renders all observed runs as one responsive full-view interactive table', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'runs-viewport-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-10T12:00:00Z',
+        'retrieved-at': '2026-09-10T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'runs-table': {
+          source: 'runs-table',
+          metadata,
+          rows: [
+            {
+              run: '2',
+              'run-status': 'completed',
+              'run-conclusion': 'failure',
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/aw-doctor.md',
+              'rollout-mode': 'review',
+              engine: 'copilot',
+              'engine-version': '1.2.3',
+              'requested-model': 'gpt-5',
+              'resolved-model': 'gpt-5',
+              'started-at': '2026-09-10T12:00:00Z',
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
+            },
+            {
+              run: '1',
+              'run-status': 'completed',
+              'run-conclusion': 'success',
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/aw-doctor.md',
+              'rollout-mode': 'review',
+              engine: 'copilot',
+              'engine-version': '1.2.3',
+              'requested-model': 'gpt-5',
+              'resolved-model': 'gpt-5',
+              'started-at': '2026-09-10T11:00:00Z',
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/1', label: 'Run 1' }
+            }
+          ]
+        }
+      };
+      window.location.hash = '#page-runs';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const dashboardRoot = page.locator('.dashboard-root');
+  const runsPage = page.locator('[data-page-id="runs"]');
+  const view = runsPage.locator('[data-view-layout="full-view"]');
+  const table = view.locator('[data-lazy-list]');
+  const scroll = view.locator('.table-scroll');
+  await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
+  await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(view).toHaveCount(1);
+  await expect(table).toBeVisible();
+  await expect(view.locator('[data-table-filter]')).toBeVisible();
+  await expect(view.locator('.table-summary-row')).toBeVisible();
+  await expect(view.locator('.custom-table tbody tr')).toHaveCount(2);
+  await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(table).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+});
+
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
@@ -848,8 +930,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Workflows', 'Packages']);
-  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Packages/ })).toHaveCount(0);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Workflows', 'Runs', 'Packages']);
+  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
   await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
