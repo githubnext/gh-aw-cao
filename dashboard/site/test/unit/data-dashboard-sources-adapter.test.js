@@ -184,4 +184,64 @@ describe('current dashboard source adapter', () => {
       sequence: 0, source: 'agent', type: 'agent_turn'
     })]);
   });
+
+  it('reconciles retained transaction logs with the published run and job horizon', () => {
+    const sources = {
+      repositories: {
+        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+        metadata
+      },
+      workflows: {
+        rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }],
+        metadata
+      },
+      runs: {
+        rows: [{
+          organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+          run: '303', 'run-attempt': 1, 'started-at': '2026-09-09T04:00:00Z'
+        }],
+        metadata
+      },
+      'job-performance': { rows: [], metadata },
+      sessions: {
+        rows: [
+          {
+            run: '302', 'run-attempt': 1, 'job-id': '402', session: 'stale-session',
+            'started-at': '2026-09-08T04:00:01Z'
+          },
+          {
+            run: '303', 'run-attempt': 1, 'job-id': '403', session: 'current-session',
+            'started-at': '2026-09-09T04:00:01Z'
+          }
+        ],
+        metadata
+      },
+      events: {
+        rows: [
+          {
+            session: 'stale-session', event: 'stale-event',
+            'event-timestamp': '2026-09-08T04:00:01Z', 'event-source': 'agent', 'event-type': 'agent_turn'
+          },
+          {
+            session: 'current-session', event: 'current-event',
+            'event-timestamp': '2026-09-09T04:00:01Z', 'event-source': 'agent', 'event-type': 'agent_turn'
+          }
+        ],
+        metadata
+      }
+    };
+
+    const adapted = adaptDashboardSources(sources);
+    const batch = normalize(adapted.observations, { generation: adapted.generation });
+
+    expect(relationshipErrors(batch)).toEqual([]);
+    expect(batch.sessions).toEqual([expect.objectContaining({
+      id: 'current-session', runId: 'github:run:303:attempt:1'
+    })]);
+    expect(batch.sessions[0].jobId).toBeUndefined();
+    expect(Object.keys(batch.sessions[0])).not.toContain('jobId');
+    expect(batch.events).toEqual([expect.objectContaining({
+      id: 'current-event', sessionId: 'current-session'
+    })]);
+  });
 });
