@@ -2,15 +2,6 @@ name: Documentation Pages
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: Refresh activity data or use only the most recently cached snapshot.
-        required: false
-        type: choice
-        options:
-          - live
-          - cache
-        default: live
   schedule:
     - cron: "*/15 * * * *"
   push:
@@ -65,7 +56,7 @@ jobs:
           DISPATCH_REF: ${{ github.ref_name }}
           DISPATCH_RUN_NAME: CAO Dashboard Build / docs-${{ github.run_id }}-${{ github.run_attempt }}
           DISPATCH_INPUTS: >-
-            {"mode":"${{ inputs.mode || 'cache' }}","request-id":"docs-${{ github.run_id }}-${{ github.run_attempt }}"}
+            {"request-id":"docs-${{ github.run_id }}-${{ github.run_attempt }}"}
         run: node dashboard/dispatch-workflow.mjs
 
   build:
