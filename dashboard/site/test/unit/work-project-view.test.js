@@ -61,6 +61,16 @@ describe('work project view primitives', () => {
     expect(rendered.querySelector('.work-task-owner a')?.getAttribute('target')).toBe('_blank');
   });
 
+  it('omits the package label on work cards and falls back to an em dash on work rows when no package name is set', () => {
+    const itemWithoutPackage = { ...item, packageName: '' };
+    const card = renderWorkItemCard(itemWithoutPackage);
+    expect(card.querySelector('.work-card-label-package')).toBeNull();
+
+    const row = renderWorkItemRow(itemWithoutPackage);
+    expect(row.querySelector('.work-card-label-package')).toBeNull();
+    expect(row.querySelector('.work-task-labels')?.textContent).toBe('—');
+  });
+
   it('renders reusable work timeline lanes independently of the work page', () => {
     const rendered = renderWorkItemTimelineLane(item, {
       start: item.startTime,

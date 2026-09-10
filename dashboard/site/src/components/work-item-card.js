@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { renderLinkedValue } from './link-content.js';
-import { renderDlRow, renderIconSpan } from './ui-primitives.js';
+import { renderDlRow, renderIconSpan, renderWorkItemPackageLabel } from './ui-primitives.js';
 
 /** @import { SafeLink } from './link-content.js' */
 
@@ -38,7 +38,7 @@ export function renderWorkItemCard(item) {
     ),
     h('p', null, item.repository),
     h('div', { className: 'work-card-labels', 'aria-label': 'Work labels' },
-      ...(item.packageName ? [h('span', { className: 'work-card-label work-card-label-package' }, item.packageName)] : []),
+      renderWorkItemPackageLabel(item.packageName),
       ...(item.workType && item.workType !== 'unknown'
         ? [h('span', { className: 'work-card-label work-card-label-role' }, item.workType)]
         : [])

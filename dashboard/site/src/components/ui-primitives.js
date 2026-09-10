@@ -112,6 +112,20 @@ export function renderLabeledSpan(label, value) {
 }
 
 /**
+ * Renders a `<span class="work-card-label work-card-label-package">` badge
+ * for a work item's package name, or `null` when there is no package name.
+ * Shared by the work-item card and row components, which both present the
+ * same package badge inline alongside their other item metadata.
+ * @param {string} packageName
+ * @returns {HTMLElement | null}
+ */
+export function renderWorkItemPackageLabel(packageName) {
+  return packageName
+    ? h('span', { className: 'work-card-label work-card-label-package' }, packageName)
+    : null;
+}
+
+/**
  * @param {{ id: string, label: string, description: string, icon: Node, content?: Node }} options
  * @returns {HTMLElement}
  */

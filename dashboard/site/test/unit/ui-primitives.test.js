@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat, renderWorkItemPackageLabel } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -64,6 +64,15 @@ describe('ui primitives', () => {
 
     const withNode = renderLabeledSpan('Start', document.createElement('time'));
     expect(withNode.querySelector('time')).not.toBeNull();
+  });
+
+  it('renders the shared work-item package label used by the work card and row components', () => {
+    const label = renderWorkItemPackageLabel('dependabot');
+    expect(label?.tagName).toBe('SPAN');
+    expect(label?.className).toBe('work-card-label work-card-label-package');
+    expect(label?.textContent).toBe('dependabot');
+
+    expect(renderWorkItemPackageLabel('')).toBeNull();
   });
 
   it('renders a shared table head row of scope="col" cells from plain labels', () => {
