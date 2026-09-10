@@ -444,17 +444,12 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
   border-radius: 0;
 }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
-/* Keep the filter controls on one row, like the table header row, instead of wrapping and covering the table. */
-.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { flex: none; flex-wrap: nowrap; overflow-x: auto; }
-/* Reuse the base .table-filter label min-widths (160px / 240px for the first, wider search label), but stop them from growing via flex-basis, since flex-wrap is now disabled. */
-.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter label { flex: 0 0 auto; min-width: 160px; }
-.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter label:first-child { min-width: 240px; }
-.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter-result { flex: 0 0 auto; }
+/* Keep the filter inside the table scroll surface without giving it a second horizontal scrollbar. */
+.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { width: 100%; max-width: 100%; box-sizing: border-box; position: sticky; left: 0; z-index: 2; flex: none; min-width: 0; overflow-x: visible; }
 .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
 .dashboard-root.dashboard-full-view-scrolled .org-sidebar,
 .dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav,
-.dashboard-root.dashboard-full-view-scrolled .site-callouts,
-.dashboard-root.dashboard-full-view-scrolled .custom-view[data-view-layout="full-view"] .table-filter { display: none; }
+.dashboard-root.dashboard-full-view-scrolled .site-callouts { display: none; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll thead > tr:first-child > th,
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-summary-row > th { transition: opacity 160ms ease; }
 .dashboard-root.dashboard-full-view-scrolled .custom-view[data-view-layout="full-view"] .table-scroll thead > tr:first-child > th { opacity: .8; }
@@ -1860,7 +1855,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
   .custom-view[data-view-layout="full-view"] { min-height: 100%; }
-  .dashboard-full-view .table-filter { min-width: 0; }
   .workflow-runtime-metrics { grid-template-columns: 1fr; }
   .workflow-identity { align-items: flex-start; flex-direction: column; gap: 10px; }
   .value-chart > dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
