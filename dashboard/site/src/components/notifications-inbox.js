@@ -305,7 +305,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     className: 'notifications-filter-toggle',
     onClick: () => setFiltersExpanded(filterToggle.getAttribute('aria-expanded') !== 'true')
   }, octicon('filter'), h('span', null, 'Filters'));
-  const setFiltersExpanded = createExpandableToggle(filterToggle, advancedFilters, { expandedClass: 'is-expanded' });
+  const { setExpanded: setFiltersExpanded } = createExpandableToggle(filterToggle, advancedFilters, { expandedClass: 'is-expanded' });
   search.addEventListener('input', () => render());
   sort.addEventListener('change', () => render());
   group.addEventListener('change', () => render());
