@@ -21,32 +21,26 @@ be refreshed; the snapshot is not permanent historical authority.
 ## How Activity works
 
 ```mermaid
+%%{init: {"sequence": {"mirrorActors": false, "actorMargin": 32, "messageMargin": 24}}}%%
 sequenceDiagram
-  participant GitHub as GitHub evidence
   participant Activity as CAO Activity
-    participant Cache as Actions cache
+  participant Cache as Actions cache
   participant Build as Dashboard Build
-  participant Artifact as Static artifact
-  participant Browser as Browser worker + IndexedDB
+  participant Browser as Browser
 
-  rect rgb(218, 251, 225)
-    GitHub->>Activity: Logs, usage, inventory, outcomes
-    Activity->>Activity: Normalize and index
-    Activity->>Cache: Save cao-activity-v2-* snapshot
-  end
+  Activity->>Activity: Collect, normalize, and index GitHub evidence
+  Activity->>Cache: Save cao-activity-v2-* snapshot
 
-  rect rgb(221, 244, 255)
-    Build->>Cache: Restore latest cao-activity-v2-*
-    alt Cache miss
-      Cache-->>Build: Missing snapshot
-      Build-->>Build: Stop build
-    else Cache hit
-      Cache-->>Build: Snapshot JSON
-      Build->>Build: Adapt records to sources.json
-      Build->>Artifact: Publish site + sources
-      Artifact-->>Browser: Load manifest and requested sources
-      Browser->>Browser: Normalize, persist, and query generation
-    end
+  Build->>Cache: Restore latest cao-activity-v2-*
+  alt Cache hit
+    Cache-->>Build: Snapshot JSON
+    Build->>Build: Adapt snapshot to sources.json
+    Build-->>Browser: Publish site, manifest, and sources
+    Browser->>Browser: Normalize and persist canonical generation
+    Browser->>Browser: Run bounded page queries
+  else Cache miss
+    Cache-->>Build: Missing snapshot
+    Build-->>Build: Stop build
     end
 ```
 
