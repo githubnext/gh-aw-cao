@@ -74,6 +74,7 @@ jobs:
 
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission
+        uses: actions/github-script@v9.0.0
         env:
           CAO_API_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GH_TOKEN: ${{ github.token }}
@@ -85,29 +86,33 @@ jobs:
           CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
           CAO_REQUESTED_MAX_REPOSITORIES: ${{ inputs.max_repos || '' }}
           CAO_REQUESTED_ROLLOUT_PERCENT: ${{ inputs.rollout_percent || '' }}
-        run: |
-          set -uo pipefail
-          cao_dir="${GITHUB_WORKSPACE:-.}/.cao/.github/cao/src"
-          if node "$cao_dir/control.mjs" admit; then
-            exit 0
-          fi
-          reason="cannot read or execute the CAO control modules at github.workflow_sha"
-          {
-            echo "authorized=false"
-            echo "reason=$reason"
-            echo "monthly_credit_budget=0"
-          } >> "$GITHUB_OUTPUT"
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          <details>
-          <summary><h3>Central Agentic Ops admission</h3></summary>
+        with:
+          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          script: |
+            const reason = 'cannot read or execute the CAO control modules at github.workflow_sha';
+            try {
+              const control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
+              process.exitCode = 0;
+              await control.main({ core, github, context, exec, io, getOctokit }, ['admit']);
+              if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
+            } catch (error) {
+              core.setOutput('authorized', 'false');
+              core.setOutput('reason', reason);
+              core.setOutput('monthly_credit_budget', '0');
+              await core.summary
+                .addRaw(`<details>
+            <summary><h3>Central Agentic Ops admission</h3></summary>
 
-          Skipped: $reason
+            Skipped: ${reason}
 
-          - ❌ Runtime revision — The control and policy modules could not be read or executed from the exact \`github.workflow_sha\` commit.
-          - Policy and authorization checks — The remaining admission checks could not run because the authoritative control modules were unavailable.
+            - ❌ Runtime revision — The control and policy modules could not be read or executed from the exact \`github.workflow_sha\` commit.
+            - Policy and authorization checks — The remaining admission checks could not run because the authoritative control modules were unavailable.
 
-          </details>
-          EOF
+            </details>
+            `)
+                .write();
+              core.debug(`CAO admission fallback reason: ${error?.stack || error?.message || error}`);
+            }
 
       - name: Ensure CAO admission record
         if: ${{ always() }}
@@ -179,6 +184,7 @@ jobs:
       - name: Run CAO control precompute
         id: cao_precompute
         if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
+        uses: actions/github-script@v9.0.0
         env:
           GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
@@ -193,9 +199,13 @@ jobs:
           CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
           CAO_ORCHESTRATOR_CREDITS: "${{ github.aw.import-inputs.orchestrator_credits }}"
           CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
-        run: |
-          set -euo pipefail
-          node "${GITHUB_WORKSPACE:-.}/.cao/.github/cao/src/control.mjs" precompute
+        with:
+          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
+          script: |
+            const control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
+            process.exitCode = 0;
+            await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);
+            if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
 
       - name: "CAO precompute blocked: GitHub API limited until ${{ steps.cao_precompute.outputs.github_api_reset_at }}"
         if: ${{ steps.cao_precompute.outputs.reason == 'github-api-capacity-insufficient' }}

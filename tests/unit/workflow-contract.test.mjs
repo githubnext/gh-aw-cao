@@ -544,7 +544,10 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /fetch-depth: 1/);
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
   assert.doesNotMatch(sharedControl, /base64\s+(?:-d|--decode)/);
-  assert.match(sharedControl, /node "\$cao_dir\/control\.mjs" admit/);
+  assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /uses: actions\/github-script@v9\.0\.0/);
+  assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['admit'\]\)/);
+  assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /uses: actions\/github-script@v9\.0\.0/);
+  assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['precompute'\]\)/);
   assert.doesNotMatch(sharedControl, /permission-actions: write/);
   assert.doesNotMatch(sharedControl, /CAO_GITHUB_API_GATE|persist-api-gate|gate_writer_token/);
   assert.match(sharedControl, /CAO admission blocked: GitHub API limited until \$\{\{ steps\.cao_admission\.outputs\.github_api_reset_at \}\}/);
@@ -557,7 +560,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.doesNotMatch(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /^\s+exit 1$/m);
   assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
   assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
-  assert.match(sharedControl, /reason="cannot read or execute the CAO control modules at github\.workflow_sha"/);
+  assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
   for (const [name, source] of controlled) {
     assert.equal(
       [...source.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
@@ -2624,7 +2627,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /CAO_ORCHESTRATOR_CREDITS: "\d+"/);
       assert.match(preActivation, /CAO_WORKER_CREDITS_PER_TARGET: "\d+"/);
       assert.doesNotMatch(preActivation, /github\.aw\.import-inputs/);
-      assert.match(preActivation, /GH_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
+      assert.match(preActivation, /uses: actions\/github-script@[0-9a-f]{40}/);
+      assert.match(preActivation, /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['precompute'\]\)/);
       assert.match(preActivation, /name: Validate CAO control precompute artifact/);
       assert.match(preActivation, /\.authorized == true/);
       assert.match(preActivation, /\.policy_source == \{repository:\$repository,path:"\.github\/workflows\/cao\.json",sha:\$sha\}/);

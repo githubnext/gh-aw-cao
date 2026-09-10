@@ -28,6 +28,7 @@ const GITHUB_REST_BEST_PRACTICES = "https://docs.github.com/en/rest/using-the-re
 const GITHUB_APP_ACTIONS_DOCS = "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow";
 const GITHUB_PAT_DOCS = "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens";
 const GITHUB_ACTIONS_SECRETS_DOCS = "https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions";
+const ACTION_GLOBALS = ["core", "github", "context", "exec", "io", "getOctokit"];
 const ADMISSION_CHECKS = [
   ["Runtime revision", "The control and policy modules are read from the exact `github.workflow_sha` commit."],
   ["Policy document", "The checked-in policy is parsed and validated for supported keys, types, ranges, unique names, and expressions."],
@@ -42,6 +43,12 @@ const ADMISSION_CHECKS = [
 ];
 
 class ControlError extends Error {}
+
+export function setActionsGlobals(actions = {}) {
+  for (const name of ACTION_GLOBALS) {
+    if (actions[name] !== undefined) globalThis[name] = actions[name];
+  }
+}
 
 function environment(name, fallback = "") {
   return process.env[name] ?? fallback;
@@ -70,10 +77,17 @@ function withLogGroup(title, operation) {
   const actions = environment("GITHUB_ACTIONS") === "true";
   if (actions) actionsCommand("group", title);
   else log(title);
-  try {
-    return operation();
-  } finally {
+  const endGroup = () => {
     if (actions) actionsCommand("endgroup");
+  };
+  try {
+    const result = operation();
+    if (result && typeof result.then === "function") return result.finally(endGroup);
+    endGroup();
+    return result;
+  } catch (error) {
+    endGroup();
+    throw error;
   }
 }
 
@@ -91,7 +105,40 @@ function run(command, args, options = {}) {
   return result.stdout;
 }
 
-function ghApi(endpoint, { fields = {}, jq = "" } = {}) {
+async function githubRequest(endpoint, fields = {}) {
+  const client = globalThis.github;
+  if (!client?.request) return null;
+  const [path, query = ""] = endpoint.split("?", 2);
+  const params = { ...fields };
+  for (const [key, value] of new URLSearchParams(query).entries()) params[key] = value;
+  return (await client.request(`GET /${path}`, params)).data;
+}
+
+function filterGithubResponse(data, jq) {
+  if (!jq) return JSON.stringify(data);
+  if (jq === ".content") return data.content ?? "";
+  if (jq === ".workflows[] | {id, name, path, state}") {
+    return (Array.isArray(data.workflows) ? data.workflows : [])
+      .map(({ id, name, path, state }) => JSON.stringify({ id, name, path, state }))
+      .join("\n");
+  }
+  if (jq === "{id, full_name, archived, disabled, private, pushed_at, default_branch}") {
+    const { id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch } = data;
+    return JSON.stringify({ id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch });
+  }
+  if (jq === ".[] | {id, full_name, archived, disabled, private, pushed_at, default_branch}") {
+    return (Array.isArray(data) ? data : [])
+      .map(({ id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch }) => (
+        JSON.stringify({ id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch })
+      ))
+      .join("\n");
+  }
+  throw new ControlError(`unsupported GitHub API response filter: ${jq}`);
+}
+
+async function ghApi(endpoint, { fields = {}, jq = "" } = {}) {
+  const data = await githubRequest(endpoint, fields);
+  if (data !== null) return filterGithubResponse(data, jq);
   const args = ["api", "--cache", GITHUB_API_CACHE_DURATION];
   if (Object.keys(fields).length > 0) args.push("--method", "GET");
   args.push(endpoint);
@@ -100,8 +147,8 @@ function ghApi(endpoint, { fields = {}, jq = "" } = {}) {
   return run("gh", args);
 }
 
-function decodeRepositoryFile(repository, path, sha) {
-  const encoded = ghApi(`repos/${repository}/contents/${path}`, {
+async function decodeRepositoryFile(repository, path, sha) {
+  const encoded = await ghApi(`repos/${repository}/contents/${path}`, {
     fields: { ref: sha },
     jq: ".content",
   });
@@ -227,13 +274,14 @@ function githubApiRequestRequirement(policy, options) {
   return Math.max(MINIMUM_GITHUB_API_REQUESTS, estimated);
 }
 
-function githubApiCapacity(required) {
+async function githubApiCapacity(required) {
   const token = environment("CAO_API_TOKEN");
   try {
-    const source = run("gh", ["api", "rate_limit"], {
-      env: token ? { ...process.env, GH_TOKEN: token } : process.env,
-    });
-    const core = JSON.parse(source)?.resources?.core;
+    const data = await githubRequest("rate_limit")
+      ?? JSON.parse(run("gh", ["api", "rate_limit"], {
+        env: token ? { ...process.env, GH_TOKEN: token } : process.env,
+      }));
+    const core = data?.resources?.core;
     if (![core?.limit, core?.remaining, core?.reset].every(Number.isSafeInteger)) {
       throw new ControlError("GitHub rate-limit response did not contain integer core limits");
     }
@@ -269,10 +317,10 @@ function writeCapacityBlockedPrecompute(packageName, role, capacity) {
   writeAdmissionSummary({ authorized: false, packageName, role, reason, apiCapacity: capacity });
 }
 
-function applyGithubApiAdmission(result, options) {
+async function applyGithubApiAdmission(result, options) {
   if (!result.authorized) return result;
   const required = githubApiRequestRequirement(result, options);
-  const capacity = githubApiCapacity(required);
+  const capacity = await githubApiCapacity(required);
   if (capacity.status === "available") return { ...result, github_api_capacity: capacity };
   return {
     ...result,
@@ -330,7 +378,7 @@ function writeAdmissionRecord(result, options, workflowSha) {
   });
 }
 
-function admit() {
+async function admit() {
   const options = policyOptions({ normalizeOrchestrator: true });
   const workflowSha = environment("GITHUB_WORKFLOW_SHA");
   let result = { authorized: false, reason: "control policy admission did not complete" };
@@ -343,7 +391,7 @@ function admit() {
     mkdirSync(directory, { recursive: true });
     let source;
     try {
-      source = decodeRepositoryFile(options.controlRepository, POLICY_PATH, workflowSha);
+      source = await decodeRepositoryFile(options.controlRepository, POLICY_PATH, workflowSha);
     } catch {
       throw new ControlError(`cannot read ${POLICY_PATH} at github.workflow_sha`);
     }
@@ -353,7 +401,7 @@ function admit() {
     } catch (error) {
       throw new ControlError(error instanceof PolicyError ? "control policy validation failed" : error.message);
     }
-    result = applyGithubApiAdmission(effectivePolicy(document, options), options);
+    result = await applyGithubApiAdmission(effectivePolicy(document, options), options);
     writeFileSync(join(directory, "effective-policy.json"), `${JSON.stringify(result, null, 2)}\n`);
   } catch (error) {
     result = { authorized: false, reason: error.message };
@@ -482,23 +530,23 @@ function controlSourcePath() {
   return { sourcePath, ref };
 }
 
-function loadWorkflowInventory(repository) {
-  const parsed = parseJsonOutput(ghApi(`repos/${repository}/actions/workflows?per_page=100`, {
+async function loadWorkflowInventory(repository) {
+  const parsed = parseJsonOutput(await ghApi(`repos/${repository}/actions/workflows?per_page=100`, {
     jq: ".workflows[] | {id, name, path, state}",
   }));
   const workflows = Array.isArray(parsed) ? parsed : parsed.workflows ?? [parsed];
   return workflows.map(({ id, name, path, state }) => ({ id, name, path, state }));
 }
 
-function loadRepository(endpoint) {
-  const repository = parseJsonOutput(ghApi(endpoint, {
+async function loadRepository(endpoint) {
+  const repository = parseJsonOutput(await ghApi(endpoint, {
     jq: "{id, full_name, archived, disabled, private, pushed_at, default_branch}",
   }));
   const { id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch } = repository;
   return { id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch };
 }
 
-function loadBoundedInventory(organization, maximum) {
+async function loadBoundedInventory(organization, maximum) {
   const endpoints = [
     [`orgs/${organization}/repos`, "all"],
     [`users/${organization}/repos`, "owner"],
@@ -508,7 +556,7 @@ function loadBoundedInventory(organization, maximum) {
     try {
       const repositories = [];
       for (let page = 1; page <= Math.ceil(maximum / 100); page += 1) {
-        const batch = parseJsonOutput(ghApi(`${endpoint}?per_page=100&type=${type}&page=${page}`, {
+        const batch = parseJsonOutput(await ghApi(`${endpoint}?per_page=100&type=${type}&page=${page}`, {
           jq: ".[] | {id, full_name, archived, disabled, private, pushed_at, default_branch}",
         }));
         repositories.push(...batch.map(({ id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch }) => ({
@@ -530,7 +578,7 @@ function inventoryDigest(repositories) {
   return `sha256:${createHash("sha256").update(input).digest("hex")}`;
 }
 
-function validateOutputDestination({ mode, role, safeOutputRepository, targetRepository, controlRepository }) {
+async function validateOutputDestination({ mode, role, safeOutputRepository, targetRepository, controlRepository }) {
   if (mode === "live") {
     if (role === "worker" && !repositoryEqual(safeOutputRepository, targetRepository)) {
       throw new ControlError("live worker safe_output_repo must equal target_repo");
@@ -543,7 +591,7 @@ function validateOutputDestination({ mode, role, safeOutputRepository, targetRep
   if (repositoryEqual(safeOutputRepository, controlRepository)) return;
   let repository;
   try {
-    repository = JSON.parse(ghApi(`repos/${safeOutputRepository}`));
+    repository = JSON.parse(await ghApi(`repos/${safeOutputRepository}`));
   } catch (error) {
     if (isRateLimitError(error)) throw error;
     throw new ControlError("review safe_output_repo must be accessible");
@@ -656,10 +704,10 @@ function writeWorkerPrecompute(context) {
   });
 }
 
-function selectInventory(context, maximum) {
+async function selectInventory(context, maximum) {
   if (context.targetRepository) {
     try {
-      return { repositories: [loadRepository(`repos/${context.targetRepository}`)], source: "target_repo", error: "" };
+      return { repositories: [await loadRepository(`repos/${context.targetRepository}`)], source: "target_repo", error: "" };
     } catch (error) {
       return { repositories: [], source: "target_repo", error: error.message };
     }
@@ -669,7 +717,7 @@ function selectInventory(context, maximum) {
     const repositories = [];
     for (const repository of allowedRepositories) {
       try {
-        repositories.push(loadRepository(`repos/${repository}`));
+        repositories.push(await loadRepository(`repos/${repository}`));
       } catch {
         return { repositories: [], source: "allowed_repos", error: `cannot read allowed repository ${repository}` };
       }
@@ -677,7 +725,7 @@ function selectInventory(context, maximum) {
     return { repositories, source: "allowed_repos", error: "" };
   }
   const organization = context.controlRepository.split("/", 1)[0];
-  const { repositories, error } = loadBoundedInventory(organization, maximum);
+  const { repositories, error } = await loadBoundedInventory(organization, maximum);
   return { repositories, source: "organization", error };
 }
 
@@ -730,7 +778,7 @@ function createInventory(context, repositories) {
   };
 }
 
-function writeOrchestratorPrecompute(context) {
+async function writeOrchestratorPrecompute(context) {
   requirePositiveInteger(context.policy.max_repositories, 1000, "max_repos must be an integer from 1 through 1000");
   requirePositiveInteger(context.policy.inventory["max-scan-repositories"], 100_000, "max_scan_repos must be an integer from 1 through 100000");
   requirePositiveInteger(context.policy.inventory["cell-count"], 1000, "cell_count must be an integer from 1 through 1000");
@@ -738,14 +786,14 @@ function writeOrchestratorPrecompute(context) {
   requirePositiveInteger(context.dispatchMaximum, 1000, "dispatch_max must be an integer from 1 through 1000");
   requirePositiveInteger(context.policy.rollout_percent, 100, "rollout_percent must be an integer from 1 through 100");
   const { sourcePath, ref } = controlSourcePath();
-  const source = Buffer.from(ghApi(`repos/${context.controlRepository}/contents/${sourcePath}`, {
+  const source = Buffer.from((await ghApi(`repos/${context.controlRepository}/contents/${sourcePath}`, {
     fields: { ref }, jq: ".content",
-  }).replace(/\s/g, ""), "base64").toString("utf8");
+  })).replace(/\s/g, ""), "base64").toString("utf8");
   const configuredWorkers = parseFrontmatterWorkers(source);
   if (configuredWorkers.length === 0) {
     throw new ControlError("shared/control.md role orchestrator requires safe-outputs.dispatch-workflow.workflows");
   }
-  const workflows = loadWorkflowInventory(context.controlRepository);
+  const workflows = await loadWorkflowInventory(context.controlRepository);
   const maximumScanRepositories = context.policy.inventory["max-scan-repositories"];
 
   if (context.policy.allowed_repositories.length > maximumScanRepositories) {
@@ -756,7 +804,7 @@ function writeOrchestratorPrecompute(context) {
     throw new ControlError("target_repo is not allowed");
   }
 
-  const selected = selectInventory(context, maximumScanRepositories);
+  const selected = await selectInventory(context, maximumScanRepositories);
   const { candidates, metadata } = createInventory(context, selected.repositories);
   const resolvedCandidates = candidates.map((repository) => ({
     ...repository,
@@ -831,7 +879,7 @@ function writeOrchestratorPrecompute(context) {
   writeJson(OUTPUT_PATH, result);
 }
 
-function precompute() {
+async function precompute() {
   mkdirSync(AGENT_DIRECTORY, { recursive: true });
   const effectivePath = join(admissionDirectory(), "effective-policy.json");
   let policy;
@@ -854,7 +902,7 @@ function precompute() {
     requireMode(context.mode, "safe_output_mode");
     validateRepositoryOwner("target_repo", context.targetRepository, policy.allowed_owners);
     validateRepositoryOwner("safe_output_repo", context.safeOutputRepository, policy.allowed_owners);
-    validateOutputDestination(context);
+    await validateOutputDestination(context);
 
     if (context.role === "worker") {
       validateWorkerDispatch(context);
@@ -862,12 +910,12 @@ function precompute() {
       log("Prepared worker precompute data.");
       return;
     }
-    writeOrchestratorPrecompute(context);
+    await writeOrchestratorPrecompute(context);
     log("Prepared orchestrator precompute data.");
   } catch (error) {
     if (!isRateLimitError(error)) throw error;
     const required = githubApiRequestRequirement(policy, { role: context.role, targetRepository: context.targetRepository });
-    const capacity = githubApiCapacity(required);
+    const capacity = await githubApiCapacity(required);
     writeCapacityBlockedPrecompute(
       context.packageName,
       context.role,
@@ -897,15 +945,21 @@ function authority(args) {
   process.stdout.write(`${value}\n`);
 }
 
-/** @param {string[]} arguments_ */
-function main(arguments_) {
+/**
+ * @param {Record<string, unknown>|string[]} actionsOrArguments
+ * @param {string[]=} maybeArguments
+ */
+export async function main(actionsOrArguments = {}, maybeArguments = undefined) {
+  const actions = Array.isArray(actionsOrArguments) ? {} : actionsOrArguments;
+  const arguments_ = Array.isArray(actionsOrArguments) ? actionsOrArguments : maybeArguments ?? [];
+  setActionsGlobals(actions);
   const [command, ...args] = arguments_;
   try {
     if (command === "admit" && args.length === 0) {
-      return withLogGroup("Central Agentic Ops admission", admit);
+      return await withLogGroup("Central Agentic Ops admission", admit);
     }
     if (command === "precompute" && args.length === 0) {
-      return withLogGroup("Central Agentic Ops precompute", precompute);
+      return await withLogGroup("Central Agentic Ops precompute", precompute);
     }
     if (command === "authority") return authority(args);
     if (["validate-policy", "resolve-policy", "control-settings"].includes(command)) {
@@ -924,5 +978,5 @@ function main(arguments_) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2));
+  await main(process.argv.slice(2));
 }
