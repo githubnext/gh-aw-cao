@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatNumber, formatPercent, formatRelativeTime, formatString, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
+import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatHumanFriendlyTimestamp, formatNumber, formatPercent, formatRelativeTime, formatString, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
 
 /**
  * @param {unknown} value
@@ -79,6 +79,16 @@ describe('view formatter helpers', () => {
     expect(formatRelativeTime('2026-09-03T11:48:00Z', '2026-09-03T12:38:00Z')).toBe('50 minutes ago');
     expect(formatRelativeTime('2026-09-03T13:08:00Z', '2026-09-03T12:38:00Z')).toBe('in 30 minutes');
     expect(formatRelativeTime('invalid', '2026-09-03T12:38:00Z')).toBe('');
+  });
+
+  it('formats human-friendly timestamps for quick scanning', () => {
+    const now = new Date('2026-09-10T14:00:00Z');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T13:59:40Z', now)).toBe('just now');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T13:55:00Z', now)).toBe('5 minutes ago');
+    expect(formatHumanFriendlyTimestamp('2026-09-09T14:00:00Z', now)).toBe('yesterday');
+    expect(formatHumanFriendlyTimestamp('2026-09-03T14:00:00Z', now)).toBe('Sep 3');
+    expect(formatHumanFriendlyTimestamp('2025-09-03T14:00:00Z', now)).toBe('Sep 3, 2025');
+    expect(formatHumanFriendlyTimestamp('invalid', now)).toBe('');
   });
 
   it('formats compact elapsed timestamps for dashboard chrome', () => {

@@ -199,6 +199,40 @@ export function formatCompactElapsedTime(value, relativeTo) {
 }
 
 /**
+ * Formats a timestamp for quick scanning while retaining stable absolute dates
+ * for older observations.
+ * @param {unknown} value
+ * @param {number | Date} [relativeTo]
+ * @returns {string}
+ */
+export function formatHumanFriendlyTimestamp(value, relativeTo = Date.now()) {
+  const valueMs = Date.parse(String(value ?? ''));
+  const relativeToMs = relativeTo instanceof Date ? relativeTo.getTime() : relativeTo;
+  if (!Number.isFinite(valueMs) || !Number.isFinite(relativeToMs)) return '';
+
+  const differenceSeconds = (valueMs - relativeToMs) / 1_000;
+  const absoluteSeconds = Math.abs(differenceSeconds);
+  if (absoluteSeconds < 45) return 'just now';
+
+  const relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  if (absoluteSeconds < 90) return relativeFormatter.format(Math.sign(differenceSeconds), 'minute');
+  if (absoluteSeconds < 45 * 60) return relativeFormatter.format(Math.round(differenceSeconds / 60), 'minute');
+  if (absoluteSeconds < 90 * 60) return relativeFormatter.format(Math.sign(differenceSeconds), 'hour');
+  if (absoluteSeconds < 22 * 3_600) return relativeFormatter.format(Math.round(differenceSeconds / 3_600), 'hour');
+  if (absoluteSeconds < 36 * 3_600) return relativeFormatter.format(Math.sign(differenceSeconds), 'day');
+  if (absoluteSeconds < 7 * 86_400) return relativeFormatter.format(Math.round(differenceSeconds / 86_400), 'day');
+
+  const valueDate = new Date(valueMs);
+  const relativeDate = new Date(relativeToMs);
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    ...(valueDate.getUTCFullYear() === relativeDate.getUTCFullYear() ? {} : { year: 'numeric' }),
+    timeZone: 'UTC'
+  }).format(valueDate);
+}
+
+/**
  * @param {number} value
  * @returns {number}
  */

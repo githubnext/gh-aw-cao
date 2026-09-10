@@ -49,6 +49,17 @@ describe('table cell display helper', () => {
     expect(temporal.tagName).toBe('TIME');
     expect(temporal.getAttribute('datetime')).toBe('2026-08-30T07:00:00Z');
     expect(temporal.textContent).toBe('Aug 30, 2026, 7:00 AM');
+    const recent = /** @type {HTMLElement} */ (renderCellDisplay(
+      undefined,
+      new Date(Date.now() - 5 * 60_000).toISOString(),
+      toText,
+      null,
+      'temporal',
+      'human-friendly-timestamp'
+    ));
+    expect(recent.tagName).toBe('TIME');
+    expect(recent.textContent).toBe('5 minutes ago');
+    expect(recent.title).toMatch(/ UTC$/);
     expect(renderCellDisplay(undefined, 2.5, toText, {
       name: 'AI Credits',
       symbol: 'AIC',
