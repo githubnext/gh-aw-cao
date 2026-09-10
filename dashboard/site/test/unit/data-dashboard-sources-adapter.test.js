@@ -238,7 +238,8 @@ describe('current dashboard source adapter', () => {
     expect(batch.sessions).toEqual([expect.objectContaining({
       id: 'current-session', runId: 'github:run:303:attempt:1'
     })]);
-    expect(batch.sessions[0]).not.toHaveProperty('jobId');
+    expect(batch.sessions[0].jobId).toBeUndefined();
+    expect(Object.keys(batch.sessions[0])).not.toContain('jobId');
     expect(batch.events).toEqual([expect.objectContaining({
       id: 'current-event', sessionId: 'current-session'
     })]);
