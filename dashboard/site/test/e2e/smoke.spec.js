@@ -539,6 +539,8 @@ test('experiments page composes reusable declarative slices with rendered parity
   const experimentsView = experimentsPage.locator('[data-view-layout="full-view"]');
   await expect(experimentsView).toHaveCount(1);
   await expect(experimentsView.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(experimentsView.locator('.table-filter-disclosure')).not.toHaveAttribute('open', '');
+  await experimentsView.locator('.table-filter-summary').click();
   await expect(experimentsView.getByRole('searchbox', { name: 'Filter Experiments' })).toBeVisible();
   await expect(experimentsView.getByRole('cell', { name: 'routing-v3' })).toBeVisible();
 });
@@ -2046,6 +2048,8 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(page.getByRole('heading', { name: 'Packages', level: 1 })).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] [data-view-layout="full-view"]')).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] [data-lazy-list]')).toBeVisible();
+  await expect(page.locator('[data-page-id="packages"] .table-filter-disclosure')).not.toHaveAttribute('open', '');
+  await page.locator('[data-page-id="packages"] .table-filter-summary').click();
   await expect(page.locator('[data-page-id="packages"] [data-table-filter]')).toBeVisible();
   await expect(page.locator('[data-page-id="packages"] .table-summary-row')).toBeVisible();
   const packageRows = page.locator('[data-page-id="packages"] .custom-table tbody tr');
@@ -2132,6 +2136,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(page.getByRole('heading', { name: 'Reports', level: 3 })).toBeVisible();
   const packageReportRows = page.locator('[data-page-id="package-reports"] .custom-table tbody tr');
   await expect(packageReportRows).toHaveCount(2);
+  await page.locator('[data-page-id="package-reports"] .table-filter-summary').click();
   await page.getByRole('searchbox', { name: 'Filter Reports' }).fill('Reconcile');
   const visiblePackageReportRows = page.locator('[data-page-id="package-reports"] .custom-table tbody tr:visible');
   await expect(visiblePackageReportRows).toHaveCount(1);
@@ -3075,6 +3080,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
   await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();
   await expect(page.locator('#page-workflow-runs').getByRole('columnheader', { name: /^Started/ })).toHaveAttribute('aria-sort', 'ascending');
+  await page.locator('#page-workflow-runs .table-filter-summary').click();
   await page.locator('#page-workflow-runs').getByRole('searchbox', { name: 'Filter Runs' }).fill('Manual review');
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr:visible')).toHaveCount(1);
   await expect(page.locator('#page-workflow-runs .custom-table tbody')).toContainText('Manual review');
@@ -3537,6 +3543,7 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await expect(page.locator('.table-scroll')).toHaveCSS('max-height', 'none');
   await expect(page.locator('.table-scroll')).toHaveCSS('overflow', 'visible');
 
+  await page.locator('.table-filter-summary').click();
   await page.locator('[data-table-facet="rollout-mode"]').selectOption('review');
   await expect(visibleRows).toHaveCount(15);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 15 of 15 results');
