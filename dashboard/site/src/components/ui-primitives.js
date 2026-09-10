@@ -248,6 +248,26 @@ export function renderTableSummaryEmpty(message) {
 }
 
 /**
+ * Renders the shared three-bar pulsing skeleton placeholder used while a
+ * lazy view or table-summary cell awaits its content. Shared by
+ * {@link ../components/lazy-view.js renderLazyView} and
+ * {@link ../components/table-summary.js renderTableSummarySkeleton}, which
+ * otherwise duplicated the same `<div>`-of-three-`<span>`s markup under
+ * different class names.
+ * @param {string} className
+ * @returns {HTMLElement}
+ */
+export function renderSkeletonBars(className) {
+  return h(
+    'div',
+    { className, 'aria-hidden': 'true' },
+    h('span'),
+    h('span'),
+    h('span')
+  );
+}
+
+/**
  * Renders the shared "empty" placeholder paragraph used across route views and
  * panels when there is no data to display.
  * @param {string} message
