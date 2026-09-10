@@ -16,8 +16,9 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Save activity cache[\s\S]*?if: \$\{\{ steps\.freshness\.outputs\.skip != 'true' \}\}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/,
+    /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/,
   );
+  assert.doesNotMatch(workflow, /Skip scheduled run|steps\.freshness/);
   assert.match(workflow, /ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/);
   assert.doesNotMatch(workflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(workflow, /--count 5/);
