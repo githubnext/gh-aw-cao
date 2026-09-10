@@ -1,6 +1,6 @@
 {
   "source_sha": "0eef6d44dc834a79c1968f5088f1df5b7d585b3e",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
     {
       "evaluated_at": "2026-09-10T04:30:09Z",
@@ -206,6 +206,20 @@
         34474605119
       ],
       "outcome": "no-op: evidence window 2026-09-10T12:02:34Z to 2026-09-10T14:24:40Z. Analyzed 5 comparable successful scheduled docs.yml runs plus their dispatched dashboard-build child runs for category 'artifact transfer and Pages packaging'. Parent workflow execution median was 90s (p90 152.4s); parent job medians were dashboard 32s, build 26s, deploy 10s. In the parent build job, Restore dashboard from cache median was 0s, Mount dashboard at /cao 1s, and Upload Pages artifact 3s. Trusted child-run metadata and logs confirmed cached activity restore hits on all 5 samples, dashboard cache saves around 1s, dashboard data artifact uploads about 3s, full dashboard artifact uploads about 3s, and the full dashboard artifact size around 13.66 MB versus Pages artifact uploads around 15.63 MB. These transfer and packaging steps are real but remain far below the >=60s or >=15% median workflow savings threshold; the dominant repeated cost is still dispatching and waiting for dashboard-build, which was already suggested under reusable dashboard generation. Open issue review found no matching open issue title for this category.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-10T14:40:00Z",
+      "worker_run_id": 34490211441,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        34489800189,
+        34488704226,
+        34486360840,
+        34484660341,
+        34477440119
+      ],
+      "outcome": "no-op: evidence window 2026-09-10T12:33:58Z to 2026-09-10T14:34:38Z. Confirmed 5 comparable successful scheduled docs.yml runs within the latest 20 completed runs and last 14 days for category 'scheduling, concurrency, and avoidable rebuilds'. Workflow sources still show avoidable scheduled dispatches of dashboard-build on every docs.yml run, but trusted Actions job and step metadata could not be refreshed in this run because gh run view for every inspected parent run returned HTTP 502 resource-labeling failures and gh issue list also exited non-zero. Without current job timings, step timings, verified cache-hit evidence, and duplicate-open-issue confirmation, no new evidence-backed non-duplicate recommendation could be emitted safely.",
       "suggestion_fingerprint": ""
     }
   ]
