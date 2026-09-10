@@ -444,6 +444,15 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-root.dashboard-full-view-scrolled .custom-view-grid > :has(~ .custom-view[data-view-layout="full-view"]) { display: none; }
 .custom-view[data-view-layout="half"] { grid-column: span 6; }
 .custom-view[data-view-layout="third"] { grid-column: span 4; }
+.view-state-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; margin: 12px 0; padding: 12px 14px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font-size: .875rem; }
+.view-state-card > .octicon { width: 16px; height: 16px; margin-top: 1px; color: var(--muted); }
+.view-state-card[data-view-state="unavailable"] { border-color: color-mix(in srgb, var(--attention) 45%, var(--border)); border-left-color: var(--attention); background: var(--attention-muted); }
+.view-state-card[data-view-state="unavailable"] > .octicon { color: var(--attention); }
+.view-state-card-body { min-width: 0; display: grid; gap: 4px; }
+.view-state-card :is(p, ul) { margin: 0; }
+.view-state-message { font-weight: 600; }
+.view-state-card .view-source, .view-state-card .view-context { color: var(--muted); font-size: .8125rem; }
+.view-state-card .view-context { padding-inline-start: 1.25em; }
 .view-metadata-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 12px; color: var(--fg); }
 .view-metadata-summary > div { display: inline-flex; align-items: center; gap: 7px; }
 .view-metadata-summary dt { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 500; }
