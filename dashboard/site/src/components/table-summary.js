@@ -93,7 +93,8 @@ function renderColumnSummary(column) {
   if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
   if (column.kind === 'boolean') {
     const totalCount = Math.max(0, column.count);
-    const observedCount = Math.max(0, totalCount - column.missingCount);
+    const missingCount = Math.min(totalCount, Math.max(0, column.missingCount));
+    const observedCount = Math.max(0, totalCount - missingCount);
     if (observedCount === 0) return null;
     const yesCount = Math.min(observedCount, Math.max(0, column.trueCount));
     const noCount = Math.max(0, observedCount - yesCount);
