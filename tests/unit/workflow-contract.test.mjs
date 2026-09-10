@@ -2996,6 +2996,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.match(activityWorkflow, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/);
   assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
+  assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
   assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);

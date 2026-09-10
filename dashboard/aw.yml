@@ -74,6 +74,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/queries/view-sources.js
   - source: site/src/data/storage/indexeddb.js
     destination: .github/aw/dashboard/site/src/data/storage/indexeddb.js
+  - source: site/src/data/package.json
+    destination: .github/aw/dashboard/site/src/data/package.json
   - source: site/src/data/storage/sqlite-indexeddb.js
     destination: .github/aw/dashboard/site/src/data/storage/sqlite-indexeddb.js
   - source: site/src/data/storage/quota.js
