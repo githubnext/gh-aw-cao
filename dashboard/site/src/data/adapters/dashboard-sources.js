@@ -215,7 +215,6 @@ export function adaptDashboardSources(sources) {
     const canonicalJobId = row['job-id'] === undefined || row['job-id'] === null
       ? undefined
       : jobId(requiredString(String(row['job-id']), 'session.job-id'));
-    publishedSessionIds.add(session);
     observations.push({
       kind: 'session',
       source: SOURCE,
@@ -233,6 +232,7 @@ export function adaptDashboardSources(sources) {
         completedAt: row['ended-at'] ?? null
       }
     });
+    publishedSessionIds.add(session);
   }
 
   for (const candidate of events.rows) {
