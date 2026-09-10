@@ -1468,6 +1468,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
     const revision = ++activationRevision;
+    let pagePopulated = false;
     const dashboardHorizon = root.querySelector('.dashboard-horizon');
     let activeFilterBar = root.querySelector('.report-actions > .filter-bar');
     /**
@@ -1549,6 +1550,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
             pageId,
             status: 'completed'
           });
+          pagePopulated = true;
           placeDashboardHorizon(renderedPage);
           syncFullViewMode(renderedPage);
           if (deferPopulation) {
@@ -1627,7 +1629,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       : '';
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
-    if (page && !populationDeferred) {
+    if (page && !populationDeferred && !pagePopulated) {
       emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
         kind: 'page',
         pageId,

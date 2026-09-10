@@ -37,6 +37,14 @@ test("deployed dashboard refreshes and renders populated views", async ({ page }
       window.__dashboardTestEvents?.some(({ type, detail }) =>
         type === "dashboard-data" && detail?.status === "completed"
       ), null, { timeout: 120_000 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator(".dashboard-root")).toBeVisible({ timeout: 120_000 });
+    await page.waitForFunction(() =>
+      window.__dashboardTestEvents?.some(({ type, detail }) =>
+        type === "dashboard-data"
+        && detail?.kind === "refresh"
+        && detail?.status === "completed"
+      ), null, { timeout: 120_000 });
     await expect(page.locator(".dashboard-root")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-stale, .source-refresh-error")).toHaveCount(0);
 

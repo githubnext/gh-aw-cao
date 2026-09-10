@@ -53,6 +53,7 @@ export async function collectFullDiagnostics(options = {}) {
   const renderedViews = [...document.querySelectorAll('[data-view-id]')];
   const unavailableViews = [...document.querySelectorAll('[aria-label^="Unable to load "]')]
     .map((element) => element.getAttribute('aria-label'));
+  const busyElements = document.querySelectorAll('[aria-busy="true"]');
   const duplicateRecordIds = Object.fromEntries(ENTITY_STORES.map((store) => {
     const ids = records[store].map((record) => record.id).filter((id) => typeof id === 'string');
     return [store, ids.filter((id, index) => ids.indexOf(id) !== index)];
@@ -76,8 +77,7 @@ export async function collectFullDiagnostics(options = {}) {
     check('dashboard root rendered', Boolean(document.querySelector('.dashboard-root')), 'Expected .dashboard-root'),
     check('active page rendered', Boolean(activePage), activePage?.getAttribute('data-page-id') ?? 'No active page'),
     check('views rendered', renderedViews.length > 0, `${renderedViews.length} view(s)`),
-    check('no busy views remain', document.querySelectorAll('[aria-busy="true"]').length === 0,
-      `${document.querySelectorAll('[aria-busy="true"]').length} busy element(s)`),
+    check('no busy views remain', busyElements.length === 0, `${busyElements.length} busy element(s)`),
     check('no view hydration failures', unavailableViews.length === 0, `${unavailableViews.length} failure(s)`)
   ];
   const report = {
@@ -101,7 +101,7 @@ export async function collectFullDiagnostics(options = {}) {
       lazyViewIds: [...document.querySelectorAll('[data-lazy-view]')]
         .map((element) => element.getAttribute('data-view-id')),
       unavailableViews,
-      busyElements: document.querySelectorAll('[aria-busy="true"]').length,
+      busyElements: busyElements.length,
       domNodes: document.querySelectorAll('*').length
     }
   };
