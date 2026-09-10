@@ -156,6 +156,8 @@ jobs:
           node "$ingestion_script" ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
             --input "$REPORT_GH_AW_LOGS"
+          node "$ingestion_script" doctor \
+            --database "$ACTIVITY_DATABASE"
 
       - name: Save activity cache
         if: ${{ steps.freshness.outputs.skip != 'true' }}
