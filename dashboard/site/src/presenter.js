@@ -19,6 +19,7 @@ import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
+import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { processDataHealthSources, processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
@@ -1543,6 +1544,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           currentPage.replaceWith(renderedPage);
           pages[pageIndex] = renderedPage;
           enableLazyViews(renderedPage);
+          emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
+            kind: 'page',
+            pageId,
+            status: 'completed'
+          });
           placeDashboardHorizon(renderedPage);
           syncFullViewMode(renderedPage);
           if (deferPopulation) {
@@ -1621,6 +1627,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       : '';
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
+    if (page && !populationDeferred) {
+      emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
+        kind: 'page',
+        pageId,
+        status: 'completed'
+      });
+    }
     if (!populationDeferred) restoreScroll(page);
   };
 

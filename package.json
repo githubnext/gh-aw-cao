@@ -28,6 +28,7 @@
     "update-deps": "npx npm-check-updates -u && npm install",
     "test:e2e:docs": "npm run docs:build && playwright test --config=playwright.docs.config.mjs",
     "test:e2e:dashboard-views": "playwright test --config=playwright.dashboard-views.config.mjs",
+    "test:e2e:dashboard-deployed": "playwright test --config=playwright.dashboard-deployed.config.mjs",
     "test:e2e:copilot-loop": "playwright test --config=playwright.copilot-loop.config.mjs",
     "test:e2e:local-server": "playwright test --config=playwright.local-server.config.mjs"
   },

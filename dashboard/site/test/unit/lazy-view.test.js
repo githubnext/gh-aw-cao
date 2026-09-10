@@ -10,6 +10,11 @@ afterEach(() => {
 
 describe('lazy dashboard views', () => {
   it('renders immediately when IntersectionObserver is unavailable', async () => {
+    /** @type {Record<string, unknown>[]} */
+    const events = [];
+    document.addEventListener('dashboard-render', (event) => events.push(
+      /** @type {CustomEvent} */ (event).detail
+    ), { once: false });
     const render = vi.fn(() => document.createElement('article'));
     const lazyView = renderLazyView({ label: 'Run trend', minHeight: 240, render });
     document.body.append(lazyView);
@@ -19,6 +24,10 @@ describe('lazy dashboard views', () => {
 
     expect(document.body.querySelector('article')).not.toBeNull();
     expect(document.body.querySelector('.dashboard-lazy-view')).toBeNull();
+    expect(events).toEqual([
+      expect.objectContaining({ kind: 'lazy-view', status: 'started' }),
+      expect.objectContaining({ kind: 'lazy-view', status: 'completed' })
+    ]);
   });
 
   it('does not hydrate a closed supplemental view until it is opened', async () => {

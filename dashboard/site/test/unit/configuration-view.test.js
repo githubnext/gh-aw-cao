@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { indexedDB } from 'fake-indexeddb';
+import { describe, expect, it, vi } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
@@ -61,6 +62,35 @@ describe('Configuration dashboard view', () => {
     expect(rendered.textContent).toContain('Sets the inherited execution mode.');
     expect(rendered.textContent).not.toContain('Suggested changes');
     expect(rendered.textContent).not.toContain('Raw JSON');
+    expect(rendered.querySelector('.configuration-diagnostics-button')).not.toBeNull();
+  });
+
+  it('collects and copies full diagnostics', async () => {
+    vi.stubGlobal('indexedDB', indexedDB);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+
+    const button = rendered.querySelector('.configuration-diagnostics-button');
+    if (!(button instanceof HTMLButtonElement)) throw new Error('diagnostics button did not render');
+    button.click();
+
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual(expect.objectContaining({
+      passed: false,
+      database: expect.any(Object),
+      ui: expect.any(Object)
+    }));
+    expect(rendered.querySelector('.configuration-copy-status')?.textContent).toBe('Diagnostics copied.');
   });
 
   it('defers settings inside collapsed groups until they are expanded', () => {
