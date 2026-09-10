@@ -1182,6 +1182,9 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const optimizerEvaluator = readFileSync(join(gradersDirectory, "optimization-ai-credit-optimizer-operational-value.sh"), "utf8");
   assert.match(dependabotWorker, /checks: read/);
   assert.match(dependabotWorker, /statuses: read/);
+  assert.match(dependabotWorker, /create-issue:\n(?:    .*\n)*?    deduplicate-by-title: true/);
+  assert.match(dependabotWorker, /use a canonical unprefixed subject/i);
+  assert.match(dependabotWorker, /Use the same subject for the same unresolved work across reruns/);
   assert.equal(dependabotDefinition.adoption.commit, "4615c8d8eaf51dab837238dff6fc8248a56194fe");
   assert.equal(dependabotDefinition.primaryMetric.id, "validated-dependency-resolution");
   assert.match(dependabotDefinition.evidence.assignment, /freeze the oldest eligible pull request/);
