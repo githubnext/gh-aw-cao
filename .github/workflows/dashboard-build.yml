@@ -61,28 +61,23 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/cao-activity
-          key: cao-activity-v2-lookup-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            cao-activity-v2-
+            cao-activity-v3-
           fail-on-cache-miss: true
 
       - name: Require collected activity data
         env:
           ACTIVITY_DATA_ROOT: ${{ runner.temp }}/cao-activity
         run: |
-          for file in control-settings.json control-plane-inventory.json deployed-workflows.json aic-usage.json operational-values.json dashboard-records.json gh-aw-logs.jsonl; do
-            if [[ ! -f "$ACTIVITY_DATA_ROOT/$file" ]]; then
-              echo "Collected activity data is unavailable: $file" >&2
-              exit 1
-            fi
-          done
+          test -f "$ACTIVITY_DATA_ROOT/gh-aw-logs.jsonl"
 
       - name: Refresh authoritative control policy
         run: |
           node "$DASHBOARD_REPORT_ROOT/control-settings.mjs" \
             .github/cao/src/control.mjs \
             .github/workflows/cao.json \
-            "$RUNNER_TEMP/cao-activity/control-settings.json"
+            "$RUNNER_TEMP/cao-dashboard-control-settings.json"
 
       - name: Assemble Dashboard Language site
         env:
@@ -91,44 +86,24 @@ jobs:
           if [[ "$DASHBOARD_LAYOUT" == "source" ]]; then
             node dashboard/site/scripts/build.mjs \
               "$REPORT_OUTPUT" \
-              "$RUNNER_TEMP/cao-activity/control-settings.json"
+              "$RUNNER_TEMP/cao-dashboard-control-settings.json"
           else
             mkdir -p "$REPORT_OUTPUT"
             cp -R .github/aw/dashboard/site/. "$REPORT_OUTPUT/"
             node "$DASHBOARD_REPORT_ROOT/configure-site.mjs" \
               "$REPORT_OUTPUT/index.html" \
-              "$RUNNER_TEMP/cao-activity/control-settings.json"
+              "$RUNNER_TEMP/cao-dashboard-control-settings.json"
             node "$DASHBOARD_REPORT_ROOT/bundle-dashboards.mjs" \
               "$REPORT_OUTPUT/dashboard.json" \
               .github/aw/dashboards
           fi
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
 
-      - name: Build Dashboard Language sources
-        env:
-          REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
-          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
-          REPORT_DASHBOARD_SOURCES: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}/sources.json
-          REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
-          REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
-          REPORT_GITHUB_TELEMETRY: ${{ runner.temp }}/cao-activity/cao-gh.jsonl
-          REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
-          REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
-        run: node "$DASHBOARD_REPORT_ROOT/dashboard-language-sources.mjs"
-
       - name: Cache dashboard artifact for the dispatching workflow
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/central-agentic-ops-dashboard
           key: cao-dashboard-${{ github.run_id }}-${{ github.run_attempt }}
-
-      - name: Upload dashboard data artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: central-agentic-ops-dashboard-data
-          path: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}/sources.json
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

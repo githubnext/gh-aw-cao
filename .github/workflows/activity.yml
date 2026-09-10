@@ -15,8 +15,6 @@ on:
 permissions:
   actions: read
   contents: read
-  issues: read
-  pull-requests: read
 
 concurrency:
   group: central-agentic-ops-activity
@@ -28,8 +26,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      issues: read
-      pull-requests: read
     steps:
       - name: Checkout trusted activity source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,7 +35,7 @@ jobs:
 
       - name: Resolve activity cache key
         id: activity-cache-key
-        run: echo "value=cao-activity-v2-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+        run: echo "value=cao-activity-v3-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
 
       - name: Generate GitHub App token for activity
         id: activity-app-token
@@ -55,44 +51,6 @@ jobs:
           github-api-url: ${{ github.api_url }}
           permission-actions: read
           permission-contents: read
-          permission-issues: read
-          permission-pull-requests: read
-
-      - name: Resolve activity indexer
-        run: |
-          if [[ -f .github/aw/activity/index.mjs ]]; then
-            echo "ACTIVITY_INDEXER=.github/aw/activity/index.mjs" >> "$GITHUB_ENV"
-            echo "ACTIVITY_LOGS=.github/aw/activity/logs.mjs" >> "$GITHUB_ENV"
-            echo "ACTIVITY_LOGS_COLLECTOR=.github/aw/activity/collect-logs.sh" >> "$GITHUB_ENV"
-            echo "ACTIVITY_RUNNER=.github/aw/activity/run-activity.mjs" >> "$GITHUB_ENV"
-            echo "GITHUB_TELEMETRY=.github/aw/activity/github-telemetry.mjs" >> "$GITHUB_ENV"
-          elif [[ -f activity/index.mjs ]]; then
-            echo "ACTIVITY_INDEXER=activity/index.mjs" >> "$GITHUB_ENV"
-            echo "ACTIVITY_LOGS=activity/logs.mjs" >> "$GITHUB_ENV"
-            echo "ACTIVITY_LOGS_COLLECTOR=activity/collect-logs.sh" >> "$GITHUB_ENV"
-            echo "ACTIVITY_RUNNER=activity/run-activity.mjs" >> "$GITHUB_ENV"
-            echo "GITHUB_TELEMETRY=activity/github-telemetry.mjs" >> "$GITHUB_ENV"
-          else
-            echo "Activity indexer is unavailable" >&2
-            exit 1
-          fi
-
-      - name: Resolve dashboard collectors
-        run: |
-          if [[ -f .github/aw/dashboard/report/records.mjs ]]; then
-            DASHBOARD_REPORT_ROOT=.github/aw/dashboard/report
-          elif [[ -f dashboard/report/records.mjs ]]; then
-            DASHBOARD_REPORT_ROOT=dashboard/report
-          else
-            echo "DASHBOARD_COLLECTION=false" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          if [[ ! -f "$DASHBOARD_REPORT_ROOT/activity-collectors.mjs" ]]; then
-            echo "Dashboard collectors are unavailable: $DASHBOARD_REPORT_ROOT/activity-collectors.mjs is missing" >&2
-            exit 1
-          fi
-          echo "DASHBOARD_REPORT_ROOT=$DASHBOARD_REPORT_ROOT" >> "$GITHUB_ENV"
-          echo "DASHBOARD_COLLECTION=true" >> "$GITHUB_ENV"
 
       - name: Install gh-aw CLI
         continue-on-error: true
@@ -106,78 +64,41 @@ jobs:
         id: activity-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+          path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
-            cao-activity-v2-
+            cao-activity-v3-
 
       - name: Download agentic workflow logs
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
           REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
-          REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/gh-aw-logs-exit-code
           REPORT_RUN_WINDOW_DAYS: "30"
-        run: bash "$ACTIVITY_LOGS_COLLECTOR"
-
-      - name: Run activity workflow
-        id: run-activity
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          GITHUB_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          CAO_GITHUB_TOKEN_TYPE: ${{ steps.activity-app-token.outputs.token != '' && 'app' || 'builtin' }}
-          CAO_ACTIVITY_CACHE_KEY: ${{ steps.activity-cache-key.outputs.value }}
-          CAO_ACTIVITY_CACHE_MATCHED_KEY: ${{ steps.activity-cache.outputs.cache-matched-key }}
-          REPORT_AIC_USAGE: ${{ runner.temp }}/cao-activity/aic-usage.json
-          REPORT_AIC_CACHE: ${{ runner.temp }}/cao-gh-aw-logs
-          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
-          REPORT_GH_AW_LOGS_EXIT_CODE: ${{ runner.temp }}/gh-aw-logs-exit-code
-          REPORT_GH_AW_LOGS_STATE: ${{ runner.temp }}/cao-activity/gh-aw-logs-state.json
-          REPORT_DEPLOYED_WORKFLOWS: ${{ runner.temp }}/cao-activity/deployed-workflows.json
-          REPORT_OPERATIONAL_VALUES: ${{ runner.temp }}/cao-activity/operational-values.json
-          REPORT_VALUE_CACHE: ${{ runner.temp }}/cao-activity/operational-values.json
-          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
-          REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
-          REPORT_RECORDS: ${{ runner.temp }}/cao-activity/dashboard-records.json
-          REPORT_RUN_WINDOW_DAYS: "30"
-        with:
-          github-token: ${{ steps.activity-app-token.outputs.token || github.token }}
-          script: |
-            const path = require("node:path");
-            const { pathToFileURL } = require("node:url");
-            const runner = await import(pathToFileURL(path.resolve(process.env.ACTIVITY_RUNNER)).href);
-            await runner.main({ core, github, context, exec, io, getOctokit });
-
-      - name: List activity cache files
-        if: always()
-        continue-on-error: true
         run: |
-          cache_root="$RUNNER_TEMP/cao-activity"
-          if [[ -d "$cache_root" ]]; then
-            echo "Activity cache files and sizes (max depth 3):"
-            (cd "$cache_root" && find . -maxdepth 3 -type f -printf '%s\t%P\n' | sort -t $'\t' -k2,2 | numfmt --field=1 --to=iec-i --suffix=B | sed -n '1,200p')
-          else
-            echo "Activity cache directory is absent: $cache_root"
-          fi
-
-      - name: Add GitHub API telemetry to activity snapshot
-        if: always()
-        continue-on-error: true
-        run: cp "$RUNNER_TEMP/cao-gh/cao-gh.jsonl" "$RUNNER_TEMP/cao-activity/cao-gh.jsonl"
-
-      - name: Upload GitHub API telemetry
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: cao-gh
-          path: ${{ runner.temp }}/cao-gh/cao-gh.jsonl
-          if-no-files-found: warn
-          retention-days: 30
+          mkdir -p "$(dirname "$REPORT_GH_AW_LOGS")"
+          touch "$REPORT_GH_AW_LOGS"
+          targets=()
+          for workflow in .github/workflows/*.lock.yml; do
+            [[ -f "$workflow" ]] || continue
+            targets+=("${GITHUB_REPOSITORY}/${workflow}")
+          done
+          gh aw logs --audit \
+            --output "$REPORT_AIC_CACHE" \
+            --summary-file "" \
+            --cached-jsonl "$REPORT_GH_AW_LOGS" \
+            --artifacts usage \
+            --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
+            --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
+            --count 10 \
+            --timeout 10 \
+            --max-github-api-rate-limit -2000 \
+            --max-storage 1200 \
+            --prune-older-runs \
+            "${targets[@]}"
 
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+          path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
           key: ${{ steps.activity-cache-key.outputs.value }}

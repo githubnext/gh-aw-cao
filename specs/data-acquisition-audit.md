@@ -43,7 +43,7 @@ The inventory distinguishes:
 
 | Caller | Selection | Persistence | Observation |
 | --- | --- | --- | --- |
-| `activity/collect-logs.sh` and `activity/logs.mjs` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **10** runs by default (validated range 1–200) | Cached JSON, collection state, and compact usage artifacts in the shared `cao-activity` cache | The shell step runs `gh aw logs --audit --artifacts usage ... --count "$run_limit" --timeout 10` and writes its exit code. The usage bundle includes `run_summary.json`, `audit.json`, and `aw_info.json`; reporting retains bounded sanitized audit aggregates and agent/runtime/model/version metadata and derives tool events from summary calls when raw timeline files are absent. `activity/logs.mjs` performs no GitHub or gh-aw invocation. On failure it preserves the compatible cached JSON, marks the refresh unavailable and incomplete, and issues no workflow-run, run-detail, or Jobs API fallback calls. |
+| `.github/workflows/activity.yml` | One call for all compiled workflows checked out in the control repository; 30-day evidence window, **10** runs | `gh-aw-logs.jsonl` in the shared `cao-activity-v3` cache | The workflow runs `gh aw logs --audit --artifacts usage` directly. It caches only the refreshed JSONL; artifacts are job-local and no index, telemetry, or dashboard records are generated. |
 | `.github/workflows/optimization-ai-credit-auditor.md` | Target repository, two days, at most 100 runs; locally filtered to the preceding 24 hours | `/tmp` for the current run | Overlaps the dashboard usage window and the evaluator's later evidence window. A separate API call first reads the current run's creation time. |
 | `.github/workflows/optimization-ai-credit-optimizer.md` | Target repository, seven days, at most 50 runs | `/tmp` for the current run | Overlaps the auditor and dashboard collections. Monitoring workflows are filtered only after download. |
 | `.github/graders/optimization-ai-credit-auditor-operational-value.sh` | Evaluator-defined before/after window, up to 10,000 runs | Evaluator temporary directory | Re-fetches evidence rather than consuming the worker's predownload, which is necessary for maturation but duplicates historical portions of earlier scans. |
@@ -116,10 +116,9 @@ Administrative setup (`.github/cao/setup-github-apps.mjs`), release workflows, C
 
 | Cache or index | Producer | Consumer | Reuse boundary |
 | --- | --- | --- | --- |
-| `cao-activity-v2-*` Actions cache | `.github/workflows/activity.yml` | Next activity run and dashboard builder | Complete collection snapshot; latest matching key across runs |
+| `cao-activity-v3-*` Actions cache | `.github/workflows/activity.yml` | Next activity run and dashboard builder | Refreshed `gh-aw-logs.jsonl`; latest matching key across runs |
 | `deployed-workflows.json` local run index | `activity/index.mjs` | Activity collectors | Rebuilt from checked-out metadata and the shared logs snapshot without API fallback |
-| Shared gh-aw logs JSON, state, and artifacts | `activity/logs.mjs` | Activity index plus AI Credit, security, and operational-value collectors | Persistent activity cache |
-| Operational-value observations | `dashboard/report/operational-values.mjs` | Later activity runs | Retained inside the shared `cao-activity-v2-*` Actions cache |
+| Shared gh-aw logs JSONL | `.github/workflows/activity.yml` | Consumers | Persistent activity cache |
 | `records.mjs` run map | `activity/index.mjs` via `deployed-workflows.json` | `dashboard/report/records.mjs` | In-memory join by runtime repository and run ID; no run-detail request |
 | gh-aw release list | `aw-maintenance-upgrade.md` | Later upgrade runs | 24-hour file cache restored by Actions cache |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |

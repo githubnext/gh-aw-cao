@@ -911,7 +911,7 @@
         cancelCommand.complete();
       } else {
         renderSources({}, "loading");
-        const sourceUrl = new URL("./sources.json", window.location.href).href;
+        const sourceUrl = new URL("./gh-aw-logs.jsonl", window.location.href).href;
         /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
         let cachedSources = null;
 

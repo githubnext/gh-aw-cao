@@ -1,8 +1,8 @@
 import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
-import { adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
+import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { normalize } from '../normalize/index.js';
-import { readCanonicalBatch, upsertCanonicalBatch } from '../storage/indexeddb.js';
+import { readCanonicalBatch, recordOperation, replaceCanonicalBatch } from '../storage/indexeddb.js';
 import { mergeRetainedRecords } from '../storage/retention.js';
 import { inspectStorage, requestPersistentStorage } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
@@ -21,8 +21,12 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   }
   const retained = await readCanonicalBatch(indexedDB);
   const batch = mergeRetainedRecords(retained, incoming, { now: options.now });
-  const result = await upsertCanonicalBatch(indexedDB, batch);
-  return { updated: true, ...result };
+  await replaceCanonicalBatch(indexedDB, batch);
+  return {
+    updated: true,
+    committedBatches: 0,
+    committedRecords: Object.values(batch).reduce((total, records) => total + records.length, 0)
+  };
 }
 
 /**
@@ -85,5 +89,36 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
+  }
+}
+
+/**
+ * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
+ * @param {IDBFactory} indexedDB
+ * @param {string} content
+ * @param {{ storage?: StorageManager, now?: number }} [options]
+ */
+export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
+  const createdAt = new Date(options.now ?? Date.now()).toISOString();
+  try {
+    const adapted = adaptCachedGhAwJsonl(content);
+    const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
+    await recordOperation(indexedDB, {
+      id: `ingest-jsonl:${createdAt}:${adapted.records}`,
+      kind: 'ingest-jsonl',
+      createdAt,
+      records: adapted.records,
+      committedRecords: result.committedRecords
+    });
+    return { ...result, records: adapted.records };
+  } catch (error) {
+    await recordOperation(indexedDB, {
+      id: `ingest-jsonl-failed:${createdAt}`,
+      kind: 'ingest-jsonl-failed',
+      createdAt,
+      error: error instanceof Error ? error.name : 'Error'
+    }).catch(() => undefined);
+    if (error instanceof CanonicalIngestionError) throw error;
+    throw new CanonicalIngestionError(classifyIngestionError(error, 'adapting'), 'adapting', error);
   }
 }
