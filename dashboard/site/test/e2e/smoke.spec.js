@@ -35,23 +35,6 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
-/**
- * Full-view table filters keep their controls on one row instead of wrapping, like the
- * table's own header row, and may scroll horizontally instead when they don't all fit.
- * @param {import('@playwright/test').Locator} tableFilter
- */
-async function expectTableFilterStaysOnOneRow(tableFilter) {
-  const staysOnOneRow = await tableFilter.evaluate((element) => {
-    if (element.children.length === 0) throw new Error('.table-filter has no children to check for wrapping');
-    // Filter controls are bottom-aligned (align-items: end), so compare bottom edges rather
-    // than top edges, since labels and the result output have different intrinsic heights.
-    const bottoms = [...element.children].map((child) => child.getBoundingClientRect().bottom);
-    // A 4px tolerance absorbs sub-pixel rounding while still catching a wrap onto a second row.
-    return Math.max(...bottoms) - Math.min(...bottoms) < 4;
-  });
-  expect(staysOnOneRow).toBe(true);
-}
-
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
   await page.setContent(`
     <style>
@@ -292,7 +275,11 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   const apiPage = page.locator('[data-page-id="github-api"]');
   const observations = apiPage.locator('[data-view-layout="full-view"]');
   const table = observations.locator('[data-lazy-list]');
+  const scroll = observations.locator('.table-scroll');
   await expect(table).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(scroll.locator(':scope > .table-filter')).toBeVisible();
+  await expect(observations.locator(':scope > .table-filter')).toHaveCount(0);
   await expect(apiPage.getByText('github-api.response', { exact: true }).first()).toBeVisible();
   await expect.poll(async () => {
     const box = await table.boundingBox();
@@ -301,6 +288,8 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(table).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect.poll(async () => {
     const box = await table.boundingBox();
     return box !== null && box.x >= 0 && box.x + box.width <= 390;
@@ -1746,7 +1735,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
-  await expectTableFilterStaysOnOneRow(view.locator('.table-filter'));
+  await expect.poll(async () => view.locator('.table-scroll > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
   await page.setViewportSize({ width: 1000, height: 900 });

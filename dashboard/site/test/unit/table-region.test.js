@@ -198,7 +198,8 @@ describe('renderTableRegion', () => {
     expect(scroll?.getAttribute('aria-label')).toBe('Filter runs results');
     expect(scroll?.getAttribute('tabindex')).toBe('0');
     expect(scroll?.querySelector('table')).toBeTruthy();
-    expect(rendered.querySelector('.table-scroll .table-filter')).toBeNull();
+    expect(scroll?.querySelector(':scope > .table-filter')).toBeTruthy();
+    expect(rendered.querySelector(':scope > .table-filter')).toBeNull();
   });
 
   it('sorts rows numerically and temporally when a column header is activated', () => {
