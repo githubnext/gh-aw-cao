@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderMobileSheetHeader, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -235,6 +235,21 @@ describe('ui primitives', () => {
     expect(rendered.getAttribute('title')).toBe('Dismiss Notice');
     expect(rendered.getAttribute('aria-label')).toBe('Dismiss Notice');
     expect(rendered.querySelector('svg use')?.getAttribute('href')).toContain('#octicon-x');
+  });
+
+  it('renders the shared mobile sheet header with a title and the provided close button', () => {
+    const closeButton = renderCloseButton({
+      className: 'work-mobile-sheet-close',
+      label: 'Close work filters',
+      onClick: () => {}
+    });
+
+    const rendered = renderMobileSheetHeader('Filter work', closeButton);
+
+    expect(rendered.tagName).toBe('HEADER');
+    expect(rendered.className).toBe('work-mobile-sheet-header');
+    expect(rendered.querySelector('strong')?.textContent).toBe('Filter work');
+    expect(rendered.querySelector('button')).toBe(closeButton);
   });
 
   it('renders the shared identity link with an icon, label element, and optional class name', () => {
