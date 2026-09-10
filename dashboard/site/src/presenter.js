@@ -2011,8 +2011,11 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
   const metadata = sourceInput.metadata;
   const state = sourceInput.metadata?.availability ?? inferAvailability(filteredRows);
   const emptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : undefined;
+  const isMetricCard = view.mark === 'metric'
+    && isPlainObject(view.metric)
+    && view.metric.style === 'card';
 
-  if (state !== 'available' && !(state === 'empty' && view.mark === 'table')) {
+  if (state !== 'available' && !(state === 'empty' && view.mark === 'table') && !isMetricCard) {
     return renderCustomViewState(
       pageId,
       title,
@@ -2024,7 +2027,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     );
   }
 
-  if (filteredRows.length === 0 && view.mark !== 'table') {
+  if (filteredRows.length === 0 && view.mark !== 'table' && !isMetricCard) {
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 

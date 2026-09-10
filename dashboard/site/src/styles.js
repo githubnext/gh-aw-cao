@@ -409,7 +409,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section[data-section-layout="wide"] { grid-column: span 7; }
 .layout-section[data-section-layout="narrow"] { grid-column: span 5; }
 .layout-section[data-section-layout="horizontal"] { padding: 0; border: 0; background: transparent; }
-.layout-section[data-section-layout="horizontal"] > .custom-view-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-subtle); }
+.layout-section[data-section-layout="horizontal"] > .custom-view-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--border); }
 .layout-section[data-section-layout="horizontal"] > .custom-view-grid > .custom-view { grid-column: auto; }
 .layout-section-header { margin-bottom: 12px; }
 .layout-section-header h3 { margin: 0; font-size: 1rem; }
@@ -420,8 +420,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .view-description-tooltip { position: absolute; top: 4px; right: 0; }
 .custom-view-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
 .custom-view { min-width: 0; grid-column: span 12; }
-.metric-card-widget { min-width: 0; min-height: 172px; display: grid; grid-template-rows: 2.5rem 2.7em 32px; align-content: center; justify-items: center; gap: 8px; padding: 24px 20px; color: var(--fg); text-align: center; text-decoration: none; }
-.metric-card-widget + .metric-card-widget { border-left: 1px solid var(--border); }
+.metric-card-widget { min-width: 0; min-height: 172px; display: grid; grid-template-rows: 2.5rem 2.7em 32px; align-content: center; justify-items: center; gap: 8px; padding: 24px 20px; background: var(--canvas-subtle); color: var(--fg); text-align: center; text-decoration: none; }
 .metric-card-widget-active { --metric-card-color: var(--accent); background: color-mix(in srgb, var(--metric-card-color) 7%, var(--canvas-subtle)); box-shadow: inset 0 3px var(--metric-card-color); }
 .metric-card-widget-danger { --metric-card-color: var(--danger); }
 .metric-card-widget-attention { --metric-card-color: var(--attention); }

@@ -1076,6 +1076,14 @@ describe('presenter built-in and custom pages', () => {
       document: authoritativeDashboardDocument,
       sources: {
         'attention-signals': { source: 'attention-signals', rows: [], metadata },
+        'overview-failed-run-count': { source: 'overview-failed-run-count', rows: [{ count: 0 }], metadata },
+        'overview-blocked-work-count': { source: 'overview-blocked-work-count', rows: [{ count: 0 }], metadata },
+        'overview-awaiting-review-count': { source: 'overview-awaiting-review-count', rows: [{ count: 0 }], metadata },
+        'overview-security-finding-count': {
+          source: 'overview-security-finding-count',
+          rows: [],
+          metadata: { ...metadata, availability: 'unavailable' }
+        },
         workflows: {
           source: 'workflows',
           rows: [{

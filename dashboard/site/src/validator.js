@@ -1198,7 +1198,7 @@ function validatePageSections(sections, views, sectionsPath, ownerLabel, viewLab
     if (typeof section.layout !== 'string' || !PAGE_SECTION_LAYOUT_VALUES.includes(section.layout)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'layout section must use one canonical full, wide, or narrow layout value.',
+        'layout section must use one canonical full, wide, narrow, or horizontal layout value.',
         `${sectionPath}.layout`
       ));
     }

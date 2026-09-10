@@ -507,6 +507,7 @@ describe('dashboard document validation', () => {
       ]),
       'order-by': [{ field: 'started-at', direction: 'desc' }]
     });
+
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
       view.id === 'runs-runs-source'
     )).toMatchObject({
@@ -514,6 +515,36 @@ describe('dashboard document validation', () => {
       mark: 'table'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
+  it('defines Overview with declarative count queries and metric cards', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
+      candidate.id === 'overview'
+    );
+    const queryNames = new Set(document.dashboard.queries.map(
+      (/** @type {{ name: string }} */ query) => query.name
+    ));
+
+    expect(page.sections).toEqual([expect.objectContaining({
+      layout: 'horizontal',
+      views: page.views.map((/** @type {{ id: string }} */ view) => view.id)
+    })]);
+    expect(page.views).toHaveLength(4);
+    for (const view of page.views) {
+      expect(view).toMatchObject({
+        mark: 'metric',
+        metric: {
+          style: 'card',
+          icon: expect.any(String),
+          tone: expect.any(String),
+          'navigation-page': expect.any(String)
+        },
+        encoding: { value: { field: 'count', type: 'quantitative' } }
+      });
+      expect(queryNames.has(view.data.source)).toBe(true);
+    }
+    expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 
   it('accepts workflow-route-page on multiple pages without page-specific JavaScript routing', () => {

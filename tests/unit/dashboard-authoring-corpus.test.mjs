@@ -65,16 +65,12 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.mark === "element"
         && summary.element === "signal-list"
         && summary.data?.sources?.includes("attention-signals");
-      const isCatchUpHome = page.id === "overview"
+      const isDeclarativeOverview = page.id === "overview"
         && page["class-name"] === "dashboard-overview-page"
-        && summary.id === "overview-attention"
-        && summary.mark === "element"
-        && (summary.element === "signal-list" || summary.element === "home-attention-summary")
-        && (summary.data?.sources?.includes("attention-signals")
-          || (summary.element === "home-attention-summary"
-            && summary.data?.sources?.includes("runs")
-            && summary.data?.sources?.includes("work-items")
-            && summary.data?.sources?.includes("security-findings")));
+        && page.sections?.[0]?.layout === "horizontal"
+        && page.sections[0].views.length === 4
+        && views.length === 4
+        && views.every((view) => view.mark === "metric" && view.metric?.style === "card");
       if (isAttentionFirstHome) {
         assert.deepEqual(
           views.map((view) => view.id),
@@ -97,7 +93,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isDataHealthConfidenceSummary
           || isFullViewTable
           || isOverviewDrillDown
-          || isCatchUpHome
+          || isDeclarativeOverview
           || isAttentionFirstHome,
         `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`
           + ` (first view "${summary.id ?? "<unnamed>"}" has ${summaryDescription})`,
