@@ -66,6 +66,9 @@ export function adaptDashboardSources(sources) {
   const generation = dashboardSourceGeneration(sources);
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
+  const publishedRunIds = new Set();
+  const publishedJobIds = new Set();
+  const publishedSessionIds = new Set();
 
   for (const candidate of repositories.rows) {
     const row = objectRow(candidate);
@@ -128,13 +131,15 @@ export function adaptDashboardSources(sources) {
     const sourceAttempt = row['run-attempt'] ?? row.attempt;
     const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1;
     const fullName = `${owner}/${repository}`;
+    const id = runId(githubRunId, attempt);
+    publishedRunIds.add(id);
     observations.push({
       kind: 'run',
       source: SOURCE,
       sourceId: `${fullName}:${githubRunId}:${attempt}`.toLowerCase(),
       observedAt: requiredString(row['ended-at'] ?? row['started-at'] ?? metadataTimestamp(runs.metadata), 'run observed time'),
       data: {
-        id: runId(githubRunId, attempt),
+        id,
         repositoryId: sourceId('repository', SOURCE, fullName.toLowerCase()),
         workflowId: sourceId('workflow', SOURCE, `${fullName}:${path}`.toLowerCase()),
         owner,
@@ -169,6 +174,8 @@ export function adaptDashboardSources(sources) {
     const githubJobId = requiredString(String(row['job-id']), 'job.job-id');
     const sourceAttempt = row['run-attempt'];
     const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1;
+    const id = jobId(githubJobId);
+    publishedJobIds.add(id);
     observations.push({
       kind: 'job',
       source: SOURCE,
@@ -203,6 +210,12 @@ export function adaptDashboardSources(sources) {
     const githubRunId = requiredString(row.run, 'session.run');
     const sourceAttempt = row['run-attempt'];
     const attempt = Number.isInteger(Number(sourceAttempt)) && Number(sourceAttempt) > 0 ? Number(sourceAttempt) : 1;
+    const canonicalRunId = runId(githubRunId, attempt);
+    if (!publishedRunIds.has(canonicalRunId)) continue;
+    const canonicalJobId = row['job-id'] === undefined || row['job-id'] === null
+      ? undefined
+      : jobId(requiredString(String(row['job-id']), 'session.job-id'));
+    publishedSessionIds.add(session);
     observations.push({
       kind: 'session',
       source: SOURCE,
@@ -210,10 +223,10 @@ export function adaptDashboardSources(sources) {
       observedAt: requiredString(row['observed-at'] ?? row['started-at'] ?? metadataTimestamp(sessions.metadata), 'session observed time'),
       data: {
         id: session,
-        runId: runId(githubRunId, attempt),
-        jobId: row['job-id'] === undefined || row['job-id'] === null
-          ? undefined
-          : jobId(requiredString(String(row['job-id']), 'session.job-id')),
+        runId: canonicalRunId,
+        jobId: canonicalJobId === undefined || publishedJobIds.has(canonicalJobId)
+          ? canonicalJobId
+          : undefined,
         kind: row['session-kind'] ?? 'unified-operational-log',
         status: row['session-status'] ?? 'unknown',
         startedAt: row['started-at'] ?? null,
@@ -225,6 +238,8 @@ export function adaptDashboardSources(sources) {
   for (const candidate of events.rows) {
     const row = objectRow(candidate);
     if (!row) continue;
+    const session = requiredString(row.session, 'event.session');
+    if (!publishedSessionIds.has(session)) continue;
     const sourceSequence = Number(row['source-sequence']);
     observations.push({
       kind: 'event',
@@ -233,7 +248,7 @@ export function adaptDashboardSources(sources) {
       observedAt: requiredString(row['observed-at'] ?? row['event-timestamp'] ?? metadataTimestamp(events.metadata), 'event observed time'),
       data: {
         id: requiredString(row.event, 'event.event'),
-        sessionId: requiredString(row.session, 'event.session'),
+        sessionId: session,
         timestamp: requiredString(row['event-timestamp'], 'event.event-timestamp'),
         source: requiredString(row['event-source'], 'event.event-source'),
         type: requiredString(row['event-type'], 'event.event-type'),
