@@ -21,63 +21,51 @@ be refreshed; the snapshot is not permanent historical authority.
 ## How Activity works
 
 ```mermaid
-flowchart TB
-  subgraph inputs[Evidence inputs]
-    definitions[Installed workflows<br/>CAO policy and package records]
-    logs[One bounded gh aw logs call<br/>runs, audits, usage, agent info]
-    outputs[Durable output APIs<br/>issues, comments, review artifacts]
-    privacy[Pages privacy state<br/>when private inventory is enabled]
-  end
+sequenceDiagram
+    participant Activity as activity.yml
+    participant Cache as Actions cache
+    participant Build as dashboard-build.yml
+    participant Adapter as dashboard-language-sources.mjs
+    participant Artifact as Dashboard artifact
+    participant Worker as Browser data worker
+    participant IDB as IndexedDB
 
-  subgraph activity[CAO Activity workflow]
-    collect[Collect once]
-    normalize[Normalize records<br/>and collection state]
-    snapshot[(Immutable Activity snapshot)]
-    collect --> normalize --> snapshot
-  end
+    Activity->>Activity: Collect logs, usage, inventory, and outcomes
+    Activity->>Activity: Normalize and index the snapshot
+    Activity->>Cache: Save cao-activity-v2-* snapshot
 
-  subgraph build[Dashboard report build]
-    restore[Restore the exact snapshot]
-    derive[Derive logical sources<br/>and source health]
-    runSource[runs]
-    workSource[work-items]
-    securitySource[security-findings]
-    restore --> derive
-    derive --> runSource
-    derive --> workSource
-    derive --> securitySource
-  end
+    Build->>Cache: Restore latest cao-activity-v2-*
+    alt Cache miss
+        Cache-->>Build: No compatible snapshot
+        Build-->>Build: Fail closed
+    else Snapshot restored
+        Cache-->>Build: Cached JSON files
+        Build->>Adapter: Read activity snapshot
+        Adapter->>Adapter: Normalize usage and logical-source rows
+        Adapter-->>Build: Write sources.json
+        Build->>Artifact: Upload static site and sources
+        Artifact-->>Worker: Load source manifest and requested sources
+        Worker->>Worker: Adapt and normalize canonical entities
+        Worker->>IDB: Stage, validate, and activate generation
+        IDB-->>Worker: Serve bounded page queries
+    end
 
-  subgraph browser[Overview in the browser]
-    failed[Failed runs]
-    blocked[Blocked work]
-    review[Awaiting review]
-    findings[Security findings]
-    summary[Attention summary<br/>or qualified quiet state]
-    failed --> summary
-    blocked --> summary
-    review --> summary
-    findings --> summary
-  end
-
-  definitions --> collect
-  logs --> collect
-  outputs --> collect
-  privacy -. privacy gate .-> collect
-  snapshot --> restore
-  runSource -->|apply horizon| failed
-  workSource -->|apply horizon| blocked
-  workSource -->|apply horizon| review
-  securitySource -->|apply horizon| findings
-  derive -. availability, completeness, freshness .-> summary
+    Note over Activity,Build: Dashboard Build never dispatches Activity or runs the indexer
 ```
 
-The boundaries in the diagram are ownership boundaries. Activity collects and
-saves the snapshot in one workflow. The report build restores that exact
-snapshot and derives logical sources. Overview filters their rows to the
-selected horizon and uses source health to decide whether an empty result is a
-real zero. The browser reads the built report; it does not call GitHub APIs
-directly.
+The sequence separates collection from rendering. Activity owns GitHub data
+acquisition, indexing, normalization, and publication of the immutable cache
+snapshot. Dashboard Build has read-only Actions access: it restores the latest
+compatible snapshot and fails on a cache miss instead of starting a competing
+Activity run. The adapter mines each retained usage record into Dashboard
+Language table rows, including engine, model, token, cache-token, AI Credit,
+estimated-cost, and source-health fields.
+
+The browser reads the built report; it does not call GitHub APIs directly. Its
+data worker keeps noncanonical logical sources in memory and persists only the
+normalized Repository, Workflow, Run, Job, Session, and Event generation in
+IndexedDB. Overview applies the selected horizon to bounded query results and
+uses source health to distinguish a real zero from missing data.
 
 ## What `activity/aw.yml` installs
 
