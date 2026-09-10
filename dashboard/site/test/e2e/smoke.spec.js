@@ -1711,14 +1711,23 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(summaryCell).toHaveCSS('opacity', '0');
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
-    for (let topCheck = 0; topCheck < 2; topCheck += 1) {
-      await scroll.evaluate((element) => {
-        element.scrollTop = 0;
-        element.dispatchEvent(new Event('scroll'));
-      });
-      expect(await view.locator('tbody > tr').first().textContent()).toMatch(/repository-(1|26)/);
-      await expect(view.locator('tbody > tr')).toHaveCount(50);
-    }
+    await scroll.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
+    await scroll.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(view.locator('tbody > tr').first()).toContainText('repository-26');
+    await scroll.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(view.locator('tbody > tr').first()).toContainText('repository-1');
+    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(view.locator('tbody > tr')).toHaveCount(50);
     await scroll.evaluate((element) => {
       element.scrollTop = 0;
       element.dispatchEvent(new Event('scroll'));
@@ -1740,7 +1749,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
-  await expect.poll(async () => view.locator('.table-scroll > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
   await page.setViewportSize({ width: 1000, height: 900 });

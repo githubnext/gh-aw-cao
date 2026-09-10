@@ -199,7 +199,7 @@ describe('renderTableRegion', () => {
     expect(scroll?.getAttribute('tabindex')).toBe('0');
     expect(scroll?.querySelector('table')).toBeTruthy();
     expect(scroll?.querySelector(':scope > .table-filter')).toBeTruthy();
-    expect(rendered.querySelector(':scope > .table-filter')).toBeNull();
+    expect([...rendered.children].some((child) => child.classList.contains('table-filter'))).toBe(false);
   });
 
   it('sorts rows numerically and temporally when a column header is activated', () => {
