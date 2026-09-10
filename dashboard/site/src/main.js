@@ -43,6 +43,19 @@
       }));
 
       const loadingProgress = startLoadingProgress(document);
+      /**
+       * @template T
+       * @param {() => Promise<T>} task
+       * @returns {Promise<T>}
+       */
+      const runWithLoadingProgress = async (task) => {
+        const progress = startLoadingProgress(document);
+        try {
+          return await task();
+        } finally {
+          progress.complete();
+        }
+      };
       const cancelCommand = offerCancelCommand(document);
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
         .then((response) => {
@@ -914,26 +927,30 @@
           const bindContinuations = (sources, sourceNames) => bindSourceContinuations(
             sources,
             sourceNames,
-            (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            (requested, pagination) => runWithLoadingProgress(
+              () => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            ),
           );
           /** @param {string} pageId */
           const loadPageSources = async (pageId) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
             const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
-            return bindContinuations(
+            return runWithLoadingProgress(async () => bindContinuations(
               await loadCanonicalDashboardPage(
                 sourceNames,
                 dashboardContext,
                 continuationRequests(lazySources),
               ),
               lazySources,
-            );
+            ));
           };
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
-          const loadHorizonSources = () => loadCanonicalDashboardPage(
-            DASHBOARD_HORIZON_COUNT_SOURCES,
-            dashboardContext,
+          const loadHorizonSources = () => runWithLoadingProgress(
+            () => loadCanonicalDashboardPage(
+              DASHBOARD_HORIZON_COUNT_SOURCES,
+              dashboardContext,
+            ),
           );
           /**
            * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
@@ -979,12 +996,12 @@
               refreshFailed = false;
               refreshPending = true;
               renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
-              void refreshCanonicalDashboardSources(
+              void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
                 dashboardContext,
                 refreshPagination,
-              ).then(
+              )).then(
                 ({ changed }) => {
                   refreshPending = false;
                   if (changed) return;

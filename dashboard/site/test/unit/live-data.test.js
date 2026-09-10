@@ -18,12 +18,14 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("dashboard-loading-skeleton");
     expect(preview).not.toContain("Loading dashboard data…");
     expect(preview).toContain("startLoadingProgress(document)");
+    expect(preview).toContain("runWithLoadingProgress");
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
+    expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
     expect(preview).toContain("subscribeCanonicalDashboardView(");
     expect(preview).toContain("emitCurrent: false");
     expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
-    expect(preview).toContain('loadCanonicalDashboardPage(\n            DASHBOARD_HORIZON_COUNT_SOURCES,');
+    expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DASHBOARD_HORIZON_COUNT_SOURCES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
     expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources)');
