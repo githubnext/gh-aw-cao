@@ -75,24 +75,33 @@ export function renderTableRegion(options) {
     },
     interactive
       ? h(
-        'div',
+        'details',
         { className: 'table-filter' },
-        renderLabeledControl(filterLabel ?? '', h('input', {
-          type: 'search',
-          placeholder: filterPlaceholder,
-          'data-table-filter': ''
-        }), { visuallyHiddenLabel: true }),
-        ...facets.map((facet) => renderLabeledControl(
-          facet.label,
-          h(
-            'select',
-            { 'data-table-facet': facet.key, 'data-table-column-index': String(facet.columnIndex) },
-            h('option', { value: '' }, facet.allLabel ?? `All ${facet.label.toLocaleLowerCase('en')}`),
-            ...facet.values.map((value) => h('option', { value }, value))
-          ),
-          { className: 'table-filter-facet' }
-        )),
-        h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural))
+        h(
+          'summary',
+          { className: 'table-filter-summary' },
+          h('span', null, 'Filters'),
+          h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural))
+        ),
+        h(
+          'div',
+          { className: 'table-filter-controls' },
+          renderLabeledControl(filterLabel ?? '', h('input', {
+            type: 'search',
+            placeholder: filterPlaceholder,
+            'data-table-filter': ''
+          }), { visuallyHiddenLabel: true }),
+          ...facets.map((facet) => renderLabeledControl(
+            facet.label,
+            h(
+              'select',
+              { 'data-table-facet': facet.key, 'data-table-column-index': String(facet.columnIndex) },
+              h('option', { value: '' }, facet.allLabel ?? `All ${facet.label.toLocaleLowerCase('en')}`),
+              ...facet.values.map((value) => h('option', { value }, value))
+            ),
+            { className: 'table-filter-facet' }
+          ))
+        )
       )
       : null,
     h(
