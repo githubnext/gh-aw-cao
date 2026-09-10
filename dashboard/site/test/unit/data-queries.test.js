@@ -622,6 +622,33 @@ describe('declarative dashboard queries', () => {
     expect(left[1].aic).toBeNull();
   });
 
+  it('keeps base rows when a left-join enrichment source is unavailable', () => {
+    const result = executeDashboardQuery({
+      name: 'inventory',
+      from: 'workflows',
+      joins: [{
+        source: 'usage-totals',
+        type: 'left',
+        on: [{ left: 'workflow', right: 'workflow' }],
+        fields: [{ field: 'aic', as: 'aic' }]
+      }]
+    }, {
+      workflows,
+      'usage-totals': {
+        source: 'usage-totals',
+        rows: [],
+        metadata: metadata('usage-totals', { availability: 'unavailable', completeness: 'partial' })
+      }
+    });
+
+    expect(result.rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', aic: null }),
+      expect.objectContaining({ workflow: 'b.md', aic: null })
+    ]);
+    expect(result.metadata).toMatchObject({ availability: 'available', completeness: 'partial' });
+    expect(result.metadata['query-diagnostic']).toBeUndefined();
+  });
+
   it('rejects many-to-many expansion with an explicit query diagnostic', () => {
     const result = executeDashboardQuery(
       {
