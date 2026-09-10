@@ -81,6 +81,7 @@ export function startLoadingProgress(document) {
       bar,
       progress: INITIAL_PROGRESS,
       timer: 0,
+      advancing: false,
       completionTimer: 0,
       tasks: 0,
     };
@@ -104,7 +105,8 @@ export function startLoadingProgress(document) {
     state.timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE);
   };
 
-  if (!state.timer) {
+  if (!state.advancing) {
+    state.advancing = true;
     state.timer = window.setTimeout(advance, MIN_DELAY + Math.random() * DELAY_VARIANCE);
   }
 
@@ -115,6 +117,7 @@ export function startLoadingProgress(document) {
       state.tasks -= 1;
       if (state.tasks > 0) return;
       window.clearTimeout(state.timer);
+      state.advancing = false;
       state.timer = 0;
       state.bar.classList.add('loading-progress-complete');
       state.bar.style.transform = 'scaleX(1)';
