@@ -923,9 +923,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator('.home-attention-metric-empty').filter({ hasText: 'Blocked work' })).toHaveCount(1);
   await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('1');
   await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
-  const attentionColors = await page.evaluate(() => {
-    const element = document.querySelector('[data-page-id="overview"]');
-    if (!(element instanceof HTMLElement)) return null;
+  const overviewElement = await overviewPage.elementHandle();
+  expect(overviewElement).not.toBeNull();
+  const attentionColors = await overviewElement?.evaluate((element) => {
     const root = element.closest('.dashboard-root');
     const activeReview = element.querySelector('.home-attention-metric-review.home-attention-metric-active strong');
     const emptyMetric = element.querySelector('.home-attention-metric-empty strong');
