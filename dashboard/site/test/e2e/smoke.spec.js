@@ -344,7 +344,7 @@ test('Safe Outputs presents usage as a responsive full-view table', async ({ pag
   await expect(usageView).toBeVisible();
   await expect(usageView.locator('[data-table-filter]')).toBeVisible();
   await expect(usageView.locator('tbody tr')).toHaveCount(40);
-  await expect(usageView.getByText('Missing data', { exact: true }).first()).toBeVisible();
+  await expect(usageView.locator('tbody').getByText('Missing data', { exact: true }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
 
   await tableScroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });

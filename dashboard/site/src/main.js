@@ -673,6 +673,15 @@
           ],
           metadata: metadata("outcomes-fixture"),
         },
+        "safe-output-performance": {
+          source: "safe-output-performance",
+          rows: [
+            { organization: "github", repository: "gh-aw", workflow: ".github/workflows/dependabot.md", run: "2002", "run-conclusion": "success", "rollout-mode": "review", "safe-output-kind": "output", "safe-output-label": "Output", "safe-output-status": "success", "safe-output-count": 3, "observed-at": "2026-08-29T08:40:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
+            { organization: "github", repository: "gh-aw-cao", workflow: ".github/workflows/daily.yml", run: "1001", "run-conclusion": "success", "rollout-mode": "live", "safe-output-kind": "noop", "safe-output-label": "No-op", "safe-output-status": "neutral", "safe-output-count": 1, "observed-at": "2026-08-29T09:00:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/1001", label: "View run 1001" } },
+            { organization: "github", repository: "mona-tools", workflow: ".github/workflows/review.yml", run: "1002", "run-conclusion": "failure", "rollout-mode": "review", "safe-output-kind": "missing_data", "safe-output-label": "Missing data", "safe-output-status": "warning", "safe-output-count": 2, "observed-at": "2026-08-29T09:30:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/mona-tools/actions/runs/1002", label: "View run 1002" } },
+          ],
+          metadata: metadata("safe-output-performance-fixture"),
+        },
         usage: {
           source: "usage",
           rows: [
