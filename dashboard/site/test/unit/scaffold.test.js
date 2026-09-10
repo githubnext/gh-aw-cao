@@ -58,9 +58,11 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
-    const dialogRule = styles.split('\n').find((line) => line.startsWith('.reset-dashboard-dialog {'));
-    const openRule = styles.split('\n').find((line) => line.startsWith('.reset-dashboard-dialog[open] {'));
-    const bodyRule = styles.split('\n').find((line) => line.startsWith('.reset-dashboard-dialog-body {'));
+    const styleLines = styles.split('\n');
+    const ruleByPrefix = (prefix) => styleLines.find((line) => line.startsWith(prefix));
+    const dialogRule = ruleByPrefix('.reset-dashboard-dialog {');
+    const openRule = ruleByPrefix('.reset-dashboard-dialog[open] {');
+    const bodyRule = ruleByPrefix('.reset-dashboard-dialog-body {');
 
     expect(dialogRule).not.toBeUndefined();
     expect(openRule).not.toBeUndefined();
