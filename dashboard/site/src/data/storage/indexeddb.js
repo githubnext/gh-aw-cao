@@ -447,10 +447,12 @@ export async function readActiveDatabaseTables(indexedDB) {
         table,
         records: await requestResult(store.index('generation').count(generation)),
         indexes: store.indexNames.length,
-        indexStructure: Array.from(store.indexNames, (name) => {
+        indexStructure: Array.from({ length: store.indexNames.length }, (_, index) => {
+          const name = store.indexNames.item(index);
+          if (name === null) return '';
           const keyPath = store.index(name).keyPath;
           return `${name} (${Array.isArray(keyPath) ? keyPath.join(', ') : String(keyPath)})`;
-        }).join('; '),
+        }).filter(Boolean).join('; '),
         keyPath: Array.isArray(store.keyPath) ? store.keyPath.join(', ') : String(store.keyPath ?? ''),
         generation,
         databaseVersion: database.version,
