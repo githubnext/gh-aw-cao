@@ -1,7 +1,6 @@
 import { tidy } from './data-operations.js';
 import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
-import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
@@ -93,12 +92,9 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
       )
     )
   );
-  const healthSources = [...requested].some((name) => name.startsWith('data-health-'))
-    ? { ...derivedSources, ...deriveDataHealthSources(derivedSources, requestContext) }
-    : derivedSources;
   const querySources = {
-    ...healthSources,
-    ...executeDashboardQueries(context.queries, healthSources, requested, { signal })
+    ...derivedSources,
+    ...executeDashboardQueries(context.queries, derivedSources, requested, { signal })
   };
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
@@ -286,18 +282,6 @@ export function processDataRequest(request, signal) {
       throw new TypeError('Scatter clustering requests require a positive integer limit.');
     }
     return clusterScatterPoints(request.data, limit);
-  }
-  if (request?.operation === 'derive-data-health') {
-    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
-      throw new TypeError('Data health requests require a sources object.');
-    }
-    if (request.context !== undefined && (!request.context || typeof request.context !== 'object' || Array.isArray(request.context))) {
-      throw new TypeError('Data health requests require an object context.');
-    }
-    return deriveDataHealthSources(
-      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
-      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
-    );
   }
   if (request?.operation === 'canonicalize-dashboard-sources') {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {

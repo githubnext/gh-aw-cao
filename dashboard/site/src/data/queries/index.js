@@ -1,8 +1,11 @@
-import { readActiveCollection, readActiveIndex, readActiveRecord } from '../storage/indexeddb.js';
+import { readActiveCollection, readActiveDatabaseTables, readActiveIndex, readActiveRecord } from '../storage/indexeddb.js';
 
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
   return {
+    database: {
+      tables: () => readActiveDatabaseTables(indexedDB)
+    },
     repositories: {
       list: () => readActiveCollection(indexedDB, 'repositories'),
       get: (/** @type {string} */ id) => readActiveRecord(indexedDB, 'repositories', id)

@@ -63,6 +63,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
     }
     const dashboard = await dashboardResponse.json();
     const effectiveSources = effectiveDashboardSources(liveSources);
+    const queryNames = new Set((dashboard.dashboard?.queries || []).map((query) => query.name));
     const pages = selectedPages(dashboard);
     summary.selectedPageIds = pages.map((page) => page.id);
     if (pages.length === 0) throw new Error("No selected page IDs exist in the composed dashboard.");
@@ -136,7 +137,7 @@ test("each selected dashboard view renders with live data", async ({ browser }, 
         result.missingViews = result.declaredViews.filter(
           (viewId) => !result.renderedViews.includes(viewId),
         );
-        const sourceProblems = missingDashboardSources(pageDefinition, effectiveSources);
+        const sourceProblems = missingDashboardSources(pageDefinition, effectiveSources, queryNames);
         result.missingData = [
           ...sourceProblems,
           ...await activePage.locator('[aria-label^="Unable to load "]')

@@ -344,94 +344,45 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders cached source health without mixing in presentation-only sources', async () => {
+  it('renders the declarative database inventory as one full-view table', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
       sources: {
-        runs: {
-          source: 'runs',
-          rows: [{ run: '1', 'run-conclusion': 'success' }],
+        'database-table-inventory': {
+          source: 'database-table-inventory',
+          rows: [
+            {
+              table: 'events', records: 89, indexes: 6, 'primary-key': 'generation, id',
+              generation: 'generation-a', 'schema-version': 1, 'database-version': 4
+            },
+            {
+              table: 'runs', records: 12, indexes: 6, 'primary-key': 'generation, id',
+              generation: 'generation-a', 'schema-version': 1, 'database-version': 4
+            }
+          ],
           metadata: {
-            'source-id': 'runs-fixture',
-            'source-kind': 'fixture',
+            'source-id': 'database-table-inventory',
+            'source-kind': 'derived',
             'as-of': '2026-09-03T12:00:00Z',
             'retrieved-at': '2026-09-03T12:01:00Z',
             completeness: 'complete',
             freshness: 'fresh',
             availability: 'available'
           }
-        },
-        usage: {
-          source: 'usage',
-          rows: [],
-          metadata: {
-            'source-id': 'usage-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
-          }
         }
       }
     });
 
     const page = await activatePage(rendered, 'data-health');
-    const sourceView = page?.querySelector('[data-view-id="data-health-sources"]');
+    const sourceView = page?.querySelector('[data-view-id="database-table-inventory"]');
     expect(page?.querySelector('.chart-view-pie')).toBeNull();
     expect(page?.querySelector('.layout-section')).toBeNull();
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(sourceView?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain('unavailable');
-    expect(sourceView?.querySelector('tbody')?.textContent).not.toContain('overview');
-    expect(page?.textContent).toContain('Fields populated');
-    rendered.remove();
-  });
-
-  it('renders data-health diagnostics when a cached source is unavailable', async () => {
-    const rendered = renderDashboard({
-      document: authoritativeDashboardDocument,
-      sources: {
-        runs: {
-          source: 'runs',
-          rows: [],
-          metadata: {
-            'source-id': 'runs-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
-          }
-        },
-        usage: {
-          source: 'usage',
-          rows: [{ run: '1', aic: 3 }],
-          metadata: {
-            'source-id': 'usage-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      }
-    });
-
-    const page = await activatePage(rendered, 'data-health');
-    expect(page?.querySelector('.chart-view-pie')).toBeNull();
-    expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull();
-    expect(page?.textContent).toContain('insufficient');
-    expect(page?.querySelector('[data-view-id="data-health-sources"] .status-danger')?.textContent).toBe('insufficient');
-    expect(page?.textContent).toContain('runs');
-    expect(page?.textContent).toContain('unavailable');
+    expect(sourceView?.querySelector('tbody')?.textContent).toContain('events');
+    expect(sourceView?.querySelector('tbody')?.textContent).toContain('89');
+    expect(page?.textContent).toContain('Primary key');
     rendered.remove();
   });
 
@@ -3372,7 +3323,7 @@ describe('presenter built-in and custom pages', () => {
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('#page-coverage'))?.hidden).toBe(false);
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Coverage diagnostics');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe(
-      'Drill-down into the canonical Data Health coverage and collection evidence.'
+      'Drill-down into repository coverage and retained collection evidence.'
     );
     expect(rendered.querySelector('[data-breadcrumb-root]')?.textContent).toBe('Operational health');
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
@@ -3386,26 +3337,19 @@ describe('presenter built-in and custom pages', () => {
     expect(coveragePage.views[1]).toMatchObject({
       mark: 'table',
       controls: 'static',
-      data: { source: 'data-health-coverage' }
+      disclosure: 'supplemental',
+      data: { source: 'coverage-diagnostics' }
     });
     expect(coveragePage.views[2]).toMatchObject({
       mark: 'table',
       controls: 'static',
       disclosure: 'supplemental',
-      data: { source: 'data-health-collections' }
+      data: { source: 'coverage-diagnostics' }
     });
-    expect(coveragePage.views[2]).not.toHaveProperty('element');
-    expect(coveragePage.views[3]).toMatchObject({
-      mark: 'table',
-      controls: 'static',
-      disclosure: 'supplemental',
-      data: { source: 'data-health-collections' }
-    });
+    expect(coveragePage.views[1]).not.toHaveProperty('element');
     await vi.waitFor(() => {
       expect(rendered.querySelector('#page-coverage')?.hasAttribute('data-page-pending')).toBe(false);
     });
-    const essentialRows = rendered.querySelectorAll('#page-coverage [data-disclosure="essential"] .custom-table tbody tr');
-    expect(essentialRows.length).toBeGreaterThanOrEqual(9);
     const essentialText = [...rendered.querySelectorAll('#page-coverage [data-disclosure="essential"]')]
       .map((view) => view.textContent).join(' ');
     expect(essentialText).not.toContain('GitHub API rate limit exceeded');

@@ -429,6 +429,37 @@ export async function activeGenerationMetadata(indexedDB) {
 }
 
 /**
+ * Returns schema and active-generation statistics for each canonical entity
+ * table without loading its records.
+ * @param {IDBFactory} indexedDB
+ */
+export async function readActiveDatabaseTables(indexedDB) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
+    if (typeof active?.value !== 'string') return [];
+    const checkpoint = await readStoredCheckpoint(database, active.value, 'dashboard-sources');
+    const transaction = database.transaction(GENERATION_STORES);
+    const rows = await Promise.all(GENERATION_STORES.map(async (table) => {
+      const store = transaction.objectStore(table);
+      return {
+        table,
+        records: await requestResult(store.index('generation').count(active.value)),
+        indexes: store.indexNames.length,
+        keyPath: Array.isArray(store.keyPath) ? store.keyPath.join(', ') : String(store.keyPath ?? ''),
+        generation: active.value,
+        databaseVersion: database.version,
+        schemaVersion: Number(active.canonicalSchemaVersion) || null,
+        committedAt: typeof checkpoint?.committedAt === 'string' ? checkpoint.committedAt : ''
+      };
+    }));
+    return rows;
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * Verifies active-generation metadata and bounded store counts without loading
  * the generation into memory.
  * @param {IDBFactory} indexedDB

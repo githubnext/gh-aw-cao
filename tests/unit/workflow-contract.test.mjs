@@ -1975,13 +1975,13 @@ test("SelfCare data acquisition audit refreshes its specification", () => {
   assert.match(compiled, /specs\/data-acquisition-audit\.md/);
 });
 
-test("SelfCare dashboard data schema worker tracks every deployed source with Data Health inference", () => {
+test("SelfCare dashboard data schema worker tracks every deployed source with bounded inference", () => {
   const source = workflow("self-care-dashboard-data-schema.md");
 
   assert.match(source, /package: self-care\n\s+role: worker\n\s+worker: dashboard-data-schema/);
   assert.match(source, /safe_output_mode` is `live`/);
   assert.match(source, /https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources/);
-  assert.match(source, /deriveDataHealthSources/);
+  assert.match(source, /inferJsonSchema/);
   assert.match(source, /manifest\.sources\.sort\(\)/);
   assert.match(source, /allowed-files:\n\s+- "specs\/dashboard-data\.md"/);
   assert.match(source, /if-no-changes: ignore/);

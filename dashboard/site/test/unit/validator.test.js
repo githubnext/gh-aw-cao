@@ -1402,7 +1402,7 @@ dashboard:
 
     const supplementalElement = accepted.replace(
       '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { source: runs }\n          mark: table\n          encoding:\n            columns: [{ field: run, type: nominal }]\n',
-      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [data-health-domains] }\n          mark: element\n          element: data-health-domain-list\n'
+      '        - id: supporting-table\n          disclosure: supplemental\n          disclosure-label: Supporting table\n          data: { sources: [runs] }\n          mark: element\n          element: summary-grid\n'
     );
     expect(validateDashboardDocument(supplementalElement).ok).toBe(true);
 

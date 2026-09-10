@@ -9,13 +9,13 @@
       {
         "id": "partial-data-rate-limit",
         "title": "Dashboard data is partial",
-        "description": "Data Health reports a collection gap caused by a GitHub API rate limit.",
+        "description": "Coverage diagnostics report a collection gap caused by a GitHub API rate limit.",
         "icon": "alert",
         "navigation-page": "data-health",
         "visible-when": {
-          "source": "data-health-collections",
-          "field": "failure-class",
-          "equals": "rate-limit"
+          "source": "coverage-diagnostics",
+          "field": "kind",
+          "equals": "github-api-rate-limit-403"
         }
       }
     ],
@@ -71,6 +71,24 @@
       }
     },
     "queries": [
+      {
+        "name": "database-table-inventory",
+        "intent": "List canonical database tables with record and schema statistics.",
+        "from": "database-tables",
+        "select": [
+          { "field": "table" },
+          { "field": "records" },
+          { "field": "indexes" },
+          { "field": "primary-key" },
+          { "field": "generation" },
+          { "field": "schema-version" },
+          { "field": "database-version" }
+        ],
+        "order-by": [
+          { "field": "records", "direction": "desc" },
+          { "field": "table", "direction": "asc" }
+        ]
+      },
       {
         "name": "database-workflow-count",
         "intent": "Count workflows in the dashboard database.",
@@ -4298,69 +4316,55 @@
         "kind": "custom",
         "title": "Data health",
         "navigation-label": "Data health",
-        "description": "Whether dashboard evidence is sufficiently complete, current, compatible, and consistent to represent the live agentic system.",
+        "description": "Canonical database tables and statistics for the active dashboard dataset.",
         "icon": "pulse",
         "class-name": "data-health-page",
         "views": [
           {
-            "id": "data-health-sources",
-            "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
+            "id": "database-table-inventory",
+            "description": "Record counts and schema details for every canonical entity table in the active dataset.",
             "data": {
-              "source": "data-health-sources"
+              "source": "database-table-inventory"
             },
             "mark": "table",
             "controls": "interactive",
-            "empty-message": "No cached data sources available.",
+            "empty-message": "No active canonical database tables available.",
             "encoding": {
               "columns": [
                 {
-                  "field": "source",
+                  "field": "table",
                   "type": "nominal",
-                  "title": "Source"
+                  "title": "Table"
                 },
                 {
-                  "field": "rows",
+                  "field": "records",
                   "type": "quantitative",
-                  "title": "Rows"
+                  "title": "Records"
                 },
                 {
-                  "field": "fields",
+                  "field": "indexes",
                   "type": "quantitative",
-                  "title": "Fields"
+                  "title": "Indexes"
                 },
                 {
-                  "field": "field-coverage",
+                  "field": "primary-key",
                   "type": "nominal",
-                  "title": "Fields populated"
+                  "title": "Primary key"
                 },
                 {
-                  "field": "cell-coverage",
+                  "field": "generation",
                   "type": "nominal",
-                  "title": "Cells populated"
+                  "title": "Generation"
                 },
                 {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Confidence",
-                  "display": "status"
+                  "field": "schema-version",
+                  "type": "quantitative",
+                  "title": "Schema version"
                 },
                 {
-                  "field": "availability",
-                  "type": "nominal",
-                  "title": "Availability",
-                  "display": "status"
-                },
-                {
-                  "field": "completeness",
-                  "type": "nominal",
-                  "title": "Completeness",
-                  "display": "status"
-                },
-                {
-                  "field": "freshness",
-                  "type": "nominal",
-                  "title": "Freshness",
-                  "display": "status"
+                  "field": "database-version",
+                  "type": "quantitative",
+                  "title": "Database version"
                 }
               ]
             },
@@ -4374,7 +4378,7 @@
         "kind": "custom",
         "title": "Coverage diagnostics",
         "class-name": "coverage-page",
-        "description": "Drill-down into the canonical Data Health coverage and collection evidence.",
+        "description": "Drill-down into repository coverage and retained collection evidence.",
         "route": {
           "navigation-page": "operations"
         },
@@ -4408,63 +4412,12 @@
             }
           },
           {
-            "id": "coverage-summary",
-            "title": "Canonical coverage",
-            "description": "Expected-versus-observed coverage is derived once by Data Health.",
-            "data": {
-              "source": "data-health-coverage"
-            },
-            "mark": "table",
-            "controls": "static",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "area",
-                  "type": "nominal",
-                  "title": "Evidence area"
-                },
-                {
-                  "field": "expected",
-                  "type": "nominal",
-                  "title": "Expected"
-                },
-                {
-                  "field": "observed",
-                  "type": "nominal",
-                  "title": "Observed"
-                },
-                {
-                  "field": "missing",
-                  "type": "nominal",
-                  "title": "Missing"
-                },
-                {
-                  "field": "coverage-percent",
-                  "type": "nominal",
-                  "title": "Coverage"
-                },
-                {
-                  "field": "state",
-                  "type": "nominal",
-                  "title": "State",
-                  "display": "status"
-                },
-                {
-                  "field": "reason",
-                  "type": "nominal",
-                  "title": "Reason"
-                }
-              ]
-            },
-            "layout": "full"
-          },
-          {
             "id": "coverage-diagnostics",
             "disclosure-label": "Coverage diagnostics",
             "disclosure": "supplemental",
-            "description": "Collection gaps consume the same evidence used by Data Health confidence.",
+            "description": "Collection gaps retained by the dashboard data producer.",
             "data": {
-              "source": "data-health-collections"
+              "source": "coverage-diagnostics"
             },
             "mark": "table",
             "controls": "static",
@@ -4472,12 +4425,12 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "operation",
+                  "field": "title",
                   "type": "nominal",
                   "title": "Collection"
                 },
                 {
-                  "field": "reason",
+                  "field": "effect",
                   "type": "nominal",
                   "title": "Effect"
                 }
@@ -4491,7 +4444,7 @@
             "description": "Raw collection diagnostics for operators who need endpoint, retry, and snapshot context.",
             "disclosure": "supplemental",
             "data": {
-              "source": "data-health-collections"
+              "source": "coverage-diagnostics"
             },
             "mark": "table",
             "controls": "static",
@@ -4499,14 +4452,14 @@
             "encoding": {
               "columns": [
                 {
-                  "field": "operation",
+                  "field": "title",
                   "type": "nominal",
                   "title": "Collection"
                 },
                 {
-                  "field": "failure-class",
+                  "field": "kind",
                   "type": "nominal",
-                  "title": "Failure class"
+                  "title": "Diagnostic kind"
                 },
                 {
                   "field": "technical-detail",
@@ -4514,19 +4467,19 @@
                   "title": "Technical detail"
                 },
                 {
-                  "field": "evidence-horizon",
+                  "field": "rate-limit-reset",
                   "type": "nominal",
-                  "title": "Evidence horizon"
+                  "title": "Rate limit reset"
                 },
                 {
-                  "field": "provenance",
+                  "field": "endpoint",
                   "type": "nominal",
-                  "title": "Provenance"
+                  "title": "Endpoint"
                 },
                 {
-                  "field": "snapshot-age",
-                  "type": "nominal",
-                  "title": "Snapshot age"
+                  "field": "snapshot-age-seconds",
+                  "type": "quantitative",
+                  "title": "Snapshot age (seconds)"
                 }
               ]
             },

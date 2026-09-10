@@ -90,6 +90,40 @@ describe('canonical view sources', () => {
     });
   });
 
+  it('projects active database table statistics without loading table records', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      sources,
+      metadata['artifact-generation'],
+      ['database-tables']
+    );
+
+    expect(Object.keys(projected)).toEqual(['database-tables']);
+    expect(projected['database-tables']).toMatchObject({
+      source: 'database-tables',
+      metadata: {
+        'source-kind': 'canonical-query',
+        availability: 'available',
+        completeness: 'complete'
+      }
+    });
+    expect(projected['database-tables'].rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        table: 'repositories',
+        records: 1,
+        indexes: 3,
+        'primary-key': 'generation, id',
+        generation: 'generation-a',
+        'database-version': 4,
+        'schema-version': expect.any(Number)
+      }),
+      expect.objectContaining({ table: 'events', records: 0 })
+    ]));
+    expect(projected['database-tables'].rows).toHaveLength(8);
+  });
+
   it('projects work items and security findings from canonical entities', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 

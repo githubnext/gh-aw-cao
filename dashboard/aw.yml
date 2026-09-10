@@ -76,14 +76,14 @@ resources:
     destination: .github/aw/dashboard/site/src/data/storage/indexeddb.js
   - source: site/src/data/storage/quota.js
     destination: .github/aw/dashboard/site/src/data/storage/quota.js
+  - source: site/src/schema-inference.js
+    destination: .github/aw/dashboard/site/src/schema-inference.js
   - source: site/src/copilot-prompt.js
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js
     destination: .github/aw/dashboard/site/src/compliance.js
   - source: site/src/cancel-command.js
     destination: .github/aw/dashboard/site/src/cancel-command.js
-  - source: site/src/data-health.js
-    destination: .github/aw/dashboard/site/src/data-health.js
   - source: site/src/dom.js
     destination: .github/aw/dashboard/site/src/dom.js
   - source: site/src/dom-provenance.js

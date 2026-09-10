@@ -151,7 +151,7 @@ pre-agent-steps:
     run: |
       node --input-type=module <<'EOF'
       import { readFileSync, writeFileSync } from "node:fs";
-      import { deriveDataHealthSources } from "./dashboard/site/src/data-health.js";
+      import { inferJsonSchema } from "./dashboard/site/src/schema-inference.js";
 
       const directory = process.env.DASHBOARD_DATA_DIR + "/sources";
       const manifest = JSON.parse(readFileSync(directory + "/manifest.json", "utf8"));
@@ -162,21 +162,15 @@ pre-agent-steps:
           JSON.parse(readFileSync(`${directory}/${source}.json`, "utf8")),
         ]),
       ];
-      const logicalSources = Object.fromEntries(files.map(([file, value]) => [
-        file,
-        value && typeof value === "object" && Array.isArray(value.rows)
-          ? value
-          : { rows: Array.isArray(value) ? value : [value], metadata: {} },
-      ]));
-      const schemas = deriveDataHealthSources(logicalSources)["data-health-schema"].rows;
-      const schemaByFile = new Map(schemas.map(({ source, schema }) => [source, schema]));
       const escapeHtml = (value) => value
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
-      const sections = files.map(([file]) => {
-        const schema = schemaByFile.get(file);
-        if (typeof schema !== "string") throw new TypeError(`No schema was inferred for ${file}.`);
+      const sections = files.map(([file, value]) => {
+        const rows = value && typeof value === "object" && Array.isArray(value.rows)
+          ? value.rows
+          : Array.isArray(value) ? value : [value];
+        const schema = inferJsonSchema(rows);
         return `## \`${file}\`\n\n<pre><code>${escapeHtml(schema)}</code></pre>`;
       });
       const document = [
@@ -184,7 +178,7 @@ pre-agent-steps:
         "",
         "This specification records the pseudo schema of every JSON file advertised by the deployed dashboard data manifest at `https://githubnext.github.io/gh-aw-cao/cao/sources/manifest.json`.",
         "",
-        "Schemas use the same bounded inference as the dashboard Data Health view: at most 50 rows, six nested levels, and 12 displayed properties per object. A `?` marks a property absent from at least one sampled row.",
+        "Schemas use bounded inference: at most 50 rows, six nested levels, and 12 displayed properties per object. A `?` marks a property absent from at least one sampled row.",
         "",
         ...sections,
         "",

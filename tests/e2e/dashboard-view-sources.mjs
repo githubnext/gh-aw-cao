@@ -1,4 +1,3 @@
-import { deriveDataHealthSources } from "../../dashboard/site/src/data-health.js";
 import { deriveOverviewSources } from "../../dashboard/site/src/overview-data.js";
 import { deriveRepositorySources } from "../../dashboard/site/src/repository-data.js";
 import { deriveRuntimeSources } from "../../dashboard/site/src/runtime-data.js";
@@ -22,20 +21,15 @@ export function effectiveDashboardSources(rawSources) {
       ),
     ),
   );
-  const dataHealthSources = deriveDataHealthSources(rawSources);
-  return {
-    ...derivedSources,
-    ...Object.fromEntries(
-      Object.entries(dataHealthSources).filter(([name]) => name.startsWith("data-health-")),
-    ),
-  };
+  return derivedSources;
 }
 
-export function missingDashboardSources(pageDefinition, sources) {
+export function missingDashboardSources(pageDefinition, sources, queryNames = new Set()) {
   return [...declaredSourceNames(pageDefinition)]
     .filter((sourceName) =>
-      !Object.hasOwn(sources, sourceName)
-      || sources[sourceName]?.metadata?.availability === "unavailable"
+      !queryNames.has(sourceName)
+      && (!Object.hasOwn(sources, sourceName)
+        || sources[sourceName]?.metadata?.availability === "unavailable")
     )
     .map((sourceName) => `${sourceName}: missing or unavailable`);
 }
