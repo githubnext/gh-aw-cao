@@ -345,8 +345,8 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
         availability: 'available'
       };
       const sources = {
-        runs: {
-          source: 'runs',
+        'runs-table': {
+          source: 'runs-table',
           metadata,
           rows: [
             {
