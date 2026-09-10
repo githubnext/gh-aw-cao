@@ -6,7 +6,7 @@ description: Understand the canonical entities, relationships, identities, and l
 The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON observations into one source-neutral model. Views query this model instead of interpreting upstream formats directly.
 
 > [!NOTE]
-> IndexedDB persists normalized Repository, Workflow, Run, Job, Session, Event, Work Item, and Finding records, plus an ingestion transaction audit trail. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
+> IndexedDB persists normalized Repository, Workflow, Run, Job, Session, and Event records, plus an ingestion transaction audit trail. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
 
 ## Entity map
 
@@ -69,7 +69,7 @@ Observations can arrive at different times and enrich an existing entity. Explic
 
 The `gh-aw-logs.jsonl` cache is the dashboard's published operational input. The worker downloads it from the dashboard origin and processes it line by line. It accepts schema-v2 `run` envelopes, ignores other envelope kinds, adapts valid runs into Repository, Workflow, and Run observations, then normalizes and relationship-validates the complete incoming batch before writing.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 7. It has stores for `repositories`, `workflows`, `runs`, `jobs`, `sessions`, `events`, `workItems`, and `findings`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Schema upgrades discard incompatible schemas before version 5 and replace the legacy `operations` audit store with `transactions` for versions 5 and 6.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 8. It has stores for `repositories`, `workflows`, `runs`, `jobs`, `sessions`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Schema upgrades discard incompatible schemas before version 5, replace the legacy `operations` audit store with `transactions` for versions 5 and 6, and remove the former `workItems` and `findings` stores in version 8.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection: it deletes records absent from the retained batch and puts every retained record. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
@@ -81,7 +81,7 @@ Every merged batch must satisfy these mandatory relationships:
 - Session → Run and, when present, Job
 - Event → Session
 
-Work items and findings are retained alongside the entity hierarchy. Other independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
+Work items and findings are represented by Events rather than separate canonical tables. Independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
 
 Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker, keeping large object graphs and conversions off the rendering thread. A successful JSONL ingestion writes an `ingest-jsonl` transaction containing its timestamp, input-record count, and retained-record count. A failed JSONL ingestion writes an `ingest-jsonl-failed` transaction with the error type when possible, and does not write a partial incoming batch. The audit trail is diagnostic derived state, not an authoritative log.
 

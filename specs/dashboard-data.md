@@ -269,11 +269,9 @@ The model MAY later add:
 
 ```text
 Artifact
-Finding
 Outcome
 Evaluation
 Metric
-WorkItem
 ```
 
 without changing the core execution hierarchy.
@@ -609,6 +607,10 @@ safe-output.requested
 safe-output.validated
 safe-output.executed
 safe-output.rejected
+
+work-item.updated
+finding.detected
+finding.updated
 
 github-api.request
 github-api.response

@@ -13,9 +13,7 @@ const RETENTION_TIMESTAMPS = {
   runs: ['completedAt', 'startedAt', 'observedAt'],
   jobs: ['completedAt', 'startedAt', 'observedAt'],
   sessions: ['completedAt', 'startedAt', 'observedAt'],
-  events: ['timestamp', 'observedAt'],
-  workItems: ['completedAt', 'startedAt', 'observedAt'],
-  findings: ['observedAt']
+  events: ['timestamp', 'observedAt']
 };
 
 const STORES = /** @type {const} */ ([
@@ -24,9 +22,7 @@ const STORES = /** @type {const} */ ([
   'runs',
   'jobs',
   'sessions',
-  'events',
-  'workItems',
-  'findings'
+  'events'
 ]);
 
 /**

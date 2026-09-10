@@ -8,9 +8,7 @@ const COLLECTIONS = {
   run: 'runs',
   job: 'jobs',
   session: 'sessions',
-  event: 'events',
-  'work-item': 'workItems',
-  finding: 'findings'
+  event: 'events'
 };
 
 /**
@@ -43,8 +41,6 @@ function identityFor(observation) {
     case 'job': return jobId(requiredIdentifier(data.githubJobId, 'job.githubJobId'));
     case 'session':
     case 'event':
-    case 'work-item':
-    case 'finding':
       return sourceId(observation.kind, observation.source, observation.sourceId);
   }
 }
@@ -114,9 +110,7 @@ export function normalize(observations, options = {}) {
     runs: new Map(),
     jobs: new Map(),
     sessions: new Map(),
-    events: new Map(),
-    workItems: new Map(),
-    findings: new Map()
+    events: new Map()
   };
 
   const sorted = [...observations].sort((left, right) => compareObservations(left, right, sourcePrecedence));

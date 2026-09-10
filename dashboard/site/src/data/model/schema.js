@@ -1,4 +1,4 @@
-export const CANONICAL_SCHEMA_VERSION = 5;
+export const CANONICAL_SCHEMA_VERSION = 6;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'repository',
@@ -6,9 +6,7 @@ export const ENTITY_KINDS = /** @type {const} */ ([
   'run',
   'job',
   'session',
-  'event',
-  'work-item',
-  'finding'
+  'event'
 ]);
 
 /** @typedef {typeof ENTITY_KINDS[number]} EntityKind */
@@ -33,8 +31,6 @@ export const ENTITY_KINDS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} jobs
  * @property {Record<string, unknown>[]} sessions
  * @property {Record<string, unknown>[]} events
- * @property {Record<string, unknown>[]} workItems
- * @property {Record<string, unknown>[]} findings
  */
 
 /**
