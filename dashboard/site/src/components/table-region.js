@@ -100,7 +100,7 @@ export function renderTableRegion(options) {
       {
         className: 'table-scroll',
         tabIndex: 0,
-        ...(filterLabel ? { role: 'region', 'aria-label': filterLabel } : {})
+        ...(filterLabel ? { role: 'region', 'aria-label': `${filterLabel} results` } : {})
       },
       filter,
       h(

@@ -45,11 +45,13 @@ async function expectTableFilterIsContained(tableFilter) {
 }
 
 /**
- * Lazy-list windows move one page at a time when the user reaches the top edge.
- * @param {import('@playwright/test').Locator} scroll
- * @param {import('@playwright/test').Locator} view
- * @param {import('@playwright/test').Locator} root
- * @param {string} expectedFirstRowText
+ * Lazy-list windows move one page at a time when the user reaches the top edge;
+ * each step must keep compact full-view mode active and keep the rendered
+ * two-page window intact.
+ * @param {import('@playwright/test').Locator} scroll Table scroll region to move to the top edge.
+ * @param {import('@playwright/test').Locator} view Full-view table view containing the rendered lazy rows.
+ * @param {import('@playwright/test').Locator} root Dashboard root expected to remain in compact full-view mode.
+ * @param {string} expectedFirstRowText Text fragment expected in the first rendered row after the paging step.
  */
 async function scrollToTopAndExpectFirstRow(scroll, view, root, expectedFirstRowText) {
   await scroll.evaluate((element) => {
