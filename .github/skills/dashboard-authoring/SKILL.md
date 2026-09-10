@@ -28,6 +28,16 @@ Create one dashboard that helps an operator decide whether a specific agentic wo
 
 When a diagnostic page has one essential summary table and several supporting tables, render the summary first and make each supporting table a sibling `supplemental` disclosure. Omit layout sections so a table is not nested inside both a section and a disclosure.
 
+## Data and database work
+
+Before implementing a data-backed feature or modifying a database, write or update the normative requirements for both the SQL layer and the IndexedDB layer in [`specs/dashboard-data.md`](../../../specs/dashboard-data.md). Define the source contract, canonical mapping, identities and relationships, migration behavior, retention, failure handling, and SQL/IndexedDB parity before changing implementation code.
+
+Follow the data-injection boundary documented in [`docs/dashboard-data-model.md`](../../../docs/dashboard-data-model.md): authoritative inputs pass through source adapters, canonical normalization, canonical storage, and the query layer before reaching a view. Views must not parse upstream logs or query storage directly. Treat browser IndexedDB and the local SQLite projection as disposable, reconstructable derived state.
+
+Use [`gh aw logs`](https://github.com/github/gh-aw/blob/main/docs/src/content/docs/troubleshooting/debugging.md) as the source of workflow-run evidence. The published `gh-aw-logs.jsonl` format is defined by the gh-aw [`logs-jsonl.schema.json`](https://github.com/github/gh-aw/blob/main/schemas/logs-jsonl.schema.json); consult that schema rather than inferring fields from fixtures or individual deployed records.
+
+For live feature-development data, run `npm run dashboard:data:download`. It downloads the deployed Pages site's `gh-aw-logs.jsonl` and `gh-aw-logs.sqlite` unchanged into `_activity/`. Set `DASHBOARD_DATA_URL` or pass `--url URL` for another deployment, and pass `--output DIRECTORY` for another destination. Query the downloaded SQLite database with `npm run dashboard:data -- query`, and use `npm run dashboard:data -- help` for the supported collections and filters. Live data is development evidence, not a schema authority; keep code aligned with the specifications and JSONL schema.
+
 ## Package file convention
 
 - Store an operation package's production Dashboard Language document at `<package>/dashboard.json`.
