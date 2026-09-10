@@ -116,7 +116,11 @@ jobs:
           run-id: ${{ needs.dashboard.outputs.run-id }}
 
       - name: Configure Pages
+        # Outputs are unused downstream; treat transient installation API rate
+        # limits (frequent with this cron-scheduled job) as non-fatal so the
+        # job can still upload and deploy the already-built artifact.
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        continue-on-error: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
