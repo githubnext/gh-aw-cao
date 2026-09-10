@@ -7,6 +7,7 @@ export const BACKGROUND_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
  * @returns {() => void}
  */
 export function scheduleBackgroundRefresh(refresh, options = {}) {
+  if (options.signal?.aborted) return () => {};
   const interval = globalThis.setInterval(
     refresh,
     options.intervalMs ?? BACKGROUND_REFRESH_INTERVAL_MS

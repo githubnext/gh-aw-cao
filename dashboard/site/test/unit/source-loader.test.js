@@ -3,7 +3,6 @@ import { loadDashboardSources } from '../../src/source-loader.js';
 
 describe('dashboard source loader', () => {
   it('loads split logical sources sequentially', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(12345);
     let active = 0;
     let maximumActive = 0;
     const fetchSource = vi.fn(async (input) => {
@@ -32,7 +31,7 @@ describe('dashboard source loader', () => {
       '/cao/sources/outcomes.json'
     ]);
     expect(new Set(requestedUrls.map((url) => url.searchParams.get('_refresh'))).size).toBe(1);
-    expect(requestedUrls[0].searchParams.get('_refresh')).toMatch(/^12345-\d+$/);
+    expect(requestedUrls[0].searchParams.get('_refresh')).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('rejects split sources from a different artifact generation', async () => {
@@ -51,7 +50,6 @@ describe('dashboard source loader', () => {
   });
 
   it('falls back to the monolith only when no split manifest exists', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(67890);
     const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
       ? new Response('', { status: 404 })
       : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
@@ -65,11 +63,10 @@ describe('dashboard source loader', () => {
       '/cao/sources.json'
     ]);
     expect(new Set(requestedUrls.map((url) => url.searchParams.get('_refresh'))).size).toBe(1);
-    expect(requestedUrls[0].searchParams.get('_refresh')).toMatch(/^67890-\d+$/);
+    expect(requestedUrls[0].searchParams.get('_refresh')).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('uses a different cache-busting argument for each refresh cycle', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(12345);
     const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
       ? new Response('', { status: 404 })
       : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));

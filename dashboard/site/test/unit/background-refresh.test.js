@@ -35,4 +35,17 @@ describe('dashboard background refresh', () => {
 
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it('does not start polling for an owner that is already aborted', () => {
+    vi.useFakeTimers();
+    const refresh = vi.fn();
+    const owner = new AbortController();
+    owner.abort();
+
+    scheduleBackgroundRefresh(refresh, { signal: owner.signal });
+    vi.advanceTimersByTime(BACKGROUND_REFRESH_INTERVAL_MS * 2);
+
+    expect(refresh).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
