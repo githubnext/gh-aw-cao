@@ -258,4 +258,19 @@ describe('view chrome component helpers', () => {
     expect(header.querySelector('.section-heading p')?.textContent).toBe('Thirty-day retained package run totals.');
     expect(header.querySelector('.layout-section-header > strong')?.textContent).toBe('12 records');
   });
+
+  it('renders a horizontal metric total as the primary section heading', () => {
+    const header = renderLayoutSectionChrome('overview', {
+      id: 'attention',
+      layout: 'horizontal',
+      views: ['failed-runs', 'blocked-work'],
+      'count-sources': ['failed-run-count', 'blocked-work-count'],
+      'count-field': 'count',
+      'count-label': 'items need your attention'
+    }, 80);
+
+    expect(header.className).toBe('layout-section-header layout-section-header-summary');
+    expect(header.querySelector('.scope-kicker')).toBeNull();
+    expect(header.querySelector('h3')?.textContent).toBe('80 items need your attention');
+  });
 });

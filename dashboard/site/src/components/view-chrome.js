@@ -238,13 +238,23 @@ export function renderTitledBodySection(headingId, heading, body, options = {}) 
 
 /**
  * @param {string} pageId
- * @param {{ id: string, title?: string, description?: string, layout: 'full'|'wide'|'narrow', views: string[], ['count-source']?: string, ['count-label']?: string }} section
+ * @param {{ id: string, title?: string, description?: string, layout: 'full'|'wide'|'narrow'|'horizontal', views: string[], ['count-source']?: string, ['count-sources']?: string[], ['count-field']?: string, ['count-label']?: string }} section
  * @param {number | null} count
  * @returns {HTMLElement}
  */
 export function renderLayoutSectionChrome(pageId, section, count) {
   const title = section.title ?? titleCase(section.id);
   const headingId = `${pageId}-${section.id}-layout-heading`;
+  const countTitle = count !== null && section['count-label']
+    ? `${formatCount(count)} ${section['count-label']}`
+    : null;
+  if (section.layout === 'horizontal' && countTitle) {
+    return h(
+      'header',
+      { className: 'layout-section-header layout-section-header-summary' },
+      h('h3', { id: headingId }, countTitle)
+    );
+  }
   const sectionHeading = renderSectionHeading({
     kicker: titleCase(section.id),
     id: headingId,
@@ -255,8 +265,8 @@ export function renderLayoutSectionChrome(pageId, section, count) {
     'header',
     { className: 'layout-section-header' },
     sectionHeading,
-    count !== null && section['count-label']
-      ? h('strong', null, `${formatCount(count)} ${section['count-label']}`)
+    countTitle
+      ? h('strong', null, countTitle)
       : null
   );
 }

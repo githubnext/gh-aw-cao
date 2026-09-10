@@ -95,6 +95,9 @@ import {
   VIEW_KEYS,
   VIEW_LAYOUT_VALUES,
   VIEW_MARK_VALUES,
+  VIEW_METRIC_KEYS,
+  VIEW_METRIC_STYLE_VALUES,
+  VIEW_METRIC_TONE_VALUES,
   VIEW_TITLE_LINK_KEYS,
   WORKFLOW_ACTIVE_VALUES,
   WORKFLOW_ROLE_VALUES
@@ -517,21 +520,41 @@ function validateDashboard(dashboard, dashboardNode, errors) {
     validatePage(page, getSequenceItemNode(getValueNodeByKey(dashboardNode, 'pages'), index), `$.dashboard.pages[${index}]`, pageIds, errors);
   });
   dashboard.pages.forEach((page, index) => {
-    if (!isPlainObject(page) || !isPlainObject(page.route) || typeof page.route['navigation-page'] !== 'string') return;
-    const navigationPage = page.route['navigation-page'];
-    if (!IDENTIFIER_PATTERN.test(navigationPage)) return;
-    if (navigationPage === page.id) {
-      errors.push(createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'route navigation-page must reference a different dashboard page.',
-        `$.dashboard.pages[${index}].route.navigation-page`
-      ));
-    } else if (!pageIds.has(navigationPage)) {
-      errors.push(createError(
-        ERROR_CODES.missingOrInvalidRequiredField,
-        'route navigation-page must reference a declared dashboard page id.',
-        `$.dashboard.pages[${index}].route.navigation-page`
-      ));
+    if (!isPlainObject(page)) return;
+    if (isPlainObject(page.route) && typeof page.route['navigation-page'] === 'string') {
+      const navigationPage = page.route['navigation-page'];
+      if (IDENTIFIER_PATTERN.test(navigationPage)) {
+        if (navigationPage === page.id) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route navigation-page must reference a different dashboard page.',
+            `$.dashboard.pages[${index}].route.navigation-page`
+          ));
+        } else if (!pageIds.has(navigationPage)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'route navigation-page must reference a declared dashboard page id.',
+            `$.dashboard.pages[${index}].route.navigation-page`
+          ));
+        }
+      }
+    }
+    const views = page.kind === 'built-in' && isPlainObject(page.definition)
+      ? page.definition.views
+      : page.views;
+    if (Array.isArray(views)) {
+      views.forEach((view, viewIndex) => {
+        const navigationPage = isPlainObject(view) && isPlainObject(view.metric)
+          ? view.metric['navigation-page']
+          : undefined;
+        if (typeof navigationPage === 'string' && IDENTIFIER_PATTERN.test(navigationPage) && !pageIds.has(navigationPage)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'metric navigation-page must reference a declared dashboard page id.',
+            `$.dashboard.pages[${index}].views[${viewIndex}].metric.navigation-page`
+          ));
+        }
+      });
     }
   });
   if (Array.isArray(dashboard.callouts)) {
@@ -1188,14 +1211,49 @@ function validatePageSections(sections, views, sectionsPath, ownerLabel, viewLab
     }
     validateOptionalStringField(section.title, `${sectionPath}.title`, errors);
     validateOptionalStringField(section.description, `${sectionPath}.description`, errors);
-    if (section['count-source'] !== undefined || section['count-label'] !== undefined) {
-      validateSource(section['count-source'], `${sectionPath}.count-source`, errors);
+    if (section['count-source'] !== undefined || section['count-sources'] !== undefined
+        || section['count-field'] !== undefined || section['count-label'] !== undefined) {
+      if (section['count-source'] !== undefined) {
+        validateSource(section['count-source'], `${sectionPath}.count-source`, errors);
+      }
+      if (section['count-sources'] !== undefined) {
+        validateSourceSequence(section['count-sources'], `${sectionPath}.count-sources`, errors);
+      }
+      if ((section['count-source'] === undefined) === (section['count-sources'] === undefined)) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'layout section count summary must declare exactly one of count-source or count-sources.',
+          sectionPath
+        ));
+      }
+      if (section['count-sources'] !== undefined && section['count-field'] === undefined) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'count-field is required when count-sources is declared.',
+          `${sectionPath}.count-field`
+        ));
+      }
+      if (section['count-field'] !== undefined) {
+        const countField = section['count-field'];
+        validateRequiredIdentifier(countField, `${sectionPath}.count-field`, 'section count field', errors);
+        for (const source of Array.isArray(section['count-sources']) ? section['count-sources'] : []) {
+          const fields = typeof source === 'string' ? sourceFieldNames(source) : undefined;
+          if (typeof countField === 'string' && fields && !fields.includes(countField)) {
+            errors.push(createError(
+              ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+              'count-field must be declared by every count-sources entry.',
+              `${sectionPath}.count-field`
+            ));
+            break;
+          }
+        }
+      }
       validateStringField(section['count-label'], `${sectionPath}.count-label`, true, errors);
     }
     if (typeof section.layout !== 'string' || !PAGE_SECTION_LAYOUT_VALUES.includes(section.layout)) {
       errors.push(createError(
         ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-        'layout section must use one canonical full, wide, or narrow layout value.',
+        'layout section must use one canonical full, wide, narrow, or horizontal layout value.',
         `${sectionPath}.layout`
       ));
     }
@@ -1732,6 +1790,56 @@ function validateView(view, viewNode, path, viewIds, errors) {
         'chart must use one canonical chart widget value.',
         `${path}.chart`
       ));
+    }
+
+    if (view.metric !== undefined) {
+      const metricPath = `${path}.metric`;
+      if (!isPlainObject(view.metric)) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'metric must be a metric widget mapping.',
+          metricPath
+        ));
+      } else {
+        validateObjectKeys(getValueNodeByKey(viewNode, 'metric'), VIEW_METRIC_KEYS, metricPath, errors);
+        validateStringField(view.metric.style, `${metricPath}.style`, true, errors);
+        if (typeof view.metric.style === 'string' && !VIEW_METRIC_STYLE_VALUES.includes(view.metric.style)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric style must use one canonical metric widget value.',
+            `${metricPath}.style`
+          ));
+        }
+        validateStringField(view.metric.icon, `${metricPath}.icon`, true, errors);
+        if (typeof view.metric.icon === 'string' && !PAGE_ICON_VALUES.includes(view.metric.icon)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric icon must use one canonical Octicon name.',
+            `${metricPath}.icon`
+          ));
+        }
+        validateStringField(view.metric.tone, `${metricPath}.tone`, true, errors);
+        if (typeof view.metric.tone === 'string' && !VIEW_METRIC_TONE_VALUES.includes(view.metric.tone)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric tone must use one canonical metric tone value.',
+            `${metricPath}.tone`
+          ));
+        }
+        validateRequiredIdentifier(
+          view.metric['navigation-page'],
+          `${metricPath}.navigation-page`,
+          'metric navigation page',
+          errors
+        );
+      }
+      if (view.mark !== 'metric') {
+        errors.push(createError(
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          'metric is allowed only when mark is "metric".',
+          metricPath
+        ));
+      }
     }
     if (view.mark !== 'chart') {
       errors.push(createError(

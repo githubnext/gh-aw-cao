@@ -773,6 +773,26 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         label: 'Review dependency evidence'
       };
       const sources = {
+        'overview-failed-run-count': {
+          source: 'overview-failed-run-count',
+          rows: [{ count: 80 }],
+          metadata
+        },
+        'overview-blocked-work-count': {
+          source: 'overview-blocked-work-count',
+          rows: [],
+          metadata: { ...metadata, availability: 'unavailable' }
+        },
+        'overview-awaiting-review-count': {
+          source: 'overview-awaiting-review-count',
+          rows: [],
+          metadata: { ...metadata, availability: 'unavailable' }
+        },
+        'overview-security-finding-count': {
+          source: 'overview-security-finding-count',
+          rows: [],
+          metadata: { ...metadata, availability: 'unavailable' }
+        },
         'work-items': {
           source: 'work-items',
           rows: [
@@ -1023,16 +1043,16 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
-  await expect(overviewPage.getByRole('heading', { name: '1 item needs your attention' })).toBeVisible();
-  await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
-  await expect(overviewPage.locator('.home-attention-icon .octicon')).toHaveCount(4);
-  const metricGeometry = await overviewPage.locator('.home-attention-metric').evaluateAll((metrics) => metrics.map((metric) => {
+  await expect(overviewPage.getByRole('heading', { name: '80 items need your attention' })).toBeVisible();
+  await expect(overviewPage.locator('.metric-card-widget')).toHaveCount(4);
+  await expect(overviewPage.locator('.metric-card-widget-icon .octicon')).toHaveCount(4);
+  const metricGeometry = await overviewPage.locator('.metric-card-widget').evaluateAll((metrics) => metrics.map((metric) => {
     const metricBox = metric.getBoundingClientRect();
-    const centers = ['.home-attention-icon', 'strong', '.home-attention-label'].map((selector) => {
+    const centers = ['.metric-card-widget-icon', 'strong', '.metric-card-widget-label'].map((selector) => {
       const box = metric.querySelector(selector)?.getBoundingClientRect();
       return box ? box.left + box.width / 2 : null;
     });
-    const iconBox = metric.querySelector('.home-attention-icon .octicon')?.getBoundingClientRect();
+    const iconBox = metric.querySelector('.metric-card-widget-icon .octicon')?.getBoundingClientRect();
     return {
       center: metricBox.left + metricBox.width / 2,
       centers,
@@ -1045,13 +1065,13 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       expect(Math.abs(Number(center) - geometry.center)).toBeLessThan(1);
     }
   }
-  const firstMetric = overviewPage.locator('.home-attention-metric').first();
-  const verticalOrder = await firstMetric.locator('strong, .home-attention-label, .home-attention-icon').evaluateAll((elements) => elements.map((element) => element.className || element.tagName.toLowerCase()));
-  expect(verticalOrder).toEqual(['strong', 'home-attention-label', 'home-attention-icon']);
-  const metricRowTops = await overviewPage.locator('.home-attention-metric').evaluateAll((metrics) => metrics.map((metric) => ({
-    icon: metric.querySelector('.home-attention-icon')?.getBoundingClientRect().top,
+  const firstMetric = overviewPage.locator('.metric-card-widget').first();
+  const verticalOrder = await firstMetric.locator('strong, .metric-card-widget-label, .metric-card-widget-icon').evaluateAll((elements) => elements.map((element) => element.className || element.tagName.toLowerCase()));
+  expect(verticalOrder).toEqual(['metric-card-widget-value', 'metric-card-widget-label', 'metric-card-widget-icon']);
+  const metricRowTops = await overviewPage.locator('.metric-card-widget').evaluateAll((metrics) => metrics.map((metric) => ({
+    icon: metric.querySelector('.metric-card-widget-icon')?.getBoundingClientRect().top,
     count: metric.querySelector('strong')?.getBoundingClientRect().top,
-    label: metric.querySelector('.home-attention-label')?.getBoundingClientRect().top
+    label: metric.querySelector('.metric-card-widget-label')?.getBoundingClientRect().top
   })));
   for (const tops of [
     metricRowTops.map((positions) => positions.icon),
@@ -1061,18 +1081,17 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     const numericTops = tops.filter((value) => typeof value === 'number');
     expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
   }
-  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('—');
-  await expect(overviewPage.locator('[href="#page-overview-blocked-work"]')).toHaveCount(0);
-  await expect(overviewPage.locator('.home-attention-metric-empty').filter({ hasText: 'Blocked work' })).toHaveCount(1);
-  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('1');
+  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('80');
+  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('—');
   await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
   const overviewElement = await overviewPage.elementHandle();
   expect(overviewElement).not.toBeNull();
   const attentionColors = await overviewElement?.evaluate((element) => {
     const root = element.closest('.dashboard-root');
-    const activeReview = element.querySelector('.home-attention-metric-review.home-attention-metric-active strong');
-    const emptyMetric = element.querySelector('.home-attention-metric-empty strong');
-    if (!(root instanceof HTMLElement) || !(activeReview instanceof HTMLElement) || !(emptyMetric instanceof HTMLElement)) return null;
+    const activeDanger = element.querySelector('.metric-card-widget-danger.metric-card-widget-active strong');
+    const unavailableMetric = element.querySelector('[href="#page-overview-blocked-work"] strong');
+    if (!(root instanceof HTMLElement) || !(activeDanger instanceof HTMLElement) || !(unavailableMetric instanceof HTMLElement)) return null;
     /** @param {string} token */
     const resolvedColor = (token) => {
       const probe = document.createElement('span');
@@ -1083,16 +1102,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       return color;
     };
     return {
-      activeReview: getComputedStyle(activeReview).color,
-      emptyMetric: getComputedStyle(emptyMetric).color,
-      purple: resolvedColor('--purple'),
+      activeDanger: getComputedStyle(activeDanger).color,
+      unavailableMetric: getComputedStyle(unavailableMetric).color,
+      danger: resolvedColor('--danger'),
       muted: resolvedColor('--muted')
     };
   });
   expect(attentionColors).not.toBeNull();
-  expect(attentionColors?.activeReview).toBe(attentionColors?.purple);
-  expect(attentionColors?.emptyMetric).toBe(attentionColors?.muted);
-  await expect(overviewPage.locator('.home-attention-detail')).toHaveCount(0);
+  expect(attentionColors?.activeDanger).toBe(attentionColors?.danger);
+  expect(attentionColors?.unavailableMetric).toBe(attentionColors?.muted);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
@@ -1162,13 +1180,13 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
+  await expect(overviewPage.locator('.metric-card-widget')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(overviewPage.locator('.home-attention-metric').first()).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
+  await expect(overviewPage.locator('.metric-card-widget').first()).toBeInViewport();
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(4);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 

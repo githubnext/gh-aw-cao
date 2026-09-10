@@ -44,7 +44,7 @@ import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabase
  */
 
 /**
- * @typedef {{ id: string, title?: string, description?: string, layout: 'full'|'wide'|'narrow', views: string[], ['count-source']?: string, ['count-label']?: string }} PresentablePageSection
+ * @typedef {{ id: string, title?: string, description?: string, layout: 'full'|'wide'|'narrow'|'horizontal', views: string[], ['count-source']?: string, ['count-sources']?: string[], ['count-field']?: string, ['count-label']?: string }} PresentablePageSection
  */
 
 /**
@@ -158,6 +158,7 @@ export function dashboardPageSourceNames(document, pageId) {
 
   for (const section of payload.sections ?? []) {
     if (typeof section['count-source'] === 'string') names.add(section['count-source']);
+    for (const sourceName of section['count-sources'] ?? []) names.add(sourceName);
   }
   for (const callout of document.dashboard.callouts ?? []) {
     if (typeof callout['visible-when']?.source === 'string') names.add(callout['visible-when'].source);
@@ -1322,8 +1323,23 @@ function renderHiddenDataStateMetrics(effectiveState) {
  */
 function renderLayoutSection(pageId, section, renderedViews, sources) {
   const headingId = `${pageId}-${section.id}-layout-heading`;
-  const countSource = section['count-source'] ? sources[section['count-source']] : null;
-  const count = Array.isArray(countSource?.rows) ? countSource.rows.length : null;
+  const countSourceNames = Array.isArray(section['count-sources'])
+    ? section['count-sources']
+    : section['count-source'] ? [section['count-source']] : [];
+  const countField = typeof section['count-field'] === 'string' ? section['count-field'] : null;
+  const countSources = countSourceNames.map((sourceName) => sources[sourceName]).filter(Boolean);
+  const countValues = countField
+    ? countSources.flatMap((source) => {
+        if (source.metadata?.availability === 'unavailable') return [];
+        const value = Number(source.rows?.[0]?.[countField]);
+        return Number.isFinite(value) ? [value] : [];
+      })
+    : [];
+  const count = countField
+    ? countValues.length > 0 ? countValues.reduce((total, value) => total + value, 0) : null
+    : countSources.length === 1 && Array.isArray(countSources[0]?.rows)
+      ? countSources[0].rows.length
+      : null;
   const sectionViews = section.views.map((viewId) => renderedViews.get(viewId)
     ?? renderEmptyMessage(`View unavailable: ${viewId}`, { 'data-missing-view-id': viewId }));
   if (sectionViews.length === 1 && sectionViews[0].classList.contains('dashboard-callout')) {
@@ -2011,8 +2027,11 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
   const metadata = sourceInput.metadata;
   const state = sourceInput.metadata?.availability ?? inferAvailability(filteredRows);
   const emptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : undefined;
+  const isMetricCard = view.mark === 'metric'
+    && isPlainObject(view.metric)
+    && view.metric.style === 'card';
 
-  if (state !== 'available' && !(state === 'empty' && view.mark === 'table')) {
+  if (state !== 'available' && !(state === 'empty' && view.mark === 'table') && !isMetricCard) {
     return renderCustomViewState(
       pageId,
       title,
@@ -2024,7 +2043,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     );
   }
 
-  if (filteredRows.length === 0 && view.mark !== 'table') {
+  if (filteredRows.length === 0 && view.mark !== 'table' && !isMetricCard) {
     return renderCustomViewState(pageId, title, sourceName, 'empty', contextDetails, headingTag, emptyMessage);
   }
 
