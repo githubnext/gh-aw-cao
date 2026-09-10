@@ -1,10 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ingestGhAwLogs as ingestNodeGhAwLogs } from '../../src/data/ingest/coordinator.js';
+import { readCanonicalBatch } from '../../src/data/storage/indexeddb.js';
+import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
+const canonicalEntityTables = ['events', 'jobs', 'repositories', 'runs', 'sessions', 'workflows'];
 
 function ghAwLogInput() {
   const fixtureRoot = join(siteRoot, 'test', 'fixtures', 'gh-aw-logs');
@@ -671,6 +676,47 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
     [4, 'firewall', 'net_allowed'],
     [5, 'agent', 'assistant_message']
   ]);
+});
+
+test('SQLite and browser IndexedDB ingestion produce identical populated tables', async ({ page }) => {
+  const input = ghAwLogInput();
+  const directory = mkdtempSync(join(tmpdir(), 'cao-ingestion-compliance-'));
+  try {
+    const sqliteIndexedDB = createSqliteIndexedDB(join(directory, 'dashboard.sqlite'));
+    await ingestNodeGhAwLogs(sqliteIndexedDB, input);
+    const sqliteRows = await readCanonicalBatch(sqliteIndexedDB);
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.evaluate(async (browserInput) => {
+      const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
+      const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`;
+      const [{ ingestGhAwLogs }, { readCanonicalBatch }] = await Promise.all([
+        import(coordinatorUrl),
+        import(storageUrl)
+      ]);
+      await ingestGhAwLogs(indexedDB, browserInput);
+      const rows = await readCanonicalBatch(indexedDB);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(rows)], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'indexeddb-canonical-data.json';
+      link.click();
+    }, input);
+    const download = await downloadPromise;
+    const browserExportPath = await download.path();
+    expect(browserExportPath).not.toBeNull();
+    const browserRows = JSON.parse(readFileSync(/** @type {string} */ (browserExportPath), 'utf8'));
+
+    for (const [backend, tables] of Object.entries({ SQLite: sqliteRows, IndexedDB: browserRows })) {
+      expect(Object.keys(tables).sort()).toEqual(canonicalEntityTables);
+      for (const table of canonicalEntityTables) {
+        expect(tables[table].length, `${backend} ${table} should contain compliance fixture data`).toBeGreaterThan(0);
+      }
+    }
+    expect(browserRows).toEqual(sqliteRows);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('deletion rebuilds derived state and fresh data is directly upserted', async ({ page }) => {

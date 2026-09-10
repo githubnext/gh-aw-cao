@@ -87,12 +87,25 @@ jobs:
         with:
           version: v0.89.2
 
+      - name: Set up Node.js
+        if: ${{ steps.freshness.outputs.skip != 'true' }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Install SQLite
+        if: ${{ steps.freshness.outputs.skip != 'true' }}
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          sudo apt-get update
+          sudo apt-get install --yes sqlite3
+
       - name: Restore activity cache
         id: activity-cache
         if: ${{ steps.freshness.outputs.skip != 'true' }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          path: ${{ runner.temp }}/cao-activity
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
             cao-activity-v3-
@@ -126,9 +139,27 @@ jobs:
             --prune-older-runs \
             "${targets[@]}"
 
+      - name: Ingest activity database
+        if: ${{ steps.freshness.outputs.skip != 'true' }}
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+        run: |
+          if [[ -f dashboard/site/scripts/ingest-gh-aw-logs.mjs ]]; then
+            ingestion_script=dashboard/site/scripts/ingest-gh-aw-logs.mjs
+          elif [[ -f .github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs ]]; then
+            ingestion_script=.github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs
+          else
+            echo "Dashboard SQLite ingestion pipeline is unavailable" >&2
+            exit 1
+          fi
+          node "$ingestion_script" ingest-jsonl \
+            --database "$ACTIVITY_DATABASE" \
+            --input "$REPORT_GH_AW_LOGS"
+
       - name: Save activity cache
-        if: ${{ always() && steps.freshness.outputs.skip != 'true' }}
+        if: ${{ steps.freshness.outputs.skip != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          path: ${{ runner.temp }}/cao-activity
           key: ${{ steps.activity-cache-key.outputs.value }}

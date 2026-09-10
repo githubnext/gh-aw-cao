@@ -7,8 +7,8 @@ description: Learn how CAO Activity collects gh-aw logs for Central Agentic Ops.
 
 CAO Activity is the shared, bounded `gh aw logs` collector for Central Agentic
 Ops. It prevents consumers from independently acquiring the same compiled
-workflow history. It does not index, normalize, report on, or otherwise
-post-process the collected logs.
+workflow history. It also materializes the canonical log projection in SQLite
+so local tools and agents can query the snapshot without re-ingesting it.
 
 ## How Activity works
 
@@ -18,16 +18,18 @@ sequenceDiagram
   participant Cache as Actions cache
   participant Consumer as Consumer
 
-  Activity->>Cache: Restore latest cao-activity-v3-* JSONL
+  Activity->>Cache: Restore latest cao-activity-v3-* snapshot
   Activity->>Activity: Run gh aw logs once
-  Activity->>Cache: Save refreshed JSONL
-  Consumer->>Cache: Restore compatible JSONL
+  Activity->>Activity: Ingest JSONL into SQLite
+  Activity->>Cache: Save refreshed JSONL and SQLite
+  Consumer->>Cache: Restore compatible snapshot
 ```
 
 The scheduled and manually dispatchable `.github/workflows/activity.yml`
 checks out the trusted control-repository source, restores its cache, runs one
 bounded `gh aw logs --audit --artifacts usage` command for compiled workflows,
-and stores the resulting JSONL. Downloaded artifacts are job-local inputs to
+ingests the resulting JSONL through the dashboard's Node.js canonical data
+pipeline, and stores both files. Downloaded artifacts are job-local inputs to
 that command and are not cached.
 
 Activity uses the `central-agentic-ops-activity` concurrency group with
@@ -41,10 +43,11 @@ never skipped.
 
 ## Cache contract
 
-The cache holds only:
+The cache holds:
 
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
+$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 ```
 
 Its immutable key is
@@ -52,10 +55,11 @@ Its immutable key is
 `cao-activity-v3-`. Consumers dispatched by Activity must restore the exact
 completed run's cache key. The cache is evictable and is not historical
 authority: consumers must enforce their own freshness, completeness, and scope
-requirements.
+requirements. Agent jobs install the SQLite CLI before restoring this directory,
+so they can query the normalized database directly.
 
 ## Installation
 
 `activity/aw.yml` installs the Activity and maintenance workflows plus the
-shared JSONL parser. The root CAO package installs Activity automatically; a
-focused installation can use `githubnext/gh-aw-cao/activity@<catalog-release>`.
+shared JSONL parser. The root CAO package installs Activity and the dashboard
+ingestion runtime automatically.

@@ -93,4 +93,53 @@ Ingestion diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRA
 
 IndexedDB stores this canonical data as disposable derived state. Clearing browser storage triggers reconstruction from authorized published inputs; it does not delete authoritative information.
 
+## Local SQLite database
+
+Node.js 24 can run the same ingestion and query layer against a persistent SQLite file. The local adapter implements only the IndexedDB operations used by the canonical dashboard store; the browser continues to use native IndexedDB.
+
+Ingest an extracted gh-aw log directory with its run context:
+
+```bash
+npm run dashboard:data -- ingest \
+  --database /tmp/cao-dashboard.sqlite \
+  --context dashboard/site/test/fixtures/gh-aw-logs/context.json \
+  --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
+```
+
+Alternatively, ingest the schema-v2 JSONL produced by `gh aw logs`:
+
+```bash
+npm run dashboard:data -- ingest-jsonl \
+  --database /tmp/cao-dashboard.sqlite \
+  --input _activity/gh-aw-logs.jsonl
+```
+
+Query a canonical collection, optionally selecting an ID, filtering fields, or limiting output:
+
+```bash
+npm run dashboard:data -- query \
+  --database /tmp/cao-dashboard.sqlite \
+  --collection runs \
+  --where conclusion=failure \
+  --limit 20
+```
+
+Diagnose and repair the local database:
+
+```bash
+npm run dashboard:data -- doctor \
+  --database /tmp/cao-dashboard.sqlite
+```
+
+The doctor reports SQLite integrity, foreign-key and schema health, table and
+transaction counts, malformed records, and canonical relationship errors. It
+applies the canonical 30-day retention window, removes malformed and orphaned
+derived records, rebuilds damaged IndexedDB metadata, and runs SQLite
+reindexing, optimization, and compaction when repairs are required. Before
+changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next
+to the database. Use `--ttl-days DAYS` to select a different positive retention
+window.
+
+Run `npm run dashboard:data -- help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
+
 For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

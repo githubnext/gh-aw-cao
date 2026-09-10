@@ -7,14 +7,16 @@ rollout mode, safe-output, target-writing, indexing, or reporting authority.
 The scheduled and manually dispatchable `CAO Activity` workflow checks out the
 control repository, restores the latest compatible log cache, runs one bounded
 `gh aw logs --audit --artifacts usage` command for its compiled workflows, and
-saves only the refreshed JSONL file.
+ingests the refreshed JSONL through the canonical Node.js data pipeline. It
+caches both the source JSONL and its local SQLite projection.
 
 ## Cache contract
 
-The cache contains exactly:
+The cache contains:
 
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
+$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
 ```
 
 Snapshots use the immutable key
@@ -23,7 +25,8 @@ Snapshots use the immutable key
 reconstruct its immutable key from the returned run ID and attempt. The cache
 is an evictable transport optimization, not durable historical authority.
 
-The `gh-aw-logs.mjs` resource provides the shared parser for consumers of this
-JSONL format. Consumers must determine their own completeness, freshness, and
-scope requirements; Activity does not derive indexes, dashboard records, or
-telemetry from the logs.
+The `gh-aw-logs.mjs` resource provides the shared parser for consumers of the
+JSONL format. Agent jobs restore the same cache and install the SQLite CLI so
+they can query the normalized projection without repeating log acquisition.
+Consumers must still determine their own completeness, freshness, and scope
+requirements.

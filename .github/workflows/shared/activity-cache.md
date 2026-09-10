@@ -12,6 +12,11 @@ jobs:
 
   agent:
     pre-steps:
+      - name: Install SQLite
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          sudo apt-get update
+          sudo apt-get install --yes sqlite3
       - name: Restore CAO activity cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

@@ -27,6 +27,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Install SQLite
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          sudo apt-get update
+          sudo apt-get install --yes sqlite3
       - name: Install npm dependencies
         run: npm ci
       - name: Install gh-aw extension
