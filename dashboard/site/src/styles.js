@@ -445,7 +445,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
 /* Keep the filter inside the table scroll surface without giving it a second horizontal scrollbar. */
-.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { flex: none; min-width: 0; overflow-x: visible; }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { position: sticky; left: 0; z-index: 2; flex: none; min-width: 0; overflow-x: visible; }
 .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
 .dashboard-root.dashboard-full-view-scrolled .org-sidebar,
 .dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav,

@@ -48,14 +48,17 @@ async function expectTableFilterIsContained(tableFilter) {
  * Lazy-list windows move one page at a time when the user reaches the top edge.
  * @param {import('@playwright/test').Locator} scroll
  * @param {import('@playwright/test').Locator} view
- * @param {string} repositoryName
+ * @param {import('@playwright/test').Locator} root
+ * @param {string} expectedFirstRowText
  */
-async function scrollToTopAndExpectFirstRow(scroll, view, repositoryName) {
+async function scrollToTopAndExpectFirstRow(scroll, view, root, expectedFirstRowText) {
   await scroll.evaluate((element) => {
     element.scrollTop = 0;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(view.locator('tbody > tr').first()).toContainText(repositoryName);
+  await expect(view.locator('tbody > tr').first()).toContainText(expectedFirstRowText);
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(view.locator('tbody > tr')).toHaveCount(50);
 }
 
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
@@ -1686,6 +1689,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   const pageTitle = page.locator('#page-title');
   const tableFilter = view.locator('.table-filter');
   const lazyList = view.locator('[data-lazy-list]');
+  const dashboardRoot = page.locator('.dashboard-root');
   const fieldName = view.locator('thead > tr:first-child > th').first();
   const summaryCell = view.locator('.table-summary-row > th').first();
   await expect(view).toHaveCount(1);
@@ -1716,7 +1720,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.scrollTop = 100;
       element.dispatchEvent(new Event('scroll'));
     });
-    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
     await expect(siteCallout).toBeHidden();
     await expect(warningCallout).toBeHidden();
     await expect(summary).toBeHidden();
@@ -1730,15 +1734,13 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
-    await scrollToTopAndExpectFirstRow(scroll, view, 'repository-26');
-    await scrollToTopAndExpectFirstRow(scroll, view, 'repository-1');
-    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
-    await expect(view.locator('tbody > tr')).toHaveCount(50);
+    await scrollToTopAndExpectFirstRow(scroll, view, dashboardRoot, 'repository-26');
+    await scrollToTopAndExpectFirstRow(scroll, view, dashboardRoot, 'repository-1');
     await scroll.evaluate((element) => {
       element.scrollTop = 0;
       element.dispatchEvent(new Event('scroll'));
     });
-    await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
     await expect(siteCallout).toBeVisible();
     await expect(warningCallout).toBeVisible();
     await expect(summary).toBeVisible();
@@ -1764,7 +1766,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.top-nav')).toBeHidden();
   await expect(page.locator('.org-sidebar')).toBeHidden();
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
