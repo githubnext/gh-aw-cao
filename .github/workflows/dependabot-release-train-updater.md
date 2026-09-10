@@ -393,6 +393,7 @@ safe-outputs:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[dependabot:release-train-updater] "
     labels: [dependabot, dependabot:release-train-updater]
+    deduplicate-by-title: true
     expires: 14d
     max: 2
   noop:
@@ -666,7 +667,9 @@ Create an issue only when:
 - The dependency update needs a human migration plan.
 - A repeated class of failures should be tracked.
 
-Do not create duplicate issues or PRs. Before creating one, search for existing open `[dependabot:release-train-updater]` issues or `[dependabot-agent]` PRs and reuse the existing thread when it already covers the same dependency work.
+Do not create duplicate issues or PRs. Before creating one, search all open `[dependabot:release-train-updater]` issues or `[dependabot-agent]` PRs in the safe-output repository and reuse the existing thread when it already covers the same target repository and dependency work.
+
+For an issue, use a canonical unprefixed subject derived only from the target repository, blocking condition, dependency or ecosystem, and affected manifest path. Use the same subject for the same unresolved work across reruns. Do not include versions, dates, run IDs, correlation IDs, counts, severity, status wording, or other volatile details in the subject; put those details in the body. If matching work already exists under a different title, comment on that item or call `noop` instead of creating another issue.
 
 ## Artifact output
 
