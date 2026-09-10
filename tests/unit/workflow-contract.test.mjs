@@ -2260,7 +2260,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-v3-/g) || []).length, 2);
   assert.doesNotMatch(source, /cao-activity-(?!v3-)/);
   assert.doesNotMatch(source, /actions\/cache\/save@/);
-  assert.match(source, /agent:[\s\S]*?Install SQLite[\s\S]*?apt-get install --yes sqlite3[\s\S]*?Restore CAO activity cache/);
+  assert.doesNotMatch(source, /Install SQLite|apt-get install.*sqlite3/);
 
   for (const name of [
     "aw-failures-investigator.md",
