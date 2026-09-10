@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.0";
+const ghAwVersion = "v0.89.1";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -770,7 +770,7 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.doesNotMatch(mattReviewer, /\|\s*head -n 3000/);
   assert.match(mattReviewer, /fromJSON\(github\.event\.inputs\.aw_context \|\| '\{\}'\)\.item_number/);
   assert.match(mattReviewer, /reaction: none/);
-  assert.match(mattReviewer, /slash_command:\n\s+strategy: centralized\n\s+name: matt/);
+  assert.match(mattReviewer, /slash_command:[\s\S]*?\n\s+name: matt\n\s+strategy: centralized/);
   assert.doesNotMatch(mattReviewer, /\n\s+pull_request:/);
 
   assert.match(decisionGate, /slash_command:\n\s+strategy: centralized\n\s+name: design-gate/);
