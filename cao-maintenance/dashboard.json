@@ -1,0 +1,249 @@
+{
+  "language-version": "0.1.0",
+  "dashboard": {
+    "id": "cao-maintenance-dashboard",
+    "title": "CAO Maintenance",
+    "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
+    "repository": "githubnext/gh-aw-cao",
+    "queries": [
+      {
+        "name": "cao-maintenance-runs",
+        "intent": "List CAO Maintenance runs so operators can verify activation and investigate failed control-plane checks.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/cao-maintenance.md",
+                ".github/workflows/cao-maintenance-efficiency.md",
+                ".github/workflows/cao-maintenance-integrity.md",
+                ".github/workflows/cao-maintenance-reliability.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "started-at",
+            "direction": "desc"
+          }
+        ]
+      },
+      {
+        "name": "cao-maintenance-outcomes",
+        "intent": "List retained CAO Maintenance outcomes so operators can act on current control-plane integrity, reliability, and efficiency work.",
+        "from": "outcomes",
+        "filter": {
+          "predicates": [
+            {
+              "field": "package",
+              "equals": "cao-maintenance"
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "published-at",
+            "direction": "desc"
+          }
+        ]
+      }
+    ],
+    "pages": [
+      {
+        "id": "cao-maintenance-dashboard",
+        "kind": "custom",
+        "title": "CAO Maintenance",
+        "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
+        "icon": "gear",
+        "views": [
+          {
+            "id": "cao-maintenance-outcome-health",
+            "title": "Maintenance outcome health",
+            "description": "The disposition of retained maintenance outcomes shows whether control-plane recommendations are progressing through review.",
+            "data": {
+              "source": "cao-maintenance-outcomes"
+            },
+            "mark": "chart",
+            "chart": "pie",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "outcome-state",
+                "type": "nominal",
+                "title": "Outcome state"
+              },
+              "y": {
+                "field": "safe-output",
+                "type": "quantitative",
+                "aggregate": "count",
+                "title": "Outcomes"
+              }
+            }
+          },
+          {
+            "id": "cao-maintenance-runs",
+            "title": "Control-plane maintenance runs",
+            "description": "Shows which maintenance checks ran and which failures need investigation.",
+            "disclosure": "essential",
+            "data": {
+              "source": "cao-maintenance-runs",
+              "time": {
+                "range": "30d"
+              },
+              "filters": {
+                "workflow": [
+                  ".github/workflows/cao-maintenance.md",
+                  ".github/workflows/cao-maintenance-efficiency.md",
+                  ".github/workflows/cao-maintenance-integrity.md",
+                  ".github/workflows/cao-maintenance-reliability.md"
+                ]
+              }
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No CAO Maintenance runs were observed in the last 30 days.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "run-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "run-conclusion",
+                  "type": "nominal",
+                  "title": "Conclusion",
+                  "display": "status"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Started"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Investigate this failed CAO Maintenance run using retained workflow and control-plane evidence.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Investigate",
+                  "context": [
+                    "repository",
+                    "workflow",
+                    "run-status",
+                    "run-conclusion",
+                    "run-link"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "cao-maintenance-outcomes",
+            "description": "Retained integrity, reliability, and efficiency items remain advisory until a maintainer accepts the action.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "cao-maintenance-outcomes",
+              "filters": {
+                "package": [
+                  "cao-maintenance"
+                ]
+              },
+              "limit": 50
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No CAO Maintenance outcomes were retained.",
+            "encoding": {
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "format": "workflow-relative-path",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "outcome-title",
+                  "type": "nominal",
+                  "title": "Outcome",
+                  "display": "outcome-link"
+                },
+                {
+                  "field": "outcome-state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "published-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Published"
+                }
+              ],
+              "actions": [
+                {
+                  "intent": "Review this CAO Maintenance outcome, verify its retained evidence, and identify the bounded next action.",
+                  "presentation": "copy-prompt",
+                  "icon": "search",
+                  "label": "Review",
+                  "context": [
+                    "repository",
+                    "workflow",
+                    "outcome-title",
+                    "outcome-summary",
+                    "outcome-state",
+                    "external-link"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
