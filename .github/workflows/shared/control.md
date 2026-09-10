@@ -77,7 +77,7 @@ jobs:
         uses: actions/github-script@v9.0.0
         env:
           CAO_API_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
@@ -90,11 +90,9 @@ jobs:
           github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
             const reason = 'cannot read or execute the CAO control modules at github.workflow_sha';
+            let control;
             try {
-              const control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
-              process.exitCode = 0;
-              await control.main({ core, github, context, exec, io, getOctokit }, ['admit']);
-              if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
+              control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
             } catch (error) {
               core.setOutput('authorized', 'false');
               core.setOutput('reason', reason);
@@ -112,7 +110,11 @@ jobs:
             `)
                 .write();
               core.debug(`CAO admission fallback reason: ${error?.stack || error?.message || error}`);
+              return;
             }
+            process.exitCode = 0;
+            await control.main({ core, github, context, exec, io, getOctokit }, ['admit']);
+            if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
 
       - name: Ensure CAO admission record
         if: ${{ always() }}

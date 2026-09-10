@@ -14,9 +14,7 @@ test("CAO admission uses the github-script Octokit singleton", async () => {
   writeFileSync(stepSummary, "");
   const oldEnv = { ...process.env };
   const oldExitCode = process.exitCode;
-  const oldGlobals = Object.fromEntries(
-    ["core", "github", "context", "exec", "io", "getOctokit"].map((name) => [name, globalThis[name]]),
-  );
+  const oldGithub = globalThis.github;
   const calls = [];
   const actions = {
     github: {
@@ -63,10 +61,8 @@ test("CAO admission uses the github-script Octokit singleton", async () => {
       if (!(key in oldEnv)) delete process.env[key];
     }
     Object.assign(process.env, oldEnv);
-    for (const [name, value] of Object.entries(oldGlobals)) {
-      if (value === undefined) delete globalThis[name];
-      else globalThis[name] = value;
-    }
+    if (oldGithub === undefined) delete globalThis.github;
+    else globalThis.github = oldGithub;
     process.exitCode = oldExitCode;
     rmSync(directory, { recursive: true, force: true });
   }
