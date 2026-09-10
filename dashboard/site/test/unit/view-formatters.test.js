@@ -73,6 +73,7 @@ describe('view formatter helpers', () => {
     expect(formatUsd(12.345)).toBe('$12.345');
     expect(formatUsd(12.3451)).toBe('$12.346');
     expect(formatUsd(0.0001)).toBe('$0.001');
+    expect(formatUsd(0.00049)).toBe('$0.001');
   });
 
   it('formats a 0-1 ratio as a locale percentage string', () => {

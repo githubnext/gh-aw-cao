@@ -129,11 +129,12 @@ export function formatUsd(value) {
   const scaled = value * 1_000;
   const tolerance = Number.EPSILON * Math.max(1, Math.abs(scaled));
   const rounded = Math.ceil(scaled - tolerance) / 1_000;
-  return new Intl.NumberFormat('en', {
-    style: 'currency',
-    currency: 'USD',
+  const formatted = new Intl.NumberFormat('en', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
     maximumFractionDigits: 3
-  }).format(rounded);
+  }).format(Math.abs(rounded));
+  return rounded < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 /**
