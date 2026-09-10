@@ -125,6 +125,7 @@ jobs:
           fi
           echo "Copying collected activity data"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
+          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" "$REPORT_OUTPUT/gh-aw-logs.sqlite"
 
       - name: Cache dashboard artifact for the dispatching workflow
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

@@ -2260,7 +2260,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-v3-/g) || []).length, 2);
   assert.doesNotMatch(source, /cao-activity-(?!v3-)/);
   assert.doesNotMatch(source, /actions\/cache\/save@/);
-  assert.match(source, /agent:[\s\S]*?Install SQLite[\s\S]*?apt-get install --yes sqlite3[\s\S]*?Restore CAO activity cache/);
+  assert.doesNotMatch(source, /Install SQLite|apt-get install.*sqlite3/);
 
   for (const name of [
     "aw-failures-investigator.md",
@@ -3029,7 +3029,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(buildWorkflow, /run-name: CAO Dashboard Build \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.doesNotMatch(buildWorkflow, /actions: write|DISPATCH_WORKFLOW: activity\.yml|Dispatch activity refresh|inputs\.mode/);
   assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?restore-keys: \|[\s\S]*?cao-activity-v3-[\s\S]*?fail-on-cache-miss: true/);
-  assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\n/);
+  assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
@@ -3041,7 +3041,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
   assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
-  assert.match(buildWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?test -s "\$REPORT_GH_AW_LOGS"[\s\S]*?test -s "\$ACTIVITY_DATABASE"/);
+  assert.match(buildWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?test -s "\$REPORT_GH_AW_LOGS"[\s\S]*?test -s "\$ACTIVITY_DATABASE"/);
   assert.match(buildWorkflow, /name: Assess activity database health[\s\S]*?doctor --database "\$ACTIVITY_DATABASE"/);
   assert.match(buildWorkflow, /echo "Refreshing authoritative control policy"[\s\S]*?echo "Building dashboard site from source layout"/);
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
@@ -3053,6 +3053,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(buildWorkflow, /configure-site\.mjs[\s\S]*?"\$REPORT_OUTPUT\/index\.html"[\s\S]*?"\$RUNNER_TEMP\/cao-dashboard-control-settings\.json"/);
   assert.match(buildWorkflow, /bundle-dashboards\.mjs[\s\S]*?"\$REPORT_OUTPUT\/dashboard\.json"[\s\S]*?\.github\/aw\/dashboards/);
   assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl" "\$REPORT_OUTPUT\/gh-aw-logs\.jsonl"/);
+  assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.sqlite" "\$REPORT_OUTPUT\/gh-aw-logs\.sqlite"/);
   assert.doesNotMatch(buildWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(buildWorkflow, /legacy dashboard redirects|redirects\.mjs/);
@@ -3089,7 +3090,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
   assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/g) || []).length, 2);
   assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
-  assert.match(activityWorkflow, /Install SQLite[\s\S]*?apt-get install --yes sqlite3/);
+  assert.doesNotMatch(activityWorkflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.match(activityWorkflow, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/);
   assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
