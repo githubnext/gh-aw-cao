@@ -1,3 +1,5 @@
+import { injectStyleOnce } from './dom.js';
+
 const MAX_PROGRESS = 0.94;
 const INITIAL_PROGRESS = 0.08;
 const MIN_DELAY = 180;
@@ -10,11 +12,7 @@ const COMPLETION_DURATION = 240;
  * @param {Document} document
  */
 function installStyles(document) {
-  if (document.querySelector('style[data-loading-progress-styles]')) return;
-
-  const style = document.createElement('style');
-  style.dataset.loadingProgressStyles = '';
-  style.textContent = `
+  injectStyleOnce(document, 'loading-progress-styles', `
 .loading-progress {
   position: fixed;
   z-index: 1000;
@@ -54,8 +52,7 @@ function installStyles(document) {
   .loading-progress::after {
     animation: none;
   }
-}`;
-  document.head.append(style);
+}`);
 }
 
 /**
