@@ -19,7 +19,7 @@ import {
   installSqliteIndexedDB
 } from '../../src/data/storage/sqlite-indexeddb.js';
 
-const temporaryDirectories = [];
+const temporaryDirectories = /** @type {string[]} */ ([]);
 const originalIndexedDB = globalThis.indexedDB;
 const originalIDBKeyRange = globalThis.IDBKeyRange;
 
@@ -51,7 +51,8 @@ afterEach(() => {
   globalThis.indexedDB = originalIndexedDB;
   globalThis.IDBKeyRange = originalIDBKeyRange;
   while (temporaryDirectories.length > 0) {
-    rmSync(temporaryDirectories.pop(), { recursive: true, force: true });
+    const directory = temporaryDirectories.pop();
+    if (directory) rmSync(directory, { recursive: true, force: true });
   }
 });
 
@@ -104,6 +105,29 @@ describe('SQLite IndexedDB compatibility layer', () => {
       request.onerror = () => reject(request.error);
     });
     expect(await indexedDB.databases()).toEqual([]);
+  });
+
+  it('can retry a schema upgrade after the upgrade handler fails', async () => {
+    const indexedDB = installSqliteIndexedDB(temporaryDatabase());
+    const failed = indexedDB.open('upgrade-retry', 1);
+    failed.onupgradeneeded = () => {
+      throw new Error('upgrade failed');
+    };
+    await expect(new Promise((resolvePromise, reject) => {
+      failed.onsuccess = resolvePromise;
+      failed.onerror = () => reject(failed.error);
+    })).rejects.toThrow('upgrade failed');
+
+    const retried = indexedDB.open('upgrade-retry', 1);
+    retried.onupgradeneeded = () => {
+      retried.result.createObjectStore('records', { keyPath: 'id' });
+    };
+    const database = await new Promise((resolvePromise, reject) => {
+      retried.onsuccess = () => resolvePromise(retried.result);
+      retried.onerror = () => reject(retried.error);
+    });
+    expect([...database.objectStoreNames]).toEqual(['records']);
+    database.close();
   });
 
   it('ingests and queries gh-aw logs across separate Node.js processes', () => {
