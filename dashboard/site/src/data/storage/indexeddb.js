@@ -106,10 +106,12 @@ export function deleteCanonicalDatabase(indexedDB) {
 export function openCanonicalDatabase(indexedDB) {
   const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
   return new Promise((resolve, reject) => {
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const database = request.result;
-      for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
-      createSchema(database);
+      if (event.oldVersion < 5) {
+        for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
+        createSchema(database);
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));

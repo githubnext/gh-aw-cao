@@ -1,7 +1,6 @@
 import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
 import { adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
-import { relationshipErrors } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
 import { readCanonicalBatch, upsertCanonicalBatch } from '../storage/indexeddb.js';
 import { mergeRetainedRecords } from '../storage/retention.js';
@@ -22,10 +21,6 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   }
   const retained = await readCanonicalBatch(indexedDB);
   const batch = mergeRetainedRecords(retained, incoming, { now: options.now });
-  const errors = relationshipErrors(batch);
-  if (errors.length > 0) {
-    throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
-  }
   const result = await upsertCanonicalBatch(indexedDB, batch);
   return { updated: true, ...result };
 }
