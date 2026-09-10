@@ -211,29 +211,32 @@
         ]
       },
       {
-        "name": "safe-outputs-by-type",
-        "intent": "Summarize retained safe outputs by their declared output type.",
-        "description": "Distinct retained safe-output totals grouped by type.",
+        "name": "safe-output-usage",
+        "intent": "Show every retained safe output with its identity, disposition, workflow, repository, rollout mode, timestamps, and provenance.",
+        "description": "Canonical safe-output outcomes ordered from newest to oldest.",
         "from": "outcomes",
-        "aggregate": {
-          "by": [
-            "safe-output-kind"
-          ],
-          "values": [
-            {
-              "field": "safe-output",
-              "as": "safe-output-count",
-              "reducer": "distinct-count"
-            }
-          ]
-        },
+        "select": [
+          { "field": "safe-output" },
+          { "field": "safe-output-kind" },
+          { "field": "outcome-title" },
+          { "field": "outcome-status" },
+          { "field": "outcome-state" },
+          { "field": "workflow" },
+          { "field": "repository" },
+          { "field": "rollout-mode" },
+          { "field": "run" },
+          { "field": "published-at" },
+          { "field": "observed-at" },
+          { "field": "external-link" },
+          { "field": "run-link" }
+        ],
         "order-by": [
           {
-            "field": "safe-output-count",
+            "field": "observed-at",
             "direction": "desc"
           },
           {
-            "field": "safe-output-kind",
+            "field": "safe-output",
             "direction": "asc"
           }
         ]
@@ -3273,29 +3276,82 @@
         "navigation-label": "Safe Outputs",
         "icon": "shield-check",
         "class-name": "safe-outputs-page",
-        "description": "Retained safe-output volume grouped by declared output type.",
+        "description": "Every retained safe output with its disposition and execution provenance.",
         "views": [
           {
-            "id": "safe-outputs-by-type",
-            "title": "Safe outputs by type",
-            "description": "Distinct retained safe outputs grouped by their declared output type.",
+            "id": "safe-output-usage",
+            "title": "Safe output usage",
+            "description": "Every retained safe output from canonical outcomes data.",
             "data": {
-              "source": "safe-outputs-by-type"
+              "source": "safe-output-usage"
             },
-            "mark": "chart",
-            "chart": "pie",
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
             "empty-message": "No retained safe outputs were reported in the selected horizon.",
             "encoding": {
-              "x": {
-                "field": "safe-output-kind",
-                "type": "nominal",
-                "title": "Type"
+              "href": {
+                "field": "external-link",
+                "type": "nominal"
               },
-              "y": {
-                "field": "safe-output-count",
-                "type": "quantitative",
-                "title": "Safe outputs"
-              }
+              "columns": [
+                {
+                  "field": "outcome-title",
+                  "type": "nominal",
+                  "title": "Safe output",
+                  "display": "outcome-link"
+                },
+                {
+                  "field": "safe-output-kind",
+                  "type": "nominal",
+                  "title": "Type"
+                },
+                {
+                  "field": "outcome-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "outcome-state",
+                  "type": "nominal",
+                  "title": "State",
+                  "display": "status"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "published-at",
+                  "type": "temporal",
+                  "title": "Published"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                }
+              ]
             }
           }
         ]

@@ -292,6 +292,69 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
+test('Safe Outputs renders every retained outcome in one progressive full-view table', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'safe-output-usage-fixture',
+        'source-kind': 'derived',
+        'query-name': 'safe-output-usage',
+        'as-of': '2026-09-10T05:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'safe-output-usage': {
+          source: 'safe-output-usage',
+          metadata,
+          rows: Array.from({ length: 60 }, (_, index) => ({
+            'safe-output': \`output-\${index + 1}\`,
+            'safe-output-kind': index % 2 === 0 ? 'create-issue' : 'create-pull-request',
+            'outcome-title': \`Retained output \${index + 1}\`,
+            'outcome-status': index % 2 === 0 ? 'open' : 'closed',
+            'outcome-state': index % 2 === 0 ? 'accepted' : 'completed',
+            workflow: '.github/workflows/daily.md',
+            repository: 'gh-aw-cao',
+            'rollout-mode': index % 2 === 0 ? 'review' : 'live',
+            run: String(1000 + index),
+            'published-at': '2026-09-10T04:00:00Z',
+            'observed-at': '2026-09-10T05:00:00Z',
+            'external-link': { href: \`https://example.com/outputs/\${index + 1}\` }
+          }))
+        }
+      };
+      window.location.hash = '#page-safe-outputs';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const safeOutputsPage = page.locator('[data-page-id="safe-outputs"]');
+  const view = safeOutputsPage.locator('[data-view-layout="full-view"]');
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(view).toHaveCount(1);
+  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+  await expect(view.getByRole('searchbox', { name: 'Filter Safe output usage' })).toBeVisible();
+  await expect(view.locator('tbody a[href="#page-outcome-detail?outcome=output-1"]')).toBeVisible();
+  await expect(view.locator('tbody tr').first()).toContainText('create-issue');
+
+  await view.locator('[data-table-more]').click();
+  await expect(view.locator('tbody tr')).toHaveCount(50);
+  await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('Retained output 60');
+  await expect(view.locator('tbody tr:visible')).toHaveCount(1);
+  await expect(view.locator('tbody tr:visible')).toContainText('Retained output 60');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+  expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
 test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
   /** @type {Error[]} */
   const pageErrors = [];
