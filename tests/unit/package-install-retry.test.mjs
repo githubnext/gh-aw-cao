@@ -28,5 +28,8 @@ test("does not retry a deterministic package install failure", () => {
     throw new Error("package manifest is invalid");
   }), /package manifest is invalid/);
   assert.equal(attempts, 1);
+});
+
+test("recognizes transient GitHub HTTP failures", () => {
   assert.equal(isTransientPackageInstallError(new Error("HTTP 503 from GitHub")), true);
 });
