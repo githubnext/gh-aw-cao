@@ -436,6 +436,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
   min-height: 0;
   flex: 1;
 }
+.dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 24px; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] > .table-region {
   margin: 0;
   overflow: hidden;
@@ -1848,6 +1849,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .app-main { height: auto; overflow: visible; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 16px 14px 28px; }
+  .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
   .custom-view[data-view-layout="half"], .custom-view[data-view-layout="third"] { grid-column: span 12; }
