@@ -928,6 +928,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     const activeReview = element.querySelector('.home-attention-metric-review.home-attention-metric-active strong');
     const emptyMetric = element.querySelector('.home-attention-metric-empty strong');
     if (!(root instanceof HTMLElement) || !(activeReview instanceof HTMLElement) || !(emptyMetric instanceof HTMLElement)) return null;
+    /** @param {string} token */
     const resolvedColor = (token) => {
       const probe = document.createElement('span');
       probe.style.color = `var(${token})`;
