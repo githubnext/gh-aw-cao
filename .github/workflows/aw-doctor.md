@@ -375,7 +375,7 @@ steps:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [aw-maintenance-upgrade, aw-failures-investigator, aw-maintenance-compiler-security]
+    workflows: [aw-maintenance-upgrade, aw-ci-doctor, aw-maintenance-compiler-security]
     max: 50
   threat-detection: false
 ---
@@ -384,7 +384,7 @@ safe-outputs:
 
 # AW Doctor
 
-Package orchestrator for organization-wide GitHub Agentic Workflows (gh-aw) maintenance and failure triage. Use the shared control plane to select repositories that install their own GitHub Agentic Workflows, then dispatch `aw-maintenance-upgrade`, `aw-failures-investigator`, and `aw-maintenance-compiler-security` once per selected repository. The orchestrator only selects and ranks repositories; the workers own release detection, failure analysis, compilation validation, security scanning, and issue filing inside each target repository.
+Package orchestrator for organization-wide GitHub Agentic Workflows (gh-aw) maintenance and failure triage. Use the shared control plane to select repositories that install their own GitHub Agentic Workflows, then dispatch `aw-maintenance-upgrade`, `aw-ci-doctor`, and `aw-maintenance-compiler-security` once per selected repository. The orchestrator only selects and ranks repositories; the workers own release detection, triage, failure analysis, compilation validation, security scanning, and issue filing inside each target repository.
 
 This package covers agentic workflow maintenance and failure triage: gh-aw upgrades, compiler and dispatcher updates, pinned action versions, and recent failures in `.github/workflows/*.md`. Traditional, hand-written GitHub Actions YAML maintenance is out of scope — that is already managed by Dependabot.
 
@@ -412,7 +412,8 @@ Deprioritize repositories with no `.github/workflows/*.md` files, no `aw.yml` ma
 ## Workers
 
 - `aw-maintenance-upgrade`: reads and caches the latest gh-aw release information, compares it against the target repository's currently pinned gh-aw version, and — only when a newer release is available and not already tracked — runs `gh aw upgrade` locally to compute the upgrade diff and files one issue that a maintainer can assign to Copilot to open the upgrade pull request.
-- `aw-failures-investigator`: reads recent agentic workflow runs and failure logs, buckets failures by error signature, and publishes a failure report plus focused fix issues for uncovered buckets.
+- `aw-ci-doctor`: performs cheap pre-categorization of recent CI failures and escalates only P0 conditions by dispatching `aw-failures-investigator`.
+- `aw-failures-investigator`: reads recent agentic workflow runs and failure logs when escalated by CI Doctor, buckets failures by error signature, and publishes a failure report plus focused fix issues for uncovered buckets.
 - `aw-maintenance-compiler-security`: compiles every agentic workflow with strict validation, linters, image checks, and the full gh-aw security-scanner suite, then publishes one deduplicated findings report with a local agent fixing loop.
 
 Dispatch stays repository-scoped: one worker run per selected repository. Do not fan out one dispatch per gh-aw release or per workflow file.

@@ -36,6 +36,9 @@
         "icon": "gear",
         "mode": "live",
         "workers": {
+          "ci-doctor": {
+            "workflow": "aw-ci-doctor"
+          },
           "compiler-security": {
             "workflow": "aw-maintenance-compiler-security"
           },

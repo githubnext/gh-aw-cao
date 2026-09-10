@@ -3,9 +3,12 @@ description: Organization-wide workflow for maintaining installed GitHub Agentic
 min-version: v0.89.2
 experimental: true
 includes:
+  - .github/workflows/aw-ci-doctor.md
   - .github/workflows/aw-doctor.md
   - .github/workflows/aw-failures-investigator.md
   - .github/workflows/aw-maintenance-compiler-security.md
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/aw-doctor.json
+  - source: .github/skills/aw-ci-failure-pre-categorization/SKILL.md
+    destination: .github/skills/aw-ci-failure-pre-categorization/SKILL.md

@@ -37,6 +37,8 @@ const awDoctorExpectedFiles = [
   ".github/aw/dashboards/aw-doctor.json",
   ".github/graders/aw-failures-investigator-operational-value.sh",
   ".github/graders/aw-maintenance-compiler-security-operational-value.sh",
+  ".github/skills/aw-ci-failure-pre-categorization/SKILL.md",
+  ".github/workflows/aw-ci-doctor.md",
   ".github/workflows/aw-failures-investigator.md",
   ".github/workflows/aw-maintenance-compiler-security.md",
   ".github/workflows/aw-maintenance-upgrade.md",
