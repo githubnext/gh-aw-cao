@@ -1681,6 +1681,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     }
   }, true);
+  /** @param {PopStateEvent} event */
   const onPopState = (event) => {
     const index = event.state?.[NAVIGATION_INDEX_STATE_KEY];
     navigationIndex = Number.isSafeInteger(index) && index >= 0 ? index : 0;
@@ -1693,10 +1694,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       return;
     }
     const route = routeFromHash();
-    if (route) {
-      updateWithViewTransition(root.ownerDocument, () => activate(route.pageId, route.parameters, true));
-      if (pageTitle instanceof HTMLElement) pageTitle.focus();
-    }
+    updateWithViewTransition(root.ownerDocument, () => activate(
+      route?.pageId ?? initialPageId,
+      route?.parameters,
+      true
+    ));
+    if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
   defaultView?.addEventListener('popstate', onPopState);
   defaultView?.addEventListener('hashchange', onHashChange);
