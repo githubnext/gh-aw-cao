@@ -347,10 +347,16 @@ export function adaptCachedGhAwJsonl(content) {
     const workflowSourceId = `${repositorySourceId}:${path}`.toLowerCase();
     const repository = sourceId('repository', OBSERVATION_SOURCE, repositorySourceId);
     const workflow = sourceId('workflow', OBSERVATION_SOURCE, workflowSourceId);
+    const canonicalRunId = runId(githubRunId, attempt);
+    const sessionSourceId = `${canonicalRunId}:unified`;
+    const session = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
+    const eventSourceId = `${session}:run-observed`;
     observations.push(
       { kind: 'repository', source: OBSERVATION_SOURCE, sourceId: `repository:${repositorySourceId}`, observedAt, data: { id: repository, owner, name, fullName, visibility: 'unknown' } },
       { kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: `workflow:${workflowSourceId}`, observedAt, data: { id: workflow, repositoryId: repository, name: requiredString(run.workflow_name, 'run.workflow_name'), path, state: 'unknown' } },
-      { kind: 'run', source: OBSERVATION_SOURCE, sourceId: `run:${githubRunId}:${attempt}`, observedAt, data: { id: runId(githubRunId, attempt), repositoryId: repository, workflowId: workflow, owner, repository: name, repositoryFullName: fullName, workflowPath: path, githubRunId, attempt, title: optionalString(run.display_title) ?? `Run ${githubRunId}`, event: optionalString(run.event) ?? optionalString(run.event_name) ?? 'unknown', status: optionalString(run.status) ?? 'unknown', conclusion: optionalString(run.conclusion) ?? null, createdAt: optionalString(run.created_at) ?? null, startedAt: optionalString(run.started_at) ?? null, completedAt: optionalString(run.updated_at) ?? null, engine: optionalString(run.engine) ?? 'unknown', aic: run.aic ?? null, tokenUsage: run.token_usage ?? null, runLink: optionalString(run.url) ?? null } }
+      { kind: 'run', source: OBSERVATION_SOURCE, sourceId: `run:${githubRunId}:${attempt}`, observedAt, data: { id: canonicalRunId, repositoryId: repository, workflowId: workflow, owner, repository: name, repositoryFullName: fullName, workflowPath: path, githubRunId, attempt, title: optionalString(run.display_title) ?? `Run ${githubRunId}`, event: optionalString(run.event) ?? optionalString(run.event_name) ?? 'unknown', status: optionalString(run.status) ?? 'unknown', conclusion: optionalString(run.conclusion) ?? null, createdAt: optionalString(run.created_at) ?? null, startedAt: optionalString(run.started_at) ?? null, completedAt: optionalString(run.updated_at) ?? null, engine: optionalString(run.engine) ?? 'unknown', aic: run.aic ?? null, tokenUsage: run.token_usage ?? null, runLink: optionalString(run.url) ?? null } },
+      { kind: 'session', source: OBSERVATION_SOURCE, sourceId: sessionSourceId, observedAt, data: { id: session, runId: canonicalRunId, kind: 'unified-operational-log', status: optionalString(run.status) ?? 'unknown', startedAt: observedAt, completedAt: run.status === 'completed' ? observedAt : null } },
+      { kind: 'event', source: OBSERVATION_SOURCE, sourceId: eventSourceId, observedAt, data: { id: sourceId('event', OBSERVATION_SOURCE, eventSourceId), sessionId: session, timestamp: observedAt, source: 'workflow', type: 'run_observed', status: optionalString(run.status) ?? optionalString(run.conclusion) ?? 'unknown', sourceSequence: 0 } }
     );
     records += 1;
   }

@@ -149,8 +149,13 @@ describe('canonical source ingestion and queries', () => {
     } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {} })}\n`;
     await expect(ingestCachedGhAwJsonl(indexedDB, content, { now: Date.parse('2026-01-01T00:00:00Z') }))
       .resolves.toMatchObject({ updated: true, records: 1 });
-    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
+    const queries = createCanonicalQueries(indexedDB);
+    await expect(queries.runs.list()).resolves.toEqual([
       expect.objectContaining({ id: 'github:run:303:attempt:1', repositoryFullName: 'githubnext/gh-aw-cao' })
+    ]);
+    const sessions = await queries.sessions.forRun('github:run:303:attempt:1');
+    await expect(queries.events.forSession(String(sessions[0].id))).resolves.toEqual([
+      expect.objectContaining({ source: 'workflow', type: 'run_observed', sequence: 0 })
     ]);
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({ kind: 'ingest-jsonl', records: 1 })
