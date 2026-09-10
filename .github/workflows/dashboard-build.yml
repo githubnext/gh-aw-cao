@@ -60,7 +60,7 @@ jobs:
       - name: Restore collected activity data
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+           path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
           key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             cao-activity-v3-

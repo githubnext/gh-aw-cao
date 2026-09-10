@@ -2934,6 +2934,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(buildWorkflow, /run-name: CAO Dashboard Build \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.doesNotMatch(buildWorkflow, /actions: write|DISPATCH_WORKFLOW: activity\.yml|Dispatch activity refresh|inputs\.mode/);
   assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?restore-keys: \|[\s\S]*?cao-activity-v3-[\s\S]*?fail-on-cache-miss: true/);
+  assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
