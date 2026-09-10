@@ -74,7 +74,7 @@ import { sourceContinuation } from './data/continuation.js';
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -186,6 +186,7 @@ export function renderDashboard(input) {
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
+  const showInitialLoadingSkeleton = input.loading === true && !hasData;
   const dataHorizon = resolveDataHorizon(rawSources);
   const githubUrlBase = typeof document.dashboard['github-url-base'] === 'string' && document.dashboard['github-url-base'].length > 0
     ? document.dashboard['github-url-base']
@@ -247,7 +248,9 @@ export function renderDashboard(input) {
       const page = pages[pageIndex];
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      const render = (pageSources) => showInitialLoadingSkeleton
+        ? renderPageLoadingSkeleton(page)
+        : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
       if (input.loadPageSources) {
         return input.loadPageSources(pageId).then(render);
       }
@@ -1004,6 +1007,18 @@ function renderPagePlaceholder(page) {
     'data-route-navigation-page': routeNavigationPage,
     'data-page-pending': ''
   });
+}
+
+/**
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @returns {HTMLElement}
+ */
+function renderPageLoadingSkeleton(page) {
+  const placeholder = renderPagePlaceholder(page);
+  placeholder.removeAttribute('data-page-pending');
+  placeholder.setAttribute('aria-busy', 'true');
+  placeholder.append(renderPageSkeleton());
+  return placeholder;
 }
 
 /**

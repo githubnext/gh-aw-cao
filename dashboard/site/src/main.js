@@ -176,6 +176,7 @@
           sources,
           viewer: localViewer,
           prepared,
+          loading: state === "loading",
           loadPageSources,
           loadHorizonSources,
         });
