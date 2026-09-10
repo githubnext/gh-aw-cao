@@ -26,7 +26,7 @@ async function fixture() {
   };
 }
 
-test("activity logs uses one bounded gh aw logs invocation with transaction-log artifacts", async () => {
+test("activity logs uses one bounded gh aw logs invocation with compact usage artifacts", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");
   await writeFile(ghPath, `#!/usr/bin/env node
@@ -78,7 +78,7 @@ if (args[0] === "aw") {
     assert.equal(args.includes("--json"), false);
     assert.deepEqual(args.slice(args.indexOf("--artifacts"), args.indexOf("--artifacts") + 2), [
       "--artifacts",
-      "usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent",
+      "usage",
     ]);
     assert.equal(args.filter((value) => value === "--prune-older-runs").length, 1);
     assert.deepEqual(args.slice(args.indexOf("--cached-json"), args.indexOf("--cached-json") + 2), [

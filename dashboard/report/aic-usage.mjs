@@ -13,6 +13,7 @@ const FIREWALL_HORIZON_DAYS = 30;
 const MAX_SECURITY_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_SECURITY_FILES = 2_000;
 const MAX_SECURITY_DIRECTORIES = 2_000;
+const NON_EVIDENCE_DIRECTORIES = new Set([".downloaded-artifacts", "aw-prompts", "base", "prompts"]);
 
 async function resolveRunRoot(outputDirectory, runId) {
   const target = `run-${runId}`;
@@ -32,7 +33,8 @@ async function resolveRunRoot(outputDirectory, runId) {
       if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
       const candidate = path.join(current, entry.name);
       if (entry.name === target) return candidate;
-      pending.push(candidate);
+      if (entry.name.startsWith("run-")) continue;
+      if (!NON_EVIDENCE_DIRECTORIES.has(entry.name)) pending.push(candidate);
     }
   }
   return direct;
@@ -41,8 +43,10 @@ async function resolveRunRoot(outputDirectory, runId) {
 async function securityFiles(root) {
   const files = [];
   const pending = [root];
-  while (pending.length > 0 && files.length < MAX_SECURITY_FILES) {
+  let visited = 0;
+  while (pending.length > 0 && files.length < MAX_SECURITY_FILES && visited < MAX_SECURITY_DIRECTORIES) {
     const current = pending.pop();
+    visited += 1;
     let entries;
     try {
       entries = await readdir(current, { withFileTypes: true });
@@ -52,7 +56,7 @@ async function securityFiles(root) {
     for (const entry of entries) {
       if (entry.isSymbolicLink()) continue;
       const candidate = path.join(current, entry.name);
-      if (entry.isDirectory()) pending.push(candidate);
+      if (entry.isDirectory() && !NON_EVIDENCE_DIRECTORIES.has(entry.name)) pending.push(candidate);
       else if (entry.isFile()) files.push(candidate);
       if (files.length >= MAX_SECURITY_FILES) break;
     }
@@ -70,9 +74,13 @@ async function readBounded(file) {
   }
 }
 
-export async function readRunTimeline(outputDirectory, runId, sessionId) {
+async function loadRunEvidence(outputDirectory, runId) {
   const runRoot = await resolveRunRoot(outputDirectory, runId);
-  const files = await securityFiles(runRoot);
+  return { runRoot, files: await securityFiles(runRoot) };
+}
+
+export async function readRunTimeline(outputDirectory, runId, sessionId, evidence = null) {
+  const { runRoot, files } = evidence || await loadRunEvidence(outputDirectory, runId);
   const selected = files.filter((file) => {
     const relativePath = relativeEvidencePath(runRoot, file);
     return /(^|\/)gateway\.jsonl$/.test(relativePath)
@@ -84,15 +92,59 @@ export async function readRunTimeline(outputDirectory, runId, sessionId) {
     path: relativeEvidencePath(runRoot, file),
     content: await readBounded(file),
   })))).filter((file) => file.content !== null);
-  return adaptGhAwTimelineFiles(inputs, sessionId).map((observation) => ({
+  const timeline = adaptGhAwTimelineFiles(inputs, sessionId).map((observation) => ({
     sourceId: observation.sourceId,
     ...observation.data,
   }));
+  if (timeline.length > 0) return timeline;
+
+  const summaryFile = files.find((file) => path.basename(file) === "run_summary.json");
+  const content = summaryFile ? await readBounded(summaryFile) : null;
+  if (content === null) return [];
+  try {
+    const summary = JSON.parse(content);
+    const calls = Array.isArray(summary?.mcp_tool_usage?.tool_calls)
+      ? summary.mcp_tool_usage.tool_calls
+      : [];
+    return calls.flatMap((call, index) => {
+      const eventTimestamp = firstText(call?.timestamp);
+      const serverName = firstText(call?.server_name);
+      const toolName = firstText(call?.tool_name);
+      if (!eventTimestamp || !Number.isFinite(Date.parse(eventTimestamp)) || (!serverName && !toolName)) return [];
+      return [{
+        sourceId: `${sessionId}:run_summary.json:mcp_tool_usage.tool_calls:${index + 1}`,
+        sessionId,
+        timestamp: new Date(eventTimestamp).toISOString(),
+        source: "gateway",
+        type: "tool_call",
+        summary: [serverName, toolName].filter(Boolean).join("/"),
+        status: firstText(call?.status),
+        payloadRef: `run_summary.json#mcp_tool_usage.tool_calls[${index}]`,
+        sourceSequence: index + 1,
+      }];
+    });
+  } catch {
+    return [];
+  }
 }
 
 function emptySecurityTelemetry() {
   return {
     agenticAssessments: [],
+    agentInfo: {
+      available: false,
+      agentId: "",
+      agentName: "",
+      agentVersion: "",
+      agentRuntime: "",
+      modelId: "",
+      ghAwVersion: "",
+      cliVersion: "",
+      firewallVersion: "",
+      gatewayVersion: "",
+      workflowName: "",
+    },
+    audit: { available: false, data: null },
     accessControl: { available: false, fileDenials: {}, toolDenials: {}, guardPolicy: null },
     firewall: {
       available: false,
@@ -144,6 +196,42 @@ function agenticAssessments(summary) {
         recommendation: boundedAssessmentText(assessment.recommendation),
       }))
     : [];
+}
+
+const AUDIT_SECTIONS = {
+  behaviorFingerprint: "behavior_fingerprint",
+  engineConfig: "engine_config",
+  firewallAnalysis: "firewall_analysis",
+  mcpToolUsage: "mcp_tool_usage",
+  metrics: "metrics",
+  observabilityInsights: "observability_insights",
+  recommendations: "recommendations",
+  sessionAnalysis: "session_analysis",
+  toolUsage: "tool_usage",
+};
+const SENSITIVE_AUDIT_KEY = /(argument|authorization|body|content|credential|input|message|output|prompt|response|secret|token|transcript)/i;
+
+function boundedAuditValue(value, depth = 0) {
+  if (depth > 5) return null;
+  if (value === null) return null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") return value.slice(0, 2_000);
+  if (Array.isArray(value)) {
+    return value.slice(0, 100).map((item) => boundedAuditValue(item, depth + 1));
+  }
+  if (typeof value !== "object") return null;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !SENSITIVE_AUDIT_KEY.test(key))
+    .slice(0, 100)
+    .map(([key, item]) => [key, boundedAuditValue(item, depth + 1)]));
+}
+
+function normalizedAudit(audit) {
+  return Object.fromEntries(Object.entries(AUDIT_SECTIONS).map(([target, source]) => [
+    target,
+    boundedAuditValue(audit?.[source] ?? null),
+  ]));
 }
 
 function relativeEvidencePath(runRoot, file) {
@@ -222,19 +310,15 @@ function firewallEnabledFromInfo(info) {
   return null;
 }
 
-async function readFirewallTelemetry(runRoot, files, summary) {
+async function readFirewallTelemetry(runRoot, files, summary, info) {
   const firewall = emptySecurityTelemetry().firewall;
   const infoFile = files.find((file) => path.basename(file) === "aw_info.json");
-  if (infoFile) {
-    const content = await readBounded(infoFile);
-    if (content !== null) try {
-      const info = JSON.parse(content);
-      firewall.firewallEnabled = firewallEnabledFromInfo(info);
-      firewall.firewallExpected = firewall.firewallEnabled;
-      firewall.awfVersion = firstText(info.awf_version, info.firewall_version) || "unknown";
-    } catch {
-      firewall.firewallEvidenceError = "Firewall configuration metadata is malformed.";
-    }
+  if (info) {
+    firewall.firewallEnabled = firewallEnabledFromInfo(info);
+    firewall.firewallExpected = firewall.firewallEnabled;
+    firewall.awfVersion = firstText(info.awf_version, info.firewall_version) || "unknown";
+  } else if (infoFile) {
+    firewall.firewallEvidenceError = "Firewall configuration metadata is malformed.";
   }
 
   const manifestFile = files.find((file) => path.basename(file) === "policy-manifest.json");
@@ -344,15 +428,39 @@ function validThreatVerdict(value) {
     && Array.isArray(value.reasons);
 }
 
-export async function readRunSecurityTelemetry(outputDirectory, runId) {
+export async function readRunSecurityTelemetry(outputDirectory, runId, evidence = null) {
   const telemetry = emptySecurityTelemetry();
-  const runRoot = await resolveRunRoot(outputDirectory, runId);
-  const files = await securityFiles(runRoot);
+  const { runRoot, files } = evidence || await loadRunEvidence(outputDirectory, runId);
+  const infoFile = files.find((file) => path.basename(file) === "aw_info.json");
+  let info = null;
+  if (infoFile) {
+    const content = await readBounded(infoFile);
+    if (content !== null) try {
+      info = JSON.parse(content);
+      telemetry.agentInfo = {
+        available: true,
+        agentId: firstText(info.engine_id),
+        agentName: firstText(info.engine_name),
+        agentVersion: firstText(info.agent_version),
+        agentRuntime: firstText(info.agent_runtime),
+        modelId: firstText(info.model),
+        ghAwVersion: firstText(info.cli_version, info.version),
+        cliVersion: firstText(info.cli_version),
+        firewallVersion: firstText(info.awf_version),
+        gatewayVersion: firstText(info.awmg_version),
+        workflowName: firstText(info.workflow_name),
+      };
+    } catch {
+      // Missing or malformed optional agent metadata remains unavailable.
+    }
+  }
   const auditFile = files.find((file) => path.basename(file) === "audit.json");
   if (auditFile) {
     const content = await readBounded(auditFile);
     if (content !== null) try {
-      telemetry.agenticAssessments = agenticAssessments(JSON.parse(content));
+      const audit = JSON.parse(content);
+      telemetry.audit = { available: true, ...normalizedAudit(audit) };
+      telemetry.agenticAssessments = agenticAssessments(audit);
     } catch {
       // Missing or malformed optional telemetry is represented as unavailable.
     }
@@ -414,7 +522,7 @@ export async function readRunSecurityTelemetry(outputDirectory, runId) {
       // Missing or malformed optional telemetry is represented as unavailable.
     }
   }
-  telemetry.firewall = await readFirewallTelemetry(runRoot, files, summary);
+  telemetry.firewall = await readFirewallTelemetry(runRoot, files, summary, info);
 
   const agentLogs = files.filter((file) => path.basename(file) === "agent-stdio.log");
   if (agentLogs.length > 0) telemetry.accessControl.available = true;
@@ -472,9 +580,8 @@ function tokenUsage(run) {
   } : null;
 }
 
-async function readRunEvals(outputDirectory, runId) {
-  const runRoot = await resolveRunRoot(outputDirectory, runId);
-  const files = await securityFiles(runRoot);
+async function readRunEvals(outputDirectory, runId, evidence = null) {
+  const { files } = evidence || await loadRunEvidence(outputDirectory, runId);
   const evalFiles = files.filter((file) => path.basename(file) === "evals.jsonl");
   const observations = [];
   for (const file of evalFiles) {
@@ -622,17 +729,14 @@ export async function collectAicUsage() {
           experiments: run.experiments ?? null,
           graders: run.graders ?? null,
         };
-        if (Number.isFinite(aic) || common.tokenUsage) runs.set(`${repository}:${runId}`, {
-          ...common,
-          aic: Number.isFinite(aic) ? aic : null,
-        });
         let security;
         let evals = [];
         let timeline = [];
         try {
+          const evidence = await loadRunEvidence(temporaryRoot, runId);
           [security, evals, timeline] = await Promise.all([
-            readRunSecurityTelemetry(temporaryRoot, runId),
-            readRunEvals(temporaryRoot, runId),
+            readRunSecurityTelemetry(temporaryRoot, runId, evidence),
+            readRunEvals(temporaryRoot, runId, evidence),
             readRunTimeline(
               temporaryRoot,
               runId,
@@ -641,6 +745,7 @@ export async function collectAicUsage() {
                 "gh-aw-logs",
                 `${canonicalRunId(runId, common.runAttempt)}:unified`,
               ),
+              evidence,
             ),
           ]);
         } catch (error) {
@@ -649,6 +754,19 @@ export async function collectAicUsage() {
           security.firewall.firewallEvidenceError = "Firewall artifact parsing failed.";
           log.warning`Firewall evidence unavailable for ${repository} run ${runId}: ${error.message}`;
         }
+        const enriched = {
+          ...common,
+          engine: firstText(common.engine, security.agentInfo.agentId, security.agentInfo.agentName),
+          engineVersion: firstText(common.engineVersion, security.agentInfo.agentVersion),
+          requestedModel: firstText(common.requestedModel, security.agentInfo.modelId),
+          resolvedModel: firstText(common.resolvedModel, security.agentInfo.modelId),
+          agentRuntime: firstText(common.agentRuntime, security.agentInfo.agentRuntime),
+          ghAwVersion: firstText(security.agentInfo.ghAwVersion, security.mcp.cliVersion),
+        };
+        if (Number.isFinite(aic) || enriched.tokenUsage) runs.set(`${repository}:${runId}`, {
+          ...enriched,
+          aic: Number.isFinite(aic) ? aic : null,
+        });
         if (
           common.createdAt
           && ["available", "partial", "disabled", "no-traffic"].includes(security.firewall.firewallEvidenceState)
@@ -661,7 +779,7 @@ export async function collectAicUsage() {
           security.firewall.firewallEvidenceFreshness = collectionAvailable ? "fresh" : "stale";
         }
         securityRuns.set(`${repository}:${runId}`, {
-          ...common,
+          ...enriched,
           logsPayload: run,
           security,
           evals,
