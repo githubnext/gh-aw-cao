@@ -1528,6 +1528,7 @@ describe('presenter built-in and custom pages', () => {
 
   it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
     const loadHorizonSources = vi.fn().mockResolvedValue({
+      'database-repository-count': { rows: [{ repositories: 3 }] },
       'database-workflow-count': { rows: [{ workflows: 4 }] },
       'database-run-count': { rows: [{ runs: 12 }] },
       'database-event-count': { rows: [{ events: 89 }] }
@@ -1603,8 +1604,19 @@ describe('presenter built-in and custom pages', () => {
 
     await vi.waitFor(() => {
       expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
-        .toBe('4 workflows · 12 runs · 89 events');
+        .toBe('3 repositories · 4 workflows · 12 runs · 89 events');
     });
+    expect(loadHorizonSources).toHaveBeenCalledOnce();
+
+    const accountMenu = /** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.account-menu'));
+    if (!accountMenu) throw new Error('account menu did not render');
+    accountMenu.open = true;
+    accountMenu.dispatchEvent(new Event('toggle'));
+    await vi.waitFor(() => {
+      expect([...rendered.querySelectorAll('[data-database-count]')].map((node) => node.textContent))
+        .toEqual(['3', '4', '12', '89']);
+    });
+    expect(rendered.querySelector('.database-counts-status')?.textContent).toBe('Database totals');
     expect(loadHorizonSources).toHaveBeenCalledOnce();
 
     rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));

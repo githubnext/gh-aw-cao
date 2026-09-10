@@ -19,15 +19,17 @@ import { renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
+import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { processDataHealthSources, processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
-import { DASHBOARD_HORIZON_COUNT_SOURCES, dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
+import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
+import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabaseCounts } from './database-counts.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -707,6 +709,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
   const settingsPage = pages.find((page) => page.id === 'configuration');
+  const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
+  const settingsDatabaseCounts = renderSettingsDatabaseCounts(loadDatabaseCounts);
   return h(
     'div',
     { className: 'app-main' },
@@ -741,7 +745,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts),
           dashboardRepository
             ? h(
               'a',
@@ -756,7 +760,12 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             : null,
           h(
             'details',
-            { className: 'account-menu' },
+            {
+              className: 'account-menu',
+              ontoggle: /** @param {Event} event */ (event) => {
+                if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) settingsDatabaseCounts.load();
+              }
+            },
             h(
               'summary',
               {
@@ -820,6 +829,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
               ),
+              settingsDatabaseCounts.element,
               renderResetDashboardControl()
             )
           )
@@ -862,10 +872,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
- * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
+ * @param {() => Promise<import('./database-counts.js').DatabaseCounts>} loadDatabaseCounts
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts) {
   if (!hasData) {
     return h(
       'span',
@@ -896,16 +906,14 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   /** @type {Promise<void> | undefined} */
   let countsPromise;
   const loadCounts = () => {
-    if (!loadHorizonSources || countsPromise) return;
+    if (countsPromise) return;
     databaseCounts.textContent = 'Loading database counts…';
-    countsPromise = loadHorizonSources()
-      .then((sources) => {
-       const counts = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
-       if (counts.some((row) => !row)) throw new Error('Database count query unavailable');
-       databaseCounts.textContent = `${counts[0]?.workflows} workflows · ${counts[1]?.runs} runs · ${counts[2]?.events} events`;
+    countsPromise = loadDatabaseCounts()
+      .then((counts) => {
+        databaseCounts.textContent = formatDatabaseCounts(counts);
       })
       .catch(() => {
-       databaseCounts.textContent = 'Database counts unavailable';
+        databaseCounts.textContent = 'Database counts unavailable';
       });
   };
 
@@ -1502,6 +1510,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
    */
   const activate = (pageId, parameters = new URLSearchParams(), deferPopulation = false) => {
     const revision = ++activationRevision;
+    let pagePopulated = false;
     const dashboardHorizon = root.querySelector('.dashboard-horizon');
     let activeFilterBar = root.querySelector('.report-actions > .filter-bar');
     /**
@@ -1579,6 +1588,12 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           pages[pageIndex] = renderedPage;
           enableLazyViews(renderedPage);
           if (renderedPage.dataset.pageId === 'overview') syncOverviewAttentionNavigation(root, renderedPage);
+          emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
+            kind: 'page',
+            pageId,
+            status: 'completed'
+          });
+          pagePopulated = true;
           placeDashboardHorizon(renderedPage);
           syncFullViewMode(renderedPage);
           if (deferPopulation) {
@@ -1657,6 +1672,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       : '';
     renderPageMode(pageMode, requestedMode === 'review' || requestedMode === 'live' ? requestedMode : '');
     if (page && !populationDeferred) dispatchPageRoute(page, routeParameter ?? '', routeValue);
+    if (page && !populationDeferred && !pagePopulated) {
+      emitDashboardDebugEvent(root.ownerDocument, DASHBOARD_RENDER_EVENT, {
+        kind: 'page',
+        pageId,
+        status: 'completed'
+      });
+    }
     if (!populationDeferred) restoreScroll(page);
   };
 

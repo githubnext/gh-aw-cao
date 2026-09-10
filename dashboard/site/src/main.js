@@ -3,10 +3,15 @@
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources, subscribeCanonicalDashboardView } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
-      import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
+      import { DATABASE_COUNT_SOURCE_NAMES } from "./database-counts.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
+      import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
+      import { collectFullDiagnostics } from "./diagnostics.js";
+
+      /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
+        () => collectFullDiagnostics();
 
       /**
        * @param {string} id
@@ -942,7 +947,7 @@
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
           const loadHorizonSources = () => runWithLoadingProgress(
             () => loadCanonicalDashboardPage(
-              DASHBOARD_HORIZON_COUNT_SOURCES,
+              DATABASE_COUNT_SOURCE_NAMES,
               dashboardContext,
             ),
           );
@@ -980,6 +985,11 @@
               refreshPending = false;
               const message = error instanceof Error ? error.message : String(error);
               console.error(`Unable to refresh live dashboard data: ${message}`);
+              emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                kind: "refresh",
+                status: "failed",
+                message,
+              });
               updateWithViewTransition(
                 document,
                 () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources),
@@ -989,6 +999,10 @@
               if (refreshPending) return;
               refreshFailed = false;
               refreshPending = true;
+              emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                kind: "refresh",
+                status: "started",
+              });
               renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
               void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
@@ -998,6 +1012,11 @@
               )).then(
                 ({ changed }) => {
                   refreshPending = false;
+                  emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                    kind: "refresh",
+                    status: "completed",
+                    changed,
+                  });
                   if (changed) return;
                   renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
                 },
@@ -1039,6 +1058,10 @@
               loadPageSources,
               loadHorizonSources,
             );
+            emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+              kind: "initial-load",
+              status: "completed",
+            });
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

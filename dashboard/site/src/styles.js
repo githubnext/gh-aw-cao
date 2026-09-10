@@ -336,6 +336,12 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .appearance-options button:last-child { border-radius: 0 6px 6px 0; }
 .appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .appearance-options .octicon { width: 14px; height: 14px; }
+.database-counts { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
+.database-counts legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
+.database-count-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.database-count-grid > span { min-width: 0; display: grid; gap: 2px; padding: 6px 3px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
+.database-count-grid strong { overflow: hidden; font-size: .8125rem; text-overflow: ellipsis; }
+.database-count-grid small, .database-counts-status { overflow: hidden; color: var(--muted); font-size: .625rem; text-overflow: ellipsis; }
 .reset-dashboard-control { padding-top: 8px; border-top: 1px solid var(--border); }
 .account-menu-reset { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; cursor: pointer; }
 .account-menu-reset:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
@@ -1121,9 +1127,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-edit-status { padding-left: 10px; border-left: 1px solid var(--border); color: var(--muted); font-size: .75rem; }
 .configuration-edit-status[data-state="modified"] { color: var(--attention); font-weight: 600; }
 .configuration-editor-actions { justify-content: flex-end; flex-wrap: wrap; }
-.configuration-copy-button, .configuration-reset-button { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
+.configuration-copy-button, .configuration-reset-button, .configuration-diagnostics-button { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .configuration-copy-button { border-color: var(--success); background: var(--success); color: var(--on-emphasis); }
-.configuration-reset-button:hover { background: var(--neutral-muted); }
+.configuration-reset-button:hover, .configuration-diagnostics-button:hover { background: var(--neutral-muted); }
 .configuration-copy-button:hover { filter: brightness(.94); }
 .configuration-copy-status { color: var(--muted); font-size: .75rem; }
 .configuration-settings { display: grid; }

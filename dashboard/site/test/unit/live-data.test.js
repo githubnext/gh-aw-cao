@@ -25,7 +25,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("subscribeCanonicalDashboardView(");
     expect(preview).toContain("emitCurrent: false");
     expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
-    expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DASHBOARD_HORIZON_COUNT_SOURCES,/);
+    expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DATABASE_COUNT_SOURCE_NAMES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
     expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources)');
