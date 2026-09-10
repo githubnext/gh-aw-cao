@@ -116,12 +116,10 @@ describe('dashboard data operations', () => {
     };
     const result = /** @type {any} */ (processDataRequest({
       operation: 'canonicalize-dashboard-sources',
-      generation: 'generation-a',
       sources: { repositories: source }
     }));
 
     expect(result.repositories).toMatchObject([{
-      generation: 'generation-a',
       owner: 'acme',
       name: 'app',
       fullName: 'acme/app'

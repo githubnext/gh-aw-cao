@@ -649,11 +649,11 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
   const result = await page.evaluate(async (input) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
     const queriesUrl = `${location.origin}/src/data/queries/index.js`;
-    const [{ ingestGhAwLogsGeneration }, { createCanonicalQueries }] = await Promise.all([
+    const [{ ingestGhAwLogs }, { createCanonicalQueries }] = await Promise.all([
       import(coordinatorUrl),
       import(queriesUrl)
     ]);
-    const ingestion = await ingestGhAwLogsGeneration(indexedDB, input);
+    const ingestion = await ingestGhAwLogs(indexedDB, input);
     const queries = createCanonicalQueries(indexedDB);
     const runs = await queries.runs.list();
     const sessions = await queries.sessions.forRun(String(runs[0].id));
@@ -661,10 +661,7 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
     return { ingestion, runs, sessions, events };
   }, ghAwLogInput());
 
-  expect(result.ingestion).toEqual({
-    generation: 'gh-aw-logs-2026-09-09-05',
-    activated: true
-  });
+  expect(result.ingestion).toMatchObject({ updated: true });
   expect(result.runs[0].id).toBe('github:run:303:attempt:1');
   expect(result.sessions[0].kind).toBe('unified-operational-log');
   expect(result.events.map((/** @type {Record<string, unknown>} */ event) => [event.sequence, event.source, event.type])).toEqual([
@@ -677,7 +674,7 @@ test('Chromium ingests gh-aw artifacts as Run, Session, and ordered Events', asy
   ]);
 });
 
-test('deletion rebuilds derived state and replacement retires the previous generation', async ({ page }) => {
+test('deletion rebuilds derived state and fresh data is directly upserted', async ({ page }) => {
   const result = await page.evaluate(async ({ firstSources, replacementSources, name }) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
     const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`;
@@ -696,8 +693,7 @@ test('deletion rebuilds derived state and replacement retires the previous gener
     return {
       rebuilt,
       replaced,
-      active: await storage.activeGeneration(indexedDB),
-      previousState: await storage.generationState(indexedDB, 'generation-a')
+      repositories: await storage.readCollection(indexedDB, 'repositories')
     };
   }, {
     firstSources: canonicalSources('generation-a', '101'),
@@ -705,70 +701,44 @@ test('deletion rebuilds derived state and replacement retires the previous gener
     name: databaseName
   });
 
-  expect(result).toEqual({
-    rebuilt: { generation: 'generation-a', activated: true },
-    replaced: { generation: 'generation-b', activated: true },
-    active: 'generation-b',
-    previousState: 'retired'
-  });
+  expect(result.rebuilt).toMatchObject({ updated: true });
+  expect(result.replaced).toMatchObject({ updated: true });
+  expect(result.repositories.map((/** @type {Record<string, unknown>} */ repository) => repository.id)).toEqual([
+    'github:repository:101',
+    'github:repository:202'
+  ]);
 });
 
-test('corrupt and interrupted staging never replace active data', async ({ page }) => {
+test('invalid direct upserts are rejected before changing stored data', async ({ page }) => {
   const activeSources = canonicalSources('generation-a', '101');
-  const interruptedSources = canonicalSources('generation-c', '303');
-  const beforeReload = await page.evaluate(async ({ active, interrupted }) => {
+  const result = await page.evaluate(async (active) => {
     const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
-    const adapterUrl = `${location.origin}/src/data/adapters/dashboard-sources.js`;
     const normalizeUrl = `${location.origin}/src/data/normalize/index.js`;
     const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`;
-    const [{ ingestDashboardSources }, { adaptDashboardSources }, { normalize }, storage] = await Promise.all([
-      import(coordinatorUrl), import(adapterUrl), import(normalizeUrl), import(storageUrl)
+    const [{ ingestDashboardSources }, { normalize }, storage] = await Promise.all([
+      import(coordinatorUrl), import(normalizeUrl), import(storageUrl)
     ]);
     await ingestDashboardSources(indexedDB, active);
 
-    const invalid = normalize([], { generation: 'generation-b' });
+    const invalid = normalize([]);
     invalid.workflows.push({
       id: 'workflow:missing-parent',
-      repositoryId: 'repository:missing',
-      generation: 'generation-b'
+      repositoryId: 'repository:missing'
     });
-    await storage.stageCanonicalBatch(indexedDB, invalid, 'generation-b');
-    await storage.activateGeneration(indexedDB, 'generation-b').catch(() => undefined);
-
-    const adapted = adaptDashboardSources(interrupted);
-    const batch = normalize(adapted.observations, { generation: adapted.generation });
-    await storage.stageCanonicalBatch(indexedDB, batch, adapted.generation, {
-      batchSize: 1,
-      onBatchCommitted: (/** @type {{ committedBatches: number }} */ progress) => {
-        if (progress.committedBatches === 1) throw new Error('terminate before activation');
-      }
-    }).catch(() => undefined);
+    let error = '';
+    try {
+      await storage.upsertCanonicalBatch(indexedDB, invalid);
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
     return {
-      active: await storage.activeGeneration(indexedDB),
-      corruptState: await storage.generationState(indexedDB, 'generation-b'),
-      interruptedState: await storage.generationState(indexedDB, 'generation-c')
+      error,
+      repositories: await storage.readCollection(indexedDB, 'repositories'),
+      workflows: await storage.readCollection(indexedDB, 'workflows')
     };
-  }, { active: activeSources, interrupted: interruptedSources });
+  }, activeSources);
 
-  expect(beforeReload).toEqual({
-    active: 'generation-a',
-    corruptState: 'failed',
-    interruptedState: 'staging'
-  });
-
-  await page.reload();
-  const afterReload = await page.evaluate(async (sources) => {
-    const coordinatorUrl = `${location.origin}/src/data/ingest/coordinator.js`;
-    const storageUrl = `${location.origin}/src/data/storage/indexeddb.js`;
-    const [{ ingestDashboardSources }, storage] = await Promise.all([
-      import(coordinatorUrl), import(storageUrl)
-    ]);
-    const resumed = await ingestDashboardSources(indexedDB, sources);
-    return { resumed, active: await storage.activeGeneration(indexedDB) };
-  }, interruptedSources);
-
-  expect(afterReload).toEqual({
-    resumed: { generation: 'generation-c', activated: true },
-    active: 'generation-c'
-  });
+  expect(result.error).toContain('Canonical relationship validation failed');
+  expect(result.repositories).toHaveLength(1);
+  expect(result.workflows).toHaveLength(1);
 });

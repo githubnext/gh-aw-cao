@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalize } from '../../src/data/normalize/index.js';
 
-const generation = '2026-09-09T05:00:00.000Z';
-
 /**
  * @param {import('../../src/data/model/schema.js').EntityKind} kind
  * @param {string} sourceId
@@ -31,7 +29,7 @@ describe('canonical normalization', () => {
       })
     ];
 
-    const batch = normalize(observations.reverse(), { generation });
+    const batch = normalize(observations.reverse());
 
     expect(batch.repositories).toHaveLength(1);
     expect(batch.repositories[0]).toMatchObject({
@@ -55,7 +53,7 @@ describe('canonical normalization', () => {
       attempt: 2
     });
 
-    const batch = normalize([first, first, rerun], { generation });
+    const batch = normalize([first, first, rerun]);
 
     expect(batch.runs.map((run) => run.id)).toEqual([
       'github:run:456:attempt:1',
@@ -77,7 +75,7 @@ describe('canonical normalization', () => {
       sourceSequence: Number(sourceSequence)
     }, 'gh-aw-log'));
 
-    const batch = normalize(events.reverse(), { generation });
+    const batch = normalize(events.reverse());
 
     expect(batch.events.map((event) => [event.sequence, event.type])).toEqual([
       [0, 'tool.call'],
@@ -99,7 +97,6 @@ describe('canonical normalization', () => {
     }, 'github');
 
     const batch = normalize([authoritative, lower], {
-      generation,
       sourcePrecedence: { 'dashboard-source': 10, github: 100 }
     });
 

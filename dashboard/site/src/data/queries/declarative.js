@@ -144,7 +144,7 @@ function decodeContinuationToken(token, source, revision) {
 
 /**
  * Produces a deterministic, non-secret revision for stale-token detection.
- * Query definitions and data generations are execution context, never cursor
+ * Query definitions and data revisions are execution context, never cursor
  * fields in the authored query language.
  *
  * @param {unknown} queryContext

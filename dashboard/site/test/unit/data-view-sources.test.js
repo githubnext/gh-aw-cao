@@ -117,7 +117,6 @@ describe('canonical view sources', () => {
     const projected = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      metadata['artifact-generation'],
       ['failed-runs']
     );
 
@@ -135,7 +134,6 @@ describe('canonical view sources', () => {
     const projected = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      metadata['artifact-generation'],
       ['work-items', 'security-findings']
     );
 
@@ -212,7 +210,6 @@ describe('canonical view sources', () => {
     const projected = await queryCanonicalViewSources(
       indexedDB,
       sources,
-      metadata['artifact-generation'],
       ['events']
     );
 
@@ -250,9 +247,8 @@ describe('canonical view sources', () => {
     expect(rows.map((row) => row['event-type'])).toEqual(['tool.call', 'agent_turn']);
   });
 
-  it('rejects a generation that is not active and usable', async () => {
-    await expect(loadCanonicalViewSources(indexedDB, sources)).rejects.toThrow(
-      'Canonical generation generation-a is not active and usable'
-    );
+  it('queries an empty database before fresh data is ingested', async () => {
+    const projected = await loadCanonicalViewSources(indexedDB, sources);
+    expect(/** @type {{ rows: unknown[] }} */ (projected.runs).rows).toEqual([]);
   });
 });

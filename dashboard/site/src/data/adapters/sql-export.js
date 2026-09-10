@@ -37,7 +37,7 @@ function optionalString(value) {
  * owners map their schema to this contract before publishing the static JSON.
  *
  * @param {unknown} input
- * @returns {{ generation: string, observations: import('../model/schema.js').CanonicalObservation[] }}
+ * @returns {{ observations: import('../model/schema.js').CanonicalObservation[] }}
  */
 export function adaptSqlExport(input) {
   const document = objectValue(input, 'SQL export');
@@ -47,7 +47,6 @@ export function adaptSqlExport(input) {
   if (document.schema_version !== SQL_EXPORT_VERSION) {
     throw new TypeError(`Unsupported SQL export schema version: ${String(document.schema_version)}`);
   }
-  const generation = requiredString(document.generation, 'SQL export generation');
   const exportedAt = canonicalTimestamp(document.exported_at, 'SQL export exported_at');
   const source = `sql:${requiredString(document.source, 'SQL export source')}`;
   if (!Array.isArray(document.rows)) throw new TypeError('SQL export rows must be an array');
@@ -163,5 +162,5 @@ export function adaptSqlExport(input) {
     });
   }
 
-  return { generation, observations };
+  return { observations };
 }

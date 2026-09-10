@@ -12,7 +12,7 @@ function fixture() {
 describe('SQL export adapter', () => {
   it('converts a versioned static export into a complete ordered canonical graph', () => {
     const adapted = adaptSqlExport(fixture());
-    const batch = normalize(adapted.observations, { generation: adapted.generation });
+    const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch).toMatchObject({

@@ -24,7 +24,7 @@ describe('gh-aw logs adapter', () => {
   it('converts agent, gateway, and firewall JSONL into one ordered operational session', () => {
     const context = JSON.parse(readFileSync(join(fixtureRoot, 'context.json'), 'utf8'));
     const adapted = adaptGhAwLogs({ ...context, files: files(fixtureRoot) });
-    const batch = normalize(adapted.observations, { generation: adapted.generation });
+    const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.sessions).toEqual([

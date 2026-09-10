@@ -227,11 +227,10 @@ export function adaptGhAwTimelineFiles(input, sessionId) {
  * from gh-aw's agent, gateway, and firewall JSONL files.
  *
  * @param {unknown} input
- * @returns {{ generation: string, observations: import('../model/schema.js').CanonicalObservation[] }}
+ * @returns {{ observations: import('../model/schema.js').CanonicalObservation[] }}
  */
 export function adaptGhAwLogs(input) {
   const document = objectValue(input, 'gh-aw logs input');
-  const generation = requiredString(document.generation, 'gh-aw logs generation');
   const observedAt = canonicalTimestamp(document.observedAt, 'gh-aw logs observedAt');
   const repository = objectValue(document.repository, 'gh-aw logs repository');
   const workflow = objectValue(document.workflow, 'gh-aw logs workflow');
@@ -316,5 +315,5 @@ export function adaptGhAwLogs(input) {
     });
     observations.push(...events);
   }
-  return { generation, observations };
+  return { observations };
 }

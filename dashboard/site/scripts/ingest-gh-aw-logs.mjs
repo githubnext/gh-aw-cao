@@ -4,7 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import 'fake-indexeddb/auto';
-import { ingestGhAwLogsGeneration } from '../src/data/ingest/coordinator.js';
+import { ingestGhAwLogs } from '../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../src/data/queries/index.js';
 
 async function jsonlFiles(root) {
@@ -29,7 +29,7 @@ async function jsonlFiles(root) {
 
 export async function ingestGhAwLogDirectory(contextPath, logDirectory) {
   const context = JSON.parse(await readFile(contextPath, 'utf8'));
-  const result = await ingestGhAwLogsGeneration(indexedDB, {
+  const result = await ingestGhAwLogs(indexedDB, {
     ...context,
     files: await jsonlFiles(logDirectory)
   });
