@@ -66,11 +66,11 @@ jobs:
             cao-activity-v3-
           fail-on-cache-miss: true
 
-      - name: Require collected activity data
+      - name: Validate restored activity data
         env:
-          ACTIVITY_DATA_ROOT: ${{ runner.temp }}/cao-activity
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
         run: |
-          test -f "$ACTIVITY_DATA_ROOT/gh-aw-logs.jsonl"
+          test -s "$REPORT_GH_AW_LOGS"
 
       - name: Refresh authoritative control policy
         run: |
