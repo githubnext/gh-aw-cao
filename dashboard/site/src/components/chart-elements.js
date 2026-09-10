@@ -242,6 +242,20 @@ function renderChartWidgetShell(chartType, extraAttrs, ...children) {
 }
 
 /**
+ * Renders a chart widget shell containing the shared `role="status"` empty
+ * placeholder message. Shared by the generic chart, heatmap, and swimlane
+ * renderers, which otherwise duplicated the same
+ * `renderChartWidgetShell(type, null, renderEmptyMessage(message, { role: 'status' }))`
+ * wrapping.
+ * @param {string} chartType
+ * @param {string} message
+ * @returns {HTMLElement}
+ */
+function renderChartWidgetEmptyState(chartType, message) {
+  return renderChartWidgetShell(chartType, null, renderEmptyMessage(message, { role: 'status' }));
+}
+
+/**
  * Renders the small `<g><rect/><text/></g>` tooltip shell shown alongside a
  * chart point, segment, or bar on hover/focus. Shared by the pie, histogram,
  * and line/scatter/dot chart renderers, which otherwise duplicated the same
@@ -306,13 +320,9 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
   const entryCount = pieData ? pieData.entries.length : points.length;
   const minimumEntries = ['heatmap', 'pie', 'scatter'].includes(chartType) ? 1 : 2;
   if (entryCount < minimumEntries && chartType !== 'swimlane') {
-    return renderChartWidgetShell(
+    return renderChartWidgetEmptyState(
       chartType,
-      null,
-      renderEmptyMessage(
-        entryCount === 0 ? 'No data is available for this visualization.' : 'Not enough data to show this visualization.',
-        { role: 'status' }
-      )
+      entryCount === 0 ? 'No data is available for this visualization.' : 'Not enough data to show this visualization.'
     );
   }
 
@@ -759,13 +769,9 @@ function renderHeatmapChart(points, valueLabel, unit) {
     || columns.length > MAX_HEATMAP_AXIS_CATEGORIES
     || rows.length > MAX_HEATMAP_AXIS_CATEGORIES
   ) {
-    return renderChartWidgetShell(
+    return renderChartWidgetEmptyState(
       'heatmap',
-      null,
-      renderEmptyMessage(
-        `This heatmap is too large to display. Limit it to ${MAX_HEATMAP_CELLS} cells and ${MAX_HEATMAP_AXIS_CATEGORIES} categories per axis.`,
-        { role: 'status' }
-      )
+      `This heatmap is too large to display. Limit it to ${MAX_HEATMAP_CELLS} cells and ${MAX_HEATMAP_AXIS_CATEGORIES} categories per axis.`
     );
   }
 
@@ -858,11 +864,7 @@ function renderSwimlaneChart(points, timeRange) {
     lastObserved = Math.max(lastObserved, timestamp);
   }
   if (plottedCount === 0) {
-    return renderChartWidgetShell(
-      'swimlane',
-      null,
-      renderEmptyMessage('No workflow runs to show.', { role: 'status' })
-    );
+    return renderChartWidgetEmptyState('swimlane', 'No workflow runs to show.');
   }
   let start = Date.parse(String(timeRange?.start ?? ''));
   let end = Date.parse(String(timeRange?.end ?? ''));
