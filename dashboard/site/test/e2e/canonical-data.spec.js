@@ -206,7 +206,8 @@ test.beforeEach(async ({ context, page }) => {
   }), databaseName);
 });
 
-test('native IndexedDB directly upserts and retains canonical data across reload', { timeout: 90_000 }, async ({ page }) => {
+test('native IndexedDB directly upserts and retains canonical data across reload', async ({ page }) => {
+  test.slow();
   const sources = canonicalSources();
 
   const first = await page.evaluate(async (sourceDocument) => {
