@@ -3065,6 +3065,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /await runner\.main\(\{ core, github, context, exec, io, getOctokit \}\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Run activity workflow[\s\S]*?List activity cache files/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
+  assert.match(workflow, /List activity cache files[\s\S]*?find \. -maxdepth 3 -type f -printf '%s\\t%P\\n'[\s\S]*?numfmt --field=1 --to=iec-i --suffix=B/);
   assert.match(workflow, /cao-activity-v2-\$\{\{ github\.run_id \}\}-/);
   for (const script of ["activity:local", "activity:local:node", "activity:run-workflow:local"]) {
     assert.match(packageDocument.scripts[script], /REPORT_AIC_CACHE=\$\{RUNNER_TEMP:-\$\{TMPDIR:-\/tmp\}\}\/cao-gh-aw-logs/);
