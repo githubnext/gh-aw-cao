@@ -60,7 +60,7 @@ jobs:
       - name: Restore collected activity data
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          path: ${{ runner.temp }}/cao-activity
           key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             cao-activity-v3-
@@ -68,9 +68,11 @@ jobs:
 
       - name: Validate restored activity data
         env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
         run: |
           test -s "$REPORT_GH_AW_LOGS"
+          test -s "$ACTIVITY_DATABASE"
 
       - name: Refresh authoritative control policy
         run: |
@@ -98,6 +100,7 @@ jobs:
               .github/aw/dashboards
           fi
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
+          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" "$REPORT_OUTPUT/gh-aw-logs.sqlite"
 
       - name: Cache dashboard artifact for the dispatching workflow
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
