@@ -311,6 +311,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
 
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
