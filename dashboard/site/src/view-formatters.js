@@ -215,12 +215,15 @@ export function formatHumanFriendlyTimestamp(value, relativeTo = Date.now()) {
   if (absoluteSeconds < 45) return 'just now';
 
   const relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const roundedDifference = (/** @type {number} */ divisor) => (
+    Math.sign(differenceSeconds) * Math.round(absoluteSeconds / divisor)
+  );
   if (absoluteSeconds < 90) return relativeFormatter.format(Math.sign(differenceSeconds), 'minute');
-  if (absoluteSeconds < 45 * 60) return relativeFormatter.format(Math.round(differenceSeconds / 60), 'minute');
+  if (absoluteSeconds < 45 * 60) return relativeFormatter.format(roundedDifference(60), 'minute');
   if (absoluteSeconds < 90 * 60) return relativeFormatter.format(Math.sign(differenceSeconds), 'hour');
-  if (absoluteSeconds < 22 * 3_600) return relativeFormatter.format(Math.round(differenceSeconds / 3_600), 'hour');
+  if (absoluteSeconds < 22 * 3_600) return relativeFormatter.format(roundedDifference(3_600), 'hour');
   if (absoluteSeconds < 36 * 3_600) return relativeFormatter.format(Math.sign(differenceSeconds), 'day');
-  if (absoluteSeconds < 7 * 86_400) return relativeFormatter.format(Math.round(differenceSeconds / 86_400), 'day');
+  if (absoluteSeconds < 7 * 86_400) return relativeFormatter.format(roundedDifference(86_400), 'day');
 
   const valueDate = new Date(valueMs);
   const relativeDate = new Date(relativeToMs);

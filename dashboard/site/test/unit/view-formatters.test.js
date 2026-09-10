@@ -83,9 +83,16 @@ describe('view formatter helpers', () => {
 
   it('formats human-friendly timestamps for quick scanning', () => {
     const now = new Date('2026-09-10T14:00:00Z');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T13:59:16Z', now)).toBe('just now');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T13:59:15Z', now)).toBe('1 minute ago');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T13:58:30Z', now)).toBe('2 minutes ago');
     expect(formatHumanFriendlyTimestamp('2026-09-10T13:59:40Z', now)).toBe('just now');
     expect(formatHumanFriendlyTimestamp('2026-09-10T13:55:00Z', now)).toBe('5 minutes ago');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T14:05:00Z', now)).toBe('in 5 minutes');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T13:15:00Z', now)).toBe('1 hour ago');
+    expect(formatHumanFriendlyTimestamp('2026-09-10T12:30:00Z', now)).toBe('2 hours ago');
     expect(formatHumanFriendlyTimestamp('2026-09-09T14:00:00Z', now)).toBe('yesterday');
+    expect(formatHumanFriendlyTimestamp('2026-09-04T14:00:01Z', now)).toBe('6 days ago');
     expect(formatHumanFriendlyTimestamp('2026-09-03T14:00:00Z', now)).toBe('Sep 3');
     expect(formatHumanFriendlyTimestamp('2025-09-03T14:00:00Z', now)).toBe('Sep 3, 2025');
     expect(formatHumanFriendlyTimestamp('invalid', now)).toBe('');
