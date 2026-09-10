@@ -568,7 +568,7 @@ describe('declarative dashboard queries', () => {
         package: 'aw-doctor',
         'package-name': 'AW Doctor',
         'package-mode': 'review',
-        registration: 'true'
+        'package-registration': 'true'
       }],
       metadata: metadata('packages')
     };

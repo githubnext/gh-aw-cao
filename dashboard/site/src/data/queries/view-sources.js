@@ -129,7 +129,7 @@ function packagesSource(packages, sources) {
       'package-icon': packageRecord.icon,
       'package-mode': packageRecord.mode,
       'package-enabled': packageRecord.enabled,
-      registration: packageRecord.enabled ? 'true' : 'false',
+      'package-registration': packageRecord.enabled ? 'true' : 'false',
       'package-max-repositories': packageRecord.maxRepositories,
       'package-rollout-percent': packageRecord.rolloutPercent,
       'package-monthly-ai-credit-budget': packageRecord.monthlyAiCreditBudget,

@@ -67,12 +67,13 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
-  const packagesById = new Map(batch.packages.map((record) => [record.id, record]));
+  const packageRecords = batch.packages ?? [];
+  const packagesById = new Map(packageRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
   const jobsById = new Map(batch.jobs.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
-    packages: new Set(batch.packages.map((record) => record.id)),
+    packages: new Set(packageRecords.map((record) => record.id)),
     workflows: new Set(batch.workflows.map((record) => record.id)),
     runs: new Set(batch.runs.map((record) => record.id)),
     jobs: new Set(batch.jobs.map((record) => record.id)),

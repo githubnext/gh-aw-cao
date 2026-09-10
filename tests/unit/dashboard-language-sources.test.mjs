@@ -1652,9 +1652,6 @@ test("dashboard source bridge carries package memberships, allowance, and invent
         repository: "githubnext/gh-aw-cao",
         path: "ambient-context/aw.yml",
         name: "Ambient Context",
-        description: "Ambient context maintenance.",
-        minVersion: "v0.89.2",
-        experimental: true,
         workflows: [{ lockPath: workflowPath }],
       }],
       workflows: [{
@@ -1690,6 +1687,9 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       bundles: [{
         id: "ambient-context",
         name: "Ambient Context",
+        description: "Ambient context maintenance.",
+        minVersion: "v0.89.2",
+        experimental: true,
         workflow: ".github/workflows/package.md",
         controlPackage: "ambient-context",
         maxAiCredits: 500,

@@ -1099,7 +1099,7 @@
           { "as": "workflows", "function": "coalesce", "args": [{ "field": "observed-workflows" }, { "value": 0 }] },
           { "as": "roles", "function": "coalesce", "args": [{ "field": "observed-roles" }, { "value": "" }] },
           { "as": "modes", "function": "coalesce", "args": [{ "field": "observed-modes" }, { "field": "package-mode" }] },
-          { "as": "registration", "function": "coalesce", "args": [{ "field": "observed-registration" }, { "field": "registration" }] },
+          { "as": "registration", "function": "coalesce", "args": [{ "field": "observed-registration" }, { "field": "package-registration" }] },
           { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
           { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] }
         ],
@@ -1111,8 +1111,7 @@
           { "field": "modes" },
           { "field": "registration" },
           { "field": "runs" },
-          { "field": "aic" },
-          { "field": "package-link" }
+          { "field": "aic" }
         ],
         "order-by": [
           { "field": "package-name", "direction": "asc" }

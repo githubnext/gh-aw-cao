@@ -52,7 +52,7 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md',
         package: 'dashboard',
-        'package-name': 'Dashboard',
+        'package-name': 'CAO Dashboard',
         'workflow-role': 'worker',
         'rollout-mode': 'review',
         'workflow-active': 'true',
