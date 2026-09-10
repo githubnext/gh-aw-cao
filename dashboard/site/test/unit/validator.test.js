@@ -591,10 +591,13 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
       'repositories',
-      'workflows',
-      'runs',
       'packages',
       'configuration'
+    ]);
+    expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
+      'workflows',
+      'runs',
+      'events'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

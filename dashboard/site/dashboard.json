@@ -5194,10 +5194,16 @@
         "pages": [
           "overview",
           "repositories",
-          "workflows",
-          "runs",
           "packages",
           "configuration"
+        ]
+      },
+      {
+        "label": "Data",
+        "pages": [
+          "workflows",
+          "runs",
+          "events"
         ]
       },
       {
@@ -5239,7 +5245,6 @@
           "dispatches",
           "firewall",
           "mcps",
-          "events",
           "engines-models"
         ]
       }

@@ -929,8 +929,12 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   `);
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
+  const data = page.locator('.nav-section').first();
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Workflows', 'Runs', 'Packages']);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages']);
+  await expect(data.locator('summary')).toHaveText('Data');
+  await data.locator('summary').click();
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
@@ -1160,7 +1164,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.home-attention-metric').first()).toBeInViewport();
