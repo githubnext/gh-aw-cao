@@ -26,9 +26,10 @@ import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
-import { DASHBOARD_HORIZON_COUNT_SOURCES, dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
+import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
+import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabaseCounts } from './database-counts.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -677,6 +678,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
   const settingsPage = pages.find((page) => page.id === 'configuration');
+  const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
+  const settingsDatabaseCounts = renderSettingsDatabaseCounts(loadDatabaseCounts);
   return h(
     'div',
     { className: 'app-main' },
@@ -711,7 +714,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts),
           dashboardRepository
             ? h(
               'a',
@@ -726,7 +729,12 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             : null,
           h(
             'details',
-            { className: 'account-menu' },
+            {
+              className: 'account-menu',
+              ontoggle: /** @param {Event} event */ (event) => {
+                if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) settingsDatabaseCounts.load();
+              }
+            },
             h(
               'summary',
               {
@@ -790,6 +798,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
               ),
+              settingsDatabaseCounts.element,
               renderResetDashboardControl()
             )
           )
@@ -832,10 +841,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
- * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
+ * @param {() => Promise<import('./database-counts.js').DatabaseCounts>} loadDatabaseCounts
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts) {
   if (!hasData) {
     return h(
       'span',
@@ -866,16 +875,14 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   /** @type {Promise<void> | undefined} */
   let countsPromise;
   const loadCounts = () => {
-    if (!loadHorizonSources || countsPromise) return;
+    if (countsPromise) return;
     databaseCounts.textContent = 'Loading database counts…';
-    countsPromise = loadHorizonSources()
-      .then((sources) => {
-       const counts = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
-       if (counts.some((row) => !row)) throw new Error('Database count query unavailable');
-       databaseCounts.textContent = `${counts[0]?.workflows} workflows · ${counts[1]?.runs} runs · ${counts[2]?.events} events`;
+    countsPromise = loadDatabaseCounts()
+      .then((counts) => {
+        databaseCounts.textContent = formatDatabaseCounts(counts);
       })
       .catch(() => {
-       databaseCounts.textContent = 'Database counts unavailable';
+        databaseCounts.textContent = 'Database counts unavailable';
       });
   };
 
