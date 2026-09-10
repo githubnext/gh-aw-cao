@@ -706,9 +706,10 @@ export async function collectAicUsage() {
       log.info`Processing ${logs.length} cached gh-aw log records from ${logsPath}`;
       for (const run of logs) {
         const runId = Number(run.database_id ?? run.run_id ?? run.id);
-        const aic = run.aic === null || run.aic === undefined || run.aic === ""
+        const aicValue = run.token_usage_summary?.total_aic ?? run.aic;
+        const aic = aicValue === null || aicValue === undefined || aicValue === ""
           ? null
-          : Number(run.aic);
+          : Number(aicValue);
         const metadata = workflowByRunId.get(runId);
         if (!Number.isFinite(runId) || !metadata) continue;
         const repository = metadata.workflow.repository;
