@@ -2957,6 +2957,9 @@ describe('presenter built-in and custom pages', () => {
     expect(chartSection?.querySelectorAll('.view-source')).toHaveLength(0);
 
     const emptySection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Empty Usage'));
+    const emptyCard = emptySection?.querySelector('.view-state-card[data-view-state="empty"]');
+    expect(emptyCard?.getAttribute('role')).toBe('status');
+    expect(emptyCard?.querySelector('.octicon-info')).not.toBeNull();
     expect(emptySection?.querySelector('[data-view-availability="empty"]')?.textContent).toBe('No observations matched the effective context.');
     expect(emptySection?.textContent).toContain('Affected source: empty-usage');
 

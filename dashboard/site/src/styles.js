@@ -451,7 +451,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .view-state-card :is(p, ul) { margin: 0; }
 .view-state-message { font-weight: 600; }
 .view-state-card .view-source, .view-state-card .view-context { color: var(--muted); font-size: .8125rem; }
-.view-state-card .view-context { padding-left: 18px; }
+.view-state-card .view-context { padding-inline-start: 1.25em; }
 .view-metadata-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 12px; color: var(--fg); }
 .view-metadata-summary > div { display: inline-flex; align-items: center; gap: 7px; }
 .view-metadata-summary dt { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 500; }
