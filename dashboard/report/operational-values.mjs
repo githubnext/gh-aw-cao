@@ -164,7 +164,7 @@ export async function collectOperationalValues() {
           value: null,
           observationSource: "logs-jsonl",
           observation: null,
-          reason: run ? "operational-value result not found" : "run not found in gh-aw logs JSON",
+          reason: run ? "operational-value result not found" : "run not found in gh-aw logs JSONL",
         });
         continue;
       }
