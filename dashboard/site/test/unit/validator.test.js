@@ -4048,13 +4048,12 @@ dashboard:
         - id: estimated-cost
           data:
             source: usage
-          mark: metric
+          mark: table
           encoding:
-            value:
-              field: estimated-usd
-              type: quantitative
-              aggregate: sum
-              unit: usd
+            columns:
+              - field: estimated-usd
+                type: quantitative
+                unit: usd
 `);
 
     expect(result.ok).toBe(true);

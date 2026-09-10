@@ -69,6 +69,6 @@ describe('Cost and efficiency dashboard view', () => {
     expect(page?.textContent).toContain('gh-aw-cao');
     expect(page?.textContent).toContain('service');
     expect(page?.textContent).toContain('4 AIC');
-    expect(page?.querySelector('[data-field="estimated-usd"]')?.textContent).toBe('$0.035');
+    expect([...page?.querySelectorAll('[data-field="estimated-usd"]') ?? []].map((cell) => cell.textContent)).toContain('$0.035');
   });
 });
