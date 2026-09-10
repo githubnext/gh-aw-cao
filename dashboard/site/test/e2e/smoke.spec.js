@@ -1660,6 +1660,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
   const filterStaysOnOneRow = await view.locator('.table-filter').evaluate((element) => {
     const tops = [...element.children].map((child) => child.getBoundingClientRect().top);
+    // A 4px tolerance absorbs sub-pixel rounding while still catching a wrap onto a second row.
     return Math.max(...tops) - Math.min(...tops) < 4;
   });
   expect(filterStaysOnOneRow).toBe(true);
