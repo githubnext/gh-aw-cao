@@ -33,9 +33,6 @@ test("every production dashboard page starts with an executive summary or prescr
       const isSummaryTable = summary.mark === "table"
         && summary.encoding?.columns?.some((column) => typeof column.aggregate === "string");
       const isSummaryGrid = summary.mark === "element" && summary.element === "summary-grid";
-      const isExperimentsEvaluation = page.id === "experiments"
-        && summary.mark === "element"
-        && summary.element === "experiments-evaluation";
       const isConfigurationPolicy = page.id === "configuration"
         && summary.mark === "element"
         && summary.element === "configuration-policy";
@@ -92,7 +89,6 @@ test("every production dashboard page starts with an executive summary or prescr
         (summary.mark === "chart" && executiveSummaryCharts.has(summary.chart))
           || isSummaryTable
           || isSummaryGrid
-          || isExperimentsEvaluation
           || isConfigurationPolicy
           || isAgentsMarketplace
           || isPackageDetail
