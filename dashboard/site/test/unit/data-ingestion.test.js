@@ -142,7 +142,7 @@ describe('canonical source ingestion and queries', () => {
 
   it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
     const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
-      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'githubnext/gh-aw-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-01-01T00:00:00Z',
       agent: 'copilot', engine: 'GitHub Copilot CLI', agent_version: '1.2.3',

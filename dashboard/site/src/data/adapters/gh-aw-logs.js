@@ -371,8 +371,11 @@ export function adaptCachedGhAwJsonl(content) {
     }
     if (envelope.schema_version !== 2 || envelope.kind !== 'run' || !envelope.run) continue;
     const run = objectValue(envelope.run, `gh-aw JSONL line ${index + 1}.run`);
-    const owner = requiredString(run.organization, 'run.organization');
-    const name = requiredString(run.repository, 'run.repository');
+    const organization = requiredString(run.organization, 'run.organization');
+    const repositoryName = requiredString(run.repository, 'run.repository');
+    const repositoryParts = repositoryName.split('/');
+    const owner = repositoryParts.length === 2 ? repositoryParts[0] : organization;
+    const name = repositoryParts.length === 2 ? repositoryParts[1] : repositoryName;
     const fullName = `${owner}/${name}`;
     const path = requiredString(run.workflow_path, 'run.workflow_path');
     const githubRunId = identifier(run.run_id, 'run.run_id');
