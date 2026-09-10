@@ -16,7 +16,7 @@ test("retries a transient GitHub package download failure", async () => {
       throw error;
     }
     return "installed";
-  }, 2, (milliseconds) => delays.push(milliseconds));
+  }, (milliseconds) => delays.push(milliseconds));
 
   assert.equal(result, "installed");
   assert.equal(attempts, 2);

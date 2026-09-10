@@ -17,12 +17,12 @@ export function isTransientPackageInstallError(error) {
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-export async function retryTransientPackageInstall(install, maxAttempts = 2, wait = sleep) {
+export async function retryTransientPackageInstall(install, wait = sleep) {
   for (let attempt = 1; ; attempt += 1) {
     try {
       return await install();
     } catch (error) {
-      if (attempt >= maxAttempts || !isTransientPackageInstallError(error)) throw error;
+      if (attempt >= 2 || !isTransientPackageInstallError(error)) throw error;
       await wait(retryDelayMilliseconds);
     }
   }
