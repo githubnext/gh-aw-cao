@@ -1,4 +1,5 @@
 import { h } from '../dom.js';
+import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from '../debug-events.js';
 
 const renderers = new WeakMap();
 const hydrationPromises = new WeakMap();
@@ -190,19 +191,31 @@ function hydrateLazyView(element, { immediate = false } = {}) {
  * @returns {Promise<void>}
  */
 function renderHydratedView(element, render) {
+  const detail = {
+    kind: 'lazy-view',
+    viewId: element.getAttribute('data-view-id'),
+    label: element.getAttribute('aria-label')?.replace(/^Loading /, '') ?? ''
+  };
+  emitDashboardDebugEvent(element.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'started' });
   try {
     const rendered = render();
     if (rendered instanceof HTMLElement) {
       replaceLazyView(element, rendered);
+      emitDashboardDebugEvent(rendered.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'completed' });
       return Promise.resolve();
     }
     return Promise.resolve(rendered)
       .then((resolved) => {
         replaceLazyView(element, resolved);
+        emitDashboardDebugEvent(resolved.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'completed' });
       })
-      .catch((error) => reportHydrationError(element, error));
+      .catch((error) => {
+        reportHydrationError(element, error);
+        emitDashboardDebugEvent(element.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'failed' });
+      });
   } catch (error) {
     reportHydrationError(element, error);
+    emitDashboardDebugEvent(element.ownerDocument, DASHBOARD_RENDER_EVENT, { ...detail, status: 'failed' });
     return Promise.resolve();
   }
 }

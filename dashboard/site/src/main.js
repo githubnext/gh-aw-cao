@@ -7,6 +7,11 @@
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
+      import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
+      import { collectFullDiagnostics } from "./diagnostics.js";
+
+      /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
+        () => collectFullDiagnostics();
 
       /**
        * @param {string} id
@@ -986,6 +991,11 @@
               refreshPending = false;
               const message = error instanceof Error ? error.message : String(error);
               console.error(`Unable to refresh live dashboard data: ${message}`);
+              emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                kind: "refresh",
+                status: "failed",
+                message,
+              });
               updateWithViewTransition(
                 document,
                 () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources),
@@ -995,6 +1005,10 @@
               if (refreshPending) return;
               refreshFailed = false;
               refreshPending = true;
+              emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                kind: "refresh",
+                status: "started",
+              });
               renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
               void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
@@ -1004,6 +1018,11 @@
               )).then(
                 ({ changed }) => {
                   refreshPending = false;
+                  emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+                    kind: "refresh",
+                    status: "completed",
+                    changed,
+                  });
                   if (changed) return;
                   renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
                 },
@@ -1045,6 +1064,10 @@
               loadPageSources,
               loadHorizonSources,
             );
+            emitDashboardDebugEvent(document, DASHBOARD_DATA_EVENT, {
+              kind: "initial-load",
+              status: "completed",
+            });
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

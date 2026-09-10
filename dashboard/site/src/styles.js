@@ -1117,9 +1117,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-edit-status { padding-left: 10px; border-left: 1px solid var(--border); color: var(--muted); font-size: .75rem; }
 .configuration-edit-status[data-state="modified"] { color: var(--attention); font-weight: 600; }
 .configuration-editor-actions { justify-content: flex-end; flex-wrap: wrap; }
-.configuration-copy-button, .configuration-reset-button { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
+.configuration-copy-button, .configuration-reset-button, .configuration-diagnostics-button { min-height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .configuration-copy-button { border-color: var(--success); background: var(--success); color: var(--on-emphasis); }
-.configuration-reset-button:hover { background: var(--neutral-muted); }
+.configuration-reset-button:hover, .configuration-diagnostics-button:hover { background: var(--neutral-muted); }
 .configuration-copy-button:hover { filter: brightness(.94); }
 .configuration-copy-status { color: var(--muted); font-size: .75rem; }
 .configuration-settings { display: grid; }

@@ -1,0 +1,101 @@
+name: Deployed dashboard integration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "12,27,42,57 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard-deployed-integration
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    name: Test deployed dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Cache Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Install Chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
+      - name: Test deployed dashboard
+        id: test
+        continue-on-error: true
+        run: npm run test:e2e:dashboard-deployed
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dashboard-deployed-diagnostics
+          path: test-results/dashboard-deployed/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail when integration checks fail
+        if: steps.test.outcome == 'failure'
+        run: exit 1
+
+  report-failure:
+    name: Report deployed dashboard failure
+    if: always() && needs.integration.result == 'failure'
+    needs: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - name: Create or update failure issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = 'Deployed CAO dashboard integration failure'
+            const marker = '<!-- deployed-dashboard-integration-failure -->'
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const body = [
+              marker,
+              'The scheduled deployed dashboard integration check failed.',
+              '',
+              `Workflow run: ${runUrl}`,
+              '',
+              'Download the `dashboard-deployed-diagnostics` artifact for the bounded browser, database, and rendering report.',
+            ].join('\n')
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            const existing = issues.find((issue) =>
+              !issue.pull_request && issue.title === title && issue.body?.includes(marker)
+            )
+            if (existing) {
+              await github.rest.issues.update({
+                ...context.repo,
+                issue_number: existing.number,
+                body,
+              })
+            } else {
+              await github.rest.issues.create({
+                ...context.repo,
+                title,
+                body,
+                labels: ['bug'],
+              })
+            }
