@@ -196,7 +196,7 @@ describe('renderTableRegion', () => {
     const scroll = rendered.querySelector('.table-scroll');
     expect(scroll?.getAttribute('role')).toBe('region');
     expect(scroll?.getAttribute('aria-label')).toBe('Filter runs controls and results');
-    expect(scroll?.getAttribute('tabindex')).toBe('0');
+    expect(scroll?.hasAttribute('tabindex')).toBe(false);
     expect(scroll?.querySelector('table')).toBeTruthy();
     expect(scroll?.querySelector(':scope > .table-filter')).toBeTruthy();
     expect([...rendered.children].some((child) => child.classList.contains('table-filter'))).toBe(false);

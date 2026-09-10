@@ -39,7 +39,7 @@ function buildPresenterModuleUrl() {
  * Full-view table filters live inside the table scroller but remain contained
  * within the visible viewport instead of owning a separate horizontal scrollbar;
  * wrapping is allowed on narrow screens so controls stay reachable.
- * @param {import('@playwright/test').Locator} tableFilter
+ * @param {import('@playwright/test').Locator} tableFilter The `.table-scroll > .table-filter` element.
  */
 async function expectTableFilterIsContained(tableFilter) {
   await expect.poll(async () => tableFilter.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
