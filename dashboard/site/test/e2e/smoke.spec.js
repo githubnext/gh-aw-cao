@@ -44,6 +44,20 @@ async function expectTableFilterIsContained(tableFilter) {
   await expect.poll(async () => tableFilter.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 }
 
+/**
+ * Lazy-list windows move one page at a time when the user reaches the top edge.
+ * @param {import('@playwright/test').Locator} scroll
+ * @param {import('@playwright/test').Locator} view
+ * @param {string} repositoryName
+ */
+async function scrollToTopAndExpectFirstRow(scroll, view, repositoryName) {
+  await scroll.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(view.locator('tbody > tr').first()).toContainText(repositoryName);
+}
+
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
   await page.setContent(`
     <style>
@@ -1716,16 +1730,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
-    await scroll.evaluate((element) => {
-      element.scrollTop = 0;
-      element.dispatchEvent(new Event('scroll'));
-    });
-    await expect(view.locator('tbody > tr').first()).toContainText('repository-26');
-    await scroll.evaluate((element) => {
-      element.scrollTop = 0;
-      element.dispatchEvent(new Event('scroll'));
-    });
-    await expect(view.locator('tbody > tr').first()).toContainText('repository-1');
+    await scrollToTopAndExpectFirstRow(scroll, view, 'repository-26');
+    await scrollToTopAndExpectFirstRow(scroll, view, 'repository-1');
     await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
     await expect(view.locator('tbody > tr')).toHaveCount(50);
     await scroll.evaluate((element) => {
