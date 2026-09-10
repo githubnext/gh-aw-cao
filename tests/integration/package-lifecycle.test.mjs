@@ -146,7 +146,7 @@ function workflowBody(content) {
   return content.slice(frontmatterEnd + 5).trimEnd();
 }
 
-function installPackage(source) {
+async function installPackage(source) {
   return retryTransientPackageInstall(() => {
     const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
     try {
@@ -166,8 +166,8 @@ function installPackage(source) {
   });
 }
 
-test("gh aw add installs the root package without rewriting Copilot authentication", { timeout: 180_000 }, () => {
-  const consumer = installPackage(packageSource);
+test("gh aw add installs the root package without rewriting Copilot authentication", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(packageSource);
   try {
     assert.ok(existsSync(join(consumer, ".github", "aw", "default-AGENTS.md")));
     assert.deepEqual(
@@ -196,8 +196,8 @@ test("gh aw add installs the root package without rewriting Copilot authenticati
   }
 });
 
-test("gh aw add installs the focused activity package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(activityPackageSource);
+test("gh aw add installs the focused activity package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(activityPackageSource);
   try {
     for (const relativePath of activityExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `activity package omitted ${relativePath}`);
@@ -218,8 +218,8 @@ test("gh aw add installs the focused activity package contract", { timeout: 180_
   }
 });
 
-test("gh aw add installs the focused EU CRA package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(craPackageSource);
+test("gh aw add installs the focused EU CRA package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(craPackageSource);
 
   try {
     for (const relativePath of craExpectedFiles) {
@@ -266,8 +266,8 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
   }
 });
 
-test("gh aw add installs the focused UK AI Advisory package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(ukAiAdvisoryPackageSource);
+test("gh aw add installs the focused UK AI Advisory package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(ukAiAdvisoryPackageSource);
 
   try {
     for (const relativePath of ukAiAdvisoryExpectedFiles) {
@@ -300,8 +300,8 @@ test("gh aw add installs the focused UK AI Advisory package contract", { timeout
   }
 });
 
-test("gh aw add installs the focused SelfCare package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(selfCarePackageSource);
+test("gh aw add installs the focused SelfCare package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(selfCarePackageSource);
 
   try {
     for (const relativePath of selfCareExpectedFiles) {
@@ -312,8 +312,8 @@ test("gh aw add installs the focused SelfCare package contract", { timeout: 180_
   }
 });
 
-test("gh aw add installs the focused AW Doctor package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(awDoctorPackageSource);
+test("gh aw add installs the focused AW Doctor package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(awDoctorPackageSource);
   try {
     for (const relativePath of awDoctorExpectedFiles) {
       assert.ok(existsSync(join(consumer, relativePath)), `focused AW Doctor package omitted ${relativePath}`);
@@ -323,8 +323,8 @@ test("gh aw add installs the focused AW Doctor package contract", { timeout: 180
   }
 });
 
-test("gh aw add installs the focused Software Development Practices package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(softwareDevelopmentPracticesPackageSource);
+test("gh aw add installs the focused Software Development Practices package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(softwareDevelopmentPracticesPackageSource);
 
   try {
     for (const relativePath of softwareDevelopmentPracticesExpectedFiles) {
@@ -363,8 +363,8 @@ test("gh aw add installs the focused Software Development Practices package cont
   }
 });
 
-test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, () => {
-  const consumer = installPackage(dashboardPackageSource);
+test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(dashboardPackageSource);
 
   try {
     for (const relativePath of dashboardExpectedFiles) {
@@ -396,8 +396,8 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
   }
 });
 
-test("gh aw add --force restores dashboard workflows, producers, and renderer assets", { timeout: 180_000 }, () => {
-  const consumer = installPackage(dashboardPackageSource);
+test("gh aw add --force restores dashboard workflows, producers, and renderer assets", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(dashboardPackageSource);
 
   try {
     const deployPath = join(consumer, ".github", "workflows", "dashboard.yml");
@@ -433,8 +433,8 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
   }
 });
 
-test("gh aw update replaces workflows and restores package-owned assets", { timeout: 180_000 }, () => {
-  const consumer = installPackage(dependabotUpdateSource);
+test("gh aw update replaces workflows and restores package-owned assets", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(dependabotUpdateSource);
 
   try {
     const orchestratorPath = join(consumer, ".github", "workflows", "dependabot.md");

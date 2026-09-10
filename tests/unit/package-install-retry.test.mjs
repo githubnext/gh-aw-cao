@@ -5,10 +5,10 @@ import {
   retryTransientPackageInstall,
 } from "../helpers/package-install-retry.mjs";
 
-test("retries a transient GitHub package download failure", () => {
+test("retries a transient GitHub package download failure", async () => {
   let attempts = 0;
   const delays = [];
-  const result = retryTransientPackageInstall(() => {
+  const result = await retryTransientPackageInstall(() => {
     attempts += 1;
     if (attempts === 1) {
       const error = new Error("gh aw add failed");
@@ -23,9 +23,9 @@ test("retries a transient GitHub package download failure", () => {
   assert.deepEqual(delays, [1_000]);
 });
 
-test("does not retry a deterministic package install failure", () => {
+test("does not retry a deterministic package install failure", async () => {
   let attempts = 0;
-  assert.throws(() => retryTransientPackageInstall(() => {
+  await assert.rejects(() => retryTransientPackageInstall(() => {
     attempts += 1;
     throw new Error("package manifest is invalid");
   }), /package manifest is invalid/);
