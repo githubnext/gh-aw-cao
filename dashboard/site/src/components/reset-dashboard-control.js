@@ -21,9 +21,16 @@ async function deleteAppDatabases(indexedDB) {
       .map((database) => database?.name)
       .filter((name) => typeof name === 'string' && name.startsWith(APP_INDEXEDDB_PREFIX))
       .map((name) => new Promise((resolve, reject) => {
+        let settled = false;
+        const settle = (handler) => (value) => {
+          if (settled) return;
+          settled = true;
+          handler(value);
+        };
         const request = indexedDB.deleteDatabase(name);
-        request.onsuccess = () => resolve(undefined);
-        request.onerror = () => reject(request.error);
+        request.onsuccess = settle(resolve);
+        request.onerror = settle(() => reject(request.error));
+        request.onblocked = settle(resolve);
       }))
   );
 }
