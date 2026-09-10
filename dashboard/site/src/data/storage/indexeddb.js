@@ -3,7 +3,7 @@ import { relationshipErrors } from '../model/schema.js';
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
 export const DATABASE_VERSION = 8;
 
-const ENTITY_STORES = /** @type {const} */ ([
+export const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
   'workflows',
   'runs',
@@ -11,7 +11,56 @@ const ENTITY_STORES = /** @type {const} */ ([
   'sessions',
   'events'
 ]);
-const TRANSACTION_STORE = 'transactions';
+export const TRANSACTION_STORE = 'transactions';
+export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
+ * string, { keyPath: string, indexes: Record<string, string | string[]> }
+ * >} */ ({
+  repositories: {
+    keyPath: 'id',
+    indexes: { byGithubId: 'githubId', byFullName: 'fullName' }
+  },
+  workflows: {
+    keyPath: 'id',
+    indexes: { byRepository: 'repositoryId', byRepositoryPath: ['repositoryId', 'path'] }
+  },
+  runs: {
+    keyPath: 'id',
+    indexes: {
+      byRepository: 'repositoryId',
+      byWorkflow: 'workflowId',
+      byStatus: 'status',
+      byRepositoryStartedAt: ['repositoryId', 'startedAt'],
+      byWorkflowStartedAt: ['workflowId', 'startedAt']
+    }
+  },
+  jobs: {
+    keyPath: 'id',
+    indexes: { byRun: 'runId', byRunStartedAt: ['runId', 'startedAt'] }
+  },
+  sessions: {
+    keyPath: 'id',
+    indexes: {
+      byRun: 'runId',
+      byJob: 'jobId',
+      byRunStartedAt: ['runId', 'startedAt'],
+      byJobStartedAt: ['jobId', 'startedAt']
+    }
+  },
+  events: {
+    keyPath: 'id',
+    indexes: {
+      bySessionSequence: ['sessionId', 'sequence'],
+      bySessionTimestamp: ['sessionId', 'timestamp'],
+      byType: 'type',
+      bySource: 'source',
+      byCorrelation: 'correlationId'
+    }
+  },
+  transactions: {
+    keyPath: 'id',
+    indexes: { byCreatedAt: 'createdAt', byKind: 'kind' }
+  }
+});
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
 
 /**
@@ -46,41 +95,12 @@ function createIndex(store, name, keyPath) {
 
 /** @param {IDBDatabase} database */
 function createSchema(database) {
-  const repositories = database.createObjectStore('repositories', { keyPath: 'id' });
-  createIndex(repositories, 'byGithubId', 'githubId');
-  createIndex(repositories, 'byFullName', 'fullName');
-
-  const workflows = database.createObjectStore('workflows', { keyPath: 'id' });
-  createIndex(workflows, 'byRepository', 'repositoryId');
-  createIndex(workflows, 'byRepositoryPath', ['repositoryId', 'path']);
-
-  const runs = database.createObjectStore('runs', { keyPath: 'id' });
-  createIndex(runs, 'byRepository', 'repositoryId');
-  createIndex(runs, 'byWorkflow', 'workflowId');
-  createIndex(runs, 'byStatus', 'status');
-  createIndex(runs, 'byRepositoryStartedAt', ['repositoryId', 'startedAt']);
-  createIndex(runs, 'byWorkflowStartedAt', ['workflowId', 'startedAt']);
-
-  const jobs = database.createObjectStore('jobs', { keyPath: 'id' });
-  createIndex(jobs, 'byRun', 'runId');
-  createIndex(jobs, 'byRunStartedAt', ['runId', 'startedAt']);
-
-  const sessions = database.createObjectStore('sessions', { keyPath: 'id' });
-  createIndex(sessions, 'byRun', 'runId');
-  createIndex(sessions, 'byJob', 'jobId');
-  createIndex(sessions, 'byRunStartedAt', ['runId', 'startedAt']);
-  createIndex(sessions, 'byJobStartedAt', ['jobId', 'startedAt']);
-
-  const events = database.createObjectStore('events', { keyPath: 'id' });
-  createIndex(events, 'bySessionSequence', ['sessionId', 'sequence']);
-  createIndex(events, 'bySessionTimestamp', ['sessionId', 'timestamp']);
-  createIndex(events, 'byType', 'type');
-  createIndex(events, 'bySource', 'source');
-  createIndex(events, 'byCorrelation', 'correlationId');
-
-  const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
-  createIndex(transactions, 'byCreatedAt', 'createdAt');
-  createIndex(transactions, 'byKind', 'kind');
+  for (const [storeName, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+    const store = database.createObjectStore(storeName, { keyPath: definition.keyPath });
+    for (const [indexName, keyPath] of Object.entries(definition.indexes)) {
+      createIndex(store, indexName, keyPath);
+    }
+  }
 }
 
 /**
@@ -113,9 +133,13 @@ export function openCanonicalDatabase(indexedDB) {
       } else {
         if (event.oldVersion < 7) {
           if (database.objectStoreNames.contains('operations')) database.deleteObjectStore('operations');
-          const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
-          createIndex(transactions, 'byCreatedAt', 'createdAt');
-          createIndex(transactions, 'byKind', 'kind');
+          const definition = CANONICAL_DATABASE_SCHEMA[TRANSACTION_STORE];
+          const transactions = database.createObjectStore(TRANSACTION_STORE, {
+            keyPath: definition.keyPath
+          });
+          for (const [indexName, keyPath] of Object.entries(definition.indexes)) {
+            createIndex(transactions, indexName, keyPath);
+          }
         }
         if (event.oldVersion < 8) {
           if (database.objectStoreNames.contains('workItems')) database.deleteObjectStore('workItems');

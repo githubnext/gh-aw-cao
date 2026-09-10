@@ -1,42 +1,19 @@
+import { randomUUID } from 'node:crypto';
 import { rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { relationshipErrors } from '../model/schema.js';
-import { DATABASE_NAME, DATABASE_VERSION } from './indexeddb.js';
+import {
+  CANONICAL_DATABASE_SCHEMA,
+  DATABASE_NAME,
+  DATABASE_VERSION,
+  ENTITY_STORES
+} from './indexeddb.js';
 import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from './retention.js';
 import { SQLITE_INDEXEDDB_METADATA_SCHEMA } from './sqlite-indexeddb.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const ENTITY_STORES = /** @type {const} */ (
-  ['repositories', 'workflows', 'runs', 'jobs', 'sessions', 'events']
-);
-const EXPECTED_INDEXES = /** @type {Record<string, Record<string, string | string[]>>} */ ({
-  repositories: { byGithubId: 'githubId', byFullName: 'fullName' },
-  workflows: { byRepository: 'repositoryId', byRepositoryPath: ['repositoryId', 'path'] },
-  runs: {
-    byRepository: 'repositoryId',
-    byWorkflow: 'workflowId',
-    byStatus: 'status',
-    byRepositoryStartedAt: ['repositoryId', 'startedAt'],
-    byWorkflowStartedAt: ['workflowId', 'startedAt']
-  },
-  jobs: { byRun: 'runId', byRunStartedAt: ['runId', 'startedAt'] },
-  sessions: {
-    byRun: 'runId',
-    byJob: 'jobId',
-    byRunStartedAt: ['runId', 'startedAt'],
-    byJobStartedAt: ['jobId', 'startedAt']
-  },
-  events: {
-    bySessionSequence: ['sessionId', 'sequence'],
-    bySessionTimestamp: ['sessionId', 'timestamp'],
-    byType: 'type',
-    bySource: 'source',
-    byCorrelation: 'correlationId'
-  },
-  transactions: { byCreatedAt: 'createdAt', byKind: 'kind' }
-});
-const EXPECTED_STORES = [...ENTITY_STORES, 'transactions'];
+const EXPECTED_STORES = Object.keys(CANONICAL_DATABASE_SCHEMA);
 
 /** @typedef {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} DoctorTransaction */
 
@@ -52,15 +29,44 @@ function firstValue(row) {
   return row ? Object.values(row)[0] : null;
 }
 
+/** @param {string} filename @param {{ readOnly?: boolean }} [options] */
+function openConnection(filename, options = {}) {
+  const connection = new DatabaseSync(filename, options);
+  connection.exec('PRAGMA busy_timeout = 5000;');
+  return connection;
+}
+
+/** @param {DatabaseSync} connection */
+function foreignKeyDiagnostics(connection) {
+  let foreignKeyViolations = 0;
+  let outOfScopeForeignKeyViolations = 0;
+  for (const violation of connection.prepare('PRAGMA foreign_key_check').all()) {
+    const table = String(violation.table);
+    const rowId = Number(violation.rowid);
+    let databaseName = null;
+    const query = table === '__idb_stores'
+      ? connection.prepare('SELECT database_name FROM __idb_stores WHERE rowid = ?')
+      : table === '__idb_indexes'
+        ? connection.prepare('SELECT database_name FROM __idb_indexes WHERE rowid = ?')
+        : table === '__idb_records'
+          ? connection.prepare('SELECT database_name FROM __idb_records WHERE rowid = ?')
+          : null;
+    if (query && Number.isInteger(rowId)) databaseName = query.get(rowId)?.database_name;
+    if (databaseName === DATABASE_NAME) foreignKeyViolations += 1;
+    else outOfScopeForeignKeyViolations += 1;
+  }
+  return { foreignKeyViolations, outOfScopeForeignKeyViolations };
+}
+
 /** @param {string} filename */
 function sqliteDiagnostics(filename) {
-  const connection = new DatabaseSync(filename, { readOnly: true });
+  const connection = openConnection(filename, { readOnly: true });
   try {
     const integrity = connection.prepare('PRAGMA integrity_check').all()
       .map((row) => String(firstValue(row)));
     return {
       integrity,
-      foreignKeyViolations: connection.prepare('PRAGMA foreign_key_check').all().length,
+      ...foreignKeyDiagnostics(connection),
       pageCount: Number(firstValue(connection.prepare('PRAGMA page_count').get()) ?? 0),
       freePages: Number(firstValue(connection.prepare('PRAGMA freelist_count').get()) ?? 0)
     };
@@ -71,7 +77,7 @@ function sqliteDiagnostics(filename) {
 
 /** @param {string} filename */
 function schemaDiagnostics(filename) {
-  const connection = new DatabaseSync(filename, { readOnly: true });
+  const connection = openConnection(filename, { readOnly: true });
   try {
     return schemaDiagnosticsFromConnection(connection);
   } finally {
@@ -106,15 +112,18 @@ function schemaDiagnosticsFromConnection(connection) {
   const issues = [];
   if (version !== DATABASE_VERSION) issues.push(`database version is ${version}; expected ${DATABASE_VERSION}`);
   const actualStores = stores.map((row) => String(row.name));
-  for (const store of EXPECTED_STORES) {
+  for (const [store, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
     const row = stores.find((candidate) => candidate.name === store);
     if (!row) issues.push(`missing object store ${store}`);
-    else if (String(row.key_path) !== JSON.stringify('id')) issues.push(`invalid key path for ${store}`);
+    else if (String(row.key_path) !== JSON.stringify(definition.keyPath)) {
+      issues.push(`invalid key path for ${store}`);
+    }
   }
   for (const store of actualStores) {
     if (!EXPECTED_STORES.includes(store)) issues.push(`unexpected object store ${store}`);
   }
-  for (const [store, expected] of Object.entries(EXPECTED_INDEXES)) {
+  for (const [store, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+    const expected = definition.indexes;
     for (const [name, keyPath] of Object.entries(expected)) {
       const row = indexes.find((candidate) => candidate.store_name === store && candidate.name === name);
       if (!row) issues.push(`missing index ${store}.${name}`);
@@ -129,7 +138,7 @@ function schemaDiagnosticsFromConnection(connection) {
 
 /** @param {string} filename */
 function scanRecords(filename) {
-  const connection = new DatabaseSync(filename, { readOnly: true });
+  const connection = openConnection(filename, { readOnly: true });
   try {
     return scanRecordsFromConnection(connection);
   } finally {
@@ -158,7 +167,14 @@ function scanRecordsFromConnection(connection) {
   const invalid = /** @type {{ store: string, recordKey: string, reason: string }[]} */ ([]);
   for (const row of rows) {
     const store = String(row.store_name);
-    if (!EXPECTED_STORES.includes(store)) continue;
+    if (!EXPECTED_STORES.includes(store)) {
+      invalid.push({
+        store,
+        recordKey: String(row.record_key),
+        reason: 'record belongs to an unexpected object store'
+      });
+      continue;
+    }
     let key;
     let value;
     let reason = '';
@@ -231,17 +247,24 @@ function sameBatch(left, right) {
  * @param {DatabaseSync} connection
  * @param {string} filename
  * @param {string} checkedAt
- * @param {string} [suffix]
  */
-async function createBackup(connection, filename, checkedAt, suffix = '') {
-  const backupPath = `${filename}.doctor-backup-${checkedAt.replaceAll(/[^0-9]/g, '')}${suffix}.sqlite`;
-  await backup(connection, backupPath);
-  return backupPath;
+async function createBackup(connection, filename, checkedAt) {
+  const backupPath = `${filename}.doctor-backup-${checkedAt.replaceAll(/[^0-9]/g, '')}-${randomUUID()}.sqlite`;
+  try {
+    await backup(connection, backupPath);
+    return backupPath;
+  } catch (error) {
+    await rm(backupPath, { force: true });
+    throw Object.assign(
+      new Error(`backup failed at ${backupPath}: ${error instanceof Error ? error.message : String(error)}`),
+      { doctorStage: 'backup' }
+    );
+  }
 }
 
 /** @param {string} filename @param {string} checkedAt */
 async function backupDatabase(filename, checkedAt) {
-  const connection = new DatabaseSync(filename, { readOnly: true });
+  const connection = openConnection(filename, { readOnly: true });
   try {
     return await createBackup(connection, filename, checkedAt);
   } finally {
@@ -269,9 +292,9 @@ function writeCanonicalDatabase(connection, batch, transactions) {
   const insertIndex = connection.prepare(`
     INSERT INTO __idb_indexes (database_name, store_name, name, key_path) VALUES (?, ?, ?, ?)
   `);
-  for (const store of EXPECTED_STORES) {
-    insertStore.run(DATABASE_NAME, store, JSON.stringify('id'));
-    for (const [name, keyPath] of Object.entries(EXPECTED_INDEXES[store])) {
+  for (const [store, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+    insertStore.run(DATABASE_NAME, store, JSON.stringify(definition.keyPath));
+    for (const [name, keyPath] of Object.entries(definition.indexes)) {
       insertIndex.run(DATABASE_NAME, store, name, JSON.stringify(keyPath));
     }
   }
@@ -300,28 +323,30 @@ function writeCanonicalDatabase(connection, batch, transactions) {
  * @param {number} retentionWindowMs
  */
 async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs) {
-  const connection = new DatabaseSync(filename);
+  const connection = openConnection(filename);
   let backupPath = null;
+  let candidateBackupPath = null;
+  let doctorStage = 'backup';
   let locked = false;
   try {
-    connection.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+    connection.exec('PRAGMA foreign_keys = ON;');
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       const dataVersion = Number(firstValue(connection.prepare('PRAGMA data_version').get()));
-      const candidateBackup = await createBackup(
-        connection,
-        filename,
-        checkedAt,
-        attempt === 1 ? '-repair' : `-repair-${attempt}`
-      );
+      doctorStage = 'backup';
+      candidateBackupPath = await createBackup(connection, filename, checkedAt);
+      doctorStage = 'lock';
       connection.exec('BEGIN EXCLUSIVE;');
       locked = true;
       if (Number(firstValue(connection.prepare('PRAGMA data_version').get())) === dataVersion) {
-        backupPath = candidateBackup;
+        backupPath = candidateBackupPath;
+        candidateBackupPath = null;
+        doctorStage = 'repair';
         break;
       }
       connection.exec('ROLLBACK;');
       locked = false;
-      await rm(candidateBackup, { force: true });
+      await rm(candidateBackupPath, { force: true });
+      candidateBackupPath = null;
     }
     if (!locked) throw new Error('database changed while creating a repair backup');
     connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
@@ -330,7 +355,9 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
     const horizon = now - retentionWindowMs;
     const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
       now,
-      retentionWindowMs
+      retentionWindowMs,
+      includePreviousInReference: true,
+      preserveUnreferencedParents: true
     });
     const transactions = retainedTransactions(scanned.transactions, horizon);
     writeCanonicalDatabase(connection, repairedBatch, transactions);
@@ -352,7 +379,11 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
         // The transaction may already have been rolled back by SQLite.
       }
     }
-    throw Object.assign(error instanceof Error ? error : new Error(String(error)), { backupPath });
+    if (candidateBackupPath) await rm(candidateBackupPath, { force: true });
+    throw Object.assign(error instanceof Error ? error : new Error(String(error)), {
+      backupPath,
+      doctorStage
+    });
   } finally {
     connection.close();
   }
@@ -366,7 +397,7 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
 function maintainSqlite(filename, actions, errors) {
   let connection;
   try {
-    connection = new DatabaseSync(filename);
+    connection = openConnection(filename);
   } catch (error) {
     errors.push(`open database for repair: ${error instanceof Error ? error.message : String(error)}`);
     return;
@@ -410,10 +441,11 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   try {
     beforeSqlite = sqliteDiagnostics(databasePath);
   } catch (error) {
-    errors.push(`initial diagnostics: ${error instanceof Error ? error.message : String(error)}`);
+    const initialDiagnosticError = error instanceof Error ? error.message : String(error);
     try {
       backupPath = await backupDatabase(databasePath, checkedAt);
     } catch (backupError) {
+      errors.push(`initial diagnostics: ${initialDiagnosticError}`);
       errors.push(`backup: ${backupError instanceof Error ? backupError.message : String(backupError)}`);
       return {
         command: 'doctor',
@@ -429,6 +461,8 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     try {
       beforeSqlite = sqliteDiagnostics(databasePath);
     } catch (afterError) {
+      errors.push(`initial diagnostics: ${initialDiagnosticError}`);
+      errors.push(`diagnostics after repair: ${afterError instanceof Error ? afterError.message : String(afterError)}`);
       return {
         command: 'doctor',
         database: databasePath,
@@ -439,6 +473,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
         repairs: { actions, errors, backup: backupPath }
       };
     }
+    actions.push('recover-sqlite-diagnostics');
   }
 
   if (beforeSqlite.integrity.some((result) => result !== 'ok')) {
@@ -479,7 +514,9 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const horizon = now - retentionWindowMs;
   const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
     now,
-    retentionWindowMs
+    retentionWindowMs,
+    includePreviousInReference: true,
+    preserveUnreferencedParents: true
   });
   const transactions = retainedTransactions(scanned.transactions, horizon);
   const transactionRowsRemoved = scanned.transactions.length - transactions.length;
@@ -508,6 +545,9 @@ export async function doctorSqliteDatabase(filename, options = {}) {
       backupPath = error && typeof error === 'object' && 'backupPath' in error
         ? /** @type {{ backupPath: string | null }} */ (error).backupPath
         : null;
+      const doctorStage = error && typeof error === 'object' && 'doctorStage' in error
+        ? /** @type {{ doctorStage: string }} */ (error).doctorStage
+        : 'repair';
       errors.push(`repair: ${error instanceof Error ? error.message : String(error)}`);
       return {
         command: 'doctor',
@@ -525,9 +565,11 @@ export async function doctorSqliteDatabase(filename, options = {}) {
           relationshipErrors: relationshipIssues,
           recordError: scanned.error
         },
-        error: backupPath
-          ? 'Database repair failed and was rolled back'
-          : 'Database repair requires a successful backup',
+        error: doctorStage === 'backup'
+          ? 'Database repair requires a successful backup'
+          : doctorStage === 'lock'
+            ? 'Database repair could not acquire an exclusive lock'
+            : 'Database repair failed and was rolled back',
         repairs: { actions, errors, backup: backupPath }
       };
     }

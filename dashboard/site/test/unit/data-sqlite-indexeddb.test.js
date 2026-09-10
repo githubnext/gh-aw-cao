@@ -202,10 +202,25 @@ describe('SQLite IndexedDB compatibility layer', () => {
     await upsertCanonicalBatch(indexedDB, stale);
 
     const connection = new DatabaseSync(filename);
+    connection.prepare('INSERT INTO __idb_databases (name, version) VALUES (?, ?)')
+      .run('unrelated-database', 1);
+    connection.prepare(`
+      INSERT INTO __idb_stores (database_name, name, key_path) VALUES (?, ?, ?)
+    `).run('unrelated-database', 'notes', JSON.stringify('id'));
+    connection.prepare(`
+      INSERT INTO __idb_records (database_name, store_name, record_key, value)
+      VALUES (?, ?, ?, ?)
+    `).run('unrelated-database', 'notes', JSON.stringify('note:1'), JSON.stringify({ id: 'note:1' }));
+    connection.prepare(`
+      INSERT INTO __idb_stores (database_name, name, key_path) VALUES (?, ?, ?)
+    `).run(DATABASE_NAME, 'annotations', JSON.stringify('id'));
     const insert = connection.prepare(`
       INSERT INTO __idb_records (database_name, store_name, record_key, value)
       VALUES (?, ?, ?, ?)
     `);
+    insert.run(DATABASE_NAME, 'annotations', JSON.stringify('annotation:1'), JSON.stringify({
+      id: 'annotation:1'
+    }));
     insert.run(DATABASE_NAME, 'events', JSON.stringify('event:orphan'), JSON.stringify({
       id: 'event:orphan',
       sessionId: 'session:missing',
@@ -239,12 +254,12 @@ describe('SQLite IndexedDB compatibility layer', () => {
     expect(diagnosis).toMatchObject({
       healthy: true,
       repairs: {
-        invalidRecordsRemoved: 1,
-        canonicalRecordsRemoved: 7,
+        invalidRecordsRemoved: 2,
+        canonicalRecordsRemoved: 5,
         transactionsRemoved: 1
       },
       after: {
-        counts: { repositories: 1, workflows: 1, runs: 1, jobs: 0, sessions: 1, events: 1 },
+        counts: { repositories: 2, workflows: 2, runs: 1, jobs: 0, sessions: 1, events: 1 },
         transactions: 0,
         invalidRecords: {},
         relationshipErrors: []
@@ -261,6 +276,11 @@ describe('SQLite IndexedDB compatibility layer', () => {
     ]));
     expect(diagnosis.repairs.backup).toMatch(/\.doctor-backup-/);
     expect(existsSync(/** @type {string} */ (diagnosis.repairs.backup))).toBe(true);
+    const repairedConnection = new DatabaseSync(filename);
+    expect(repairedConnection.prepare(`
+      SELECT COUNT(*) AS count FROM __idb_records WHERE database_name = ?
+    `).get('unrelated-database')).toEqual({ count: 1 });
+    repairedConnection.close();
   });
 
   it('recreates missing record storage and rejects overflowing TTL windows', async () => {
@@ -282,5 +302,48 @@ describe('SQLite IndexedDB compatibility layer', () => {
     expect(diagnosis.repairs.actions).toContain('rebuild-storage');
     await expect(doctorSqliteDatabase(filename, { ttlDays: Number.MAX_VALUE }))
       .rejects.toThrow('TTL days must produce a finite window greater than zero');
+  });
+
+  it('preserves standalone structural parents during TTL repair', async () => {
+    const filename = temporaryDatabase();
+    const indexedDB = installSqliteIndexedDB(filename);
+    const canonical = normalize([]);
+    canonical.repositories.push({ id: 'repository:standalone' });
+    canonical.workflows.push({
+      id: 'workflow:standalone',
+      repositoryId: 'repository:standalone'
+    });
+    await upsertCanonicalBatch(indexedDB, canonical);
+
+    const diagnosis = await doctorSqliteDatabase(filename);
+    expect(diagnosis).toMatchObject({
+      healthy: true,
+      after: {
+        counts: { repositories: 1, workflows: 1, runs: 0 }
+      },
+      repairs: { canonicalRecordsRemoved: 0 }
+    });
+  });
+
+  it('reports unrelated foreign-key violations without rewriting canonical data', async () => {
+    const filename = temporaryDatabase();
+    const indexedDB = installSqliteIndexedDB(filename);
+    const database = await openCanonicalDatabase(indexedDB);
+    database.close();
+    const connection = new DatabaseSync(filename);
+    connection.exec('PRAGMA foreign_keys = OFF');
+    connection.prepare(`
+      INSERT INTO __idb_stores (database_name, name, key_path) VALUES (?, ?, ?)
+    `).run('missing-database', 'notes', JSON.stringify('id'));
+    connection.close();
+
+    const diagnosis = await doctorSqliteDatabase(filename);
+    expect(diagnosis).toMatchObject({
+      healthy: true,
+      before: {
+        sqlite: { foreignKeyViolations: 0, outOfScopeForeignKeyViolations: 1 }
+      },
+      repairs: { backup: null }
+    });
   });
 });
