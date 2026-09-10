@@ -1,15 +1,7 @@
 {
   "source_sha": "b8b538dd69ab5c73fdaf2b6316bf0cf689a75d78",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-10T02:57:00Z",
-      "worker_run_id": 34431154677,
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: evaluation stopped immediately because fresh docs.yml run listing failed with HTTP 403 API rate-limit exhaustion before the required minimum of five comparable successful runs could be re-established. Trusted workflow YAML remained readable, but queue-time separation, workflow/job medians and p90s, step timings, cache-hit verification, and open-issue duplicate review could not be refreshed safely in this run.",
-      "suggestion_fingerprint": ""
-    },
     {
       "evaluated_at": "2026-09-10T02:34:01Z",
       "worker_run_id": 34429784668,
@@ -394,6 +386,22 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [],
       "outcome": "incomplete: evaluation stopped immediately because fresh docs.yml run listing failed with HTTP 403 API rate-limit exhaustion before the required minimum of five comparable successful runs could be re-established. Trusted workflow YAML remained readable, but queue-time separation, workflow/job medians and p90s, step timings, cache-hit verification, and open-issue duplicate review could not be refreshed safely in this run.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-10T04:30:09Z",
+      "worker_run_id": 34437287141,
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        34429804635,
+        34426060186,
+        34423354073,
+        34417272726,
+        34416452290,
+        34412602447,
+        34411715255
+      ],
+      "outcome": "no-op: analyzed 7 comparable successful scheduled docs.yml runs from 2026-09-09T22:20:27Z to 2026-09-10T02:33:15Z. Median parent workflow queue time was 0s and median execution time was 95s; p90 execution was 269.2s due to one outlier where the dispatched dashboard build waited 456s for a live activity refresh. Parent job medians were dashboard 43s, build 30s, and deploy 9s. In the parent build job, Build documentation median was 7s (p90 8s), Set up Node.js 6s, Restore node_modules 6s, Mount dashboard at /cao 2s, and Upload Pages artifact 3s. Trusted job metadata and logs confirmed node-related caches hit on all 7 samples because Install dependencies and Save node_modules were skipped every time, while trusted child-run metadata confirmed cached activity reuse on 6/7 samples and dashboard generation itself remained small: child build median 16s, Build Dashboard Language sources median 1s, Upload dashboard artifact median 3s. Astro documentation generation is well below the >=60s or >=15% actionability threshold. Duplicate-open-issue verification could not be completed because gh issue list failed with a non-zero exit in this environment, so no non-duplicate suggestion was emitted.",
       "suggestion_fingerprint": ""
     }
   ]
