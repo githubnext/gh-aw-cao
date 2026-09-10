@@ -21,63 +21,36 @@ be refreshed; the snapshot is not permanent historical authority.
 ## How Activity works
 
 ```mermaid
-flowchart TB
-  subgraph inputs[Evidence inputs]
-    definitions[Installed workflows<br/>CAO policy and package records]
-    logs[One bounded gh aw logs call<br/>runs, audits, usage, agent info]
-    outputs[Durable output APIs<br/>issues, comments, review artifacts]
-    privacy[Pages privacy state<br/>when private inventory is enabled]
-  end
+%%{init: {"sequence": {"mirrorActors": false, "actorMargin": 32, "messageMargin": 24}}}%%
+sequenceDiagram
+  participant Activity as CAO Activity
+  participant Cache as Actions cache
+  participant Build as Dashboard Build
+  participant Browser as Browser
 
-  subgraph activity[CAO Activity workflow]
-    collect[Collect once]
-    normalize[Normalize records<br/>and collection state]
-    snapshot[(Immutable Activity snapshot)]
-    collect --> normalize --> snapshot
-  end
+  Activity->>Activity: Collect, normalize, and index GitHub evidence
+  Activity->>Cache: Save cao-activity-v2-* snapshot
 
-  subgraph build[Dashboard report build]
-    restore[Restore the exact snapshot]
-    derive[Derive logical sources<br/>and source health]
-    runSource[runs]
-    workSource[work-items]
-    securitySource[security-findings]
-    restore --> derive
-    derive --> runSource
-    derive --> workSource
-    derive --> securitySource
-  end
-
-  subgraph browser[Overview in the browser]
-    failed[Failed runs]
-    blocked[Blocked work]
-    review[Awaiting review]
-    findings[Security findings]
-    summary[Attention summary<br/>or qualified quiet state]
-    failed --> summary
-    blocked --> summary
-    review --> summary
-    findings --> summary
-  end
-
-  definitions --> collect
-  logs --> collect
-  outputs --> collect
-  privacy -. privacy gate .-> collect
-  snapshot --> restore
-  runSource -->|apply horizon| failed
-  workSource -->|apply horizon| blocked
-  workSource -->|apply horizon| review
-  securitySource -->|apply horizon| findings
-  derive -. availability, completeness, freshness .-> summary
+  Build->>Cache: Restore latest cao-activity-v2-*
+  alt Cache hit
+    Cache-->>Build: Snapshot JSON
+    Build->>Build: Adapt snapshot to sources.json
+    Build-->>Browser: Publish site, manifest, and sources
+    Browser->>Browser: Normalize and persist canonical generation
+    Browser->>Browser: Run bounded page queries
+  else Cache miss
+    Cache-->>Build: Missing snapshot
+    Build-->>Build: Stop build
+    end
 ```
 
-The boundaries in the diagram are ownership boundaries. Activity collects and
-saves the snapshot in one workflow. The report build restores that exact
-snapshot and derives logical sources. Overview filters their rows to the
-selected horizon and uses source health to decide whether an empty result is a
-real zero. The browser reads the built report; it does not call GitHub APIs
-directly.
+Activity owns collection, indexing, normalization, and cache publication.
+Dashboard Build only restores that snapshot and adapts its records to Dashboard
+Language sources; a cache miss stops the build. In the browser, the data worker
+keeps logical sources in memory and stores only the normalized Repository,
+Workflow, Run, Job, Session, and Event generation in IndexedDB. See
+[Dashboard data model](dashboard-data-model.md) for identities, relationships,
+activation, and query behavior.
 
 ## What `activity/aw.yml` installs
 
