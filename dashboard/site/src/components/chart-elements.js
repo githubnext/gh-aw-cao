@@ -304,6 +304,41 @@ function raiseChartPointOnInteraction(mark) {
 }
 
 /**
+ * Builds an interactive chart-point `<g>` mark: a `chart-point`-flavored
+ * group with `role="img"`, `aria-label`, and a `<title>` for accessibility,
+ * the caller's shape element(s), and a hidden tooltip, then wires it to
+ * raise above sibling marks on hover/focus. Shared by the pie, histogram,
+ * and line/scatter/dot chart renderers, which otherwise duplicated this
+ * same `<g>` + `<title>` + tooltip + raise-on-interaction scaffolding
+ * around their own shape markup.
+ * @param {{
+ *   className: string,
+ *   entryIndex: number,
+ *   label: string,
+ *   shape: Element | Element[],
+ *   tooltip: Parameters<typeof renderChartPointTooltip>[0]
+ * }} options
+ * @returns {Element}
+ */
+function renderInteractiveChartMark({ className, entryIndex, label, shape, tooltip }) {
+  const mark = h(
+    'g',
+    {
+      className,
+      style: `--chart-entry-index: ${entryIndex}`,
+      tabIndex: 0,
+      role: 'img',
+      'aria-label': label
+    },
+    h('title', null, label),
+    ...(Array.isArray(shape) ? shape : [shape]),
+    renderChartPointTooltip(tooltip)
+  );
+  raiseChartPointOnInteraction(mark);
+  return mark;
+}
+
+/**
  * Renders a declaratively selected chart using normalized dashboard points.
  * @param {string} chartType
  * @param {ChartPointLike[]} points
@@ -348,34 +383,29 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const tooltipWidth = Math.min(40, Math.max(18, (segmentLabel.length * 1.25) + 5));
           const tooltipX = Math.min(Math.max(21 + (Math.cos(midpoint) * 14) - (tooltipWidth / 2), 1), 41 - tooltipWidth);
           const tooltipY = Math.min(Math.max(21 + (Math.sin(midpoint) * 14) - 9, 1), 34);
-          const segment = h('g', {
+          return renderInteractiveChartMark({
             className: 'chart-point pie-chart-mark',
-            style: `--chart-entry-index: ${index}`,
-            tabIndex: 0,
-            role: 'img',
-            'aria-label': segmentLabel
-          },
-          h('title', null, segmentLabel),
-          h('path', {
-            className: `pie-chart-segment ${chartSeriesClassName(label, index)}`,
-            d: pieChartSegmentPath(startFraction, endFraction, separated),
-            fill: 'none',
-            'stroke-width': PIE_CHART_STROKE_WIDTH,
-            'stroke-linecap': 'round',
-            'data-chart-category': label
-          }),
-          renderChartPointTooltip({
-            className: 'point-tooltip pie-chart-tooltip',
-            transform: `translate(${tooltipX} ${tooltipY})`,
-            width: tooltipWidth,
-            height: 7,
-            textX: 2.5,
-            textY: 4.75,
-            textLengthAttrs: tooltipWidth === 40 ? { textLength: 35, lengthAdjust: 'spacingAndGlyphs' } : null,
-            label: segmentLabel
-          }));
-          raiseChartPointOnInteraction(segment);
-          return segment;
+            entryIndex: index,
+            label: segmentLabel,
+            shape: h('path', {
+              className: `pie-chart-segment ${chartSeriesClassName(label, index)}`,
+              d: pieChartSegmentPath(startFraction, endFraction, separated),
+              fill: 'none',
+              'stroke-width': PIE_CHART_STROKE_WIDTH,
+              'stroke-linecap': 'round',
+              'data-chart-category': label
+            }),
+            tooltip: {
+              className: 'point-tooltip pie-chart-tooltip',
+              transform: `translate(${tooltipX} ${tooltipY})`,
+              width: tooltipWidth,
+              height: 7,
+              textX: 2.5,
+              textY: 4.75,
+              textLengthAttrs: tooltipWidth === 40 ? { textLength: 35, lengthAdjust: 'spacingAndGlyphs' } : null,
+              label: segmentLabel
+            }
+          });
         }),
         h('text', { className: 'pie-chart-total-value', x: 21, y: 20, 'text-anchor': 'middle', 'aria-hidden': 'true' }, formatNumber(total, unit, false)),
         h('text', { className: 'pie-chart-total-label', x: 21, y: 25.5, 'text-anchor': 'middle', 'aria-hidden': 'true' }, totalLabel)
@@ -429,30 +459,25 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           const label = `${binLabel(bin)}: ${bin.count} observation${pluralSuffix(bin.count)}`;
           const x = plotStart + (index * barWidth);
           const tooltipX = Math.min(Math.max(x + ((barWidth - 1) / 2) - 21, 1), 57);
-          const mark = h('g', {
+          return renderInteractiveChartMark({
             className: 'chart-point histogram-chart-mark',
-            style: `--chart-entry-index: ${index}`,
-            tabIndex: 0,
-            role: 'img',
-            'aria-label': label
-          },
-          h('title', null, label),
-          h('rect', {
-            className: 'histogram-chart-bar chart-series-1',
-            x,
-            y: 38 - height,
-            width: Math.max(0, barWidth - 1),
-            height,
-            rx: 0.75
-          }),
-          renderChartPointTooltip({
-            className: 'point-tooltip histogram-chart-tooltip',
-            transform: `translate(${tooltipX} ${Math.max(38 - height - 12, 1)})`,
-            textLengthAttrs: label.length > 22 ? { textLength: 36, lengthAdjust: 'spacingAndGlyphs' } : null,
-            label
-          }));
-          raiseChartPointOnInteraction(mark);
-          return mark;
+            entryIndex: index,
+            label,
+            shape: h('rect', {
+              className: 'histogram-chart-bar chart-series-1',
+              x,
+              y: 38 - height,
+              width: Math.max(0, barWidth - 1),
+              height,
+              rx: 0.75
+            }),
+            tooltip: {
+              className: 'point-tooltip histogram-chart-tooltip',
+              transform: `translate(${tooltipX} ${Math.max(38 - height - 12, 1)})`,
+              textLengthAttrs: label.length > 22 ? { textLength: 36, lengthAdjust: 'spacingAndGlyphs' } : null,
+              label
+            }
+          });
         })
       ),
       bins.length > 0
