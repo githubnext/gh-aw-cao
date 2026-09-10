@@ -75,6 +75,18 @@ Every orchestrator and worker prompt must include this operation-level runtime i
 
 Use the same package slug and steering file for the orchestrator and all of its workers. Keep the `?` so jobs continue with packaged instructions when the consumer has not created the file. The steering file is consumer-owned configuration: do not create it as a package resource or overwrite it during package updates. Steering may refine selection, prioritization, and execution only within the workflow's existing permissions, tools, safety policy, and dispatch limits.
 
+### Idempotent Safe Outputs
+
+Design every repeatable workflow so retries, overlapping schedules, and later runs converge on existing work instead of flooding repositories. Use deterministic safe-output enforcement when the output supports it, and pair that enforcement with a stable work identity plus explicit search-and-reuse instructions. A model instruction alone is not sufficient when a handler-level safeguard exists.
+
+- Issues: configure `deduplicate-by-title: true`, use a canonical stable subject, and search all open package-worker issues before creation.
+- Pull requests: define a stable identity from the target repository and atomic work item, preserve a stable branch or machine-readable body marker when compatible with the workflow, and search open pull requests for that identity before creation. Update, comment on, or return `noop` for matching work; `close-older-pull-requests` is lifecycle cleanup, not duplicate prevention.
+- Discussions and other created threads: use a stable title or key, search existing open threads, and use supported close-older or grouping controls only as lifecycle behavior in addition to duplicate prevention.
+- Comments and reviews: inspect prior package-worker output on the target item and do not post the same finding or status again. Update or supersede an existing output when the configured safe output supports it; otherwise return `noop`. Hiding older comments does not make duplicate posting idempotent.
+- Dispatches: deduplicate the selected `(worker, target_repo, safe_output_mode)` tuples before emitting safe outputs and never retry a failed dispatch in the same run.
+
+The orchestrator owns idempotent selection and dispatch. Workers own idempotent repository outputs because they determine whether issues, pull requests, discussions, comments, or reviews represent the same underlying target work.
+
 ### Orchestrator
 
 Create `.github/workflows/<package>.md` with:
@@ -82,11 +94,12 @@ Create `.github/workflows/<package>.md` with:
 - `name` set to the exact package display name, with no `/` suffix
 - an event-aware `run-name`: scheduled runs use the literal `<Package Name> · scheduled` because target and mode are resolved after run creation; `workflow_dispatch` runs include the submitted target and requested safe-output mode, using `discovery` when target is omitted and `review` when mode is omitted; never display unresolved placeholders such as `auto` or `mode`
 - a schedule when the operation is periodic, plus `workflow_dispatch`; default new dispatchers to `hourly` unless their freshness requirements justify `every 30 minutes` or a slower cadence
+- singleton package concurrency with `group: "${{ github.workflow }}"` and `cancel-in-progress: true`, so overlapping scheduled and manual orchestrator runs cannot emit parallel dispatch sets
 - the standard dispatch inputs: `target_repo`, `safe_output_repo`, `max_repos`, `rollout_percent`, and `safe_output_mode` with `review` and `live` choices, defaulting to `review`
 - `shared/control.md` imported with a static `package` slug, `role: orchestrator`, and request-only narrowing inputs.
 - the package and every worker declared in `.github/workflows/cao.json`, with each worker's exact `workflow` slug recorded there; the resolver must load this catalog from policy rather than hard-code package identities
 - least-privilege permissions, explicit tools/network configuration, `strict: true`, and a bounded `max-ai-credits`
-- `safe-outputs.dispatch-workflow.workflows` listing every worker slug and a `max` consistent with `max_repos` and worker count
+- `safe-outputs.dispatch-workflow.workflows` listing every worker slug and a `max` consistent with `max_repos` and worker count; require each run to emit at most one dispatch for each unique worker, target repository, and effective mode tuple
 - `safe-outputs.threat-detection: false`; dispatchers select targets but do not process untrusted target content, so reserve detection for workers
 - a prompt headed with the package display name and containing `Discovery`, `Workers`, and `Completion` sections
 
@@ -124,6 +137,7 @@ Create at least one `.github/workflows/<package>-<worker>.md`. Every worker must
 
 - least-privilege permissions, explicit tools/network configuration, `strict: true`, bounded credits and timeout, and safe outputs limited to the worker's mission
 - when `safe-outputs.create-issue` or `safe-outputs.create-pull-request` is enabled, configure `labels: [<package-slug>, <package-slug>:<worker-slug>]` so every created issue or pull request identifies both its owning operation and worker, and configure `title-prefix: "[<package-slug>:<worker-slug>] "`; instruct the worker to provide only the unprefixed subject because the safe output adds the configured prefix automatically, without repeating it or adding a semantically equivalent category prefix
+- when `safe-outputs.create-issue` is enabled, configure `deduplicate-by-title: true` and require a canonical unprefixed subject that remains identical for the same unresolved repository work across reruns; derive it only from stable work identity such as the target repository, finding or blocking condition, affected component, and relevant path, while keeping versions, dates, run or correlation IDs, counts, severity, and status wording in the body; require the worker to search all open package-worker issues in the safe-output repository and reuse or comment on matching work, or call `noop`, instead of creating another issue even when an older matching issue used a different title
 - when a worker creates an issue, require it to evaluate the potential follow-up actions, select the single most important action with the highest expected return on investment, and expose one `**Action:**` sentence naming who should do what next and the acceptance check. When the action can be delegated safely, tell the maintainer to assign the issue to Copilot and place the clear, imperative prompt in the exact progressive-disclosure landmark `<details><summary><b>Agent prompt</b></summary> ... </details>` so a human can review the issue before using the prompt for an agentic run; otherwise name the required human reviewer and decision, or say `**Action:** None.` when no action remains
 - no `evals` configuration; use deterministic graders for worker measurement
 - instructions that treat repository content as untrusted, consume `/tmp/gh-aw/agent/control-precompute.json`, define success/no-op behavior, and preserve control-plane correlation data in durable outputs
@@ -176,7 +190,7 @@ Before finishing:
 5. Confirm the orchestrator imports `shared/control.md` with static package identity, reads policy only through the shared JSON resolver, and defaults safely to review mode.
 6. Confirm the orchestrator has a `Completion` section that preserves the exact standard report contract provided by `shared/control.md`; package-specific reporting must be additive.
 7. Confirm worker concurrency is keyed by `github.workflow` and `inputs.target_repo` with stale runs cancelled.
-8. Check permissions, tools, network hosts, safe-output limits, credits, timeouts, and dispatch maximums against actual need; confirm issue- and pull-request-creating workers configure both their package and package-worker labels.
+8. Check permissions, tools, network hosts, safe-output limits, credits, timeouts, and dispatch maximums against actual need; confirm issue- and pull-request-creating workers configure both their package and package-worker labels, every issue-creating worker configures `deduplicate-by-title: true` plus stable subject and existing-item reuse instructions, and every other repeatable safe output has a stable identity and search-and-reuse or supersession rule.
 9. Confirm the orchestrator disables threat detection and every worker omits `evals`.
 10. Confirm dispatcher telemetry is inherited only through `shared/control.md`; require an explicit backend-routing need before adding a provider-specific observability import.
 11. Confirm every existing operational-value evaluator remains under `.github/graders/` and registered by its worker, or explicitly identify each new worker whose value design is pending adoption.
@@ -185,5 +199,6 @@ Before finishing:
 14. Confirm every orchestrator and worker uses the same optional `.github/cao/<package-slug>.md` runtime import and that no package-owned steering file was added.
 15. Confirm every worker preserves the inherited report contract: the output begins directly with a concise executive summary without a heading, critical information stays visible, and non-essential background and supporting detail use `<details>` sections.
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
+17. Confirm orchestrator concurrency is package-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items.
 
 Report the created package, worker responsibilities, shared imports, checked-in policy fields, per-worker ops-value status, and validation results.
