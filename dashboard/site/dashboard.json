@@ -38,6 +38,12 @@
         "symbol": "AIC",
         "significant": 1
       },
+      "usd": {
+        "name": "US dollars",
+        "symbol": "USD",
+        "significant": 0.001,
+        "format": "usd"
+      },
       "grade": {
         "name": "Grade",
         "symbol": "grade",
@@ -1350,7 +1356,8 @@
                 {
                   "field": "estimated-usd",
                   "type": "quantitative",
-                  "title": "Estimated USD"
+                  "title": "Estimated USD",
+                  "unit": "usd"
                 }
               ]
             }
