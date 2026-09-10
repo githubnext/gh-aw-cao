@@ -292,6 +292,76 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
+test('Safe Outputs presents usage as a responsive full-view table', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'safe-output-usage-viewport-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-09T12:00:00Z',
+        'retrieved-at': '2026-09-09T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'safe-output-usage': {
+          source: 'safe-output-usage',
+          metadata,
+          rows: Array.from({ length: 40 }, (_, index) => ({
+            organization: 'githubnext',
+            repository: 'gh-aw-cao',
+            workflow: '.github/workflows/dashboard.md',
+            run: String(1000 + index),
+            'run-conclusion': index % 5 === 0 ? 'failure' : 'success',
+            'rollout-mode': 'review',
+            'safe-output-kind': index % 5 === 0 ? 'missing_data' : 'output',
+            'safe-output-label': index % 5 === 0 ? 'Missing data' : 'Output',
+            'safe-output-status': index % 5 === 0 ? 'warning' : 'success',
+            'safe-output-count': index + 1,
+            'observed-at': '2026-09-09T12:00:00Z',
+            'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/' + (1000 + index), label: 'View run ' + (1000 + index) }
+          }))
+        }
+      };
+      window.location.hash = '#page-overview';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
+  await page.locator('[data-nav-page-id="safe-outputs"]').click();
+  const safeOutputsPage = page.locator('[data-page-id="safe-outputs"]');
+  const usageView = safeOutputsPage.locator('[data-view-layout="full-view"]');
+  const tableScroll = usageView.locator('.table-scroll');
+  await expect(safeOutputsPage).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(usageView).toBeVisible();
+  await expect(usageView.locator('[data-table-filter]')).toBeVisible();
+  await expect(usageView.locator('tbody tr')).toHaveCount(40);
+  await expect(usageView.getByText('Missing data', { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
+
+  await tableScroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(usageView).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
+  expect(await tableScroll.evaluate((element) => element.scrollWidth >= element.clientWidth)).toBe(true);
+
+  await tableScroll.evaluate((element) => { element.scrollTop = 0; });
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
+  await page.locator('[data-nav-page-id="overview"]').click();
+  await expect(page.locator('[data-page-id="overview"]')).toBeVisible();
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
+});
+
 test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
   /** @type {Error[]} */
   const pageErrors = [];

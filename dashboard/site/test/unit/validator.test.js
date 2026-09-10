@@ -132,7 +132,6 @@ describe('dashboard document validation', () => {
     for (const page of document.dashboard.pages.filter(
       (/** @type {{ id: string }} */ candidate) => experimentalIds.has(candidate.id)
     )) {
-      if (page.id === 'safe-outputs') continue;
       const definition = page.definition ?? page;
       const editableViews = (definition.views ?? []).filter(
         (/** @type {{ locked?: boolean }} */ view) => view.locked !== true
@@ -299,11 +298,11 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Safe Outputs as one declarative type summary in Explore', () => {
+  it('defines Safe Outputs as one declarative full-view usage table in Explore', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const safeOutputs = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'safe-outputs');
     const safeOutputsQuery = document.dashboard.queries.find(
-      (/** @type {{ name: string }} */ query) => query.name === 'safe-outputs-by-type'
+      (/** @type {{ name: string }} */ query) => query.name === 'safe-output-usage'
     );
 
     expect(document.dashboard.navigation.find(
@@ -311,21 +310,31 @@ describe('dashboard document validation', () => {
     ).pages).toContain('safe-outputs');
     expect(safeOutputs.views).toHaveLength(1);
     expect(safeOutputs.views[0]).toMatchObject({
-      id: 'safe-outputs-by-type',
-      mark: 'chart',
-      chart: 'pie',
-      data: { source: 'safe-outputs-by-type' }
+      id: 'safe-output-usage',
+      mark: 'table',
+      controls: 'interactive',
+      'lazy-list': true,
+      layout: 'full-view',
+      data: { source: 'safe-output-usage' }
     });
-    expect(safeOutputs.views[0].encoding).toEqual({
-      x: expect.objectContaining({ field: 'safe-output-kind', title: 'Type' }),
-      y: expect.objectContaining({ field: 'safe-output-count', title: 'Safe outputs' })
-    });
+    expect(safeOutputs.views[0].encoding.columns.map(
+      (/** @type {{ field: string }} */ column) => column.field
+    )).toEqual([
+      'safe-output-label',
+      'safe-output-count',
+      'safe-output-status',
+      'repository',
+      'workflow',
+      'rollout-mode',
+      'run-conclusion',
+      'observed-at'
+    ]);
     expect(safeOutputsQuery).toMatchObject({
-      from: 'outcomes',
-      aggregate: {
-        by: ['safe-output-kind'],
-        values: [{ field: 'safe-output', as: 'safe-output-count', reducer: 'distinct-count' }]
-      }
+      from: 'safe-output-performance',
+      'order-by': [
+        { field: 'observed-at', direction: 'desc' },
+        { field: 'safe-output-count', direction: 'desc' }
+      ]
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });

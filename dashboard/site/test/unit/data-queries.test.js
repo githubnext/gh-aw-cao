@@ -385,26 +385,25 @@ describe('declarative dashboard queries', () => {
     });
   });
 
-  it('groups the Safe Outputs view by declared output type', () => {
-    const outcomes = {
-      source: 'outcomes',
+  it('projects Safe Outputs usage from canonical performance records', () => {
+    const safeOutputPerformance = {
+      source: 'safe-output-performance',
       rows: [
-        { 'safe-output': 'issue-1', 'safe-output-kind': 'create-issue' },
-        { 'safe-output': 'issue-2', 'safe-output-kind': 'create-issue' },
-        { 'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request' }
+        { repository: 'gh-aw-cao', workflow: 'review.md', run: '1', 'safe-output-label': 'Output', 'safe-output-count': 3, 'observed-at': '2026-09-01T00:00:00Z' },
+        { repository: 'gh-aw-cao', workflow: 'review.md', run: '2', 'safe-output-label': 'Missing data', 'safe-output-count': 1, 'observed-at': '2026-09-02T00:00:00Z' }
       ],
-      metadata: metadata('outcomes')
+      metadata: metadata('safe-output-performance')
     };
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { outcomes },
-      ['safe-outputs-by-type']
+      { 'safe-output-performance': safeOutputPerformance },
+      ['safe-output-usage']
     );
 
-    expect(Object.keys(derived)).toEqual(['safe-outputs-by-type']);
-    expect(derived['safe-outputs-by-type'].rows).toEqual([
-      { 'safe-output-kind': 'create-issue', 'safe-output-count': 2 },
-      { 'safe-output-kind': 'create-pull-request', 'safe-output-count': 1 }
+    expect(Object.keys(derived)).toEqual(['safe-output-usage']);
+    expect(derived['safe-output-usage'].rows).toEqual([
+      expect.objectContaining({ run: '2', 'safe-output-label': 'Missing data', 'safe-output-count': 1 }),
+      expect.objectContaining({ run: '1', 'safe-output-label': 'Output', 'safe-output-count': 3 })
     ]);
   });
 

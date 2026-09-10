@@ -211,30 +211,32 @@
         ]
       },
       {
-        "name": "safe-outputs-by-type",
-        "intent": "Summarize retained safe outputs by their declared output type.",
-        "description": "Distinct retained safe-output totals grouped by type.",
-        "from": "outcomes",
-        "aggregate": {
-          "by": [
-            "safe-output-kind"
-          ],
-          "values": [
-            {
-              "field": "safe-output",
-              "as": "safe-output-count",
-              "reducer": "distinct-count"
-            }
-          ]
-        },
+        "name": "safe-output-usage",
+        "intent": "Show safe-output usage for each observed workflow run.",
+        "description": "Safe outputs and diagnostics attributed to their workflow runs.",
+        "from": "safe-output-performance",
+        "select": [
+          { "field": "organization" },
+          { "field": "repository" },
+          { "field": "workflow" },
+          { "field": "run" },
+          { "field": "run-conclusion" },
+          { "field": "rollout-mode" },
+          { "field": "safe-output-kind" },
+          { "field": "safe-output-label" },
+          { "field": "safe-output-status" },
+          { "field": "safe-output-count" },
+          { "field": "observed-at" },
+          { "field": "run-link" }
+        ],
         "order-by": [
           {
-            "field": "safe-output-count",
+            "field": "observed-at",
             "direction": "desc"
           },
           {
-            "field": "safe-output-kind",
-            "direction": "asc"
+            "field": "safe-output-count",
+            "direction": "desc"
           }
         ]
       },
@@ -3273,29 +3275,71 @@
         "navigation-label": "Safe Outputs",
         "icon": "shield-check",
         "class-name": "safe-outputs-page",
-        "description": "Retained safe-output volume grouped by declared output type.",
+        "description": "Safe-output usage and diagnostics attributed to observed workflow runs.",
         "views": [
           {
-            "id": "safe-outputs-by-type",
-            "title": "Safe outputs by type",
-            "description": "Distinct retained safe outputs grouped by their declared output type.",
+            "id": "safe-output-usage",
+            "title": "Safe-output usage",
+            "description": "Observed safe outputs, no-op runs, and incomplete-output diagnostics.",
             "data": {
-              "source": "safe-outputs-by-type"
+              "source": "safe-output-usage"
             },
-            "mark": "chart",
-            "chart": "pie",
-            "empty-message": "No retained safe outputs were reported in the selected horizon.",
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "column-summaries": true,
+            "layout": "full-view",
+            "empty-message": "No safe-output usage was observed in the selected horizon.",
             "encoding": {
-              "x": {
-                "field": "safe-output-kind",
-                "type": "nominal",
-                "title": "Type"
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
               },
-              "y": {
-                "field": "safe-output-count",
-                "type": "quantitative",
-                "title": "Safe outputs"
-              }
+              "columns": [
+                {
+                  "field": "safe-output-label",
+                  "type": "nominal",
+                  "title": "Output"
+                },
+                {
+                  "field": "safe-output-count",
+                  "type": "quantitative",
+                  "title": "Count"
+                },
+                {
+                  "field": "safe-output-status",
+                  "type": "nominal",
+                  "title": "Status",
+                  "display": "status"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "rollout-mode",
+                  "type": "nominal",
+                  "title": "Mode",
+                  "display": "mode"
+                },
+                {
+                  "field": "run-conclusion",
+                  "type": "nominal",
+                  "title": "Conclusion",
+                  "display": "status"
+                },
+                {
+                  "field": "observed-at",
+                  "type": "temporal",
+                  "title": "Observed"
+                }
+              ]
             }
           }
         ]
