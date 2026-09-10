@@ -1101,11 +1101,11 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    expect(page?.querySelector('.home-attention-summary')).not.toBeNull();
+    expect(page?.querySelector('[data-section-layout="horizontal"]')).not.toBeNull();
+    expect(page?.querySelectorAll('.metric-card-widget')).toHaveLength(4);
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
-    expect(page?.querySelector('[href="#page-overview-security-findings"] strong')?.textContent).toBe('—');
+    expect(page?.querySelector('[href="#page-overview-security-findings"] [data-metric-value="count"]')?.textContent).toBe('—');
     expect(page?.querySelector('.home-attention-detail')).toBeNull();
-    expect(page?.textContent).toContain('No attention observed in available evidence');
     expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();
   });

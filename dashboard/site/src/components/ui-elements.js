@@ -19,7 +19,6 @@ import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
 import { renderWorkProjectView } from './work-project-view.js';
 import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
-import { renderHomeAttentionSummary } from './home-attention-summary.js';
 import { renderInsightsOverview } from './insights-overview.js';
 import { modeBadgeClassName, renderStatusBadge } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
@@ -72,11 +71,10 @@ const ELEMENT_RENDERERS = new Map([
   ['configuration-actions', renderConfigurationActions],
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
-  ['insights-overview', renderInsightsOverview],
-  ['home-attention-summary', renderHomeAttentionSummary]
+  ['insights-overview', renderInsightsOverview]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'home-attention-summary']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first

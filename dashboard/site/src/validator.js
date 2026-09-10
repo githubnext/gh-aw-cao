@@ -95,6 +95,9 @@ import {
   VIEW_KEYS,
   VIEW_LAYOUT_VALUES,
   VIEW_MARK_VALUES,
+  VIEW_METRIC_KEYS,
+  VIEW_METRIC_STYLE_VALUES,
+  VIEW_METRIC_TONE_VALUES,
   VIEW_TITLE_LINK_KEYS,
   WORKFLOW_ACTIVE_VALUES,
   WORKFLOW_ROLE_VALUES
@@ -1732,6 +1735,56 @@ function validateView(view, viewNode, path, viewIds, errors) {
         'chart must use one canonical chart widget value.',
         `${path}.chart`
       ));
+    }
+
+    if (view.metric !== undefined) {
+      const metricPath = `${path}.metric`;
+      if (!isPlainObject(view.metric)) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'metric must be a metric widget mapping.',
+          metricPath
+        ));
+      } else {
+        validateObjectKeys(getValueNodeByKey(viewNode, 'metric'), VIEW_METRIC_KEYS, metricPath, errors);
+        validateStringField(view.metric.style, `${metricPath}.style`, true, errors);
+        if (typeof view.metric.style === 'string' && !VIEW_METRIC_STYLE_VALUES.includes(view.metric.style)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric style must use one canonical metric widget value.',
+            `${metricPath}.style`
+          ));
+        }
+        validateStringField(view.metric.icon, `${metricPath}.icon`, true, errors);
+        if (typeof view.metric.icon === 'string' && !PAGE_ICON_VALUES.includes(view.metric.icon)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric icon must use one canonical Octicon name.',
+            `${metricPath}.icon`
+          ));
+        }
+        validateStringField(view.metric.tone, `${metricPath}.tone`, true, errors);
+        if (typeof view.metric.tone === 'string' && !VIEW_METRIC_TONE_VALUES.includes(view.metric.tone)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'metric tone must use one canonical metric tone value.',
+            `${metricPath}.tone`
+          ));
+        }
+        validateRequiredIdentifier(
+          view.metric['navigation-page'],
+          `${metricPath}.navigation-page`,
+          'metric navigation page',
+          errors
+        );
+      }
+      if (view.mark !== 'metric') {
+        errors.push(createError(
+          ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+          'metric is allowed only when mark is "metric".',
+          metricPath
+        ));
+      }
     }
     if (view.mark !== 'chart') {
       errors.push(createError(

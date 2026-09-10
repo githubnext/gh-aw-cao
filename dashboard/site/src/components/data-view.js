@@ -94,6 +94,25 @@ function renderMetricView(context) {
   const hrefField = typeof hrefDefinition?.field === 'string' ? hrefDefinition.field : null;
   const link = hrefField ? findFirstLink(rows, hrefField) : null;
   const valueText = formatAggregateValue(rows, fieldName, aggregate, toText, fieldUnit(valueDefinition, units));
+  if (isPlainObject(view.metric) && view.metric.style === 'card') {
+    const available = metadata.availability !== 'unavailable';
+    const displayedValue = available ? valueText : '—';
+    const active = available && Number(displayedValue) > 0;
+    const icon = typeof view.metric.icon === 'string' ? view.metric.icon : 'dash';
+    const tone = typeof view.metric.tone === 'string' ? view.metric.tone : 'neutral';
+    const navigationPage = typeof view.metric['navigation-page'] === 'string'
+      ? view.metric['navigation-page']
+      : null;
+    const tag = navigationPage ? 'a' : 'div';
+    return h(tag, {
+      className: `metric-card-widget metric-card-widget-${tone}${active ? ' metric-card-widget-active' : ''}`,
+      ...(navigationPage ? { href: `#page-${encodeURIComponent(navigationPage)}` } : {})
+    },
+    h('strong', { className: 'metric-card-widget-value', 'data-metric-value': fieldName ?? 'unknown' }, displayedValue),
+    h(headingTag, { className: 'metric-card-widget-label' }, title),
+    h('span', { className: 'metric-card-widget-icon', 'aria-hidden': 'true' }, octicon(icon)),
+    ...renderViewSectionChrome(metadata, contextDetails));
+  }
   const content = [
     ...renderViewSectionChrome(metadata, contextDetails),
     h('p', { className: 'metric-value', 'data-metric-value': fieldName ?? 'unknown' }, valueText)

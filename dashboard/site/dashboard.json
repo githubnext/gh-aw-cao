@@ -118,6 +118,69 @@
         }
       },
       {
+        "name": "overview-failed-run-count",
+        "intent": "Count failed workflow runs that need operator attention.",
+        "from": "runs",
+        "filter": {
+          "predicates": [
+            {
+              "field": "run-conclusion",
+              "in": [
+                "failure",
+                "startup-failure",
+                "stale",
+                "timed-out"
+              ]
+            }
+          ]
+        },
+        "aggregate": {
+          "values": [
+            { "field": "run", "as": "count", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-blocked-work-count",
+        "intent": "Count delegated work that is blocked and needs operator attention.",
+        "from": "work-items",
+        "filter": {
+          "predicates": [
+            { "field": "lifecycle-state", "equals": "blocked" }
+          ]
+        },
+        "aggregate": {
+          "values": [
+            { "field": "work-item-id", "as": "count", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-awaiting-review-count",
+        "intent": "Count delegated work that is waiting for human review.",
+        "from": "work-items",
+        "filter": {
+          "predicates": [
+            { "field": "lifecycle-state", "equals": "review" }
+          ]
+        },
+        "aggregate": {
+          "values": [
+            { "field": "work-item-id", "as": "count", "reducer": "count" }
+          ]
+        }
+      },
+      {
+        "name": "overview-security-finding-count",
+        "intent": "Count observed security findings that need operator attention.",
+        "from": "security-findings",
+        "aggregate": {
+          "values": [
+            { "field": "smell-observation-id", "as": "count", "reducer": "count" }
+          ]
+        }
+      },
+      {
         "name": "experiments-table",
         "intent": "List experiments with their workflow, variants, primary metric, evidence, readiness, decision, and latest observation.",
         "from": "experiments",
@@ -4824,18 +4887,97 @@
         "class-name": "dashboard-overview-page",
         "views": [
           {
-            "id": "overview-attention",
-            "locked": true,
+            "id": "overview-failed-runs-count",
+            "title": "Failed runs",
             "data": {
-              "sources": [
-                "runs",
-                "work-items",
-                "security-findings"
-              ]
+              "source": "overview-failed-run-count"
             },
-            "mark": "element",
-            "element": "home-attention-summary",
-            "layout": "full"
+            "mark": "metric",
+            "metric": {
+              "style": "card",
+              "icon": "x-circle",
+              "tone": "danger",
+              "navigation-page": "overview-failed-runs"
+            },
+            "encoding": {
+              "value": {
+                "field": "count",
+                "type": "quantitative"
+              }
+            }
+          },
+          {
+            "id": "overview-blocked-work-count",
+            "title": "Blocked work",
+            "data": {
+              "source": "overview-blocked-work-count"
+            },
+            "mark": "metric",
+            "metric": {
+              "style": "card",
+              "icon": "stop",
+              "tone": "attention",
+              "navigation-page": "overview-blocked-work"
+            },
+            "encoding": {
+              "value": {
+                "field": "count",
+                "type": "quantitative"
+              }
+            }
+          },
+          {
+            "id": "overview-awaiting-review-count",
+            "title": "Awaiting review",
+            "data": {
+              "source": "overview-awaiting-review-count"
+            },
+            "mark": "metric",
+            "metric": {
+              "style": "card",
+              "icon": "person",
+              "tone": "review",
+              "navigation-page": "overview-awaiting-review"
+            },
+            "encoding": {
+              "value": {
+                "field": "count",
+                "type": "quantitative"
+              }
+            }
+          },
+          {
+            "id": "overview-security-findings-count",
+            "title": "Security findings",
+            "data": {
+              "source": "overview-security-finding-count"
+            },
+            "mark": "metric",
+            "metric": {
+              "style": "card",
+              "icon": "shield",
+              "tone": "danger",
+              "navigation-page": "overview-security-findings"
+            },
+            "encoding": {
+              "value": {
+                "field": "count",
+                "type": "quantitative"
+              }
+            }
+          }
+        ],
+        "sections": [
+          {
+            "id": "attention",
+            "title": "Items need your attention",
+            "layout": "horizontal",
+            "views": [
+              "overview-failed-runs-count",
+              "overview-blocked-work-count",
+              "overview-awaiting-review-count",
+              "overview-security-findings-count"
+            ]
           }
         ]
       },

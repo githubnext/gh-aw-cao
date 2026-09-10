@@ -42,6 +42,68 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('[data-metric-value="aic"]')?.textContent).toBe('3 AIC');
   });
 
+  it('renders a navigable metric card selected by the JSON widget', () => {
+    const rendered = renderDataView('metric', {
+      pageId: 'overview',
+      title: 'Failed runs',
+      view: {
+        mark: 'metric',
+        metric: {
+          style: 'card',
+          icon: 'x-circle',
+          tone: 'danger',
+          'navigation-page': 'overview-failed-runs'
+        },
+        encoding: { value: { field: 'count' } }
+      },
+      sourceName: 'overview-failed-run-count',
+      rows: [{ count: 3 }],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h4',
+      units: {},
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.classList.contains('metric-card-widget-active')).toBe(true);
+    expect(rendered?.getAttribute('href')).toBe('#page-overview-failed-runs');
+    expect(rendered?.querySelector('[data-metric-value="count"]')?.textContent).toBe('3');
+    expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
+  });
+
+  it('does not present an unavailable metric card as zero', () => {
+    const rendered = renderDataView('metric', {
+      pageId: 'overview',
+      title: 'Security findings',
+      view: {
+        mark: 'metric',
+        metric: {
+          style: 'card',
+          icon: 'shield',
+          tone: 'danger',
+          'navigation-page': 'overview-security-findings'
+        },
+        encoding: { value: { field: 'count' } }
+      },
+      sourceName: 'overview-security-finding-count',
+      rows: [],
+      metadata: { ...metadata, availability: 'unavailable' },
+      contextDetails: [],
+      headingTag: 'h4',
+      units: {},
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.classList.contains('metric-card-widget-active')).toBe(false);
+    expect(rendered?.querySelector('[data-metric-value="count"]')?.textContent).toBe('—');
+  });
+
   it('returns null for an unsupported JSON mark', () => {
     expect(renderDataView('unsupported', /** @type {any} */ ({}))).toBeNull();
   });
