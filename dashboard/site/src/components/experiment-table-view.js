@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { renderExperimentBadge } from './badge.js';
 import { renderExperimentSectionHeading, renderExperimentEffect, decisionTone, formatExperimentDate, sourceMetricLabel } from './experiment-view-primitives.js';
+import { renderTableHeadRow } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -21,7 +22,7 @@ export function renderExperimentTableView(experiments, selectedId, onSelect) {
       h(
         'table',
         { className: 'experiment-decision-table' },
-        h('thead', null, h('tr', null, ...['Experiment', 'Workflow / agent', 'Variants', 'Primary metric', 'Usable samples', 'Effect', 'Evidence', 'Guardrails', 'Readiness', 'Decision', 'Last observation'].map((label) => h('th', { scope: 'col' }, label)))),
+        h('thead', null, renderTableHeadRow(['Experiment', 'Workflow / agent', 'Variants', 'Primary metric', 'Usable samples', 'Effect', 'Evidence', 'Guardrails', 'Readiness', 'Decision', 'Last observation'])),
         h(
           'tbody',
           null,
