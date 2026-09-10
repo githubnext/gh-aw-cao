@@ -942,6 +942,9 @@ describe('UI elements', () => {
       'failed runs, blocked work and review waits, security findings could not be fully evaluated'
     );
     expect([...rendered?.querySelectorAll('.home-attention-metric strong') ?? []].map((count) => count.textContent)).toEqual(['—', '—', '—', '—']);
+    expect(rendered?.querySelectorAll('.home-attention-metric-active')).toHaveLength(0);
+    expect(rendered?.querySelectorAll('.home-attention-metric-empty')).toHaveLength(0);
+    expect(rendered?.querySelector('[class*="home-attention-metric-danger"], [class*="home-attention-metric-attention"], [class*="home-attention-metric-review"]')).toBeNull();
     expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0);
     expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0);
     expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0);
