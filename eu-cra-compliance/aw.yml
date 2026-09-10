@@ -1,6 +1,6 @@
 name: EU CRA
 description: Advisory, non-binding evidence gathering and operational readiness workflows for Regulation (EU) 2024/2847.
-min-version: v0.89.0
+min-version: v0.89.1
 experimental: true
 includes:
   - .github/workflows/shared/control.md
