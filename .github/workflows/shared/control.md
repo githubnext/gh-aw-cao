@@ -89,11 +89,21 @@ jobs:
         with:
           github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           script: |
+            const fs = require('fs');
             const reason = 'cannot read or execute the CAO control modules at github.workflow_sha';
-            let control;
-            try {
-              control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
-            } catch (error) {
+            const hasAdmissionOutput = () => {
+              try {
+                return /^authorized=/m.test(fs.readFileSync(process.env.GITHUB_OUTPUT || '', 'utf8'));
+              } catch {
+                return false;
+              }
+            };
+            const failClosed = async (error) => {
+              if (hasAdmissionOutput()) {
+                core.debug(`CAO admission already emitted outputs before failure: ${error?.stack || error?.message || error}`);
+                process.exitCode = 0;
+                return;
+              }
               core.setOutput('authorized', 'false');
               core.setOutput('reason', reason);
               core.setOutput('monthly_credit_budget', '0');
@@ -110,11 +120,16 @@ jobs:
             `)
                 .write();
               core.debug(`CAO admission fallback reason: ${error?.stack || error?.message || error}`);
-              return;
+              process.exitCode = 0;
+            };
+            try {
+              const control = await import(`${process.env.GITHUB_WORKSPACE || '.'}/.cao/.github/cao/src/control.mjs`);
+              process.exitCode = 0;
+              await control.main({ core, github, context, exec, io, getOctokit }, ['admit']);
+              if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
+            } catch (error) {
+              await failClosed(error);
             }
-            process.exitCode = 0;
-            await control.main({ core, github, context, exec, io, getOctokit }, ['admit']);
-            if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
 
       - name: Ensure CAO admission record
         if: ${{ always() }}

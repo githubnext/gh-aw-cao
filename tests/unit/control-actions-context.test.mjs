@@ -47,6 +47,7 @@ test("CAO admission uses the github-script Octokit singleton", async () => {
     await main(actions, ["admit"]);
 
     assert.equal(process.exitCode, 0);
+    assert.equal(globalThis.github, actions.github);
     assert.deepEqual(
       calls.map(({ route }) => route),
       [
