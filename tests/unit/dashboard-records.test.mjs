@@ -346,6 +346,31 @@ test("dashboard records avoid repository and workflow enrichment APIs", async ()
   )));
 });
 
+test("dashboard records ignore indexer repository details when choosing report repositories", async () => {
+  const requests = [];
+  await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: {
+      workflows: [{ repository: "acme/control", runHealth: { runRecords: [] } }],
+      allowedRepositories: ["acme/legacy"],
+    },
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      requests.push(url.pathname);
+      const value = url.pathname.endsWith("/actions/artifacts") ? { artifacts: [] } : [];
+      return new Response(JSON.stringify(value), { status: 200 });
+    },
+  });
+
+  assert.ok(requests.some((pathname) => pathname.startsWith("/repos/acme/service/")));
+  assert.equal(requests.some((pathname) => pathname.startsWith("/repos/acme/legacy/")), false);
+  assert.equal(requests.includes("/repos/acme/control"), false);
+  assert.equal(requests.includes("/repos/acme/service"), false);
+});
+
 test("dashboard records stop on a GitHub rate limit and return a renderable error", async () => {
   const requests = [];
   const logs = [];
