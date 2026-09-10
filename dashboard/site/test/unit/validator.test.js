@@ -4030,6 +4030,75 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
+  it('DLS-UNIT-005 accepts the canonical USD unit formatter', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: usd-dashboard
+  title: USD Dashboard
+  units:
+    usd:
+      name: US dollars
+      symbol: USD
+      significant: 0.001
+      format: usd
+  pages:
+    - id: cost
+      kind: custom
+      views:
+        - id: estimated-cost
+          data:
+            source: usage
+          mark: table
+          encoding:
+            columns:
+              - field: estimated-usd
+                type: quantitative
+                unit: usd
+`);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('DLS-UNIT-005 rejects USD format definitions with noncanonical symbols or significance', () => {
+    const result = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: invalid-usd-dashboard
+  title: Invalid USD Dashboard
+  units:
+    wrong-symbol:
+      name: US dollars
+      symbol: $
+      significant: 0.001
+      format: usd
+    wrong-significance:
+      name: US dollars
+      symbol: USD
+      significant: 0.01
+      format: usd
+  pages:
+    - id: cost
+      kind: custom
+      views:
+        - id: estimated-cost
+          data:
+            source: usage
+          mark: metric
+          encoding:
+            value:
+              field: estimated-usd
+              type: quantitative
+              aggregate: sum
+`);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.units.wrong-symbol' }),
+        expect.objectContaining({ code: 'DLS-E003', path: '$.dashboard.units.wrong-significance' })
+      ]));
+    }
+  });
+
   it('DLS-VIEW-008 rejects unknown field formats and workflow path formatting on quantitative fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
