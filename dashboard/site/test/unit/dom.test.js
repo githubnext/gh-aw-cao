@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { h } from '../../src/dom.js';
+import { afterEach, describe, expect, it } from 'vitest';
+import { h, injectStyleOnce } from '../../src/dom.js';
 
 describe('h', () => {
   it('gives otherwise unidentified form controls unique ids', () => {
@@ -17,5 +17,27 @@ describe('h', () => {
   it('preserves explicit form control ids and names', () => {
     expect(h('input', { id: 'query' }).id).toBe('query');
     expect(h('select', { name: 'horizon' }).hasAttribute('id')).toBe(false);
+  });
+});
+
+describe('injectStyleOnce', () => {
+  afterEach(() => {
+    document.head.replaceChildren();
+  });
+
+  it('appends a marked style element with the given css', () => {
+    injectStyleOnce(document, 'widget-styles', '.widget { color: red; }');
+
+    const style = document.querySelector('style[data-widget-styles]');
+    expect(style?.textContent).toBe('.widget { color: red; }');
+  });
+
+  it('skips a second injection for the same marker', () => {
+    injectStyleOnce(document, 'widget-styles', '.widget { color: red; }');
+    injectStyleOnce(document, 'widget-styles', '.widget { color: blue; }');
+
+    const styles = document.querySelectorAll('style[data-widget-styles]');
+    expect(styles).toHaveLength(1);
+    expect(styles[0].textContent).toBe('.widget { color: red; }');
   });
 });

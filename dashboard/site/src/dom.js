@@ -212,3 +212,30 @@ function flattenChildren(children) {
 function toKebabCase(value) {
   return value.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 }
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function kebabToCamelCase(value) {
+  return value.replace(/-([a-z0-9])/g, (_match, letter) => letter.toUpperCase());
+}
+
+/**
+ * Injects a `<style>` element into `document.head` exactly once, guarded by
+ * a `data-{marker}` attribute so repeated calls (e.g. mounting the same
+ * overlay component more than once on a page) never duplicate the
+ * stylesheet. Shared by page-level overlay components such as the loading
+ * progress bar and the cancel command that each own a small, self-contained
+ * stylesheet instead of relying on the global stylesheet.
+ * @param {Document} document
+ * @param {string} marker - kebab-case idempotency marker (e.g. `loading-progress-styles`)
+ * @param {string} css
+ */
+export function injectStyleOnce(document, marker, css) {
+  if (document.querySelector(`style[data-${marker}]`)) return;
+  const style = document.createElement('style');
+  style.dataset[kebabToCamelCase(marker)] = '';
+  style.textContent = css;
+  document.head.append(style);
+}
