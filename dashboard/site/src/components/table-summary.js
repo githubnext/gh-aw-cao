@@ -92,18 +92,29 @@ function renderColumnSummary(column) {
   if (column.kind === 'none') return null;
   if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
   if (column.kind === 'boolean') {
-    const observedCount = column.count - column.missingCount;
+    const totalCount = Math.max(0, column.count);
+    const missingCount = Math.min(totalCount, Math.max(0, column.missingCount));
+    const observedCount = Math.max(0, totalCount - missingCount);
     if (observedCount === 0) return null;
+    const yesCount = Math.min(observedCount, Math.max(0, column.trueCount));
+    const noCount = Math.max(0, observedCount - yesCount);
+    const skippedCount = Math.max(0, totalCount - observedCount);
     /** @type {Array<[string, number]>} */
-    const entries = [
-      ['yes', column.trueCount],
-      ['no', observedCount - column.trueCount]
+    const candidateEntries = [
+      ['yes', yesCount],
+      ['no', noCount],
+      ['skipped', skippedCount]
     ];
+    /** @type {Array<[string, number]>} */
+    const entries = [];
+    for (const [label, value] of candidateEntries) {
+      if (value > 0) entries.push([label, value]);
+    }
     return h(
       'div',
       { className: 'table-summary-boolean' },
-      renderChartWidget('pie', [], [], { entries, total: observedCount }, 'Values'),
-      renderBooleanLegend(entries, observedCount)
+      renderChartWidget('pie', [], [], { entries, total: totalCount }, 'Values'),
+      renderBooleanLegend(entries, totalCount)
     );
   }
   if (column.kind === 'quantitative') {
@@ -129,7 +140,7 @@ function renderBooleanLegend(entries, total) {
     entries,
     ([label], index) => chartSeriesClassName(label, index),
     ([label, value]) => [
-      h('span', { 'aria-label': label }, label === 'yes' ? '✓' : '×'),
+      h('span', { 'aria-label': label }, label === 'yes' ? '✓' : (label === 'no' ? '×' : '•')),
       h('strong', null, formatCount(value)),
       h('small', null, formatPercent(value / total))
     ],

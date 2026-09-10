@@ -84,12 +84,13 @@ describe('renderTableSummaryRow', () => {
     }]);
 
     expect(rendered.querySelector('[data-chart-widget="pie"]')).not.toBeNull();
-    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: yes 2, no 1');
+    expect(rendered.querySelector('svg')?.getAttribute('aria-label')).toBe('Pie chart: yes 2, no 1, skipped 1');
     expect([...rendered.querySelectorAll('.chart-legend li')].map((item) => item.textContent)).toEqual([
-      '✓266.7%',
-      '×133.3%'
+      '✓250%',
+      '×125%',
+      '•125%'
     ]);
-    expect([...rendered.querySelectorAll('.chart-legend li span')].map((item) => item.getAttribute('aria-label'))).toEqual(['yes', 'no']);
+    expect([...rendered.querySelectorAll('.chart-legend li span')].map((item) => item.getAttribute('aria-label'))).toEqual(['yes', 'no', 'skipped']);
   });
 
   it('treats zero and one values as booleans', () => {

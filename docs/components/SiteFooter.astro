@@ -6,6 +6,8 @@ import Pagination from "virtual:starlight/components/Pagination";
 import ImageZoom from "./ImageZoom.astro";
 
 const year = new Date().getFullYear();
+const buildCommit = (import.meta.env.PUBLIC_PAGES_BUILD_COMMIT || "").trim();
+const buildCommitShort = buildCommit.slice(0, 7);
 ---
 
 <footer class="site-footer sl-flex">
@@ -25,6 +27,7 @@ const year = new Date().getFullYear();
   </p>
   <div class="legal sl-flex">
     <span>&copy; {year} GitHub, Inc.</span>
+    {buildCommitShort && <span class="build-commit">Build commit: <code>{buildCommitShort}</code></span>}
     <nav aria-label="Legal and corporate links" class="legal-links sl-flex">
       <a href="https://docs.github.com/site-policy/github-terms/github-terms-of-service">Terms</a>
       <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">Privacy</a>
@@ -116,6 +119,10 @@ const year = new Date().getFullYear();
       flex-wrap: wrap;
       justify-content: center;
       gap: 0.75rem;
+    }
+
+    .build-commit {
+      font-family: var(--sl-font-mono);
     }
 
     .legal a {

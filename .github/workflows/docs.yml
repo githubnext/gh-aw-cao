@@ -97,6 +97,9 @@ jobs:
           key: ${{ steps.node-modules-cache.outputs.cache-primary-key }}
 
       - name: Build documentation
+        env:
+          # Commit that triggered this run (push or scheduled tip of default branch).
+          PUBLIC_PAGES_BUILD_COMMIT: ${{ github.sha }}
         run: npm run docs:build
 
       - name: Restore dashboard from cache

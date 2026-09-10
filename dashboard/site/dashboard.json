@@ -1898,6 +1898,7 @@
                 {
                   "field": "workflow-name",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Workflow"
                 },
                 {
@@ -2501,6 +2502,7 @@
               "x": {
                 "field": "workflow-name",
                 "type": "nominal",
+                "format": "workflow-relative-path",
                 "title": "Workflow"
               },
               "y": {
@@ -2580,6 +2582,7 @@
                 {
                   "field": "workflow-name",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Workflow"
                 },
                 {
@@ -2752,6 +2755,7 @@
                 {
                   "field": "workflow-name",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Workflow"
                 },
                 {
@@ -2818,6 +2822,7 @@
                 {
                   "field": "workflow-name",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Workflow"
                 },
                 {
@@ -3560,6 +3565,7 @@
                 {
                   "field": "workflow-name",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Workflow"
                 },
                 {
@@ -4777,6 +4783,7 @@
                 {
                   "field": "workflow-name",
                   "type": "nominal",
+                  "format": "workflow-relative-path",
                   "title": "Worker"
                 },
                 {

@@ -36,20 +36,32 @@ function buildPresenterModuleUrl() {
 }
 
 /**
- * Full-view table filters keep their controls on one row instead of wrapping, like the
- * table's own header row, and may scroll horizontally instead when they don't all fit.
- * @param {import('@playwright/test').Locator} tableFilter
+ * Full-view table filters live inside the table scroller but remain contained
+ * within the visible viewport instead of owning a separate horizontal scrollbar;
+ * wrapping is allowed on narrow screens so controls stay reachable.
+ * @param {import('@playwright/test').Locator} tableFilter The `.table-scroll > .table-filter` element.
  */
-async function expectTableFilterStaysOnOneRow(tableFilter) {
-  const staysOnOneRow = await tableFilter.evaluate((element) => {
-    if (element.children.length === 0) throw new Error('.table-filter has no children to check for wrapping');
-    // Filter controls are bottom-aligned (align-items: end), so compare bottom edges rather
-    // than top edges, since labels and the result output have different intrinsic heights.
-    const bottoms = [...element.children].map((child) => child.getBoundingClientRect().bottom);
-    // A 4px tolerance absorbs sub-pixel rounding while still catching a wrap onto a second row.
-    return Math.max(...bottoms) - Math.min(...bottoms) < 4;
+async function expectTableFilterIsContained(tableFilter) {
+  await expect.poll(async () => tableFilter.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+}
+
+/**
+ * Lazy-list windows move one page at a time when the user reaches the top edge;
+ * each step must keep compact full-view mode active and keep the rendered
+ * two-page, 50-row window intact.
+ * @param {import('@playwright/test').Locator} scroll Table scroll region to move to the top edge.
+ * @param {import('@playwright/test').Locator} view Full-view table view containing the rendered lazy rows.
+ * @param {import('@playwright/test').Locator} root Dashboard root expected to remain in compact full-view mode.
+ * @param {string} expectedFirstRowText Text fragment expected in the first rendered row after the paging step.
+ */
+async function pageUpAndExpectCompactWindow(scroll, view, root, expectedFirstRowText) {
+  await scroll.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll'));
   });
-  expect(staysOnOneRow).toBe(true);
+  await expect(view.locator('tbody > tr').first()).toContainText(expectedFirstRowText);
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(view.locator('tbody > tr')).toHaveCount(50);
 }
 
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
@@ -292,7 +304,11 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   const apiPage = page.locator('[data-page-id="github-api"]');
   const observations = apiPage.locator('[data-view-layout="full-view"]');
   const table = observations.locator('[data-lazy-list]');
+  const scroll = observations.locator('.table-scroll');
   await expect(table).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(scroll.locator(':scope > .table-filter')).toBeVisible();
+  await expect(observations.locator(':scope > .table-filter')).toHaveCount(0);
   await expect(apiPage.getByText('github-api.response', { exact: true }).first()).toBeVisible();
   await expect.poll(async () => {
     const box = await table.boundingBox();
@@ -301,6 +317,8 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(table).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect.poll(async () => {
     const box = await table.boundingBox();
     return box !== null && box.x >= 0 && box.x + box.width <= 390;
@@ -413,7 +431,7 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  await expectTableFilterStaysOnOneRow(view.locator('.table-filter'));
+  await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
 });
 
 test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
@@ -606,7 +624,7 @@ test('experiments query renders as one full-view declarative table', async ({ pa
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  await expectTableFilterStaysOnOneRow(experimentsView.locator('.table-filter'));
+  await expectTableFilterIsContained(experimentsView.locator('.table-scroll > .table-filter'));
   expect(await experimentsView.locator('.table-scroll').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
 });
 
@@ -1674,6 +1692,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   const pageTitle = page.locator('#page-title');
   const tableFilter = view.locator('.table-filter');
   const lazyList = view.locator('[data-lazy-list]');
+  const dashboardRoot = page.locator('.dashboard-root');
   const fieldName = view.locator('thead > tr:first-child > th').first();
   const summaryCell = view.locator('.table-summary-row > th').first();
   await expect(view).toHaveCount(1);
@@ -1704,32 +1723,27 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.scrollTop = 100;
       element.dispatchEvent(new Event('scroll'));
     });
-    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
     await expect(siteCallout).toBeHidden();
     await expect(warningCallout).toBeHidden();
     await expect(summary).toBeHidden();
     await expect(pageTitle).toBeHidden();
-    await expect(tableFilter).toBeHidden();
     await expect(fieldName).toHaveCSS('opacity', '0.8');
     await expect(summaryCell).toHaveCSS('opacity', '0');
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
-    for (const firstRepository of [26, 1]) {
-      const stayedCompact = await scroll.evaluate((element) => {
-        element.scrollTop = 0;
-        element.dispatchEvent(new Event('scroll'));
-        return element.closest('.dashboard-root')?.classList.contains('dashboard-full-view-scrolled');
-      });
-      expect(stayedCompact).toBe(true);
-      await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
-      await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
-      await expect(view.locator('tbody > tr')).toHaveCount(50);
-    }
+    await scroll.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
+    await pageUpAndExpectCompactWindow(scroll, view, dashboardRoot, 'repository-26');
+    await pageUpAndExpectCompactWindow(scroll, view, dashboardRoot, 'repository-1');
     await scroll.evaluate((element) => {
       element.scrollTop = 0;
       element.dispatchEvent(new Event('scroll'));
     });
-    await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
     await expect(siteCallout).toBeVisible();
     await expect(warningCallout).toBeVisible();
     await expect(summary).toBeVisible();
@@ -1746,7 +1760,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
-  await expectTableFilterStaysOnOneRow(view.locator('.table-filter'));
+  await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
   await page.setViewportSize({ width: 1000, height: 900 });
@@ -1755,7 +1769,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     element.scrollTop = 100;
     element.dispatchEvent(new Event('scroll'));
   });
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.top-nav')).toBeHidden();
   await expect(page.locator('.org-sidebar')).toBeHidden();
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
