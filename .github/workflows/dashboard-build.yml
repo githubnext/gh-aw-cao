@@ -29,6 +29,7 @@ jobs:
         env:
           DASHBOARD_SITE_PATH: ${{ inputs.site-path }}
         run: |
+          echo "Validating dashboard site path"
           if [[ "$DASHBOARD_SITE_PATH" != "." && ! "$DASHBOARD_SITE_PATH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
             echo "site-path must be '.' or a relative URL path" >&2
             exit 1
@@ -46,6 +47,7 @@ jobs:
 
       - name: Resolve dashboard source layout
         run: |
+          echo "Resolving dashboard source layout"
           if [[ -f .github/aw/dashboard/report/dashboard-language-sources.mjs && -f .github/aw/dashboard/site/index.html ]]; then
             echo "DASHBOARD_LAYOUT=installed" >> "$GITHUB_ENV"
             echo "DASHBOARD_REPORT_ROOT=.github/aw/dashboard/report" >> "$GITHUB_ENV"
@@ -60,7 +62,7 @@ jobs:
       - name: Restore collected activity data
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          path: ${{ runner.temp }}/cao-activity
           key: cao-activity-v3-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             cao-activity-v3-
@@ -68,12 +70,32 @@ jobs:
 
       - name: Validate restored activity data
         env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
         run: |
+          echo "Validating restored activity data"
           test -s "$REPORT_GH_AW_LOGS"
+          test -s "$ACTIVITY_DATABASE"
+
+      - name: Assess activity database health
+        env:
+          ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+        run: |
+          echo "Resolving dashboard SQLite doctor"
+          if [[ -f dashboard/site/scripts/ingest-gh-aw-logs.mjs ]]; then
+            doctor_script=dashboard/site/scripts/ingest-gh-aw-logs.mjs
+          elif [[ -f .github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs ]]; then
+            doctor_script=.github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs
+          else
+            echo "Dashboard SQLite doctor is unavailable" >&2
+            exit 1
+          fi
+          echo "Assessing activity database health"
+          node "$doctor_script" doctor --database "$ACTIVITY_DATABASE"
 
       - name: Refresh authoritative control policy
         run: |
+          echo "Refreshing authoritative control policy"
           node "$DASHBOARD_REPORT_ROOT/control-settings.mjs" \
             .github/cao/src/control.mjs \
             .github/workflows/cao.json \
@@ -84,19 +106,24 @@ jobs:
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}
         run: |
           if [[ "$DASHBOARD_LAYOUT" == "source" ]]; then
+            echo "Building dashboard site from source layout"
             node dashboard/site/scripts/build.mjs \
               "$REPORT_OUTPUT" \
               "$RUNNER_TEMP/cao-dashboard-control-settings.json"
           else
+            echo "Copying installed dashboard site"
             mkdir -p "$REPORT_OUTPUT"
             cp -R .github/aw/dashboard/site/. "$REPORT_OUTPUT/"
+            echo "Configuring installed dashboard site"
             node "$DASHBOARD_REPORT_ROOT/configure-site.mjs" \
               "$REPORT_OUTPUT/index.html" \
               "$RUNNER_TEMP/cao-dashboard-control-settings.json"
+            echo "Bundling installed dashboard definitions"
             node "$DASHBOARD_REPORT_ROOT/bundle-dashboards.mjs" \
               "$REPORT_OUTPUT/dashboard.json" \
               .github/aw/dashboards
           fi
+          echo "Copying collected activity data"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
 
       - name: Cache dashboard artifact for the dispatching workflow
