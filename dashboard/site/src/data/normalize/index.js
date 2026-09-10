@@ -66,10 +66,12 @@ function compareObservations(left, right, precedence) {
 }
 
 /**
+ * Assigns deterministic per-session sequence numbers to canonical events.
+ *
  * @param {Record<string, unknown>[]} events
  * @returns {Record<string, unknown>[]}
  */
-function orderEvents(events) {
+export function orderEvents(events) {
   /** @type {Map<string, Record<string, unknown>[]>} */
   const bySession = new Map();
   for (const event of events) {

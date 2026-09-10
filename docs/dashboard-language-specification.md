@@ -524,6 +524,11 @@ units:
     name: AI Credits
     symbol: AIC
     significant: 1
+  usd:
+    name: US dollars
+    symbol: USD
+    significant: 0.001
+    format: usd
   human-duration:
     name: Human-friendly duration
     symbol: s
@@ -531,12 +536,13 @@ units:
     format: duration
 ```
 
-The AIC definition uses a significance of `1` because one AI Credit is the integral accounting unit worth one cent; AIC values are presented without a decimal fraction. The `duration` format interprets values as seconds and presents compact cascading components. It presents values below one minute as seconds (`45s`), values below one hour as minutes and seconds (`1m 30s`), values below one day as hours and minutes (`1h 23m`), and longer values as days and hours (`1d 3h`). The lower component is retained when zero, and components below the selected precision are omitted.
+The AIC definition uses a significance of `1` because one AI Credit is the integral accounting unit worth one cent; AIC values are presented without a decimal fraction. The `duration` format interprets values as seconds and presents compact cascading components. It presents values below one minute as seconds (`45s`), values below one hour as minutes and seconds (`1m 30s`), values below one day as hours and minutes (`1h 23m`), and longer values as days and hours (`1d 3h`). The lower component is retained when zero, and components below the selected precision are omitted. The `usd` format presents US dollars with a dollar sign, two fractional digits when fewer are needed, and no more than three fractional digits. Values requiring more than three fractional digits are rounded upward at the third fractional digit.
 
 - **DLS-UNIT-001:** A field `unit`, when present, **MUST** reference exactly one unit declared by `dashboard.units`.
 - **DLS-UNIT-002:** Unit formatting **MUST** affect presentation only and **MUST NOT** change filtering, aggregation, ordering, limiting, source data, or provenance.
 - **DLS-UNIT-003:** For a unit without `format`, a presenter **MUST** append the declared `symbol` to a unit-bearing value and round it to the nearest multiple of `significant`, with halfway cases rounded away from zero.
-- **DLS-UNIT-004:** `format`, when present, **MUST** be `duration`. A `duration` unit **MUST** declare `symbol: s` and `significant: 1`. A presenter **MUST** round its value to the nearest whole second with halfway cases rounded away from zero, preserve the sign, and present its absolute components using the compact cascading form defined above. Component suffixes are intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
+- **DLS-UNIT-004:** `format`, when present, **MUST** be `duration` or `usd`. A `duration` unit **MUST** declare `symbol: s` and `significant: 1`. A presenter **MUST** round its value to the nearest whole second with halfway cases rounded away from zero, preserve the sign, and present its absolute components using the compact cascading form defined above. Component suffixes are intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
+- **DLS-UNIT-005:** A `usd` unit **MUST** declare `symbol: USD` and `significant: 0.001`. A presenter **MUST** prefix its value with the dollar sign, retain at least two and no more than three fractional digits, and round upward at the third fractional digit. The currency marker is intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
 
 ### 7.3 Aggregates
 

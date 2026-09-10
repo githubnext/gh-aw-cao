@@ -352,6 +352,24 @@ async function readGeneration(database, generation) {
 }
 
 /**
+ * Reads the complete active generation so a replacement can upsert onto the
+ * records that are already retained.
+ *
+ * @param {IDBFactory} indexedDB
+ * @returns {Promise<import('../model/schema.js').CanonicalBatch | null>}
+ */
+export async function readActiveGeneration(indexedDB) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const active = await readMeta(database, ACTIVE_GENERATION_KEY);
+    if (typeof active?.value !== 'string') return null;
+    return await readGeneration(database, active.value);
+  } finally {
+    database.close();
+  }
+}
+
+/**
  * @param {IDBFactory} indexedDB
  * @param {string} generation
  */

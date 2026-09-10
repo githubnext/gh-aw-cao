@@ -57,11 +57,50 @@ const sources = {
     }],
     metadata
   },
+  sessions: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session:run-42', 'job-id': '99',
+      'session-kind': 'unified-operational-log', 'session-status': 'completed',
+      'started-at': '2026-09-09T04:00:00Z', 'observed-at': '2026-09-09T04:00:00Z'
+    }],
+    metadata
+  },
+  events: {
+    rows: [
+      {
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:tool-call',
+        'event-timestamp': '2026-09-09T04:00:10Z', 'event-source': 'mcp', 'event-type': 'tool.call',
+        'event-summary': 'github.list_issues', 'event-status': 'requested',
+        'correlation-id': 'call-1', 'source-sequence': 0, 'observed-at': '2026-09-09T04:00:10Z'
+      },
+      {
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        run: '42', 'run-attempt': 2, session: 'session:run-42', event: 'event:agent-turn',
+        'event-timestamp': '2026-09-09T04:00:20Z', 'event-source': 'agent', 'event-type': 'agent_turn',
+        'event-summary': 'Planned the change', 'source-sequence': 1, 'observed-at': '2026-09-09T04:00:20Z'
+      }
+    ],
+    metadata
+  },
   usage: {
     rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
     metadata
   }
 };
+
+/**
+ * @param {string} generation
+ * @param {Record<string, unknown>[]} eventRows
+ */
+function collection(generation, eventRows) {
+  const collected = { 'as-of': metadata['as-of'], 'artifact-generation': generation };
+  return Object.fromEntries(Object.entries(sources).map(([name, source]) => [
+    name,
+    { rows: name === 'events' ? eventRows : source.rows, metadata: collected }
+  ]));
+}
 
 beforeEach(async () => {
   await new Promise((resolve, reject) => {
@@ -165,6 +204,50 @@ describe('canonical view sources', () => {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md', run: '42', aic: 17 }],
       metadata
     });
+  });
+
+  it('projects event-backed view sources from retained canonical events', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      sources,
+      metadata['artifact-generation'],
+      ['events']
+    );
+
+    expect(Object.keys(projected)).toEqual(['events']);
+    expect(projected.events).toMatchObject({
+      source: 'events',
+      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+    });
+    expect(projected.events.rows).toEqual([
+      expect.objectContaining({
+        organization: 'githubnext',
+        repository: 'gh-aw-cao',
+        workflow: '.github/workflows/dashboard.md',
+        run: '42',
+        'run-attempt': 2,
+        session: 'session:run-42',
+        event: 'event:tool-call',
+        'event-type': 'tool.call',
+        'event-source': 'mcp',
+        'event-summary': 'github.list_issues',
+        'correlation-id': 'call-1'
+      }),
+      expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
+    ]);
+  });
+
+  it('keeps retained events available to event-backed views after a partial collection', async () => {
+    await loadCanonicalViewSources(indexedDB, collection('generation-a', sources.events.rows), { ingest: true });
+    const partial = collection('generation-b', sources.events.rows.filter((row) => row.event === 'event:agent-turn'));
+
+    const projected = await loadCanonicalViewSources(indexedDB, partial, { ingest: true });
+    const rows = /** @type {{ rows: Record<string, unknown>[] }} */ (projected.events).rows;
+
+    expect(rows.map((row) => row.event)).toEqual(['event:tool-call', 'event:agent-turn']);
+    expect(rows.map((row) => row['event-type'])).toEqual(['tool.call', 'agent_turn']);
   });
 
   it('rejects a generation that is not active and usable', async () => {

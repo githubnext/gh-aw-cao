@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatHumanFriendlyTimestamp, formatNumber, formatPercent, formatRelativeTime, formatString, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
+import { formatAggregateValue, formatClockDuration, formatCompactElapsedTime, formatHumanFriendlyTimestamp, formatNumber, formatPercent, formatRelativeTime, formatString, formatUsd, renderTemplate, resolveThresholdStatus, stringOrFallback, toNumber } from '../../src/view-formatters.js';
 
 /**
  * @param {unknown} value
@@ -51,6 +51,9 @@ describe('view formatter helpers', () => {
     expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('3 AIC');
     expect(formatNumber(-2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('-3 AIC');
     expect(formatNumber(1.24, { name: 'Dollars', symbol: 'USD', significant: 0.01 })).toBe('1.24 USD');
+    const usd = { name: 'US dollars', symbol: 'USD', significant: 0.001, format: 'usd' };
+    expect(formatNumber(0.0341, usd)).toBe('$0.035');
+    expect(formatNumber(1, usd)).toBe('$1.00');
     const duration = { name: 'Human-friendly duration', symbol: 's', significant: 1, format: 'duration' };
     expect(formatNumber(45, duration)).toBe('45s');
     expect(formatNumber(5_000, duration)).toBe('1h 23m');
@@ -62,6 +65,16 @@ describe('view formatter helpers', () => {
       symbol: 'AIC',
       significant: 1
     })).toBe('3 AIC');
+  });
+
+  it('formats USD with at most three decimals and rounds upward', () => {
+    expect(formatUsd(12)).toBe('$12.00');
+    expect(formatUsd(12.3)).toBe('$12.30');
+    expect(formatUsd(12.345)).toBe('$12.345');
+    expect(formatUsd(12.3451)).toBe('$12.346');
+    expect(formatUsd(0.0001)).toBe('$0.001');
+    expect(formatUsd(0.00049)).toBe('$0.001');
+    expect(formatUsd(-0.0004)).toBe('$0.00');
   });
 
   it('formats a 0-1 ratio as a locale percentage string', () => {
