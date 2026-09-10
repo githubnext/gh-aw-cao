@@ -226,16 +226,14 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
-      const hadPublishedSources = Object.keys(liveDashboard?.logicalSources ?? {}).length > 0;
       const sources = await loadDashboardSources(fetch, sourceUrl.href);
-      const result = await ingestDashboardSources(indexedDB, sources, {
+      await ingestDashboardSources(indexedDB, sources, {
         storage: globalThis.navigator?.storage
       });
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         revision: (liveDashboard?.revision ?? 0) + 1
       };
-      const changed = result.updated || !hadPublishedSources;
       scheduleDashboardSubscriptions();
       const projected = await queryLiveDashboard(
         requested,
@@ -245,7 +243,7 @@ export function processDataRequest(request, signal) {
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
       return request.reportActivation
-        ? { sources: projected, changed }
+        ? { sources: projected, changed: true }
         : projected;
     })();
   }

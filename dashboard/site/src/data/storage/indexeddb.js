@@ -109,6 +109,8 @@ export function openCanonicalDatabase(indexedDB) {
     request.onupgradeneeded = (event) => {
       const database = request.result;
       if (event.oldVersion < 5) {
+        // Canonical data is a derived cache, so the incompatible generation-keyed
+        // schema is discarded instead of migrated.
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
       }
@@ -143,12 +145,13 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
     for (const storeName of ENTITY_STORES) {
       const records = batch[storeName];
       for (let offset = 0; offset < records.length; offset += batchSize) {
+        const boundedRecords = records.slice(offset, offset + batchSize);
         const transaction = database.transaction(storeName, 'readwrite');
-        for (const record of records.slice(offset, offset + batchSize)) {
+        for (const record of boundedRecords) {
           transaction.objectStore(storeName).put(record);
         }
         await transactionDone(transaction);
-        committedRecords += Math.min(batchSize, records.length - offset);
+        committedRecords += boundedRecords.length;
         committedBatches += 1;
         await options.onBatchCommitted?.({ committedBatches, committedRecords });
       }
