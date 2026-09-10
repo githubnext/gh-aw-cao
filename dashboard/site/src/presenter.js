@@ -1683,6 +1683,11 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   }, true);
   /** @param {PopStateEvent} event */
   const onPopState = (event) => {
+    if (!root.isConnected) {
+      defaultView?.removeEventListener('hashchange', onHashChange);
+      defaultView?.removeEventListener('popstate', onPopState);
+      return;
+    }
     const index = event.state?.[NAVIGATION_INDEX_STATE_KEY];
     navigationIndex = Number.isSafeInteger(index) && index >= 0 ? index : 0;
     syncHistoryBack();
