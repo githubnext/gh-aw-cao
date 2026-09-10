@@ -196,7 +196,7 @@ function applyDataHealthMetadata(sources, { deployed, usage, report, workflows, 
   attachCollection(["organizations", "repositories", "workflows"], "workflow-discovery");
   attachCollection(["runs", "run-performance", "job-performance"], "run-query");
   attachCollection(["admissions", "admission-checks"], "admission-artifacts");
-  attachCollection(["usage", "detection-observations", "firewall-observations", "safe-output-performance"], "usage-artifacts");
+  attachCollection(["usage", "detection-observations", "firewall-observations", "safe-output-performance"], "usage-artifact-fields");
   attachCollection(["outcomes", "findings"], "durable-outputs");
 
   if (report.stale) {
@@ -2601,7 +2601,8 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const discoveryAvailable = workflowDeployed.discovery?.complete !== false || workflows.length > 0;
   const workflowsAvailable = discoveryAvailable || workflows.length > 0;
   const runAvailable = deployed.runHealth?.available === true || runs.length > 0;
-  const usageAvailable = usage.available === true;
+  const usageRecords = usageRows(usage);
+  const usageAvailable = usage.available === true || usageRecords.length > 0;
   const usageComplete = usage.complete === true;
   const valueAvailable = operationalValues.records !== undefined;
   const configuration = configurationData(controlSettings);
@@ -2682,7 +2683,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
       sources[name].metadata["coverage-start"] = sources.runs.metadata["coverage-start"];
     }
   }
-  sources.usage = source("usage", usageRows(usage), generatedAt, usageAvailable, usageComplete);
+  sources.usage = source("usage", usageRecords, generatedAt, usageAvailable, usageComplete);
   sources.experiments = source(
     "experiments",
     experiments.definitions,

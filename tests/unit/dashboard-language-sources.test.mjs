@@ -1533,6 +1533,48 @@ test("dashboard source bridge keeps collected runs available when run health is 
   assert.equal(sources.runs.metadata.completeness, "partial");
 });
 
+test("dashboard source bridge keeps retained usage available with partial collection provenance", () => {
+  const generatedAt = "2026-09-03T06:00:00Z";
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt,
+      discovery: { complete: true },
+      collections: [{
+        operation: "usage-artifact-fields",
+        state: "partial",
+        failureClass: "missing-data",
+      }],
+      runHealth: { available: false, complete: false },
+      bundles: [],
+      workflows: [],
+    },
+    usage: {
+      generatedAt,
+      available: false,
+      complete: false,
+      securityAvailable: false,
+      securityComplete: false,
+      runs: [{
+        repository: "githubnext/gh-aw-cao",
+        workflowPath: ".github/workflows/self-care.lock.yml",
+        runId: 42,
+        aic: 2.5,
+        createdAt: "2026-09-03T05:00:00Z",
+      }],
+      securityRuns: [],
+    },
+    operationalValues: { records: [] },
+    report: { generatedAt, records: [] },
+  });
+
+  assert.equal(sources.usage.rows.length, 1);
+  assert.equal(sources.usage.metadata.availability, "available");
+  assert.equal(sources.usage.metadata.completeness, "partial");
+  assert.equal(sources.usage.metadata["collection-operation"], "usage-artifact-fields");
+  assert.equal(sources.usage.metadata["collection-state"], "partial");
+  assert.equal(sources.usage.metadata["failure-class"], "missing-data");
+});
+
 test("dashboard source bridge exposes authoritative coverage and structured collection provenance", () => {
   const generatedAt = "2026-09-03T06:00:00Z";
   const sources = buildDashboardLanguageSources({
