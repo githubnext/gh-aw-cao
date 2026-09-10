@@ -92,13 +92,17 @@ function renderColumnSummary(column) {
   if (column.kind === 'none') return null;
   if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
   if (column.kind === 'boolean') {
-    const observedCount = column.count - column.missingCount;
+    const totalCount = Math.max(0, column.count);
+    const observedCount = Math.max(0, totalCount - column.missingCount);
     if (observedCount === 0) return null;
+    const yesCount = Math.min(observedCount, Math.max(0, column.trueCount));
+    const noCount = Math.max(0, observedCount - yesCount);
+    const skippedCount = Math.max(0, totalCount - observedCount);
     /** @type {Array<[string, number]>} */
     const candidateEntries = [
-      ['yes', column.trueCount],
-      ['no', observedCount - column.trueCount],
-      ['skipped', column.missingCount]
+      ['yes', yesCount],
+      ['no', noCount],
+      ['skipped', skippedCount]
     ];
     /** @type {Array<[string, number]>} */
     const entries = [];
@@ -108,8 +112,8 @@ function renderColumnSummary(column) {
     return h(
       'div',
       { className: 'table-summary-boolean' },
-      renderChartWidget('pie', [], [], { entries, total: column.count }, 'Values'),
-      renderBooleanLegend(entries, column.count)
+      renderChartWidget('pie', [], [], { entries, total: totalCount }, 'Values'),
+      renderBooleanLegend(entries, totalCount)
     );
   }
   if (column.kind === 'quantitative') {
