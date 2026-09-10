@@ -90,7 +90,7 @@ describe('canonical source ingestion and queries', () => {
     });
   });
 
-  it('fully replaces the active generation with a complete SQL export', async () => {
+  it('upserts a complete SQL export onto retained canonical records', async () => {
     await ingestDashboardSources(indexedDB, sources);
 
     await expect(ingestSqlExportGeneration(indexedDB, sqlExport)).resolves.toEqual({
@@ -99,8 +99,9 @@ describe('canonical source ingestion and queries', () => {
     });
 
     const queries = createCanonicalQueries(indexedDB);
-    expect(await queries.runs.list()).toEqual([
-      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+    expect((await queries.runs.list()).map((run) => run.id)).toEqual([
+      'github:run:12345:attempt:2',
+      'github:run:303:attempt:1'
     ]);
     expect(await queries.sessions.forRun('github:run:303:attempt:1')).toEqual([
       expect.objectContaining({ id: 'session:sql%3Aenterprise-warehouse:session-505' })
@@ -113,7 +114,7 @@ describe('canonical source ingestion and queries', () => {
     });
   });
 
-  it('fully replaces the active generation with complete gh-aw transaction logs', async () => {
+  it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
     await ingestDashboardSources(indexedDB, sources);
     const input = {
       generation: 'gh-aw-generation-b',
@@ -135,7 +136,10 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     const activeRuns = await queries.runs.list();
     const activeSessions = await queries.sessions.forRun('github:run:303:attempt:1');
-    expect(activeRuns).toEqual([expect.objectContaining({ id: 'github:run:303:attempt:1' })]);
+    expect(activeRuns.map((run) => run.id)).toEqual([
+      'github:run:12345:attempt:2',
+      'github:run:303:attempt:1'
+    ]);
     expect(await queries.events.forSession(String(activeSessions[0].id))).toEqual([
       expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
     ]);

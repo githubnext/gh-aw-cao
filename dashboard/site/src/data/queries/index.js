@@ -31,12 +31,14 @@ export function createCanonicalQueries(indexedDB) {
         readActiveIndex(indexedDB, 'jobs', 'byRun', [runId])
     },
     sessions: {
+      list: () => readActiveCollection(indexedDB, 'sessions'),
       forRun: (/** @type {string} */ runId) =>
         readActiveIndex(indexedDB, 'sessions', 'byRun', [runId]),
       forJob: (/** @type {string} */ jobId) =>
         readActiveIndex(indexedDB, 'sessions', 'byJob', [jobId])
     },
     events: {
+      list: () => readActiveCollection(indexedDB, 'events'),
       forSession: (/** @type {string} */ sessionId) =>
         readActiveIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]),
       forSessionByType: async (/** @type {string} */ sessionId, /** @type {string} */ type) => {
