@@ -25,7 +25,7 @@ import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDataHealthCalloutSources } from './data-health.js';
-import { DASHBOARD_HORIZON_COUNT_SOURCES, dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
+import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
 
@@ -845,13 +845,18 @@ function createDatabaseCountLoader(loadSources) {
   return () => {
     if (!loadSources) return Promise.reject(new Error('Database count query unavailable'));
     countsPromise ??= loadSources().then((sources) => {
-      const rows = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
-      if (rows.some((row) => !row)) throw new Error('Database count query unavailable');
+      const repositories = sources['database-repository-count']?.rows?.[0]?.repositories;
+      const workflows = sources['database-workflow-count']?.rows?.[0]?.workflows;
+      const runs = sources['database-run-count']?.rows?.[0]?.runs;
+      const events = sources['database-event-count']?.rows?.[0]?.events;
+      if ([repositories, workflows, runs, events].some((count) => count === undefined)) {
+        throw new Error('Database count query unavailable');
+      }
       return {
-        repositories: rows[0]?.repositories,
-        workflows: rows[1]?.workflows,
-        runs: rows[2]?.runs,
-        events: rows[3]?.events
+        repositories,
+        workflows,
+        runs,
+        events
       };
     });
     return countsPromise;
