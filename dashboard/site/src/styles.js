@@ -282,6 +282,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .horizon-tooltip { min-width: 190px; display: grid; gap: 3px; position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-size: .75rem; font-weight: 600; line-height: 1.35; white-space: nowrap; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 80ms linear, visibility 80ms linear; }
 .horizon-tooltip > span:not(.horizon-tooltip-quality) { color: var(--muted); font-size: .6875rem; font-weight: 400; }
 .horizon-summary:hover .horizon-tooltip, .horizon-summary:focus-within .horizon-tooltip { visibility: visible; opacity: 1; }
+.filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }
 .horizon-tooltip-quality { width: 7px; height: 7px; position: absolute; top: 12px; right: 10px; border-radius: 50%; background: var(--muted); }
 .horizon-tooltip-quality.status-success { background: var(--success); }
 .horizon-tooltip-quality.status-attention { background: var(--attention); }
@@ -366,7 +367,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .report-actions > .filter-bar { position: relative; margin-bottom: 0; }
 .filter-tuning-controls { display: none; }
 .report-actions > .filter-bar.filter-bar-expanded { position: static; }
-.filter-bar-expanded .filter-tuning-controls { width: 100%; display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; position: absolute; z-index: 20; top: 100%; right: 0; left: 0; padding: 10px max(14px, calc((100% - 920px) / 2)); border: 1px solid var(--border); border-width: 0 0 1px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); animation: horizon-panel-drop 160ms ease-out; }
+.filter-bar-expanded .filter-tuning-controls { width: 100%; display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; position: absolute; z-index: 30; top: 100%; right: 0; left: 0; padding: 10px max(14px, calc((100% - 920px) / 2)); border: 1px solid var(--border); border-width: 0 0 1px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); animation: horizon-panel-drop 160ms ease-out; }
 @keyframes horizon-panel-drop {
   from { transform: translateY(-10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

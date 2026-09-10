@@ -119,6 +119,22 @@ describe('DLS-CONF-004 scaffold gates', () => {
     }
   });
 
+  it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
+    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    /** @param {string} rule */
+    const zIndex = (rule) => {
+      const block = styles.match(new RegExp(`${rule} \\{([^}]*)\\}`))?.[1];
+      const layer = block?.match(/z-index: (\d+);/)?.[1];
+      expect(layer, `missing z-index for ${rule}`).toBeDefined();
+      return Number(layer);
+    };
+    const panelLayer = zIndex('\\.filter-bar-expanded \\.filter-tuning-controls');
+    const headerLayer = zIndex('\\.app-main > \\.top-nav');
+
+    expect(panelLayer).toBeGreaterThan(headerLayer);
+    expect(styles).toContain('.filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }');
+  });
+
   it('systematically ellipsizes security signal titles at every viewport size', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
