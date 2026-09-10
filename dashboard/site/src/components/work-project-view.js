@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
-import { textValue, titleCase } from './count-formatters.js';
+import { formatCountOf, textValue, titleCase } from './count-formatters.js';
 import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderDlRow, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderLiveRegion, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
@@ -132,7 +132,7 @@ function renderWorkFilterBar(items, onChange) {
         && (!packageName.value || item.packageName === packageName.value);
     });
     const activeFilterCount = controls.filter((control) => control.value !== '').length;
-    resultCount.textContent = `${filteredItems.length} of ${items.length}`;
+    resultCount.textContent = formatCountOf(filteredItems.length, items.length);
     resultCount.setAttribute('aria-label', `${filteredItems.length} of ${items.length} work items shown`);
     clear.disabled = activeFilterCount === 0;
     onChange(filteredItems);

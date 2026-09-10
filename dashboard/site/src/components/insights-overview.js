@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
-import { finiteNumber, formatRoundedPercent } from './count-formatters.js';
+import { finiteNumber, formatCountOf, formatRoundedPercent } from './count-formatters.js';
 import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
@@ -121,7 +121,7 @@ function renderValueSeriesSelector(points, series, chartHost) {
   /** @type {HTMLInputElement[]} */
   const inputs = [];
   const update = () => {
-    count.textContent = `${selected.size} of ${series.length}`;
+    count.textContent = formatCountOf(selected.size, series.length);
     const visibleSeries = series.filter((item) => selected.has(item.name));
     const visiblePoints = points.filter((point) => selected.has(point.color));
     chartHost.replaceChildren(renderChartWidget('line', visiblePoints, visibleSeries));
