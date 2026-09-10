@@ -309,6 +309,44 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
+test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const sources = {
+        'github-api-events': {
+          source: 'github-api-events',
+          metadata: {
+            'source-id': 'github-api-events-unavailable-fixture',
+            'source-kind': 'fixture',
+            'as-of': '2026-09-04T12:00:00Z',
+            'retrieved-at': '2026-09-04T12:01:00Z',
+            completeness: 'partial',
+            freshness: 'stale',
+            availability: 'unavailable'
+          },
+          rows: []
+        }
+      };
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
+  await page.locator('[data-nav-page-id="github-api"]').click();
+  const callout = page.locator('[data-page-id="github-api"] .view-state-card');
+  await expect(callout).toBeVisible();
+  await expect(callout).toHaveCSS('margin-left', '24px');
+  await expect(callout).toHaveCSS('margin-right', '24px');
+
+  await page.setViewportSize({ width: 600, height: 900 });
+  await expect(callout).toHaveCSS('margin-left', '14px');
+  await expect(callout).toHaveCSS('margin-right', '14px');
+});
+
 test('Safe Outputs renders every retained outcome in one progressive full-view table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
