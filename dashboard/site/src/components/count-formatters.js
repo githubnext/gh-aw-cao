@@ -60,6 +60,20 @@ export function pluralSuffix(value) {
 }
 
 /**
+ * Formats the shared "<shown> of <total><suffix>" fragment used by result
+ * counters: the agent marketplace entry count, the insights series selector
+ * count, and the work-project filter result count. Renders raw numeric text
+ * without locale grouping to match each caller's existing display.
+ * @param {number} shown
+ * @param {number} total
+ * @param {string} [suffix]
+ * @returns {string}
+ */
+export function formatCountOf(shown, total, suffix = '') {
+  return `${shown} of ${total}${suffix}`;
+}
+
+/**
  * Coerces an arbitrary value to a display string, treating `null`/`undefined`
  * as an empty string.
  * @param {unknown} value
