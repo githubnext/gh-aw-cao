@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
-import { readFile, readdir, mkdir } from 'node:fs/promises';
+import { readFile, readdir, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../src/data/ingest/coordinator.js';
+import { createCanonicalQueries } from '../src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../src/data/storage/indexeddb.js';
 import { installSqliteIndexedDB } from '../src/data/storage/sqlite-indexeddb.js';
 
@@ -161,9 +163,35 @@ async function createDatabase(databasePath) {
   return installSqliteIndexedDB(filename);
 }
 
+async function runLegacyIngestion(contextPath, logDirectory) {
+  const directory = await mkdtemp(path.join(tmpdir(), 'cao-dashboard-data-'));
+  try {
+    const indexedDB = await createDatabase(path.join(directory, 'dashboard.sqlite'));
+    const result = await ingestGhAwLogDirectory(
+      indexedDB,
+      path.resolve(contextPath),
+      path.resolve(logDirectory)
+    );
+    const queries = createCanonicalQueries(indexedDB);
+    const runs = await queries.runs.list();
+    const sessions = (await Promise.all(
+      runs.map((run) => queries.sessions.forRun(String(run.id)))
+    )).flat();
+    const events = (await Promise.all(
+      sessions.map((session) => queries.events.forSession(String(session.id)))
+    )).flat();
+    return { result, runs, sessions, events };
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
 export async function runCli(arguments_) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
+  if (!['ingest', 'ingest-jsonl', 'query'].includes(command) && arguments_.length === 2) {
+    return runLegacyIngestion(command, optionArguments[0]);
+  }
   const options = parseOptions(optionArguments);
   if (options.help) return USAGE;
   const databasePath = option(options, 'database');
