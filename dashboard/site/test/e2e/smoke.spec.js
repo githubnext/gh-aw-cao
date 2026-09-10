@@ -35,6 +35,22 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+/**
+ * Full-view table filters keep their controls on one row instead of wrapping, like the
+ * table's own header row, and may scroll horizontally instead when they don't all fit.
+ * @param {import('@playwright/test').Locator} tableFilter
+ */
+async function expectTableFilterStaysOnOneRow(tableFilter) {
+  const staysOnOneRow = await tableFilter.evaluate((element) => {
+    // Filter controls are bottom-aligned (align-items: end), so compare bottom edges rather
+    // than top edges, since labels and the result output have different intrinsic heights.
+    const bottoms = [...element.children].map((child) => child.getBoundingClientRect().bottom);
+    // A 4px tolerance absorbs sub-pixel rounding while still catching a wrap onto a second row.
+    return Math.max(...bottoms) - Math.min(...bottoms) < 4;
+  });
+  expect(staysOnOneRow).toBe(true);
+}
+
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
   await page.setContent(`
     <style>
@@ -357,7 +373,7 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expectTableFilterStaysOnOneRow(view.locator('.table-filter'));
 });
 
 test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
@@ -550,7 +566,7 @@ test('experiments query renders as one full-view declarative table', async ({ pa
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  expect(await experimentsView.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expectTableFilterStaysOnOneRow(experimentsView.locator('.table-filter'));
   expect(await experimentsView.locator('.table-scroll').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
 });
 
@@ -1658,12 +1674,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
-  const filterStaysOnOneRow = await view.locator('.table-filter').evaluate((element) => {
-    const tops = [...element.children].map((child) => child.getBoundingClientRect().top);
-    // A 4px tolerance absorbs sub-pixel rounding while still catching a wrap onto a second row.
-    return Math.max(...tops) - Math.min(...tops) < 4;
-  });
-  expect(filterStaysOnOneRow).toBe(true);
+  await expectTableFilterStaysOnOneRow(view.locator('.table-filter'));
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
   await page.setViewportSize({ width: 1000, height: 900 });
