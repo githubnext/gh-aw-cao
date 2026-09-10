@@ -93,13 +93,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install SQLite
-        if: ${{ steps.freshness.outputs.skip != 'true' }}
-        run: |
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
-          sudo apt-get update
-          sudo apt-get install --yes sqlite3
-
       - name: Restore activity cache
         id: activity-cache
         if: ${{ steps.freshness.outputs.skip != 'true' }}
