@@ -102,6 +102,27 @@
         }
       },
       {
+        "name": "experiments-table",
+        "intent": "List experiments with their workflow, variants, primary metric, evidence, readiness, decision, and latest observation.",
+        "from": "experiments",
+        "select": [
+          { "field": "experiment" },
+          { "field": "workflow" },
+          { "field": "control-variant" },
+          { "field": "candidate-variant" },
+          { "field": "primary-metric" },
+          { "field": "normalized-effect" },
+          { "field": "evidence-strength" },
+          { "field": "readiness" },
+          { "field": "decision" },
+          { "field": "last-observation" }
+        ],
+        "order-by": [
+          { "field": "last-observation", "direction": "desc" },
+          { "field": "experiment", "direction": "asc" }
+        ]
+      },
+      {
         "name": "firewall-domain-totals",
         "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
@@ -3550,7 +3571,7 @@
               "title": "Experiments",
               "description": "Experiment readiness, evidence, and decisions without treating workflow execution success as experiment success.",
               "data": {
-                "source": "experiments"
+                "source": "experiments-table"
               },
               "mark": "table",
               "controls": "interactive",

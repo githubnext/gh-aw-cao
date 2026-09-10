@@ -101,7 +101,6 @@ import {
 } from './specification.js';
 import {
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
-  EXPERIMENTS_VIEW_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
   WORK_VIEW_BODY_VALUES,
   WORKFLOW_ROUTE_BODY_VALUES
@@ -1664,15 +1663,13 @@ function validateView(view, viewNode, path, viewIds, errors) {
     } else {
       const configNode = getValueNodeByKey(viewNode, 'config');
       validateObjectKeys(configNode, VIEW_ELEMENT_CONFIG_KEYS, `${path}.config`, errors);
-      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'experiments-evaluation' || view.element === 'work-project-view') && view.config.body !== undefined) {
+      if ((view.element === 'workflow-route' || view.element === 'workflow-route-page' || view.element === 'package-route' || view.element === 'outcome-detail-section' || view.element === 'work-project-view') && view.config.body !== undefined) {
         validateStringField(view.config.body, `${path}.config.body`, true, errors);
        const allowedBodies = view.element === 'workflow-route' || view.element === 'workflow-route-page'
          ? WORKFLOW_ROUTE_BODY_VALUES
          : view.element === 'package-route'
            ? PACKAGE_ROUTE_BODY_VALUES
-           : view.element === 'experiments-evaluation'
-             ? EXPERIMENTS_VIEW_BODY_VALUES
-             : view.element === 'work-project-view'
+           : view.element === 'work-project-view'
                ? WORK_VIEW_BODY_VALUES
              : OUTCOME_DETAIL_SECTION_BODY_VALUES;
        if (typeof view.config.body === 'string' && !allowedBodies.includes(view.config.body)) {
@@ -1685,11 +1682,11 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.body !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, experiments-evaluation, and work-project-view elements.',
+         'config.body is supported only for the workflow-route, workflow-route-page, package-route, outcome-detail-section, and work-project-view elements.',
          `${path}.config.body`
        ));
       }
-      if ((view.element === 'experiments-evaluation' || view.element === 'work-project-view') && view.config.sections !== undefined) {
+      if (view.element === 'work-project-view' && view.config.sections !== undefined) {
        if (!Array.isArray(view.config.sections) || view.config.sections.length === 0) {
          errors.push(createError(
            ERROR_CODES.missingOrInvalidRequiredField,
@@ -1700,9 +1697,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
          for (let index = 0; index < view.config.sections.length; index += 1) {
            const section = view.config.sections[index];
            validateStringField(section, `${path}.config.sections[${index}]`, true, errors);
-           const allowedSections = view.element === 'work-project-view'
-             ? WORK_VIEW_BODY_VALUES
-             : EXPERIMENTS_VIEW_BODY_VALUES;
+           const allowedSections = WORK_VIEW_BODY_VALUES;
            if (typeof section === 'string' && !allowedSections.includes(section)) {
              errors.push(createError(
                ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
@@ -1715,7 +1710,7 @@ function validateView(view, viewNode, path, viewIds, errors) {
       } else if (view.config.sections !== undefined) {
        errors.push(createError(
          ERROR_CODES.missingOrInvalidRequiredField,
-         'config.sections is supported only for the experiments-evaluation and work-project-view elements.',
+         'config.sections is supported only for the work-project-view element.',
          `${path}.config.sections`
        ));
       }

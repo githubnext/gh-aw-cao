@@ -721,98 +721,6 @@ dashboard:
     }
   });
 
-  it('accepts experiments-evaluation config.body and rejects unsupported values', () => {
-    const accepted = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: experiments-view-config
-  title: Experiments view config
-  pages:
-    - id: experiments-page
-      kind: custom
-      title: Experiments page
-      views:
-        - id: experiments-shell
-          data:
-            sources: [experiments, experiment-assignments, graders, grader-observations, evals, eval-observations, runs]
-          mark: element
-          element: experiments-evaluation
-          config:
-            body: table
-`);
-    expect(accepted.ok).toBe(true);
-
-    const invalidBody = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: experiments-view-config
-  title: Experiments view config
-  pages:
-    - id: experiments-page
-      kind: custom
-      title: Experiments page
-      views:
-        - id: experiments-shell
-          data:
-            sources: [experiments, experiment-assignments, graders, grader-observations, evals, eval-observations, runs]
-          mark: element
-          element: experiments-evaluation
-          config:
-            body: filters
-`);
-    expect(invalidBody.ok).toBe(false);
-    if (!invalidBody.ok) {
-      expect(invalidBody.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.body'
-      }));
-    }
-  });
-
-  it('accepts experiments-evaluation config.sections and rejects unsupported values', () => {
-    const accepted = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: experiments-view-sections
-  title: Experiments view sections
-  pages:
-    - id: experiments-page
-      kind: custom
-      title: Experiments page
-      views:
-        - id: experiments-shell
-          data:
-            sources: [experiments, experiment-assignments, graders, grader-observations, evals, eval-observations, runs]
-          mark: element
-          element: experiments-evaluation
-          config:
-            sections: [detail]
-`);
-    expect(accepted.ok).toBe(true);
-
-    const invalid = validateDashboardDocument(`language-version: "0.1.0"
-dashboard:
-  id: experiments-view-sections
-  title: Experiments view sections
-  pages:
-    - id: experiments-page
-      kind: custom
-      title: Experiments page
-      views:
-        - id: experiments-shell
-          data:
-            sources: [experiments, experiment-assignments, graders, grader-observations, evals, eval-observations, runs]
-          mark: element
-          element: experiments-evaluation
-          config:
-            sections: [filters]
-`);
-    expect(invalid.ok).toBe(false);
-    if (!invalid.ok) {
-      expect(invalid.errors).toContainEqual(expect.objectContaining({
-        code: 'DLS-E005',
-        path: '$.dashboard.pages[0].views[0].config.sections[0]'
-      }));
-    }
-  });
-
   it('accepts work-project-view config and rejects unsupported values', () => {
     const accepted = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
@@ -913,7 +821,7 @@ dashboard:
     expect(experimentsPage.definition.views).toHaveLength(1);
     expect(experimentsPage.definition.views[0]).toMatchObject({
       id: 'experiments-list',
-      data: { source: 'experiments' },
+      data: { source: 'experiments-table' },
       mark: 'table',
       controls: 'interactive',
       'lazy-list': true,

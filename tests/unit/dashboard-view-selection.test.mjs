@@ -9,8 +9,8 @@ import {
 const dashboard = {
   dashboard: {
     pages: [
-      { id: "experiments", views: [{ element: "experiments-evaluation" }] },
-      { id: "cost", views: [{ element: "summary-grid" }] },
+      { id: "experiments", views: [{ mark: "table" }] },
+      { id: "cost", views: [{ element: "configuration-actions" }] },
     ],
   },
 };
@@ -18,9 +18,9 @@ const dashboard = {
 test("selects the page that uses a changed component", () => {
   assert.deepEqual(selectAffectedPageIds({
     dashboard,
-    changedFiles: ["dashboard/site/src/components/experiments-evaluation.js"],
+    changedFiles: ["dashboard/site/src/components/configuration-actions.js"],
     baseRef: "unused",
-  }), ["experiments"]);
+  }), ["cost"]);
 });
 
 test("selects every page for shared renderer changes", () => {

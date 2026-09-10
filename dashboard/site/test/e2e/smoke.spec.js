@@ -463,7 +463,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   expect(await readinessPage.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('experiments page composes reusable declarative slices with rendered parity', async ({ page }) => {
+test('experiments query renders as one full-view declarative table', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
@@ -471,6 +471,7 @@ test('experiments page composes reusable declarative slices with rendered parity
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
         'source-id': 'experiments-fixture',
@@ -527,17 +528,30 @@ test('experiments page composes reusable declarative slices with rendered parity
         'operational-values': { source: 'operational-values', metadata, rows: [] }
       };
       window.location.hash = '#page-experiments?experiment=routing-v3';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      const querySources = await processDashboardQueries(documentModel.dashboard.queries, sources);
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: { ...sources, ...querySources }
+      }));
     </script>
   `);
 
   const experimentsPage = page.locator('[data-page-id="experiments"]');
   await expect(experimentsPage).toBeVisible();
   const experimentsView = experimentsPage.locator('[data-view-layout="full-view"]');
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
   await expect(experimentsView).toHaveCount(1);
   await expect(experimentsView.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(experimentsView.getByRole('searchbox', { name: 'Filter Experiments' })).toBeVisible();
   await expect(experimentsView.getByRole('cell', { name: 'routing-v3' })).toBeVisible();
+  await expect(experimentsPage.locator('.custom-view')).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+  expect(await page.locator('main.dashboard-prototype').evaluate((element) => getComputedStyle(element).overflowY)).toBe('hidden');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+  expect(await experimentsView.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await experimentsView.locator('.table-scroll').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
 });
 
 test('desktop navigation sections collapse and expand around the current view', async ({ page }) => {
@@ -3695,6 +3709,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
 
   const shortcuts = page.locator('.nav-section-items > .nav-item');
   const activeItem = page.locator('.nav-section-items > .nav-item[aria-current="page"]');
+  const historyBack = page.getByRole('button', { name: 'Go back' });
+  await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
   await expect(activeItem.locator('.nav-label')).toBeHidden();
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
@@ -3714,5 +3730,9 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
+  await expect(historyBack).toBeVisible();
+  await historyBack.click();
+  await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+  await expect(historyBack).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
