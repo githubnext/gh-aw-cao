@@ -30,7 +30,7 @@ async function deleteAppDatabases(indexedDB) {
         const request = indexedDB.deleteDatabase(name);
         request.onsuccess = settle(resolve);
         request.onerror = settle(() => reject(request.error));
-        request.onblocked = settle(resolve);
+        request.onblocked = settle(() => reject(new Error(`Database deletion was blocked: ${name}`)));
       }))
   );
 }

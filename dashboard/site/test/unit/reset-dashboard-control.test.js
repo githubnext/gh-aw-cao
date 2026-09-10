@@ -71,4 +71,37 @@ describe('dashboard local-data reset', () => {
     await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
     expect(localStorage.length).toBe(0);
   });
+
+  it('clears localStorage even when app database deletion fails', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+    const deletionError = new Error('deletion failed');
+    const failingIndexedDB = {
+      databases: async () => [{ name: APP_AUX_DATABASE_NAME }],
+      deleteDatabase: () => {
+        const request = { error: deletionError };
+        queueMicrotask(() => request.onerror?.());
+        return request;
+      }
+    };
+
+    await expect(resetLocalDashboardData(localStorage, failingIndexedDB)).rejects.toThrow('deletion failed');
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('still resets localStorage when indexedDB.databases is unavailable', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
+    const deletedNames = [];
+    const legacyIndexedDB = {
+      deleteDatabase: (name) => {
+        deletedNames.push(name);
+        const request = {};
+        queueMicrotask(() => request.onsuccess?.());
+        return request;
+      }
+    };
+
+    await expect(resetLocalDashboardData(localStorage, legacyIndexedDB)).resolves.toBeUndefined();
+    expect(deletedNames).toEqual([DATABASE_NAME]);
+    expect(localStorage.length).toBe(0);
+  });
 });
