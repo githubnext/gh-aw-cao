@@ -1654,7 +1654,7 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter label > span { display: block; margin-bottom: 4px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .table-filter :is(input, select) { width: 100%; min-height: 34px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; }
 .table-filter :is(input, select):focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
-.table-filter-result { flex: none; color: var(--muted); font-size: .75rem; font-weight: 400; }
+.table-filter-result, .table-filter-summary-count { flex: none; color: var(--muted); font-size: .75rem; font-weight: 400; }
 .table-filter-more { min-height: 32px; margin: 10px 14px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .table-filter-more:hover { background: var(--neutral-muted); }
 table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: .875rem; }

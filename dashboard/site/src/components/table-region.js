@@ -66,6 +66,7 @@ export function renderTableRegion(options) {
   const facets = getTableFacets(bodyRows, filterFields, rowCount);
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
+  const initialResultCount = formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural);
 
   const region = h(
     'div',
@@ -81,7 +82,7 @@ export function renderTableRegion(options) {
           'summary',
           { className: 'table-filter-summary' },
           h('span', null, 'Filters'),
-          h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural))
+          h('span', { className: 'table-filter-summary-count', 'aria-hidden': 'true' }, initialResultCount)
         ),
         h(
           'div',
@@ -100,7 +101,8 @@ export function renderTableRegion(options) {
               ...facet.values.map((value) => h('option', { value }, value))
             ),
             { className: 'table-filter-facet' }
-          ))
+          )),
+          h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, initialResultCount)
         )
       )
       : null,
@@ -245,6 +247,7 @@ function cellText(row, columnIndex) {
 function enableTableFilter(region, options, rows) {
   const input = region.querySelector('[data-table-filter]');
   const output = region.querySelector('.table-filter-result');
+  const summaryCount = region.querySelector('.table-filter-summary-count');
   const more = region.querySelector('[data-table-more]');
   const body = region.querySelector('tbody');
   const scroll = region.querySelector('.table-scroll');
@@ -344,7 +347,9 @@ function enableTableFilter(region, options, rows) {
      const total = unfiltered && options.continuation
        ? options.continuation.totalRows
        : processed.length;
-     output.textContent = formatResultCount(shown, total, options.resultNoun, options.resultNounPlural);
+     const resultCount = formatResultCount(shown, total, options.resultNoun, options.resultNounPlural);
+     output.textContent = resultCount;
+     if (summaryCount instanceof HTMLSpanElement) summaryCount.textContent = resultCount;
      more.hidden = !continuationToken && shown >= processed.length;
    });
   };

@@ -111,6 +111,7 @@ describe('renderTableRegion', () => {
     expect(filter.tagName).toBe('DETAILS');
     expect(filter.open).toBe(false);
     expect(filter.querySelector('summary')?.textContent).toContain('Filters');
+    expect(filter.querySelector('summary output')).toBeNull();
     expect(input.closest('label')?.textContent).toBe('Filter recent runs');
     expect(input.closest('label')?.querySelector('span')?.classList.contains('sr-only')).toBe(true);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 2 of 2 results');
