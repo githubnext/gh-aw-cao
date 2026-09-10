@@ -626,7 +626,7 @@ test('data worker computes repository and package pages with request-scoped dash
   });
 });
 
-test('data worker queries canonical work items and security findings', async ({ page }) => {
+test('data worker serves work items and security findings without dedicated canonical stores', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources, loadCanonicalDashboardPage } = await import(processorUrl);
@@ -637,12 +637,10 @@ test('data worker queries canonical work items and security findings', async ({ 
 
   expect(Object.keys(result)).toEqual(['work-items', 'security-findings']);
   expect(result['work-items']).toMatchObject({
-    rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }],
-    metadata: { 'source-kind': 'canonical-query' }
+    rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
   });
   expect(result['security-findings']).toMatchObject({
-    rows: [{ 'smell-observation-id': 'threat-detection:12345', 'smell-severity': 'high' }],
-    metadata: { 'source-kind': 'canonical-query' }
+    rows: [{ 'smell-observation-id': 'threat-detection:12345', 'smell-severity': 'high' }]
   });
 });
 

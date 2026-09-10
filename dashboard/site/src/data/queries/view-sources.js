@@ -256,75 +256,6 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
-/** @param {Record<string, unknown>[]} workItems @param {Record<string, unknown>} sources */
-function workItemsSource(workItems, sources) {
-  return {
-    source: 'work-items',
-    rows: workItems.map((item) => ({
-      'work-item-id': item.workItemId,
-      name: item.name,
-      objective: item.objective,
-      organization: item.organization,
-      repository: item.repository,
-      workflow: item.workflowPath,
-      run: item.githubRunId,
-      'workflow-name': item.workflowName,
-      'workflow-icon': item.workflowIcon,
-      package: item.packageName,
-      scope: item.scope,
-      domain: item.domain,
-      'work-type': item.workType,
-      'lifecycle-state': item.lifecycleState,
-      phase: item.phase,
-      reason: item.reason,
-      'reason-evidence-class': item.reasonEvidenceClass,
-      'next-action': item.nextAction,
-      'next-actor': item.nextActor,
-      'safe-output-kind': item.safeOutputKind,
-      'waiting-on': item.waitingOn,
-      'waiting-since': item.waitingSince,
-      owner: item.owner,
-      'consequence-tier': item.consequenceTier,
-      'verification-state': item.verificationState,
-      'outcome-state': item.outcomeState,
-      'started-at': item.startedAt,
-      'ended-at': item.completedAt,
-      'observed-at': item.observedAt,
-      'evidence-link': item.evidenceLink,
-      'repository-link': item.repositoryLink,
-      'run-link': item.runLink
-    })),
-    metadata: projectionMetadata(sources, 'work-items', 'work-items', true)
-  };
-}
-
-/** @param {Record<string, unknown>[]} findings @param {Record<string, unknown>} sources */
-function securityFindingsSource(findings, sources) {
-  return {
-    source: 'security-findings',
-    rows: findings.map((finding) => ({
-      organization: finding.organization,
-      repository: finding.repository,
-      workflow: finding.workflowPath,
-      run: finding.githubRunId,
-      'smell-observation-id': finding.observationId,
-      'smell-id': finding.findingId,
-      'smell-name': finding.name,
-      'smell-category': finding.category,
-      'smell-severity': finding.severity,
-      'smell-summary': finding.summary,
-      'smell-evidence': finding.evidence,
-      'smell-recommendation': finding.recommendation,
-      'observed-at': finding.observedAt,
-      'evidence-link': finding.evidenceLink,
-      'repository-link': finding.repositoryLink,
-      'workflow-link': finding.workflowLink,
-      'run-link': finding.runLink
-    })),
-    metadata: projectionMetadata(sources, 'security-findings', 'security-findings', true)
-  };
-}
-
 /** @param {unknown} source */
 function sourceRows(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
@@ -373,9 +304,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
       'runs',
       'job-performance',
       'failed-runs',
-      'events',
-      'work-items',
-      'security-findings'
+      'events'
     ])
   };
 }
@@ -393,7 +322,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
-  const [repositories, workflows, runs, jobs, failedRuns, sessions, events, workItems, findings] = await Promise.all([
+  const [repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') || requested.has('events')
@@ -401,9 +330,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     requested.has('events') ? queries.sessions.list() : [],
-    requested.has('events') ? queries.events.list() : [],
-    requested.has('work-items') ? queries.workItems.list() : [],
-    requested.has('security-findings') ? queries.findings.list() : []
+    requested.has('events') ? queries.events.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
@@ -417,7 +344,5 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('runs')) projected.runs = runsSource(runs, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
-  if (requested.has('work-items')) projected['work-items'] = workItemsSource(workItems, sources);
-  if (requested.has('security-findings')) projected['security-findings'] = securityFindingsSource(findings, sources);
   return projected;
 }

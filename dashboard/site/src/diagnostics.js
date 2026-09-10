@@ -10,9 +10,7 @@ const ENTITY_STORES = /** @type {const} */ ([
   'runs',
   'jobs',
   'sessions',
-  'events',
-  'workItems',
-  'findings'
+  'events'
 ]);
 const REQUIRED_POPULATED_STORES = ['repositories', 'workflows', 'runs', 'events'];
 

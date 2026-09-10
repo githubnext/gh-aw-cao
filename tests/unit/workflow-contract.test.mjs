@@ -3140,7 +3140,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(deployedDataTest, /"aw", "logs"[\s\S]*?"--artifacts", "firewall"/);
   assert.match(deployedDataTest, /readRunTimeline\(/);
   for (const source of ["workflows", "runs", "events"]) {
-    assert.match(deployedDataTest, new RegExp(`readActiveCollection\\(indexedDB, "${source}"\\)`));
+    assert.match(deployedDataTest, new RegExp(`readCollection\\(indexedDB, "${source}"\\)`));
   }
   assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);

@@ -12,7 +12,7 @@ import { runId, sourceId } from "../../dashboard/site/src/data/model/ids.js";
 import {
   DATABASE_NAME,
   deleteCanonicalDatabase,
-  readActiveCollection,
+  readCollection,
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 
 const deployedSourcesUrl = process.env.DASHBOARD_DATA_URL
@@ -91,15 +91,13 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
       ["repositories", "workflows", "runs", "job-performance", "sessions", "events", "work-items", "security-findings"]
         .map((source) => [source, sources[source]?.rows?.length ?? 0]),
     ));
-    const [repositories, workflows, runs, jobs, sessions, events, workItems, findings] = await Promise.all([
-      readActiveCollection(indexedDB, "repositories"),
-      readActiveCollection(indexedDB, "workflows"),
-      readActiveCollection(indexedDB, "runs"),
-      readActiveCollection(indexedDB, "jobs"),
-      readActiveCollection(indexedDB, "sessions"),
-      readActiveCollection(indexedDB, "events"),
-      readActiveCollection(indexedDB, "workItems"),
-      readActiveCollection(indexedDB, "findings"),
+    const [repositories, workflows, runs, jobs, sessions, events] = await Promise.all([
+      readCollection(indexedDB, "repositories"),
+      readCollection(indexedDB, "workflows"),
+      readCollection(indexedDB, "runs"),
+      readCollection(indexedDB, "jobs"),
+      readCollection(indexedDB, "sessions"),
+      readCollection(indexedDB, "events"),
     ]);
     for (const [table, entries] of Object.entries({
       repositories,
@@ -108,8 +106,6 @@ test("deployed dashboard sources populate canonical workflows, runs, and events"
       jobs,
       sessions,
       events,
-      workItems,
-      findings,
     })) {
       console.error(`Canonical ${table} rows: ${entries.length}`);
       assert.ok(entries.length > 0, `canonical ${table} table must contain an entry`);
