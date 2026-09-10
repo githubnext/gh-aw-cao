@@ -99,6 +99,7 @@ export function startLoadingProgress(document) {
   let completed = false;
 
   const advance = () => {
+    if (!state.advancing) return;
     const burst = MIN_BURST + Math.random() * BURST_VARIANCE;
     state.progress += (MAX_PROGRESS - state.progress) * burst;
     state.bar.style.transform = `scaleX(${state.progress})`;
