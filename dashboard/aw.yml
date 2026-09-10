@@ -86,6 +86,8 @@ resources:
     destination: .github/aw/dashboard/site/src/cancel-command.js
   - source: site/src/data-health.js
     destination: .github/aw/dashboard/site/src/data-health.js
+  - source: site/src/database-counts.js
+    destination: .github/aw/dashboard/site/src/database-counts.js
   - source: site/src/debug-events.js
     destination: .github/aw/dashboard/site/src/debug-events.js
   - source: site/src/diagnostics.js
