@@ -1,7 +1,7 @@
 ---
 title: Central Agentic Ops Activity Specification
 description: Normative collection, snapshot, data-quality, authority, and consumer requirements for CAO Activity.
-version: 1.0.0
+version: 1.1.0
 status: Working Draft
 editors:
   - GitHub Next
@@ -9,7 +9,7 @@ editors:
 
 # Central Agentic Ops Activity Specification
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Working Draft
 **Latest Version:** https://github.com/githubnext/gh-aw-cao/blob/main/specs/activity.md
 **Editors:** GitHub Next
@@ -18,9 +18,9 @@ editors:
 
 This specification defines CAO Activity as the shared collection boundary for
 Central Agentic Ops. It defines Activity's authority, required inputs and
-outputs, immutable snapshot identity, data-quality semantics, fallback
-behavior, and consumer obligations. It does not define dashboard presentation,
-workflow rollout policy, or durable operational outcomes.
+outputs, immutable snapshot identity, data-quality semantics, failure behavior,
+and consumer obligations. It does not define dashboard presentation, workflow
+rollout policy, or durable operational outcomes.
 
 ## 1. Status and conformance
 
@@ -61,8 +61,10 @@ to the same workflow run. Inputs MAY include:
 
 - installed workflow sources and compiled metadata;
 - resolved control policy and package inventory;
-- bounded GitHub Actions run metadata;
-- `gh aw` logs, audits, and declared telemetry artifacts; and
+- bounded run metadata, audits, and declared telemetry artifacts acquired by
+  one shared `gh aw logs` invocation;
+- durable issue, pull request, comment, and review-artifact records that are
+  not represented by the logs snapshot; and
 - records retained from a compatible prior Activity snapshot.
 
 The publisher MUST bound remote acquisition by repository scope, evidence
@@ -72,8 +74,9 @@ policy. Installed workflow discovery is bounded to the checked-out control
 repository.
 
 The Activity indexer MUST operate from checked-out metadata and the collected
-snapshot. It MUST NOT silently start an independent, unbounded history scan to
-fill missing fields.
+snapshot. It MUST NOT invoke GitHub APIs, `gh aw logs`, or another remote
+collector to fill missing fields. Missing fields MUST remain unavailable or
+incomplete.
 
 ## 4. Snapshot contract
 
@@ -120,28 +123,37 @@ fields they provide. Derived records MUST retain sufficient identity and
 provenance to relate an observation to its repository, workflow, run, and
 evidence source when those dimensions are available.
 
-Fallback collection MUST NOT overwrite a more authoritative artifact-derived
-field with a weaker observation. Retained records MUST remain distinguishable
-from observations collected during the current refresh.
+When audit generation is enabled, a publisher MAY retain bounded normalized
+audit aggregates and non-secret agent, model, runtime, compiler, firewall, and
+gateway identifiers. It MUST NOT publish raw prompts, messages, tool arguments,
+authorization values, credentials, response bodies, secret values, or
+transcripts from audit or usage artifacts. Nested values, collections, and
+strings MUST have explicit publication bounds.
+
+Retained records MUST NOT overwrite a more authoritative artifact-derived
+field with a weaker observation. They MUST remain distinguishable from
+observations collected during the current refresh.
 
 Credentials, tokens, private keys, and secret values MUST NOT appear in the
 snapshot, telemetry ledger, or derived sources. Credential telemetry MAY use a
 stable non-secret alias, role, or credential class.
 
-## 7. Failure and fallback
+## 7. Failure and retained snapshots
 
-When primary collection fails, the publisher MAY preserve a compatible prior
-snapshot and MAY perform a bounded GitHub Actions workflow-run fallback. It
-MUST record the primary and fallback outcomes.
+When primary log collection fails, the publisher MAY preserve a compatible
+prior snapshot. It MUST record the failed refresh and distinguish retained
+observations from evidence collected during the current refresh.
 
-Fallback run metadata MAY establish basic run identity, status, conclusion,
-and timestamps. It MUST NOT be marked complete for artifact-only evidence that
-the fallback did not evaluate.
+The publisher MUST NOT respond to a failed `gh aw logs` invocation by issuing
+per-workflow run-list, per-run detail, or Jobs API fallback requests. Missing
+run fields MUST remain unavailable rather than be inferred from a weaker,
+independently collected source.
 
-If neither primary collection nor fallback provides usable evidence, the
-publisher MUST emit a valid unavailable state rather than fabricate records or
-report a complete empty result. Missing scope, credentials, access, or required
-evidence MUST fail closed as unavailable, incomplete, skipped, or no-op.
+If neither primary collection nor a compatible retained snapshot provides
+usable evidence, the publisher MUST emit a valid unavailable state rather than
+fabricate records or report a complete empty result. Missing scope,
+credentials, access, or required evidence MUST fail closed as unavailable,
+incomplete, skipped, or no-op.
 
 ## 8. Consumer obligations
 
