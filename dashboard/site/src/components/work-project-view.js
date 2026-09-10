@@ -245,6 +245,22 @@ function renderBoard(items, section, onUpdate) {
 }
 
 /**
+ * Refreshes a sort-direction toggle button's `aria-label`, `title`, and icon
+ * to reflect the current direction. Shared by the initial render and both
+ * the direction-toggle click handler and the column-header sort handler in
+ * {@link renderTasks}, which otherwise duplicated the same three-attribute
+ * update around the direction state.
+ * @param {HTMLButtonElement} direction
+ * @param {boolean} descending
+ */
+function updateSortDirectionIndicator(direction, descending) {
+  const label = descending ? 'Sort descending' : 'Sort ascending';
+  direction.setAttribute('aria-label', label);
+  direction.setAttribute('title', label);
+  direction.replaceChildren(renderIconSpan('work-task-sort-icon', descending ? 'arrow-down' : 'arrow-up', { ariaHidden: true }));
+}
+
+/**
  * @param {Array<ReturnType<typeof normalizeWorkItem>>} items
  * @param {{ id: string, className: string, landmarkLabel: string, title: string }} section
  * @param {() => void} onUpdate
@@ -258,8 +274,9 @@ function renderTasks(items, section, onUpdate) {
     h('option', { value: 'state' }, 'Status'),
     h('option', { value: 'owner' }, 'Owned by'),
     h('option', { value: 'package' }, 'Package')));
-  const direction = h('button', { type: 'button', className: 'work-task-sort-direction', 'aria-label': 'Sort descending', title: 'Sort descending' }, renderIconSpan('work-task-sort-icon', 'arrow-down', { ariaHidden: true }));
+  const direction = /** @type {HTMLButtonElement} */ (h('button', { type: 'button', className: 'work-task-sort-direction' }));
   let descending = true;
+  updateSortDirectionIndicator(direction, descending);
   const renderRows = () => {
     const sorted = items.toSorted((left, right) => compareWorkItems(left, right, sort.value) * (descending ? -1 : 1));
     list.replaceChildren(...sorted.map((item) => decorateMobileWorkItem(renderWorkItemRow(item), item, choices, onUpdate, 'table')));
@@ -267,9 +284,7 @@ function renderTasks(items, section, onUpdate) {
   sort.addEventListener('change', renderRows);
   direction.addEventListener('click', () => {
     descending = !descending;
-    direction.setAttribute('aria-label', descending ? 'Sort descending' : 'Sort ascending');
-    direction.setAttribute('title', descending ? 'Sort descending' : 'Sort ascending');
-    direction.replaceChildren(renderIconSpan('work-task-sort-icon', descending ? 'arrow-down' : 'arrow-up', { ariaHidden: true }));
+    updateSortDirectionIndicator(direction, descending);
     renderRows();
   });
   /** @param {string} field @param {string} label */
@@ -283,9 +298,7 @@ function renderTasks(items, section, onUpdate) {
         sort.value = field;
         descending = field === 'started';
       }
-      direction.setAttribute('aria-label', descending ? 'Sort descending' : 'Sort ascending');
-      direction.setAttribute('title', descending ? 'Sort descending' : 'Sort ascending');
-      direction.replaceChildren(renderIconSpan('work-task-sort-icon', descending ? 'arrow-down' : 'arrow-up', { ariaHidden: true }));
+      updateSortDirectionIndicator(direction, descending);
       renderRows();
     }
   }, label, renderIconSpan('work-task-header-sort-icon', 'triangle-down', { ariaHidden: true }));
