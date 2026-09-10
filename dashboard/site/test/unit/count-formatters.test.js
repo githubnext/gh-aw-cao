@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { clampPercent, computeObservationCoverage, countBy, formatAic, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, countBy, finiteNumber, formatAic, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -66,6 +66,16 @@ describe('count formatters', () => {
     expect(clampPercent(150)).toBe(100);
     expect(clampPercent(0)).toBe(0);
     expect(clampPercent(100)).toBe(100);
+  });
+
+  it('coerces values to finite numbers, defaulting to 0 for non-numeric input', () => {
+    expect(finiteNumber(42)).toBe(42);
+    expect(finiteNumber('7.5')).toBe(7.5);
+    expect(finiteNumber(null)).toBe(0);
+    expect(finiteNumber(undefined)).toBe(0);
+    expect(finiteNumber(Number.NaN)).toBe(0);
+    expect(finiteNumber(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(finiteNumber('not-a-number')).toBe(0);
   });
 
   it('computes observation coverage as usable / (usable + excluded), or null when empty', () => {

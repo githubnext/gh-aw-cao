@@ -10,7 +10,7 @@ import { renderChartLegend, renderChartWidget, renderPieLegend } from './chart-e
 import { findLink, renderExternalLinkOrFallback } from './link-content.js';
 import { isApprovalConclusion, isFailureConclusion } from './run-classification.js';
 import { coverageWindowHours, formatUtcDateTime, renderDigest, renderDisclosure, renderLegendList, renderPanelHeader, renderTableHeadRow, renderVitalStat } from './ui-primitives.js';
-import { formatCount, slugify, text } from './count-formatters.js';
+import { finiteNumber, formatCount, slugify, text } from './count-formatters.js';
 import { renderTitledBodySection } from './view-chrome.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
 import { workflowRouteValue } from './workflow-route.js';
@@ -623,9 +623,4 @@ function formatObservationDate(value) {
   return Number.isFinite(Date.parse(date)) ? formatUtcDateTime(date) : 'Unknown';
 }
 
-/** @param {unknown} value */
-function finiteNumber(value) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : 0;
-}
 

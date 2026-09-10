@@ -82,6 +82,19 @@ export function formatAic(value) {
 }
 
 /**
+ * Coerces a value to a finite number, returning `0` for values that cannot
+ * be parsed as a finite number (e.g. `null`, `undefined`, or non-numeric
+ * strings). Shared by views that sum or aggregate loosely-typed measured
+ * quantities such as AIC usage and operational-value observations.
+ * @param {unknown} value
+ * @returns {number}
+ */
+export function finiteNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+/**
  * Computes the fraction of usable observations out of usable + excluded,
  * returning `null` when there are no observations to divide.
  * @param {number} usable

@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { formatNumber } from '../view-formatters.js';
-import { formatRoundedPercent } from './count-formatters.js';
+import { finiteNumber, formatRoundedPercent } from './count-formatters.js';
 import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-elements.js';
 import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
@@ -171,12 +171,6 @@ function insightPanel(title, description, ...children) {
 /** @param {number[]} values */
 function mean(values) {
   return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null;
-}
-
-/** @param {unknown} value */
-function finiteNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
 }
 
 /** @param {Record<string, unknown>[]} rows @param {(row: Record<string, unknown>) => string} label */
