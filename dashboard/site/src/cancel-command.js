@@ -23,8 +23,8 @@ function installStyles(document) {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  background: var(--canvas);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent);
   color: var(--fg);
   font-size: 13px;
 }
