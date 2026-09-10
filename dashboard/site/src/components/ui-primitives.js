@@ -305,6 +305,20 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders the shared "empty `aria-live="polite"` status element, populated
+ * later by the caller's render loop" pattern used by the operations
+ * marketplace count, notifications-inbox count, and work-project filter
+ * result count. Callers differ only in element tag (`span` vs `output`) and
+ * class name.
+ * @param {'span'|'output'} tag
+ * @param {string} className
+ * @returns {HTMLElement}
+ */
+export function renderLiveRegion(tag, className) {
+  return h(tag, { className, 'aria-live': 'polite' });
+}
+
+/**
  * Renders the shared "`<select>` filter with a placeholder option followed by
  * the sorted, de-duplicated set of values" pattern used by the operations
  * marketplace owner filter and the work-project facet filters.
