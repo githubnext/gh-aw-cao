@@ -557,6 +557,33 @@ export function createExpandableToggle(toggle, panel, { expandedClass, onExpand 
 }
 
 /**
+ * Closes a native `<details>` disclosure menu when the pointer clicks a
+ * designated dismiss-triggering descendant or anywhere outside the menu, and
+ * when the menu has focus and the user presses Escape, returning focus to
+ * its `<summary>` toggle. Shared by the account menu and the mobile
+ * view-navigation menu in the dashboard shell, which otherwise duplicated
+ * the same open-state teardown wired to different selectors.
+ * @param {HTMLElement} root the ancestor that receives the outside-click listener
+ * @param {HTMLDetailsElement} menu the `<details>` element to dismiss
+ * @param {string} dismissSelector selector matched against the click target (in addition to
+ *   clicks outside `menu`) that should also close the menu, e.g. a selected menu action
+ */
+export function enableDetailsMenuDismissal(root, menu, dismissSelector) {
+  root.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    if (event.target.closest(dismissSelector) || !menu.contains(event.target)) {
+      menu.removeAttribute('open');
+    }
+  });
+  menu.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    menu.removeAttribute('open');
+    const summary = menu.querySelector('summary');
+    if (summary instanceof HTMLElement) summary.focus();
+  });
+}
+
+/**
  * Renders the shared `<label><span>{label}</span>{control}</label>` pattern
  * used to associate a visible text label with a form control (search
  * inputs, facet selects, time-window inputs) across the filter bar and
