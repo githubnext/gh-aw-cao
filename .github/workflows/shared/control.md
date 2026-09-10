@@ -255,7 +255,7 @@ post-steps:
   - name: Emit control-plane dispatcher telemetry
     if: ${{ always() }}
     continue-on-error: true
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     with:
       script: |
         const fs = require('fs');
