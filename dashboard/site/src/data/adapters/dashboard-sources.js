@@ -36,6 +36,7 @@ function objectRow(row) {
  */
 export function adaptDashboardSources(sources) {
   const repositories = sourceDocument(sources.repositories);
+  const packages = sourceDocument(sources.packages);
   const workflows = sourceDocument(sources.workflows);
   const runs = sourceDocument(sources.runs);
   const jobs = sourceDocument(sources['job-performance']);
@@ -46,6 +47,43 @@ export function adaptDashboardSources(sources) {
   const publishedRunIds = new Set();
   const publishedJobIds = new Set();
   const publishedSessionIds = new Set();
+  const publishedPackageIds = new Map();
+
+  for (const candidate of packages.rows) {
+    const row = objectRow(candidate);
+    if (!row) continue;
+    const slug = requiredString(row.package, 'package.package');
+    const id = sourceId('package', SOURCE, slug);
+    publishedPackageIds.set(slug, id);
+    observations.push({
+      kind: 'package',
+      source: SOURCE,
+      sourceId: slug,
+      observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(packages.metadata), 'package.observed-at'),
+      data: {
+        id,
+        slug,
+        name: row['package-name'] ?? slug,
+        description: row['package-description'] ?? '',
+        icon: row['package-icon'] ?? 'package',
+        mode: row['package-mode'] ?? 'unknown',
+        enabled: row['package-enabled'] !== false,
+        maxRepositories: row['package-max-repositories'] ?? null,
+        rolloutPercent: row['package-rollout-percent'] ?? null,
+        monthlyAiCreditBudget: row['package-monthly-ai-credit-budget'] ?? null,
+        aiCreditAllowance: row['package-aic-allowance'] ?? null,
+        workerCount: row['package-worker-count'] ?? 0,
+        inventoryWarnings: row['package-inventory-warnings'] ?? 0,
+        workers: row['package-workers'] ?? [],
+        targets: row['package-targets'] ?? [],
+        minVersion: row['package-min-version'] ?? '',
+        experimental: row['package-experimental'] === true,
+        readmePath: row['package-readme-path'] ?? '',
+        readme: row['package-readme'] ?? '',
+        packageLink: row['package-link'] ?? null
+      }
+    });
+  }
 
   for (const candidate of repositories.rows) {
     const row = objectRow(candidate);
@@ -93,7 +131,14 @@ export function adaptDashboardSources(sources) {
         ghAwVersion: row['gh-aw-version'] ?? 'unknown',
         ghAwCurrentVersion: row['gh-aw-current-version'] ?? 'unknown',
         ghAwUpdateState: row['gh-aw-update-state'] ?? 'unknown',
-        workflowLink: row['workflow-link'] ?? null
+        workflowLink: row['workflow-link'] ?? null,
+        packageId: typeof row.package === 'string' ? publishedPackageIds.get(row.package) : undefined,
+        package: typeof row.package === 'string' ? row.package : undefined,
+        packageName: row['package-name'],
+        packageIcon: row['package-icon'],
+        role: row['workflow-role'],
+        rolloutMode: row['rollout-mode'],
+        maxAiCredits: row['max-ai-credits']
       }
     });
   }

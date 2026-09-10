@@ -118,6 +118,37 @@ function repositoriesSource(repositories, sources) {
   };
 }
 
+/** @param {Record<string, unknown>[]} packages @param {Record<string, unknown>} sources */
+function packagesSource(packages, sources) {
+  return {
+    source: 'packages',
+    rows: packages.map((packageRecord) => ({
+      package: packageRecord.slug,
+      'package-name': packageRecord.name,
+      'package-description': packageRecord.description,
+      'package-icon': packageRecord.icon,
+      'package-mode': packageRecord.mode,
+      'package-enabled': packageRecord.enabled,
+      registration: packageRecord.enabled ? 'true' : 'false',
+      'package-max-repositories': packageRecord.maxRepositories,
+      'package-rollout-percent': packageRecord.rolloutPercent,
+      'package-monthly-ai-credit-budget': packageRecord.monthlyAiCreditBudget,
+      'package-aic-allowance': packageRecord.aiCreditAllowance,
+      'package-worker-count': packageRecord.workerCount,
+      'package-inventory-warnings': packageRecord.inventoryWarnings,
+      'package-workers': packageRecord.workers,
+      'package-targets': packageRecord.targets,
+      'package-min-version': packageRecord.minVersion,
+      'package-experimental': packageRecord.experimental,
+      'package-readme-path': packageRecord.readmePath,
+      'package-readme': packageRecord.readme,
+      'observed-at': packageRecord.observedAt,
+      ...(packageRecord.packageLink ? { 'package-link': packageRecord.packageLink } : {})
+    })),
+    metadata: projectionMetadata(sources, 'packages', 'packages', true)
+  };
+}
+
 /**
  * @param {Record<string, unknown>[]} workflows
  * @param {Map<unknown, Record<string, unknown>>} repositoriesById
@@ -144,6 +175,12 @@ function workflowsSource(workflows, repositoriesById, sources) {
         'workflow-name': workflow.name,
         'workflow-active': workflow.state === 'active' ? 'true'
           : workflow.state === 'disabled' ? 'false' : 'unknown',
+        package: workflow.package,
+        'package-name': workflow.packageName,
+        'package-icon': workflow.packageIcon,
+        'workflow-role': workflow.role,
+        'rollout-mode': workflow.rolloutMode,
+        'max-ai-credits': workflow.maxAiCredits,
         'observed-at': workflow.observedAt,
         'gh-aw-version': workflow.ghAwVersion,
         'gh-aw-current-version': workflow.ghAwCurrentVersion,
@@ -300,6 +337,7 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
     ...namedLogicalSources(logicalSources),
     ...await queryCanonicalViewSources(indexedDB, logicalSources, [
       'repositories',
+      'packages',
       'workflows',
       'runs',
       'job-performance',
@@ -322,7 +360,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
-  const [repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
+  const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
+    requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') || requested.has('events')
@@ -338,6 +377,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const sources = namedLogicalSources(logicalSources);
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {};
+  if (requested.has('packages')) projected.packages = packagesSource(packages, sources);
   if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
   if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);

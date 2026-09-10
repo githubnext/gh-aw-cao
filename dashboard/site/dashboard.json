@@ -1052,9 +1052,9 @@
         ]
       },
       {
-        "name": "package-inventory",
-        "intent": "Summarize centrally managed packages with their workflow, rollout, run, and AI Credit totals.",
-        "description": "Centrally managed package inventory and observed execution totals.",
+        "name": "package-workflow-totals",
+        "intent": "Summarize observed workflow and execution totals for each centrally managed package.",
+        "description": "Observed workflow, rollout, run, and AI Credit totals grouped by package.",
         "from": "workflow-inventory",
         "filter": {
           "predicates": [
@@ -1062,7 +1062,7 @@
           ]
         },
         "aggregate": {
-          "by": ["package", "package-name"],
+          "by": ["package"],
           "values": [
             { "field": "workflow", "as": "workflows", "reducer": "count" },
             { "field": "workflow-role", "as": "roles", "reducer": "distinct-list" },
@@ -1071,7 +1071,49 @@
             { "field": "runs", "as": "runs", "reducer": "sum" },
             { "field": "aic", "as": "aic", "reducer": "sum" }
           ]
-        },
+        }
+      },
+      {
+        "name": "package-inventory",
+        "intent": "List centrally managed packages with their observed workflow and execution totals.",
+        "description": "Canonical package inventory enriched with observed workflow, rollout, run, and AI Credit totals.",
+        "from": "packages",
+        "joins": [
+          {
+            "source": "package-workflow-totals",
+            "type": "left",
+            "on": [
+              { "left": "package", "right": "package" }
+            ],
+            "fields": [
+              { "field": "workflows", "as": "observed-workflows" },
+              { "field": "roles", "as": "observed-roles" },
+              { "field": "modes", "as": "observed-modes" },
+              { "field": "registration", "as": "observed-registration" },
+              { "field": "runs", "as": "observed-runs" },
+              { "field": "aic", "as": "observed-aic" }
+            ]
+          }
+        ],
+        "compute": [
+          { "as": "workflows", "function": "coalesce", "args": [{ "field": "observed-workflows" }, { "value": 0 }] },
+          { "as": "roles", "function": "coalesce", "args": [{ "field": "observed-roles" }, { "value": "" }] },
+          { "as": "modes", "function": "coalesce", "args": [{ "field": "observed-modes" }, { "field": "package-mode" }] },
+          { "as": "registration", "function": "coalesce", "args": [{ "field": "observed-registration" }, { "field": "registration" }] },
+          { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
+          { "as": "aic", "function": "coalesce", "args": [{ "field": "observed-aic" }, { "value": 0 }] }
+        ],
+        "select": [
+          { "field": "package" },
+          { "field": "package-name" },
+          { "field": "workflows" },
+          { "field": "roles" },
+          { "field": "modes" },
+          { "field": "registration" },
+          { "field": "runs" },
+          { "field": "aic" },
+          { "field": "package-link" }
+        ],
         "order-by": [
           { "field": "package-name", "direction": "asc" }
         ]

@@ -65,6 +65,16 @@ export function adaptSqlExport(input) {
     let data;
 
     switch (kind) {
+      case 'package':
+        data = {
+          slug: requiredString(row.package_slug, 'package_slug'),
+          name: requiredString(row.package_name, 'package_name'),
+          description: optionalString(row.package_description) ?? '',
+          icon: optionalString(row.package_icon) ?? 'package',
+          mode: optionalString(row.package_mode) ?? 'unknown',
+          enabled: row.package_enabled !== false
+        };
+        break;
       case 'repository': {
         const owner = requiredString(row.repository_owner, 'repository_owner');
         const name = requiredString(row.repository_name, 'repository_name');
@@ -83,7 +93,11 @@ export function adaptSqlExport(input) {
           repositoryId: repositoryId(identifier(row.github_repository_id, 'github_repository_id')),
           name: requiredString(row.workflow_name, 'workflow_name'),
           path: requiredString(row.workflow_path, 'workflow_path'),
-          state: optionalString(row.workflow_state) ?? 'unknown'
+          state: optionalString(row.workflow_state) ?? 'unknown',
+          packageId: row.package_source_id === undefined || row.package_source_id === null
+            ? undefined
+            : sourceId('package', source, requiredString(row.package_source_id, 'package_source_id')),
+          package: optionalString(row.package_slug)
         };
         break;
       case 'run': {

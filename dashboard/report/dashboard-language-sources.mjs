@@ -8,6 +8,7 @@ import { firstText } from "./text-utils.mjs";
 
 const sourceNames = [
   "organizations",
+  "packages",
   "repositories",
   "workflows",
   "runs",
@@ -637,6 +638,56 @@ function inventoryWorkflowDetails(inventory = {}, controlSettings = {}) {
     }
   }
   return details;
+}
+
+function packageRows(inventory = {}, controlSettings = {}, generatedAt) {
+  const bundles = new Map((inventory.bundles || []).map((bundle) => [
+    String(bundle.controlPackage || bundle.id || "").trim(),
+    bundle,
+  ]).filter(([id]) => id));
+  const ids = new Set([...bundles.keys(), ...Object.keys(controlSettings.packages || {})]);
+  return [...ids].sort().map((id) => {
+    const bundle = bundles.get(id)
+      || [...bundles.values()].find((candidate) => candidate.id === id)
+      || {};
+    const policy = controlSettings.packages?.[id] || {};
+    const workers = Object.entries(policy.worker_policies || {}).map(([workflow, worker]) => ({
+      id: worker.worker || workflow,
+      workflow,
+      enabled: worker.enabled !== false,
+      "max-mode": worker.max_mode || null,
+    }));
+    const targets = Object.entries(policy.target_policies || {}).map(([repository, target]) => ({
+      repository,
+      mode: rolloutMode(target?.mode),
+    }));
+    const inventoryWorkers = bundle.workers || [];
+    const inventoryWarnings = (bundle.compiled === true ? 0 : 1) + (bundle.missingWorkers || []).length;
+    const aiCreditAllowance = [bundle.maxAiCredits, ...inventoryWorkers.map((worker) => worker.maxAiCredits)]
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .reduce((total, value) => total + value, 0);
+    return {
+      package: id,
+      "package-name": bundle.name || id,
+      "package-description": bundle.description || "",
+      "package-icon": policy.icon || "package",
+      "package-mode": rolloutMode(policy.mode),
+      "package-enabled": policy.enabled !== false,
+      "package-max-repositories": policy["max-repositories"] ?? null,
+      "package-rollout-percent": policy["rollout-percent"] ?? null,
+      "package-monthly-ai-credit-budget": policy["monthly-ai-credit-budget"] ?? null,
+      "package-aic-allowance": aiCreditAllowance || null,
+      "package-worker-count": workers.length || inventoryWorkers.length,
+      "package-inventory-warnings": inventoryWarnings,
+      "package-workers": workers,
+      "package-targets": targets,
+      "package-min-version": bundle.minVersion || "",
+      "package-experimental": bundle.experimental === true,
+      "package-readme-path": bundle.readmePath || "",
+      "package-readme": bundle.readme || "",
+      "observed-at": generatedAt,
+    };
+  });
 }
 
 function workflowRows(deployed, generatedAt, inventory, controlSettings) {
@@ -2550,6 +2601,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
     discovery: { ...deployed.discovery, complete: workflowInventoryComplete },
   };
   const workflows = workflowRows(workflowDeployed, generatedAt, inventory, controlSettings);
+  const packages = packageRows(inventory, controlSettings, generatedAt);
   const runs = runRows(deployed, usage);
   const admission = admissionRows(deployed);
   const performance = performanceRows(deployed, usage);
@@ -2614,6 +2666,13 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
 
   const sources = Object.fromEntries(sourceNames.map((name) => [name, source(name, [], generatedAt, false, false)]));
   sources.organizations = source("organizations", organizations, generatedAt, discoveryAvailable, workflowInventoryComplete);
+  sources.packages = source(
+    "packages",
+    packages,
+    generatedAt,
+    controlSettings.policy_resolution?.status !== "unavailable",
+    controlSettings.policy_resolution?.status !== "unavailable",
+  );
   sources.repositories = source("repositories", [...repositories.values()], generatedAt, discoveryAvailable, workflowInventoryComplete);
   sources.workflows = source("workflows", workflows, generatedAt, workflowsAvailable, workflowInventoryComplete);
   sources.runs = source("runs", runs, generatedAt, runAvailable, runComplete);
