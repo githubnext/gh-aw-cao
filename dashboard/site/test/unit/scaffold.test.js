@@ -58,15 +58,18 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
-    const dialogRule = styles.match(/\.reset-dashboard-dialog \{[^}]*\}/)?.[0] ?? '';
-    const openRule = styles.match(/\.reset-dashboard-dialog\[open\] \{[^}]*\}/)?.[0] ?? '';
-    const bodyRule = styles.match(/\.reset-dashboard-dialog-body \{[^}]*\}/)?.[0] ?? '';
+    const dialogRule = styles.match(/\.reset-dashboard-dialog \{[^}]*\}/);
+    const openRule = styles.match(/\.reset-dashboard-dialog\[open\] \{[^}]*\}/);
+    const bodyRule = styles.match(/\.reset-dashboard-dialog-body \{[^}]*\}/);
 
-    expect(dialogRule).toContain('max-height: calc(100vh - 32px);');
-    expect(dialogRule).toContain('height: fit-content;');
-    expect(openRule).toContain('grid-template-rows: auto minmax(0, 1fr) auto;');
-    expect(bodyRule).toContain('align-content: start;');
-    expect(bodyRule).toContain('overflow-y: auto;');
+    expect(dialogRule).not.toBeNull();
+    expect(openRule).not.toBeNull();
+    expect(bodyRule).not.toBeNull();
+    expect(dialogRule?.[0]).toContain('max-height: calc(100vh - 32px);');
+    expect(dialogRule?.[0]).toContain('height: fit-content;');
+    expect(openRule?.[0]).toContain('grid-template-rows: auto minmax(0, 1fr) auto;');
+    expect(bodyRule?.[0]).toContain('align-content: start;');
+    expect(bodyRule?.[0]).toContain('overflow-y: auto;');
   });
 
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
