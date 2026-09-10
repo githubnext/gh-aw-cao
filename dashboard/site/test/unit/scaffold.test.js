@@ -91,9 +91,10 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
     /** @param {string} rule */
     const zIndex = (rule) => {
-      const match = styles.match(new RegExp(`${rule} \\{[^}]*z-index: (\\d+);`));
-      expect(match, `missing z-index for ${rule}`).not.toBeNull();
-      return Number(match?.[1]);
+      const block = styles.match(new RegExp(`${rule} \\{([^}]*)\\}`))?.[1];
+      const layer = block?.match(/z-index: (\d+);/)?.[1];
+      expect(layer, `missing z-index for ${rule}`).toBeDefined();
+      return Number(layer);
     };
     const panelLayer = zIndex('\\.filter-bar-expanded \\.filter-tuning-controls');
     const headerLayer = zIndex('\\.app-main > \\.top-nav');
