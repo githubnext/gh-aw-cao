@@ -7,6 +7,7 @@ import {
 
 test("retries a transient GitHub package download failure", () => {
   let attempts = 0;
+  const delays = [];
   const result = retryTransientPackageInstall(() => {
     attempts += 1;
     if (attempts === 1) {
@@ -15,10 +16,11 @@ test("retries a transient GitHub package download failure", () => {
       throw error;
     }
     return "installed";
-  });
+  }, 2, (milliseconds) => delays.push(milliseconds));
 
   assert.equal(result, "installed");
   assert.equal(attempts, 2);
+  assert.deepEqual(delays, [1_000]);
 });
 
 test("does not retry a deterministic package install failure", () => {
