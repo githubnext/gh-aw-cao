@@ -1,13 +1,13 @@
 {
   "date": "2026-09-10",
   "period_days": 1,
-  "window_start": "2026-09-09T12:39:45Z",
-  "window_end": "2026-09-10T12:39:45Z",
+  "window_start": "2026-09-09T14:29:36Z",
+  "window_end": "2026-09-10T14:29:36Z",
   "overall": {
     "total_runs": 0,
-    "total_ai_credits": 0,
+    "total_ai_credits": 0.0,
     "total_tokens": 0,
-    "total_action_minutes": 0
+    "total_action_minutes": 0.0
   },
   "workflows": []
 }
