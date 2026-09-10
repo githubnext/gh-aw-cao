@@ -587,7 +587,15 @@ dashboard:
     expect(runsView.data.source).toBe('runs-table');
     expect(packagesPage.definition.views).toHaveLength(1);
     expect(workflowsPage.definition.views).toHaveLength(1);
-    expect(runsPage.definition.views).toHaveLength(2);
+    expect(runsPage.definition.views).toHaveLength(1);
+    expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
+      'overview',
+      'repositories',
+      'workflows',
+      'runs',
+      'packages',
+      'configuration'
+    ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 

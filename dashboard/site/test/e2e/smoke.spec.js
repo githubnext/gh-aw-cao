@@ -848,8 +848,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
-  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Workflows', 'Packages']);
-  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Packages/ })).toHaveCount(0);
+  await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Workflows', 'Runs', 'Packages']);
+  await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
   await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
@@ -2255,6 +2255,18 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   const visiblePackageReportRows = page.locator('[data-page-id="package-reports"] .custom-table tbody tr:visible');
   await expect(visiblePackageReportRows).toHaveCount(1);
   await expect(visiblePackageReportRows).toContainText('Reconcile ambient context');
+
+  await page.evaluate(() => {
+    window.location.hash = '#page-runs';
+  });
+  const runsPage = page.locator('[data-page-id="runs"]');
+  await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(runsPage.locator('[data-view-layout="full-view"]')).toHaveCount(1);
+  await expect(runsPage.locator('[data-lazy-list]')).toBeVisible();
+  await expect(runsPage.locator('[data-table-filter]')).toBeVisible();
+  await expect(runsPage.locator('.table-summary-row')).toBeVisible();
+  await expect(runsPage.locator('.custom-table tbody tr')).toHaveCount(7);
 });
 
 test('DLS-PAGE-017 renders an editable filter bar and applies changes automatically', async ({ page }) => {

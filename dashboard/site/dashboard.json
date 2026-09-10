@@ -3225,37 +3225,6 @@
           },
           "views": [
             {
-              "id": "runs-health-trend",
-              "title": "Run health trend",
-              "description": "Daily run conclusions show execution health across the configured repository scope.",
-              "data": {
-                "source": "runs",
-                "time": {
-                  "range": "30d"
-                }
-              },
-              "mark": "chart",
-              "chart": "line",
-              "layout": "full",
-              "encoding": {
-                "x": {
-                  "field": "started-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "time-unit": "day"
-                },
-                "y": {
-                  "field": "run",
-                  "type": "quantitative",
-                  "aggregate": "count"
-                },
-                "color": {
-                  "field": "run-conclusion",
-                  "type": "nominal"
-                }
-              }
-            },
-            {
               "id": "runs-runs-source",
               "title": "Runs",
               "description": "Observed workflow runs across the configured repository scope.",
@@ -5226,6 +5195,7 @@
           "overview",
           "repositories",
           "workflows",
+          "runs",
           "packages",
           "configuration"
         ]
