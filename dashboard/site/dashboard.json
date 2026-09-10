@@ -1766,23 +1766,17 @@
         "views": [
           {
             "id": "repository-authored-workflows",
-            "title": "Authored Agentic Workflows",
-            "description": "Authored workflows with managed-package membership and observed execution totals.",
+            "title": "Repository workflows",
+            "description": "All declared workflows belonging to this repository, with managed-package membership and observed execution totals.",
             "data": {
               "source": "workflow-inventory",
-              "route-field": "repository",
-              "order-by": [
-                {
-                  "field": "workflow",
-                  "direction": "asc"
-                }
-              ]
+              "route-field": "repository"
             },
             "mark": "table",
             "controls": "interactive",
             "lazy-list": true,
             "column-summaries": true,
-            "empty-message": "No authored Agentic Workflows were observed for this repository.",
+            "empty-message": "No workflows were observed for this repository.",
             "encoding": {
               "columns": [
                 {

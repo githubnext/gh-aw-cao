@@ -2934,6 +2934,7 @@ test('repository page template follows its JSON-declared hash query route in bro
           metadata,
           rows: [
             { repository: 'octo-org/octo-repo', workflow: 'review.md', 'workflow-name': 'Review', 'workflow-active': 'true', runs: 2, aic: 3 },
+            { repository: 'octo-org/octo-repo', workflow: 'triage.md', 'workflow-name': 'Triage', 'workflow-active': 'true', runs: 4, aic: 5 },
             { repository: 'other-org/other-repo', workflow: 'other.md', 'workflow-name': 'Other', 'workflow-active': 'true', runs: 1, aic: 1 }
           ]
         }
@@ -2946,6 +2947,7 @@ test('repository page template follows its JSON-declared hash query route in bro
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
   await expect(page.locator('[data-page-id="repository-detail"] [data-view-layout="full-view"]')).toBeVisible();
   await expect(page.locator('[data-route-view] .custom-table')).toContainText('Review');
+  await expect(page.locator('[data-route-view] .custom-table')).toContainText('Triage');
   await expect(page.locator('[data-route-view] .custom-table')).not.toContainText('Other');
 
   await page.evaluate(() => {

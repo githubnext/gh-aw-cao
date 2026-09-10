@@ -174,8 +174,7 @@ describe('repositories view', () => {
     expect(workflowsView).toMatchObject({
       data: {
         source: 'workflow-inventory',
-        'route-field': 'repository',
-        'order-by': [{ field: 'workflow', direction: 'asc' }]
+        'route-field': 'repository'
       },
       mark: 'table',
       controls: 'interactive',
