@@ -293,7 +293,6 @@ async function collectDashboardRecordsImpl({
   const reportRepositoryNames = [...new Set([
     repository,
     ...(deployedInventory.workflows || []).map((workflow) => workflow.repository),
-    ...(deployedInventory.allowedRepositories || []),
     ...allowedRepositories,
   ].filter(Boolean))].sort();
   const canonicalRepositoryNames = reportRepositoryNames;
