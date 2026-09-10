@@ -7,6 +7,7 @@
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
+      import { scheduleBackgroundRefresh } from "./background-refresh.js";
 
       /**
        * @param {string} id
@@ -962,16 +963,14 @@
             ),
             initialLazySources,
           );
-          try {
-            cachedSources = await loadInitialSources(
-              (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
-            );
-          } catch {
-            // An empty or incompatible database is rebuilt from the published sources below.
-          }
-
-          if (cachedSources) {
-            const displayedSources = cachedSources;
+          /**
+           * Keeps the active canonical generation and rendered page current
+           * without navigating or reloading the document.
+           * @param {Record<string, import('./presenter.js').LogicalSourceInput>} initialDisplayedSources
+           * @param {boolean} refreshImmediately
+           */
+          const startLiveRefresh = (initialDisplayedSources, refreshImmediately) => {
+            let displayedSources = initialDisplayedSources;
             const refreshPagination = continuationRequests(initialLazySources);
             const refreshOwner = new AbortController();
             window.addEventListener("pagehide", (event) => {
@@ -1010,41 +1009,58 @@
                 showStaleSources,
               );
             };
-            refreshSources();
-            loadingProgress.complete();
-            cancelCommand.complete();
             subscribeCanonicalDashboardView(
               `page:${initialPageId}`,
               initialSources,
               dashboardContext,
-              (sources) => updateWithViewTransition(
-                document,
-                () => renderSources(
-                  bindContinuations(sources, initialLazySources),
-                  "ready",
-                  true,
-                  loadPageSources,
-                  loadHorizonSources,
-                ),
-              ),
+              (sources) => {
+                displayedSources = bindContinuations(sources, initialLazySources);
+                updateWithViewTransition(
+                  document,
+                  () => renderSources(
+                    displayedSources,
+                    "ready",
+                    true,
+                    loadPageSources,
+                    loadHorizonSources,
+                  ),
+                );
+              },
               refreshPagination,
               { signal: refreshOwner.signal, onError: showStaleSources, emitCurrent: false },
             );
+            scheduleBackgroundRefresh(refreshSources, { signal: refreshOwner.signal });
+            if (refreshImmediately) refreshSources();
+          };
+          try {
+            cachedSources = await loadInitialSources(
+              (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            );
+          } catch {
+            // An empty or incompatible database is rebuilt from the published sources below.
+          }
+
+          if (cachedSources) {
+            startLiveRefresh(cachedSources, true);
+            loadingProgress.complete();
+            cancelCommand.complete();
           } else {
-            renderSources(
-              await loadInitialSources(
+            const initialDisplayedSources = await loadInitialSources(
                 (requested, pagination) => loadCanonicalDashboardSources(
                   sourceUrl,
                   requested,
                   dashboardContext,
                   pagination,
                 ),
-              ),
+              );
+             renderSources(
+              initialDisplayedSources,
               "ready",
               true,
               loadPageSources,
               loadHorizonSources,
             );
+            startLiveRefresh(initialDisplayedSources, false);
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

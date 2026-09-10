@@ -979,6 +979,23 @@ chunked generation
 same adapters/model
 ```
 
+## 20.3 Continuous Background Refresh
+
+The dashboard MUST start source acquisition during initial page load and MUST continue polling published source generations in the background while the page remains active.
+
+The initial polling interval SHALL be 15 minutes. The interval MAY become configurable in a later version, but an implementation MUST disclose its effective refresh bound wherever it represents data as `Live`.
+
+Every polling cycle MUST:
+
+1. add a dummy, unique query argument to the manifest, chunk, and fallback source URLs to prevent intermediary caches from serving an older generation;
+2. fetch, normalize, and persist changed observations incrementally in bounded batches;
+3. preserve the active generation until the replacement generation is complete and valid;
+4. atomically activate a valid changed generation;
+5. notify active canonical-query subscriptions after activation so visible views update in place; and
+6. show a progress-bar indication from acquisition start until success or failure.
+
+A polling cycle MUST NOT reload or navigate the page. In-place updates MUST preserve the current route, filters, focus context where possible, and other user presentation state. Overlapping polling cycles MUST NOT run concurrently. An unchanged generation MUST be a successful no-op. A failed cycle MUST leave the prior active generation visible, identify it as stale, and allow a later scheduled or explicit retry.
+
 ---
 
 # 21. Immutable Chunks
@@ -2026,6 +2043,30 @@ Chromium
 ```
 
 SHALL be tested.
+
+### T-REFRESH-001 — Initial and scheduled acquisition
+
+Verify that source acquisition starts during initial page load and repeats after 15 minutes while the page remains active.
+
+### T-REFRESH-002 — Cache busting
+
+Verify that every manifest, chunk, and fallback source request in one cycle contains the cycle's dummy query argument and that a later cycle uses a different value.
+
+### T-REFRESH-003 — Incremental persistence and activation
+
+Provide a changed generation large enough for multiple write batches. Verify bounded incremental writes, continued reads from the prior active generation during staging, and atomic activation only after validation.
+
+### T-REFRESH-004 — Active UI update
+
+Activate a changed generation and verify that visible subscribed views update without document reload or navigation and preserve route, filters, and user presentation state.
+
+### T-REFRESH-005 — Background progress and overlap
+
+Verify that a progress bar remains perceptible throughout each background cycle, completes on success or failure, and that a scheduled tick does not overlap an in-flight cycle.
+
+### T-REFRESH-006 — Unchanged and failed cycles
+
+Verify that an unchanged generation is a successful no-op and that acquisition, validation, or storage failure leaves the prior active generation visible as stale until a later retry succeeds.
 
 Where supported:
 

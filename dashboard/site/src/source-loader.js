@@ -6,13 +6,19 @@
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function loadDashboardSources(fetchSource, sourcesUrl) {
-  const manifestUrl = new URL('./sources/manifest.json', sourcesUrl);
+  const refreshToken = String(Date.now());
+  const withRefreshToken = (url) => {
+    const refreshedUrl = new URL(url);
+    refreshedUrl.searchParams.set('_refresh', refreshToken);
+    return refreshedUrl;
+  };
+  const manifestUrl = withRefreshToken(new URL('./sources/manifest.json', sourcesUrl));
   const manifestResponse = await fetchSource(manifestUrl, { cache: 'no-store' });
   if (!manifestResponse.ok) {
     if (manifestResponse.status !== 404) {
       throw new Error(`Unable to load dashboard source manifest: ${manifestResponse.status}`);
     }
-    const response = await fetchSource(sourcesUrl, { cache: 'no-store' });
+    const response = await fetchSource(withRefreshToken(sourcesUrl), { cache: 'no-store' });
     if (!response.ok) throw new Error(`Unable to load sources.json: ${response.status}`);
     return response.json();
   }
@@ -27,7 +33,7 @@ export async function loadDashboardSources(fetchSource, sourcesUrl) {
   /** @type {Record<string, unknown>} */
   const sources = {};
   for (const name of manifest.sources) {
-    const response = await fetchSource(new URL(`${name}.json`, manifestUrl), { cache: 'no-store' });
+    const response = await fetchSource(withRefreshToken(new URL(`${name}.json`, manifestUrl)), { cache: 'no-store' });
     if (!response.ok) throw new Error(`Unable to load dashboard source ${name}: ${response.status}`);
     const source = await response.json();
     if (manifest.generation && source?.metadata?.['artifact-generation'] !== manifest.generation) {

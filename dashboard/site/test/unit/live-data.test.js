@@ -20,11 +20,15 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("startLoadingProgress(document)");
     expect(preview).toContain("runWithLoadingProgress");
     expect(preview).toContain("loadingProgress.complete()");
+    expect(preview).toContain('import { scheduleBackgroundRefresh } from "./background-refresh.js"');
+    expect(preview).toContain("scheduleBackgroundRefresh(refreshSources, { signal: refreshOwner.signal })");
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
     expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
     expect(preview).toContain("subscribeCanonicalDashboardView(");
     expect(preview).toContain("emitCurrent: false");
     expect(preview).toContain("if (!event.persisted) refreshOwner.abort()");
+    expect(preview).toContain("startLiveRefresh(initialDisplayedSources, false)");
+    expect(preview).toContain("displayedSources = bindContinuations(sources, initialLazySources)");
     expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DASHBOARD_HORIZON_COUNT_SOURCES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');

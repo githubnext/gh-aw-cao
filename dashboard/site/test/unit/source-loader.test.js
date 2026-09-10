@@ -3,6 +3,7 @@ import { loadDashboardSources } from '../../src/source-loader.js';
 
 describe('dashboard source loader', () => {
   it('loads split logical sources sequentially', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(12345);
     let active = 0;
     let maximumActive = 0;
     const fetchSource = vi.fn(async (input) => {
@@ -25,9 +26,9 @@ describe('dashboard source loader', () => {
     });
     expect(maximumActive).toBe(1);
     expect(fetchSource.mock.calls).toEqual([
-      [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
-      [new URL('https://example.test/cao/sources/runs.json'), { cache: 'no-store' }],
-      [new URL('https://example.test/cao/sources/outcomes.json'), { cache: 'no-store' }]
+      [new URL('https://example.test/cao/sources/manifest.json?_refresh=12345'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources/runs.json?_refresh=12345'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources/outcomes.json?_refresh=12345'), { cache: 'no-store' }]
     ]);
   });
 
@@ -47,6 +48,7 @@ describe('dashboard source loader', () => {
   });
 
   it('falls back to the monolith only when no split manifest exists', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(67890);
     const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
       ? new Response('', { status: 404 })
       : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
@@ -55,8 +57,8 @@ describe('dashboard source loader', () => {
       workflows: { source: 'workflows', rows: [] }
     });
     expect(fetchSource.mock.calls).toEqual([
-      [new URL('https://example.test/cao/sources/manifest.json'), { cache: 'no-store' }],
-      ['https://example.test/cao/sources.json', { cache: 'no-store' }]
+      [new URL('https://example.test/cao/sources/manifest.json?_refresh=67890'), { cache: 'no-store' }],
+      [new URL('https://example.test/cao/sources.json?_refresh=67890'), { cache: 'no-store' }]
     ]);
   });
 
