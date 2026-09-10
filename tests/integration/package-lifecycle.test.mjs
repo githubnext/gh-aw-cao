@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { retryTransientPackageInstall } from "../helpers/package-install-retry.mjs";
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
   || "githubnext/gh-aw-cao@main";
@@ -146,21 +147,23 @@ function workflowBody(content) {
 }
 
 function installPackage(source) {
-  const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
-  try {
-    run("git", ["init", "--quiet"], consumer);
-    run("gh", [
-      "aw",
-      "add",
-      source,
-      "--force",
-      "--no-security-scanner",
-    ], consumer);
-    return consumer;
-  } catch (error) {
-    rmSync(consumer, { recursive: true, force: true });
-    throw error;
-  }
+  return retryTransientPackageInstall(() => {
+    const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
+    try {
+      run("git", ["init", "--quiet"], consumer);
+      run("gh", [
+        "aw",
+        "add",
+        source,
+        "--force",
+        "--no-security-scanner",
+      ], consumer);
+      return consumer;
+    } catch (error) {
+      rmSync(consumer, { recursive: true, force: true });
+      throw error;
+    }
+  });
 }
 
 test("gh aw add installs the root package without rewriting Copilot authentication", { timeout: 180_000 }, () => {
