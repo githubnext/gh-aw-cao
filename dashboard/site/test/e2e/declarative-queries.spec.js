@@ -93,9 +93,27 @@ function queryScenarioSources() {
     },
     outcomes: {
       rows: [
-        { 'safe-output': 'issue-1', 'safe-output-kind': 'create-issue' },
-        { 'safe-output': 'issue-2', 'safe-output-kind': 'create-issue' },
-        { 'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request' }
+        {
+          'safe-output': 'issue-1', 'safe-output-kind': 'create-issue', 'outcome-title': 'Older issue',
+          'outcome-status': 'open', 'outcome-state': 'accepted', workflow: 'daily.md', repository: 'gh-aw-cao',
+          'rollout-mode': 'review', run: '1001', 'published-at': '2026-09-08T01:00:00Z',
+          'observed-at': '2026-09-08T02:00:00Z', 'external-link': { href: 'https://example.com/issues/1' },
+          'run-link': { href: 'https://example.com/runs/1001' }
+        },
+        {
+          'safe-output': 'issue-2', 'safe-output-kind': 'create-issue', 'outcome-title': 'Newest issue',
+          'outcome-status': 'closed', 'outcome-state': 'completed', workflow: 'daily.md', repository: 'gh-aw-cao',
+          'rollout-mode': 'live', run: '1002', 'published-at': '2026-09-09T01:00:00Z',
+          'observed-at': '2026-09-09T02:00:00Z', 'external-link': { href: 'https://example.com/issues/2' },
+          'run-link': { href: 'https://example.com/runs/1002' }
+        },
+        {
+          'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request', 'outcome-title': 'Pull request',
+          'outcome-status': 'open', 'outcome-state': 'pending', workflow: 'release.md', repository: 'gh-aw-cao',
+          'rollout-mode': 'review', run: '1003', 'published-at': '2026-09-08T03:00:00Z',
+          'observed-at': '2026-09-08T04:00:00Z', 'external-link': { href: 'https://example.com/pulls/1' },
+          'run-link': { href: 'https://example.com/runs/1003' }
+        }
       ],
       metadata
     }
@@ -265,17 +283,22 @@ test('scenario 3: aggregates with grouped, deterministic reducers', async ({ pag
   expect(payload['run-totals'].rows).toHaveLength(3);
 });
 
-test('the authored Safe Outputs query groups canonical outcomes by type', async ({ page }) => {
+test('the authored Safe Outputs query returns every canonical outcome for the usage table', async ({ page }) => {
   const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
   const query = dashboard.dashboard.queries.find(
-    (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-outputs-by-type'
+    (/** @type {{ name?: string }} */ candidate) => candidate.name === 'safe-output-usage'
   );
-  const payload = await loadThroughWorker(page, [query], ['safe-outputs-by-type']);
+  const payload = await loadThroughWorker(page, [query], ['safe-output-usage']);
 
-  expect(payload['safe-outputs-by-type'].rows).toEqual([
-    { 'safe-output-kind': 'create-issue', 'safe-output-count': 2 },
-    { 'safe-output-kind': 'create-pull-request', 'safe-output-count': 1 }
+  expect(payload['safe-output-usage'].rows.map((row) => row['safe-output'])).toEqual([
+    'issue-2',
+    'pr-1',
+    'issue-1'
   ]);
+  expect(payload['safe-output-usage']).toMatchObject({
+    source: 'safe-output-usage',
+    metadata: { 'source-kind': 'derived', 'query-name': 'safe-output-usage' }
+  });
 });
 
 test('scenario 4: a left join keeps unmatched rows and fills joined fields with null', async ({ page }) => {

@@ -385,27 +385,59 @@ describe('declarative dashboard queries', () => {
     });
   });
 
-  it('groups the Safe Outputs view by declared output type', () => {
+  it('projects every Safe Output usage record without aggregation or limits', () => {
     const outcomes = {
       source: 'outcomes',
       rows: [
-        { 'safe-output': 'issue-1', 'safe-output-kind': 'create-issue' },
-        { 'safe-output': 'issue-2', 'safe-output-kind': 'create-issue' },
-        { 'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request' }
+        {
+          'safe-output': 'issue-1', 'safe-output-kind': 'create-issue', 'outcome-title': 'Older issue',
+          'outcome-status': 'open', 'outcome-state': 'accepted', workflow: 'daily.md', repository: 'cao',
+          'rollout-mode': 'review', run: '1', 'published-at': '2026-09-01T00:00:00Z',
+          'observed-at': '2026-09-01T01:00:00Z', 'external-link': { href: 'issue-1' }, 'run-link': { href: 'run-1' }
+        },
+        {
+          'safe-output': 'issue-2', 'safe-output-kind': 'create-issue', 'outcome-title': 'Newest issue',
+          'outcome-status': 'closed', 'outcome-state': 'completed', workflow: 'daily.md', repository: 'cao',
+          'rollout-mode': 'live', run: '2', 'published-at': '2026-09-02T00:00:00Z',
+          'observed-at': '2026-09-02T01:00:00Z', 'external-link': { href: 'issue-2' }, 'run-link': { href: 'run-2' }
+        },
+        {
+          'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request', 'outcome-title': 'Pull request',
+          'outcome-status': 'open', 'outcome-state': 'pending', workflow: 'release.md', repository: 'cao',
+          'rollout-mode': 'review', run: '3', 'published-at': '2026-09-01T00:30:00Z',
+          'observed-at': '2026-09-01T01:30:00Z', 'external-link': { href: 'pr-1' }, 'run-link': { href: 'run-3' }
+        }
       ],
       metadata: metadata('outcomes')
     };
     const derived = executeDashboardQueries(
       dashboardQueries,
       { outcomes },
-      ['safe-outputs-by-type']
+      ['safe-output-usage']
     );
 
-    expect(Object.keys(derived)).toEqual(['safe-outputs-by-type']);
-    expect(derived['safe-outputs-by-type'].rows).toEqual([
-      { 'safe-output-kind': 'create-issue', 'safe-output-count': 2 },
-      { 'safe-output-kind': 'create-pull-request', 'safe-output-count': 1 }
+    expect(Object.keys(derived)).toEqual(['safe-output-usage']);
+    expect(derived['safe-output-usage'].rows).toHaveLength(3);
+    expect(derived['safe-output-usage'].rows.map((row) => row['safe-output'])).toEqual([
+      'issue-2',
+      'pr-1',
+      'issue-1'
     ]);
+    expect(derived['safe-output-usage'].rows[0]).toMatchObject({
+      'safe-output': 'issue-2',
+      'safe-output-kind': 'create-issue',
+      'outcome-title': 'Newest issue',
+      'outcome-status': 'closed',
+      'outcome-state': 'completed',
+      workflow: 'daily.md',
+      repository: 'cao',
+      'rollout-mode': 'live',
+      run: '2',
+      'published-at': '2026-09-02T00:00:00Z',
+      'observed-at': '2026-09-02T01:00:00Z',
+      'external-link': { href: 'issue-2' },
+      'run-link': { href: 'run-2' }
+    });
   });
 
   it('projects MCP activity entirely from declarative event queries', () => {
