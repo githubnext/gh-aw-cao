@@ -82,6 +82,9 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
     assert.equal(usage.runs[0].aic, 2.5);
+    assert.equal(usage.runs[0].agentId, "copilot");
+    assert.equal(usage.runs[0].agentVersion, "1.2.3");
+    assert.equal(usage.runs[0].modelId, "gpt-5");
     assert.equal(usage.runs[0].engine, "copilot");
     assert.equal(usage.runs[0].resolvedModel, "gpt-5");
     assert.equal(usage.runs[0].ghAwVersion, "0.89.1");

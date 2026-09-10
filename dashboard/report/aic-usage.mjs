@@ -714,6 +714,10 @@ export async function collectAicUsage() {
           mode,
           conclusion: metadata.run?.conclusion || null,
           createdAt: run.created_at || run.started_at || metadata.run?.createdAt || null,
+          agentId: firstText(run.agent_id, run.agent, run.engine_id),
+          agentVersion: firstText(run.agent_version, run.engine_version),
+          modelId: firstText(run.model_id, run.resolved_model, run.model),
+          ghAwVersion: firstText(run.gh_aw_version, run.ghAwVersion, run.cli_version, run.version),
           engine: firstText(run.engine, run.agentic_engine, run.agent_engine),
           engineVersion: firstText(run.engine_version, run.agentic_engine_version, run.agent_engine_version, run.agent_version),
           requestedModel: firstText(run.requested_model, run.requestedModel, run.model, run.model_name),
@@ -756,12 +760,15 @@ export async function collectAicUsage() {
         }
         const enriched = {
           ...common,
+          agentId: firstText(common.agentId, security.agentInfo.agentId),
+          agentVersion: firstText(common.agentVersion, security.agentInfo.agentVersion),
+          modelId: firstText(common.modelId, security.agentInfo.modelId),
           engine: firstText(common.engine, security.agentInfo.agentId, security.agentInfo.agentName),
           engineVersion: firstText(common.engineVersion, security.agentInfo.agentVersion),
           requestedModel: firstText(common.requestedModel, security.agentInfo.modelId),
           resolvedModel: firstText(common.resolvedModel, security.agentInfo.modelId),
           agentRuntime: firstText(common.agentRuntime, security.agentInfo.agentRuntime),
-          ghAwVersion: firstText(security.agentInfo.ghAwVersion, security.mcp.cliVersion),
+          ghAwVersion: firstText(common.ghAwVersion, security.agentInfo.ghAwVersion, security.mcp.cliVersion),
         };
         if (Number.isFinite(aic) || enriched.tokenUsage) runs.set(`${repository}:${runId}`, {
           ...enriched,
