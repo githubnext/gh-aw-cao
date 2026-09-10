@@ -25,10 +25,11 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('loadCanonicalDashboardPage(\n            DASHBOARD_HORIZON_COUNT_SOURCES,');
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
     expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
-    expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources)');
-    expect(preview).toContain("Showing cached data because the latest dashboard data could not be loaded.");
+    expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources)');
+    expect(preview).toContain("renderRefreshError(retryRefresh)");
+    expect(preview).toContain("refreshSources");
     expect(preview).toContain("if (changed) return;");
-    expect(preview).toContain('dashboard.classList.remove("dashboard-refreshing")');
+    expect(preview).toContain('renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources)');
     expect(preview).not.toContain("loadDashboardSources(fetch, sourceUrl)");
     expect(preview).not.toContain("ingestDashboardSources(window.indexedDB, sources");
     expect(preview).not.toContain('./source-cache.js');

@@ -133,7 +133,7 @@ describe('GitHub API event dashboard', () => {
     const link = /** @type {HTMLAnchorElement | null} */ (page.querySelector('[data-nav-page-id="github-api"]'));
     link?.click();
     await vi.waitFor(() => {
-      expect(page.querySelector('[data-page-id="github-api"]')?.textContent).toContain('This view is unavailable.');
+      expect(page.querySelector('[data-page-id="github-api"]')?.textContent).toContain('This view cannot be shown because its data source is unavailable.');
     });
 
     expect(page.querySelector('[data-page-id="github-api"]')?.textContent).toContain('partial');

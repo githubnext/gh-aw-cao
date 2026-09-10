@@ -1726,6 +1726,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .report-footer-status time { color: var(--fg); font-weight: 600; white-space: nowrap; }
 .empty, .page-placeholder { margin: 0; padding: 28px 16px; color: var(--muted); text-align: center; }
 .source-loading-status { margin: 0 0 16px; color: var(--muted); font-size: .8125rem; }
+.source-refresh-error { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--attention); border-radius: 6px; background: var(--attention-muted); }
+.source-refresh-error-message { min-width: 0; }
+.source-refresh-error-message strong { display: block; color: var(--fg); }
+.source-refresh-error-message p { margin: 2px 0 0; color: var(--muted); font-size: .8125rem; }
+.source-refresh-retry { flex: none; background: var(--canvas); }
 .source-loading-warning { color: var(--attention); }
 .dashboard-loading .dashboard-pages { display: none; }
 .dashboard-loading-skeleton { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -1826,6 +1831,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; }
 }
 @media (max-width: 700px) {
+  .source-refresh-error { align-items: flex-start; flex-direction: column; }
   .timeline-chart-axis span:not(:first-child):not(:last-child):nth-child(even) { display: none; }
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }
   .dashboard-root { height: auto; min-height: 100vh; overflow: visible; }

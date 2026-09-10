@@ -6,6 +6,7 @@
       import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
+      import { renderRefreshError } from "./components/refresh-error.js";
 
       /**
        * @param {string} id
@@ -163,8 +164,9 @@
        * @param {boolean} [prepared]
        * @param {(pageId: string) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadPageSources]
        * @param {() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} [loadHorizonSources]
+       * @param {() => void} [retryRefresh]
        */
-      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources) => {
+      const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -201,12 +203,9 @@
           dashboard.querySelector(".report-body")?.prepend(status);
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
-
-          const status = document.createElement("p");
-          status.className = "source-loading-status";
-          status.setAttribute("role", "status");
-          status.textContent = "Showing cached data because the latest dashboard data could not be loaded.";
-          dashboard.querySelector(".report-body")?.prepend(status);
+          if (retryRefresh) {
+            dashboard.querySelector(".report-body")?.prepend(renderRefreshError(retryRefresh));
+          }
         }
         attachCopilotPanel(dashboard);
         const previousDashboard = root.firstElementChild;
@@ -961,18 +960,39 @@
               if (!event.persisted) refreshOwner.abort();
             });
             let refreshFailed = false;
+            let refreshPending = false;
             /** @param {unknown} error */
             const showStaleSources = (error) => {
               if (refreshFailed) return;
               refreshFailed = true;
+              refreshPending = false;
               const message = error instanceof Error ? error.message : String(error);
               console.error(`Unable to refresh live dashboard data: ${message}`);
               updateWithViewTransition(
                 document,
-                () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources),
+                () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources),
               );
             };
-            renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
+            const refreshSources = () => {
+              if (refreshPending) return;
+              refreshFailed = false;
+              refreshPending = true;
+              renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
+              void refreshCanonicalDashboardSources(
+                sourceUrl,
+                initialSources,
+                dashboardContext,
+                refreshPagination,
+              ).then(
+                ({ changed }) => {
+                  refreshPending = false;
+                  if (changed) return;
+                  renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
+                },
+                showStaleSources,
+              );
+            };
+            refreshSources();
             loadingProgress.complete();
             cancelCommand.complete();
             subscribeCanonicalDashboardView(
@@ -991,23 +1011,6 @@
               ),
               refreshPagination,
               { signal: refreshOwner.signal, onError: showStaleSources, emitCurrent: false },
-            );
-            const refresh = refreshCanonicalDashboardSources(
-              sourceUrl,
-              initialSources,
-              dashboardContext,
-              refreshPagination,
-            );
-            void refresh.then(
-              ({ changed }) => {
-                if (changed) return;
-                const dashboard = root.firstElementChild;
-                if (!(dashboard instanceof HTMLElement)) return;
-                dashboard.classList.remove("dashboard-refreshing");
-                dashboard.removeAttribute("aria-busy");
-                dashboard.querySelector(".source-loading-status")?.remove();
-              },
-              showStaleSources,
             );
           } else {
             renderSources(

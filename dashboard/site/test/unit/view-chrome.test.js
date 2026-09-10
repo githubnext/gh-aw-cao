@@ -88,7 +88,7 @@ describe('view chrome component helpers', () => {
   it('DLS-VIEW-013 renders reusable custom-view availability messages and affected-source details', () => {
     expect(customViewAvailabilityMessage('available')).toBe('Data available.');
     expect(customViewAvailabilityMessage('empty')).toBe('No observations matched the effective context.');
-    expect(customViewAvailabilityMessage('unavailable')).toBe('This view is unavailable.');
+    expect(customViewAvailabilityMessage('unavailable')).toBe('This view cannot be shown because its data source is unavailable.');
 
     const withSource = renderCustomViewStateDetails('usage', ['Filters: {"status":"open"}']);
     const withoutSource = renderCustomViewStateDetails(null, []);

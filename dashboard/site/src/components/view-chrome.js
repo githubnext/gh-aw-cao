@@ -158,7 +158,7 @@ export function customViewAvailabilityMessage(availability) {
     ? 'Data available.'
     : availability === 'empty'
       ? 'No observations matched the effective context.'
-      : 'This view is unavailable.';
+      : 'This view cannot be shown because its data source is unavailable.';
 }
 
 /**
