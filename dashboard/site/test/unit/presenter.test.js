@@ -1377,6 +1377,26 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('reveals mobile history navigation after an in-app route and goes back through browser history', () => {
+    window.history.replaceState(null, '', '/');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const back = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-history-back'));
+    const cost = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
+
+    expect(back?.hidden).toBe(true);
+    cost?.click();
+    expect(back?.hidden).toBe(false);
+
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    back?.click();
+    expect(historyBack).toHaveBeenCalledOnce();
+    historyBack.mockRestore();
+    window.history.replaceState(null, '', '/');
+  });
+
   it('closes the mobile view menu on Escape and restores focus to its toggle', () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,

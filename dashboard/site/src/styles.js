@@ -225,6 +225,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .sidebar-brand { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .sidebar-brand-mark { width: 24px; height: 24px; flex: 0 0 24px; overflow: visible; }
 .sidebar-brand > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mobile-history-back { display: none; }
 .sidebar-toggle { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .sidebar-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
 .mobile-report-actions { display: none; }
@@ -1774,6 +1775,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
   .org-sidebar { height: auto; display: block; overflow: visible; padding: 14px 12px 10px; border-right: 0; border-bottom: 1px solid var(--border); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
+  .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--fg); cursor: pointer; }
+  .mobile-history-back:hover { background: var(--neutral-muted); }
   .sidebar-brand { font-size: 1rem; }
   .mobile-report-actions { min-width: 0; display: flex; align-items: center; margin-left: auto; }
   .mobile-report-actions .report-actions { width: auto; position: static; margin-left: 0; gap: 6px; }
