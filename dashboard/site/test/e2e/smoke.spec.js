@@ -693,18 +693,18 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       const sources = {
         'overview-failed-run-count': {
           source: 'overview-failed-run-count',
-          rows: [],
-          metadata: { ...metadata, availability: 'unavailable' }
+          rows: [{ count: 80 }],
+          metadata
         },
         'overview-blocked-work-count': {
           source: 'overview-blocked-work-count',
-          rows: [{ count: 0 }],
-          metadata
+          rows: [],
+          metadata: { ...metadata, availability: 'unavailable' }
         },
         'overview-awaiting-review-count': {
           source: 'overview-awaiting-review-count',
-          rows: [{ count: 1 }],
-          metadata
+          rows: [],
+          metadata: { ...metadata, availability: 'unavailable' }
         },
         'overview-security-finding-count': {
           source: 'overview-security-finding-count',
@@ -957,7 +957,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
-  await expect(overviewPage.getByRole('heading', { name: 'Items need your attention' })).toBeVisible();
+  await expect(overviewPage.getByRole('heading', { name: '80 items need your attention' })).toBeVisible();
   await expect(overviewPage.locator('.metric-card-widget')).toHaveCount(4);
   await expect(overviewPage.locator('.metric-card-widget-icon .octicon')).toHaveCount(4);
   const metricGeometry = await overviewPage.locator('.metric-card-widget').evaluateAll((metrics) => metrics.map((metric) => {
@@ -995,17 +995,17 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     const numericTops = tops.filter((value) => typeof value === 'number');
     expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
   }
-  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('—');
-  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('0');
-  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('1');
+  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('80');
+  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('—');
   await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
   const overviewElement = await overviewPage.elementHandle();
   expect(overviewElement).not.toBeNull();
   const attentionColors = await overviewElement?.evaluate((element) => {
     const root = element.closest('.dashboard-root');
-    const activeReview = element.querySelector('.metric-card-widget-review.metric-card-widget-active strong');
-    const emptyMetric = element.querySelector('[href="#page-overview-blocked-work"] strong');
-    if (!(root instanceof HTMLElement) || !(activeReview instanceof HTMLElement) || !(emptyMetric instanceof HTMLElement)) return null;
+    const activeDanger = element.querySelector('.metric-card-widget-danger.metric-card-widget-active strong');
+    const unavailableMetric = element.querySelector('[href="#page-overview-blocked-work"] strong');
+    if (!(root instanceof HTMLElement) || !(activeDanger instanceof HTMLElement) || !(unavailableMetric instanceof HTMLElement)) return null;
     /** @param {string} token */
     const resolvedColor = (token) => {
       const probe = document.createElement('span');
@@ -1016,15 +1016,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       return color;
     };
     return {
-      activeReview: getComputedStyle(activeReview).color,
-      emptyMetric: getComputedStyle(emptyMetric).color,
-      purple: resolvedColor('--purple'),
+      activeDanger: getComputedStyle(activeDanger).color,
+      unavailableMetric: getComputedStyle(unavailableMetric).color,
+      danger: resolvedColor('--danger'),
       muted: resolvedColor('--muted')
     };
   });
   expect(attentionColors).not.toBeNull();
-  expect(attentionColors?.activeReview).toBe(attentionColors?.purple);
-  expect(attentionColors?.emptyMetric).toBe(attentionColors?.muted);
+  expect(attentionColors?.activeDanger).toBe(attentionColors?.danger);
+  expect(attentionColors?.unavailableMetric).toBe(attentionColors?.muted);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {

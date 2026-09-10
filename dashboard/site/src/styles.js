@@ -413,6 +413,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .layout-section[data-section-layout="horizontal"] > .custom-view-grid > .custom-view { grid-column: auto; }
 .layout-section-header { margin-bottom: 12px; }
 .layout-section-header h3 { margin: 0; font-size: 1rem; }
+.layout-section-header-summary h3 { font-size: 1.25rem; }
 .layout-section-header p { margin: 3px 0 0; color: var(--muted); font-size: .8125rem; }
 .layout-section .page-section { min-width: 0; }
 .layout-section .page-section > h4 { margin: 12px 0 8px; font-size: .875rem; font-weight: 600; }

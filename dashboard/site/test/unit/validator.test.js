@@ -528,6 +528,9 @@ describe('dashboard document validation', () => {
 
     expect(page.sections).toEqual([expect.objectContaining({
       layout: 'horizontal',
+      'count-sources': page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source),
+      'count-field': 'count',
+      'count-label': 'items need your attention',
       views: page.views.map((/** @type {{ id: string }} */ view) => view.id)
     })]);
     expect(page.views).toHaveLength(4);

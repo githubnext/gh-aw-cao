@@ -234,7 +234,7 @@ export const BUILT_IN_PAGE_VALUES = [
 export const BUILT_IN_PAGE_DEFINITION_KEYS = ['views', 'sections', 'data-state'];
 
 export const BUILT_IN_PAGE_DATA_STATE_KEYS = ['availability', 'completeness', 'freshness'];
-export const PAGE_SECTION_KEYS = ['id', 'title', 'description', 'layout', 'views', 'count-source', 'count-label'];
+export const PAGE_SECTION_KEYS = ['id', 'title', 'description', 'layout', 'views', 'count-source', 'count-sources', 'count-field', 'count-label'];
 export const PAGE_SECTION_LAYOUT_VALUES = ['full', 'wide', 'narrow', 'horizontal'];
 
 export const BUILT_IN_PAGE_REQUIRED_SOURCES = {
