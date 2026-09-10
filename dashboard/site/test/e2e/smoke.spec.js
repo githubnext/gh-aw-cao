@@ -2912,11 +2912,13 @@ test('DLS-SAFE-007 DLS-SAFE-008 keyboard navigation moves across labeled page se
 
 test('repository page template follows its JSON-declared hash query route in browser', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
-  await page.goto('about:blank#page-repository-detail?repository=octo-org%2Focto-repo');
+  const dashboardDocument = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.goto('http://dashboard.test/#page-repository-detail?repository=octo-org%2Focto-repo');
   await page.setContent(`
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const dashboardDocument = ${JSON.stringify(dashboardDocument)};
       const metadata = {
         'source-id': 'workflows-fixture',
         'source-kind': 'fixture',
@@ -2926,40 +2928,13 @@ test('repository page template follows its JSON-declared hash query route in bro
         freshness: 'fresh',
         availability: 'available'
       };
-      const dashboardDocument = {
-        languageVersion: '0.1.0',
-        dashboard: {
-          id: 'repository-route',
-          title: 'Repository route',
-          pages: [{
-            id: 'repository-detail',
-            kind: 'custom',
-            title: 'Repository',
-            description: 'Repository workflows.',
-            route: { 'hash-query-parameter': 'repository' },
-            views: [{
-              id: 'repository-workflows',
-              title: 'Agentic workflows',
-              data: { source: 'repository-workflows', 'route-field': 'repository' },
-              mark: 'table',
-              controls: 'static',
-              encoding: {
-                columns: [
-                  { field: 'workflow-name', type: 'nominal', title: 'Workflow' },
-                  { field: 'workflow-active', type: 'nominal', title: 'State', display: 'active-state' }
-                ]
-              }
-            }]
-          }]
-        }
-      };
       const sources = {
-        workflows: {
-          source: 'workflows',
+        'workflow-inventory': {
+          source: 'workflow-inventory',
           metadata,
           rows: [
-            { organization: 'octo-org', repository: 'octo-repo', workflow: 'review.md', 'workflow-name': 'Review', 'workflow-active': 'true' },
-            { organization: 'other-org', repository: 'other-repo', workflow: 'other.md', 'workflow-name': 'Other', 'workflow-active': 'true' }
+            { repository: 'octo-org/octo-repo', workflow: 'review.md', 'workflow-name': 'Review', 'workflow-active': 'true', runs: 2, aic: 3 },
+            { repository: 'other-org/other-repo', workflow: 'other.md', 'workflow-name': 'Other', 'workflow-active': 'true', runs: 1, aic: 1 }
           ]
         }
       };
@@ -2968,6 +2943,8 @@ test('repository page template follows its JSON-declared hash query route in bro
   `);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('octo-org/octo-repo');
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(page.locator('[data-page-id="repository-detail"] [data-view-layout="full-view"]')).toBeVisible();
   await expect(page.locator('[data-route-view] .custom-table')).toContainText('Review');
   await expect(page.locator('[data-route-view] .custom-table')).not.toContainText('Other');
 

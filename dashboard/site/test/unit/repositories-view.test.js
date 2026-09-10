@@ -170,37 +170,29 @@ describe('repositories view', () => {
     const workflowsView = repositoryPage.views.find(
       (/** @type {{ id: string }} */ view) => view.id === 'repository-authored-workflows'
     );
-    const workflowAicView = repositoryPage.views.find(
-      (/** @type {{ id: string }} */ view) => view.id === 'repository-workflow-aic'
-    );
-    expect(repositoryPage.views[0].id).toBe('repository-workflow-aic');
+    expect(repositoryPage.views).toHaveLength(1);
     expect(workflowsView).toMatchObject({
+      data: {
+        source: 'workflow-inventory',
+        'route-field': 'repository',
+        'order-by': [{ field: 'workflow', direction: 'asc' }]
+      },
       mark: 'table',
       controls: 'interactive',
+      'lazy-list': true,
       'column-summaries': true,
+      layout: 'full-view',
       encoding: {
         columns: expect.arrayContaining([
-          { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' }
+          { field: 'aic', type: 'quantitative', title: 'AIC', unit: 'aic' },
+          { field: 'runs', type: 'quantitative', title: 'Runs' }
         ])
       }
     });
-    expect(workflowAicView).toMatchObject({
-      title: 'Top workflows by AIC',
-      data: {
-        source: 'repository-workflow-usage',
-        'route-field': 'repository',
-        limit: 5,
-        'order-by': [{ field: 'total-aic', direction: 'desc' }]
-      },
-      mark: 'chart',
-      chart: 'pie',
-      encoding: {
-        x: { field: 'workflow' },
-        y: { field: 'aic', aggregate: 'sum', as: 'total-aic', unit: 'aic' },
-        href: { field: 'workflow-link' }
-      },
-      layout: 'third'
-    });
+    expect(dashboard.dashboard.queries).toContainEqual(expect.objectContaining({
+      name: 'workflow-inventory',
+      from: 'workflows'
+    }));
 
     const sourceInputs = sources();
     sourceInputs.workflows.rows[0] = {
