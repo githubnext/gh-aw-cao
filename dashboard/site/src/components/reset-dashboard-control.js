@@ -3,12 +3,34 @@ import { deleteCanonicalDatabase } from '../data/storage/indexeddb.js';
 import { octicon } from '../octicons.js';
 import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 
+const APP_INDEXEDDB_PREFIX = 'gh-aw-cao-';
+
+/**
+ * @param {IDBFactory} indexedDB
+ */
+async function deleteAppDatabases(indexedDB) {
+  await deleteCanonicalDatabase(indexedDB);
+  if (typeof indexedDB.databases !== 'function') return;
+  const databases = await indexedDB.databases();
+  await Promise.all(
+    databases
+      .map((database) => database?.name)
+      .filter((name) => typeof name === 'string' && name.startsWith(APP_INDEXEDDB_PREFIX))
+      .map((name) => new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase(name);
+        request.onsuccess = () => resolve(undefined);
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error(`Could not delete blocked database: ${name}`));
+      }))
+  );
+}
+
 /**
  * @param {Storage} storage
  * @param {IDBFactory} indexedDB
  */
 export async function resetLocalDashboardData(storage, indexedDB) {
-  await deleteCanonicalDatabase(indexedDB);
+  await deleteAppDatabases(indexedDB);
   storage.clear();
 }
 
