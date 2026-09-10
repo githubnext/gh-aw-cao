@@ -193,6 +193,44 @@ describe('dashboard DOM provenance', () => {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 0));
     expect(rendered.hasAttribute('data-json-path')).toBe(false);
   });
+
+  it('shows the loading skeleton instead of unavailable source errors during an empty initial load', () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'initial-load-dashboard',
+          title: 'Initial Load',
+          pages: [{
+            id: 'repositories',
+            kind: 'custom',
+            title: 'Repositories',
+            views: [{
+              id: 'repository-activity',
+              title: 'Repository Activity',
+              mark: 'table',
+              data: { source: 'repository-activity' }
+            }],
+            sections: [{
+              id: 'main',
+              title: 'Main',
+              layout: 'full',
+              views: ['repository-activity']
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loading: true
+    });
+
+    const page = rendered.querySelector('[data-page-id="repositories"]');
+    expect(page?.getAttribute('aria-busy')).toBe('true');
+    expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(page?.textContent).toContain('Loading view');
+    expect(page?.textContent).not.toContain('This view cannot be shown because its data source is unavailable.');
+    expect(page?.textContent).not.toContain('Affected source: repository-activity');
+  });
 });
 
 describe('presenter built-in and custom pages', () => {
