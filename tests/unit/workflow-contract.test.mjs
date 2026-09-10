@@ -3087,7 +3087,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
   assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/g) || []).length, 2);
   assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
-  assert.match(activityWorkflow, /Install SQLite[\s\S]*?apt-get install --yes sqlite3/);
+  assert.doesNotMatch(activityWorkflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.match(activityWorkflow, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/);
   assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
