@@ -134,7 +134,7 @@ timeout-minutes: 35
 
 steps:
   - name: Setup Python
-    uses: actions/setup-python@v7.0.0
+    uses: actions/setup-python@v7
     with:
       python-version: "3.12"
   - name: Setup local chart workspace
@@ -228,7 +228,7 @@ steps:
       echo "Forecast exit code: $FORECAST_EXIT_CODE"
       echo "Forecast JSON valid: $FORECAST_JSON_VALID"
 
-source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
+source: github/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
 ---
 
 {{#runtime-import? .github/cao/optimization.md}}

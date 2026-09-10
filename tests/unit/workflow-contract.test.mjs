@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.1";
+const ghAwVersion = "v0.89.2";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
