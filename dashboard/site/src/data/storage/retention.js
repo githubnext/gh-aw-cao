@@ -161,6 +161,10 @@ function collectUnreferencedParents(merged, incoming) {
  * outside the 30-day retention window, and keeps every surviving record
  * relationship-safe.
  *
+ * The window ends at the newest incoming observation whenever the collection
+ * reports observations later than `now`, so a browser clock behind the
+ * producer's clock cannot prune records the current collection still reports.
+ *
  * @param {import('../model/schema.js').CanonicalBatch} previous
  * @param {import('../model/schema.js').CanonicalBatch} incoming
  * @param {{ generation: string, now?: number }} options
