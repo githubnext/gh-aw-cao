@@ -990,6 +990,11 @@
                 () => renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources),
               );
             };
+            /** @param {unknown} error */
+            const failRefresh = (error) => {
+              refreshPending = false;
+              showStaleSources(error);
+            };
             const refreshSources = () => {
               if (refreshPending) return;
               const updatePresentation = updatePresentationOnSuccess || refreshFailed;
@@ -1009,10 +1014,7 @@
                     renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
                   }
                 },
-                (error) => {
-                  refreshPending = false;
-                  showStaleSources(error);
-                },
+                failRefresh,
               );
             };
             subscribeCanonicalDashboardView(
@@ -1053,14 +1055,14 @@
             cancelCommand.complete();
           } else {
             const initialDisplayedSources = await loadInitialSources(
-                (requested, pagination) => loadCanonicalDashboardSources(
-                  sourceUrl,
-                  requested,
-                  dashboardContext,
-                  pagination,
-                ),
-              );
-             renderSources(
+              (requested, pagination) => loadCanonicalDashboardSources(
+                sourceUrl,
+                requested,
+                dashboardContext,
+                pagination,
+              ),
+            );
+            renderSources(
               initialDisplayedSources,
               "ready",
               true,
