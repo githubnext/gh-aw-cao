@@ -2,14 +2,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("activity workflow caches only the gh-aw logs JSONL", async () => {
+test("activity workflow caches gh-aw logs and their SQLite projection", async () => {
   const workflow = await readFile(".github/workflows/activity.yml", "utf8");
 
   assert.match(workflow, /--cached-jsonl "\$REPORT_GH_AW_LOGS"/);
   assert.match(
     workflow,
-    /Save activity cache[\s\S]*?if: \$\{\{ always\(\)[\s\S]*?\}\}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/,
+    /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--input "\$REPORT_GH_AW_LOGS"/,
   );
+  assert.match(
+    workflow,
+    /Save activity cache[\s\S]*?if: \$\{\{ steps\.freshness\.outputs\.skip != 'true' \}\}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/,
+  );
+  assert.match(workflow, /ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/);
+  assert.match(workflow, /sudo apt-get install --yes sqlite3/);
   assert.match(workflow, /--count 5/);
   assert.match(workflow, /--timeout 5/);
   assert.doesNotMatch(

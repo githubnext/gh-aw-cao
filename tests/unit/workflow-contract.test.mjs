@@ -2174,6 +2174,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-v3-/g) || []).length, 2);
   assert.doesNotMatch(source, /cao-activity-(?!v3-)/);
   assert.doesNotMatch(source, /actions\/cache\/save@/);
+  assert.match(source, /agent:[\s\S]*?Install SQLite[\s\S]*?apt-get install --yes sqlite3[\s\S]*?Restore CAO activity cache/);
 
   for (const name of [
     "aw-failures-investigator.md",
@@ -2989,7 +2990,13 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
-  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/g) || []).length, 1);
+  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/g) || []).length, 2);
+  assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
+  assert.match(activityWorkflow, /Install SQLite[\s\S]*?apt-get install --yes sqlite3/);
+  assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
+  assert.match(activityWorkflow, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/);
+  assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
+  assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
@@ -3064,7 +3071,8 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.doesNotMatch(workflow, /github-script|ACTIVITY_INDEXER|ACTIVITY_LOGS|ACTIVITY_RUNNER|GITHUB_TELEMETRY|cao-gh\.jsonl/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Save activity cache/);
   assert.match(workflow, /gh aw logs --audit/);
-  assert.match(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/);
+  assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
+  assert.match(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity/);
   assert.match(workflow, /cao-activity-v3-\$\{\{ github\.run_id \}\}-/);
   assert.equal(packageDocument.scripts["activity:local"], undefined);
   assert.equal(packageDocument.scripts["activity:local:node"], undefined);

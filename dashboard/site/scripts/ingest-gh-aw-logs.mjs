@@ -15,9 +15,7 @@ const ENTITY_COLLECTIONS = [
   'runs',
   'jobs',
   'sessions',
-  'events',
-  'workItems',
-  'findings'
+  'events'
 ];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
 

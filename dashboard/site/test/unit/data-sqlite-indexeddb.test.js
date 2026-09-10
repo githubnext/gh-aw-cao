@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DATABASE_NAME,
+  DATABASE_VERSION,
   openCanonicalDatabase,
   readCollection,
   readIndex,
@@ -97,7 +98,7 @@ describe('SQLite IndexedDB compatibility layer', () => {
     database.close();
 
     expect(await indexedDB.databases()).toEqual([
-      { name: DATABASE_NAME, version: 7 }
+      { name: DATABASE_NAME, version: DATABASE_VERSION }
     ]);
     await new Promise((resolvePromise, reject) => {
       const request = indexedDB.deleteDatabase(DATABASE_NAME);
