@@ -12,6 +12,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
+    /ingest-jsonl[\s\S]*?--input "\$REPORT_GH_AW_LOGS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
+  );
+  assert.match(
+    workflow,
     /Save activity cache[\s\S]*?if: \$\{\{ steps\.freshness\.outputs\.skip != 'true' \}\}[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/,
   );
   assert.match(workflow, /ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/);
