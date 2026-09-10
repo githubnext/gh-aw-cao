@@ -1,55 +1,38 @@
 import { processCanonicalDashboardSources } from '../../data-processor.js';
-import { dashboardSourceGeneration } from '../adapters/dashboard-sources.js';
 import { adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
+import { relationshipErrors } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
-import {
-  activateGeneration,
-  activeGenerationIsUsable,
-  readActiveGeneration,
-  stageCanonicalBatch
-} from '../storage/indexeddb.js';
-import { mergeRetainedGeneration } from '../storage/retention.js';
-import {
-  inspectStorage,
-  reclaimExpendableGenerations,
-  requestPersistentStorage,
-  withQuotaRecovery
-} from '../storage/quota.js';
+import { readCanonicalBatch, upsertCanonicalBatch } from '../storage/indexeddb.js';
+import { mergeRetainedRecords } from '../storage/retention.js';
+import { inspectStorage, requestPersistentStorage } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {string} generation
  * @param {() => import('../model/schema.js').CanonicalBatch | Promise<import('../model/schema.js').CanonicalBatch>} buildBatch
  * @param {{ storage?: StorageManager, now?: number }} options
  */
-async function ingestIncrementalGeneration(indexedDB, generation, buildBatch, options) {
+async function ingestCanonicalBatch(indexedDB, buildBatch, options) {
   if (options.storage) {
     await Promise.allSettled([
       inspectStorage(options.storage),
       requestPersistentStorage(options.storage)
     ]);
   }
-  if (await activeGenerationIsUsable(indexedDB, generation)) {
-    return { generation, activated: false };
-  }
   const incoming = await buildBatch();
-  const retained = await readActiveGeneration(indexedDB);
-  const batch = retained
-    ? mergeRetainedGeneration(retained, incoming, { generation, now: options.now })
-    : incoming;
-  await withQuotaRecovery(
-    () => stageCanonicalBatch(indexedDB, batch, generation),
-    () => reclaimExpendableGenerations(indexedDB)
-  );
-  await activateGeneration(indexedDB, generation);
-  return { generation, activated: true };
+  const retained = await readCanonicalBatch(indexedDB);
+  const batch = mergeRetainedRecords(retained, incoming, { now: options.now });
+  const errors = relationshipErrors(batch);
+  if (errors.length > 0) {
+    throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
+  }
+  const result = await upsertCanonicalBatch(indexedDB, batch);
+  return { updated: true, ...result };
 }
 
 /**
- * Upserts the current published source document onto the retained canonical
- * records for the authoritative query-backed renderer.
+ * Upserts the current published source document onto retained canonical records.
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
@@ -57,79 +40,59 @@ async function ingestIncrementalGeneration(indexedDB, generation, buildBatch, op
  */
 export async function ingestDashboardSources(indexedDB, sources, options = {}) {
   let phase = 'adapting';
-  /** @type {string | null} */
-  let generation = null;
   try {
-    generation = dashboardSourceGeneration(sources);
-    const targetGeneration = generation;
     phase = 'normalizing';
-    phase = 'staging';
-    const result = await ingestIncrementalGeneration(
+    const result = await ingestCanonicalBatch(
       indexedDB,
-      targetGeneration,
-      () => processCanonicalDashboardSources(sources, targetGeneration),
+      () => processCanonicalDashboardSources(sources),
       options
     );
-    phase = 'activating';
+    phase = 'writing';
     return result;
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, generation, error);
+    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
   }
 }
 
 /**
- * Upserts one complete SQL export onto the retained canonical records. The
- * database producer publishes static JSON before the dashboard loads it.
+ * Upserts one complete SQL export onto retained canonical records.
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
  * @param {{ storage?: StorageManager, now?: number }} [options]
  */
-export async function ingestSqlExportGeneration(indexedDB, input, options = {}) {
+export async function ingestSqlExport(indexedDB, input, options = {}) {
   let phase = 'adapting';
-  /** @type {string | null} */
-  let generation = null;
   try {
     const adapted = adaptSqlExport(input);
-    generation = adapted.generation;
-    const targetGeneration = generation;
     phase = 'normalizing';
-    const batch = normalize(adapted.observations, { generation: targetGeneration });
-    phase = 'staging';
-    const result = await ingestIncrementalGeneration(indexedDB, targetGeneration, () => batch, options);
-    phase = 'activating';
-    return result;
+    const batch = normalize(adapted.observations);
+    phase = 'writing';
+    return await ingestCanonicalBatch(indexedDB, () => batch, options);
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, generation, error);
+    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
   }
 }
 
 /**
- * Upserts one complete gh-aw artifact input assembled by the offline producer
- * onto the retained canonical records.
+ * Upserts one complete gh-aw artifact input onto retained canonical records.
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
  * @param {{ storage?: StorageManager, now?: number }} [options]
  */
-export async function ingestGhAwLogsGeneration(indexedDB, input, options = {}) {
+export async function ingestGhAwLogs(indexedDB, input, options = {}) {
   let phase = 'adapting';
-  /** @type {string | null} */
-  let generation = null;
   try {
     const adapted = adaptGhAwLogs(input);
-    generation = adapted.generation;
-    const targetGeneration = generation;
     phase = 'normalizing';
-    const batch = normalize(adapted.observations, { generation: targetGeneration });
-    phase = 'staging';
-    const result = await ingestIncrementalGeneration(indexedDB, targetGeneration, () => batch, options);
-    phase = 'activating';
-    return result;
+    const batch = normalize(adapted.observations);
+    phase = 'writing';
+    return await ingestCanonicalBatch(indexedDB, () => batch, options);
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
-    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, generation, error);
+    throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
   }
 }

@@ -1,5 +1,3 @@
-import { deleteGeneration, listGenerationStates } from './indexeddb.js';
-
 /** @param {StorageManager | undefined} storage */
 export async function inspectStorage(storage) {
   if (!storage?.estimate) return { usage: null, quota: null, available: null };
@@ -16,19 +14,6 @@ export async function inspectStorage(storage) {
 /** @param {StorageManager | undefined} storage */
 export async function requestPersistentStorage(storage) {
   return storage?.persist ? storage.persist() : false;
-}
-
-/** @param {IDBFactory} indexedDB */
-export async function reclaimExpendableGenerations(indexedDB) {
-  const states = await listGenerationStates(indexedDB);
-  const deleted = [];
-  for (const state of ['failed', 'retired']) {
-    for (const item of states.filter((candidate) => candidate.state === state)) {
-      await deleteGeneration(indexedDB, item.generation);
-      deleted.push(item.generation);
-    }
-  }
-  return deleted;
 }
 
 /**
