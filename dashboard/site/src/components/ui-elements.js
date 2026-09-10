@@ -17,7 +17,6 @@ import { renderAnomalyReadiness } from './anomaly-readiness.js';
 import { renderWorkflowRouteView } from './workflow-route-view.js';
 import { renderConfigurationView } from './configuration-view.js';
 import { renderConfigurationActions } from './configuration-actions.js';
-import { renderExperimentsEvaluation } from './experiments-evaluation.js';
 import { renderWorkProjectView } from './work-project-view.js';
 import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
 import { renderHomeAttentionSummary } from './home-attention-summary.js';
@@ -71,14 +70,13 @@ const ELEMENT_RENDERERS = new Map([
   ['outcome-detail-section', renderOutcomeDetailSectionElement],
   ['configuration-policy', renderConfigurationView],
   ['configuration-actions', renderConfigurationActions],
-  ['experiments-evaluation', renderExperimentsEvaluation],
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
   ['insights-overview', renderInsightsOverview],
   ['home-attention-summary', renderHomeAttentionSummary]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'experiments-evaluation', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'home-attention-summary']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'home-attention-summary']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first

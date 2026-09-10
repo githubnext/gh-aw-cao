@@ -5,8 +5,6 @@
 import octiconNames from './octicon-names.json' with { type: 'json' };
 import { DASHBOARD_QUERY_LIMITS } from './data/queries/declarative.js';
 export {
-  EXPERIMENTS_VIEW_BODY_VALUES,
-  EXPERIMENTS_VIEW_SECTION_KEYS,
   OUTCOME_DETAIL_SECTION_BODY_VALUES,
   PACKAGE_ROUTE_BODY_VALUES,
   WORK_VIEW_BODY_VALUES,
@@ -83,7 +81,6 @@ export const VIEW_ELEMENT_VALUES = [
   'outcome-detail-section',
   'configuration-policy',
   'configuration-actions',
-  'experiments-evaluation',
   'work-project-view',
   'agent-marketplace-view',
   'insights-overview',
