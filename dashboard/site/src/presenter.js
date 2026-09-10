@@ -85,6 +85,7 @@ const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data';
 const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
+const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 
@@ -383,6 +384,17 @@ function renderSidebar(pages, title, navigation) {
     h(
       'div',
       { className: 'sidebar-header' },
+      h(
+        'button',
+        {
+          className: 'mobile-history-back',
+          type: 'button',
+          'aria-label': 'Go back',
+          title: 'Go back',
+          hidden: true
+        },
+        octicon('arrow-left')
+      ),
       h(
         'a',
         { className: 'sidebar-brand', href: firstPageId ? `#page-${firstPageId}` : '#main-content', title },
@@ -1615,6 +1627,27 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const initialRoute = routeFromHash();
   const initialPageId = availableIds.has(defaultPageId) ? defaultPageId : pages[0].dataset.pageId ?? '';
   activate(initialRoute?.pageId ?? initialPageId, initialRoute?.parameters);
+  const defaultView = root.ownerDocument.defaultView;
+  const historyBack = root.querySelector('.mobile-history-back');
+  const initialNavigationIndex = defaultView?.history.state?.[NAVIGATION_INDEX_STATE_KEY];
+  let navigationIndex = Number.isSafeInteger(initialNavigationIndex) && initialNavigationIndex >= 0
+    ? initialNavigationIndex
+    : 0;
+  const syncHistoryBack = () => {
+    if (historyBack instanceof HTMLButtonElement) historyBack.hidden = navigationIndex === 0;
+  };
+  if (defaultView && initialNavigationIndex !== navigationIndex) {
+    const state = defaultView.history.state && typeof defaultView.history.state === 'object'
+      ? defaultView.history.state
+      : {};
+    defaultView.history.replaceState(
+      { ...state, [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
+      '',
+      defaultView.location.href
+    );
+  }
+  syncHistoryBack();
+  historyBack?.addEventListener('click', () => defaultView?.history.back());
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
@@ -1622,12 +1655,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     event.preventDefault();
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
-    root.ownerDocument.defaultView?.history.pushState(null, '', link.href);
+    navigationIndex += 1;
+    defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
+    syncHistoryBack();
     updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true));
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   });
 
-  const defaultView = root.ownerDocument.defaultView;
   let fullViewScrollFrame = 0;
   root.addEventListener('scroll', (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
@@ -1647,9 +1681,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     }
   }, true);
+  const onPopState = (event) => {
+    const index = event.state?.[NAVIGATION_INDEX_STATE_KEY];
+    navigationIndex = Number.isSafeInteger(index) && index >= 0 ? index : 0;
+    syncHistoryBack();
+  };
   const onHashChange = () => {
     if (!root.isConnected) {
       defaultView?.removeEventListener('hashchange', onHashChange);
+      defaultView?.removeEventListener('popstate', onPopState);
       return;
     }
     const route = routeFromHash();
@@ -1658,6 +1698,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       if (pageTitle instanceof HTMLElement) pageTitle.focus();
     }
   };
+  defaultView?.addEventListener('popstate', onPopState);
   defaultView?.addEventListener('hashchange', onHashChange);
 }
 

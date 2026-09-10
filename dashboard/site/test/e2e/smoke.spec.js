@@ -3695,6 +3695,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
 
   const shortcuts = page.locator('.nav-section-items > .nav-item');
   const activeItem = page.locator('.nav-section-items > .nav-item[aria-current="page"]');
+  const historyBack = page.getByRole('button', { name: 'Go back' });
+  await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
   await expect(activeItem.locator('.nav-label')).toBeHidden();
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
@@ -3714,5 +3716,9 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
+  await expect(historyBack).toBeVisible();
+  await historyBack.click();
+  await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+  await expect(historyBack).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
