@@ -334,14 +334,14 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-reset { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; cursor: pointer; }
 .account-menu-reset:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
 .account-menu-reset .octicon { width: 15px; height: 15px; }
-.reset-dashboard-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
-.reset-dashboard-dialog[open] { display: grid; }
+.reset-dashboard-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
+.reset-dashboard-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .reset-dashboard-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
 .reset-dashboard-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .reset-dashboard-dialog-header h2 { margin: 0; font-size: 1rem; }
 .reset-dashboard-dialog-close { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .reset-dashboard-dialog-close:hover { background: var(--neutral-muted); color: var(--fg); }
-.reset-dashboard-dialog-body { display: grid; gap: 8px; padding: 18px 16px; line-height: 1.5; }
+.reset-dashboard-dialog-body { min-height: 0; display: grid; align-content: start; gap: 8px; padding: 18px 16px; overflow-y: auto; line-height: 1.5; }
 .reset-dashboard-dialog-body p { margin: 0; }
 .reset-dashboard-dialog-body strong { color: var(--danger); }
 .reset-dashboard-dialog-footer { min-height: 58px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }

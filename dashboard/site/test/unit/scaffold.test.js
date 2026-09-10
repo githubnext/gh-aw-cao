@@ -56,6 +56,38 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('text-size-adjust: 100%;');
   });
 
+  it('keeps reset confirmation dialog height content-sized on mobile', () => {
+    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const styleLines = styles.split('\n');
+    /** @param {string} selector */
+    const declarationMap = (selector) => {
+      const matches = styleLines.filter((line) => line.startsWith(`${selector} {`));
+      expect(matches).toHaveLength(1);
+      const bodyStart = matches[0]?.indexOf('{') ?? -1;
+      const bodyEnd = matches[0]?.lastIndexOf('}') ?? -1;
+      const ruleBody = bodyStart >= 0 && bodyEnd > bodyStart ? matches[0].slice(bodyStart + 1, bodyEnd) : '';
+      const declarations = new Map();
+      for (const declaration of ruleBody.split(';').map((entry) => entry.trim()).filter(Boolean)) {
+        const separator = declaration.indexOf(':');
+        if (separator < 0) continue;
+        declarations.set(
+          declaration.slice(0, separator).trim(),
+          declaration.slice(separator + 1).trim()
+        );
+      }
+      return declarations;
+    };
+    const dialogRule = declarationMap('.reset-dashboard-dialog');
+    const openRule = declarationMap('.reset-dashboard-dialog[open]');
+    const bodyRule = declarationMap('.reset-dashboard-dialog-body');
+
+    expect(dialogRule.get('max-height')).toBe('calc(100vh - 32px)');
+    expect(dialogRule.get('height')).toBe('fit-content');
+    expect(openRule.get('grid-template-rows')).toBe('auto minmax(0, 1fr) auto');
+    expect(bodyRule.get('align-content')).toBe('start');
+    expect(bodyRule.get('overflow-y')).toBe('auto');
+  });
+
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
     const presenter = readFileSync(resolve('src/presenter.js'), 'utf8');
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
