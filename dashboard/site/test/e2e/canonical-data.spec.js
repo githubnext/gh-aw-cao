@@ -300,50 +300,6 @@ test('data worker returns only the canonical payload requested by a view', async
     return { initial, navigated };
   });
 
-  test('Data health navigates to a responsive full-view canonical database table', async ({ page }) => {
-    await page.setViewportSize({ width: 1000, height: 900 });
-    await page.evaluate(async () => {
-      const [{ loadCanonicalDashboardSources, loadCanonicalDashboardPage }, presenter, dashboard] = await Promise.all([
-        import(`${location.origin}/src/data-processor.js`),
-        import(`${location.origin}/src/presenter.js`),
-        fetch(`${location.origin}/dashboard.json`).then((response) => response.json())
-      ]);
-      const context = {
-        githubUrlBase: 'https://github.com',
-        pages: dashboard.dashboard.pages,
-        queries: dashboard.dashboard.queries
-      };
-      const sources = await loadCanonicalDashboardSources(`${location.origin}/sources.json`, [], context);
-      const root = presenter.renderDashboard({
-        document: dashboard,
-        sources,
-        prepared: true,
-        loadPageSources: (pageId) => loadCanonicalDashboardPage(
-          presenter.dashboardPageSourceNames(dashboard, pageId),
-          context
-        )
-      });
-      document.body.replaceChildren(root);
-    });
-
-    await page.getByRole('link', { name: 'Data health' }).click();
-    const view = page.locator('[data-page-id="data-health"] [data-view-id="database-table-inventory"]');
-    await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-    await expect(view).toBeVisible();
-    await expect(view.locator('tbody tr')).toHaveCount(8);
-    await expect(view.locator('tbody')).toContainText('events');
-    await expect(view.locator('tbody')).toContainText('repositories');
-    await expect(view.getByRole('searchbox', { name: 'Filter Database table inventory' })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
-    expect(await page.locator('main.dashboard-prototype').evaluate((element) => getComputedStyle(element).overflowY))
-      .toBe('hidden');
-
-    await page.setViewportSize({ width: 390, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-    expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-    expect(await view.locator('.table-scroll').evaluate((element) => element.scrollWidth >= element.clientWidth)).toBe(true);
-  });
-
   for (const payload of [result.initial, result.navigated]) {
     expect(Object.keys(payload)).toEqual(['failed-runs']);
     expect(payload['failed-runs']).toMatchObject({
@@ -352,6 +308,51 @@ test('data worker returns only the canonical payload requested by a view', async
       metadata: { 'source-kind': 'canonical-query' }
     });
   }
+});
+
+test('Data health navigates to a responsive full-view canonical database table', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.evaluate(async () => {
+    const [{ loadCanonicalDashboardSources, loadCanonicalDashboardPage }, presenter, dashboard] = await Promise.all([
+      import(`${location.origin}/src/data-processor.js`),
+      import(`${location.origin}/src/presenter.js`),
+      fetch(`${location.origin}/dashboard.json`).then((response) => response.json())
+    ]);
+    const context = {
+      githubUrlBase: 'https://github.com',
+      pages: dashboard.dashboard.pages,
+      queries: dashboard.dashboard.queries
+    };
+    const sources = await loadCanonicalDashboardSources(`${location.origin}/sources.json`, [], context);
+    const root = presenter.renderDashboard({
+      document: dashboard,
+      sources,
+      prepared: true,
+      loadPageSources: (pageId) => loadCanonicalDashboardPage(
+        presenter.dashboardPageSourceNames(dashboard, pageId),
+        context
+      )
+    });
+    document.body.replaceChildren(root);
+  });
+
+  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
+  await page.getByRole('link', { name: 'Data health' }).click();
+  const view = page.locator('[data-page-id="data-health"] [data-view-id="database-table-inventory"]');
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
+  await expect(view).toBeVisible();
+  await expect(view.locator('tbody tr')).toHaveCount(8);
+  await expect(view.locator('tbody')).toContainText('events');
+  await expect(view.locator('tbody')).toContainText('repositories');
+  await expect(view.getByRole('searchbox', { name: 'Filter Database table inventory' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+  expect(await page.locator('main.dashboard-prototype').evaluate((element) => getComputedStyle(element).overflowY))
+    .toBe('hidden');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+  expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await view.locator('.table-scroll').evaluate((element) => element.scrollWidth >= element.clientWidth)).toBe(true);
 });
 
 test('data worker reports only changed or newly hydrated refreshes', async ({ page }) => {

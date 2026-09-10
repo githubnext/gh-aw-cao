@@ -21,7 +21,7 @@ import { renderWorkProjectView } from './work-project-view.js';
 import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
 import { renderHomeAttentionSummary } from './home-attention-summary.js';
 import { renderInsightsOverview } from './insights-overview.js';
-import { modeBadgeClassName, renderStatusBadge } from './badge.js';
+import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
