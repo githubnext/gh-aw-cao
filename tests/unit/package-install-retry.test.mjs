@@ -34,4 +34,5 @@ test("does not retry a deterministic package install failure", async () => {
 
 test("recognizes transient GitHub HTTP failures", () => {
   assert.equal(isTransientPackageInstallError(new Error("HTTP 503 from GitHub")), true);
+  assert.equal(isTransientPackageInstallError({ stderr: "TLS handshake timeout" }), true);
 });
