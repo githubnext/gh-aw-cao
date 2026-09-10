@@ -20,7 +20,7 @@ const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 export async function retryTransientPackageInstall(install, maxAttempts = 2, wait = sleep) {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return install();
+      return await install();
     } catch (error) {
       if (attempt >= maxAttempts || !isTransientPackageInstallError(error)) throw error;
       await wait(retryDelayMilliseconds);
