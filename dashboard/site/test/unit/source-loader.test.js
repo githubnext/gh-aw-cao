@@ -25,11 +25,14 @@ describe('dashboard source loader', () => {
       outcomes: { source: 'outcomes', rows: [{ id: 'outcomes' }] }
     });
     expect(maximumActive).toBe(1);
-    expect(fetchSource.mock.calls).toEqual([
-      [new URL('https://example.test/cao/sources/manifest.json?_refresh=12345'), { cache: 'no-store' }],
-      [new URL('https://example.test/cao/sources/runs.json?_refresh=12345'), { cache: 'no-store' }],
-      [new URL('https://example.test/cao/sources/outcomes.json?_refresh=12345'), { cache: 'no-store' }]
+    const requestedUrls = fetchSource.mock.calls.map(([url]) => new URL(String(url)));
+    expect(requestedUrls.map((url) => url.pathname)).toEqual([
+      '/cao/sources/manifest.json',
+      '/cao/sources/runs.json',
+      '/cao/sources/outcomes.json'
     ]);
+    expect(new Set(requestedUrls.map((url) => url.searchParams.get('_refresh'))).size).toBe(1);
+    expect(requestedUrls[0].searchParams.get('_refresh')).toMatch(/^12345-\d+$/);
   });
 
   it('rejects split sources from a different artifact generation', async () => {
@@ -56,10 +59,28 @@ describe('dashboard source loader', () => {
     await expect(loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json')).resolves.toEqual({
       workflows: { source: 'workflows', rows: [] }
     });
-    expect(fetchSource.mock.calls).toEqual([
-      [new URL('https://example.test/cao/sources/manifest.json?_refresh=67890'), { cache: 'no-store' }],
-      [new URL('https://example.test/cao/sources.json?_refresh=67890'), { cache: 'no-store' }]
+    const requestedUrls = fetchSource.mock.calls.map(([url]) => new URL(String(url)));
+    expect(requestedUrls.map((url) => url.pathname)).toEqual([
+      '/cao/sources/manifest.json',
+      '/cao/sources.json'
     ]);
+    expect(new Set(requestedUrls.map((url) => url.searchParams.get('_refresh'))).size).toBe(1);
+    expect(requestedUrls[0].searchParams.get('_refresh')).toMatch(/^67890-\d+$/);
+  });
+
+  it('uses a different cache-busting argument for each refresh cycle', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(12345);
+    const fetchSource = vi.fn(async (input) => new URL(String(input)).pathname.endsWith('/sources/manifest.json')
+      ? new Response('', { status: 404 })
+      : new Response(JSON.stringify({ workflows: { source: 'workflows', rows: [] } })));
+
+    await loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json');
+    await loadDashboardSources(fetchSource, 'https://example.test/cao/sources.json');
+
+    const manifests = fetchSource.mock.calls
+      .map(([url]) => new URL(String(url)))
+      .filter((url) => url.pathname.endsWith('/sources/manifest.json'));
+    expect(manifests[0].searchParams.get('_refresh')).not.toBe(manifests[1].searchParams.get('_refresh'));
   });
 
   it('does not mask a non-404 manifest failure by falling back to the monolith', async () => {

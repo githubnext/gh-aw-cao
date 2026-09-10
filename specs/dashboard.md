@@ -848,13 +848,13 @@ A semantic visualization is a graphical form whose structure encodes operational
 - **CAOD-INT-002:** A state control **MUST** disclose state history; a reason control **MUST** disclose supporting evidence; a cost control **MUST** disclose attribution.
 - **CAOD-INT-003:** Loading, empty, unavailable, partial, stale, error, and unauthorized states **MUST** have distinct textual presentations.
 - **CAOD-INT-004:** A refresh control **MUST** identify what it refreshes, preserve current context when possible, and announce success or failure.
-- **CAOD-INT-009:** The dashboard **MUST** acquire sources during initial page load and poll for updated source generations in the background every 15 minutes while the page remains active.
-- **CAOD-INT-010:** Background refresh **MUST** incrementally persist changed observations, update active views in place after valid generation activation, preserve current route and presentation context, and **MUST NOT** reload or navigate the page.
-- **CAOD-INT-011:** Every background refresh **MUST** show a progress-bar indication, prevent overlapping cycles, use a unique dummy query argument for source requests, and leave the prior active view available and identified as stale on failure.
 - **CAOD-INT-005:** Destructive, live, or externally visible actions **MUST** use a confirmation step distinct from navigation and filtering.
 - **CAOD-INT-006:** An optimistic visual update **MUST** be identified as pending until authoritative confirmation is observed.
 - **CAOD-INT-007:** Inspecting an element of a semantic visualization **MUST** be possible without leaving the current subject context, and **MUST** reach the same evidence available through the corresponding textual route.
 - **CAOD-INT-008:** Scrubbing, zooming, or filtering a temporal view **MUST** disclose the resulting interval and **MUST NOT** change the underlying observations or their recorded times.
+- **CAOD-INT-009:** The dashboard **MUST** acquire sources during initial page load and poll for updated source generations in the background every 15 minutes while the page remains active.
+- **CAOD-INT-010:** Background refresh **MUST** incrementally persist changed observations, update active views in place after valid generation activation, preserve current route and presentation context, and **MUST NOT** reload or navigate the page.
+- **CAOD-INT-011:** Every background refresh **MUST** show a progress-bar indication, prevent overlapping cycles, use a unique dummy query argument for source requests, and leave the prior active view available and identified as stale on failure.
 
 ### 17.4 Responsive Behavior
 

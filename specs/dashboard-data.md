@@ -2044,6 +2044,15 @@ Chromium
 
 SHALL be tested.
 
+Where supported:
+
+```text
+Firefox
+WebKit
+```
+
+SHOULD also be tested.
+
 ### T-REFRESH-001 — Initial and scheduled acquisition
 
 Verify that source acquisition starts during initial page load and repeats after 15 minutes while the page remains active.
@@ -2067,15 +2076,6 @@ Verify that a progress bar remains perceptible throughout each background cycle,
 ### T-REFRESH-006 — Unchanged and failed cycles
 
 Verify that an unchanged generation is a successful no-op and that acquisition, validation, or storage failure leaves the prior active generation visible as stale until a later retry succeeds.
-
-Where supported:
-
-```text
-Firefox
-WebKit
-```
-
-SHOULD also be tested.
 
 Required browser scenarios:
 

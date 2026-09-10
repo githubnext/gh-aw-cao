@@ -22,6 +22,7 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("loadingProgress.complete()");
     expect(preview).toContain('import { scheduleBackgroundRefresh } from "./background-refresh.js"');
     expect(preview).toContain("scheduleBackgroundRefresh(refreshSources, { signal: refreshOwner.signal })");
+    expect(preview).toContain("if (refreshPending) return;");
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
     expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
     expect(preview).toContain("subscribeCanonicalDashboardView(");

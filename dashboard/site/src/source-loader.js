@@ -1,3 +1,5 @@
+let refreshSequence = 0;
+
 /**
  * Loads source collections one at a time when a split-source manifest is
  * available, keeping peak JSON parsing memory independent of the full payload.
@@ -6,7 +8,9 @@
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function loadDashboardSources(fetchSource, sourcesUrl) {
-  const refreshToken = String(Date.now());
+  const refreshToken = `${Date.now()}-${refreshSequence}`;
+  refreshSequence += 1;
+  /** @param {string | URL} url */
   const withRefreshToken = (url) => {
     const refreshedUrl = new URL(url);
     refreshedUrl.searchParams.set('_refresh', refreshToken);
