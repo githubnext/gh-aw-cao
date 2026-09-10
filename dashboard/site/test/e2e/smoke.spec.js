@@ -929,11 +929,11 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   `);
 
   const cleanNavigation = page.locator('.primary-nav > [data-nav-page-id]');
-  const data = page.locator('.nav-section').filter({
-    has: page.locator('.nav-section-label').filter({ hasText: /^Data$/ })
-  });
+  const data = page.locator('.nav-section').first();
   const experimental = page.locator('.nav-section').filter({ hasText: 'Experimental' });
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages']);
+  await expect(data.locator('summary')).toHaveText('Data');
+  await data.locator('summary').click();
   await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
