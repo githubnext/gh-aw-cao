@@ -180,6 +180,80 @@ test("dashboard source bridge publishes normalized gh-aw sessions and events", (
   assert.equal(sources.events.rows[0]["event-source"], "agent");
 });
 
+test("dashboard source bridge excludes transaction logs outside the current run and job generation", () => {
+  const generatedAt = "2026-09-09T05:00:00Z";
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt,
+      discovery: { complete: true },
+      runHealth: { available: true, complete: true },
+      bundles: [],
+      workflows: [{
+        repository: "githubnext/gh-aw-cao",
+        path: ".github/workflows/dashboard.lock.yml",
+        runHealth: { runRecords: [{
+          runId: 303,
+          runAttempt: 1,
+          status: "completed",
+          conclusion: "success",
+          createdAt: "2026-09-09T04:00:00Z",
+          updatedAt: "2026-09-09T04:01:00Z",
+          jobs: [],
+        }] },
+      }],
+    },
+    usage: {
+      generatedAt,
+      available: true,
+      complete: true,
+      securityAvailable: true,
+      securityComplete: true,
+      runs: [],
+      securityRuns: [
+        {
+          repository: "githubnext/gh-aw-cao",
+          workflowPath: ".github/workflows/dashboard.lock.yml",
+          runId: 302,
+          runAttempt: 1,
+          createdAt: "2026-09-08T04:00:00Z",
+          logsPayload: { status: "completed", jobs: [{ jobId: 402, name: "agent" }] },
+          timeline: [{
+            sourceId: "old/events.jsonl:1",
+            sessionId: "old-session",
+            timestamp: "2026-09-08T04:00:01Z",
+            source: "agent",
+            type: "agent_turn",
+          }],
+        },
+        {
+          repository: "githubnext/gh-aw-cao",
+          workflowPath: ".github/workflows/dashboard.lock.yml",
+          runId: 303,
+          runAttempt: 1,
+          createdAt: "2026-09-09T04:00:00Z",
+          logsPayload: { status: "completed", jobs: [{ jobId: 403, name: "agent" }] },
+          timeline: [{
+            sourceId: "current/events.jsonl:1",
+            sessionId: "current-session",
+            timestamp: "2026-09-09T04:00:01Z",
+            source: "agent",
+            type: "agent_turn",
+          }],
+        },
+      ],
+    },
+    operationalValues: { records: [] },
+    report: { generatedAt, records: [] },
+    inventory: { generatedAt, repositories: [] },
+    controlSettings: {},
+    githubTelemetry: [],
+  });
+
+  assert.deepEqual(sources.sessions.rows.map((row) => row.session), ["current-session"]);
+  assert.equal("job-id" in sources.sessions.rows[0], false);
+  assert.deepEqual(sources.events.rows.map((row) => row.session), ["current-session"]);
+});
+
 test("detection observations normalize conclusions and keep usable verdicts independent of job failures", () => {
   const clear = { promptInjection: false, secretLeak: false, maliciousPatch: false, warnings: [] };
   const rows = detectionObservationRows({
