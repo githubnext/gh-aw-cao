@@ -9,7 +9,7 @@ import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
+import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -598,15 +598,7 @@ function enableThemeToggle(root) {
 
   const menu = root.querySelector('.account-menu');
   if (!(menu instanceof HTMLDetailsElement)) return;
-  root.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    if (event.target.closest('.account-menu-action') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
-  });
-  menu.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    menu.removeAttribute('open');
-    menu.querySelector('summary')?.focus();
-  });
+  enableDetailsMenuDismissal(root, menu, '.account-menu-action');
 }
 
 /**
@@ -616,19 +608,7 @@ function enableThemeToggle(root) {
 function enableMobileNavigationMenu(root) {
   const menu = root.querySelector('.mobile-nav-menu');
   if (!(menu instanceof HTMLDetailsElement)) return;
-
-  root.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    if (event.target.closest('[data-mobile-nav-page-id]') || !event.target.closest('.mobile-nav-menu')) {
-      menu.removeAttribute('open');
-    }
-  });
-  menu.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    menu.removeAttribute('open');
-    const summary = menu.querySelector('summary');
-    if (summary instanceof HTMLElement) summary.focus();
-  });
+  enableDetailsMenuDismissal(root, menu, '[data-mobile-nav-page-id]');
 }
 
 /**

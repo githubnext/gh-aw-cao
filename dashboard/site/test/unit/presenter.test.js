@@ -1377,6 +1377,23 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('closes the mobile view menu on Escape and restores focus to its toggle', () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    document.body.append(rendered);
+    const menu = /** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.mobile-nav-menu'));
+    const summary = menu?.querySelector('summary');
+
+    menu?.setAttribute('open', '');
+    menu?.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(menu?.hasAttribute('open')).toBe(false);
+    expect(rendered.ownerDocument.activeElement).toBe(summary);
+    rendered.remove();
+  });
+
   it('renders filter bars for the Runtime, Security, and Value pages', async () => {
     const rendered = renderDashboard({
       document: authoritativeDashboardDocument,
