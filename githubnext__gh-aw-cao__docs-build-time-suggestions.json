@@ -1,15 +1,7 @@
 {
-  "source_sha": "0718c06e688aa7e0a41346749b981ed2a94c2cc2",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "eb6b819dfc24c69598ca36ff3081dfcef5c17602",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-10T05:27:20Z",
-      "worker_run_id": 34440924799,
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: evaluation stopped immediately because fresh docs.yml run listing failed with HTTP 403 API rate-limit exhaustion before the required minimum of five comparable successful runs could be refreshed. Trusted workflow YAML remained readable, but queue-time separation, workflow/job medians and p90s, step timings, cache-hit verification, and open-issue duplicate review could not be refreshed safely in this run.",
-      "suggestion_fingerprint": ""
-    },
     {
       "evaluated_at": "2026-09-10T04:54:14Z",
       "worker_run_id": 34438799036,
@@ -378,6 +370,20 @@
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [],
       "outcome": "incomplete: evaluation stopped after confirming authorization and refreshing workflow sources because trusted GitHub Actions job metadata for fresh docs.yml samples could not be retrieved safely. The latest 20 completed docs.yml runs within the last 14 days include 9 successful runs, satisfying the minimum sample count, but gh run view failed with HTTP 502 resource-labeling errors and open-issue duplicate review also failed with HTTP 502. Without trusted job/step timings, queue/execution separation, cache-hit verification, or duplicate-open-issue confirmation, no actionable non-duplicate recommendation can be made safely for category 'artifact transfer and Pages packaging'.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-10T10:28:25Z",
+      "worker_run_id": 34465891316,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        34465827096,
+        34463871122,
+        34462481341,
+        34461522732,
+        34455609861
+      ],
+      "outcome": "incomplete: refreshed the latest completed docs.yml run list and confirmed at least five comparable successful schedule runs exist, but trusted follow-up Actions job metadata reads failed with HTTP 502 resource-labeling errors while inspecting run 34465827096. Without gh run view job/step data, queue-time separation, workflow/job medians and p90s, cache-hit verification, dashboard-build child correlation, and duplicate-open-issue review could not be completed safely for category 'scheduling, concurrency, and avoidable rebuilds'.",
       "suggestion_fingerprint": ""
     }
   ]
