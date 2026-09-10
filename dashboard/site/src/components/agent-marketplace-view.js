@@ -2,7 +2,7 @@ import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { formatNumber } from '../view-formatters.js';
 import { findLink } from './link-content.js';
-import { renderIconSpan, formatShortDate, renderFilterSelect, renderSearchInput } from './ui-primitives.js';
+import { renderIconSpan, formatShortDate, renderFilterSelect, renderLiveRegion, renderSearchInput } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 import { textValue } from './count-formatters.js';
 
@@ -35,7 +35,7 @@ export function renderAgentMarketplaceView(context) {
     h('option', { value: 'slow' }, `Slow (${agents.filter((agent) => agent.slow).length})`),
     h('option', { value: 'stale' }, `Stale (${agents.filter((agent) => agent.stale).length})`)
   ));
-  const count = h('span', { className: 'agent-marketplace-count', 'aria-live': 'polite' });
+  const count = renderLiveRegion('span', 'agent-marketplace-count');
   let sortOrder = 'runtime';
   let activeKind = agents.some((agent) => agent.kind === 'package') ? 'package' : 'all';
   /** @type {HTMLButtonElement[]} */
