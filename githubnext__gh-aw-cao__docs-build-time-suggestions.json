@@ -1,23 +1,7 @@
 {
-  "source_sha": "710cbf3edcebcfaeed71dc6fe971ae7a4f9876c8",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "source_sha": "fc26e8c68cbea0963830dfcfb9524e13f0541182",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-09-10T00:56:00Z",
-      "worker_run_id": 34423331449,
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        34423354073,
-        34417597349,
-        34417340649,
-        34417272726,
-        34416452290,
-        34412602447,
-        34411715255
-      ],
-      "outcome": "no-op: initial docs.yml run listing showed at least seven comparable successful runs in the last 14 days, but the complete evaluation could not proceed because trusted follow-up GitHub reads failed. gh run view on sampled runs returned HTTP 502 resource-labeling errors, gh run list by explicit workflow path also returned HTTP 502, the REST workflow-runs query for docs.yml returned HTTP 404, and open-issue duplicate verification via gh issue list failed with a non-zero exit and no data. Without trusted queue-time separation, dashboard/build/deploy job medians and p90s, step timings, cache-hit verification, and duplicate-open-issue review, no evidence-backed non-duplicate recommendation could be made safely.",
-      "suggestion_fingerprint": ""
-    },
     {
       "evaluated_at": "2026-09-09T23:54:10Z",
       "worker_run_id": 34418722377,
@@ -395,6 +379,19 @@
         34429804635
       ],
       "outcome": "incomplete: latest 20 completed docs.yml runs in the last 14 days contained only 4 successful completed runs, below the required minimum of 5 comparable successful runs for a full evaluation. Refreshed workflow sources and current run list, but stopped before queue-time separation, job/step timing analysis, cache-hit verification, and duplicate-open-issue review. No safe recommendation can be made from this evidence window.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-10T06:40:00Z",
+      "worker_run_id": 34446233942,
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        34446042920,
+        34441595066,
+        34441469666,
+        34437995174
+      ],
+      "outcome": "incomplete: latest 20 completed docs.yml runs in the last 14 days still contain only 4 successful completed runs, below the required minimum of 5 comparable successful runs for a full evaluation. Refreshed docs.yml and dashboard-build.yml workflow sources and trusted job/step metadata for all 4 successful samples. Those samples continue to show low queue time, node_modules cache hits in the parent build job, and short build/deploy phases, but the minimum-success threshold blocks a category recommendation. Open-issue duplicate verification also failed in this environment (gh issue list exited non-zero with no data). No safe recommendation can be made from this evidence window.",
       "suggestion_fingerprint": ""
     }
   ]
