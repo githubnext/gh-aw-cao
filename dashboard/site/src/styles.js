@@ -1689,10 +1689,12 @@ thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75
 .table-summary-boolean .chart-legend li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 5px; }
 .table-summary-boolean .chart-legend i { width: 8px; height: 8px; }
 .table-summary-boolean .chart-legend strong { display: none; }
-.table-summary-boolean .chart-widget .chart-series-1 { stroke: var(--accent); }
+.table-summary-boolean .chart-widget .chart-series-1 { stroke: var(--success); }
 .table-summary-boolean .chart-widget .chart-series-2 { stroke: var(--attention); }
-.table-summary-boolean .chart-legend i.chart-series-1 { color: var(--accent); }
+.table-summary-boolean .chart-widget .chart-series-3 { stroke: var(--muted); }
+.table-summary-boolean .chart-legend i.chart-series-1 { color: var(--success); }
 .table-summary-boolean .chart-legend i.chart-series-2 { color: var(--attention); }
+.table-summary-boolean .chart-legend i.chart-series-3 { color: var(--muted); }
 .table-summary-count { font-weight: 400; }
 .table-summary-quantitative { display: grid; gap: 6px; }
 .table-summary-histogram { width: 100%; height: 32px; overflow: visible; }
