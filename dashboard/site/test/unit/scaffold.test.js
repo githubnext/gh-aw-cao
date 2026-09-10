@@ -58,14 +58,16 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
-    /** @param {string} value */
-    const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const styleLines = styles.split('\n');
     /** @param {string} selector */
     const declarationMap = (selector) => {
-      const matches = Array.from(styles.matchAll(new RegExp(`^${escapeRegex(selector)}\\s*\\{([^}]*)\\}$`, 'gm')));
+      const matches = styleLines.filter((line) => line.startsWith(`${selector} {`));
       expect(matches).toHaveLength(1);
+      const bodyStart = matches[0]?.indexOf('{') ?? -1;
+      const bodyEnd = matches[0]?.lastIndexOf('}') ?? -1;
+      const ruleBody = bodyStart >= 0 && bodyEnd > bodyStart ? matches[0].slice(bodyStart + 1, bodyEnd) : '';
       const declarations = new Map();
-      for (const declaration of (matches[0]?.[1] ?? '').split(';').map((entry) => entry.trim()).filter(Boolean)) {
+      for (const declaration of ruleBody.split(';').map((entry) => entry.trim()).filter(Boolean)) {
         const separator = declaration.indexOf(':');
         if (separator < 0) continue;
         declarations.set(
