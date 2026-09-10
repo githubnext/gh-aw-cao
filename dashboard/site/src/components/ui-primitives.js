@@ -268,6 +268,24 @@ export function renderSkeletonBars(className) {
 }
 
 /**
+ * Renders the shared "three cards and a panel" `aria-hidden` loading
+ * placeholder blocks used while the dashboard shell or a page view awaits
+ * its content. Shared by the top-level dashboard loading skeleton in
+ * `main.js` and {@link ../presenter.js renderPageSkeleton}, which otherwise
+ * duplicated the same `skeleton-card`/`skeleton-panel` `<div>` sequence
+ * through two different DOM-construction styles.
+ * @returns {HTMLElement[]}
+ */
+export function renderLoadingPlaceholderBlocks() {
+  return [
+    h('div', { className: 'skeleton-card', 'aria-hidden': 'true' }),
+    h('div', { className: 'skeleton-card', 'aria-hidden': 'true' }),
+    h('div', { className: 'skeleton-card', 'aria-hidden': 'true' }),
+    h('div', { className: 'skeleton-panel', 'aria-hidden': 'true' })
+  ];
+}
+
+/**
  * Renders the shared "empty" placeholder paragraph used across route views and
  * panels when there is no data to display.
  * @param {string} message

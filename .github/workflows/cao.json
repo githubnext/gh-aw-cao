@@ -47,6 +47,22 @@
           }
         }
       },
+      "cao-maintenance": {
+        "icon": "gear",
+        "mode": "review",
+        "max-repositories": 1,
+        "workers": {
+          "efficiency": {
+            "workflow": "cao-maintenance-efficiency"
+          },
+          "integrity": {
+            "workflow": "cao-maintenance-integrity"
+          },
+          "reliability": {
+            "workflow": "cao-maintenance-reliability"
+          }
+        }
+      },
       "dependabot": {
         "icon": "dependabot",
         "mode": "live",
