@@ -111,9 +111,29 @@ export function formatNumber(value, unit = null, includeUnit = true) {
     if (unit.format === 'duration') {
       return formatDurationSeconds(rounded);
     }
+    if (unit.format === 'usd') {
+      return formatUsd(value);
+    }
     return `${rounded.toFixed(fractionDigits(unit.significant))}${includeUnit ? ` ${unit.symbol}` : ''}`;
   }
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+/**
+ * Formats US dollars with no more than three fractional digits, rounding
+ * upward at the third fractional digit.
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatUsd(value) {
+  const scaled = value * 1_000;
+  const tolerance = Number.EPSILON * Math.max(1, Math.abs(scaled));
+  const rounded = Math.ceil(scaled - tolerance) / 1_000;
+  return new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 3
+  }).format(rounded);
 }
 
 /**

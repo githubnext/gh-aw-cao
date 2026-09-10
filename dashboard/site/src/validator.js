@@ -686,6 +686,13 @@ function validateDashboard(dashboard, dashboardNode, errors) {
             path
           ));
         }
+        if (definition.format === 'usd' && (definition.symbol !== 'USD' || definition.significant !== 0.001)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'USD units must use symbol "USD" and significant 0.001.',
+            path
+          ));
+        }
       }
     }
     return unitIds;
