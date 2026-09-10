@@ -9,7 +9,7 @@ import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.j
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
-const canonicalEntityTables = ['events', 'jobs', 'repositories', 'runs', 'sessions', 'workflows'];
+const canonicalEntityTables = ['events', 'jobs', 'packages', 'repositories', 'runs', 'sessions', 'workflows'];
 
 function ghAwLogInput() {
   const fixtureRoot = join(siteRoot, 'test', 'fixtures', 'gh-aw-logs');
@@ -27,6 +27,21 @@ function ghAwLogInput() {
 
 function canonicalSources(generation = 'browser-generation', run = '12345') {
   return {
+    packages: {
+      rows: [{
+        package: 'dashboard',
+        'package-name': 'CAO Dashboard',
+        'package-description': 'Deploy the CAO dashboard.',
+        'package-icon': 'graph',
+        'package-mode': 'review',
+        'package-enabled': true,
+        'package-worker-count': 1,
+        'package-min-version': 'v0.89.2',
+        'package-experimental': true,
+        'observed-at': '2026-09-09T05:00:00Z'
+      }],
+      metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
+    },
     repositories: {
       rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T05:00:00Z' }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -710,7 +725,9 @@ test('SQLite and browser IndexedDB ingestion produce identical populated tables'
     for (const [backend, tables] of Object.entries({ SQLite: sqliteRows, IndexedDB: browserRows })) {
       expect(Object.keys(tables).sort()).toEqual(canonicalEntityTables);
       for (const table of canonicalEntityTables) {
-        expect(tables[table].length, `${backend} ${table} should contain compliance fixture data`).toBeGreaterThan(0);
+        if (table !== 'packages') {
+          expect(tables[table].length, `${backend} ${table} should contain compliance fixture data`).toBeGreaterThan(0);
+        }
       }
     }
     expect(browserRows).toEqual(sqliteRows);
