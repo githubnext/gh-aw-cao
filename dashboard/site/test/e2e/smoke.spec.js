@@ -1508,12 +1508,18 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
         availability: 'available'
       };
       const emptySource = (source) => ({ source, rows: [], metadata });
+      const packages = ['EU CRA', 'Repository Ops', 'AW Optimization'];
+      const roles = ['orchestrator', 'worker'];
+      const modes = ['review', 'live', 'staged'];
       const sources = {
         inventory: {
           source: 'inventory',
           rows: Array.from({ length: 100 }, (_, index) => ({
             organization: 'githubnext',
-            repository: \`repository-\${index + 1}\`
+            repository: \`repository-\${index + 1}\`,
+            package: packages[index % packages.length],
+            role: roles[index % roles.length],
+            mode: modes[index % modes.length]
           })),
           metadata
         },
@@ -1563,7 +1569,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
               encoding: {
                 columns: [
                   { field: 'organization', type: 'nominal' },
-                  { field: 'repository', type: 'nominal' }
+                  { field: 'repository', type: 'nominal' },
+                  { field: 'package', type: 'nominal' },
+                  { field: 'role', type: 'nominal' },
+                  { field: 'mode', type: 'nominal' }
                 ]
               }
             }]
@@ -1649,7 +1658,11 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await view.boundingBox())?.height).toBeGreaterThanOrEqual(650);
-  expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  const filterStaysOnOneRow = await view.locator('.table-filter').evaluate((element) => {
+    const tops = [...element.children].map((child) => child.getBoundingClientRect().top);
+    return Math.max(...tops) - Math.min(...tops) < 4;
+  });
+  expect(filterStaysOnOneRow).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
 
   await page.setViewportSize({ width: 1000, height: 900 });
