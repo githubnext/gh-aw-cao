@@ -1583,6 +1583,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   const pageTitle = page.locator('#page-title');
   const tableFilter = view.locator('.table-filter');
   const lazyList = view.locator('[data-lazy-list]');
+  const fieldName = view.locator('thead > tr:first-child > th').first();
+  const summaryCell = view.locator('.table-summary-row > th').first();
   await expect(view).toHaveCount(1);
   await expect(siteCallout).toBeVisible();
   await expect(warningCallout).toBeVisible();
@@ -1617,6 +1619,9 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(summary).toBeHidden();
     await expect(pageTitle).toBeHidden();
     await expect(tableFilter).toBeHidden();
+    await expect(fieldName).toHaveCSS('opacity', '0.8');
+    await expect(summaryCell).toHaveCSS('opacity', '0');
+    await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     for (const firstRepository of [26, 1]) {
       const stayedCompact = await scroll.evaluate((element) => {
@@ -1639,6 +1644,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(summary).toBeVisible();
     await expect(pageTitle).toBeVisible();
     await expect(tableFilter).toBeVisible();
+    await expect(summaryCell).toHaveCSS('opacity', '1');
     for (const firstRepository of [26, 51]) {
       await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
       await scroll.dispatchEvent('scroll');
