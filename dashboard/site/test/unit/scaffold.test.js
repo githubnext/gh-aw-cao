@@ -90,10 +90,15 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
     /** @param {string} rule */
-    const zIndex = (rule) => Number(styles.match(new RegExp(`${rule} \\{[^}]*z-index: (\\d+);`))?.[1]);
+    const zIndex = (rule) => {
+      const match = styles.match(new RegExp(`${rule} \\{[^}]*z-index: (\\d+);`));
+      expect(match, `missing z-index for ${rule}`).not.toBeNull();
+      return Number(match?.[1]);
+    };
+    const panelLayer = zIndex('\\.filter-bar-expanded \\.filter-tuning-controls');
+    const headerLayer = zIndex('\\.app-main > \\.top-nav');
 
-    expect(zIndex('\\.filter-bar-expanded \\.filter-tuning-controls'))
-      .toBeGreaterThan(zIndex('\\.app-main > \\.top-nav'));
+    expect(panelLayer).toBeGreaterThan(headerLayer);
     expect(styles).toContain('.filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }');
   });
 
