@@ -28,6 +28,7 @@ import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
+import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabaseCounts } from './database-counts.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -832,84 +833,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
 }
 
 /**
- * @typedef {{ repositories: unknown, workflows: unknown, runs: unknown, events: unknown }} DatabaseCounts
- */
-
-/**
- * @param {PresentationInput['loadHorizonSources']} loadSources
- * @returns {() => Promise<DatabaseCounts>}
- */
-function createDatabaseCountLoader(loadSources) {
-  /** @type {Promise<DatabaseCounts> | undefined} */
-  let countsPromise;
-  return () => {
-    if (!loadSources) return Promise.reject(new Error('Database count query unavailable'));
-    countsPromise ??= loadSources().then((sources) => {
-      const repositories = sources['database-repository-count']?.rows?.[0]?.repositories;
-      const workflows = sources['database-workflow-count']?.rows?.[0]?.workflows;
-      const runs = sources['database-run-count']?.rows?.[0]?.runs;
-      const events = sources['database-event-count']?.rows?.[0]?.events;
-      if ([repositories, workflows, runs, events].some((count) => count === undefined)) {
-        throw new Error('Database count query unavailable');
-      }
-      return {
-        repositories,
-        workflows,
-        runs,
-        events
-      };
-    });
-    return countsPromise;
-  };
-}
-
-/**
- * @param {() => Promise<DatabaseCounts>} loadDatabaseCounts
- * @returns {{ element: HTMLElement, load: () => void }}
- */
-function renderSettingsDatabaseCounts(loadDatabaseCounts) {
-  const fields = /** @type {const} */ ([
-    ['repositories', 'Repositories'],
-    ['workflows', 'Workflows'],
-    ['runs', 'Runs'],
-    ['events', 'Events']
-  ]);
-  const values = Object.fromEntries(fields.map(([name]) => [
-    name,
-    h('strong', { dataset: { databaseCount: name } }, '—')
-  ]));
-  const status = h('span', { className: 'database-counts-status', 'aria-live': 'polite' }, 'Open to load database counts');
-  let started = false;
-  const load = () => {
-    if (started) return;
-    started = true;
-    status.textContent = 'Loading database counts…';
-    loadDatabaseCounts()
-      .then((counts) => {
-        for (const [name] of fields) values[name].textContent = String(counts[name] ?? 0);
-        status.textContent = 'Database totals';
-      })
-      .catch(() => {
-        status.textContent = 'Database counts unavailable';
-      });
-  };
-  return {
-    element: h(
-      'fieldset',
-      { className: 'database-counts' },
-      h('legend', null, 'Database'),
-      h(
-        'div',
-        { className: 'database-count-grid' },
-        fields.map(([name, label]) => h('span', null, values[name], h('small', null, label)))
-      ),
-      status
-    ),
-    load
-  };
-}
-
-/**
  * @param {PresentableDashboard} dashboard
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {string} horizonRange
@@ -917,7 +840,7 @@ function renderSettingsDatabaseCounts(loadDatabaseCounts) {
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
- * @param {() => Promise<DatabaseCounts>} loadDatabaseCounts
+ * @param {() => Promise<import('./database-counts.js').DatabaseCounts>} loadDatabaseCounts
  * @returns {HTMLElement}
  */
 function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts) {
@@ -955,7 +878,7 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
     databaseCounts.textContent = 'Loading database counts…';
     countsPromise = loadDatabaseCounts()
       .then((counts) => {
-        databaseCounts.textContent = `${counts.repositories} repositories · ${counts.workflows} workflows · ${counts.runs} runs · ${counts.events} events`;
+        databaseCounts.textContent = formatDatabaseCounts(counts);
       })
       .catch(() => {
         databaseCounts.textContent = 'Database counts unavailable';

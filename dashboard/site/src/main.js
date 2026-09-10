@@ -3,7 +3,7 @@
       import { offerCancelCommand } from "./cancel-command.js";
       import { loadCanonicalDashboardPage, loadCanonicalDashboardSources, processDashboardQueries, refreshCanonicalDashboardSources, subscribeCanonicalDashboardView } from "./data-processor.js";
       import { loadCanonicalViewSources } from "./data/queries/view-sources.js";
-      import { DASHBOARD_HORIZON_COUNT_SOURCES } from "./horizon.js";
+      import { DATABASE_COUNT_SOURCE_NAMES } from "./database-counts.js";
       import { bindSourceContinuations, continuationRequests } from "./data/continuation.js";
       import { octicon } from "./octicons.js";
       import { renderRefreshError } from "./components/refresh-error.js";
@@ -948,7 +948,7 @@
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
           const loadHorizonSources = () => runWithLoadingProgress(
             () => loadCanonicalDashboardPage(
-              DASHBOARD_HORIZON_COUNT_SOURCES,
+              DATABASE_COUNT_SOURCE_NAMES,
               dashboardContext,
             ),
           );
