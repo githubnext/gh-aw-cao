@@ -9,7 +9,7 @@ import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
+import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -74,7 +74,7 @@ import { sourceContinuation } from './data/continuation.js';
  */
 
 /**
- * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
+ * @typedef {{ document: PresentationDocument, sources: Record<string, LogicalSourceInput>, viewer?: LocalViewer | null, prepared?: boolean, loading?: boolean, loadPageSources?: (pageId: string) => Promise<Record<string, LogicalSourceInput>>, loadHorizonSources?: () => Promise<Record<string, LogicalSourceInput>> }} PresentationInput
  */
 
 /**
@@ -85,6 +85,7 @@ const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
 const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data';
 const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
+const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const THEME_STORAGE_KEY = 'central-agentic-ops.dashboard.theme';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
 
@@ -186,6 +187,7 @@ export function renderDashboard(input) {
   const pages = document.dashboard.pages;
   const horizonRange = resolveDashboardHorizon(document.dashboard);
   const hasData = Object.values(rawSources).some((source) => Array.isArray(source?.rows) && source.rows.length > 0);
+  const showInitialLoadingSkeleton = input.loading === true && !hasData;
   const dataHorizon = resolveDataHorizon(rawSources);
   const githubUrlBase = typeof document.dashboard['github-url-base'] === 'string' && document.dashboard['github-url-base'].length > 0
     ? document.dashboard['github-url-base']
@@ -247,7 +249,9 @@ export function renderDashboard(input) {
       const page = pages[pageIndex];
       if (!page) return null;
       /** @param {Record<string, LogicalSourceInput>} pageSources */
-      const render = (pageSources) => renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
+      const render = (pageSources) => showInitialLoadingSkeleton
+        ? renderPageLoadingSkeleton(page)
+        : renderPage(page, pageSources, isPlainObject(document.dashboard.units) ? document.dashboard.units : {}, dashboardDefaults);
       if (input.loadPageSources) {
         return input.loadPageSources(pageId).then(render);
       }
@@ -380,6 +384,17 @@ function renderSidebar(pages, title, navigation) {
     h(
       'div',
       { className: 'sidebar-header' },
+      h(
+        'button',
+        {
+          className: 'mobile-history-back',
+          type: 'button',
+          'aria-label': 'Go back',
+          title: 'Go back',
+          hidden: true
+        },
+        octicon('arrow-left')
+      ),
       h(
         'a',
         { className: 'sidebar-brand', href: firstPageId ? `#page-${firstPageId}` : '#main-content', title },
@@ -595,15 +610,7 @@ function enableThemeToggle(root) {
 
   const menu = root.querySelector('.account-menu');
   if (!(menu instanceof HTMLDetailsElement)) return;
-  root.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    if (event.target.closest('.account-menu-action') || !event.target.closest('.account-menu')) menu.removeAttribute('open');
-  });
-  menu.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    menu.removeAttribute('open');
-    menu.querySelector('summary')?.focus();
-  });
+  enableDetailsMenuDismissal(root, menu, '.account-menu-action');
 }
 
 /**
@@ -613,19 +620,7 @@ function enableThemeToggle(root) {
 function enableMobileNavigationMenu(root) {
   const menu = root.querySelector('.mobile-nav-menu');
   if (!(menu instanceof HTMLDetailsElement)) return;
-
-  root.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    if (event.target.closest('[data-mobile-nav-page-id]') || !event.target.closest('.mobile-nav-menu')) {
-      menu.removeAttribute('open');
-    }
-  });
-  menu.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    menu.removeAttribute('open');
-    const summary = menu.querySelector('summary');
-    if (summary instanceof HTMLElement) summary.focus();
-  });
+  enableDetailsMenuDismissal(root, menu, '[data-mobile-nav-page-id]');
 }
 
 /**
@@ -1004,6 +999,18 @@ function renderPagePlaceholder(page) {
     'data-route-navigation-page': routeNavigationPage,
     'data-page-pending': ''
   });
+}
+
+/**
+ * @param {PresentableBuiltInPage | PresentableCustomPage} page
+ * @returns {HTMLElement}
+ */
+function renderPageLoadingSkeleton(page) {
+  const placeholder = renderPagePlaceholder(page);
+  placeholder.removeAttribute('data-page-pending');
+  placeholder.setAttribute('aria-busy', 'true');
+  placeholder.append(renderPageSkeleton());
+  return placeholder;
 }
 
 /**
@@ -1620,6 +1627,27 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   const initialRoute = routeFromHash();
   const initialPageId = availableIds.has(defaultPageId) ? defaultPageId : pages[0].dataset.pageId ?? '';
   activate(initialRoute?.pageId ?? initialPageId, initialRoute?.parameters);
+  const defaultView = root.ownerDocument.defaultView;
+  const historyBack = root.querySelector('.mobile-history-back');
+  const initialNavigationIndex = defaultView?.history.state?.[NAVIGATION_INDEX_STATE_KEY];
+  let navigationIndex = Number.isSafeInteger(initialNavigationIndex) && initialNavigationIndex >= 0
+    ? initialNavigationIndex
+    : 0;
+  const syncHistoryBack = () => {
+    if (historyBack instanceof HTMLButtonElement) historyBack.hidden = navigationIndex === 0;
+  };
+  if (defaultView && initialNavigationIndex !== navigationIndex) {
+    const state = defaultView.history.state && typeof defaultView.history.state === 'object'
+      ? defaultView.history.state
+      : {};
+    defaultView.history.replaceState(
+      { ...state, [NAVIGATION_INDEX_STATE_KEY]: navigationIndex },
+      '',
+      defaultView.location.href
+    );
+  }
+  syncHistoryBack();
+  historyBack?.addEventListener('click', () => defaultView?.history.back());
   root.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest('[data-nav-page-id], [data-mobile-nav-page-id]');
@@ -1627,12 +1655,13 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     event.preventDefault();
     const pageId = getNavigationPageId(link);
     if (!pageId || !availableIds.has(pageId)) return;
-    root.ownerDocument.defaultView?.history.pushState(null, '', link.href);
+    navigationIndex += 1;
+    defaultView?.history.pushState({ [NAVIGATION_INDEX_STATE_KEY]: navigationIndex }, '', link.href);
+    syncHistoryBack();
     updateWithViewTransition(root.ownerDocument, () => activate(pageId, routeFromHash()?.parameters, true));
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   });
 
-  const defaultView = root.ownerDocument.defaultView;
   let fullViewScrollFrame = 0;
   root.addEventListener('scroll', (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
@@ -1652,17 +1681,32 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     }
   }, true);
+  /** @param {PopStateEvent} event */
+  const onPopState = (event) => {
+    if (!root.isConnected) {
+      defaultView?.removeEventListener('hashchange', onHashChange);
+      defaultView?.removeEventListener('popstate', onPopState);
+      return;
+    }
+    const index = event.state?.[NAVIGATION_INDEX_STATE_KEY];
+    navigationIndex = Number.isSafeInteger(index) && index >= 0 ? index : 0;
+    syncHistoryBack();
+  };
   const onHashChange = () => {
     if (!root.isConnected) {
       defaultView?.removeEventListener('hashchange', onHashChange);
+      defaultView?.removeEventListener('popstate', onPopState);
       return;
     }
     const route = routeFromHash();
-    if (route) {
-      updateWithViewTransition(root.ownerDocument, () => activate(route.pageId, route.parameters, true));
-      if (pageTitle instanceof HTMLElement) pageTitle.focus();
-    }
+    updateWithViewTransition(root.ownerDocument, () => activate(
+      route?.pageId ?? initialPageId,
+      route?.parameters,
+      true
+    ));
+    if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
+  defaultView?.addEventListener('popstate', onPopState);
   defaultView?.addEventListener('hashchange', onHashChange);
 }
 
@@ -2346,8 +2390,21 @@ function renderPageTitleLink(target, candidate) {
  */
 function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message) {
   return renderPageSection(pageId, title, [
-    h('p', { 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
-    ...renderCustomViewStateDetails(sourceName, contextDetails)
+    h(
+      'div',
+      {
+        className: 'view-state-card',
+        'data-view-state': availability,
+        role: availability === 'unavailable' ? 'alert' : 'status'
+      },
+      octicon(availability === 'unavailable' ? 'alert' : 'info'),
+      h(
+        'div',
+        { className: 'view-state-card-body' },
+        h('p', { className: 'view-state-message', 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
+        ...renderCustomViewStateDetails(sourceName, contextDetails)
+      )
+    )
   ], headingTag);
 }
 

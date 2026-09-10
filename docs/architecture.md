@@ -70,4 +70,4 @@ Central Agentic Ops governs participating catalog workflows. Use GitHub rulesets
 | [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
 | [Orchestrators and Workers](orchestrators-and-workers.md) | Package-specific authority, worker enforcement, eligibility, and worker ceilings |
 | [Rollout and Routing](rollout-and-routing.md) | Review-to-live promotion; review destinations; authority checks; and rollback |
-| [CAO Activity](activity.md) | Shared evidence collection, snapshots, fallback behavior, and dashboard inputs |
+| [CAO Activity](activity.md) | Shared evidence collection, retained-snapshot behavior, and dashboard inputs |

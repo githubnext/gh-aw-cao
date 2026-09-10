@@ -196,7 +196,7 @@ function applyDataHealthMetadata(sources, { deployed, usage, report, workflows, 
   attachCollection(["organizations", "repositories", "workflows"], "workflow-discovery");
   attachCollection(["runs", "run-performance", "job-performance"], "run-query");
   attachCollection(["admissions", "admission-checks"], "admission-artifacts");
-  attachCollection(["usage", "detection-observations", "firewall-observations", "safe-output-performance"], "usage-artifacts");
+  attachCollection(["usage", "detection-observations", "firewall-observations", "safe-output-performance"], "usage-artifact-fields");
   attachCollection(["outcomes", "findings"], "durable-outputs");
 
   if (report.stale) {
@@ -1836,7 +1836,7 @@ function mcpBase(run) {
     run: String(run.runId ?? ""),
     "rollout-mode": rolloutMode(run.mode),
     "engine-version": firstText(run.engineVersion) || "unknown",
-    "gh-aw-version": firstText(run.security?.mcp?.cliVersion) || "unknown",
+    "gh-aw-version": firstText(run.ghAwVersion, run.security?.agentInfo?.ghAwVersion, run.security?.mcp?.cliVersion) || "unknown",
     "observed-at": run.createdAt,
     "run-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
   };
@@ -2544,41 +2544,10 @@ function configurationData(controlSettings) {
 
 export function buildDashboardLanguageSources({ deployed, usage, operationalValues, report, inventory = {}, controlSettings = {}, githubTelemetry = [] }) {
   const generatedAt = report.generatedAt || deployed.generatedAt || new Date().toISOString();
-  const workflowsByIdentity = new Map([
-    ...(deployed.workflows || []),
-    ...(report.remoteWorkflows || []),
-  ].map((workflow) => [`${String(workflow.repository).toLowerCase()}:${String(workflow.path).toLowerCase()}`, workflow]));
-  const workflowInventoryComplete = deployed.discovery?.complete === true
-    && report.workflowDiscovery?.complete !== false;
-  const localWorkflowCollection = (deployed.collections || []).find((collection) => collection.operation === "workflow-discovery");
-  const remoteWorkflowDiscovery = report.workflowDiscovery;
-  const workflowCollection = remoteWorkflowDiscovery
-    ? {
-      ...localWorkflowCollection,
-      operation: "workflow-discovery",
-      state: workflowInventoryComplete ? "complete" : "partial",
-      failureClass: workflowInventoryComplete ? null : "request",
-      expected: Number(localWorkflowCollection?.expected || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesExpected,
-      observed: Number(localWorkflowCollection?.observed || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesObserved,
-      workflowExpected: workflowInventoryComplete ? workflowsByIdentity.size : undefined,
-      reason: remoteWorkflowDiscovery.failures?.map((failure) => `${failure.repository}: ${failure.reason}`).join("; ") || "",
-      ...(report.stale ? {
-        fallback: {
-          used: true,
-          snapshotGeneratedAt: report.snapshotGeneratedAt || null,
-          snapshotAgeSeconds: report.snapshotAgeSeconds ?? null,
-        },
-      } : {}),
-    }
-    : localWorkflowCollection;
+  const workflowInventoryComplete = deployed.discovery?.complete === true;
   const workflowDeployed = {
     ...deployed,
-    workflows: [...workflowsByIdentity.values()],
     discovery: { ...deployed.discovery, complete: workflowInventoryComplete },
-    collections: [
-      ...(deployed.collections || []).filter((collection) => collection.operation !== "workflow-discovery"),
-      ...(workflowCollection ? [workflowCollection] : []),
-    ],
   };
   const workflows = workflowRows(workflowDeployed, generatedAt, inventory, controlSettings);
   const runs = runRows(deployed, usage);
@@ -2632,7 +2601,8 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
   const discoveryAvailable = workflowDeployed.discovery?.complete !== false || workflows.length > 0;
   const workflowsAvailable = discoveryAvailable || workflows.length > 0;
   const runAvailable = deployed.runHealth?.available === true || runs.length > 0;
-  const usageAvailable = usage.available === true;
+  const usageRecords = usageRows(usage);
+  const usageAvailable = usage.available === true || usageRecords.length > 0;
   const usageComplete = usage.complete === true;
   const valueAvailable = operationalValues.records !== undefined;
   const configuration = configurationData(controlSettings);
@@ -2713,7 +2683,7 @@ export function buildDashboardLanguageSources({ deployed, usage, operationalValu
       sources[name].metadata["coverage-start"] = sources.runs.metadata["coverage-start"];
     }
   }
-  sources.usage = source("usage", usageRows(usage), generatedAt, usageAvailable, usageComplete);
+  sources.usage = source("usage", usageRecords, generatedAt, usageAvailable, usageComplete);
   sources.experiments = source(
     "experiments",
     experiments.definitions,

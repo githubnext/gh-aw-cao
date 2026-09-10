@@ -96,11 +96,11 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@af9516b9001c6aa6d4817b7484de4bb017ebb27f # v0.89.0
+        uses: github/gh-aw-actions/setup-cli@4537e5924c9abb366dcbece06750e498e0218fae # v0.89.1
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
-          version: v0.89.0
+          version: v0.89.1
 
       - name: Restore activity cache
         id: activity-cache
@@ -156,8 +156,8 @@ jobs:
         run: |
           cache_root="$RUNNER_TEMP/cao-activity"
           if [[ -d "$cache_root" ]]; then
-            echo "Activity cache files (max depth 3):"
-            (cd "$cache_root" && find . -maxdepth 3 -type f -print | sed 's#^\./##' | sort | sed -n '1,200p')
+            echo "Activity cache files and sizes (max depth 3):"
+            (cd "$cache_root" && find . -maxdepth 3 -type f -printf '%s\t%P\n' | sort -t $'\t' -k2,2 | numfmt --field=1 --to=iec-i --suffix=B | sed -n '1,200p')
           else
             echo "Activity cache directory is absent: $cache_root"
           fi

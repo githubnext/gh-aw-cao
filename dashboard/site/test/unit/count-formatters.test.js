@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { clampPercent, computeObservationCoverage, countBy, finiteNumber, formatAic, formatCount, formatCountNoun, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
+import { clampPercent, computeObservationCoverage, countBy, finiteNumber, formatAic, formatCount, formatCountNoun, formatCountOf, formatCoveragePercent, formatRoundedPercent, pluralSuffix, slugify, text, textValue, titleCase } from '../../src/components/count-formatters.js';
 
 describe('count formatters', () => {
   it('formats counts for UI text', () => {
@@ -33,6 +33,12 @@ describe('count formatters', () => {
     expect(pluralSuffix(2)).toBe('s');
     expect(pluralSuffix('1')).toBe('');
     expect(pluralSuffix(undefined)).toBe('s');
+  });
+
+  it('formats the shared "<shown> of <total>" result-counter fragment', () => {
+    expect(formatCountOf(2, 5)).toBe('2 of 5');
+    expect(formatCountOf(0, 0)).toBe('0 of 0');
+    expect(formatCountOf(3, 10, ' entries')).toBe('3 of 10 entries');
   });
 
   it('coerces values to display strings, treating null/undefined as empty', () => {

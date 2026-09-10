@@ -385,26 +385,59 @@ describe('declarative dashboard queries', () => {
     });
   });
 
-  it('projects Safe Outputs usage from canonical performance records', () => {
-    const safeOutputPerformance = {
-      source: 'safe-output-performance',
+  it('projects every Safe Output usage record without aggregation or limits', () => {
+    const outcomes = {
+      source: 'outcomes',
       rows: [
-        { repository: 'gh-aw-cao', workflow: 'review.md', run: '1', 'safe-output-label': 'Output', 'safe-output-count': 3, 'observed-at': '2026-09-01T00:00:00Z' },
-        { repository: 'gh-aw-cao', workflow: 'review.md', run: '2', 'safe-output-label': 'Missing data', 'safe-output-count': 1, 'observed-at': '2026-09-02T00:00:00Z' }
+        {
+          'safe-output': 'issue-1', 'safe-output-kind': 'create-issue', 'outcome-title': 'Older issue',
+          'outcome-status': 'open', 'outcome-state': 'accepted', workflow: 'daily.md', repository: 'cao',
+          'rollout-mode': 'review', run: '1', 'published-at': '2026-09-01T00:00:00Z',
+          'observed-at': '2026-09-01T01:00:00Z', 'external-link': { href: 'issue-1' }, 'run-link': { href: 'run-1' }
+        },
+        {
+          'safe-output': 'issue-2', 'safe-output-kind': 'create-issue', 'outcome-title': 'Newest issue',
+          'outcome-status': 'closed', 'outcome-state': 'completed', workflow: 'daily.md', repository: 'cao',
+          'rollout-mode': 'live', run: '2', 'published-at': '2026-09-02T00:00:00Z',
+          'observed-at': '2026-09-02T01:00:00Z', 'external-link': { href: 'issue-2' }, 'run-link': { href: 'run-2' }
+        },
+        {
+          'safe-output': 'pr-1', 'safe-output-kind': 'create-pull-request', 'outcome-title': 'Pull request',
+          'outcome-status': 'open', 'outcome-state': 'pending', workflow: 'release.md', repository: 'cao',
+          'rollout-mode': 'review', run: '3', 'published-at': '2026-09-01T00:30:00Z',
+          'observed-at': '2026-09-01T01:30:00Z', 'external-link': { href: 'pr-1' }, 'run-link': { href: 'run-3' }
+        }
       ],
-      metadata: metadata('safe-output-performance')
+      metadata: metadata('outcomes')
     };
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { 'safe-output-performance': safeOutputPerformance },
+      { outcomes },
       ['safe-output-usage']
     );
 
     expect(Object.keys(derived)).toEqual(['safe-output-usage']);
-    expect(derived['safe-output-usage'].rows).toEqual([
-      expect.objectContaining({ run: '2', 'safe-output-label': 'Missing data', 'safe-output-count': 1 }),
-      expect.objectContaining({ run: '1', 'safe-output-label': 'Output', 'safe-output-count': 3 })
+    expect(derived['safe-output-usage'].rows).toHaveLength(3);
+    expect(derived['safe-output-usage'].rows.map((row) => row['safe-output'])).toEqual([
+      'issue-2',
+      'pr-1',
+      'issue-1'
     ]);
+    expect(derived['safe-output-usage'].rows[0]).toMatchObject({
+      'safe-output': 'issue-2',
+      'safe-output-kind': 'create-issue',
+      'outcome-title': 'Newest issue',
+      'outcome-status': 'closed',
+      'outcome-state': 'completed',
+      workflow: 'daily.md',
+      repository: 'cao',
+      'rollout-mode': 'live',
+      run: '2',
+      'published-at': '2026-09-02T00:00:00Z',
+      'observed-at': '2026-09-02T01:00:00Z',
+      'external-link': { href: 'issue-2' },
+      'run-link': { href: 'run-2' }
+    });
   });
 
   it('projects MCP activity entirely from declarative event queries', () => {
@@ -587,6 +620,33 @@ describe('declarative dashboard queries', () => {
     const left = executeDashboardQuery({ name: 'left', from: 'workflows', joins: [{ ...join, type: 'left' }] }, sources).rows;
     expect(left).toHaveLength(2);
     expect(left[1].aic).toBeNull();
+  });
+
+  it('keeps base rows when a left-join enrichment source is unavailable', () => {
+    const result = executeDashboardQuery({
+      name: 'inventory',
+      from: 'workflows',
+      joins: [{
+        source: 'usage-totals',
+        type: 'left',
+        on: [{ left: 'workflow', right: 'workflow' }],
+        fields: [{ field: 'aic', as: 'aic' }]
+      }]
+    }, {
+      workflows,
+      'usage-totals': {
+        source: 'usage-totals',
+        rows: [],
+        metadata: metadata('usage-totals', { availability: 'unavailable', completeness: 'partial' })
+      }
+    });
+
+    expect(result.rows).toEqual([
+      expect.objectContaining({ workflow: 'a.md', aic: null }),
+      expect.objectContaining({ workflow: 'b.md', aic: null })
+    ]);
+    expect(result.metadata).toMatchObject({ availability: 'available', completeness: 'partial' });
+    expect(result.metadata['query-diagnostic']).toBeUndefined();
   });
 
   it('rejects many-to-many expansion with an explicit query diagnostic', () => {

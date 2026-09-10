@@ -292,7 +292,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('Safe Outputs presents usage as a responsive full-view table', async ({ page }) => {
+test('Safe Outputs renders every retained outcome in one progressive full-view table', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -301,10 +301,10 @@ test('Safe Outputs presents usage as a responsive full-view table', async ({ pag
       import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
-        'source-id': 'safe-output-usage-viewport-fixture',
-        'source-kind': 'fixture',
-        'as-of': '2026-09-09T12:00:00Z',
-        'retrieved-at': '2026-09-09T12:01:00Z',
+        'source-id': 'safe-output-usage-fixture',
+        'source-kind': 'derived',
+        'query-name': 'safe-output-usage',
+        'as-of': '2026-09-10T05:00:00Z',
         completeness: 'complete',
         freshness: 'fresh',
         availability: 'available'
@@ -313,53 +313,51 @@ test('Safe Outputs presents usage as a responsive full-view table', async ({ pag
         'safe-output-usage': {
           source: 'safe-output-usage',
           metadata,
-          rows: Array.from({ length: 40 }, (_, index) => ({
-            organization: 'githubnext',
+          rows: Array.from({ length: 60 }, (_, index) => ({
+            'safe-output': \`output-\${index + 1}\`,
+            'safe-output-kind': index % 2 === 0 ? 'create-issue' : 'create-pull-request',
+            'outcome-title': \`Retained output \${index + 1}\`,
+            'outcome-status': index % 2 === 0 ? 'open' : 'closed',
+            'outcome-state': index % 2 === 0 ? 'accepted' : 'completed',
+            workflow: '.github/workflows/daily.md',
             repository: 'gh-aw-cao',
-            workflow: '.github/workflows/dashboard.md',
+            'rollout-mode': index % 2 === 0 ? 'review' : 'live',
             run: String(1000 + index),
-            'run-conclusion': index % 5 === 0 ? 'failure' : 'success',
-            'rollout-mode': 'review',
-            'safe-output-kind': index % 5 === 0 ? 'missing_data' : 'output',
-            'safe-output-label': index % 5 === 0 ? 'Missing data' : 'Output',
-            'safe-output-status': index % 5 === 0 ? 'warning' : 'success',
-            'safe-output-count': index + 1,
-            'observed-at': '2026-09-09T12:00:00Z',
-            'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/' + (1000 + index), label: 'View run ' + (1000 + index) }
+            'published-at': '2026-09-10T04:00:00Z',
+            'observed-at': '2026-09-10T05:00:00Z',
+            'external-link': {
+              href: \`https://example.com/outputs/\${index + 1}\`,
+              label: \`Open retained output \${index + 1}\`
+            }
           }))
         }
       };
-      window.location.hash = '#page-overview';
+      window.location.hash = '#page-safe-outputs';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
   `);
 
-  await page.locator('.nav-section').filter({ hasText: 'Experimental' }).locator('summary').click();
-  await page.locator('[data-nav-page-id="safe-outputs"]').click();
   const safeOutputsPage = page.locator('[data-page-id="safe-outputs"]');
-  const usageView = safeOutputsPage.locator('[data-view-layout="full-view"]');
-  const tableScroll = usageView.locator('.table-scroll');
-  await expect(safeOutputsPage).toBeVisible();
+  const view = safeOutputsPage.locator('[data-view-layout="full-view"]');
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
-  await expect(usageView).toBeVisible();
-  await expect(usageView.locator('[data-table-filter]')).toBeVisible();
-  await expect(usageView.locator('tbody tr')).toHaveCount(40);
-  await expect(usageView.locator('tbody').getByText('Missing data', { exact: true }).first()).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
+  await expect(view).toHaveCount(1);
+  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(view.locator('tbody tr:visible')).toHaveCount(25);
+  await expect(view.getByRole('searchbox', { name: 'Filter Safe output usage' })).toBeVisible();
+  await expect(view.locator('tbody a[href="https://example.com/outputs/1"]')).toBeVisible();
+  await expect(view.locator('tbody tr').first()).toContainText('create-issue');
+  await expect(view.locator('tbody tr').first()).toContainText('output-1');
 
-  await tableScroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+  await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('Retained output 60');
+  await expect(view.locator('tbody tr:visible')).toHaveCount(1);
+  await expect(view.locator('tbody tr:visible')).toContainText('Retained output 60');
+  await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('');
+  await view.locator('[data-table-more]').click();
+  await expect(view.locator('tbody tr')).toHaveCount(50);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(usageView).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(await page.evaluate(() => innerHeight));
-  expect(await tableScroll.evaluate((element) => element.scrollWidth >= element.clientWidth)).toBe(true);
-
-  await tableScroll.evaluate((element) => { element.scrollTop = 0; });
-  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view-scrolled/);
-  await page.locator('[data-nav-page-id="overview"]').click();
-  await expect(page.locator('[data-page-id="overview"]')).toBeVisible();
-  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-full-view/);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+  expect(await view.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
@@ -465,7 +463,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   expect(await readinessPage.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test('experiments page composes reusable declarative slices with rendered parity', async ({ page }) => {
+test('experiments query renders as one full-view declarative table', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
@@ -473,6 +471,7 @@ test('experiments page composes reusable declarative slices with rendered parity
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      import { processDashboardQueries } from ${JSON.stringify('http://dashboard.test/src/data-processor.js')};
       const documentModel = ${JSON.stringify(documentModel)};
       const metadata = {
         'source-id': 'experiments-fixture',
@@ -529,17 +528,30 @@ test('experiments page composes reusable declarative slices with rendered parity
         'operational-values': { source: 'operational-values', metadata, rows: [] }
       };
       window.location.hash = '#page-experiments?experiment=routing-v3';
-      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+      const querySources = await processDashboardQueries(documentModel.dashboard.queries, sources);
+      document.querySelector('#root').append(renderDashboard({
+        document: documentModel,
+        sources: { ...sources, ...querySources }
+      }));
     </script>
   `);
 
   const experimentsPage = page.locator('[data-page-id="experiments"]');
   await expect(experimentsPage).toBeVisible();
   const experimentsView = experimentsPage.locator('[data-view-layout="full-view"]');
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
   await expect(experimentsView).toHaveCount(1);
   await expect(experimentsView.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(experimentsView.getByRole('searchbox', { name: 'Filter Experiments' })).toBeVisible();
   await expect(experimentsView.getByRole('cell', { name: 'routing-v3' })).toBeVisible();
+  await expect(experimentsPage.locator('.custom-view')).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+  expect(await page.locator('main.dashboard-prototype').evaluate((element) => getComputedStyle(element).overflowY)).toBe('hidden');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+  expect(await experimentsView.locator('.table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await experimentsView.locator('.table-scroll').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
 });
 
 test('desktop navigation sections collapse and expand around the current view', async ({ page }) => {
@@ -3697,6 +3709,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
 
   const shortcuts = page.locator('.nav-section-items > .nav-item');
   const activeItem = page.locator('.nav-section-items > .nav-item[aria-current="page"]');
+  const historyBack = page.getByRole('button', { name: 'Go back' });
+  await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
   await expect(activeItem.locator('.nav-label')).toBeHidden();
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
@@ -3716,5 +3730,9 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
+  await expect(historyBack).toBeVisible();
+  await historyBack.click();
+  await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
+  await expect(historyBack).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

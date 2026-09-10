@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.0";
+const ghAwVersion = "v0.89.1";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -544,7 +544,10 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /fetch-depth: 1/);
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
   assert.doesNotMatch(sharedControl, /base64\s+(?:-d|--decode)/);
-  assert.match(sharedControl, /node "\$cao_dir\/control\.mjs" admit/);
+  assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /uses: actions\/github-script@v9\.0\.0/);
+  assert.match(stepBlock(sharedControl, "Evaluate Central Agentic Ops admission"), /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['admit'\]\)/);
+  assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /uses: actions\/github-script@v9\.0\.0/);
+  assert.match(stepBlock(sharedControl, "Run CAO control precompute"), /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['precompute'\]\)/);
   assert.doesNotMatch(sharedControl, /permission-actions: write/);
   assert.doesNotMatch(sharedControl, /CAO_GITHUB_API_GATE|persist-api-gate|gate_writer_token/);
   assert.match(sharedControl, /CAO admission blocked: GitHub API limited until \$\{\{ steps\.cao_admission\.outputs\.github_api_reset_at \}\}/);
@@ -557,7 +560,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.doesNotMatch(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /^\s+exit 1$/m);
   assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
   assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
-  assert.match(sharedControl, /reason="cannot read or execute the CAO control modules at github\.workflow_sha"/);
+  assert.match(sharedControl, /const reason = 'cannot read or execute the CAO control modules at github\.workflow_sha'/);
   for (const [name, source] of controlled) {
     assert.equal(
       [...source.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
@@ -770,7 +773,7 @@ test("repository PR automation remains bounded and adapted to CAO", () => {
   assert.doesNotMatch(mattReviewer, /\|\s*head -n 3000/);
   assert.match(mattReviewer, /fromJSON\(github\.event\.inputs\.aw_context \|\| '\{\}'\)\.item_number/);
   assert.match(mattReviewer, /reaction: none/);
-  assert.match(mattReviewer, /slash_command:\n\s+strategy: centralized\n\s+name: matt/);
+  assert.match(mattReviewer, /slash_command:[\s\S]*?\n\s+name: matt\n\s+strategy: centralized/);
   assert.doesNotMatch(mattReviewer, /\n\s+pull_request:/);
 
   assert.match(decisionGate, /slash_command:\n\s+strategy: centralized\n\s+name: design-gate/);
@@ -2624,7 +2627,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /CAO_ORCHESTRATOR_CREDITS: "\d+"/);
       assert.match(preActivation, /CAO_WORKER_CREDITS_PER_TARGET: "\d+"/);
       assert.doesNotMatch(preActivation, /github\.aw\.import-inputs/);
-      assert.match(preActivation, /GH_TOKEN: \$\{\{ steps\.cao_pre_activation_app_token\.outputs\.token \|\| secrets\.GH_AW_GITHUB_TOKEN \|\| github\.token \}\}/);
+      assert.match(preActivation, /uses: actions\/github-script@[0-9a-f]{40}/);
+      assert.match(preActivation, /await control\.main\(\{ core, github, context, exec, io, getOctokit \}, \['precompute'\]\)/);
       assert.match(preActivation, /name: Validate CAO control precompute artifact/);
       assert.match(preActivation, /\.authorized == true/);
       assert.match(preActivation, /\.policy_source == \{repository:\$repository,path:"\.github\/workflows\/cao\.json",sha:\$sha\}/);
@@ -2909,15 +2913,15 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(deployedWorkflows, /REPORT_RUN_WINDOW_DAYS/);
   assert.match(activityWorkflow, /REPORT_RUN_WINDOW_DAYS: "30"/);
   assert.doesNotMatch(buildWorkflow, /workflow_call:/);
-  assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?default: cao[\s\S]*?mode:[\s\S]*?default: live[\s\S]*?request-id:/);
+  assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?default: cao[\s\S]*?request-id:/);
   assert.match(buildWorkflow, /run-name: CAO Dashboard Build \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
-  assert.match(buildWorkflow, /activity:[\s\S]*?actions: write[\s\S]*?DISPATCH_WORKFLOW: activity\.yml[\s\S]*?node \.github\/aw\/dashboard\/dispatch-workflow\.mjs/);
-  assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}/);
+  assert.doesNotMatch(buildWorkflow, /actions: write|DISPATCH_WORKFLOW: activity\.yml|Dispatch activity refresh|inputs\.mode/);
+  assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?restore-keys: \|[\s\S]*?cao-activity-v2-[\s\S]*?fail-on-cache-miss: true/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v2-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
-  assert.match(buildWorkflow, /key: \$\{\{ format\('cao-activity-v2-\{0\}-\{1\}', needs\.activity\.outputs\.run-id, needs\.activity\.outputs\.run-attempt\) \}\}/);
+  assert.match(buildWorkflow, /key: cao-activity-v2-lookup-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(activityWorkflow, /cao-activity-(?!v2-)/);
   assert.doesNotMatch(buildWorkflow, /cao-activity-(?!v2-)/);
   assert.match(buildWorkflow, /Restore collected activity data[\s\S]*?Refresh authoritative control policy[\s\S]*?control-settings\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?Assemble Dashboard Language site/);
@@ -2957,7 +2961,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((deployWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
   assert.doesNotMatch(buildWorkflow, /pages-aic|REPORT_AIC_CACHE/);
-  assert.match(activityCollector, /--artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent/);
+  assert.match(activityCollector, /--artifacts usage \\\s+--start-date/);
   assert.match(aicUsage, /const FIREWALL_HORIZON_DAYS = 30/);
   assert.match(activityCollector, /--start-date "-\$\{window_days\}d"/);
   assert.match(activityCollector, /--cache-before "-\$\{window_days\}d"/);
@@ -3061,6 +3065,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /await runner\.main\(\{ core, github, context, exec, io, getOctokit \}\)/);
   assert.match(workflow, /Restore activity cache[\s\S]*?Download agentic workflow logs[\s\S]*?Run activity workflow[\s\S]*?List activity cache files/);
   assert.match(workflow, /List activity cache files[\s\S]*?maxdepth 3/);
+  assert.match(workflow, /List activity cache files[\s\S]*?find \. -maxdepth 3 -type f -printf '%s\\t%P\\n'[\s\S]*?numfmt --field=1 --to=iec-i --suffix=B/);
   assert.match(workflow, /cao-activity-v2-\$\{\{ github\.run_id \}\}-/);
   for (const script of ["activity:local", "activity:local:node", "activity:run-workflow:local"]) {
     assert.match(packageDocument.scripts[script], /REPORT_AIC_CACHE=\$\{RUNNER_TEMP:-\$\{TMPDIR:-\/tmp\}\}\/cao-gh-aw-logs/);
@@ -3091,8 +3096,9 @@ test("Documentation Pages deploys docs with the packaged dashboard builder", () 
   assert.match(workflow, /run: npm run docs:build/);
   assert.match(workflow, /name: central-agentic-ops-dashboard\n\s+path: dist/);
   assert.match(workflow, /schedule:\n\s+- cron: "\*\/15 \* \* \* \*"/);
-  assert.match(workflow, /workflow_dispatch:\n\s+inputs:\n\s+mode:[\s\S]*?default: live/);
-  assert.match(workflow, /DISPATCH_INPUTS:[\s\S]*?"mode":"\$\{\{ inputs\.mode \|\| 'cache' \}\}"/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /inputs\.mode|"mode":/);
+  assert.match(workflow, /DISPATCH_INPUTS:[\s\S]*?"request-id":"docs-/);
   assert.match(workflow, /outputs:\n\s+run-id: \$\{\{ steps\.dispatch\.outputs\.run-id \}\}\n\s+run-attempt: \$\{\{ steps\.dispatch\.outputs\.run-attempt \}\}/);
   assert.match(workflow, /key: cao-dashboard-\$\{\{ needs\.dashboard\.outputs\.run-id \}\}-\$\{\{ needs\.dashboard\.outputs\.run-attempt \}\}/);
   assert.match(workflow, /run-id: \$\{\{ needs\.dashboard\.outputs\.run-id \}\}/);

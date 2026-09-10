@@ -59,6 +59,10 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
       mcp_failures: [{ server_name: "playwright", status: "connection failed", error: "secret detail" }],
     }));
     await writeFile(path.join(runDirectory, "audit.json"), JSON.stringify({
+      metrics: { duration_ms: 42, prompt_tokens: 9001 },
+      engine_config: { engine: "copilot", model: "gpt-5", authorization: "secret auth" },
+      session_analysis: { turn_count: 8, messages: ["secret message"] },
+      recommendations: [{ category: "efficiency", summary: "Reduce redundant reads.", response_body: "secret body" }],
       agentic_assessments: [{
         kind: "partially_reducible",
         severity: "low",
@@ -70,6 +74,18 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
         severity: "critical",
         summary: "Must not be retained.",
       }],
+    }));
+    await writeFile(path.join(runDirectory, "aw_info.json"), JSON.stringify({
+      engine_id: "copilot",
+      engine_name: "Copilot CLI",
+      agent_version: "1.2.3",
+      agent_runtime: "node20",
+      model: "gpt-5",
+      version: "0.89.1",
+      cli_version: "0.89.1",
+      awf_version: "0.28.12",
+      awmg_version: "0.10.0",
+      workflow_name: "Security",
     }));
     await writeFile(path.join(runDirectory, "agent", "agent-stdio.log"), [
       "[sdk-driver] permission denied by workflow tool permissions: read(/private/path)",
@@ -91,6 +107,26 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
       summary: "Half of the turns were deterministic data gathering.",
       evidence: "agentic_fraction=0.50 turns=8",
       recommendation: "Move data fetching into deterministic pre-steps.",
+    }]);
+    assert.deepEqual(telemetry.agentInfo, {
+      available: true,
+      agentId: "copilot",
+      agentName: "Copilot CLI",
+      agentVersion: "1.2.3",
+      agentRuntime: "node20",
+      modelId: "gpt-5",
+      ghAwVersion: "0.89.1",
+      cliVersion: "0.89.1",
+      firewallVersion: "0.28.12",
+      gatewayVersion: "0.10.0",
+      workflowName: "Security",
+    });
+    assert.deepEqual(telemetry.audit.metrics, { duration_ms: 42 });
+    assert.deepEqual(telemetry.audit.engineConfig, { engine: "copilot", model: "gpt-5" });
+    assert.deepEqual(telemetry.audit.sessionAnalysis, { turn_count: 8 });
+    assert.deepEqual(telemetry.audit.recommendations, [{
+      category: "efficiency",
+      summary: "Reduce redundant reads.",
     }]);
     assert.deepEqual(telemetry.accessControl.fileDenials, { read: 1 });
     assert.deepEqual(telemetry.accessControl.toolDenials, { mcp: 1 });
@@ -127,7 +163,7 @@ test("dashboard telemetry extracts bounded security aggregates without retaining
       maliciousPatch: false,
       warnings: [{ field: "patch", code: "ERR_VALIDATION" }],
     });
-    assert.doesNotMatch(JSON.stringify(telemetry), /private\/path|sensitive diagnostic|sensitive MCP error|secret detail|unrelated output/);
+    assert.doesNotMatch(JSON.stringify(telemetry), /private\/path|sensitive diagnostic|sensitive MCP error|secret detail|secret auth|secret message|secret body|unrelated output|prompt_tokens/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

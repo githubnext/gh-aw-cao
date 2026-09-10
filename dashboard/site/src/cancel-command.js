@@ -1,4 +1,5 @@
 import { cancelDataProcessing } from './data-processor.js';
+import { injectStyleOnce } from './dom.js';
 
 /** Milliseconds of uninterrupted work before the cancel command is offered. */
 const REVEAL_DELAY = 5000;
@@ -7,11 +8,7 @@ const REVEAL_DELAY = 5000;
  * @param {Document} document
  */
 function installStyles(document) {
-  if (document.querySelector('style[data-cancel-command-styles]')) return;
-
-  const style = document.createElement('style');
-  style.dataset.cancelCommandStyles = '';
-  style.textContent = `
+  injectStyleOnce(document, 'cancel-command-styles', `
 .cancel-command {
   position: fixed;
   z-index: 1001;
@@ -23,8 +20,8 @@ function installStyles(document) {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--surface);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  background: var(--canvas);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent);
   color: var(--fg);
   font-size: 13px;
 }
@@ -39,8 +36,7 @@ function installStyles(document) {
 }
 .cancel-command-button:hover {
   border-color: var(--accent);
-}`;
-  document.head.append(style);
+}`);
 }
 
 /**

@@ -1533,6 +1533,48 @@ test("dashboard source bridge keeps collected runs available when run health is 
   assert.equal(sources.runs.metadata.completeness, "partial");
 });
 
+test("dashboard source bridge keeps retained usage available with partial collection provenance", () => {
+  const generatedAt = "2026-09-03T06:00:00Z";
+  const sources = buildDashboardLanguageSources({
+    deployed: {
+      generatedAt,
+      discovery: { complete: true },
+      collections: [{
+        operation: "usage-artifact-fields",
+        state: "partial",
+        failureClass: "missing-data",
+      }],
+      runHealth: { available: false, complete: false },
+      bundles: [],
+      workflows: [],
+    },
+    usage: {
+      generatedAt,
+      available: false,
+      complete: false,
+      securityAvailable: false,
+      securityComplete: false,
+      runs: [{
+        repository: "githubnext/gh-aw-cao",
+        workflowPath: ".github/workflows/self-care.lock.yml",
+        runId: 42,
+        aic: 2.5,
+        createdAt: "2026-09-03T05:00:00Z",
+      }],
+      securityRuns: [],
+    },
+    operationalValues: { records: [] },
+    report: { generatedAt, records: [] },
+  });
+
+  assert.equal(sources.usage.rows.length, 1);
+  assert.equal(sources.usage.metadata.availability, "available");
+  assert.equal(sources.usage.metadata.completeness, "partial");
+  assert.equal(sources.usage.metadata["collection-operation"], "usage-artifact-fields");
+  assert.equal(sources.usage.metadata["collection-state"], "partial");
+  assert.equal(sources.usage.metadata["failure-class"], "missing-data");
+});
+
 test("dashboard source bridge exposes authoritative coverage and structured collection provenance", () => {
   const generatedAt = "2026-09-03T06:00:00Z";
   const sources = buildDashboardLanguageSources({
@@ -1753,7 +1795,7 @@ test("dashboard source bridge exposes an issue search link for workflows that cr
 });
 
 
-test("dashboard source bridge merges remotely discovered allowed-repository workflows", () => {
+test("dashboard source bridge ignores legacy report-side workflow discovery", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-07T12:00:00Z",
@@ -1804,19 +1846,11 @@ test("dashboard source bridge merges remotely discovered allowed-repository work
     currentVersion: "unknown",
     versionLabel: "unknown",
     updateState: "unknown",
-  }, {
-    owner: "acme/service",
-    workflow: ".github/workflows/remote.md",
-    name: "Remote agent",
-    version: "v0.88.7",
-    currentVersion: "v0.89.0",
-    versionLabel: "v0.88.7",
-    updateState: "update-available",
   }]);
   assert.equal(sources.workflows.metadata.completeness, "complete");
 });
 
-test("dashboard source bridge marks remote workflow discovery partial when an allowed repository is inaccessible", () => {
+test("dashboard source bridge does not let report discovery degrade logs-owned workflow coverage", () => {
   const sources = buildDashboardLanguageSources({
     deployed: {
       generatedAt: "2026-09-07T12:00:00Z",
@@ -1850,13 +1884,13 @@ test("dashboard source bridge marks remote workflow discovery partial when an al
   });
 
   assert.equal(sources.workflows.metadata.availability, "available");
-  assert.equal(sources.workflows.metadata.completeness, "partial");
-  assert.equal(sources.workflows.metadata["collection-state"], "partial");
-  assert.equal(sources.workflows.metadata["coverage-expected"], undefined);
+  assert.equal(sources.workflows.metadata.completeness, "complete");
+  assert.equal(sources.workflows.metadata["collection-state"], "complete");
+  assert.equal(sources.workflows.metadata["coverage-expected"], 1);
   assert.equal(sources.workflows.metadata["coverage-observed"], 1);
-  assert.equal(sources.repositories.metadata["coverage-expected"], 2);
+  assert.equal(sources.repositories.metadata["coverage-expected"], 1);
   assert.equal(sources.repositories.metadata["coverage-observed"], 1);
-  assert.match(sources.workflows.metadata["collection-reason"], /acme\/private/);
+  assert.equal(sources.workflows.metadata["collection-reason"], "");
 });
 
 test("dashboard source bridge maps a legacy manifest-derived package identity to the canonical inventory bundle id", () => {
@@ -2208,9 +2242,9 @@ test("dashboard source bridge exposes rate-limit details for retained records", 
   ]);
   assert.equal(sources.outcomes.metadata.completeness, "partial");
   assert.equal(sources.outcomes.metadata.freshness, "stale");
-  assert.equal(sources.workflows.metadata.completeness, "partial");
-  assert.equal(sources.workflows.metadata.freshness, "stale");
-  assert.equal(sources.workflows.metadata["fallback-source-as-of"], "2026-09-02T23:00:00Z");
+  assert.equal(sources.workflows.metadata.completeness, "complete");
+  assert.equal(sources.workflows.metadata.freshness, "fresh");
+  assert.equal(sources.workflows.metadata["fallback-source-as-of"], undefined);
 });
 
 test("dashboard source bridge derives admission gates from resolved control policy", () => {

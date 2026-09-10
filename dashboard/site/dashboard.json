@@ -102,6 +102,27 @@
         }
       },
       {
+        "name": "experiments-table",
+        "intent": "List experiments with their workflow, variants, primary metric, evidence, readiness, decision, and latest observation.",
+        "from": "experiments",
+        "select": [
+          { "field": "experiment" },
+          { "field": "workflow" },
+          { "field": "control-variant" },
+          { "field": "candidate-variant" },
+          { "field": "primary-metric" },
+          { "field": "normalized-effect" },
+          { "field": "evidence-strength" },
+          { "field": "readiness" },
+          { "field": "decision" },
+          { "field": "last-observation" }
+        ],
+        "order-by": [
+          { "field": "last-observation", "direction": "desc" },
+          { "field": "experiment", "direction": "asc" }
+        ]
+      },
+      {
         "name": "firewall-domain-totals",
         "intent": "Show each observed firewall domain with the number of runs and total accepted and blocked requests.",
         "description": "Distinct runs and accepted and blocked request totals by firewall domain.",
@@ -212,21 +233,22 @@
       },
       {
         "name": "safe-output-usage",
-        "intent": "Show safe-output usage for each observed workflow run.",
-        "description": "Safe outputs and diagnostics attributed to their workflow runs.",
-        "from": "safe-output-performance",
+        "intent": "Show every retained safe output with its identity, disposition, workflow, repository, rollout mode, timestamps, and provenance.",
+        "description": "Canonical safe-output outcomes ordered from newest to oldest.",
+        "from": "outcomes",
         "select": [
-          { "field": "organization" },
-          { "field": "repository" },
-          { "field": "workflow" },
-          { "field": "run" },
-          { "field": "run-conclusion" },
-          { "field": "rollout-mode" },
+          { "field": "safe-output" },
           { "field": "safe-output-kind" },
-          { "field": "safe-output-label" },
-          { "field": "safe-output-status" },
-          { "field": "safe-output-count" },
+          { "field": "outcome-title" },
+          { "field": "outcome-status" },
+          { "field": "outcome-state" },
+          { "field": "workflow" },
+          { "field": "repository" },
+          { "field": "rollout-mode" },
+          { "field": "run" },
+          { "field": "published-at" },
           { "field": "observed-at" },
+          { "field": "external-link" },
           { "field": "run-link" }
         ],
         "order-by": [
@@ -235,8 +257,8 @@
             "direction": "desc"
           },
           {
-            "field": "safe-output-count",
-            "direction": "desc"
+            "field": "safe-output",
+            "direction": "asc"
           }
         ]
       },
@@ -3275,12 +3297,12 @@
         "navigation-label": "Safe Outputs",
         "icon": "shield-check",
         "class-name": "safe-outputs-page",
-        "description": "Safe-output usage and diagnostics attributed to observed workflow runs.",
+        "description": "Every retained safe output with its disposition and execution provenance.",
         "views": [
           {
             "id": "safe-output-usage",
-            "title": "Safe-output usage",
-            "description": "Observed safe outputs, no-op runs, and incomplete-output diagnostics.",
+            "title": "Safe output usage",
+            "description": "Every retained safe output from canonical outcomes data.",
             "data": {
               "source": "safe-output-usage"
             },
@@ -3289,38 +3311,50 @@
             "lazy-list": true,
             "column-summaries": true,
             "layout": "full-view",
-            "empty-message": "No safe-output usage was observed in the selected horizon.",
+            "empty-message": "No retained safe outputs were reported in the selected horizon.",
             "encoding": {
               "href": {
-                "field": "run-link",
+                "field": "external-link",
                 "type": "nominal"
               },
               "columns": [
                 {
-                  "field": "safe-output-label",
+                  "field": "outcome-title",
                   "type": "nominal",
-                  "title": "Output"
+                  "title": "Safe output",
+                  "display": "outcome-link"
                 },
                 {
-                  "field": "safe-output-count",
-                  "type": "quantitative",
-                  "title": "Count"
+                  "field": "safe-output",
+                  "type": "nominal",
+                  "title": "Identifier"
                 },
                 {
-                  "field": "safe-output-status",
+                  "field": "safe-output-kind",
+                  "type": "nominal",
+                  "title": "Type"
+                },
+                {
+                  "field": "outcome-status",
                   "type": "nominal",
                   "title": "Status",
                   "display": "status"
                 },
                 {
-                  "field": "repository",
+                  "field": "outcome-state",
                   "type": "nominal",
-                  "title": "Repository"
+                  "title": "State",
+                  "display": "status"
                 },
                 {
                   "field": "workflow",
                   "type": "nominal",
                   "title": "Workflow"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
                 },
                 {
                   "field": "rollout-mode",
@@ -3329,10 +3363,14 @@
                   "display": "mode"
                 },
                 {
-                  "field": "run-conclusion",
+                  "field": "run",
                   "type": "nominal",
-                  "title": "Conclusion",
-                  "display": "status"
+                  "title": "Run"
+                },
+                {
+                  "field": "published-at",
+                  "type": "temporal",
+                  "title": "Published"
                 },
                 {
                   "field": "observed-at",
@@ -3533,7 +3571,7 @@
               "title": "Experiments",
               "description": "Experiment readiness, evidence, and decisions without treating workflow execution success as experiment success.",
               "data": {
-                "source": "experiments"
+                "source": "experiments-table"
               },
               "mark": "table",
               "controls": "interactive",

@@ -305,6 +305,20 @@ export function renderCountBadge(count, ariaLabel) {
 }
 
 /**
+ * Renders the shared "empty `aria-live="polite"` status element, populated
+ * later by the caller's render loop" pattern used by the operations
+ * marketplace count, notifications-inbox count, and work-project filter
+ * result count. Callers differ only in element tag (`span` vs `output`) and
+ * class name.
+ * @param {'span'|'output'} tag
+ * @param {string} className
+ * @returns {HTMLElement}
+ */
+export function renderLiveRegion(tag, className) {
+  return h(tag, { className, 'aria-live': 'polite' });
+}
+
+/**
  * Renders the shared "`<select>` filter with a placeholder option followed by
  * the sorted, de-duplicated set of values" pattern used by the operations
  * marketplace owner filter and the work-project facet filters.
@@ -540,6 +554,33 @@ export function createExpandableToggle(toggle, panel, { expandedClass, onExpand 
   };
   setExpanded(false);
   return setExpanded;
+}
+
+/**
+ * Closes a native `<details>` disclosure menu when the pointer clicks a
+ * designated dismiss-triggering descendant or anywhere outside the menu, and
+ * when the menu has focus and the user presses Escape, returning focus to
+ * its `<summary>` toggle. Shared by the account menu and the mobile
+ * view-navigation menu in the dashboard shell, which otherwise duplicated
+ * the same open-state teardown wired to different selectors.
+ * @param {HTMLElement} root the ancestor that receives the outside-click listener
+ * @param {HTMLDetailsElement} menu the `<details>` element to dismiss
+ * @param {string} dismissSelector selector matched against the click target (in addition to
+ *   clicks outside `menu`) that should also close the menu, e.g. a selected menu action
+ */
+export function enableDetailsMenuDismissal(root, menu, dismissSelector) {
+  root.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    if (event.target.closest(dismissSelector) || !menu.contains(event.target)) {
+      menu.removeAttribute('open');
+    }
+  });
+  menu.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    menu.removeAttribute('open');
+    const summary = menu.querySelector('summary');
+    if (summary instanceof HTMLElement) summary.focus();
+  });
 }
 
 /**

@@ -517,20 +517,34 @@ export function executeDashboardQuery(definition, sources, defect, budget = crea
   if (rejected) {
     return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
   }
-  const unavailable = inputs.find((input) => !input.source || !Array.isArray(input.source.rows));
+  const requiredInputs = new Set([
+    definition.from,
+    ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
+  ]);
+  const optionalInputs = new Set((definition.joins ?? [])
+    .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
+    .map((join) => join.source));
+  const unavailable = inputs.find((input) => (
+    requiredInputs.has(input.name)
+    && (!input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable')
+  ));
   if (unavailable) {
     return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), `input source "${unavailable.name}" is unavailable`);
   }
-  if (inputs.some((input) => input.source?.metadata?.availability === 'unavailable')) {
-    return unavailableResult(
-      definition,
-      composedMetadata(definition.name, inputs, 0),
-      `input source "${inputs.find((input) => input.source?.metadata?.availability === 'unavailable')?.name}" is unavailable`
-    );
-  }
   try {
-    const rows = runDashboardQuery(definition, sources, budget);
-    return { source: definition.name, rows, metadata: composedMetadata(definition.name, inputs, rows.length) };
+    const effectiveSources = { ...sources };
+    for (const name of optionalInputs) {
+      const source = effectiveSources[name];
+      if (!source || !Array.isArray(source.rows) || source.metadata?.availability === 'unavailable') {
+        effectiveSources[name] = { ...source, source: source?.source ?? name, rows: [] };
+      }
+    }
+    const rows = runDashboardQuery(definition, effectiveSources, budget);
+    return {
+      source: definition.name,
+      rows,
+      metadata: composedMetadata(definition.name, inputs, rows.length, optionalInputs)
+    };
   } catch (error) {
     if (error instanceof DashboardQueryCancelledError) throw error;
     return unavailableResult(
@@ -688,13 +702,15 @@ function enforceLimit(count, limit, subject) {
 
 /**
  * Composes provenance, freshness, completeness, and availability across every
- * input source. The weakest input state wins.
+ * input source. Unavailable left-join inputs degrade completeness without
+ * hiding rows retained from the primary source.
  * @param {string} name
  * @param {Array<{ name: string, source?: LogicalSourceInput }>} inputs
  * @param {number} rowCount
+ * @param {Set<string>} [optionalInputs]
  * @returns {SourceMetadata}
  */
-function composedMetadata(name, inputs, rowCount) {
+function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
   const metadata = inputs.map((input) => input.source?.metadata).filter(Boolean);
   /** @param {'as-of'|'retrieved-at'} field */
   const oldest = (field) => metadata
@@ -702,12 +718,17 @@ function composedMetadata(name, inputs, rowCount) {
     .filter((value) => typeof value === 'string' && Number.isFinite(Date.parse(value)))
     .sort((left, right) => Date.parse(/** @type {string} */ (left)) - Date.parse(/** @type {string} */ (right)))[0];
   const complete = metadata.length === inputs.length && metadata.length > 0;
+  const unavailableOptional = inputs.some((input) => optionalInputs.has(input.name) && (
+    !input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable'
+  ));
   return {
     'source-id': `${name}-query`,
     'source-kind': 'derived',
     'as-of': /** @type {string} */ (oldest('as-of')) ?? new Date(0).toISOString(),
     'retrieved-at': /** @type {string} */ (oldest('retrieved-at')) ?? new Date(0).toISOString(),
-    completeness: !complete || metadata.some((value) => value?.completeness !== 'complete')
+    completeness: unavailableOptional
+      ? 'partial'
+      : !complete || metadata.some((value) => value?.completeness !== 'complete')
       ? (metadata.some((value) => value?.completeness === 'partial') ? 'partial' : 'unknown')
       : 'complete',
     freshness: metadata.some((value) => value?.freshness === 'stale')
@@ -715,7 +736,9 @@ function composedMetadata(name, inputs, rowCount) {
       : complete && metadata.every((value) => value?.freshness === 'fresh')
         ? 'fresh'
         : 'unknown',
-    availability: !complete || metadata.some((value) => value?.availability === 'unavailable')
+    availability: inputs.some((input) => !optionalInputs.has(input.name) && (
+      !input.source || input.source.metadata?.availability === 'unavailable'
+    ))
       ? 'unavailable'
       : rowCount > 0 ? 'available' : 'empty',
     'query-name': name

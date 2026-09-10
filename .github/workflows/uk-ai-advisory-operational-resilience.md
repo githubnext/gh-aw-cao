@@ -118,7 +118,7 @@ timeout-minutes: 30
 
 steps:
   - name: Pre-compute recent changes governance context
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     env:
       TARGET_REPOSITORY: ${{ inputs.target_repo }}
     with:

@@ -43,6 +43,19 @@
       }));
 
       const loadingProgress = startLoadingProgress(document);
+      /**
+       * @template T
+       * @param {() => Promise<T>} task
+       * @returns {Promise<T>}
+       */
+      const runWithLoadingProgress = async (task) => {
+        const progress = startLoadingProgress(document);
+        try {
+          return await task();
+        } finally {
+          progress.complete();
+        }
+      };
       const cancelCommand = offerCancelCommand(document);
       const dashboardSchema = await fetch("./dashboard.json", { cache: "no-store" })
         .then((response) => {
@@ -176,6 +189,7 @@
           sources,
           viewer: localViewer,
           prepared,
+          loading: state === "loading",
           loadPageSources,
           loadHorizonSources,
         });
@@ -673,15 +687,6 @@
           ],
           metadata: metadata("outcomes-fixture"),
         },
-        "safe-output-performance": {
-          source: "safe-output-performance",
-          rows: [
-            { organization: "github", repository: "gh-aw", workflow: ".github/workflows/dependabot.md", run: "2002", "run-conclusion": "success", "rollout-mode": "review", "safe-output-kind": "output", "safe-output-label": "Output", "safe-output-status": "success", "safe-output-count": 3, "observed-at": "2026-08-29T08:40:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/2002", label: "View run 2002" } },
-            { organization: "github", repository: "gh-aw-cao", workflow: ".github/workflows/daily.yml", run: "1001", "run-conclusion": "success", "rollout-mode": "live", "safe-output-kind": "noop", "safe-output-label": "No-op", "safe-output-status": "neutral", "safe-output-count": 1, "observed-at": "2026-08-29T09:00:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/gh-aw-cao/actions/runs/1001", label: "View run 1001" } },
-            { organization: "github", repository: "mona-tools", workflow: ".github/workflows/review.yml", run: "1002", "run-conclusion": "failure", "rollout-mode": "review", "safe-output-kind": "missing_data", "safe-output-label": "Missing data", "safe-output-status": "warning", "safe-output-count": 2, "observed-at": "2026-08-29T09:30:00Z", "run-link": { relation: "run", href: "https://github.com/githubnext/mona-tools/actions/runs/1002", label: "View run 1002" } },
-          ],
-          metadata: metadata("safe-output-performance-fixture"),
-        },
         usage: {
           source: "usage",
           rows: [
@@ -922,26 +927,30 @@
           const bindContinuations = (sources, sourceNames) => bindSourceContinuations(
             sources,
             sourceNames,
-            (requested, pagination) => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            (requested, pagination) => runWithLoadingProgress(
+              () => loadCanonicalDashboardPage(requested, dashboardContext, pagination),
+            ),
           );
           /** @param {string} pageId */
           const loadPageSources = async (pageId) => {
             const sourceNames = dashboardPageSourceNames(dashboardDocument, pageId);
             const lazySources = dashboardPageLazySourceNames(dashboardDocument, pageId);
-            return bindContinuations(
+            return runWithLoadingProgress(async () => bindContinuations(
               await loadCanonicalDashboardPage(
                 sourceNames,
                 dashboardContext,
                 continuationRequests(lazySources),
               ),
               lazySources,
-            );
+            ));
           };
           const initialSources = dashboardPageSourceNames(dashboardDocument, initialPageId);
           const initialLazySources = dashboardPageLazySourceNames(dashboardDocument, initialPageId);
-          const loadHorizonSources = () => loadCanonicalDashboardPage(
-            DASHBOARD_HORIZON_COUNT_SOURCES,
-            dashboardContext,
+          const loadHorizonSources = () => runWithLoadingProgress(
+            () => loadCanonicalDashboardPage(
+              DASHBOARD_HORIZON_COUNT_SOURCES,
+              dashboardContext,
+            ),
           );
           /**
            * @param {(sourceNames: string[], pagination: Record<string, { limit: number, continuationToken?: string }>) => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>} load
@@ -987,12 +996,12 @@
               refreshFailed = false;
               refreshPending = true;
               renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
-              void refreshCanonicalDashboardSources(
+              void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
                 dashboardContext,
                 refreshPagination,
-              ).then(
+              )).then(
                 ({ changed }) => {
                   refreshPending = false;
                   if (changed) return;

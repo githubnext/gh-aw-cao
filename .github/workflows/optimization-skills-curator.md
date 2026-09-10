@@ -122,7 +122,7 @@ timeout-minutes: 20
 
 steps:
   - name: Deterministic pre-fetch of skill evidence
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     env:
       TARGET_REPOSITORY: ${{ inputs.target_repo }}
     with:

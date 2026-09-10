@@ -47,6 +47,10 @@ describe('loading progress', () => {
 
     progress.complete();
     progress.complete();
+
+    expect(bar?.classList.contains('loading-progress-complete')).toBe(false);
+    expect(document.querySelectorAll('.loading-progress')).toHaveLength(1);
+
     secondProgress.complete();
 
     expect(bar?.classList.contains('loading-progress-complete')).toBe(true);

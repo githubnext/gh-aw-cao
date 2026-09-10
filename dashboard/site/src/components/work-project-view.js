@@ -2,8 +2,8 @@ import { h } from '../dom.js';
 import { formatClockDuration } from '../view-formatters.js';
 import { findLink } from './link-content.js';
 import { rowsFor } from './source-rows.js';
-import { textValue, titleCase } from './count-formatters.js';
-import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderDlRow, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderSearchInput } from './ui-primitives.js';
+import { formatCountOf, textValue, titleCase } from './count-formatters.js';
+import { createExpandableToggle, createModalDialog, formatUtcDateTime, renderCloseButton, renderCountBadge, renderDlRow, renderEmptyMessage, renderFilterSelect, renderIconSpan, renderLiveRegion, renderSearchInput } from './ui-primitives.js';
 import { renderWorkItemCard } from './work-item-card.js';
 import { renderWorkItemRow } from './work-item-row.js';
 import { renderWorkItemTimelineLane } from './work-item-timeline-lane.js';
@@ -87,7 +87,7 @@ function renderWorkFilterBar(items, onChange) {
   const repository = renderFacetSelect('Repository', items.map((item) => item.repository));
   const owner = renderFacetSelect('Workflow owner', items.map((item) => item.owner));
   const packageName = renderFacetSelect('Package', items.map((item) => item.packageName).filter(Boolean));
-  const resultCount = h('output', { className: 'work-filter-count', 'aria-live': 'polite' });
+  const resultCount = /** @type {HTMLOutputElement} */ (renderLiveRegion('output', 'work-filter-count'));
   const clear = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'work-filter-clear',
@@ -132,7 +132,7 @@ function renderWorkFilterBar(items, onChange) {
         && (!packageName.value || item.packageName === packageName.value);
     });
     const activeFilterCount = controls.filter((control) => control.value !== '').length;
-    resultCount.textContent = `${filteredItems.length} of ${items.length}`;
+    resultCount.textContent = formatCountOf(filteredItems.length, items.length);
     resultCount.setAttribute('aria-label', `${filteredItems.length} of ${items.length} work items shown`);
     clear.disabled = activeFilterCount === 0;
     onChange(filteredItems);
@@ -404,7 +404,7 @@ function renderRoadmap(items, section, onUpdate) {
     )
   );
   const today = h('button', { type: 'button', className: 'work-roadmap-today-button' }, 'Today');
-  const mobilePeriod = h('span', { className: 'work-roadmap-mobile-period', 'aria-live': 'polite' });
+  const mobilePeriod = renderLiveRegion('span', 'work-roadmap-mobile-period');
   const previousPeriod = h('button', {
     type: 'button',
     'aria-label': 'Previous month',

@@ -6,7 +6,7 @@ import { findLink } from './link-content.js';
 import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
-import { createExpandableToggle, renderLazyDisclosure, renderSearchInput } from './ui-primitives.js';
+import { createExpandableToggle, renderLazyDisclosure, renderLiveRegion, renderSearchInput } from './ui-primitives.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -246,7 +246,7 @@ export function renderNotificationsInbox(rows, sources = {}) {
     afterRender: () => syncSelection()
   });
   const list = lazyList.element;
-  const count = h('span', { className: 'notifications-result-count', 'aria-live': 'polite' });
+  const count = renderLiveRegion('span', 'notifications-result-count');
   const search = renderSearchInput('Filter notifications', 'is:unread');
   const sort = /** @type {HTMLSelectElement} */ (h('select', { 'aria-label': 'Sort notifications' },
     h('option', { value: 'newest' }, 'Newest to oldest'),
@@ -623,12 +623,26 @@ function timeBuckets(start, end, count) {
   return Array.from({ length: count }, (_, index) => ({ start: start + index * width, end: start + (index + 1) * width, delivered: 0, pending: 0, other: 0 }));
 }
 
+/**
+ * Renders the shared `<section class="home-mini-chart">` header-plus-body
+ * pattern used by the "Work now" and "Value gained" catch-up side charts,
+ * which both pair an origin badge and title with a single body element.
+ * @param {{ label: string, icon: string, tone: string }} origin
+ * @param {string} title
+ * @param {Node} body
+ * @returns {HTMLElement}
+ */
+function renderMiniChartPanel(origin, title, body) {
+  return h('section', { className: 'home-mini-chart' },
+    h('header', null, renderOriginBadge(origin), h('h3', null, title)),
+    body);
+}
+
 /** @param {Record<string, unknown>[]} workItems @param {number} running @param {number} pending */
 function renderWorkNow(workItems, running, pending) {
   const blocked = workItems.filter((row) => row['lifecycle-state'] === 'blocked').length;
   const total = Math.max(1, running + pending + blocked);
-  return h('section', { className: 'home-mini-chart' },
-    h('header', null, renderOriginBadge({ label: 'Work', icon: 'workflow', tone: 'work' }), h('h3', null, 'Work now')),
+  return renderMiniChartPanel({ label: 'Work', icon: 'workflow', tone: 'work' }, 'Work now',
     h('div', { className: 'home-work-now' },
       h('div', { className: 'home-work-ring', style: `--running:${(running / total) * 360}deg;--review:${((running + pending) / total) * 360}deg` }, h('strong', null, String(running)), h('span', null, 'running')),
       h('dl', null,
@@ -653,8 +667,7 @@ function valueSeries(rows, start, end) {
 function renderValueGain(values, delta) {
   const points = values.length > 0 ? values : [0];
   const coordinates = points.map((value, index) => `${8 + index * (104 / Math.max(1, points.length - 1))},${42 - Math.max(0, Math.min(1, value)) * 32}`).join(' ');
-  return h('section', { className: 'home-mini-chart' },
-    h('header', null, renderOriginBadge({ label: 'Insights', icon: 'graph', tone: 'insights' }), h('h3', null, 'Value gained')),
+  return renderMiniChartPanel({ label: 'Insights', icon: 'graph', tone: 'insights' }, 'Value gained',
     h('div', { className: 'home-value-gain' },
       h('strong', { className: delta !== null && delta >= 0 ? 'home-positive' : '' }, delta === null ? '—' : `${delta >= 0 ? '+' : ''}${Math.round(delta * 100)} pts`),
       h('svg', { viewBox: '0 0 120 48', role: 'img', 'aria-label': delta === null ? 'Operational value change unavailable' : `Operational value changed ${Math.round(delta * 100)} points` },

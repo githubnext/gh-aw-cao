@@ -193,6 +193,44 @@ describe('dashboard DOM provenance', () => {
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 0));
     expect(rendered.hasAttribute('data-json-path')).toBe(false);
   });
+
+  it('shows the loading skeleton instead of unavailable source errors during an empty initial load', () => {
+    const rendered = renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'initial-load-dashboard',
+          title: 'Initial Load',
+          pages: [{
+            id: 'repositories',
+            kind: 'custom',
+            title: 'Repositories',
+            views: [{
+              id: 'repository-activity',
+              title: 'Repository Activity',
+              mark: 'table',
+              data: { source: 'repository-activity' }
+            }],
+            sections: [{
+              id: 'main',
+              title: 'Main',
+              layout: 'full',
+              views: ['repository-activity']
+            }]
+          }]
+        }
+      },
+      sources: {},
+      loading: true
+    });
+
+    const page = rendered.querySelector('[data-page-id="repositories"]');
+    expect(page?.getAttribute('aria-busy')).toBe('true');
+    expect(page?.querySelector('.dashboard-view-skeleton')).not.toBeNull();
+    expect(page?.textContent).toContain('Loading view');
+    expect(page?.textContent).not.toContain('This view cannot be shown because its data source is unavailable.');
+    expect(page?.textContent).not.toContain('Affected source: repository-activity');
+  });
 });
 
 describe('presenter built-in and custom pages', () => {
@@ -1337,6 +1375,43 @@ describe('presenter built-in and custom pages', () => {
     expect(menu?.hasAttribute('open')).toBe(false);
     expect(costLink?.getAttribute('aria-current')).toBe('page');
     window.history.replaceState(null, '', '/');
+  });
+
+  it('reveals mobile history navigation after an in-app route and goes back through browser history', () => {
+    window.history.replaceState(null, '', '/');
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    const back = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('.mobile-history-back'));
+    const cost = /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'));
+
+    expect(back?.hidden).toBe(true);
+    cost?.click();
+    expect(back?.hidden).toBe(false);
+
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    back?.click();
+    expect(historyBack).toHaveBeenCalledOnce();
+    historyBack.mockRestore();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('closes the mobile view menu on Escape and restores focus to its toggle', () => {
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {}
+    });
+    document.body.append(rendered);
+    const menu = /** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.mobile-nav-menu'));
+    const summary = menu?.querySelector('summary');
+
+    menu?.setAttribute('open', '');
+    menu?.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(menu?.hasAttribute('open')).toBe(false);
+    expect(rendered.ownerDocument.activeElement).toBe(summary);
+    rendered.remove();
   });
 
   it('renders filter bars for the Runtime, Security, and Value pages', async () => {
@@ -2902,10 +2977,16 @@ describe('presenter built-in and custom pages', () => {
     expect(chartSection?.querySelectorAll('.view-source')).toHaveLength(0);
 
     const emptySection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Empty Usage'));
+    const emptyCard = emptySection?.querySelector('.view-state-card[data-view-state="empty"]');
+    expect(emptyCard?.getAttribute('role')).toBe('status');
+    expect(emptyCard?.querySelector('.octicon-info')).not.toBeNull();
     expect(emptySection?.querySelector('[data-view-availability="empty"]')?.textContent).toBe('No observations matched the effective context.');
     expect(emptySection?.textContent).toContain('Affected source: empty-usage');
 
     const unavailableSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Source'));
+    const unavailableCard = unavailableSection?.querySelector('.view-state-card[data-view-state="unavailable"]');
+    expect(unavailableCard?.getAttribute('role')).toBe('alert');
+    expect(unavailableCard?.querySelector('.octicon-alert')).not.toBeNull();
     expect(unavailableSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');
     expect(unavailableSection?.textContent).toContain('Source unavailable: missing-source');
 
