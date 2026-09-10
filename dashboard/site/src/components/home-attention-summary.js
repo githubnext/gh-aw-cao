@@ -63,7 +63,7 @@ export function renderHomeAttentionSummary(context) {
       label: 'Awaiting review',
       href: '#page-overview-awaiting-review',
       icon: 'person',
-      tone: 'attention'
+      tone: 'review'
     },
     {
       count: metricCount(securityFindings.length, securityEvidence),
@@ -103,7 +103,7 @@ export function renderHomeAttentionSummary(context) {
         const hasItems = Number(metric.count) > 0;
         const isEmpty = metric.count === '0';
         return h(isEmpty ? 'div' : 'a', {
-          className: `home-attention-metric home-attention-metric-${metric.tone}${isEmpty ? ' home-attention-metric-empty' : ''}`,
+          className: `home-attention-metric home-attention-metric-${metric.tone}${hasItems ? ' home-attention-metric-active' : ''}${isEmpty ? ' home-attention-metric-empty' : ''}`,
           ...(isEmpty ? {} : { href: metric.href })
         },
         h('strong', {

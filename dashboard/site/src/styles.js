@@ -1247,12 +1247,16 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .home-attention-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas-subtle); }
 .home-attention-metric { min-width: 0; min-height: 172px; display: grid; grid-template-rows: 2.5rem 2.7em 32px; align-content: center; justify-items: center; gap: 8px; padding: 24px 20px; color: var(--fg); text-align: center; text-decoration: none; }
 .home-attention-metric + .home-attention-metric { border-left: 1px solid var(--border); }
-.home-attention-metric[href]:hover { background: color-mix(in srgb, var(--accent) 5%, var(--canvas-subtle)); }
+.home-attention-metric-active { --home-attention-color: var(--accent); background: color-mix(in srgb, var(--home-attention-color) 7%, var(--canvas-subtle)); box-shadow: inset 0 3px var(--home-attention-color); }
+.home-attention-metric-danger { --home-attention-color: var(--danger); }
+.home-attention-metric-attention { --home-attention-color: var(--attention); }
+.home-attention-metric-review { --home-attention-color: var(--purple); }
+.home-attention-metric[href]:hover { background: color-mix(in srgb, var(--home-attention-color, var(--accent)) 12%, var(--canvas-subtle)); }
 .home-attention-metric:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .home-attention-metric strong { align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
-.home-attention-metric .home-attention-count-active { color: var(--fg); }
+.home-attention-metric .home-attention-count-active { color: var(--home-attention-color); }
 .home-attention-icon { display: flex; align-items: center; color: var(--muted); }
-.home-attention-icon-active { color: var(--fg); }
+.home-attention-icon-active { color: var(--home-attention-color); }
 .home-attention-icon .octicon { width: 32px; height: 32px; flex-basis: 32px; }
 .home-attention-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }
 .home-attention-label-active { color: var(--fg); }

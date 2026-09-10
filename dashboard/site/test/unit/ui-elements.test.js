@@ -836,6 +836,10 @@ describe('UI elements', () => {
     expect(rendered?.getAttribute('aria-label')).toBe('Needs your attention');
     expect(rendered?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered?.querySelectorAll('.home-attention-metric')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-metric-active')).toHaveLength(4);
+    expect(rendered?.querySelectorAll('.home-attention-metric-danger')).toHaveLength(2);
+    expect(rendered?.querySelectorAll('.home-attention-metric-attention')).toHaveLength(1);
+    expect(rendered?.querySelectorAll('.home-attention-metric-review')).toHaveLength(1);
     for (const href of ['failed-runs', 'blocked-work', 'awaiting-review', 'security-findings']) {
       expect(rendered?.querySelector(`[href="#page-overview-${href}"] strong`)?.textContent).toBe('1');
     }

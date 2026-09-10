@@ -923,6 +923,28 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage.locator('.home-attention-metric-empty').filter({ hasText: 'Blocked work' })).toHaveCount(1);
   await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('1');
   await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
+  const attentionColors = await overviewPage.evaluate((element) => {
+    const root = element.closest('.dashboard-root');
+    const activeReview = element.querySelector('.home-attention-metric-review.home-attention-metric-active strong');
+    const emptyMetric = element.querySelector('.home-attention-metric-empty strong');
+    if (!(root instanceof HTMLElement) || !(activeReview instanceof HTMLElement) || !(emptyMetric instanceof HTMLElement)) return null;
+    const resolvedColor = (token) => {
+      const probe = document.createElement('span');
+      probe.style.color = `var(${token})`;
+      root.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    return {
+      activeReview: getComputedStyle(activeReview).color,
+      emptyMetric: getComputedStyle(emptyMetric).color,
+      purple: resolvedColor('--purple'),
+      muted: resolvedColor('--muted')
+    };
+  });
+  expect(attentionColors?.activeReview).toBe(attentionColors?.purple);
+  expect(attentionColors?.emptyMetric).toBe(attentionColors?.muted);
   await expect(overviewPage.locator('.home-attention-detail')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
