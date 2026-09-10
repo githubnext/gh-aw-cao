@@ -8,7 +8,7 @@ const transientGitHubErrors = [
   "http 503",
   "http 504",
 ];
-const retryDelayMilliseconds = 1_000;
+export const packageInstallRetryDelayMilliseconds = 1_000;
 
 export function isTransientPackageInstallError(error) {
   const output = `${error?.message ?? ""}\n${error?.stderr ?? ""}`.toLowerCase();
@@ -23,7 +23,7 @@ export async function retryTransientPackageInstall(install, wait = sleep) {
       return await install();
     } catch (error) {
       if (attempt >= 2 || !isTransientPackageInstallError(error)) throw error;
-      await wait(retryDelayMilliseconds);
+      await wait(packageInstallRetryDelayMilliseconds);
     }
   }
 }

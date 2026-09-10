@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   isTransientPackageInstallError,
+  packageInstallRetryDelayMilliseconds,
   retryTransientPackageInstall,
 } from "../helpers/package-install-retry.mjs";
 
@@ -20,7 +21,7 @@ test("retries a transient GitHub package download failure", async () => {
 
   assert.equal(result, "installed");
   assert.equal(attempts, 2);
-  assert.deepEqual(delays, [1_000]);
+  assert.deepEqual(delays, [packageInstallRetryDelayMilliseconds]);
 });
 
 test("does not retry a deterministic package install failure", async () => {
