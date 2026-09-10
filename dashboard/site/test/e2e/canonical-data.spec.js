@@ -549,6 +549,58 @@ test('data worker returns GitHub API events on initial and navigated requests', 
   }
 });
 
+test('event-backed views query retained canonical events after reload', async ({ page }) => {
+  await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    await loadCanonicalDashboardSources(
+      `${location.origin}/sources.json`,
+      ['event-inspection'],
+      {
+        githubUrlBase: 'https://github.com',
+        pages: dashboard.dashboard.pages,
+        queries: dashboard.dashboard.queries
+      }
+    );
+  });
+
+  await page.reload();
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardPage } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    return loadCanonicalDashboardPage(
+      ['event-inspection', 'mcp-tool-activity', 'engines-models-usage'],
+      {
+        githubUrlBase: 'https://github.com',
+        pages: dashboard.dashboard.pages,
+        queries: dashboard.dashboard.queries
+      }
+    );
+  });
+
+  expect(result['event-inspection']).toMatchObject({
+    rows: expect.arrayContaining([expect.objectContaining({
+      repository: 'gh-aw-cao', run: '12345', event: 'tool-result-12345'
+    })]),
+    metadata: { availability: 'available', 'query-name': 'event-inspection' }
+  });
+  expect(result['mcp-tool-activity']).toMatchObject({
+    rows: [{
+      'mcp-tool': 'github/search_issues', 'mcp-status': 'success',
+      repository: 'gh-aw-cao', run: '12345'
+    }],
+    metadata: { availability: 'available', 'query-name': 'mcp-tool-activity' }
+  });
+  expect(result['engines-models-usage']).toMatchObject({
+    rows: [expect.objectContaining({
+      engine: 'copilot', 'event-type': 'agent_turn', repository: 'gh-aw-cao'
+    })],
+    metadata: { availability: 'available', 'query-name': 'engines-models-usage' }
+  });
+});
+
 test('data worker queries firewall domain totals on initial and navigated requests', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;

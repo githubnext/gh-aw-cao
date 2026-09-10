@@ -19,6 +19,25 @@ const sources = {
     }],
     metadata
   },
+  sessions: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', 'session-status': 'completed',
+      'observed-at': '2026-09-09T04:01:00Z'
+    }],
+    metadata
+  },
+  events: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      run: '42', 'run-attempt': 2, session: 'session-42', event: 'event-42',
+      'event-timestamp': '2026-09-09T04:01:30Z', 'event-source': 'agent',
+      'event-type': 'agent_turn', 'event-status': 'completed', 'event-summary': 'Processed request',
+      'correlation-id': 'correlation-42', 'source-sequence': 0,
+      'observed-at': '2026-09-09T04:01:30Z'
+    }],
+    metadata
+  },
   'job-performance': {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -72,6 +91,30 @@ beforeEach(async () => {
 });
 
 describe('canonical view sources', () => {
+  it('projects events from persisted canonical entities without downloaded logical sources', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(
+      indexedDB,
+      {},
+      metadata['artifact-generation'],
+      ['events']
+    );
+
+    expect(Object.keys(projected)).toEqual(['events']);
+    expect(projected.events).toMatchObject({
+      source: 'events',
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+        run: '42', 'run-attempt': 2, session: 'session-42', event: 'event-42',
+        'event-timestamp': '2026-09-09T04:01:30Z', 'event-source': 'agent',
+        'event-type': 'agent_turn', 'event-status': 'completed', 'event-summary': 'Processed request',
+        'correlation-id': 'correlation-42', 'source-sequence': 0
+      }],
+      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
+    });
+  });
+
   it('queries only the canonical payload requested by a view', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
