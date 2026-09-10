@@ -23,6 +23,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('import { scheduleBackgroundRefresh } from "./background-refresh.js"');
     expect(preview).toContain("scheduleBackgroundRefresh(refreshSources, { signal: refreshOwner.signal })");
     expect(preview).toContain("if (refreshPending) return;");
+    expect(preview).toContain("const updatePresentation = updatePresentationOnSuccess || refreshFailed;");
+    expect(preview).toContain("if (updatePresentation) {");
     expect(preview).toContain("refreshCanonicalDashboardSources, subscribeCanonicalDashboardView");
     expect(preview).toContain("runWithLoadingProgress(() => refreshCanonicalDashboardSources(");
     expect(preview).toContain("subscribeCanonicalDashboardView(");
@@ -32,7 +34,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain("displayedSources = bindContinuations(sources, initialLazySources)");
     expect(preview).toMatch(/loadCanonicalDashboardPage\(\s+DASHBOARD_HORIZON_COUNT_SOURCES,/);
     expect(preview.indexOf("await loadInitialSources(")).toBeLessThan(preview.indexOf("loadCanonicalDashboardSources("));
-    expect(preview).toContain('renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources)');
+    expect(preview).toContain('renderSources(cachedSources, "cached", true, loadPageSources, loadHorizonSources)');
+    expect(preview.match(/renderSources\([^,]+, "cached"/g)).toHaveLength(1);
     expect(preview).toContain('renderSources(displayedSources, "stale", true, loadPageSources, loadHorizonSources, refreshSources)');
     expect(preview).toContain("renderRefreshError(retryRefresh)");
     expect(preview).toContain("refreshSources");

@@ -978,11 +978,11 @@
             });
             let refreshFailed = false;
             let refreshPending = false;
+            let updatePresentationOnSuccess = refreshImmediately;
             /** @param {unknown} error */
             const showStaleSources = (error) => {
               if (refreshFailed) return;
               refreshFailed = true;
-              refreshPending = false;
               const message = error instanceof Error ? error.message : String(error);
               console.error(`Unable to refresh live dashboard data: ${message}`);
               updateWithViewTransition(
@@ -992,9 +992,10 @@
             };
             const refreshSources = () => {
               if (refreshPending) return;
+              const updatePresentation = updatePresentationOnSuccess || refreshFailed;
+              updatePresentationOnSuccess = false;
               refreshFailed = false;
               refreshPending = true;
-              renderSources(displayedSources, "cached", true, loadPageSources, loadHorizonSources);
               void runWithLoadingProgress(() => refreshCanonicalDashboardSources(
                 sourceUrl,
                 initialSources,
@@ -1004,9 +1005,14 @@
                 ({ changed }) => {
                   refreshPending = false;
                   if (changed) return;
-                  renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
+                  if (updatePresentation) {
+                    renderSources(displayedSources, "ready", true, loadPageSources, loadHorizonSources);
+                  }
                 },
-                showStaleSources,
+                (error) => {
+                  refreshPending = false;
+                  showStaleSources(error);
+                },
               );
             };
             subscribeCanonicalDashboardView(
@@ -1041,6 +1047,7 @@
           }
 
           if (cachedSources) {
+            renderSources(cachedSources, "cached", true, loadPageSources, loadHorizonSources);
             startLiveRefresh(cachedSources, true);
             loadingProgress.complete();
             cancelCommand.complete();
