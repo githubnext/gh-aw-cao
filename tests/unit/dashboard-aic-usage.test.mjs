@@ -51,7 +51,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   }));
   await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
-      aic: 2.5,
+      aic: 2.4,
       safe_items_count: 4,
       noop_count: 1,
       missing_data_count: 2,
@@ -59,6 +59,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       report_incomplete_count: 1,
       data: { findings: [{ severity: "high", total: 3 }] },
       token_usage_summary: {
+        total_aic: 2.5,
         total_input_tokens: 100,
         total_output_tokens: 20,
         total_cache_read_tokens: 50,
@@ -82,6 +83,9 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
     const usage = JSON.parse(await readFile(outputPath, "utf8"));
     assert.equal(usage.schemaVersion, 5);
     assert.equal(usage.runs[0].aic, 2.5);
+    assert.equal(usage.runs[0].agentId, "copilot");
+    assert.equal(usage.runs[0].agentVersion, "1.2.3");
+    assert.equal(usage.runs[0].modelId, "gpt-5");
     assert.equal(usage.runs[0].engine, "copilot");
     assert.equal(usage.runs[0].resolvedModel, "gpt-5");
     assert.equal(usage.runs[0].ghAwVersion, "0.89.1");

@@ -142,15 +142,32 @@ describe('canonical source ingestion and queries', () => {
 
   it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
     const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
-      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'githubnext/gh-aw-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-01-01T00:00:00Z',
+      agent: 'copilot', engine: 'GitHub Copilot CLI', agent_version: '1.2.3',
+      gh_aw_version: '0.89.1',
+      token_usage_summary: {
+        total_aic: 2.5,
+        by_model: {
+          'gpt-5.4-mini': { aic: 0.5 },
+          'gpt-5.4': { aic: 2 }
+        }
+      },
       url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303', logs_path: 'logs', event: 'push', branch: 'main'
     } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {} })}\n`;
     await expect(ingestCachedGhAwJsonl(indexedDB, content, { now: Date.parse('2026-01-01T00:00:00Z') }))
       .resolves.toMatchObject({ updated: true, records: 1 });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
-      expect.objectContaining({ id: 'github:run:303:attempt:1', repositoryFullName: 'githubnext/gh-aw-cao' })
+      expect.objectContaining({
+        id: 'github:run:303:attempt:1',
+        repositoryFullName: 'githubnext/gh-aw-cao',
+        agentId: 'copilot',
+        agentVersion: '1.2.3',
+        modelId: 'gpt-5.4',
+        ghAwVersion: '0.89.1',
+        aicTotal: 2.5
+      })
     ]);
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({ kind: 'ingest-jsonl', records: 1 })

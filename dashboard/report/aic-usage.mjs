@@ -581,6 +581,14 @@ function tokenUsage(run) {
   } : null;
 }
 
+function primaryModelId(run) {
+  const byModel = run?.token_usage_summary?.by_model;
+  if (!byModel || typeof byModel !== "object" || Array.isArray(byModel)) return "";
+  return Object.entries(byModel)
+    .map(([model, usage]) => ({ model, aic: Number(usage?.aic) || 0 }))
+    .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model || "";
+}
+
 async function readRunEvals(outputDirectory, runId, evidence = null) {
   const { files } = evidence || await loadRunEvidence(outputDirectory, runId);
   const evalFiles = files.filter((file) => path.basename(file) === "evals.jsonl");
@@ -698,9 +706,10 @@ export async function collectAicUsage() {
       log.info`Processing ${logs.length} cached gh-aw log records from ${logsPath}`;
       for (const run of logs) {
         const runId = Number(run.database_id ?? run.run_id ?? run.id);
-        const aic = run.aic === null || run.aic === undefined || run.aic === ""
+        const aicValue = run.token_usage_summary?.total_aic ?? run.aic;
+        const aic = aicValue === null || aicValue === undefined || aicValue === ""
           ? null
-          : Number(run.aic);
+          : Number(aicValue);
         const metadata = workflowByRunId.get(runId);
         if (!Number.isFinite(runId) || !metadata) continue;
         const repository = metadata.workflow.repository;
@@ -714,6 +723,10 @@ export async function collectAicUsage() {
           mode,
           conclusion: metadata.run?.conclusion || null,
           createdAt: run.created_at || run.started_at || metadata.run?.createdAt || null,
+          agentId: firstText(run.agent_id, run.agent, run.engine_id),
+          agentVersion: firstText(run.agent_version, run.engine_version),
+          modelId: firstText(run.model_id, run.resolved_model, run.model, primaryModelId(run)),
+          ghAwVersion: firstText(run.gh_aw_version, run.ghAwVersion, run.cli_version, run.version),
           engine: firstText(run.engine, run.agentic_engine, run.agent_engine),
           engineVersion: firstText(run.engine_version, run.agentic_engine_version, run.agent_engine_version, run.agent_version),
           requestedModel: firstText(run.requested_model, run.requestedModel, run.model, run.model_name),
@@ -756,12 +769,15 @@ export async function collectAicUsage() {
         }
         const enriched = {
           ...common,
+          agentId: firstText(common.agentId, security.agentInfo.agentId),
+          agentVersion: firstText(common.agentVersion, security.agentInfo.agentVersion),
+          modelId: firstText(common.modelId, security.agentInfo.modelId),
           engine: firstText(common.engine, security.agentInfo.agentId, security.agentInfo.agentName),
           engineVersion: firstText(common.engineVersion, security.agentInfo.agentVersion),
           requestedModel: firstText(common.requestedModel, security.agentInfo.modelId),
           resolvedModel: firstText(common.resolvedModel, security.agentInfo.modelId),
           agentRuntime: firstText(common.agentRuntime, security.agentInfo.agentRuntime),
-          ghAwVersion: firstText(security.agentInfo.ghAwVersion, security.mcp.cliVersion),
+          ghAwVersion: firstText(common.ghAwVersion, security.agentInfo.ghAwVersion, security.mcp.cliVersion),
         };
         if (Number.isFinite(aic) || enriched.tokenUsage) runs.set(`${repository}:${runId}`, {
           ...enriched,

@@ -31,6 +31,41 @@ function optionalString(value) {
   return value === undefined || value === null || value === '' ? undefined : String(value);
 }
 
+/** @param {unknown} value */
+function finiteNumber(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+/** @param {Record<string, unknown>} run */
+function runMetadata(run) {
+  const tokenUsage = run.token_usage_summary ?? run.token_usage ?? null;
+  const summary = tokenUsage && typeof tokenUsage === 'object' && !Array.isArray(tokenUsage)
+    ? /** @type {Record<string, unknown>} */ (tokenUsage)
+    : {};
+  const byModel = summary.by_model && typeof summary.by_model === 'object' && !Array.isArray(summary.by_model)
+    ? /** @type {Record<string, unknown>} */ (summary.by_model)
+    : {};
+  const dominantModel = Object.entries(byModel)
+    .map(([model, usage]) => {
+      const record = usage && typeof usage === 'object' && !Array.isArray(usage)
+        ? /** @type {Record<string, unknown>} */ (usage)
+        : {};
+      return { model, aic: finiteNumber(record.aic) ?? 0 };
+    })
+    .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model;
+  const aicTotal = finiteNumber(summary.total_aic) ?? finiteNumber(run.aic);
+  return {
+    agentId: optionalString(run.agent_id ?? run.agent ?? run.engine_id),
+    agentVersion: optionalString(run.agent_version ?? run.engine_version),
+    modelId: optionalString(run.model_id ?? run.resolved_model ?? run.model ?? dominantModel),
+    ghAwVersion: optionalString(run.gh_aw_version ?? run.ghAwVersion ?? run.cli_version ?? run.version),
+    aicTotal,
+    tokenUsage
+  };
+}
+
 /** @param {string} content @param {string} filePath */
 function parseJsonl(content, filePath) {
   return content.split(/\r?\n/).flatMap((line, index) => {
@@ -336,8 +371,11 @@ export function adaptCachedGhAwJsonl(content) {
     }
     if (envelope.schema_version !== 2 || envelope.kind !== 'run' || !envelope.run) continue;
     const run = objectValue(envelope.run, `gh-aw JSONL line ${index + 1}.run`);
-    const owner = requiredString(run.organization, 'run.organization');
-    const name = requiredString(run.repository, 'run.repository');
+    const organization = requiredString(run.organization, 'run.organization');
+    const repositoryName = requiredString(run.repository, 'run.repository');
+    const repositoryParts = repositoryName.split('/');
+    const owner = repositoryParts.length === 2 ? repositoryParts[0] : organization;
+    const name = repositoryParts.length === 2 ? repositoryParts[1] : repositoryName;
     const fullName = `${owner}/${name}`;
     const path = requiredString(run.workflow_path, 'run.workflow_path');
     const githubRunId = identifier(run.run_id, 'run.run_id');
@@ -347,10 +385,11 @@ export function adaptCachedGhAwJsonl(content) {
     const workflowSourceId = `${repositorySourceId}:${path}`.toLowerCase();
     const repository = sourceId('repository', OBSERVATION_SOURCE, repositorySourceId);
     const workflow = sourceId('workflow', OBSERVATION_SOURCE, workflowSourceId);
+    const metadata = runMetadata(run);
     observations.push(
       { kind: 'repository', source: OBSERVATION_SOURCE, sourceId: `repository:${repositorySourceId}`, observedAt, data: { id: repository, owner, name, fullName, visibility: 'unknown' } },
       { kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: `workflow:${workflowSourceId}`, observedAt, data: { id: workflow, repositoryId: repository, name: requiredString(run.workflow_name, 'run.workflow_name'), path, state: 'unknown' } },
-      { kind: 'run', source: OBSERVATION_SOURCE, sourceId: `run:${githubRunId}:${attempt}`, observedAt, data: { id: runId(githubRunId, attempt), repositoryId: repository, workflowId: workflow, owner, repository: name, repositoryFullName: fullName, workflowPath: path, githubRunId, attempt, title: optionalString(run.display_title) ?? `Run ${githubRunId}`, event: optionalString(run.event) ?? optionalString(run.event_name) ?? 'unknown', status: optionalString(run.status) ?? 'unknown', conclusion: optionalString(run.conclusion) ?? null, createdAt: optionalString(run.created_at) ?? null, startedAt: optionalString(run.started_at) ?? null, completedAt: optionalString(run.updated_at) ?? null, engine: optionalString(run.engine) ?? 'unknown', aic: run.aic ?? null, tokenUsage: run.token_usage ?? null, runLink: optionalString(run.url) ?? null } }
+      { kind: 'run', source: OBSERVATION_SOURCE, sourceId: `run:${githubRunId}:${attempt}`, observedAt, data: { id: runId(githubRunId, attempt), repositoryId: repository, workflowId: workflow, owner, repository: name, repositoryFullName: fullName, workflowPath: path, githubRunId, attempt, title: optionalString(run.display_title) ?? `Run ${githubRunId}`, event: optionalString(run.event) ?? optionalString(run.event_name) ?? 'unknown', status: optionalString(run.status) ?? 'unknown', conclusion: optionalString(run.conclusion) ?? null, createdAt: optionalString(run.created_at) ?? null, startedAt: optionalString(run.started_at) ?? null, completedAt: optionalString(run.updated_at) ?? null, engine: optionalString(run.engine) ?? 'unknown', agentId: metadata.agentId ?? null, agentVersion: metadata.agentVersion ?? null, modelId: metadata.modelId ?? null, ghAwVersion: metadata.ghAwVersion ?? null, aic: metadata.aicTotal, aicTotal: metadata.aicTotal, tokenUsage: metadata.tokenUsage, runLink: optionalString(run.url) ?? null } }
     );
     records += 1;
   }
