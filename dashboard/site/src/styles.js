@@ -1254,9 +1254,9 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .home-attention-metric[href]:hover { background: color-mix(in srgb, var(--home-attention-color, var(--accent)) 12%, var(--canvas-subtle)); }
 .home-attention-metric:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .home-attention-metric strong { align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
-.home-attention-metric .home-attention-count-active { color: var(--home-attention-color); }
+.home-attention-metric .home-attention-count-active { color: var(--home-attention-color, var(--fg)); }
 .home-attention-icon { display: flex; align-items: center; color: var(--muted); }
-.home-attention-icon-active { color: var(--home-attention-color); }
+.home-attention-icon-active { color: var(--home-attention-color, var(--fg)); }
 .home-attention-icon .octicon { width: 32px; height: 32px; flex-basis: 32px; }
 .home-attention-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }
 .home-attention-label-active { color: var(--fg); }
