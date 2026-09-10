@@ -1560,6 +1560,17 @@ Exact periods SHALL remain a product/configuration decision.
 
 The architecture MUST NOT require every browser to retain unlimited execution history.
 
+Ingestion SHALL upsert each collected batch onto the records already retained
+instead of replacing them, so a partial collection or worker restart never drops
+observations the browser still retains. The implementation retains records
+observed within the last 30 days; records observed outside that window SHALL be
+pruned during the next ingestion.
+
+Retention pruning MUST remain relationship-safe: a retained record SHALL be
+dropped when a mandatory parent no longer survives, and structural parents that
+neither the current collection nor any retained descendant references SHALL be
+collected.
+
 ---
 
 # 42. Search
@@ -1590,9 +1601,11 @@ runs.recentFailures();
 
 jobs.forRun(runId);
 
+sessions.list();
 sessions.forRun(runId);
 sessions.forJob(jobId);
 
+events.list();
 events.forSession(sessionId);
 events.forSessionByType(sessionId, type);
 ```
