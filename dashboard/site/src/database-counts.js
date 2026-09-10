@@ -39,7 +39,12 @@ export function createDatabaseCountLoader(loadSources) {
  * @returns {string}
  */
 export function formatDatabaseCounts(counts) {
-  return `${counts.repositories} repositories · ${counts.workflows} workflows · ${counts.runs} runs · ${counts.events} events`;
+  return `${formatDatabaseCount(counts.repositories)} repositories · ${formatDatabaseCount(counts.workflows)} workflows · ${formatDatabaseCount(counts.runs)} runs · ${formatDatabaseCount(counts.events)} events`;
+}
+
+/** @param {unknown} count */
+function formatDatabaseCount(count) {
+  return String(count ?? 0);
 }
 
 /**
@@ -65,7 +70,7 @@ export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
     status.textContent = 'Loading database counts…';
     loadDatabaseCounts()
       .then((counts) => {
-        for (const [name] of fields) values[name].textContent = String(counts[name] ?? 0);
+        for (const [name] of fields) values[name].textContent = formatDatabaseCount(counts[name]);
         status.textContent = 'Database totals';
       })
       .catch(() => {
