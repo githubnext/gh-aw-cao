@@ -878,7 +878,7 @@ function renderSettingsDatabaseCounts(loadDatabaseCounts) {
     name,
     h('strong', { dataset: { databaseCount: name } }, '—')
   ]));
-  const status = h('span', { className: 'database-counts-status', 'aria-live': 'polite' }, 'Database counts load when opened');
+  const status = h('span', { className: 'database-counts-status', 'aria-live': 'polite' }, 'Open to load database counts');
   let started = false;
   const load = () => {
     if (started) return;
@@ -955,10 +955,10 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
     databaseCounts.textContent = 'Loading database counts…';
     countsPromise = loadDatabaseCounts()
       .then((counts) => {
-       databaseCounts.textContent = `${counts.repositories} repositories · ${counts.workflows} workflows · ${counts.runs} runs · ${counts.events} events`;
+        databaseCounts.textContent = `${counts.repositories} repositories · ${counts.workflows} workflows · ${counts.runs} runs · ${counts.events} events`;
       })
       .catch(() => {
-       databaseCounts.textContent = 'Database counts unavailable';
+        databaseCounts.textContent = 'Database counts unavailable';
       });
   };
 
