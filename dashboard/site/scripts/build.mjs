@@ -21,10 +21,12 @@ export async function buildDashboardSite({
 
   await rm(destinationPath, { force: true, recursive: true });
   await mkdir(destinationPath, { recursive: true });
+  await mkdir(join(destinationPath, "scripts"), { recursive: true });
   await Promise.all([
     cp(new URL("index.html", siteRoot), join(destinationPath, "index.html")),
     cp(new URL("favicon.svg", siteRoot), join(destinationPath, "favicon.svg")),
     cp(new URL("dashboard.json", siteRoot), join(destinationPath, "dashboard.json")),
+    cp(new URL("scripts/ingest-gh-aw-logs.mjs", siteRoot), join(destinationPath, "scripts/ingest-gh-aw-logs.mjs")),
     cp(new URL("src", siteRoot), join(destinationPath, "src"), { recursive: true }),
   ]);
 
