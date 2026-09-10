@@ -3,6 +3,11 @@ import { readCollection, readIndex, readRecord } from '../storage/indexeddb.js';
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
   return {
+    packages: {
+      list: () => readCollection(indexedDB, 'packages'),
+      getBySlug: async (/** @type {string} */ slug) =>
+        (await readIndex(indexedDB, 'packages', 'bySlug', [slug]))[0] ?? null
+    },
     repositories: {
       list: () => readCollection(indexedDB, 'repositories'),
       get: (/** @type {string} */ id) => readRecord(indexedDB, 'repositories', id)

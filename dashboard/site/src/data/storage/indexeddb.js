@@ -1,9 +1,10 @@
 import { relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 8;
+export const DATABASE_VERSION = 9;
 
 export const ENTITY_STORES = /** @type {const} */ ([
+  'packages',
   'repositories',
   'workflows',
   'runs',
@@ -15,7 +16,11 @@ export const TRANSACTION_STORE = 'transactions';
 export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  * string, { keyPath: string, indexes: Record<string, string | string[]> }
  * >} */ ({
-  repositories: {
+ packages: {
+   keyPath: 'id',
+   indexes: { bySlug: 'slug' }
+ },
+ repositories: {
     keyPath: 'id',
     indexes: { byGithubId: 'githubId', byFullName: 'fullName' }
   },
@@ -144,6 +149,13 @@ export function openCanonicalDatabase(indexedDB) {
         if (event.oldVersion < 8) {
           if (database.objectStoreNames.contains('workItems')) database.deleteObjectStore('workItems');
           if (database.objectStoreNames.contains('findings')) database.deleteObjectStore('findings');
+        }
+        if (event.oldVersion < 9) {
+          const definition = CANONICAL_DATABASE_SCHEMA.packages;
+          const packages = database.createObjectStore('packages', { keyPath: definition.keyPath });
+          for (const [indexName, keyPath] of Object.entries(definition.indexes)) {
+            createIndex(packages, indexName, keyPath);
+          }
         }
       }
     };
