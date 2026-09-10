@@ -966,12 +966,11 @@ describe('presenter built-in and custom pages', () => {
 
     const labels = [...rendered.querySelectorAll('.nav-section-label')].map((node) => node.textContent?.trim());
     const sections = [...rendered.querySelectorAll('.nav-section')];
-    expect(labels).toEqual(['Experimental']);
-    expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Experimental']);
+    expect(labels).toEqual(['Data', 'Experimental']);
+    expect([...rendered.querySelectorAll('.mobile-nav-section-label')].map((node) => node.textContent?.trim())).toEqual(['Data', 'Experimental']);
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
       'Repositories',
-      'Workflows',
       'Packages'
     ]);
     expect(rendered.querySelector('[data-nav-page-id="workflows"] .octicon-workflow')).not.toBeNull();
@@ -1002,17 +1001,22 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.hasAttribute('data-theme')).toBe(false);
     expect(systemTheme?.getAttribute('aria-pressed')).toBe('true');
     expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('system');
-    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([false]);
+    expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([false, false]);
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
+    expect(rendered.querySelector('[data-nav-page-id="workflows"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="runs"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="events"]')?.closest('.nav-section')).toBe(sections[0]);
     expect(rendered.querySelector('[data-nav-page-id="operations"]')?.closest('.nav-section')?.textContent).toContain('Experimental');
-    expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')).toBe(sections[0]);
-    expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[0]);
-    expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[0]);
+    expect(rendered.querySelector('[data-nav-page-id="runtime"]')?.closest('.nav-section')).toBe(sections[1]);
+    expect(rendered.querySelector('[data-nav-page-id="preview"]')?.closest('.nav-section')).toBe(sections[1]);
+    expect(rendered.querySelector('[data-nav-page-id="uk-ai-advisory-dashboard"]')?.closest('.nav-section')).toBe(sections[1]);
     expect([...rendered.querySelectorAll('.nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
       'Repositories',
-      'Workflows',
       'Packages',
+      'Workflows',
+      'Runs',
+      'Events',
       'Work',
       'Operations',
       'Insights',
@@ -1034,7 +1038,6 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
-      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -1042,7 +1045,7 @@ describe('presenter built-in and custom pages', () => {
       'EU CRA',
       'AW Optimization'
     ]);
-    expect(rendered.querySelector('[data-nav-page-id="runs"]')).toBeNull();
+    expect(rendered.querySelector('[data-nav-page-id="runs"] .octicon-play')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="findings"]')).toBeNull();
     expect(rendered.querySelector('[data-page-id="overview"]')?.classList.contains('dashboard-overview-page')).toBe(true);
     expect(rendered.querySelector('[data-page-id="organizations"]')?.classList.contains('organizations-page')).toBe(false);
@@ -1053,7 +1056,7 @@ describe('presenter built-in and custom pages', () => {
     /** @type {HTMLAnchorElement | null} */ (rendered.querySelector('[data-nav-page-id="cost"]'))?.click();
 
     expect(window.location.hash).toBe('#page-cost');
-    expect(/** @type {HTMLDetailsElement} */ (sections[0]).open).toBe(true);
+    expect(/** @type {HTMLDetailsElement} */ (sections[1]).open).toBe(true);
     expect(/** @type {HTMLElement | null} */ (rendered.querySelector('[data-breadcrumb-dashboard]'))?.hidden).toBe(true);
     expect(rendered.querySelector('[data-breadcrumb-dashboard]')?.textContent).toBe('Overview');
     expect(rendered.querySelector('[data-breadcrumb-page]')?.textContent).toBe('Cost & efficiency');
@@ -1117,7 +1120,9 @@ describe('presenter built-in and custom pages', () => {
       sources: {}
     });
 
-    expect(/** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.nav-section'))?.open).toBe(true);
+    const experimentalSection = [...rendered.querySelectorAll('.nav-section')]
+      .find((section) => section.querySelector('summary')?.textContent?.trim() === 'Experimental');
+    expect(/** @type {HTMLDetailsElement | undefined} */ (experimentalSection)?.open).toBe(true);
     expect(rendered.querySelector('[data-nav-page-id="cost"]')?.getAttribute('aria-current')).toBe('page');
     expect(rendered.querySelector('[data-mobile-nav-page-id="overview"]')?.getAttribute('href')).toBe('#page-overview');
 
@@ -1336,8 +1341,10 @@ describe('presenter built-in and custom pages', () => {
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
       'Repositories',
-      'Workflows',
       'Packages',
+      'Workflows',
+      'Runs',
+      'Events',
       'Work',
       'Operations',
       'Insights',
@@ -1359,7 +1366,6 @@ describe('presenter built-in and custom pages', () => {
       'Dispatches',
       'Firewall',
       'MCPs',
-      'Events',
       'Models & agents',
       'UK AI advisory',
       'AW Doctor',
@@ -2438,7 +2444,7 @@ describe('presenter built-in and custom pages', () => {
 
     const runsPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'runs');
     expect(runsPage?.definition.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source))
-      .toEqual(['runs', 'runs-table']);
+      .toEqual(['runs-table']);
 
     const repositoriesPage = pages.find((/** @type {{ page: string }} */ page) => page.page === 'repositories');
     expect(repositoriesPage?.definition.views).toMatchObject([
@@ -2552,7 +2558,7 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section h3')].map((element) => element.textContent);
-    expect(headings).toEqual(['Run health trend', 'Runs']);
+    expect(headings).toEqual(['Runs']);
     expect(rendered.querySelectorAll('[data-page-id="runs"] .custom-table')).toHaveLength(1);
     expect(rendered.querySelector('[data-page-id="runs"]')?.getAttribute('data-page-kind')).toBe('custom');
   });
