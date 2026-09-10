@@ -66,10 +66,9 @@ function newestObservation(batch) {
 /**
  * @param {import('../model/schema.js').CanonicalBatch} previous
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {string} generation
  * @param {number} horizon
  */
-function upsertRecords(previous, incoming, generation, horizon) {
+function upsertRecords(previous, incoming, horizon) {
   /** @type {Record<string, Map<string, Record<string, unknown>>>} */
   const merged = {};
   for (const storeName of STORES) {
@@ -79,10 +78,10 @@ function upsertRecords(previous, incoming, generation, horizon) {
     for (const record of previous[storeName] ?? []) {
       const timestamp = recordTimestamp(storeName, record);
       if (timeBound && (timestamp === null || timestamp < horizon)) continue;
-      records.set(String(record.id), { ...record, generation });
+      records.set(String(record.id), record);
     }
     for (const record of incoming[storeName] ?? []) {
-      records.set(String(record.id), { ...record, generation });
+      records.set(String(record.id), record);
     }
     merged[storeName] = records;
   }
@@ -91,7 +90,7 @@ function upsertRecords(previous, incoming, generation, horizon) {
 
 /**
  * Drops retained records whose mandatory parents did not survive so the merged
- * generation always passes relationship validation.
+ * batch remains relationship-safe.
  *
  * @param {Record<string, Map<string, Record<string, unknown>>>} merged
  */
@@ -156,7 +155,7 @@ function collectUnreferencedParents(merged, incoming) {
 }
 
 /**
- * Upserts one freshly collected batch onto the previously stored generation so
+ * Upserts one freshly collected batch onto the previously stored records so
  * partial collections never drop retained history, prunes records observed
  * outside the 30-day retention window, and keeps every surviving record
  * relationship-safe.
@@ -167,14 +166,13 @@ function collectUnreferencedParents(merged, incoming) {
  *
  * @param {import('../model/schema.js').CanonicalBatch} previous
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ generation: string, now?: number }} options
+ * @param {{ now?: number }} [options]
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
-export function mergeRetainedGeneration(previous, incoming, options) {
-  const generation = options.generation;
+export function mergeRetainedRecords(previous, incoming, options = {}) {
   const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
   const reference = Math.max(now, newestObservation(incoming) ?? now);
-  const merged = upsertRecords(previous, incoming, generation, reference - RETENTION_WINDOW_MS);
+  const merged = upsertRecords(previous, incoming, reference - RETENTION_WINDOW_MS);
   pruneOrphans(merged);
   collectUnreferencedParents(merged, incoming);
 

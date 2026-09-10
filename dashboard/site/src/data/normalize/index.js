@@ -102,11 +102,10 @@ export function orderEvents(events) {
  * entities. Persistence is intentionally a separate boundary.
  *
  * @param {import('../model/schema.js').CanonicalObservation[]} observations
- * @param {{ generation: string, sourcePrecedence?: Record<string, number> }} options
+ * @param {{ sourcePrecedence?: Record<string, number> }} [options]
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
-export function normalize(observations, options) {
-  const generation = requiredString(options?.generation, 'generation');
+export function normalize(observations, options = {}) {
   const sourcePrecedence = options.sourcePrecedence ?? {};
   /** @type {Record<keyof import('../model/schema.js').CanonicalBatch, Map<string, Record<string, unknown>>>} */
   const entities = {
@@ -132,7 +131,6 @@ export function normalize(observations, options) {
       ...withoutUndefined(observation.data),
       id,
       observedAt,
-      generation,
       provenance: {
         source: observation.source,
         sourceId: observation.sourceId,

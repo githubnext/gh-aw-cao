@@ -63,8 +63,7 @@ export function canonicalTimestamp(value, field) {
 
 /**
  * Reports mandatory relationship failures without preventing partial entities
- * from existing during normalization. Generation validation can require this
- * list to be empty before activation.
+ * from existing during normalization.
  *
  * @param {CanonicalBatch} batch
  * @returns {string[]}

@@ -126,11 +126,10 @@ export function processDataHealthSources(sources, context) {
 /**
  * Adapts and normalizes published dashboard sources in a Web Worker when supported.
  * @param {Record<string, unknown>} sources
- * @param {string} generation
  * @returns {import('./data/model/schema.js').CanonicalBatch|Promise<import('./data/model/schema.js').CanonicalBatch>}
  */
-export function processCanonicalDashboardSources(sources, generation) {
-  return normalize(adaptDashboardSources(sources).observations, { generation });
+export function processCanonicalDashboardSources(sources) {
+  return normalize(adaptDashboardSources(sources).observations);
 }
 
 /**
@@ -169,8 +168,7 @@ export function loadCanonicalDashboardSources(sourceUrl, sourceNames, context, p
 }
 
 /**
- * Refreshes the canonical dashboard and reports whether ingestion activated a
- * changed generation or hydrated transient published sources after reload.
+ * Refreshes the canonical dashboard and reports whether fresh data was written.
  * @param {string} sourceUrl
  * @param {string[]} sourceNames
  * @param {{ githubUrlBase?: string, pages: unknown[] }} context

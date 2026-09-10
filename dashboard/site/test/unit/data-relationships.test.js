@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { relationshipErrors } from '../../src/data/model/schema.js';
 import { normalize } from '../../src/data/normalize/index.js';
 
-const generation = '2026-09-09T05:00:00.000Z';
 const observedAt = '2026-09-09T05:00:00Z';
 
 /**
@@ -50,7 +49,7 @@ function completeGraph() {
       source: 'runtime',
       type: 'runtime.started'
     })
-  ], { generation });
+  ]);
 }
 
 describe('canonical entity relationships', () => {

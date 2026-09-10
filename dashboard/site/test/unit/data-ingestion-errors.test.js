@@ -8,33 +8,32 @@ import {
 import { ingestDashboardSources } from '../../src/data/ingest/coordinator.js';
 
 describe('canonical ingestion errors', () => {
-  it('classifies quota, incomplete, validation, and transaction failures', () => {
+  it('classifies quota, validation, and transaction failures', () => {
     expect(classifyIngestionError(
       new DOMException('Storage is full', 'QuotaExceededError'),
       'staging'
     )).toBe(INGESTION_ERROR_CODES.quotaExceeded);
-    expect(classifyIngestionError(new Error('Generation a is incomplete'), 'activating'))
-      .toBe(INGESTION_ERROR_CODES.generationIncomplete);
-    expect(classifyIngestionError(new Error('Generation relationship validation failed'), 'activating'))
-      .toBe(INGESTION_ERROR_CODES.generationValidationFailed);
+    expect(classifyIngestionError(new Error('Canonical relationship validation failed'), 'writing'))
+      .toBe(INGESTION_ERROR_CODES.relationshipValidationFailed);
     expect(classifyIngestionError(new Error('write failed'), 'staging'))
       .toBe(INGESTION_ERROR_CODES.transactionAborted);
   });
 
   it('wraps invalid source input with stable phase context', async () => {
-    await expect(ingestDashboardSources(indexedDB, {})).rejects.toMatchObject({
+    await expect(ingestDashboardSources(indexedDB, {
+      repositories: { rows: [{ repository: 'missing-owner' }] }
+    })).rejects.toMatchObject({
       name: 'CanonicalIngestionError',
       code: 'NORMALIZATION_FAILED',
-      phase: 'adapting',
-      generation: null
+      phase: 'adapting'
     });
   });
 
   it('retains the underlying cause and safe diagnostic fields', () => {
     const cause = new Error('write failed');
-    const error = new CanonicalIngestionError('TRANSACTION_ABORTED', 'staging', 'generation-a', cause);
+    const error = new CanonicalIngestionError('TRANSACTION_ABORTED', 'writing', cause);
 
     expect(error.cause).toBe(cause);
-    expect(error.message).toContain('TRANSACTION_ABORTED during staging');
+    expect(error.message).toContain('TRANSACTION_ABORTED during writing');
   });
 });

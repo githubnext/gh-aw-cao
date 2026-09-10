@@ -75,9 +75,8 @@ describe('current dashboard source adapter', () => {
       }
     });
 
-    const batch = normalize(adapted.observations, { generation: adapted.generation });
+    const batch = normalize(adapted.observations);
 
-    expect(adapted.generation).toBe('abc123');
     expect(batch.repositories[0]).toMatchObject({
       id: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao',
       fullName: 'githubnext/gh-aw-cao',
@@ -114,12 +113,12 @@ describe('current dashboard source adapter', () => {
     });
   });
 
-  it('rejects source documents without generation metadata', () => {
-    expect(() => adaptDashboardSources({ repositories: { rows: [], metadata: {} } }))
-      .toThrow('dashboard source generation is required');
+  it('accepts source documents without generation metadata', () => {
+    expect(adaptDashboardSources({ repositories: { rows: [], metadata: {} } }))
+      .toEqual({ observations: [] });
   });
 
-  it('rejects source documents containing multiple artifact generations', () => {
+  it('adapts fresh source documents without coordinating artifact generations', () => {
     const sources = {
       repositories: { rows: [], metadata },
       runs: {
@@ -128,8 +127,7 @@ describe('current dashboard source adapter', () => {
       }
     };
 
-    expect(() => adaptDashboardSources(sources))
-      .toThrow('Dashboard sources contain multiple artifact generations');
+    expect(adaptDashboardSources(sources)).toEqual({ observations: [] });
   });
 
   it('joins published transaction logs to canonical runs and jobs', () => {
@@ -174,7 +172,7 @@ describe('current dashboard source adapter', () => {
     };
 
     const adapted = adaptDashboardSources(sources);
-    const batch = normalize(adapted.observations, { generation: adapted.generation });
+    const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.sessions).toEqual([expect.objectContaining({
@@ -232,7 +230,7 @@ describe('current dashboard source adapter', () => {
     };
 
     const adapted = adaptDashboardSources(sources);
-    const batch = normalize(adapted.observations, { generation: adapted.generation });
+    const batch = normalize(adapted.observations);
 
     expect(relationshipErrors(batch)).toEqual([]);
     expect(batch.sessions).toEqual([expect.objectContaining({

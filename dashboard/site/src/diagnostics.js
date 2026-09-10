@@ -1,10 +1,7 @@
 import { relationshipErrors } from './data/model/schema.js';
 import {
-  activeGenerationIsUsable,
-  activeGenerationMetadata,
-  generationState,
-  listGenerationStates,
-  readActiveCollection
+  DATABASE_VERSION,
+  readCollection
 } from './data/storage/indexeddb.js';
 
 const ENTITY_STORES = /** @type {const} */ ([
@@ -36,19 +33,12 @@ export async function collectFullDiagnostics(options = {}) {
   if (!indexedDB) throw new Error('IndexedDB is unavailable.');
   if (!document) throw new Error('Document is unavailable.');
 
-  const metadata = await activeGenerationMetadata(indexedDB);
-  const generation = metadata?.generation ?? null;
-  const [states, state, collections] = await Promise.all([
-    listGenerationStates(indexedDB),
-    generation ? generationState(indexedDB, generation) : Promise.resolve(null),
-    Promise.all(ENTITY_STORES.map((store) => readActiveCollection(indexedDB, store)))
-  ]);
+  const collections = await Promise.all(
+    ENTITY_STORES.map((store) => readCollection(indexedDB, store))
+  );
   const records = Object.fromEntries(ENTITY_STORES.map((store, index) => [store, collections[index]]));
   const counts = Object.fromEntries(ENTITY_STORES.map((store) => [store, records[store].length]));
   const relationships = relationshipErrors(/** @type {import('./data/model/schema.js').CanonicalBatch} */ (records));
-  const generationUsable = generation
-    ? await activeGenerationIsUsable(indexedDB, generation)
-    : false;
   const activePage = document.querySelector('[data-page-id]:not([hidden])');
   const renderedViews = [...document.querySelectorAll('[data-view-id]')];
   const unavailableViews = [...document.querySelectorAll('[aria-label^="Unable to load "]')]
@@ -59,13 +49,7 @@ export async function collectFullDiagnostics(options = {}) {
     return [store, ids.filter((id, index) => ids.indexOf(id) !== index)];
   }));
   const checks = [
-    check('active generation exists', Boolean(generation), generation ?? 'No active generation'),
-    check('active generation is complete', state === 'complete', state ?? 'Unavailable'),
-    check(
-      'active generation is usable',
-      generationUsable,
-      generation ?? 'No active generation'
-    ),
+    check('canonical database is available', true, `Schema version ${DATABASE_VERSION}`),
     ...REQUIRED_POPULATED_STORES.map((store) =>
       check(`${store} populated`, counts[store] > 0, `${counts[store]} record(s)`)),
     check('canonical relationships are valid', relationships.length === 0, `${relationships.length} error(s)`),
@@ -86,9 +70,7 @@ export async function collectFullDiagnostics(options = {}) {
     passed: checks.every((item) => item.passed),
     checks,
     database: {
-      metadata,
-      state,
-      generations: states,
+      schemaVersion: DATABASE_VERSION,
       counts,
       relationshipErrors: relationships,
       duplicateRecordIds

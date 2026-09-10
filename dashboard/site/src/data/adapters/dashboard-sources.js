@@ -20,26 +20,6 @@ function metadataTimestamp(metadata) {
   return requiredString(metadata['as-of'] ?? metadata['retrieved-at'], 'source metadata timestamp');
 }
 
-/** @param {Record<string, unknown>} sources */
-export function dashboardSourceGeneration(sources) {
-  const repositories = sourceDocument(sources.repositories);
-  const workflows = sourceDocument(sources.workflows);
-  const runs = sourceDocument(sources.runs);
-  const artifactGenerations = new Set(Object.values(sources)
-    .map((source) => sourceDocument(source).metadata['artifact-generation'])
-    .filter((generation) => typeof generation === 'string' && generation));
-  if (artifactGenerations.size > 1) {
-    throw new Error('Dashboard sources contain multiple artifact generations');
-  }
-  const metadata = Object.keys(repositories.metadata).length > 0
-    ? repositories.metadata
-    : Object.keys(workflows.metadata).length > 0 ? workflows.metadata : runs.metadata;
-  return requiredString(
-    [...artifactGenerations][0] ?? metadata['as-of'] ?? metadata['retrieved-at'],
-    'dashboard source generation'
-  );
-}
-
 /** @param {unknown} row */
 function objectRow(row) {
   return row && typeof row === 'object' && !Array.isArray(row)
@@ -52,7 +32,7 @@ function objectRow(row) {
  * view-shaped field names beyond this boundary.
  *
  * @param {Record<string, unknown>} sources
- * @returns {{ generation: string, observations: import('../model/schema.js').CanonicalObservation[] }}
+ * @returns {{ observations: import('../model/schema.js').CanonicalObservation[] }}
  */
 export function adaptDashboardSources(sources) {
   const repositories = sourceDocument(sources.repositories);
@@ -63,7 +43,6 @@ export function adaptDashboardSources(sources) {
   const events = sourceDocument(sources.events);
   const workItems = sourceDocument(sources['work-items']);
   const findings = sourceDocument(sources['security-findings']);
-  const generation = dashboardSourceGeneration(sources);
   /** @type {import('../model/schema.js').CanonicalObservation[]} */
   const observations = [];
   const publishedRunIds = new Set();
@@ -336,5 +315,5 @@ export function adaptDashboardSources(sources) {
     });
   }
 
-  return { generation, observations };
+  return { observations };
 }

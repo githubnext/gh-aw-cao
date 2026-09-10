@@ -121,7 +121,7 @@ describe('canonical dashboard worker retention updates', () => {
     const loaded = await settled((message) => message.id === 1);
     expect(loaded?.error).toBeUndefined();
     const published = await settled((message) => message.subscriptionId === 'events');
-    expect(published).toMatchObject({ subscriptionId: 'events', generation: 'generation-a' });
+    expect(published).toMatchObject({ subscriptionId: 'events' });
 
     posted.length = 0;
     stubFetch(collection('generation-b', [eventRows[1]]));
@@ -135,8 +135,7 @@ describe('canonical dashboard worker retention updates', () => {
 
     const refreshed = await settled((message) => message.id === 2);
     expect(refreshed?.error).toBeUndefined();
-    const republished = await settled((message) =>
-      message.subscriptionId === 'events' && message.generation === 'generation-b');
+    const republished = await settled((message) => message.subscriptionId === 'events');
     const rows = /** @type {{ data: Record<string, { rows: Record<string, unknown>[] }> }} */ (republished)
       .data['event-inspection'].rows;
 

@@ -6,7 +6,6 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
-import { activeGenerationMetadata } from './data/storage/indexeddb.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -15,10 +14,10 @@ import { deriveRuntimeSources } from './runtime-data.js';
 import { deriveWorkflowSources } from './workflow-data.js';
 import { deriveDashboardLinkSources } from './inferred-sources.js';
 
-/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, generation: string } | null} */
+/** @type {{ logicalSources: Record<string, import('./presenter.js').LogicalSourceInput>, revision: number } | null} */
 let liveDashboard = null;
 /**
- * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, generation: string | null }} DashboardSubscription
+ * @typedef {{ sourceNames: string[], context: ReturnType<typeof dashboardContext>, requestContext: { githubUrlBase?: string, dashboardRepository?: string | null }, pagination: Record<string, { limit: number, continuationToken?: string }>, revision: number | null }} DashboardSubscription
  */
 /** @type {Map<string, DashboardSubscription>} */
 const dashboardSubscriptions = new Map();
@@ -29,11 +28,9 @@ let subscriptionFlushRunning = false;
 
 async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
-  const active = await activeGenerationMetadata(indexedDB);
-  if (!active) throw new Error('Canonical dashboard data has not been loaded.');
   liveDashboard = {
     logicalSources: {},
-    generation: active.generation
+    revision: 0
   };
   return liveDashboard;
 }
@@ -71,7 +68,6 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   const canonicalPayload = await queryCanonicalViewSources(
     indexedDB,
     dashboard.logicalSources,
-    dashboard.generation,
     required
   );
   const hasPublishedSources = Object.keys(dashboard.logicalSources).length > 0;
@@ -83,7 +79,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     return paginateDashboardSources(
       deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
       /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-      continuationRevision(context.queries, dashboard.generation)
+      continuationRevision(context.queries, dashboard.revision)
     );
   }
   const derivedSources = deriveRuntimeSources(
@@ -103,7 +99,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
   return paginateDashboardSources(
     deriveDashboardLinkSources(pageScopedSources(querySources, requested), context),
     /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (pagination ?? {}),
-    continuationRevision(context.queries, dashboard.generation)
+    continuationRevision(context.queries, dashboard.revision)
   );
 }
 
@@ -136,7 +132,7 @@ async function flushDashboardSubscriptions() {
         const subscription = dashboardSubscriptions.get(id);
         if (!subscription) return;
         try {
-          const pagination = subscription.generation === dashboard.generation
+          const pagination = subscription.revision === dashboard.revision
             ? subscription.pagination
             : resetPagination(subscription.pagination);
           const data = await queryLiveDashboard(
@@ -148,15 +144,14 @@ async function flushDashboardSubscriptions() {
             dashboard
           );
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
-            subscription.generation = dashboard.generation;
+            subscription.revision = dashboard.revision;
             subscription.pagination = pagination;
-            self.postMessage({ subscriptionId: id, generation: dashboard.generation, data });
+            self.postMessage({ subscriptionId: id, data });
           }
         } catch (error) {
           if (dashboardSubscriptions.get(id) === subscription && liveDashboard === dashboard) {
             self.postMessage({
               subscriptionId: id,
-              generation: dashboard.generation,
               error: error instanceof Error ? error.message : String(error)
             });
           }
@@ -199,7 +194,7 @@ function dashboardContext(value) {
 }
 
 /**
- * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, generation?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
+ * @param {{ operation?: unknown, data?: unknown, operators?: unknown, columns?: unknown, limit?: unknown, sources?: unknown, queries?: unknown, context?: unknown, sourceUrl?: unknown, sourceNames?: unknown, pagination?: unknown, reportActivation?: unknown, emitCurrent?: unknown }} request
  * @param {{ aborted?: boolean }} [signal] cancels declarative query execution
  * @returns {unknown}
  */
@@ -231,17 +226,15 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
-      const hadPublishedSources = Object.keys(liveDashboard?.logicalSources ?? {}).length > 0;
       const sources = await loadDashboardSources(fetch, sourceUrl.href);
-      const { generation, activated } = await ingestDashboardSources(indexedDB, sources, {
+      await ingestDashboardSources(indexedDB, sources, {
         storage: globalThis.navigator?.storage
       });
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
-        generation
+        revision: (liveDashboard?.revision ?? 0) + 1
       };
-      const changed = activated || !hadPublishedSources;
-      if (changed) scheduleDashboardSubscriptions();
+      scheduleDashboardSubscriptions();
       const projected = await queryLiveDashboard(
         requested,
         context,
@@ -250,7 +243,7 @@ export function processDataRequest(request, signal) {
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
       return request.reportActivation
-        ? { sources: projected, changed }
+        ? { sources: projected, changed: true }
         : projected;
     })();
   }
@@ -303,14 +296,8 @@ export function processDataRequest(request, signal) {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
       throw new TypeError('Canonical source requests require a sources object.');
     }
-    if (typeof request.generation !== 'string' || !request.generation.trim()) {
-      throw new TypeError('Canonical source requests require a generation.');
-    }
     const adapted = adaptDashboardSources(/** @type {Record<string, unknown>} */ (request.sources));
-    if (adapted.generation !== request.generation) {
-      throw new TypeError('Canonical source generation changed during processing.');
-    }
-    return normalize(adapted.observations, { generation: request.generation });
+    return normalize(adapted.observations);
   }
   if (!Array.isArray(request?.data) || !Array.isArray(request?.operators)) {
     throw new TypeError('Data worker requests require data and operators arrays.');
@@ -346,7 +333,7 @@ if (typeof document === 'undefined' && typeof self !== 'undefined' && 'postMessa
         context,
         requestContext: /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (event.data.context ?? {}),
         pagination: /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (event.data.pagination ?? {}),
-        generation: liveDashboard?.generation ?? null
+        revision: liveDashboard?.revision ?? null
       });
       if (liveDashboard && event.data.emitCurrent !== false) {
         scheduleDashboardSubscriptions([subscriptionId]);

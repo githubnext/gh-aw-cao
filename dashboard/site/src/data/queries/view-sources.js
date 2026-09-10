@@ -1,6 +1,4 @@
-import { dashboardSourceGeneration } from '../adapters/dashboard-sources.js';
 import { ingestDashboardSources } from '../ingest/coordinator.js';
-import { activeGenerationIsUsable } from '../storage/indexeddb.js';
 import { createCanonicalQueries } from './index.js';
 
 /**
@@ -353,26 +351,23 @@ function namedLogicalSources(sources) {
  * @param {{ ingest?: boolean, storage?: StorageManager }} [options]
  */
 export async function loadCanonicalViewSources(indexedDB, sources, options = {}) {
-  const generation = dashboardSourceGeneration(sources);
   if (options.ingest) {
     await ingestDashboardSources(indexedDB, sources, { storage: options.storage });
   }
-  return projectCanonicalViewSources(indexedDB, sources, generation);
+  return projectCanonicalViewSources(indexedDB, sources);
 }
 
 /**
  * Projects freshly downloaded logical sources through one active canonical
- * generation. Source-shaped rows remain transient and are never cached in
- * IndexedDB.
+ * database. Source-shaped rows remain transient and are never cached in IndexedDB.
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
- * @param {string} generation
  */
-export async function projectCanonicalViewSources(indexedDB, logicalSources, generation) {
+export async function projectCanonicalViewSources(indexedDB, logicalSources) {
   return {
     ...namedLogicalSources(logicalSources),
-    ...await queryCanonicalViewSources(indexedDB, logicalSources, generation, [
+    ...await queryCanonicalViewSources(indexedDB, logicalSources, [
       'repositories',
       'workflows',
       'runs',
@@ -390,13 +385,9 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources, gen
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
- * @param {string} generation
  * @param {string[]} sourceNames
  */
-export async function queryCanonicalViewSources(indexedDB, logicalSources, generation, sourceNames) {
-  if (!await activeGenerationIsUsable(indexedDB, generation)) {
-    throw new Error(`Canonical generation ${generation} is not active and usable`);
-  }
+export async function queryCanonicalViewSources(indexedDB, logicalSources, sourceNames) {
   if (!Array.isArray(sourceNames) || sourceNames.some((name) => typeof name !== 'string')) {
     throw new TypeError('Canonical view source names must be an array of strings.');
   }

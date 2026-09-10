@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ingestDashboardSources, ingestGhAwLogsGeneration, ingestSqlExportGeneration } from '../../src/data/ingest/coordinator.js';
+import { ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
-import { activeGenerationMetadata, DATABASE_NAME, openCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'));
@@ -63,10 +63,9 @@ beforeEach(async () => {
 });
 
 describe('canonical source ingestion and queries', () => {
-  it('ingests current sources and exposes only the active canonical generation', async () => {
-    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toEqual({
-      generation: 'generation-a',
-      activated: true
+  it('upserts current sources for immediate canonical queries', async () => {
+    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({
+      updated: true
     });
     const queries = createCanonicalQueries(indexedDB);
     const repositories = await queries.repositories.list();
@@ -81,21 +80,21 @@ describe('canonical source ingestion and queries', () => {
     expect(await queries.runs.recentFailures()).toHaveLength(1);
   });
 
-  it('skips rebuilding an already active generation', async () => {
+  it('idempotently upserts the same fresh data', async () => {
     await ingestDashboardSources(indexedDB, sources);
 
-    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toEqual({
-      generation: 'generation-a',
-      activated: false
+    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toMatchObject({
+      updated: true
     });
+    const queries = createCanonicalQueries(indexedDB);
+    await expect(queries.repositories.list()).resolves.toHaveLength(1);
   });
 
   it('upserts a complete SQL export onto retained canonical records', async () => {
     await ingestDashboardSources(indexedDB, sources);
 
-    await expect(ingestSqlExportGeneration(indexedDB, sqlExport)).resolves.toEqual({
-      generation: 'warehouse-2026-09-09-05',
-      activated: true
+    await expect(ingestSqlExport(indexedDB, sqlExport)).resolves.toMatchObject({
+      updated: true
     });
 
     const queries = createCanonicalQueries(indexedDB);
@@ -108,10 +107,6 @@ describe('canonical source ingestion and queries', () => {
     ]);
     expect(await queries.events.forSession('session:sql%3Aenterprise-warehouse:session-505'))
       .toHaveLength(2);
-    await expect(activeGenerationMetadata(indexedDB)).resolves.toEqual({
-      generation: 'warehouse-2026-09-09-05',
-      canonicalSchemaVersion: 5
-    });
   });
 
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
@@ -129,9 +124,8 @@ describe('canonical source ingestion and queries', () => {
       }]
     };
 
-    await expect(ingestGhAwLogsGeneration(indexedDB, input)).resolves.toEqual({
-      generation: 'gh-aw-generation-b',
-      activated: true
+    await expect(ingestGhAwLogs(indexedDB, input)).resolves.toMatchObject({
+      updated: true
     });
     const queries = createCanonicalQueries(indexedDB);
     const activeRuns = await queries.runs.list();
@@ -159,28 +153,19 @@ describe('canonical source ingestion and queries', () => {
       }
     });
 
-    await expect(ingestDashboardSources(indexedDB, sources, { storage })).resolves.toMatchObject({
-      generation: 'generation-a',
-      activated: true
-    });
+    await expect(ingestDashboardSources(indexedDB, sources, { storage })).resolves.toMatchObject({ updated: true });
     expect(calls.sort()).toEqual(['estimate', 'persist']);
   });
 
-  it('rebuilds the same source generation when canonical schema metadata is missing', async () => {
+  it('overwrites matching records with fresh source data', async () => {
     await ingestDashboardSources(indexedDB, sources);
-    const database = await openCanonicalDatabase(indexedDB);
-    const transaction = database.transaction('meta', 'readwrite');
-    transaction.objectStore('meta').put({ key: 'activeGeneration', value: 'generation-a' });
-    await new Promise((resolve) => { transaction.oncomplete = resolve; });
-    database.close();
+    const refreshed = structuredClone(sources);
+    Object.assign(refreshed.repositories.rows[0], { visibility: 'private' });
 
-    await expect(ingestDashboardSources(indexedDB, sources)).resolves.toEqual({
-      generation: 'generation-a',
-      activated: true
-    });
-    await expect(activeGenerationMetadata(indexedDB)).resolves.toEqual({
-      generation: 'generation-a',
-      canonicalSchemaVersion: 5
-    });
+    await expect(ingestDashboardSources(indexedDB, refreshed)).resolves.toMatchObject({ updated: true });
+    const queries = createCanonicalQueries(indexedDB);
+    await expect(queries.repositories.list()).resolves.toEqual([
+      expect.objectContaining({ visibility: 'private' })
+    ]);
   });
 });
