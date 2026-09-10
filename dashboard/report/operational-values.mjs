@@ -23,7 +23,7 @@ function normalizeResult(selected, result) {
     deltaFromBaseline: Number.isFinite(result.deltaFromBaseline) ? result.deltaFromBaseline : null,
     evaluatorDigest: result.implementation?.digest || null,
     observation: result.observation || null,
-    observationSource: "logs-json",
+    observationSource: "logs-jsonl",
     diagnostics: result.diagnostics || {},
     error: result.error || null,
   };
@@ -87,11 +87,12 @@ export async function collectOperationalValues() {
     // completeness for prior observations, so degrade to an empty snapshot.
     let logs = { runs: [] };
     try {
-      const parsed = JSON.parse(await readFile(logsPath, "utf8"));
-      if (!Array.isArray(parsed.runs)) throw new Error("unsupported gh-aw logs JSON");
-      logs = parsed;
+      logs.runs = (await readFile(logsPath, "utf8"))
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .map((line) => JSON.parse(line));
     } catch (error) {
-      log.warning`Treating gh-aw logs JSON at ${logsPath} as empty: ${error.message}`;
+      log.warning`Treating gh-aw logs JSONL at ${logsPath} as empty: ${error.message}`;
     }
     log.info`Processing ${logs.runs.length} cached gh-aw log records from ${logsPath}; cache output=${cachePath || "disabled"}`;
 
@@ -161,7 +162,7 @@ export async function collectOperationalValues() {
           runUrl: `https://github.com/${selected.repository}/actions/runs/${selected.runId}`,
           status: "unavailable",
           value: null,
-          observationSource: "logs-json",
+          observationSource: "logs-jsonl",
           observation: null,
           reason: run ? "operational-value result not found" : "run not found in gh-aw logs JSON",
         });
@@ -184,7 +185,7 @@ export async function collectOperationalValues() {
         endAt: evidenceTimes.at(-1) || generatedAt,
       },
       complete: missingRuns === 0,
-      collectionMode: "logs-json",
+      collectionMode: "logs-jsonl",
       selectedRuns: selectedRuns.length,
       observedRuns: records.filter((record) => record.observation).length,
       matureRuns: records.filter((record) => record.observation?.mature).length,

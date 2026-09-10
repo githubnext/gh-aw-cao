@@ -24,6 +24,8 @@ resources:
     destination: .github/aw/activity/run-activity.mjs
   - source: github-telemetry.mjs
     destination: .github/aw/activity/github-telemetry.mjs
+  - source: gh-aw-logs.mjs
+    destination: .github/aw/activity/gh-aw-logs.mjs
   - source: run-health-snapshot.mjs
     destination: .github/aw/activity/run-health-snapshot.mjs
   - source: version.mjs

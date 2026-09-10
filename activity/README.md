@@ -39,7 +39,7 @@ $RUNNER_TEMP/cao-activity/
 ├── control-settings.json
 ├── dashboard-records.json
 ├── deployed-workflows.json
-├── gh-aw-logs.json
+├── gh-aw-logs.jsonl
 ├── gh-aw-logs-state.json
 └── operational-values.json
 ```
@@ -50,7 +50,7 @@ GitHub-backed collection operations record quota observations in `cao-gh.jsonl`.
 
 Consumers should restore the prefix before downloading workflow-run history or collecting dashboard data. If the cache is absent, stale for the consumer's evidence window, incomplete, or outside the required repository scope, they must fetch the missing evidence. The scheduled and manually dispatchable `.github/workflows/activity.yml` workflow is the only cache publisher. When dashboard report resources are not installed, a focused activity installation publishes only `deployed-workflows.json`.
 
-After restoring the cache, a dedicated shell step runs `gh aw logs --audit --artifacts usage --cached-json <snapshot> --count 10 --timeout 10` once for the compiled workflows checked out in the control repository, streaming command output directly to the Actions log. The timeout is expressed in minutes. gh-aw reads and rewrites that cached JSON snapshot, avoiding repeated downloads for runs already collected. The compact usage artifact also supplies `run_summary.json`, `audit.json`, and `aw_info.json`; the report retains normalized audit aggregates and agent, model, runtime, and gh-aw version metadata without publishing raw prompts, messages, arguments, or response bodies. Downloaded run folders remain temporary for same-run collectors; only the refreshed JSON snapshot is retained in the activity cache. The indexer is then a local-only transformer: it combines checked-out workflow metadata with that snapshot and performs no direct GitHub API operations. AI Credit, security, agent-smell, and operational-value collectors consume the same snapshot without starting additional gh-aw history scans or audits.
+After restoring the cache, a dedicated shell step runs `gh aw logs --audit --artifacts usage --cached-jsonl <snapshot> --count 10 --timeout 10` once for the compiled workflows checked out in the control repository, streaming command output directly to the Actions log. The timeout is expressed in minutes. gh-aw reads and rewrites the cached JSONL records, avoiding repeated downloads for runs already collected. The compact usage artifact also supplies `run_summary.json`, `audit.json`, and `aw_info.json`; the report retains normalized audit aggregates and agent, model, runtime, and gh-aw version metadata without publishing raw prompts, messages, arguments, or response bodies. Downloaded run folders remain temporary for same-run collectors; only the refreshed JSONL records are retained in the activity cache. The indexer is then a local-only transformer: it combines checked-out workflow metadata with those records and performs no direct GitHub API operations. AI Credit, security, agent-smell, and operational-value collectors consume the same records without starting additional gh-aw history scans or audits.
 
 Run the `CAO Maintenance` workflow with the `clear-cache` command to delete CAO-managed cache entries, including entries that use legacy CAO cache keys.
 

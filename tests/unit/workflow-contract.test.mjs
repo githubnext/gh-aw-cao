@@ -2928,7 +2928,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
   assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
-  assert.match(buildWorkflow, /Require collected activity data[\s\S]*?control-settings\.json control-plane-inventory\.json deployed-workflows\.json aic-usage\.json operational-values\.json dashboard-records\.json gh-aw-logs\.json/);
+  assert.match(buildWorkflow, /Require collected activity data[\s\S]*?control-settings\.json control-plane-inventory\.json deployed-workflows\.json aic-usage\.json operational-values\.json dashboard-records\.json gh-aw-logs\.jsonl/);
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
   assert.match(buildWorkflow, /name: Cache dashboard artifact for the dispatching workflow[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\n\s+key: cao-dashboard-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(buildWorkflow, /actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: [^\n]*cao-activity|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
@@ -2940,7 +2940,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(buildWorkflow, /REPORT_RECORDS: \$\{\{ runner\.temp \}\}\/cao-activity\/dashboard-records\.json/);
   assert.match(buildWorkflow, /REPORT_DEPLOYED_WORKFLOWS: \$\{\{ runner\.temp \}\}\/cao-activity\/deployed-workflows\.json/);
   assert.match(buildWorkflow, /REPORT_DASHBOARD_SOURCES: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\/\$\{\{ inputs\.site-path \}\}\/sources\.json/);
-  assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.json" "\$REPORT_OUTPUT\/gh-aw-logs\.json"/);
+  assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl" "\$REPORT_OUTPUT\/gh-aw-logs\.jsonl"/);
   assert.match(buildWorkflow, /name: central-agentic-ops-dashboard-data[\s\S]*?\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(buildWorkflow, /legacy dashboard redirects|redirects\.mjs/);
@@ -2975,8 +2975,8 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
-  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/g) || []).length, 2);
-  assert.match(aicUsage, /Processing \$\{result\.runs\.length\} cached gh-aw log records/);
+  assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/g) || []).length, 2);
+  assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.match(activityWorkflow, /REPORT_VALUE_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\/operational-values\.json/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
   assert.match(buildWorkflow, /actions\/cache\/restore@[0-9a-f]{40}/);
@@ -3039,6 +3039,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     { source: "logs.mjs", destination: ".github/aw/activity/logs.mjs" },
     { source: "run-activity.mjs", destination: ".github/aw/activity/run-activity.mjs" },
     { source: "github-telemetry.mjs", destination: ".github/aw/activity/github-telemetry.mjs" },
+    { source: "gh-aw-logs.mjs", destination: ".github/aw/activity/gh-aw-logs.mjs" },
     { source: "run-health-snapshot.mjs", destination: ".github/aw/activity/run-health-snapshot.mjs" },
     { source: "version.mjs", destination: ".github/aw/activity/version.mjs" },
   ]);
@@ -3050,7 +3051,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
   assert.match(workflow, /actions\/cache\/save@[0-9a-f]{40}/);
   assert.match(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity/);
-  assert.match(workflow, /REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.json/);
+  assert.match(workflow, /REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.match(workflow, /issues: read/);
   assert.match(workflow, /pull-requests: read/);
@@ -3069,7 +3070,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /cao-activity-v2-\$\{\{ github\.run_id \}\}-/);
   for (const script of ["activity:local", "activity:local:node", "activity:run-workflow:local"]) {
     assert.match(packageDocument.scripts[script], /REPORT_AIC_CACHE=\$\{RUNNER_TEMP:-\$\{TMPDIR:-\/tmp\}\}\/cao-gh-aw-logs/);
-    assert.match(packageDocument.scripts[script], /REPORT_GH_AW_LOGS=_activity\/gh-aw-logs\.json/);
+    assert.match(packageDocument.scripts[script], /REPORT_GH_AW_LOGS=_activity\/gh-aw-logs\.jsonl/);
     assert.doesNotMatch(packageDocument.scripts[script], /REPORT_AIC_CACHE=_activity/);
   }
   assert.match(maintenanceWorkflow, /name: CAO Maintenance/);
@@ -3151,7 +3152,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /horizontal page scrolling/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
   assert.match(deployedDataTest, /ingestDashboardSources\(indexedDB, sources\)/);
-  assert.match(deployedDataTest, /new URL\("gh-aw-logs\.json", deployedSourcesUrl\)/);
+  assert.match(deployedDataTest, /new URL\("gh-aw-logs\.jsonl", deployedSourcesUrl\)/);
   assert.match(deployedDataTest, /"aw", "logs"[\s\S]*?"--artifacts", "firewall"/);
   assert.match(deployedDataTest, /readRunTimeline\(/);
   for (const source of ["workflows", "runs", "events"]) {

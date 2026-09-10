@@ -8,7 +8,7 @@ import test from "node:test";
 
 const execFileAsync = promisify(execFile);
 
-test("activity cache reuses and rewrites only the gh-aw logs JSON across runs", async () => {
+test("activity cache reuses and rewrites only the gh-aw logs JSONL across runs", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "activity-cache-e2e-"));
   const repository = path.join(root, "repository");
   const bin = path.join(root, "bin");
@@ -25,19 +25,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 const args = process.argv.slice(2);
 if (args[0] === "aw") {
-  const cachedJson = args[args.indexOf("--cached-json") + 1];
+  const cachedJson = args[args.indexOf("--cached-jsonl") + 1];
   const output = args[args.indexOf("--output") + 1];
-  const cached = JSON.parse(fs.readFileSync(cachedJson, "utf8"));
-  fs.writeFileSync(process.env.CACHED_RUNS_PATH, JSON.stringify(cached.runs.map((run) => run.database_id)));
+  const cached = fs.readFileSync(cachedJson, "utf8").trim().split(/\\r?\\n/).filter(Boolean).map(JSON.parse);
+  fs.writeFileSync(process.env.CACHED_RUNS_PATH, JSON.stringify(cached.map((run) => run.database_id)));
   fs.mkdirSync(path.join(output, \`run-\${process.env.FAKE_RUN_ID}\`, "agent"), { recursive: true });
   fs.writeFileSync(path.join(output, \`run-\${process.env.FAKE_RUN_ID}\`, "agent", "events.jsonl"), "{}\\n");
-  cached.runs.push({
+  cached.push({
     database_id: Number(process.env.FAKE_RUN_ID),
     repository: process.env.GITHUB_REPOSITORY,
     workflow_path: ".github/workflows/sample.lock.yml",
     status: "completed"
   });
-  fs.writeFileSync(cachedJson, JSON.stringify(cached));
+  fs.writeFileSync(cachedJson, cached.map(JSON.stringify).join("\\n") + "\\n");
 } else {
   process.stdout.write('{"jobs":[]}');
 }
@@ -50,7 +50,7 @@ if (args[0] === "aw") {
     if (runNumber > 1) await cp(savedCache, activityCache, { recursive: true });
     else {
       await mkdir(activityCache, { recursive: true });
-      await writeFile(path.join(activityCache, "gh-aw-logs.json"), '{"runs":[]}\n');
+      await writeFile(path.join(activityCache, "gh-aw-logs.jsonl"), "");
     }
     const artifacts = path.join(runnerTemp, "cao-gh-aw-logs");
     const exitCodePath = path.join(runnerTemp, "gh-aw-logs-exit-code");
@@ -60,7 +60,7 @@ if (args[0] === "aw") {
       PATH: `${bin}:${process.env.PATH}`,
       GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
       REPORT_ROOT: repository,
-      REPORT_GH_AW_LOGS: path.join(activityCache, "gh-aw-logs.json"),
+      REPORT_GH_AW_LOGS: path.join(activityCache, "gh-aw-logs.jsonl"),
       REPORT_GH_AW_LOGS_STATE: path.join(activityCache, "gh-aw-logs-state.json"),
       REPORT_GH_AW_LOGS_EXIT_CODE: exitCodePath,
       REPORT_AIC_CACHE: artifacts,
@@ -79,7 +79,7 @@ if (args[0] === "aw") {
     assert.deepEqual(JSON.parse(await readFile(first.cachedRunsPath, "utf8")), []);
     assert.deepEqual((await readdir(savedCache)).sort(), [
       "gh-aw-logs-state.json",
-      "gh-aw-logs.json",
+      "gh-aw-logs.jsonl",
     ]);
     assert.equal(
       await readFile(path.join(first.artifacts, "run-41", "agent", "events.jsonl"), "utf8"),
@@ -88,11 +88,11 @@ if (args[0] === "aw") {
 
     const second = await runActivity(2);
     assert.deepEqual(JSON.parse(await readFile(second.cachedRunsPath, "utf8")), [41]);
-    const refreshed = JSON.parse(await readFile(path.join(savedCache, "gh-aw-logs.json"), "utf8"));
-    assert.deepEqual(refreshed.runs.map((run) => run.database_id), [41, 42]);
+    const refreshed = (await readFile(path.join(savedCache, "gh-aw-logs.jsonl"), "utf8")).trim().split(/\r?\n/).map(JSON.parse);
+    assert.deepEqual(refreshed.map((run) => run.database_id), [41, 42]);
     assert.deepEqual((await readdir(savedCache)).sort(), [
       "gh-aw-logs-state.json",
-      "gh-aw-logs.json",
+      "gh-aw-logs.jsonl",
     ]);
   } finally {
     await rm(root, { recursive: true, force: true });

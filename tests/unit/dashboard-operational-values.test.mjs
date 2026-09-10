@@ -8,10 +8,10 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-test("operational-value collection processes the shared gh-aw logs JSON", async () => {
+test("operational-value collection processes the shared gh-aw logs JSONL", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
+  const logsPath = path.join(root, "gh-aw-logs.jsonl");
   const outputPath = path.join(root, "operational-values.json");
   const cachePath = path.join(root, "observations.json");
   await writeFile(inventoryPath, JSON.stringify({
@@ -27,7 +27,6 @@ test("operational-value collection processes the shared gh-aw logs JSON", async 
     }],
   }));
   await writeFile(logsPath, JSON.stringify({
-    runs: [{
       database_id: 42,
       graders: {
         results: [{
@@ -51,8 +50,7 @@ test("operational-value collection processes the shared gh-aw logs JSON", async 
           diagnostics: { quality: 0.8 },
         }],
       },
-    }],
-  }));
+  }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [
@@ -68,11 +66,11 @@ test("operational-value collection processes the shared gh-aw logs JSON", async 
       },
     });
     const output = JSON.parse(await readFile(outputPath, "utf8"));
-    assert.equal(output.collectionMode, "logs-json");
+    assert.equal(output.collectionMode, "logs-jsonl");
     assert.equal(output.complete, true);
     assert.equal(output.observedRuns, 1);
     assert.equal(output.records[0].runAttempt, 2);
-    assert.equal(output.records[0].observationSource, "logs-json");
+    assert.equal(output.records[0].observationSource, "logs-jsonl");
     assert.equal(output.records[0].value, 0.8);
     assert.equal(output.definitions[0].operationalValue, "Ship a verified outcome.");
     assert.deepEqual(output.definitions[0].diagnosticMetrics, [{ id: "quality" }]);
@@ -85,7 +83,7 @@ test("operational-value collection processes the shared gh-aw logs JSON", async 
 test("operational-value collection defaults its cache to the output path when REPORT_VALUE_CACHE is unset", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
+  const logsPath = path.join(root, "gh-aw-logs.jsonl");
   const outputPath = path.join(root, "operational-values.json");
   const inventory = {
     runHealth: { windowStart: "2026-09-01T00:00:00Z" },
@@ -101,7 +99,6 @@ test("operational-value collection defaults its cache to the output path when RE
   };
   await writeFile(inventoryPath, JSON.stringify(inventory));
   await writeFile(logsPath, JSON.stringify({
-    runs: [{
       database_id: 42,
       graders: {
         results: [{
@@ -113,8 +110,7 @@ test("operational-value collection defaults its cache to the output path when RE
           observation: { evidenceAt: "2026-09-06T10:00:00Z" },
         }],
       },
-    }],
-  }));
+  }) + "\n");
 
   const run = () => execFileAsync(process.execPath, [
     path.resolve("dashboard/report/operational-values.mjs"),
@@ -149,7 +145,7 @@ test("operational-value collection defaults its cache to the output path when RE
 test("operational-value collection treats non-array graders.results as no result", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
+  const logsPath = path.join(root, "gh-aw-logs.jsonl");
   const outputPath = path.join(root, "operational-values.json");
   await writeFile(inventoryPath, JSON.stringify({
     runHealth: { windowStart: "2026-09-01T00:00:00Z" },
@@ -164,12 +160,10 @@ test("operational-value collection treats non-array graders.results as no result
     }],
   }));
   await writeFile(logsPath, JSON.stringify({
-    runs: [{
       database_id: 42,
       // Simulates schema drift/partial data where graders.results is not an array.
       graders: { results: null },
-    }],
-  }));
+  }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [
@@ -194,7 +188,7 @@ test("operational-value collection treats non-array graders.results as no result
 test("operational-value collection ignores malformed diagnostics entries instead of crashing", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
+  const logsPath = path.join(root, "gh-aw-logs.jsonl");
   const outputPath = path.join(root, "operational-values.json");
   await writeFile(inventoryPath, JSON.stringify({
     runHealth: { windowStart: "2026-09-01T00:00:00Z" },
@@ -209,7 +203,6 @@ test("operational-value collection ignores malformed diagnostics entries instead
     }],
   }));
   await writeFile(logsPath, JSON.stringify({
-    runs: [{
       database_id: 42,
       graders: {
         results: [{
@@ -235,8 +228,7 @@ test("operational-value collection ignores malformed diagnostics entries instead
           diagnostics: { quality: 0.8 },
         }],
       },
-    }],
-  }));
+  }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [
@@ -258,10 +250,10 @@ test("operational-value collection ignores malformed diagnostics entries instead
   }
 });
 
-test("operational-value collection degrades to an empty snapshot when the shared logs JSON is unreadable", async () => {
+test("operational-value collection degrades to an empty snapshot when the shared logs JSONL is unreadable", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-operational-values-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
+  const logsPath = path.join(root, "gh-aw-logs.jsonl");
   const outputPath = path.join(root, "operational-values.json");
   const cachePath = path.join(root, "observations.json");
   await writeFile(inventoryPath, JSON.stringify({
@@ -276,7 +268,7 @@ test("operational-value collection degrades to an empty snapshot when the shared
       },
     }],
   }));
-  // Malformed logs JSON (missing "runs" array) must not crash the collector
+  // Malformed logs JSONL must not crash the collector
   // when a prior cache exists to drive output completeness.
   await writeFile(logsPath, JSON.stringify({ notRuns: [] }));
   await writeFile(cachePath, JSON.stringify({
@@ -292,7 +284,7 @@ test("operational-value collection degrades to an empty snapshot when the shared
       value: 0.8,
       evaluatorDigest: "digest",
       observation: { evidenceAt: "2026-09-05T10:00:00Z", mature: true },
-      observationSource: "logs-json",
+      observationSource: "logs-jsonl",
     }],
     definitions: [],
   }));

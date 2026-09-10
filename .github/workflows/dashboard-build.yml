@@ -70,7 +70,7 @@ jobs:
         env:
           ACTIVITY_DATA_ROOT: ${{ runner.temp }}/cao-activity
         run: |
-          for file in control-settings.json control-plane-inventory.json deployed-workflows.json aic-usage.json operational-values.json dashboard-records.json gh-aw-logs.json; do
+          for file in control-settings.json control-plane-inventory.json deployed-workflows.json aic-usage.json operational-values.json dashboard-records.json gh-aw-logs.jsonl; do
             if [[ ! -f "$ACTIVITY_DATA_ROOT/$file" ]]; then
               echo "Collected activity data is unavailable: $file" >&2
               exit 1
@@ -102,7 +102,7 @@ jobs:
               "$REPORT_OUTPUT/dashboard.json" \
               .github/aw/dashboards
           fi
-          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.json" "$REPORT_OUTPUT/gh-aw-logs.json"
+          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
 
       - name: Build Dashboard Language sources
         env:
