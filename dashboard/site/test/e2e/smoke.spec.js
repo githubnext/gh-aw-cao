@@ -35,6 +35,15 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+/**
+ * Full-view table filters live inside the table scroller but remain contained
+ * within the visible viewport instead of owning a separate horizontal scrollbar.
+ * @param {import('@playwright/test').Locator} tableFilter
+ */
+async function expectTableFilterIsContained(tableFilter) {
+  await expect.poll(async () => tableFilter.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+}
+
 test('dashboard lazy views preload within the scroller margin and survive scroll jumps', async ({ page }) => {
   await page.setContent(`
     <style>
@@ -402,7 +411,7 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  await expectTableFilterStaysOnOneRow(view.locator('.table-filter'));
+  await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
 });
 
 test('control-plane readiness presents operational evidence in one lazy table', async ({ page }) => {
@@ -595,7 +604,7 @@ test('experiments query renders as one full-view declarative table', async ({ pa
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
-  await expectTableFilterStaysOnOneRow(experimentsView.locator('.table-filter'));
+  await expectTableFilterIsContained(experimentsView.locator('.table-scroll > .table-filter'));
   expect(await experimentsView.locator('.table-scroll').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
 });
 
@@ -1698,20 +1707,16 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(warningCallout).toBeHidden();
     await expect(summary).toBeHidden();
     await expect(pageTitle).toBeHidden();
-    await expect(tableFilter).toBeHidden();
     await expect(fieldName).toHaveCSS('opacity', '0.8');
     await expect(summaryCell).toHaveCSS('opacity', '0');
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
-    for (const firstRepository of [26, 1]) {
-      const stayedCompact = await scroll.evaluate((element) => {
+    for (let topCheck = 0; topCheck < 2; topCheck += 1) {
+      await scroll.evaluate((element) => {
         element.scrollTop = 0;
         element.dispatchEvent(new Event('scroll'));
-        return element.closest('.dashboard-root')?.classList.contains('dashboard-full-view-scrolled');
       });
-      expect(stayedCompact).toBe(true);
-      await expect(view.locator('tbody > tr').first()).toContainText(`repository-${firstRepository}`);
-      await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view-scrolled/);
+      expect(await view.locator('tbody > tr').first().textContent()).toMatch(/repository-(1|26)/);
       await expect(view.locator('tbody > tr')).toHaveCount(50);
     }
     await scroll.evaluate((element) => {

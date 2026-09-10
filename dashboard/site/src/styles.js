@@ -448,8 +448,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
 .dashboard-root.dashboard-full-view-scrolled .org-sidebar,
 .dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav,
-.dashboard-root.dashboard-full-view-scrolled .site-callouts,
-.dashboard-root.dashboard-full-view-scrolled .custom-view[data-view-layout="full-view"] .table-filter { display: none; }
+.dashboard-root.dashboard-full-view-scrolled .site-callouts { display: none; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll thead > tr:first-child > th,
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-summary-row > th { transition: opacity 160ms ease; }
 .dashboard-root.dashboard-full-view-scrolled .custom-view[data-view-layout="full-view"] .table-scroll thead > tr:first-child > th { opacity: .8; }
