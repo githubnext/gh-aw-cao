@@ -45,8 +45,8 @@ describe("live Dashboard Language sources", () => {
     expect(preview).toContain('renderSources(renderedSources, "ready", renderedSourcesPrepared, renderedPageSourceLoader, renderedHorizonSourceLoader)');
     expect(preview).toContain('event: "preview.rendered"');
     expect(preview).toContain('get("local-preview")');
-    expect(preview).toMatch(/previewMode\s*\?\s*await fetch\("\.\/viewer\.json"\)/);
-    expect(preview).toContain('viewer: localViewer');
+    expect(preview).not.toContain('fetch("./viewer.json")');
+    expect(preview).not.toContain('viewer: localViewer');
     expect(preview).toContain('new URL("./__dashboard_socket", window.location.href)');
     expect(preview).toContain('previewMode === "copilot"');
     expect(preview).toContain('await import("./copilot-prompt.js")');

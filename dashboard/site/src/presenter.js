@@ -496,6 +496,37 @@ function renderNavItem(page, isActive, mobileOverflow = false, narrowMobileOverf
 }
 
 /**
+ * @param {HTMLElement} root
+ * @param {HTMLElement} overviewPage
+ */
+function syncOverviewAttentionNavigation(root, overviewPage) {
+  const summary = overviewPage.querySelector('.home-attention-summary[data-attention-count]');
+  const link = root.querySelector('[data-nav-page-id="overview"]');
+  if (!(summary instanceof HTMLElement) || !(link instanceof HTMLAnchorElement)) return;
+  const count = Number(summary.dataset.attentionCount);
+  const badge = link.querySelector('.nav-attention-count');
+  const title = link.title || 'Overview';
+  if (!Number.isFinite(count) || count <= 0) {
+    badge?.remove();
+    link.setAttribute('aria-label', title);
+    return;
+  }
+  const countText = String(count);
+  const attentionLabel = count === 1 ? '1 item needs your attention' : `${countText} items need your attention`;
+  if (badge instanceof HTMLElement) {
+    badge.textContent = countText;
+    badge.dataset.digits = String(countText.length);
+  } else {
+    link.append(h('span', {
+      className: 'nav-attention-count',
+      'aria-hidden': 'true',
+      dataset: { digits: String(countText.length) }
+    }, countText));
+  }
+  link.setAttribute('aria-label', `${title}, ${attentionLabel}`);
+}
+
+/**
  * @param {PresentableBuiltInPage | PresentableCustomPage} page
  * @param {boolean} isActive
  * @returns {HTMLElement}
@@ -1185,6 +1216,10 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
           });
           root.replaceChildren(...replacement.children);
           enableLazyViews(root);
+          const dashboardRoot = root.closest('.dashboard-root');
+          if (dashboardRoot instanceof HTMLElement && root.dataset.pageId === 'overview') {
+            syncOverviewAttentionNavigation(dashboardRoot, root);
+          }
           dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');
         }).catch(() => {});
       };
@@ -1543,6 +1578,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           currentPage.replaceWith(renderedPage);
           pages[pageIndex] = renderedPage;
           enableLazyViews(renderedPage);
+          if (renderedPage.dataset.pageId === 'overview') syncOverviewAttentionNavigation(root, renderedPage);
           placeDashboardHorizon(renderedPage);
           syncFullViewMode(renderedPage);
           if (deferPopulation) {

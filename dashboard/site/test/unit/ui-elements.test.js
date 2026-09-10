@@ -839,7 +839,8 @@ describe('UI elements', () => {
     for (const href of ['failed-runs', 'blocked-work', 'awaiting-review', 'security-findings']) {
       expect(rendered?.querySelector(`[href="#page-overview-${href}"] strong`)?.textContent).toBe('1');
     }
-    expect(rendered?.querySelector('h3')?.textContent).toBe('4 items need your attention');
+    expect(rendered?.querySelector('.home-attention-heading-text')?.textContent).toBe('4 items need your attention');
+    expect(rendered?.querySelectorAll('.home-attention-arrow')).toHaveLength(4);
     expect([...rendered?.querySelectorAll('.home-attention-icon .octicon') ?? []].map((icon) => icon.classList[1])).toEqual([
       'octicon-x-circle',
       'octicon-stop',
@@ -912,6 +913,7 @@ describe('UI elements', () => {
     expect(rendered?.querySelector('.home-attention-metric strong')?.textContent).toBe('0');
     expect(rendered?.querySelector('.home-attention-metric[href]')).toBeNull();
     expect(rendered?.querySelectorAll('.home-attention-metric-empty')).toHaveLength(4);
+    expect(rendered?.querySelector('.home-attention-arrow')).toBeNull();
     expect(rendered?.querySelectorAll('.home-attention-icon-active')).toHaveLength(0);
     expect(rendered?.querySelectorAll('.home-attention-count-active')).toHaveLength(0);
     expect(rendered?.querySelectorAll('.home-attention-label-active')).toHaveLength(0);

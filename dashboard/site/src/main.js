@@ -83,11 +83,6 @@
       /** @type {(() => Promise<Record<string, import('./presenter.js').LogicalSourceInput>>) | undefined} */
       let renderedHorizonSourceLoader;
       const previewMode = new URLSearchParams(window.location.search).get("local-preview");
-      const localViewer = previewMode
-        ? await fetch("./viewer.json")
-          .then((response) => response.ok ? response.json() : null)
-          .catch(() => null)
-        : null;
       /** @type {WebSocket | undefined} */
       let dashboardSocket;
       if (previewMode) {
@@ -187,7 +182,6 @@
         const dashboard = renderDashboard({
           document: dashboardDocument,
           sources,
-          viewer: localViewer,
           prepared,
           loading: state === "loading",
           loadPageSources,

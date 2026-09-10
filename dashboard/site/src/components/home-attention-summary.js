@@ -31,18 +31,25 @@ function effectiveInterval(time) {
     : 'the selected dashboard horizon';
 }
 
+/** @param {Record<string, import('../presenter.js').LogicalSourceInput>} sources */
+function homeAttentionRows(sources) {
+  const runs = rowsFor(sources, 'runs');
+  const workItems = rowsFor(sources, 'work-items');
+  return {
+    failedRuns: runs.filter((row) => isFailureConclusion(row['run-conclusion'])),
+    blockedWork: workItems.filter((row) => row['lifecycle-state'] === 'blocked'),
+    awaitingReview: workItems.filter((row) => row['lifecycle-state'] === 'review'),
+    securityFindings: rowsFor(sources, 'security-findings')
+  };
+}
+
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderHomeAttentionSummary(context) {
   const interval = effectiveInterval(context.time);
   const runEvidence = evidenceState(context.sources.runs);
   const workEvidence = evidenceState(context.sources['work-items']);
   const securityEvidence = evidenceState(context.sources['security-findings']);
-  const runs = rowsFor(context.sources, 'runs');
-  const workItems = rowsFor(context.sources, 'work-items');
-  const securityFindings = rowsFor(context.sources, 'security-findings');
-  const failedRuns = runs.filter((row) => isFailureConclusion(row['run-conclusion']));
-  const blockedWork = workItems.filter((row) => row['lifecycle-state'] === 'blocked');
-  const awaitingReview = workItems.filter((row) => row['lifecycle-state'] === 'review');
+  const { failedRuns, blockedWork, awaitingReview, securityFindings } = homeAttentionRows(context.sources);
   const metrics = [
     {
       count: metricCount(failedRuns.length, runEvidence),
@@ -63,7 +70,7 @@ export function renderHomeAttentionSummary(context) {
       label: 'Awaiting review',
       href: '#page-overview-awaiting-review',
       icon: 'person',
-      tone: 'attention'
+      tone: 'review'
     },
     {
       count: metricCount(securityFindings.length, securityEvidence),
@@ -74,6 +81,7 @@ export function renderHomeAttentionSummary(context) {
     }
   ];
   const attentionCount = failedRuns.length + blockedWork.length + awaitingReview.length + securityFindings.length;
+  const heading = attentionCount === 1 ? '1 item needs your attention' : `${attentionCount} items need your attention`;
   const hasObservedAttention = attentionCount > 0;
   const evidenceGaps = [
     [runEvidence, 'failed runs'],
@@ -92,8 +100,12 @@ export function renderHomeAttentionSummary(context) {
         state: 'incomplete'
       };
 
-  return h('section', { className: 'home-attention-summary', 'aria-label': 'Needs your attention' },
-    h(context.headingTag, null, attentionCount === 1 ? '1 item needs your attention' : `${attentionCount} items need your attention`),
+  return h('section', {
+    className: 'home-attention-summary',
+    'aria-label': 'Needs your attention',
+    'data-attention-count': String(attentionCount)
+  },
+    h(context.headingTag, null, h('span', { className: 'home-attention-heading-text' }, heading)),
     quietState ? h('div', { className: `home-attention-empty home-attention-empty-${quietState.state}` },
       h('strong', null, quietState.title),
       h('p', null, quietState.detail)
@@ -114,6 +126,7 @@ export function renderHomeAttentionSummary(context) {
         }, metric.label),
         h('span', {
           className: `home-attention-icon${hasItems ? ' home-attention-icon-active' : ''}`
-        }, octicon(metric.icon)));
+        }, octicon(metric.icon)),
+        isEmpty ? null : h('span', { className: 'home-attention-arrow', 'aria-hidden': 'true' }, octicon('arrow-right')));
       })));
 }

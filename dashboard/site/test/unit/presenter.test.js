@@ -1061,6 +1061,34 @@ describe('presenter built-in and custom pages', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('shows the rendered attention total on the Overview navigation item', async () => {
+    const metadata = /** @type {const} */ ({
+      'source-id': 'overview-attention-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-10T08:00:00Z',
+      'retrieved-at': '2026-09-10T08:01:00Z',
+      completeness: 'complete', freshness: 'fresh', availability: 'available'
+    });
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        runs: { source: 'runs', rows: [{ 'run-conclusion': 'failure' }, { 'run-conclusion': 'timed-out' }], metadata },
+        'work-items': { source: 'work-items', rows: [{ 'lifecycle-state': 'blocked' }, { 'lifecycle-state': 'review' }], metadata },
+        'security-findings': { source: 'security-findings', rows: [{ 'smell-id': 'unsafe-output' }], metadata }
+      }
+    });
+
+    document.body.append(rendered);
+    const overviewPage = await activatePage(rendered, 'overview');
+    const overviewLink = rendered.querySelector('[data-nav-page-id="overview"]');
+    expect(overviewPage?.querySelector('.home-attention-summary')?.getAttribute('data-attention-count')).toBe('5');
+    expect(overviewLink?.querySelector('.nav-attention-count')?.textContent).toBe('5');
+    expect(overviewLink?.querySelector('.nav-attention-count')?.getAttribute('aria-hidden')).toBe('true');
+    expect(overviewLink?.getAttribute('aria-label')).toBe('Overview, 5 items need your attention');
+    expect(rendered.querySelector('[data-nav-page-id="repositories"] .nav-attention-count')).toBeNull();
+    rendered.remove();
+  });
+
   it('does not turn agent smells into Home notifications', async () => {
     window.history.replaceState(null, '', '/#page-agents');
     const metadata = /** @type {const} */ ({
