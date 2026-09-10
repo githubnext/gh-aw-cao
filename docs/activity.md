@@ -22,50 +22,41 @@ be refreshed; the snapshot is not permanent historical authority.
 
 ```mermaid
 sequenceDiagram
-    participant Activity as activity.yml
+  participant GitHub as GitHub evidence
+  participant Activity as CAO Activity
     participant Cache as Actions cache
-    participant Build as dashboard-build.yml
-    participant Adapter as dashboard-language-sources.mjs
-    participant Artifact as Dashboard artifact
-    participant Worker as Browser data worker
-    participant IDB as IndexedDB
+  participant Build as Dashboard Build
+  participant Artifact as Static artifact
+  participant Browser as Browser worker + IndexedDB
 
-    Activity->>Activity: Collect logs, usage, inventory, and outcomes
-    Activity->>Activity: Normalize and index the snapshot
+  rect rgb(218, 251, 225)
+    GitHub->>Activity: Logs, usage, inventory, outcomes
+    Activity->>Activity: Normalize and index
     Activity->>Cache: Save cao-activity-v2-* snapshot
+  end
 
+  rect rgb(221, 244, 255)
     Build->>Cache: Restore latest cao-activity-v2-*
     alt Cache miss
-        Cache-->>Build: No compatible snapshot
-        Build-->>Build: Fail closed
-    else Snapshot restored
-        Cache-->>Build: Cached JSON files
-        Build->>Adapter: Read activity snapshot
-        Adapter->>Adapter: Normalize usage and logical-source rows
-        Adapter-->>Build: Write sources.json
-        Build->>Artifact: Upload static site and sources
-        Artifact-->>Worker: Load source manifest and requested sources
-        Worker->>Worker: Adapt and normalize canonical entities
-        Worker->>IDB: Stage, validate, and activate generation
-        IDB-->>Worker: Serve bounded page queries
+      Cache-->>Build: Missing snapshot
+      Build-->>Build: Stop build
+    else Cache hit
+      Cache-->>Build: Snapshot JSON
+      Build->>Build: Adapt records to sources.json
+      Build->>Artifact: Publish site + sources
+      Artifact-->>Browser: Load manifest and requested sources
+      Browser->>Browser: Normalize, persist, and query generation
     end
-
-    Note over Activity,Build: Dashboard Build never dispatches Activity or runs the indexer
+    end
 ```
 
-The sequence separates collection from rendering. Activity owns GitHub data
-acquisition, indexing, normalization, and publication of the immutable cache
-snapshot. Dashboard Build has read-only Actions access: it restores the latest
-compatible snapshot and fails on a cache miss instead of starting a competing
-Activity run. The adapter mines each retained usage record into Dashboard
-Language table rows, including engine, model, token, cache-token, AI Credit,
-estimated-cost, and source-health fields.
-
-The browser reads the built report; it does not call GitHub APIs directly. Its
-data worker keeps noncanonical logical sources in memory and persists only the
-normalized Repository, Workflow, Run, Job, Session, and Event generation in
-IndexedDB. Overview applies the selected horizon to bounded query results and
-uses source health to distinguish a real zero from missing data.
+Activity owns collection, indexing, normalization, and cache publication.
+Dashboard Build only restores that snapshot and adapts its records to Dashboard
+Language sources; a cache miss stops the build. In the browser, the data worker
+keeps logical sources in memory and stores only the normalized Repository,
+Workflow, Run, Job, Session, and Event generation in IndexedDB. See
+[Dashboard data model](dashboard-data-model.md) for identities, relationships,
+activation, and query behavior.
 
 ## What `activity/aw.yml` installs
 
