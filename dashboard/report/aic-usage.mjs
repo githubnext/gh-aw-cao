@@ -581,6 +581,14 @@ function tokenUsage(run) {
   } : null;
 }
 
+function primaryModelId(run) {
+  const byModel = run?.token_usage_summary?.by_model;
+  if (!byModel || typeof byModel !== "object" || Array.isArray(byModel)) return "";
+  return Object.entries(byModel)
+    .map(([model, usage]) => ({ model, aic: Number(usage?.aic) || 0 }))
+    .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model || "";
+}
+
 async function readRunEvals(outputDirectory, runId, evidence = null) {
   const { files } = evidence || await loadRunEvidence(outputDirectory, runId);
   const evalFiles = files.filter((file) => path.basename(file) === "evals.jsonl");
@@ -716,7 +724,7 @@ export async function collectAicUsage() {
           createdAt: run.created_at || run.started_at || metadata.run?.createdAt || null,
           agentId: firstText(run.agent_id, run.agent, run.engine_id),
           agentVersion: firstText(run.agent_version, run.engine_version),
-          modelId: firstText(run.model_id, run.resolved_model, run.model),
+          modelId: firstText(run.model_id, run.resolved_model, run.model, primaryModelId(run)),
           ghAwVersion: firstText(run.gh_aw_version, run.ghAwVersion, run.cli_version, run.version),
           engine: firstText(run.engine, run.agentic_engine, run.agent_engine),
           engineVersion: firstText(run.engine_version, run.agentic_engine_version, run.agent_engine_version, run.agent_version),

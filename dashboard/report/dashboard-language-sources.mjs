@@ -786,7 +786,7 @@ function runRows(deployed, usage) {
         ...(run.resourceResetAt ? { "resource-reset-at": run.resourceResetAt } : {}),
         ...(Number.isFinite(run.resourceWaitHours) ? { "resource-wait-hours": run.resourceWaitHours } : {}),
         "rollout-mode": rolloutMode(run.displayTitle),
-        "agent-id": firstText(usageRun.agentId, usageRun.engine) || "unknown",
+        "agent-id": firstText(usageRun.agentId) || "unknown",
         "agent-version": firstText(usageRun.agentVersion, usageRun.engineVersion) || "unknown",
         "model-id": firstText(usageRun.modelId, usageRun.resolvedModel, usageRun.requestedModel) || "unknown",
         "gh-aw-version": firstText(usageRun.ghAwVersion) || "unknown",
