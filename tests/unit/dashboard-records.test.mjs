@@ -41,12 +41,6 @@ test("dashboard records retain durable-output target and run attribution", async
     else if (url.pathname.endsWith("/issues/comments")) value = [];
     else if (url.pathname.endsWith("/actions/artifacts")) value = { artifacts: [] };
     else if (url.pathname.endsWith("/actions/workflows")) value = { workflows: [] };
-    else if (url.pathname.endsWith("/actions/runs/42")) value = {
-      name: "Maintenance / Worker",
-      path: ".github/workflows/maintenance-worker.lock.yml",
-      display_title: "Maintenance / Worker · live",
-      conclusion: "success",
-    };
     else throw new Error(`Unexpected request: ${url}`);
     return new Response(JSON.stringify(value), { status: 200 });
   };
@@ -60,7 +54,17 @@ test("dashboard records retain durable-output target and run attribution", async
     },
     inventory,
     deployedInventory: {
-      workflows: [{ repository: "acme/control" }],
+      workflows: [{
+        repository: "acme/control",
+        path: ".github/workflows/maintenance-worker.lock.yml",
+        name: "Maintenance / Worker",
+        runHealth: { runRecords: [{
+          repository: "acme/control",
+          runId: 42,
+          displayTitle: "Maintenance / Worker · live",
+          conclusion: "success",
+        }] },
+      }],
       allowedRepositories: ["acme/service"],
     },
     fetchImpl,
@@ -237,185 +241,13 @@ test("dashboard records cannot widen checked-in repository policy", async () => 
   }), /cannot widen checked-in control policy/);
 });
 
-test("dashboard records discover gh-aw workflows in allowed repositories", async () => {
-  const lockSource = [
-    '# gh-aw-metadata: {"compiler_version":"v0.88.7","strict":true}',
-    '# gh-aw-manifest: {"version":1,"actions":[]}',
-  ].join("\n");
-  let lockSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  const commitSha = "cccccccccccccccccccccccccccccccccccccccc";
-  let failNextDownload = false;
-  let rateLimitNextDownload = false;
-  let lockDownloads = 0;
-  let renamedRepositoryMetadataRequests = 0;
-  const fetchImpl = async (input) => {
-    const url = new URL(input);
-    if (url.pathname === "/repos/acme/control") {
-      return new Response(JSON.stringify({ ...publicRepositoryMetadata, id: 1, full_name: "acme/control" }), { status: 200 });
-    }
-    if (url.pathname === "/repos/acme/service" || url.pathname === "/repos/acme/old-service") {
-      if (url.pathname.endsWith("/old-service")) renamedRepositoryMetadataRequests += 1;
-      return new Response(JSON.stringify({
-        id: 2,
-        full_name: "acme/service",
-        private: false,
-        visibility: "public",
-        default_branch: "main",
-      }), { status: 200 });
-    }
-    if (url.pathname === "/repos/acme/service/commits/main") {
-      return new Response(JSON.stringify({ sha: commitSha }), { status: 200 });
-    }
-    if (url.pathname === "/repos/github/gh-aw/releases/latest") {
-      return new Response(JSON.stringify({ tag_name: "v0.89.0" }), { status: 200 });
-    }
-    if (url.pathname === "/repos/acme/service/actions/workflows") {
-      return new Response(JSON.stringify({
-        workflows: [
-          { name: "Remote agent", path: ".github/workflows/remote-agent.lock.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/remote-agent.lock.yml" },
-          { name: "CI", path: ".github/workflows/ci.yml", state: "active", html_url: "https://github.com/acme/service/actions/workflows/ci.yml" },
-        ],
-      }), { status: 200 });
-    }
-    if (url.pathname === "/repos/acme/service/contents/.github/workflows") {
-      return new Response(JSON.stringify([{
-        path: ".github/workflows/remote-agent.lock.yml",
-        sha: lockSha,
-      }]), { status: 200 });
-    }
-    if (url.hostname === "raw.githubusercontent.com") {
-      lockDownloads += 1;
-      assert.equal(url.pathname, `/acme/service/${commitSha}/.github/workflows/remote-agent.lock.yml`);
-      if (rateLimitNextDownload) {
-        rateLimitNextDownload = false;
-        return new Response(JSON.stringify({ message: "Rate limit exceeded" }), {
-          status: 429,
-          headers: { "retry-after": "60" },
-        });
-      }
-      if (failNextDownload) {
-        failNextDownload = false;
-        return new Response("unavailable", { status: 503 });
-      }
-      return new Response(lockSource, { status: 200 });
-    }
-    if (url.pathname.endsWith("/issues") || url.pathname.endsWith("/issues/comments")) {
-      return new Response("[]", { status: 200 });
-    }
-    if (url.pathname.endsWith("/actions/artifacts")) {
-      return new Response(JSON.stringify({ artifacts: [] }), { status: 200 });
-    }
-    throw new Error(`Unexpected request: ${url}`);
-  };
-
-  const output = await collectDashboardRecords({
-    repository: "acme/control",
-    token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
-    inventory,
-    deployedInventory: { workflows: [{ repository: "acme/control" }] },
-    fetchImpl,
-    generatedAt: "2026-09-07T12:00:00Z",
-  });
-
-  assert.deepEqual(output.remoteWorkflows.map((workflow) => ({
-    repository: workflow.repository,
-    path: workflow.path,
-    name: workflow.name,
-    role: workflow.role,
-    ghAwVersion: workflow.ghAwVersion,
-    currentGhAwVersion: workflow.currentGhAwVersion,
-    updateState: workflow.updateState,
-    ghAwMetadata: workflow.ghAwMetadata,
-    ghAwManifest: workflow.ghAwManifest,
-    lockSha: workflow.lockSha,
-    lockMetadataAvailable: workflow.lockMetadataAvailable,
-    visibility: workflow.visibility,
-  })), [{
-    repository: "acme/service",
-    path: ".github/workflows/remote-agent.lock.yml",
-    name: "Remote agent",
-    role: "standalone",
-    ghAwVersion: "v0.88.7",
-    currentGhAwVersion: "v0.89.0",
-    updateState: "update-available",
-    ghAwMetadata: { compiler_version: "v0.88.7", strict: true },
-    ghAwManifest: { version: 1, actions: [] },
-    lockSha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    lockMetadataAvailable: true,
-    visibility: "public",
-  }]);
-  assert.deepEqual(output.workflowDiscovery, {
-    complete: true,
-    repositoriesExpected: 1,
-    repositoriesObserved: 1,
-    workflowsObserved: 1,
-    failures: [],
-  });
-  assert.equal(renamedRepositoryMetadataRequests, 1);
-  const cachedOutput = await collectDashboardRecords({
-    repository: "acme/control",
-    token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
-    inventory,
-    deployedInventory: { workflows: [{ repository: "acme/control" }] },
-    previousSnapshot: output,
-    fetchImpl,
-    generatedAt: "2026-09-07T13:00:00Z",
-  });
-  assert.equal(lockDownloads, 1);
-  assert.equal(cachedOutput.remoteWorkflows[0].ghAwVersion, "v0.88.7");
-  lockSha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-  failNextDownload = true;
-  const failedRefresh = await collectDashboardRecords({
-    repository: "acme/control",
-    token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
-    inventory,
-    deployedInventory: { workflows: [{ repository: "acme/control" }] },
-    previousSnapshot: cachedOutput,
-    fetchImpl,
-    generatedAt: "2026-09-07T14:00:00Z",
-  });
-  assert.equal(failedRefresh.remoteWorkflows[0].lockMetadataAvailable, false);
-  assert.equal(failedRefresh.remoteWorkflows[0].lockSha, null);
-  const retriedRefresh = await collectDashboardRecords({
-    repository: "acme/control",
-    token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
-    inventory,
-    deployedInventory: { workflows: [{ repository: "acme/control" }] },
-    previousSnapshot: failedRefresh,
-    fetchImpl,
-    generatedAt: "2026-09-07T15:00:00Z",
-  });
-  assert.equal(lockDownloads, 3);
-  assert.equal(retriedRefresh.remoteWorkflows[0].lockSha, lockSha);
-  assert.equal(retriedRefresh.remoteWorkflows[0].ghAwVersion, "v0.88.7");
-  lockSha = "dddddddddddddddddddddddddddddddddddddddd";
-  rateLimitNextDownload = true;
-  const rateLimitedRefresh = await collectDashboardRecords({
-    repository: "acme/control",
-    token: "test-token",
-    controlSettings: { allowed_repositories: ["acme/old-service", "acme/service"] },
-    inventory,
-    deployedInventory: { workflows: [{ repository: "acme/control" }] },
-    previousSnapshot: retriedRefresh,
-    fetchImpl,
-    generatedAt: "2026-09-07T16:00:00Z",
-  });
-  assert.equal(rateLimitedRefresh.stale, true);
-  assert.equal(rateLimitedRefresh.workflowDiscovery.complete, false);
-  assert.equal(rateLimitedRefresh.remoteWorkflows[0].lockSha, retriedRefresh.remoteWorkflows[0].lockSha);
-});
-
-test("dashboard records refuse non-public remote workflow metadata on public Pages", async () => {
+test("dashboard records refuse private inventory data on public Pages", async () => {
   const collectForVisibility = (visibility) => collectDashboardRecords({
     repository: "acme/control",
     token: "test-token",
     controlSettings: { allowed_repositories: [`acme/${visibility}`] },
     inventory,
-    deployedInventory: { workflows: [{ repository: "acme/control" }] },
+    deployedInventory: { includePrivate: true, workflows: [{ repository: "acme/control" }] },
     fetchImpl: async (input) => {
       const url = new URL(input);
       if (url.pathname === "/repos/acme/control") {
@@ -438,7 +270,7 @@ test("dashboard records refuse non-public remote workflow metadata on public Pag
   await assert.rejects(() => collectForVisibility("internal"), /Refusing to publish non-public repository data/);
 });
 
-test("dashboard records skip remote data when repository visibility is unavailable", async () => {
+test("dashboard records do not request repository visibility before durable outputs", async () => {
   let privateDataRequested = false;
   const hiddenIssue = {
     number: 10,
@@ -480,9 +312,38 @@ test("dashboard records skip remote data when repository visibility is unavailab
       throw new Error(`Unexpected request: ${url}`);
     },
   });
-  assert.equal(privateDataRequested, false);
+  assert.equal(privateDataRequested, true);
+  assert.deepEqual(output.records.map((record) => record.id), ["acme/control-issue-10"]);
+  assert.equal(Object.hasOwn(output, "workflowDiscovery"), false);
+});
+
+test("dashboard records avoid repository and workflow enrichment APIs", async () => {
+  const requests = [];
+  const output = await collectDashboardRecords({
+    repository: "acme/control",
+    token: "test-token",
+    controlSettings: { allowed_repositories: ["acme/service"] },
+    inventory,
+    deployedInventory: {
+      workflows: [{ repository: "acme/control", runHealth: { runRecords: [] } }],
+      allowedRepositories: ["acme/service"],
+    },
+    fetchImpl: async (input) => {
+      const url = new URL(input);
+      requests.push(url.pathname);
+      const value = url.pathname.endsWith("/actions/artifacts") ? { artifacts: [] } : [];
+      return new Response(JSON.stringify(value), { status: 200 });
+    },
+  });
+
   assert.deepEqual(output.records, []);
-  assert.equal(output.workflowDiscovery.complete, false);
+  assert.equal(Object.hasOwn(output, "remoteWorkflows"), false);
+  assert.equal(Object.hasOwn(output, "workflowDiscovery"), false);
+  assert.ok(requests.every((pathname) => (
+    pathname.endsWith("/issues")
+    || pathname.endsWith("/issues/comments")
+    || pathname.endsWith("/actions/artifacts")
+  )));
 });
 
 test("dashboard records stop on a GitHub rate limit and return a renderable error", async () => {
@@ -560,7 +421,7 @@ test("dashboard records retain only confirmed-public snapshots when a refresh is
   assert.deepEqual(retained.records, publicSnapshot.records);
   assert.equal(retained.stale, true);
   assert.equal(retained.snapshotAgeSeconds, 3600);
-  assert.equal(retained.workflowDiscovery.complete, false);
+  assert.equal(Object.hasOwn(retained, "workflowDiscovery"), false);
 
   const privateSnapshot = {
     ...publicSnapshot,

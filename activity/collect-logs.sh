@@ -12,11 +12,12 @@ run_limit="${REPORT_RUN_LIMIT:-10}"
 
 mkdir -p "$output_directory" "$(dirname "$logs_path")" "$(dirname "$exit_code_path")"
 
-mapfile -t targets < <(
-  find "$root/.github/workflows" -maxdepth 1 -type f -name '*.lock.yml' -printf '%f\n' |
-    sort |
-    sed "s#^#$repository/.github/workflows/#"
-)
+targets=()
+for workflow_path in "$root"/.github/workflows/*.lock.yml; do
+  [[ -f "$workflow_path" ]] || continue
+  workflow_file="${workflow_path##*/}"
+  targets+=("$repository/.github/workflows/$workflow_file")
+done
 
 set +e
 gh aw logs --audit \

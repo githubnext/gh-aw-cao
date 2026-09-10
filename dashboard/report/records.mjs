@@ -3,7 +3,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
-import { normalizeVersion, updateState } from "../../activity/version.mjs";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
 import { firstText } from "./text-utils.mjs";
 
@@ -45,45 +44,6 @@ function safeUrl(value) {
   } catch {
     return "";
   }
-}
-
-function repositoryContentPath(repositoryName, filePath) {
-  const encodedPath = String(filePath)
-    .replace(/^\/+/, "")
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/");
-  return `/repos/${repositoryName}/contents/${encodedPath}`;
-}
-
-function rawWorkflowUrl(repositoryName, sha, filePath) {
-  if (!/^[0-9a-f]{40,64}$/i.test(String(sha))) return "";
-  const encodedPath = String(filePath)
-    .replace(/^\/+/, "")
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/");
-  return `https://raw.githubusercontent.com/${repositoryName}/${sha}/${encodedPath}`;
-}
-
-function ghAwPayloads(lockSource) {
-  const payloads = { ghAwMetadata: null, ghAwManifest: null };
-  const fields = {
-    "# gh-aw-metadata: ": "ghAwMetadata",
-    "# gh-aw-manifest: ": "ghAwManifest",
-  };
-  for (const line of lockSource.split(/\r?\n/)) {
-    const entry = Object.entries(fields).find(([prefix]) => line.startsWith(prefix));
-    if (!entry) continue;
-    const [prefix, field] = entry;
-    try {
-      const value = JSON.parse(line.slice(prefix.length));
-      if (value && typeof value === "object" && !Array.isArray(value)) payloads[field] = value;
-    } catch {
-      // Malformed generated metadata remains unavailable.
-    }
-  }
-  return payloads;
 }
 
 function plainText(markdown = "") {
@@ -169,7 +129,7 @@ function bundleFor(reportDefinitions, ...values) {
 }
 
 function targetRepositoryFromRun(run, fallback, allowedRepositories, owner) {
-  const candidates = [...(run?.display_title || "").matchAll(/\b([a-z0-9][a-z0-9-]*\/[a-z0-9._-]+)\b/gi)]
+  const candidates = [...(run?.displayTitle || run?.display_title || "").matchAll(/\b([a-z0-9][a-z0-9-]*\/[a-z0-9._-]+)\b/gi)]
     .map((candidate) => candidate[1]);
   return candidates.find((candidate) => allowedRepositories.size === 0
     ? candidate.split("/")[0].toLowerCase() === owner.toLowerCase()
@@ -270,7 +230,6 @@ async function collectDashboardRecordsImpl({
   controlSettings,
   inventory,
   deployedInventory,
-  previousSnapshot,
   requestedRepositories = [],
   fetchImpl = fetch,
   generatedAt = new Date().toISOString(),
@@ -288,6 +247,17 @@ async function collectDashboardRecordsImpl({
     ...bundleDefinitions,
     ...(inventory.standalone || []).map((workflow) => ({ ...workflow, workers: [], missingWorkers: [] })),
   ];
+    const runByIdentity = new Map((deployedInventory.workflows || []).flatMap((workflow) => (
+      workflow.runHealth?.runRecords || []
+    ).map((run) => [
+      `${String(run.repository || workflow.repository).toLowerCase()}:${Number(run.runId)}`,
+      {
+        ...run,
+        path: workflow.path || "",
+        name: workflow.name || "",
+        html_url: `https://github.com/${run.repository || workflow.repository}/actions/runs/${run.runId}`,
+      },
+    ])));
 
   let rateLimitError = null;
 
@@ -320,110 +290,15 @@ async function collectDashboardRecordsImpl({
     return response.json();
   }
 
-  async function githubOptional(pathname, fallback) {
-    try {
-      return await github(pathname);
-    } catch (error) {
-      if (error instanceof GitHubRateLimitError) throw error;
-      log.warning`${error.message}; continuing without optional repository metadata`;
-      return fallback;
-    }
-  }
-
-  async function githubDownload(downloadUrl) {
-    const url = safeUrl(downloadUrl);
-    if (!url || new URL(url).hostname !== "raw.githubusercontent.com") {
-      throw new Error("GitHub workflow content URL is unavailable");
-    }
-    const authorization = ["Bearer", token].join(" ");
-    const response = await fetchImpl(url, {
-      headers: { Authorization: authorization },
-    });
-    if (!response.ok) {
-      const responseText = await response.text();
-      let detail = responseText.trim();
-      try {
-        detail = JSON.parse(responseText).message || detail;
-      } catch {
-        // Plain-text download failures retain their bounded response detail.
-      }
-      const rateLimited = response.status === 429
-        || (response.status === 403
-          && (response.headers.get("x-ratelimit-remaining") === "0" || /rate limit/i.test(detail)));
-      if (rateLimited) {
-        rateLimitError = new GitHubRateLimitError(new URL(url).pathname, response, detail);
-        throw rateLimitError;
-      }
-      throw new Error(`GitHub workflow content download returned HTTP ${response.status}`);
-    }
-    return response.text();
-  }
-
   const reportRepositoryNames = [...new Set([
     repository,
     ...(deployedInventory.workflows || []).map((workflow) => workflow.repository),
     ...(deployedInventory.allowedRepositories || []),
     ...allowedRepositories,
   ].filter(Boolean))].sort();
-  const repositoryStates = await mapWithConcurrency(reportRepositoryNames, 4, async (repositoryName) => {
-    try {
-      const metadata = await github(`/repos/${repositoryName}`);
-      const visibility = ["public", "private", "internal"].includes(metadata.visibility)
-        ? metadata.visibility
-        : metadata.private === true ? "private" : metadata.private === false ? "public" : "unknown";
-      return {
-        repository: metadata.full_name || repositoryName,
-        requestedRepository: repositoryName,
-        id: metadata.id ?? null,
-        complete: visibility !== "unknown" && Boolean(metadata.default_branch),
-        visibility,
-        defaultBranch: metadata.default_branch || "",
-        ...(visibility === "unknown" || !metadata.default_branch
-          ? { reason: "Repository visibility or default branch is unavailable" }
-          : {}),
-      };
-    } catch (error) {
-      if (error instanceof GitHubRateLimitError) throw error;
-      log.warning`${error.message}; remote workflow discovery will be incomplete for ${repositoryName}`;
-      return {
-        repository: repositoryName,
-        requestedRepository: repositoryName,
-        id: null,
-        complete: false,
-        visibility: "unknown",
-        reason: error.message,
-      };
-    }
-  });
-  const repositoryStateByName = new Map();
-  const repositoryStateByIdentity = new Map();
-  for (const state of repositoryStates) {
-    repositoryStateByName.set(state.requestedRepository.toLowerCase(), state);
-    repositoryStateByName.set(state.repository.toLowerCase(), state);
-    const identity = state.id === null ? state.repository.toLowerCase() : `id:${state.id}`;
-    if (!repositoryStateByIdentity.has(identity)) repositoryStateByIdentity.set(identity, state);
-  }
-  const canonicalRepositoryNames = [...repositoryStateByIdentity.values()].map((state) => state.repository);
-  const canonicalAllowedRepositories = new Set(
-    [...allowedRepositories].flatMap((repositoryName) => [
-      repositoryName,
-      repositoryStateByName.get(repositoryName)?.repository.toLowerCase() || repositoryName,
-    ]),
-  );
-  const remoteWorkflowRepositories = canonicalRepositoryNames
-    .filter((repositoryName) => (
-      canonicalAllowedRepositories.has(repositoryName.toLowerCase())
-      && repositoryName.toLowerCase() !== (
-        repositoryStateByName.get(repository.toLowerCase())?.repository.toLowerCase()
-        || repository.toLowerCase()
-      )
-    ));
-  const controlRepositoryState = repositoryStateByName.get(repository.toLowerCase());
-  if (!controlRepositoryState?.complete) {
-    throw new Error(controlRepositoryState?.reason || "Control repository visibility is unavailable");
-  }
-  const hasPrivateData = deployedInventory.includePrivate === true
-    || repositoryStates.some((state) => state.visibility === "private" || state.visibility === "internal");
+  const canonicalRepositoryNames = reportRepositoryNames;
+  const canonicalAllowedRepositories = allowedRepositories;
+  const hasPrivateData = deployedInventory.includePrivate === true;
   if (hasPrivateData) {
     const pages = await github(`/repos/${owner}/${repo}/pages`, pagesToken);
     if (pages.public !== false) {
@@ -443,112 +318,8 @@ async function collectDashboardRecordsImpl({
     return items;
   }
 
-  async function githubWorkflowPages(repositoryName, maxPages = 10) {
-    const workflows = [];
-    for (let page = 1; page <= maxPages; page += 1) {
-      const response = await github(`/repos/${repositoryName}/actions/workflows?per_page=100&page=${page}`);
-      if (!Array.isArray(response.workflows)) throw new Error(`Expected workflows from ${repositoryName}`);
-      workflows.push(...response.workflows);
-      if (response.workflows.length < 100) break;
-    }
-    return workflows;
-  }
-
-  const previousRemoteWorkflowByIdentity = new Map(
-    (previousSnapshot?.remoteWorkflows || []).map((workflow) => [
-      `${String(workflow.repository).toLowerCase()}:${String(workflow.path).toLowerCase()}`,
-      workflow,
-    ]),
-  );
-
-  async function repositoryWorkflowSource(repositoryName, latestVersion) {
-    const repositoryState = repositoryStateByName.get(repositoryName.toLowerCase());
-    if (!repositoryState?.complete) {
-      return {
-        repository: repositoryName,
-        complete: false,
-        workflows: [],
-        reason: repositoryState?.reason || "Repository visibility is unavailable",
-      };
-    }
-    try {
-      const revision = await github(
-        `/repos/${repositoryName}/commits/${encodeURIComponent(repositoryState.defaultBranch)}`,
-      );
-      const commitSha = String(revision.sha || "");
-      if (!/^[0-9a-f]{40,64}$/i.test(commitSha)) {
-        throw new Error(`Expected a default-branch commit from ${repositoryName}`);
-      }
-      const [workflows, workflowFiles] = await Promise.all([
-        githubWorkflowPages(repositoryName),
-        github(`${repositoryContentPath(repositoryName, ".github/workflows")}?ref=${commitSha}`),
-      ]);
-      if (!Array.isArray(workflowFiles)) {
-        throw new Error(`Expected workflow files from ${repositoryName}`);
-      }
-      const workflowFileByPath = new Map(workflowFiles.map((file) => [file.path, file]));
-      const agenticWorkflows = workflows.filter((workflow) => String(workflow.path || "").endsWith(".lock.yml"));
-      return {
-        repository: repositoryName,
-        complete: true,
-        workflows: await mapWithConcurrency(agenticWorkflows, 8, async (workflow) => {
-          const lockFile = workflowFileByPath.get(workflow.path);
-          const previous = previousRemoteWorkflowByIdentity.get(
-            `${repositoryName.toLowerCase()}:${String(workflow.path).toLowerCase()}`,
-          );
-          let metadataAvailable = previous?.lockMetadataAvailable === true
-            && previous.lockSha === lockFile?.sha;
-          let payloads = metadataAvailable
-            ? {
-              ghAwMetadata: previous.ghAwMetadata || null,
-              ghAwManifest: previous.ghAwManifest || null,
-            }
-            : { ghAwMetadata: null, ghAwManifest: null };
-          const downloadUrl = rawWorkflowUrl(repositoryName, commitSha, workflow.path);
-          if (!metadataAvailable && downloadUrl) {
-            try {
-              payloads = ghAwPayloads(await githubDownload(downloadUrl));
-              metadataAvailable = true;
-            } catch (error) {
-              if (error instanceof GitHubRateLimitError) throw error;
-              log.warning`${error.message}; generated metadata is unavailable for ${repositoryName}/${workflow.path}`;
-            }
-          }
-          const ghAwVersion = normalizeVersion(payloads.ghAwMetadata?.compiler_version);
-          return {
-            repository: repositoryName,
-            visibility: repositoryState.visibility,
-            path: workflow.path,
-            name: workflow.name || workflow.path.split("/").at(-1)?.replace(/\.lock\.yml$/, "") || "Unknown workflow",
-            state: workflow.state || "unknown",
-            htmlUrl: safeUrl(workflow.html_url),
-            createdAt: workflow.created_at || null,
-            updatedAt: workflow.updated_at || null,
-            role: "standalone",
-            runHealth: { runRecords: [] },
-            sourceAvailable: false,
-            ghAwVersion,
-            currentGhAwVersion: latestVersion,
-            updateState: updateState(ghAwVersion, latestVersion),
-            lockSha: metadataAvailable ? lockFile?.sha : null,
-            lockMetadataAvailable: metadataAvailable,
-            ...payloads,
-          };
-        }),
-      };
-    } catch (error) {
-      if (error instanceof GitHubRateLimitError) throw error;
-      log.warning`${error.message}; remote workflow discovery will be incomplete for ${repositoryName}`;
-      return { repository: repositoryName, complete: false, workflows: [], reason: error.message };
-    }
-  }
-
   async function repositoryReportSources(repositoryName) {
     const required = repositoryName.toLowerCase() === repository.toLowerCase();
-    const repositoryState = repositoryStateByName.get(repositoryName.toLowerCase());
-    if (!required && !repositoryState?.complete) {
-      return { repository: repositoryName, issues: [], comments: [], artifacts: [] };
-    }
     const optional = async (loader, fallback) => {
       try {
         return await loader();
@@ -571,11 +342,8 @@ async function collectDashboardRecordsImpl({
     if (artifact.expired || !artifact.name.startsWith("review-")) return null;
     const runId = artifact.workflow_run?.id;
     if (!runId) return null;
-    const cacheKey = `${outputRepository}/${runId}`;
-    if (!runCache.has(cacheKey)) {
-      runCache.set(cacheKey, github(`/repos/${outputRepository}/actions/runs/${runId}`));
-    }
-    const run = await runCache.get(cacheKey);
+    const run = runByIdentity.get(`${outputRepository.toLowerCase()}:${Number(runId)}`);
+    if (!run) return null;
     const bundle = bundleFor(reportDefinitions, run.name, run.display_title, artifact.name);
     return {
       id: `${outputRepository}-artifact-${artifact.id}`,
@@ -603,46 +371,22 @@ async function collectDashboardRecordsImpl({
     };
   }
 
-  const [reportSources, latestRelease] = await Promise.all([
-    mapWithConcurrency(canonicalRepositoryNames, 4, repositoryReportSources),
-    remoteWorkflowRepositories.length > 0
-      ? githubOptional("/repos/github/gh-aw/releases/latest", {})
-      : null,
-  ]);
-  const latestVersion = normalizeVersion(latestRelease?.tag_name);
-  const remoteWorkflowSources = await mapWithConcurrency(
-    remoteWorkflowRepositories,
-    4,
-    (repositoryName) => repositoryWorkflowSource(repositoryName, latestVersion),
-  );
-  const remoteWorkflows = remoteWorkflowSources.flatMap((source) => source.workflows);
-  const workflowDiscovery = {
-    complete: remoteWorkflowSources.every((source) => source.complete),
-    repositoriesExpected: remoteWorkflowRepositories.length,
-    repositoriesObserved: remoteWorkflowSources.filter((source) => source.complete).length,
-    workflowsObserved: remoteWorkflows.length,
-    failures: remoteWorkflowSources.filter((source) => !source.complete)
-      .map((source) => ({ repository: source.repository, reason: source.reason })),
-  };
+  const reportSources = await mapWithConcurrency(canonicalRepositoryNames, 4, repositoryReportSources);
   const issueByUrl = new Map(reportSources.flatMap((source) => source.issues.map((issue) => [issue.url, issue])));
-  const runCache = new Map();
 
   async function metadataFromRunUrl(runUrl) {
     const match = runUrl.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/actions\/runs\/(\d+)/);
     if (!match) return { mode: "unknown", conclusion: "unknown", repository: "", runtimeRepository: "", workflowPath: "", workflowId: "", workflowName: "" };
     const [, runOwner, runRepository, runId] = match;
-    const cacheKey = `${runOwner}/${runRepository}/${runId}`;
-    if (!runCache.has(cacheKey)) {
-      runCache.set(cacheKey, githubOptional(`/repos/${runOwner}/${runRepository}/actions/runs/${runId}`, null));
-    }
-    const run = await runCache.get(cacheKey);
-    const mode = parseRolloutMode(run?.display_title);
+    const runtimeRepository = `${runOwner}/${runRepository}`;
+    const run = runByIdentity.get(`${runtimeRepository.toLowerCase()}:${Number(runId)}`);
+    const mode = parseRolloutMode(run?.displayTitle || run?.display_title);
     const workflowPath = run?.path || "";
     return {
       mode: normalizeMode(mode),
       conclusion: run?.conclusion || "unknown",
-      repository: targetRepositoryFromRun(run, `${runOwner}/${runRepository}`, canonicalAllowedRepositories, owner),
-      runtimeRepository: `${runOwner}/${runRepository}`,
+      repository: targetRepositoryFromRun(run, runtimeRepository, canonicalAllowedRepositories, owner),
+      runtimeRepository,
       workflowPath,
       workflowId: workflowPath.split("/").at(-1)?.replace(/\.lock\.yml$/, "") || "",
       workflowName: run?.name || "",
@@ -688,9 +432,7 @@ async function collectDashboardRecordsImpl({
             ? configuredModeFor(bundle, controlSettings)
             : inferredMode,
       conclusion: record.conclusion || metadata.conclusion,
-      repository: repositoryStateByName.get(
-        String(record.repository || metadata.repository || "").toLowerCase(),
-      )?.repository || record.repository || metadata.repository || "",
+      repository: record.repository || metadata.repository || "",
       runtimeRepository: record.runtimeRepository || metadata.runtimeRepository || "",
       workflowPath: record.workflowPath || metadata.workflowPath || inventoryWorkflow?.sourcePath || "",
       workflowId,
@@ -700,15 +442,13 @@ async function collectDashboardRecordsImpl({
   const scopedRecords = records.filter((record) => {
     const repositoryName = record.repository.toLowerCase();
     if (canonicalAllowedRepositories.size > 0 && !canonicalAllowedRepositories.has(repositoryName)) return false;
-    return repositoryStateByName.get(repositoryName)?.complete === true;
+    return true;
   });
   return {
     generatedAt,
     repository,
     inventory,
     records: scopedRecords,
-    remoteWorkflows,
-    workflowDiscovery,
     containsPrivateData: hasPrivateData,
   };
 }
@@ -722,43 +462,23 @@ export async function collectDashboardRecords(options) {
     log.warning`${error.message}`;
     const canRetain = options.previousSnapshot?.containsPrivateData === false;
     const retained = canRetain ? options.previousSnapshot.records : null;
-    const retainedRemoteWorkflows = canRetain && Array.isArray(options.previousSnapshot?.remoteWorkflows)
-      ? options.previousSnapshot.remoteWorkflows : [];
     const snapshotGeneratedAt = options.previousSnapshot?.generatedAt || "";
     const snapshotAge = snapshotGeneratedAt
       ? Math.floor((Date.parse(generatedAt) - Date.parse(snapshotGeneratedAt)) / 1000)
       : null;
     const snapshotAgeSeconds = Number.isFinite(snapshotAge) ? Math.max(0, snapshotAge) : null;
-    const retainedWorkflowDiscovery = canRetain && options.previousSnapshot?.workflowDiscovery
-      ? {
-        ...options.previousSnapshot.workflowDiscovery,
-        complete: false,
-        failures: [
-          ...(options.previousSnapshot.workflowDiscovery.failures || []),
-          { repository: "", reason: error.message },
-        ],
-      }
-      : {
-        complete: false,
-        repositoriesExpected: 0,
-        repositoriesObserved: 0,
-        workflowsObserved: 0,
-        failures: [{ repository: "", reason: error.message }],
-      };
     return {
       generatedAt,
       repository: options.repository,
       inventory: options.inventory,
       records: Array.isArray(retained) ? retained : [],
-      remoteWorkflows: retainedRemoteWorkflows,
-      workflowDiscovery: retainedWorkflowDiscovery,
       error: error.message,
       errorStatus: error.status,
       errorEndpoint: error.pathname,
       rateLimitResetAt: error.resetAt,
       snapshotGeneratedAt,
       snapshotAgeSeconds,
-      stale: (Array.isArray(retained) && retained.length > 0) || retainedRemoteWorkflows.length > 0,
+      stale: Array.isArray(retained) && retained.length > 0,
       partial: true,
       containsPrivateData: false,
     };

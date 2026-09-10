@@ -24,8 +24,9 @@ be refreshed; the snapshot is not permanent historical authority.
 flowchart TB
   subgraph inputs[Evidence inputs]
     definitions[Installed workflows<br/>CAO policy and package records]
-    logs[gh-aw logs<br/>runs, audits, and artifacts]
-    fallback[Bounded Actions fallback]
+    logs[One bounded gh aw logs call<br/>runs, audits, usage, agent info]
+    outputs[Durable output APIs<br/>issues, comments, review artifacts]
+    privacy[Pages privacy state<br/>when private inventory is enabled]
   end
 
   subgraph activity[CAO Activity workflow]
@@ -61,7 +62,8 @@ flowchart TB
 
   definitions --> collect
   logs --> collect
-  fallback -. only when primary logs fail .-> collect
+  outputs --> collect
+  privacy -. privacy gate .-> collect
   snapshot --> restore
   runSource -->|apply horizon| failed
   workSource -->|apply horizon| blocked
@@ -110,6 +112,24 @@ step. The pipeline sequentially:
 The indexer transforms local files and the downloaded snapshot. It does not
 perform additional GitHub API discovery.
 
+### Audit and agent metadata
+
+The `--audit` flag remains part of the single `gh aw logs` acquisition. With
+`--artifacts usage`, gh-aw provides compact `audit.json`, `aw_info.json`, and
+`run_summary.json` evidence without requiring heavyweight agent transcripts.
+Activity retains bounded aggregates for behavior, engine configuration,
+firewall analysis, MCP and tool usage, metrics, observability, recommendations,
+and session analysis. It also retains non-secret agent, model, runtime, gh-aw,
+firewall, and gateway identifiers from `aw_info.json`.
+
+Before publication, the normalizer removes fields whose names indicate
+arguments, authorization, bodies, content, credentials, inputs, messages,
+outputs, prompts, responses, secrets, tokens, or transcripts. It also bounds
+nesting, collection size, and string length. Tool-call Events may be derived
+from aggregate `run_summary.json` calls when older raw timeline files are not
+present. Audit evidence does not grant repository authority and is not used to
+fill missing workflow-run fields through GitHub API calls.
+
 ## Snapshot contract
 
 The workflow publishes files under `$RUNNER_TEMP/cao-activity/`, including:
@@ -134,17 +154,16 @@ The cache improves collection efficiency; it is not durable historical
 authority. Consumers must fetch missing evidence when the restored snapshot is
 absent, stale, incomplete, or outside their required repository scope.
 
-## Failure and fallback behavior
+## Failure and retained snapshot behavior
 
 `gh aw` artifacts are authoritative when present. If `gh aw logs` fails,
-Activity preserves a compatible cached snapshot and attempts a bounded Actions
-workflow-run API fallback. That fallback can recover basic run identity, status,
-conclusion, and timestamps, but it does not query job logs or artifacts and
-cannot recover artifact-only evidence such as admission details.
+Activity preserves a compatible cached snapshot and marks the current refresh
+unavailable and incomplete. It does not fan out into workflow-run, run-detail,
+or Jobs API fallback calls. Cached observations remain distinguishable from
+evidence collected during the current refresh.
 
-Fallback data remains incomplete. If both the primary collection and bounded
-fallback fail on a cold cache, Activity writes an empty snapshot and marks run
-health unavailable. Dashboard consumers must use source metadata rather than
+On a cold-cache failure, Activity writes an empty snapshot and marks run health
+unavailable. Dashboard consumers must use source metadata rather than
 interpreting an empty row array as complete zero activity.
 
 ## Dashboard views

@@ -2544,41 +2544,10 @@ function configurationData(controlSettings) {
 
 export function buildDashboardLanguageSources({ deployed, usage, operationalValues, report, inventory = {}, controlSettings = {}, githubTelemetry = [] }) {
   const generatedAt = report.generatedAt || deployed.generatedAt || new Date().toISOString();
-  const workflowsByIdentity = new Map([
-    ...(deployed.workflows || []),
-    ...(report.remoteWorkflows || []),
-  ].map((workflow) => [`${String(workflow.repository).toLowerCase()}:${String(workflow.path).toLowerCase()}`, workflow]));
-  const workflowInventoryComplete = deployed.discovery?.complete === true
-    && report.workflowDiscovery?.complete !== false;
-  const localWorkflowCollection = (deployed.collections || []).find((collection) => collection.operation === "workflow-discovery");
-  const remoteWorkflowDiscovery = report.workflowDiscovery;
-  const workflowCollection = remoteWorkflowDiscovery
-    ? {
-      ...localWorkflowCollection,
-      operation: "workflow-discovery",
-      state: workflowInventoryComplete ? "complete" : "partial",
-      failureClass: workflowInventoryComplete ? null : "request",
-      expected: Number(localWorkflowCollection?.expected || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesExpected,
-      observed: Number(localWorkflowCollection?.observed || deployed.repositoryCount || 0) + remoteWorkflowDiscovery.repositoriesObserved,
-      workflowExpected: workflowInventoryComplete ? workflowsByIdentity.size : undefined,
-      reason: remoteWorkflowDiscovery.failures?.map((failure) => `${failure.repository}: ${failure.reason}`).join("; ") || "",
-      ...(report.stale ? {
-        fallback: {
-          used: true,
-          snapshotGeneratedAt: report.snapshotGeneratedAt || null,
-          snapshotAgeSeconds: report.snapshotAgeSeconds ?? null,
-        },
-      } : {}),
-    }
-    : localWorkflowCollection;
+  const workflowInventoryComplete = deployed.discovery?.complete === true;
   const workflowDeployed = {
     ...deployed,
-    workflows: [...workflowsByIdentity.values()],
     discovery: { ...deployed.discovery, complete: workflowInventoryComplete },
-    collections: [
-      ...(deployed.collections || []).filter((collection) => collection.operation !== "workflow-discovery"),
-      ...(workflowCollection ? [workflowCollection] : []),
-    ],
   };
   const workflows = workflowRows(workflowDeployed, generatedAt, inventory, controlSettings);
   const runs = runRows(deployed, usage);
