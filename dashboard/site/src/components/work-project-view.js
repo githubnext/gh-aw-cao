@@ -101,7 +101,7 @@ function renderWorkFilterBar(items, onChange) {
   const closeMobileFilters = renderCloseButton({
     className: 'work-mobile-sheet-close',
     label: 'Close work filters',
-    onClick: () => closeMobileSheet()
+    onClick: () => mobileFilters.close()
   });
   const facets = h('div', { className: 'work-filter-facets' },
     h('div', { className: 'work-filter-sheet-panel' },
@@ -109,16 +109,12 @@ function renderWorkFilterBar(items, onChange) {
       state, repository, owner, packageName
     )
   );
-  const closeMobileSheet = () => {
-    setMobileFiltersExpanded(false);
-    mobileFilterToggle.focus();
-  };
-  const setMobileFiltersExpanded = createExpandableToggle(mobileFilterToggle, facets, {
+  const mobileFilters = createExpandableToggle(mobileFilterToggle, facets, {
     expandedClass: 'is-open',
     onExpand: (open) => { if (open) state.focus(); }
   });
   mobileFilterToggle.addEventListener('click', () => {
-    setMobileFiltersExpanded(!facets.classList.contains('is-open'));
+    mobileFilters.setExpanded(!facets.classList.contains('is-open'));
   });
   const controls = [search, state, repository, owner, packageName];
   const apply = () => {
@@ -311,7 +307,7 @@ function renderTasks(items, section, onUpdate) {
         renderCloseButton({
           className: 'work-mobile-sheet-close',
           label: 'Close Table settings',
-          onClick: () => closeSettings()
+          onClick: () => settingsPanel.close()
         })
       ),
       h('fieldset', { className: 'work-mobile-field-settings' },
@@ -336,16 +332,12 @@ function renderTasks(items, section, onUpdate) {
   const settingsToggle = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button',
     className: 'work-task-settings-toggle',
-    onclick: () => setSettingsExpanded(true)
+    onclick: () => settingsPanel.setExpanded(true)
   }, renderIconSpan('work-task-settings-icon', 'filter', { ariaHidden: true }), 'Fields & sort'));
-  const setSettingsExpanded = createExpandableToggle(settingsToggle, settingsSheet, {
+  const settingsPanel = createExpandableToggle(settingsToggle, settingsSheet, {
     expandedClass: 'is-open',
     onExpand: (open) => { if (open) settingsSheet.querySelector('input')?.focus(); }
   });
-  const closeSettings = () => {
-    setSettingsExpanded(false);
-    settingsToggle.focus();
-  };
   renderRows();
   return h(
     'section',
