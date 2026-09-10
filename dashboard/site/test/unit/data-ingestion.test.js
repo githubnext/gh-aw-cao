@@ -159,6 +159,33 @@ describe('canonical source ingestion and queries', () => {
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
   });
 
+  it('upserts multiple JSONL runs and retains earlier fresh records', async () => {
+    /** @param {number} run_id @param {string} created_at */
+    const record = (run_id, created_at) => JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', classification: 'success', created_at,
+      url: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run_id}`, logs_path: 'logs', event: 'push', branch: 'main'
+    } });
+    await ingestCachedGhAwJsonl(indexedDB, `${record(1, '2026-02-01T00:00:00Z')}\n`, {
+      now: Date.parse('2026-02-01T00:00:00Z')
+    });
+    await ingestCachedGhAwJsonl(indexedDB, `${record(2, '2026-02-02T00:00:00Z')}\n`, {
+      now: Date.parse('2026-02-02T00:00:00Z')
+    });
+    expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
+      'github:run:1:attempt:1', 'github:run:2:attempt:1'
+    ]);
+  });
+
+  it('records failed JSONL ingestion without storing partial entities', async () => {
+    await expect(ingestCachedGhAwJsonl(indexedDB, '{"schema_version":2,"kind":"run","run":')).rejects.toThrow();
+    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
+    await expect(readOperations(indexedDB)).resolves.toEqual([
+      expect.objectContaining({ kind: 'ingest-jsonl-failed', error: 'TypeError' })
+    ]);
+  });
+
   it('performs non-fatal browser storage preflight before ingestion', async () => {
     /** @type {string[]} */
     const calls = [];

@@ -49,7 +49,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       },
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       aic: 2.5,
       safe_items_count: 4,
@@ -65,7 +65,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
         total_cache_write_tokens: 10,
         by_model: { "gpt-5": { reasoning_tokens: 7 } },
       },
-  }) + "\n");
+  } }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {

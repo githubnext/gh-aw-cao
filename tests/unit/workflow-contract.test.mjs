@@ -2540,6 +2540,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     for (const packageDirectory of ["activity", "aw-doctor", "dashboard", "dependabot", "optimization"]) {
       cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
     }
+    for (const manifest of ["aw.yml", "activity/aw.yml", "aw-doctor/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
+      const manifestPath = join(temporaryRoot, manifest);
+      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll("v0.89.2", "v0.89.1"));
+    }
     execFileSync("git", ["init", "--quiet"], { cwd: temporaryRoot });
 
     execFileSync("gh", [
@@ -2897,7 +2901,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   const operationalValues = readFileSync(join(root, "dashboard", "report", "operational-values.mjs"), "utf8");
   const reportAssets = ["aic-usage.mjs", "activity-collectors.mjs", "bundle-dashboards.mjs", "compose-dashboard-documents.mjs", "configure-site.mjs", "control-settings.mjs", "dashboard-language-sources.mjs", "inventory.mjs", "operational-value-history.mjs", "operational-values.mjs", "records.mjs", "text-utils.mjs"];
   const activityEntrypoints = new Set(["activity-collectors.mjs", "control-settings.mjs", "inventory.mjs"]);
-  const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs", "dashboard-language-sources.mjs"]);
+  const buildEntrypoints = new Set(["bundle-dashboards.mjs", "configure-site.mjs"]);
   const normalizeInclude = (entry, sourcePrefix = "") => typeof entry === "string"
     ? { source: entry, destination: entry, kind: "action-workflow" }
     : { ...entry, source: `${sourcePrefix}${entry.source}` };
@@ -2928,20 +2932,17 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
   assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
-  assert.match(buildWorkflow, /Require collected activity data[\s\S]*?control-settings\.json control-plane-inventory\.json deployed-workflows\.json aic-usage\.json operational-values\.json dashboard-records\.json gh-aw-logs\.jsonl/);
+  assert.match(buildWorkflow, /Require collected activity data[\s\S]*?test -f "\$ACTIVITY_DATA_ROOT\/gh-aw-logs\.jsonl"/);
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
   assert.match(buildWorkflow, /name: Cache dashboard artifact for the dispatching workflow[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\n\s+key: cao-dashboard-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.doesNotMatch(buildWorkflow, /actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: [^\n]*cao-activity|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
   assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/cao\/src\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
   assert.match(activityRunner, /REPORT_CONTROL_SETTINGS[\s\S]*?path\.join\(runnerTemp, "cao-activity", "control-settings\.json"\)/);
   assert.match(buildWorkflow, /cp -R \.github\/aw\/dashboard\/site\/\. "\$REPORT_OUTPUT\/"/);
-  assert.match(buildWorkflow, /configure-site\.mjs[\s\S]*?"\$REPORT_OUTPUT\/index\.html"[\s\S]*?"\$RUNNER_TEMP\/cao-activity\/control-settings\.json"/);
+  assert.match(buildWorkflow, /configure-site\.mjs[\s\S]*?"\$REPORT_OUTPUT\/index\.html"[\s\S]*?"\$RUNNER_TEMP\/cao-dashboard-control-settings\.json"/);
   assert.match(buildWorkflow, /bundle-dashboards\.mjs[\s\S]*?"\$REPORT_OUTPUT\/dashboard\.json"[\s\S]*?\.github\/aw\/dashboards/);
-  assert.match(buildWorkflow, /REPORT_RECORDS: \$\{\{ runner\.temp \}\}\/cao-activity\/dashboard-records\.json/);
-  assert.match(buildWorkflow, /REPORT_DEPLOYED_WORKFLOWS: \$\{\{ runner\.temp \}\}\/cao-activity\/deployed-workflows\.json/);
-  assert.match(buildWorkflow, /REPORT_DASHBOARD_SOURCES: \$\{\{ runner\.temp \}\}\/central-agentic-ops-dashboard\/\$\{\{ inputs\.site-path \}\}\/sources\.json/);
   assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl" "\$REPORT_OUTPUT\/gh-aw-logs\.jsonl"/);
-  assert.match(buildWorkflow, /name: central-agentic-ops-dashboard-data[\s\S]*?\/sources\.json/);
+  assert.doesNotMatch(buildWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(buildWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(buildWorkflow, /site-path must not be absolute, traverse directories, or end with '\/'/);
@@ -3088,7 +3089,7 @@ test("Documentation Pages deploys docs with the packaged dashboard builder", () 
   assert.equal((workflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(dashboardBuild, /workflow_call:/);
   assert.match(dashboardBuild, /workflow_dispatch:[\s\S]*?request-id:/);
-  assert.match(dashboardBuild, /central-agentic-ops-dashboard\/\$\{\{ inputs\.site-path \}\}\/sources\.json/);
+  assert.match(dashboardBuild, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl" "\$REPORT_OUTPUT\/gh-aw-logs\.jsonl"/);
   assert.match(dashboardBuild, /name: central-agentic-ops-dashboard/);
   assert.match(dashboardBuild, /DASHBOARD_LAYOUT=source/);
   assert.match(dashboardBuild, /DASHBOARD_LAYOUT=installed/);
@@ -3108,7 +3109,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(workflow, /concurrency:\n\s+group: mobile-dashboard-integration-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: true/);
   assert.match(workflow, /deployed-data:[\s\S]*?if: github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /name: Test deployed dashboard data ingestion\n\s+run: node --test tests\/integration\/dashboard-deployed-data\.test\.mjs/);
-  assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
+  assert.match(workflow, /DASHBOARD_DATA_URL: https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/gh-aw-logs\.jsonl/);
   assert.match(workflow, /Test mobile dashboard with restricted memory[\s\S]*?MOBILE_MEMORY_MB: 256/);
   assert.match(workflow, /Test mobile dashboard with throttled network[\s\S]*?MOBILE_NETWORK_DOWNLOAD_KBPS: 1600/);
   assert.match(workflow, /Test mobile dashboard with restricted memory and network[\s\S]*?MOBILE_MEMORY_MB: 256[\s\S]*?MOBILE_NETWORK_LATENCY_MS: 150/);
@@ -3121,7 +3122,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   const playwrightConfig = readFileSync(join(root, "playwright.mobile.config.mjs"), "utf8");
   assert.match(playwrightConfig, /preserveOutput: "always"/);
   assert.match(playwrightConfig, /--max-old-space-size=\$\{memoryMb\}/);
-  assert.match(packageDocument.scripts["dashboard:local:mobile"], /DASHBOARD_DATA_URL=https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/sources\.json/);
+  assert.match(packageDocument.scripts["dashboard:local:mobile"], /DASHBOARD_DATA_URL=https:\/\/githubnext\.github\.io\/gh-aw-cao\/cao\/gh-aw-logs\.jsonl/);
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_DEVICE='Pixel 7'/);
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /MOBILE_MEMORY_MB=256/);
   assert.match(packageDocument.scripts["dashboard:local:mobile"], /playwright\.mobile\.config\.mjs/);

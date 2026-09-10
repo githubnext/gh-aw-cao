@@ -16,7 +16,7 @@ import {
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 
 const deployedSourcesUrl = process.env.DASHBOARD_DATA_URL
-  || "https://githubnext.github.io/gh-aw-cao/cao/sources.json";
+  || "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl";
 const deployedLogsUrl = process.env.GH_AW_LOGS_URL
   || new URL("gh-aw-logs.jsonl", deployedSourcesUrl).href;
 

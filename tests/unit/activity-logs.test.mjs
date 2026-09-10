@@ -33,12 +33,12 @@ test("activity logs uses one bounded gh aw logs invocation with compact usage ar
 const fs = require("node:fs");
 const args = process.argv.slice(2);
 fs.writeFileSync(process.env.GH_ARGS_PATH, JSON.stringify(args));
-fs.writeFileSync(args[args.indexOf("--cached-jsonl") + 1], JSON.stringify({
+fs.writeFileSync(args[args.indexOf("--cached-jsonl") + 1], JSON.stringify({ schema_version: 2, kind: "run", run: {
    database_id:42,
    repository:"githubnext/gh-aw-cao",
    workflow_path:".github/workflows/sample.lock.yml",
    status:"completed"
-  }) + "\\n");
+  } }) + "\\n");
 process.stderr.write("Fetched 1 run\\n");
 `);
   await chmod(ghPath, 0o755);
@@ -73,7 +73,7 @@ process.stderr.write("Fetched 1 run\\n");
     assert.deepEqual(args.slice(args.indexOf("--count"), args.indexOf("--count") + 2), ["--count", "10"]);
     assert.deepEqual(args.slice(args.indexOf("--timeout"), args.indexOf("--timeout") + 2), ["--timeout", "10"]);
     assert.equal(args.at(-1), "githubnext/gh-aw-cao/.github/workflows/sample.lock.yml");
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).database_id, 42);
+    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.database_id, 42);
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, true);
     assert.equal(state.complete, true);
@@ -92,7 +92,7 @@ test("activity logs preserves cached runs and records collection failure", async
   await writeFile(ghPath, "#!/usr/bin/env node\nprocess.stderr.write('download failed\\n');process.exit(1);\n");
   await chmod(ghPath, 0o755);
   await mkdir(path.dirname(item.logsPath), { recursive: true });
-  await writeFile(item.logsPath, '{"database_id":7}\n');
+  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
@@ -110,7 +110,7 @@ test("activity logs preserves cached runs and records collection failure", async
       },
     });
 
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).database_id, 7);
+    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.database_id, 7);
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, false);
     assert.equal(state.fallback, true);
@@ -131,7 +131,7 @@ process.exit(99);
 `);
   await chmod(ghPath, 0o755);
   await mkdir(path.dirname(item.logsPath), { recursive: true });
-  await writeFile(item.logsPath, '{"database_id":42,"failure_message":"cached detail"}\n');
+  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":42,"failure_message":"cached detail"}}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
@@ -150,7 +150,7 @@ process.exit(99);
       },
     });
 
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).failure_message, "cached detail");
+    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.failure_message, "cached detail");
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
     assert.equal(state.available, false);
     assert.equal(state.complete, false);
@@ -166,7 +166,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
   const item = await fixture();
   await rm(path.join(item.root, ".github"), { recursive: true });
   await mkdir(path.dirname(item.logsPath), { recursive: true });
-  await writeFile(item.logsPath, '{"database_id":7}\n');
+  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":7}}\n');
   await writeFile(item.statePath, '{"observedAt":"2026-09-06T20:00:00Z","available":true}\n');
   await writeFile(path.join(item.root, "cache", "gh-aw-logs-exit-code"), "1\n");
   try {
@@ -183,7 +183,7 @@ test("activity logs records a failure when workflow discovery is unavailable", a
       },
     });
     const state = JSON.parse(await readFile(item.statePath, "utf8"));
-    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).database_id, 7);
+    assert.equal(JSON.parse(await readFile(item.logsPath, "utf8")).run.database_id, 7);
     assert.equal(state.available, false);
     assert.equal(state.targetCount, 0);
     assert.equal(state.fallback, true);

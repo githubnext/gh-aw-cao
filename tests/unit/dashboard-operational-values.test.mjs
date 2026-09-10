@@ -26,7 +26,7 @@ test("operational-value collection processes the shared gh-aw logs JSONL", async
       },
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       graders: {
         results: [{
@@ -50,7 +50,7 @@ test("operational-value collection processes the shared gh-aw logs JSONL", async
           diagnostics: { quality: 0.8 },
         }],
       },
-  }) + "\n");
+  } }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [
@@ -98,7 +98,7 @@ test("operational-value collection defaults its cache to the output path when RE
     }],
   };
   await writeFile(inventoryPath, JSON.stringify(inventory));
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       graders: {
         results: [{
@@ -110,7 +110,7 @@ test("operational-value collection defaults its cache to the output path when RE
           observation: { evidenceAt: "2026-09-06T10:00:00Z" },
         }],
       },
-  }) + "\n");
+  } }) + "\n");
 
   const run = () => execFileAsync(process.execPath, [
     path.resolve("dashboard/report/operational-values.mjs"),
@@ -159,11 +159,11 @@ test("operational-value collection treats non-array graders.results as no result
       },
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       // Simulates schema drift/partial data where graders.results is not an array.
       graders: { results: null },
-  }) + "\n");
+  } }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [
@@ -202,7 +202,7 @@ test("operational-value collection ignores malformed diagnostics entries instead
       },
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       graders: {
         results: [{
@@ -228,7 +228,7 @@ test("operational-value collection ignores malformed diagnostics entries instead
           diagnostics: { quality: 0.8 },
         }],
       },
-  }) + "\n");
+  } }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [
@@ -270,7 +270,7 @@ test("operational-value collection degrades to an empty snapshot when the shared
   }));
   // Malformed logs JSONL must not crash the collector
   // when a prior cache exists to drive output completeness.
-  await writeFile(logsPath, JSON.stringify({ notRuns: [] }));
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: { notRuns: [] } }));
   await writeFile(cachePath, JSON.stringify({
     schemaVersion: 1,
     records: [{

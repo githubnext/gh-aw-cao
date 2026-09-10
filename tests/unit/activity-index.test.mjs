@@ -38,7 +38,7 @@ graders:
       package: null,
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       workflow_path: ".github/workflows/sample.lock.yml",
       run_number: 3,
@@ -61,7 +61,7 @@ graders:
         runnerGroupName: "GitHub Actions",
         labels: ["ubuntu-latest"],
       }],
-  }) + "\n");
+  } }) + "\n");
   await writeFile(statePath, JSON.stringify({
     schemaVersion: 1,
     observedAt: "2026-09-06T20:02:00Z",
@@ -116,7 +116,7 @@ test("activity index reports fields missing from gh aw usage artifacts", async (
   await mkdir(workflowDirectory, { recursive: true });
   await writeFile(path.join(workflowDirectory, "sample.md"), "---\nname: Sample\n---\n");
   await writeFile(path.join(workflowDirectory, "sample.lock.yml"), "name: Sample\n");
-  await writeFile(logsPath, '{"database_id":42,"workflow_name":"Sample"}\n');
+  await writeFile(logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":42,"workflow_name":"Sample"}}\n');
   await writeFile(statePath, '{"available":true,"complete":true,"targetCount":1,"fallback":false}\n');
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/index.mjs")], {
@@ -160,7 +160,7 @@ uses: shared/control.md
 role: orchestrator
 `);
   await writeFile(path.join(workflowDirectory, "orchestrator.lock.yml"), "name: Orchestrator\n");
-  await writeFile(logsPath, JSON.stringify({
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
     database_id: 42,
     workflow_name: "Orchestrator",
     run_number: 1,
@@ -172,7 +172,7 @@ role: orchestrator
     started_at: "2026-09-06T20:00:01Z",
     updated_at: "2026-09-06T20:01:00Z",
     display_title: "Pending run",
-  }) + "\n");
+  } }) + "\n");
   await writeFile(statePath, '{"available":true,"complete":true,"targetCount":1,"fallback":false}\n');
   try {
     await execFileAsync(process.execPath, [path.resolve("activity/index.mjs")], {
