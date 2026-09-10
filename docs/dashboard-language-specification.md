@@ -1128,6 +1128,7 @@ dashboard:
 - Added dashboard-level site-wide callouts, optional source-row visibility conditions, and volatile accessible dismissal through **DLS-DOC-015** and **DLS-SAFE-014**.
 - Updated the complete example to declare repository AIC distribution as a linked, ordered pie chart.
 - Added the optional unit `format` and deterministic compact `duration` presentation for human-friendly elapsed times.
+- Added the `human-friendly-timestamp` temporal field format for scannable relative and concise date presentation with exact UTC timestamp access.
 - Added the `work-items` source fields and `work-project-view` element for GitHub Projects-style Board, Tasks, and Roadmap presentation of workflow work.
 - Added the `agent-assignments` source fields and `agent-marketplace-view` element for Marketplace-style agent capability and runtime-health presentation.
 - Added the attention-first `signal-list` Home presentation, four-state Work display mapping, and composed `insights-overview` element with explicit outcome, AIC, detection, and experiment evidence boundaries.

@@ -60,6 +60,7 @@ describe('table cell display helper', () => {
     expect(recent.tagName).toBe('TIME');
     expect(recent.textContent).toBe('5 minutes ago');
     expect(recent.title).toMatch(/ UTC$/);
+    expect(recent.getAttribute('aria-label')).toBe(`5 minutes ago (${recent.title})`);
     expect(renderCellDisplay(undefined, 2.5, toText, {
       name: 'AI Credits',
       symbol: 'AIC',

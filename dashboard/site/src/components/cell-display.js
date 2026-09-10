@@ -30,7 +30,8 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
       ? formatHumanFriendlyTimestamp(value)
       : formatUtcDateTime(value);
     const title = format === 'human-friendly-timestamp' ? `${formatUtcDateTime(value)} UTC` : undefined;
-    return h('time', { dateTime: value, title }, text);
+    const ariaLabel = title ? `${text} (${title})` : undefined;
+    return h('time', { dateTime: value, title, ariaLabel }, text);
   }
   if (unit && typeof value === 'number' && Number.isFinite(value)) return formatNumber(value, unit);
   if (format === 'workflow-run-url') return renderWorkflowRunUrl(value) ?? toText(value);

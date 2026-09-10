@@ -1105,6 +1105,7 @@
                 "x": {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 },
                 "y": {
@@ -1193,6 +1194,7 @@
                 {
                   "field": "latest-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Latest"
                 }
               ]
@@ -1238,6 +1240,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 },
                 {
@@ -1313,6 +1316,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 },
                 {
@@ -1469,6 +1473,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 }
               ],
@@ -1526,6 +1531,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Updated"
                 }
               ]
@@ -1808,6 +1814,7 @@
               "x": {
                 "field": "started-at",
                 "type": "temporal",
+                "format": "human-friendly-timestamp",
                 "time-unit": "day"
               },
               "y": {
@@ -1917,6 +1924,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Updated"
                 }
               ],
@@ -2019,6 +2027,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Updated"
                 }
               ]
@@ -2053,6 +2062,7 @@
               "x": {
                 "field": "started-at",
                 "type": "temporal",
+                "format": "human-friendly-timestamp",
                 "time-unit": "day"
               },
               "y": {
@@ -2173,11 +2183,13 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 },
                 {
                   "field": "ended-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Ended"
                 }
               ],
@@ -2242,6 +2254,7 @@
               "x": {
                 "field": "started-at",
                 "type": "temporal",
+                "format": "human-friendly-timestamp",
                 "title": "Started"
               },
               "y": {
@@ -2726,6 +2739,7 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 },
                 {
@@ -2786,6 +2800,7 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 },
                 {
@@ -2915,6 +2930,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Updated"
                 }
               ]
@@ -3050,6 +3066,7 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 },
                 {
@@ -3174,6 +3191,7 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 }
               ]
@@ -3211,6 +3229,7 @@
                 "x": {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "time-unit": "day"
                 },
                 "y": {
@@ -3292,7 +3311,8 @@
                   },
                   {
                     "field": "started-at",
-                    "type": "temporal"
+                    "type": "temporal",
+                    "format": "human-friendly-timestamp"
                   }
                 ]
               }
@@ -3380,11 +3400,13 @@
                 {
                   "field": "published-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Published"
                 },
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 }
               ]
@@ -3478,6 +3500,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 }
               ],
@@ -3514,6 +3537,7 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Started"
                 },
                 {
@@ -3640,6 +3664,7 @@
                   {
                     "field": "last-observation",
                     "type": "temporal",
+                    "format": "human-friendly-timestamp",
                     "title": "Last observation"
                   }
                 ]
@@ -3678,6 +3703,7 @@
                 "x": {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "time-unit": "day"
                 },
                 "y": {
@@ -3735,7 +3761,8 @@
                   },
                   {
                     "field": "observed-at",
-                    "type": "temporal"
+                    "type": "temporal",
+                    "format": "human-friendly-timestamp"
                   }
                 ]
               }
@@ -3828,7 +3855,8 @@
                   },
                   {
                     "field": "observed-at",
-                    "type": "temporal"
+                    "type": "temporal",
+                    "format": "human-friendly-timestamp"
                   }
                 ]
               }
@@ -3947,7 +3975,8 @@
                   },
                   {
                     "field": "observed-at",
-                    "type": "temporal"
+                    "type": "temporal",
+                    "format": "human-friendly-timestamp"
                   }
                 ]
               }
@@ -3982,6 +4011,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 },
                 {
@@ -4122,6 +4152,7 @@
                   {
                     "field": "observed-at",
                     "type": "temporal",
+                    "format": "human-friendly-timestamp",
                     "title": "Observed"
                   }
                 ]
@@ -4279,7 +4310,8 @@
                   },
                   {
                     "field": "observed-at",
-                    "type": "temporal"
+                    "type": "temporal",
+                    "format": "human-friendly-timestamp"
                   },
                   {
                     "field": "issue-link",
@@ -4631,6 +4663,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Observed"
                 },
                 {
@@ -4759,6 +4792,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Updated"
                 }
               ]
@@ -4832,6 +4866,7 @@
                 {
                   "field": "started-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Date"
                 },
                 {
@@ -4886,6 +4921,7 @@
                 {
                   "field": "waiting-since",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Date"
                 },
                 {
@@ -4940,6 +4976,7 @@
                 {
                   "field": "waiting-since",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Date"
                 },
                 {
@@ -4991,6 +5028,7 @@
                 {
                   "field": "observed-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Date"
                 },
                 {
