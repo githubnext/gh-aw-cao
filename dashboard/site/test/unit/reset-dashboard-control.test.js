@@ -7,6 +7,7 @@ import { DATABASE_NAME, openCanonicalDatabase } from '../../src/data/storage/ind
 const APP_AUX_DATABASE_NAME = 'gh-aw-cao-dashboard-data-aux';
 const NON_APP_DATABASE_NAME = 'third-party-dashboard-data';
 
+/** @param {string} name */
 function deleteDatabase(name) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(name);
@@ -15,6 +16,7 @@ function deleteDatabase(name) {
   });
 }
 
+/** @param {string} name */
 function openDatabase(name) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name);
@@ -78,29 +80,36 @@ describe('dashboard local-data reset', () => {
     const failingIndexedDB = {
       databases: async () => [{ name: APP_AUX_DATABASE_NAME }],
       deleteDatabase: () => {
-        const request = { error: deletionError };
+        const request = /** @type {{ error: Error, onerror?: () => void }} */ ({ error: deletionError });
         queueMicrotask(() => request.onerror?.());
         return request;
       }
     };
 
-    await expect(resetLocalDashboardData(localStorage, failingIndexedDB)).rejects.toThrow('deletion failed');
+    await expect(resetLocalDashboardData(
+      localStorage,
+      /** @type {IDBFactory} */ (/** @type {unknown} */ (failingIndexedDB))
+    )).rejects.toThrow('deletion failed');
     expect(localStorage.length).toBe(0);
   });
 
   it('still resets localStorage when indexedDB.databases is unavailable', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.theme', 'dark');
-    const deletedNames = [];
+    const deletedNames = /** @type {string[]} */ ([]);
     const legacyIndexedDB = {
+      /** @param {string} name */
       deleteDatabase: (name) => {
         deletedNames.push(name);
-        const request = {};
+        const request = /** @type {{ onsuccess?: () => void }} */ ({});
         queueMicrotask(() => request.onsuccess?.());
         return request;
       }
     };
 
-    await expect(resetLocalDashboardData(localStorage, legacyIndexedDB)).resolves.toBeUndefined();
+    await expect(resetLocalDashboardData(
+      localStorage,
+      /** @type {IDBFactory} */ (/** @type {unknown} */ (legacyIndexedDB))
+    )).resolves.toBeUndefined();
     expect(deletedNames).toEqual([DATABASE_NAME]);
     expect(localStorage.length).toBe(0);
   });

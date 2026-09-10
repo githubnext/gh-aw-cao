@@ -16,21 +16,29 @@ async function deleteAppDatabases(indexedDB) {
   await deleteCanonicalDatabase(indexedDB);
   if (typeof indexedDB.databases !== 'function') return;
   const databases = await indexedDB.databases();
+  const databaseNames = databases.flatMap((database) => {
+    const name = database?.name;
+    return typeof name === 'string' && name.startsWith(APP_INDEXEDDB_PREFIX) ? [name] : [];
+  });
   await Promise.all(
-    databases
-      .map((database) => database?.name)
-      .filter((name) => typeof name === 'string' && name.startsWith(APP_INDEXEDDB_PREFIX))
-      .map((name) => new Promise((resolve, reject) => {
+    databaseNames.map((name) => new Promise((resolve, reject) => {
         let settled = false;
-        const settle = (handler) => (value) => {
+        const request = indexedDB.deleteDatabase(name);
+        request.onsuccess = () => {
           if (settled) return;
           settled = true;
-          handler(value);
+          resolve(undefined);
         };
-        const request = indexedDB.deleteDatabase(name);
-        request.onsuccess = settle(resolve);
-        request.onerror = settle(() => reject(request.error));
-        request.onblocked = settle(() => reject(new Error(`Database deletion was blocked: ${name}`)));
+        request.onerror = () => {
+          if (settled) return;
+          settled = true;
+          reject(request.error);
+        };
+        request.onblocked = () => {
+          if (settled) return;
+          settled = true;
+          reject(new Error(`Database deletion was blocked: ${name}`));
+        };
       }))
   );
 }
