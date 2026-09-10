@@ -2,9 +2,9 @@ import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
+import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'));
@@ -127,6 +127,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(ingestGhAwLogs(indexedDB, input)).resolves.toMatchObject({
       updated: true
     });
+
     const queries = createCanonicalQueries(indexedDB);
     const activeRuns = await queries.runs.list();
     const activeSessions = await queries.sessions.forRun('github:run:303:attempt:1');
@@ -136,6 +137,52 @@ describe('canonical source ingestion and queries', () => {
     ]);
     expect(await queries.events.forSession(String(activeSessions[0].id))).toEqual([
       expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
+    ]);
+  });
+
+  it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
+    const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', classification: 'success', created_at: '2026-01-01T00:00:00Z',
+      url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303', logs_path: 'logs', event: 'push', branch: 'main'
+    } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {} })}\n`;
+    await expect(ingestCachedGhAwJsonl(indexedDB, content, { now: Date.parse('2026-01-01T00:00:00Z') }))
+      .resolves.toMatchObject({ updated: true, records: 1 });
+    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
+      expect.objectContaining({ id: 'github:run:303:attempt:1', repositoryFullName: 'githubnext/gh-aw-cao' })
+    ]);
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
+      expect.objectContaining({ kind: 'ingest-jsonl', records: 1 })
+    ]);
+    await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
+    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
+  });
+
+  it('upserts multiple JSONL runs and retains earlier fresh records', async () => {
+    /** @param {number} run_id @param {string} created_at */
+    const record = (run_id, created_at) => JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', classification: 'success', created_at,
+      url: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run_id}`, logs_path: 'logs', event: 'push', branch: 'main'
+    } });
+    await ingestCachedGhAwJsonl(indexedDB, `${record(1, '2026-02-01T00:00:00Z')}\n`, {
+      now: Date.parse('2026-02-01T00:00:00Z')
+    });
+    await ingestCachedGhAwJsonl(indexedDB, `${record(2, '2026-02-02T00:00:00Z')}\n`, {
+      now: Date.parse('2026-02-02T00:00:00Z')
+    });
+    expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
+      'github:run:1:attempt:1', 'github:run:2:attempt:1'
+    ]);
+  });
+
+  it('records failed JSONL ingestion without storing partial entities', async () => {
+    await expect(ingestCachedGhAwJsonl(indexedDB, '{"schema_version":2,"kind":"run","run":')).rejects.toThrow();
+    await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
+      expect.objectContaining({ kind: 'ingest-jsonl-failed', error: 'TypeError' })
     ]);
   });
 

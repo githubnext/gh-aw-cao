@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
+import { parseGhAwLogsJsonl, serializeGhAwLogsJsonl } from "./gh-aw-logs.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RUN_LIMIT = 10;
@@ -12,7 +13,7 @@ const DEFAULT_RUN_LIMIT = 10;
 async function existingSnapshot(file) {
   try {
     await stat(file);
-    return JSON.parse(await readFile(file, "utf8"));
+    return { runs: parseGhAwLogsJsonl(await readFile(file, "utf8")) };
   } catch (error) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
     return { runs: [] };
@@ -28,7 +29,7 @@ async function writeOutcome(outcome) {
 export async function collectActivityLogs() {
   const repository = process.env.GITHUB_REPOSITORY || "";
   const root = path.resolve(process.env.REPORT_ROOT || ".");
-  const logsPath = path.resolve(process.env.REPORT_GH_AW_LOGS || "_activity/gh-aw-logs.json");
+  const logsPath = path.resolve(process.env.REPORT_GH_AW_LOGS || "_activity/gh-aw-logs.jsonl");
   const statePath = path.resolve(process.env.REPORT_GH_AW_LOGS_STATE || "_activity/gh-aw-logs-state.json");
   const exitCodePath = path.resolve(process.env.REPORT_GH_AW_LOGS_EXIT_CODE || "_activity/gh-aw-logs-exit-code");
   const windowDays = Number(process.env.REPORT_RUN_WINDOW_DAYS || DEFAULT_WINDOW_DAYS);
@@ -60,9 +61,8 @@ export async function collectActivityLogs() {
     if (!Number.isInteger(exitCode) || exitCode !== 0) {
       throw new Error(`gh aw logs exited with ${Number.isInteger(exitCode) ? exitCode : "an unknown status"}`);
     }
-    const snapshot = JSON.parse(await readFile(logsPath, "utf8"));
-    if (!Array.isArray(snapshot.runs)) throw new Error("gh aw logs returned invalid JSON");
-    await writeFile(logsPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    const snapshot = { runs: parseGhAwLogsJsonl(await readFile(logsPath, "utf8")) };
+    await writeFile(logsPath, serializeGhAwLogsJsonl(snapshot.runs));
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,
@@ -82,7 +82,7 @@ export async function collectActivityLogs() {
     log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} with one gh aw logs invocation`;
     return "success";
   } catch (error) {
-    await writeFile(logsPath, `${JSON.stringify(cachedSnapshot, null, 2)}\n`);
+    await writeFile(logsPath, serializeGhAwLogsJsonl(cachedRuns));
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,

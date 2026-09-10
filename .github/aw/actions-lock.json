@@ -1,19 +1,19 @@
 {
   "entries": {
-    "actions/setup-python@v7.0.0": {
+    "actions/setup-python@v7": {
       "repo": "actions/setup-python",
-      "version": "v7.0.0",
+      "version": "v7",
       "sha": "5fda3b95a4ea91299a34e894583c3862153e4b97"
     },
-    "github/gh-aw-actions/setup-cli@v0.89.1": {
+    "github/gh-aw-actions/setup-cli@v0.89.2": {
       "repo": "github/gh-aw-actions/setup-cli",
-      "version": "v0.89.1",
-      "sha": "4537e5924c9abb366dcbece06750e498e0218fae"
+      "version": "v0.89.2",
+      "sha": "e67822c8ebaae760c3be935622dbfe343a465306"
     },
-    "github/gh-aw-actions/setup@v0.89.1": {
+    "github/gh-aw-actions/setup@v0.89.2": {
       "repo": "github/gh-aw-actions/setup",
-      "version": "v0.89.1",
-      "sha": "4537e5924c9abb366dcbece06750e498e0218fae"
+      "version": "v0.89.2",
+      "sha": "e67822c8ebaae760c3be935622dbfe343a465306"
     }
   },
   "containers": {

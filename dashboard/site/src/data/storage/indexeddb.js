@@ -1,7 +1,7 @@
 import { relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 5;
+export const DATABASE_VERSION = 7;
 
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
@@ -13,6 +13,7 @@ const ENTITY_STORES = /** @type {const} */ ([
   'workItems',
   'findings'
 ]);
+const TRANSACTION_STORE = 'transactions';
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
 
 /**
@@ -84,6 +85,10 @@ function createSchema(database) {
 
   const findings = database.createObjectStore('findings', { keyPath: 'id' });
   createIndex(findings, 'bySeverity', 'severity');
+
+  const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
+  createIndex(transactions, 'byCreatedAt', 'createdAt');
+  createIndex(transactions, 'byKind', 'kind');
 }
 
 /**
@@ -113,7 +118,13 @@ export function openCanonicalDatabase(indexedDB) {
         // schema is discarded instead of migrated.
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
+      } else if (event.oldVersion < 7) {
+        if (database.objectStoreNames.contains('operations')) database.deleteObjectStore('operations');
+        const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
+        createIndex(transactions, 'byCreatedAt', 'createdAt');
+        createIndex(transactions, 'byKind', 'kind');
       }
+
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));
@@ -133,6 +144,7 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
   if (errors.length > 0) {
     throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
   }
+
   const batchSize = options.batchSize ?? DEFAULT_WRITE_BATCH_SIZE;
   if (!Number.isInteger(batchSize) || batchSize < 1) {
     throw new TypeError('Write batch size must be a positive integer');
@@ -225,6 +237,54 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
     return await requestResult(index.getAll(
       IDBKeyRange.bound(key, [...key, []], false, true)
     ));
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {import('../model/schema.js').CanonicalBatch} batch
+ */
+export async function replaceCanonicalBatch(indexedDB, batch) {
+  const errors = relationshipErrors(batch);
+  if (errors.length > 0) throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    for (const storeName of ENTITY_STORES) {
+      const transaction = database.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const retained = new Set(batch[storeName].map((record) => String(record.id)));
+      const existing = await requestResult(store.getAllKeys());
+      for (const id of existing) if (!retained.has(String(id))) store.delete(id);
+      for (const record of batch[storeName]) store.put(record);
+      await transactionDone(transaction);
+    }
+  } finally {
+    database.close();
+  }
+}
+
+/**
+ * @param {IDBFactory} indexedDB
+ * @param {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} transaction
+ */
+export async function recordTransaction(indexedDB, transaction) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const write = database.transaction(TRANSACTION_STORE, 'readwrite');
+    write.objectStore(TRANSACTION_STORE).put(transaction);
+    await transactionDone(write);
+  } finally {
+    database.close();
+  }
+}
+
+/** @param {IDBFactory} indexedDB */
+export async function readTransactions(indexedDB) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    return await requestResult(database.transaction(TRANSACTION_STORE).objectStore(TRANSACTION_STORE).getAll());
   } finally {
     database.close();
   }

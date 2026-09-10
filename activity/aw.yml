@@ -1,30 +1,10 @@
 name: CAO Activity
 description: Maintain a shared, bounded snapshot of GitHub Agentic Workflow activity.
-min-version: v0.89.1
+min-version: v0.89.2
 experimental: true
 includes:
   - .github/workflows/activity.yml
   - .github/workflows/cao-maintenance.yml
 resources:
-  - source: admission-evidence.mjs
-    destination: .github/aw/activity/admission-evidence.mjs
-  - source: actions-context.mjs
-    destination: .github/aw/activity/actions-context.mjs
-  - source: actions-log.mjs
-    destination: .github/aw/activity/actions-log.mjs
-  - source: collect-logs.sh
-    destination: .github/aw/activity/collect-logs.sh
-  - source: failure-evidence.mjs
-    destination: .github/aw/activity/failure-evidence.mjs
-  - source: index.mjs
-    destination: .github/aw/activity/index.mjs
-  - source: logs.mjs
-    destination: .github/aw/activity/logs.mjs
-  - source: run-activity.mjs
-    destination: .github/aw/activity/run-activity.mjs
-  - source: github-telemetry.mjs
-    destination: .github/aw/activity/github-telemetry.mjs
-  - source: run-health-snapshot.mjs
-    destination: .github/aw/activity/run-health-snapshot.mjs
-  - source: version.mjs
-    destination: .github/aw/activity/version.mjs
+  - source: gh-aw-logs.mjs
+    destination: .github/aw/activity/gh-aw-logs.mjs

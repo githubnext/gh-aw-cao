@@ -37,9 +37,9 @@ Activity consumer conforms when it satisfies Section 8.
 
 ## 2. Role and authority
 
-CAO Activity is deterministic collection infrastructure. It MUST collect and
-normalize bounded operational evidence into one reusable point-in-time
-snapshot.
+CAO Activity is deterministic collection infrastructure. It MUST collect one
+bounded `gh aw logs` JSONL snapshot for reuse. It MUST NOT normalize, index, or
+derive additional records from that snapshot.
 
 Activity:
 
@@ -57,15 +57,9 @@ does not grant authority.
 ## 3. Collection boundary
 
 An Activity refresh MUST create a coherent snapshot from the inputs available
-to the same workflow run. Inputs MAY include:
-
-- installed workflow sources and compiled metadata;
-- resolved control policy and package inventory;
-- bounded run metadata, audits, and declared telemetry artifacts acquired by
-  one shared `gh aw logs` invocation;
-- durable issue, pull request, comment, and review-artifact records that are
-  not represented by the logs snapshot; and
-- records retained from a compatible prior Activity snapshot.
+to the same workflow run. Inputs are limited to compiled workflow metadata in the checked-out control
+repository, a compatible prior JSONL cache entry, and the bounded run metadata,
+audits, and declared artifacts acquired by one `gh aw logs` invocation.
 
 The publisher MUST bound remote acquisition by repository scope, evidence
 window, pagination, or another explicit limit. It MUST NOT discover workflows
@@ -73,10 +67,8 @@ in target repositories merely because those repositories appear in rollout
 policy. Installed workflow discovery is bounded to the checked-out control
 repository.
 
-The Activity indexer MUST operate from checked-out metadata and the collected
-snapshot. It MUST NOT invoke GitHub APIs, `gh aw logs`, or another remote
-collector to fill missing fields. Missing fields MUST remain unavailable or
-incomplete.
+Activity MUST NOT invoke a post-processing indexer, GitHub APIs, or another
+remote collector to fill missing fields.
 
 ## 4. Snapshot contract
 
@@ -86,23 +78,20 @@ immutable identity derived from the publisher's workflow run ID and run
 attempt. A consumer that dispatches Activity MUST restore the exact snapshot
 for the completed run and attempt rather than an unspecified latest snapshot.
 
-The snapshot MUST identify when it was generated and the repository scope and
-evidence window it represents. It MUST include collection-state metadata that
-allows consumers to determine availability and completeness without inferring
-either from row counts.
+The snapshot consists only of the JSONL produced by `gh aw logs`. Consumers
+MUST determine availability, completeness, freshness, and scope for their own
+use and MUST NOT infer those properties from row counts.
 
-The concrete files and schemas are defined by
-[`activity/README.md`](../activity/README.md). Changing or removing a required
-file, field, identity rule, or quality meaning is a contract change and MUST be
-reviewed with this specification and affected consumer specifications.
+The concrete cache file and identity rule are defined by
+[`activity/README.md`](../activity/README.md). Changing the file or identity
+rule is a contract change and MUST be reviewed with affected consumers.
 
 The cache is a reusable transport and efficiency mechanism. It MUST NOT be
 represented as durable historical authority.
 
 ## 5. Data quality
 
-For every evidence class used by a consumer, the snapshot or its derived source
-MUST communicate:
+For every evidence class used by a consumer, the consumer MUST establish:
 
 - **availability:** whether usable evidence was obtained;
 - **completeness:** whether the declared scope and evidence window were fully
@@ -119,9 +108,9 @@ missing, stale, and partial states MUST remain distinguishable from zero.
 ## 6. Evidence precedence
 
 Native `gh aw` logs, audits, and declared artifacts are authoritative for the
-fields they provide. Derived records MUST retain sufficient identity and
-provenance to relate an observation to its repository, workflow, run, and
-evidence source when those dimensions are available.
+fields they provide. Consumers deriving records from them MUST retain
+sufficient identity and provenance to relate an observation to its repository,
+workflow, run, and evidence source when those dimensions are available.
 
 When audit generation is enabled, a publisher MAY retain bounded normalized
 audit aggregates and non-secret agent, model, runtime, compiler, firewall, and
@@ -141,8 +130,8 @@ stable non-secret alias, role, or credential class.
 ## 7. Failure and retained snapshots
 
 When primary log collection fails, the publisher MAY preserve a compatible
-prior snapshot. It MUST record the failed refresh and distinguish retained
-observations from evidence collected during the current refresh.
+prior JSONL snapshot. It MUST fail the workflow rather than publish a
+post-processed failure state.
 
 The publisher MUST NOT respond to a failed `gh aw logs` invocation by issuing
 per-workflow run-list, per-run detail, or Jobs API fallback requests. Missing
@@ -150,10 +139,8 @@ run fields MUST remain unavailable rather than be inferred from a weaker,
 independently collected source.
 
 If neither primary collection nor a compatible retained snapshot provides
-usable evidence, the publisher MUST emit a valid unavailable state rather than
-fabricate records or report a complete empty result. Missing scope,
-credentials, access, or required evidence MUST fail closed as unavailable,
-incomplete, skipped, or no-op.
+usable evidence, the publisher MUST fail. Missing scope, credentials, access,
+or required evidence MUST fail closed.
 
 ## 8. Consumer obligations
 

@@ -48,7 +48,7 @@ jobs:
         id: assessment
         continue-on-error: true
         env:
-          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/sources.json
+          DASHBOARD_DATA_URL: https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl
           DASHBOARD_VIEWS_OUTPUT_DIR: test-results/dashboard-views
           EVENT_NAME: ${{ github.event_name }}
           SELECTED_PAGE_IDS: ${{ steps.selection.outputs.page-ids }}

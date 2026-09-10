@@ -13,7 +13,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
   const root = await mkdtemp(path.join(os.tmpdir(), "dashboard-aic-usage-"));
   const inventoryPath = path.join(root, "deployed-workflows.json");
   const outputPath = path.join(root, "aic-usage.json");
-  const logsPath = path.join(root, "gh-aw-logs.json");
+  const logsPath = path.join(root, "gh-aw-logs.jsonl");
   const cachePath = path.join(root, "cache");
   const runPath = path.join(cachePath, "repo-githubnext-gh-aw-cao", "workflow-data", "run-42");
   await mkdir(path.join(runPath, "evals"), { recursive: true });
@@ -49,8 +49,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
       },
     }],
   }));
-  await writeFile(logsPath, JSON.stringify({
-    runs: [{
+  await writeFile(logsPath, JSON.stringify({ schema_version: 2, kind: "run", run: {
       database_id: 42,
       aic: 2.5,
       safe_items_count: 4,
@@ -66,8 +65,7 @@ test("AI Credit usage collection processes the shared logs snapshot without invo
         total_cache_write_tokens: 10,
         by_model: { "gpt-5": { reasoning_tokens: 7 } },
       },
-    }],
-  }));
+  } }) + "\n");
 
   try {
     await execFileAsync(process.execPath, [path.resolve("dashboard/report/aic-usage.mjs")], {

@@ -257,6 +257,7 @@ export function adaptGhAwLogs(input) {
         fullName: `${requiredString(repository.owner, 'repository.owner')}/${requiredString(repository.name, 'repository.name')}`,
         visibility: optionalString(repository.visibility) ?? 'unknown'
       }
+
     },
     {
       kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: `workflow:${workflowGithubId}`, observedAt,
@@ -316,4 +317,42 @@ export function adaptGhAwLogs(input) {
     observations.push(...events);
   }
   return { observations };
+}
+
+/**
+ * @param {string} content
+ * @returns {{ observations: import('../model/schema.js').CanonicalObservation[], records: number }}
+ */
+export function adaptCachedGhAwJsonl(content) {
+  if (typeof content !== 'string') throw new TypeError('gh-aw JSONL must be a string');
+  /** @type {import('../model/schema.js').CanonicalObservation[]} */
+  const observations = [];
+  let records = 0;
+  for (const [index, line] of content.split(/\r?\n/).entries()) {
+    if (!line.trim()) continue;
+    let envelope;
+    try { envelope = objectValue(JSON.parse(line), `gh-aw JSONL line ${index + 1}`); } catch (error) {
+      throw new TypeError(`gh-aw JSONL line ${index + 1} must contain valid JSON`, { cause: error });
+    }
+    if (envelope.schema_version !== 2 || envelope.kind !== 'run' || !envelope.run) continue;
+    const run = objectValue(envelope.run, `gh-aw JSONL line ${index + 1}.run`);
+    const owner = requiredString(run.organization, 'run.organization');
+    const name = requiredString(run.repository, 'run.repository');
+    const fullName = `${owner}/${name}`;
+    const path = requiredString(run.workflow_path, 'run.workflow_path');
+    const githubRunId = identifier(run.run_id, 'run.run_id');
+    const attempt = positiveInteger(run.run_attempt ?? 1, 'run.run_attempt');
+    const observedAt = canonicalTimestamp(run.updated_at ?? run.created_at, 'run.created_at');
+    const repositorySourceId = fullName.toLowerCase();
+    const workflowSourceId = `${repositorySourceId}:${path}`.toLowerCase();
+    const repository = sourceId('repository', OBSERVATION_SOURCE, repositorySourceId);
+    const workflow = sourceId('workflow', OBSERVATION_SOURCE, workflowSourceId);
+    observations.push(
+      { kind: 'repository', source: OBSERVATION_SOURCE, sourceId: `repository:${repositorySourceId}`, observedAt, data: { id: repository, owner, name, fullName, visibility: 'unknown' } },
+      { kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: `workflow:${workflowSourceId}`, observedAt, data: { id: workflow, repositoryId: repository, name: requiredString(run.workflow_name, 'run.workflow_name'), path, state: 'unknown' } },
+      { kind: 'run', source: OBSERVATION_SOURCE, sourceId: `run:${githubRunId}:${attempt}`, observedAt, data: { id: runId(githubRunId, attempt), repositoryId: repository, workflowId: workflow, owner, repository: name, repositoryFullName: fullName, workflowPath: path, githubRunId, attempt, title: optionalString(run.display_title) ?? `Run ${githubRunId}`, event: optionalString(run.event) ?? optionalString(run.event_name) ?? 'unknown', status: optionalString(run.status) ?? 'unknown', conclusion: optionalString(run.conclusion) ?? null, createdAt: optionalString(run.created_at) ?? null, startedAt: optionalString(run.started_at) ?? null, completedAt: optionalString(run.updated_at) ?? null, engine: optionalString(run.engine) ?? 'unknown', aic: run.aic ?? null, tokenUsage: run.token_usage ?? null, runLink: optionalString(run.url) ?? null } }
+    );
+    records += 1;
+  }
+  return { observations, records };
 }

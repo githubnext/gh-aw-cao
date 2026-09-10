@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 import { performanceJobRecord } from "./failure-evidence.mjs";
+import { parseGhAwLogsJsonl } from "./gh-aw-logs.mjs";
 import { normalizeVersion } from "./version.mjs";
 
 const EMPTY_RUN_HEALTH = {
@@ -204,7 +205,7 @@ export async function main(actions = {}) {
           throw error;
         })
         : discoverLocalInventory(root),
-      readFile(logsPath, "utf8").then(JSON.parse),
+      readFile(logsPath, "utf8").then((contents) => ({ runs: parseGhAwLogsJsonl(contents) })),
       readFile(logsStatePath, "utf8").then(JSON.parse),
     ]);
     if (localInventory.schemaVersion !== 1 || !Array.isArray(localInventory.workflows)) {
