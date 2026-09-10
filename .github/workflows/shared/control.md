@@ -74,7 +74,7 @@ jobs:
 
       - name: Evaluate Central Agentic Ops admission
         id: cao_admission
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         env:
           CAO_API_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GH_TOKEN: ${{ github.token }}
@@ -208,7 +208,7 @@ jobs:
       - name: Run CAO control precompute
         id: cao_precompute
         if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
-        uses: actions/github-script@v9
+        uses: actions/github-script@v9.0.0
         env:
           GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
@@ -289,7 +289,7 @@ post-steps:
   - name: Emit control-plane dispatcher telemetry
     if: ${{ always() }}
     continue-on-error: true
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     with:
       script: |
         const fs = require('fs');

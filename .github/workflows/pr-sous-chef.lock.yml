@@ -55,7 +55,7 @@
 name: "PR Sous Chef"
 on:
   schedule:
-    - cron: "19/30 * * * *"
+    - cron: "29/30 * * * *"
   # skip-if-no-match: is:pr is:open -is:draft # Skip-if-no-match processed as search check in pre-activation job
   workflow_dispatch:
     inputs:

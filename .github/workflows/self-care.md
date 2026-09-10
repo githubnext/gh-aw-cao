@@ -94,7 +94,7 @@ safe-outputs:
     max: 13
   threat-detection: false
 
-source: github/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
+source: githubnext/gh-aw-cao@a4b937e2ee4e540d3ccce1377f8943315670f33d
 ---
 
 {{#runtime-import? .github/cao/self-care.md}}

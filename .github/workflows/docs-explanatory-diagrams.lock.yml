@@ -55,7 +55,7 @@
 name: "Docs Diagrams"
 on:
   schedule:
-    - cron: "25 5 * * 4"  # Friendly format: weekly (scattered)
+    - cron: "20 5 * * 5"  # Friendly format: weekly (scattered)
   # skip-if-match: is:pr is:open label:diagram-generator # Skip-if-match processed as search check in pre-activation job
   workflow_dispatch:
     inputs:

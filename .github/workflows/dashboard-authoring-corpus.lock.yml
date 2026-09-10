@@ -57,7 +57,7 @@
 name: "Dashboard Authoring Corpus"
 on:
   schedule:
-    - cron: "9 6 * * 5"  # Friendly format: weekly (scattered)
+    - cron: "20 14 * * 2"  # Friendly format: weekly (scattered)
   # skip-if-match: is:pr is:open label:dashboard-authoring-corpus # Skip-if-match processed as search check in pre-activation job
   workflow_dispatch:
     inputs:
