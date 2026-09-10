@@ -67,7 +67,7 @@ export function renderTableRegion(options) {
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
 
-  const filter = interactive
+  const filterControls = interactive
     ? h(
       'div',
       { className: 'table-filter' },
@@ -99,10 +99,10 @@ export function renderTableRegion(options) {
       'div',
       {
         className: 'table-scroll',
-        tabIndex: 0,
+        ...(!interactive ? { tabIndex: 0 } : {}),
         ...(filterLabel ? { role: 'region', 'aria-label': `${filterLabel}: controls and results` } : {})
       },
-      filter,
+      filterControls,
       h(
         'table',
         {

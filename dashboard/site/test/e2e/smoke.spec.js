@@ -48,13 +48,13 @@ async function expectTableFilterIsContained(tableFilter) {
 /**
  * Lazy-list windows move one page at a time when the user reaches the top edge;
  * each step must keep compact full-view mode active and keep the rendered
- * two-page window intact.
+ * two-page, 50-row window intact.
  * @param {import('@playwright/test').Locator} scroll Table scroll region to move to the top edge.
  * @param {import('@playwright/test').Locator} view Full-view table view containing the rendered lazy rows.
  * @param {import('@playwright/test').Locator} root Dashboard root expected to remain in compact full-view mode.
  * @param {string} expectedFirstRowText Text fragment expected in the first rendered row after the paging step.
  */
-async function scrollToTopAndExpectFirstRow(scroll, view, root, expectedFirstRowText) {
+async function pageUpAndExpectCompactWindow(scroll, view, root, expectedFirstRowText) {
   await scroll.evaluate((element) => {
     element.scrollTop = 0;
     element.dispatchEvent(new Event('scroll'));
@@ -1737,8 +1737,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
       element.dispatchEvent(new Event('scroll'));
     });
     await expect(view.locator('tbody > tr').first()).toContainText('repository-51');
-    await scrollToTopAndExpectFirstRow(scroll, view, dashboardRoot, 'repository-26');
-    await scrollToTopAndExpectFirstRow(scroll, view, dashboardRoot, 'repository-1');
+    await pageUpAndExpectCompactWindow(scroll, view, dashboardRoot, 'repository-26');
+    await pageUpAndExpectCompactWindow(scroll, view, dashboardRoot, 'repository-1');
     await scroll.evaluate((element) => {
       element.scrollTop = 0;
       element.dispatchEvent(new Event('scroll'));
