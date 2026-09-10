@@ -1,7 +1,7 @@
 import { relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 6;
+export const DATABASE_VERSION = 7;
 
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
@@ -13,7 +13,7 @@ const ENTITY_STORES = /** @type {const} */ ([
   'workItems',
   'findings'
 ]);
-const OPERATION_STORE = 'operations';
+const TRANSACTION_STORE = 'transactions';
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
 
 /**
@@ -86,9 +86,9 @@ function createSchema(database) {
   const findings = database.createObjectStore('findings', { keyPath: 'id' });
   createIndex(findings, 'bySeverity', 'severity');
 
-  const operations = database.createObjectStore(OPERATION_STORE, { keyPath: 'id' });
-  createIndex(operations, 'byCreatedAt', 'createdAt');
-  createIndex(operations, 'byKind', 'kind');
+  const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
+  createIndex(transactions, 'byCreatedAt', 'createdAt');
+  createIndex(transactions, 'byKind', 'kind');
 }
 
 /**
@@ -118,10 +118,11 @@ export function openCanonicalDatabase(indexedDB) {
         // schema is discarded instead of migrated.
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
-      } else if (event.oldVersion < 6) {
-        const operations = database.createObjectStore(OPERATION_STORE, { keyPath: 'id' });
-        createIndex(operations, 'byCreatedAt', 'createdAt');
-        createIndex(operations, 'byKind', 'kind');
+      } else if (event.oldVersion < 7) {
+        if (database.objectStoreNames.contains('operations')) database.deleteObjectStore('operations');
+        const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
+        createIndex(transactions, 'byCreatedAt', 'createdAt');
+        createIndex(transactions, 'byKind', 'kind');
       }
 
     };
@@ -266,24 +267,24 @@ export async function replaceCanonicalBatch(indexedDB, batch) {
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} operation
+ * @param {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} transaction
  */
-export async function recordOperation(indexedDB, operation) {
+export async function recordTransaction(indexedDB, transaction) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    const transaction = database.transaction(OPERATION_STORE, 'readwrite');
-    transaction.objectStore(OPERATION_STORE).put(operation);
-    await transactionDone(transaction);
+    const write = database.transaction(TRANSACTION_STORE, 'readwrite');
+    write.objectStore(TRANSACTION_STORE).put(transaction);
+    await transactionDone(write);
   } finally {
     database.close();
   }
 }
 
 /** @param {IDBFactory} indexedDB */
-export async function readOperations(indexedDB) {
+export async function readTransactions(indexedDB) {
   const database = await openCanonicalDatabase(indexedDB);
   try {
-    return await requestResult(database.transaction(OPERATION_STORE).objectStore(OPERATION_STORE).getAll());
+    return await requestResult(database.transaction(TRANSACTION_STORE).objectStore(TRANSACTION_STORE).getAll());
   } finally {
     database.close();
   }

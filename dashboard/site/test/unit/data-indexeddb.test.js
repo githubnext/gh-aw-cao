@@ -37,10 +37,10 @@ describe('canonical IndexedDB', () => {
       'events',
       'findings',
       'jobs',
-      'operations',
       'repositories',
       'runs',
       'sessions',
+      'transactions',
       'workItems',
       'workflows'
     ]);

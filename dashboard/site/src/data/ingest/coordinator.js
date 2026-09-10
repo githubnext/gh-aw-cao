@@ -2,7 +2,7 @@ import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
 import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { normalize } from '../normalize/index.js';
-import { readCanonicalBatch, recordOperation, replaceCanonicalBatch } from '../storage/indexeddb.js';
+import { readCanonicalBatch, recordTransaction, replaceCanonicalBatch } from '../storage/indexeddb.js';
 import { mergeRetainedRecords } from '../storage/retention.js';
 import { inspectStorage, requestPersistentStorage } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
@@ -103,7 +103,7 @@ export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   try {
     const adapted = adaptCachedGhAwJsonl(content);
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
-    await recordOperation(indexedDB, {
+    await recordTransaction(indexedDB, {
       id: `ingest-jsonl:${createdAt}:${adapted.records}`,
       kind: 'ingest-jsonl',
       createdAt,
@@ -112,7 +112,7 @@ export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
     });
     return { ...result, records: adapted.records };
   } catch (error) {
-    await recordOperation(indexedDB, {
+    await recordTransaction(indexedDB, {
       id: `ingest-jsonl-failed:${createdAt}`,
       kind: 'ingest-jsonl-failed',
       createdAt,

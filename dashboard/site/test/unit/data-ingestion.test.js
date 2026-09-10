@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
-import { DATABASE_NAME, readOperations } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sqlExport = JSON.parse(readFileSync(resolve('test/fixtures/sql-export-v1.json'), 'utf8'));
@@ -152,7 +152,7 @@ describe('canonical source ingestion and queries', () => {
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
       expect.objectContaining({ id: 'github:run:303:attempt:1', repositoryFullName: 'githubnext/gh-aw-cao' })
     ]);
-    await expect(readOperations(indexedDB)).resolves.toEqual([
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({ kind: 'ingest-jsonl', records: 1 })
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
@@ -181,7 +181,7 @@ describe('canonical source ingestion and queries', () => {
   it('records failed JSONL ingestion without storing partial entities', async () => {
     await expect(ingestCachedGhAwJsonl(indexedDB, '{"schema_version":2,"kind":"run","run":')).rejects.toThrow();
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);
-    await expect(readOperations(indexedDB)).resolves.toEqual([
+    await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({ kind: 'ingest-jsonl-failed', error: 'TypeError' })
     ]);
   });
