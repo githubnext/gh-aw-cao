@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
 import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
@@ -693,10 +694,7 @@ export async function collectAicUsage() {
     }
     try {
       if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
-      const logs = (await readFile(logsPath, "utf8"))
-        .split(/\r?\n/)
-        .filter(Boolean)
-        .map((line) => JSON.parse(line));
+      const logs = parseGhAwLogsJsonl(await readFile(logsPath, "utf8"));
       log.info`Processing ${logs.length} cached gh-aw log records from ${logsPath}`;
       for (const run of logs) {
         const runId = Number(run.database_id ?? run.run_id ?? run.id);

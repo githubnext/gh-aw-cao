@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
 import {
   mergeOperationalValueRecords,
   operationalValueRunIdentity,
@@ -87,10 +88,7 @@ export async function collectOperationalValues() {
     // completeness for prior observations, so degrade to an empty snapshot.
     let logs = { runs: [] };
     try {
-      logs.runs = (await readFile(logsPath, "utf8"))
-        .split(/\r?\n/)
-        .filter(Boolean)
-        .map((line) => JSON.parse(line));
+      logs.runs = parseGhAwLogsJsonl(await readFile(logsPath, "utf8"));
     } catch (error) {
       log.warning`Treating gh-aw logs JSONL at ${logsPath} as empty: ${error.message}`;
     }
