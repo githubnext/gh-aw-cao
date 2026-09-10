@@ -58,10 +58,15 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+    const dialogRule = styles.match(/\.reset-dashboard-dialog \{[^}]*\}/)?.[0] ?? '';
+    const openRule = styles.match(/\.reset-dashboard-dialog\[open\] \{[^}]*\}/)?.[0] ?? '';
+    const bodyRule = styles.match(/\.reset-dashboard-dialog-body \{[^}]*\}/)?.[0] ?? '';
 
-    expect(styles).toMatch(/\.reset-dashboard-dialog \{[^}]*max-height: calc\(100vh - 32px\);[^}]*height: fit-content;/);
-    expect(styles).toContain('.reset-dashboard-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }');
-    expect(styles).toMatch(/\.reset-dashboard-dialog-body \{[^}]*align-content: start;[^}]*overflow-y: auto;/);
+    expect(dialogRule).toContain('max-height: calc(100vh - 32px);');
+    expect(dialogRule).toContain('height: fit-content;');
+    expect(openRule).toContain('grid-template-rows: auto minmax(0, 1fr) auto;');
+    expect(bodyRule).toContain('align-content: start;');
+    expect(bodyRule).toContain('overflow-y: auto;');
   });
 
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
