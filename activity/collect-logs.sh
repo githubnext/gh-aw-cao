@@ -4,7 +4,7 @@ set -uo pipefail
 
 repository="${GITHUB_REPOSITORY:-}"
 root="${REPORT_ROOT:-.}"
-logs_path="${REPORT_GH_AW_LOGS:-_activity/gh-aw-logs.json}"
+logs_path="${REPORT_GH_AW_LOGS:-_activity/gh-aw-logs.jsonl}"
 output_directory="${REPORT_AIC_CACHE:-_activity/gh-aw-logs}"
 exit_code_path="${REPORT_GH_AW_LOGS_EXIT_CODE:-_activity/gh-aw-logs-exit-code}"
 window_days="${REPORT_RUN_WINDOW_DAYS:-30}"
@@ -23,7 +23,7 @@ set +e
 gh aw logs --audit \
   --output "$output_directory" \
   --summary-file "" \
-  --cached-json "$logs_path" \
+  --cached-jsonl "$logs_path" \
   --artifacts usage \
   --start-date "-${window_days}d" \
   --cache-before "-${window_days}d" \

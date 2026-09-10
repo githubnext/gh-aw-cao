@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { parseGhAwLogsJsonl } from "../../activity/gh-aw-logs.mjs";
 import { adaptGhAwTimelineFiles } from "../site/src/data/adapters/gh-aw-logs.js";
 import { runId as canonicalRunId, sourceId } from "../site/src/data/model/ids.js";
 import { parseRolloutMode } from "./dashboard-language-sources.mjs";
@@ -680,7 +681,7 @@ export async function collectAicUsage() {
   }
   const temporaryRoot = configuredCacheRoot || await mkdtemp(path.join(os.tmpdir(), "pages-aic-"));
   await mkdir(temporaryRoot, { recursive: true });
-  log.info`AI Credit collection will process ${workflowByRunId.size} selected workflow runs; cache root=${temporaryRoot}; logs JSON=${logsPath || "disabled"}`;
+  log.info`AI Credit collection will process ${workflowByRunId.size} selected workflow runs; cache root=${temporaryRoot}; logs JSONL=${logsPath || "disabled"}`;
   try {
     let collectionAvailable = true;
     if (logsStatePath) {
@@ -693,10 +694,9 @@ export async function collectAicUsage() {
     }
     try {
       if (!logsPath) throw new Error("REPORT_GH_AW_LOGS is required");
-      const result = JSON.parse(await readFile(logsPath, "utf8"));
-      if (!Array.isArray(result.runs)) throw new Error("gh aw logs snapshot has no runs array");
-      log.info`Processing ${result.runs.length} cached gh-aw log records from ${logsPath}`;
-      for (const run of result.runs) {
+      const logs = parseGhAwLogsJsonl(await readFile(logsPath, "utf8"));
+      log.info`Processing ${logs.length} cached gh-aw log records from ${logsPath}`;
+      for (const run of logs) {
         const runId = Number(run.database_id ?? run.run_id ?? run.id);
         const aic = run.aic === null || run.aic === undefined || run.aic === ""
           ? null

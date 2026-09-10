@@ -3,7 +3,7 @@ import { summarizeTableColumns } from './table-summary-data.js';
 import { clusterScatterPoints } from './scatter-clustering.js';
 import { deriveDataHealthSources } from './data-health.js';
 import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
-import { ingestDashboardSources } from './data/ingest/coordinator.js';
+import { ingestCachedGhAwJsonl, ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
@@ -226,10 +226,19 @@ export function processDataRequest(request, signal) {
     const requested = requestedSourceNames(request.sourceNames);
     const context = dashboardContext(request.context);
     return (async () => {
-      const sources = await loadDashboardSources(fetch, sourceUrl.href);
-      await ingestDashboardSources(indexedDB, sources, {
-        storage: globalThis.navigator?.storage
-      });
+      const jsonl = sourceUrl.pathname.endsWith('.jsonl');
+      const sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
+      if (jsonl) {
+        const response = await fetch(sourceUrl.href);
+        if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
+        await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
+          storage: globalThis.navigator?.storage
+        });
+      } else {
+        await ingestDashboardSources(indexedDB, sources, {
+          storage: globalThis.navigator?.storage
+        });
+      }
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
         revision: (liveDashboard?.revision ?? 0) + 1

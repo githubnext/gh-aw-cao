@@ -6,7 +6,7 @@ description: Understand the canonical entities, relationships, identities, and l
 The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON observations into one source-neutral model. Views query this model instead of interpreting upstream formats directly.
 
 > [!NOTE]
-> IndexedDB persists only normalized Repository, Workflow, Run, Job, Session, and Event generations plus activation and checkpoint metadata. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
+> IndexedDB persists normalized Repository, Workflow, Run, Job, Session, Event, Work Item, and Finding records, plus an ingestion transaction audit trail. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
 
 ## Entity map
 
@@ -63,11 +63,17 @@ The activity collector requests the compact gh-aw `usage` artifact with audit ge
 
 SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Database owners map their schema to the contract and export static JSON before deployment. Local and deployed environments use the same contract, validator, adapter, and canonical queries; the static dashboard never opens a database connection.
 
-## Consistency and generations
+## Browser database updates
 
 Observations can arrive at different times and enrich an existing entity. Explicit source precedence and observation time resolve conflicting fields; arrival order alone never decides the result.
 
-Every canonical row belongs to a generation. A replacement generation is normalized and validated separately while queries continue reading the active generation. It becomes active only after all mandatory relationships resolve:
+The `gh-aw-logs.jsonl` cache is the dashboard's published operational input. The worker downloads it from the dashboard origin and processes it line by line. It accepts schema-v2 `run` envelopes, ignores other envelope kinds, adapts valid runs into Repository, Workflow, and Run observations, then normalizes and relationship-validates the complete incoming batch before writing.
+
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 7. It has stores for `repositories`, `workflows`, `runs`, `jobs`, `sessions`, `events`, `workItems`, and `findings`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Schema upgrades discard incompatible schemas before version 5 and replace the legacy `operations` audit store with `transactions` for versions 5 and 6.
+
+For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection: it deletes records absent from the retained batch and puts every retained record. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
+
+Every merged batch must satisfy these mandatory relationships:
 
 - Workflow → Repository
 - Run → Repository and Workflow
@@ -75,16 +81,16 @@ Every canonical row belongs to a generation. A replacement generation is normali
 - Session → Run and, when present, Job
 - Event → Session
 
-Independent domains such as usage, outcomes, findings, admissions, security, and MCP evidence retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them. Canonical activation and recovery apply atomically to the normalized entity hierarchy.
+Work items and findings are retained alongside the entity hierarchy. Other independent domains, such as usage, outcomes, admissions, security, and MCP evidence, retain their published schemas in worker memory rather than being forced into unrelated entity tables. They are reconstructable from the static source artifact and are selected only when a page requests them.
 
-Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker, keeping large object graphs and conversions off the rendering thread. Browser writes are committed in bounded transactions. A durable checkpoint is written only after every canonical batch in the current dashboard-source document commits. Interrupted ingestion leaves the generation in `staging`; a restart can repeat committed writes idempotently and continue to activation. Activation requires the checkpoint, moves through `validating`, updates the versioned active pointer atomically, and marks the previous generation `retired` without immediately deleting it.
+Source download, adaptation, normalization, IndexedDB writes, and page queries run in a dedicated Web Worker, keeping large object graphs and conversions off the rendering thread. A successful JSONL ingestion writes an `ingest-jsonl` transaction containing its timestamp, input-record count, and retained-record count. A failed JSONL ingestion writes an `ingest-jsonl-failed` transaction with the error type when possible, and does not write a partial incoming batch. The audit trail is diagnostic derived state, not an authoritative log.
 
-The browser path fully replaces the legacy data system. Worker errors abort the replacement instead of rerunning ingestion through an older path, an unusable generation raises an explicit loading error, and the former whole-source browser cache has been removed. There is no shadow, dual-read, alias, or fallback route. Views render only after the requested generation is active and the worker returns that page's query projection.
+The browser path fully replaces the legacy data system. Worker errors abort the update instead of rerunning ingestion through an older path, and an unusable source raises an explicit loading error. There is no shadow, dual-read, alias, or fallback route. Views render only after the worker returns that page's query projection.
 
-Before ingestion, the browser inspects its storage estimate and requests persistent storage when the API is available. Either request may be denied or fail without affecting correctness; quota recovery still protects the active generation and retries only after deleting expendable failed or retired generations.
+Before ingestion, the browser inspects its storage estimate and requests persistent storage when the API is available. Either request may be denied or fail without affecting correctness.
 
-Ingestion diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRANSACTION_ABORTED`, `QUOTA_EXCEEDED`, `GENERATION_INCOMPLETE`, and `GENERATION_VALIDATION_FAILED`. A failed or incomplete replacement never changes the active-generation pointer.
+Ingestion diagnostics use stable categories such as `NORMALIZATION_FAILED`, `TRANSACTION_ABORTED`, and `QUOTA_EXCEEDED`. A failed JSONL update never writes partial incoming data.
 
-IndexedDB stores this generation as disposable derived state. Clearing browser storage triggers reconstruction from authorized published inputs; it does not delete authoritative information.
+IndexedDB stores this canonical data as disposable derived state. Clearing browser storage triggers reconstruction from authorized published inputs; it does not delete authoritative information.
 
 For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

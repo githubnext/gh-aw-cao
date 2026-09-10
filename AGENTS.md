@@ -47,8 +47,6 @@ Run `npm run check` for complete repository validation. It executes, in order: `
 | `npm run test:package-lifecycle` | Clean-room `gh aw add`/`update` tests; requires `GH_TOKEN` and a GitHub App |
 | `npm run test:load` | Synthetic enterprise-scale load tests (100 000 repos) |
 | `npm run check:svg` | SVG visual-language compliance via `scripts/check-svg-visual-language.mjs` |
-| `npm run activity:local -- activity/.env` | Run a packaged activity entrypoint with `@github/local-action` Toolkit shims |
-| `npm run activity:local:node -- activity/index.mjs` | Run an activity entrypoint locally with the installed Toolkit packages |
 | `npm run dashboard:local -- --repo OWNER/REPOSITORY` | Download dashboard data and start a local preview |
 | `npm run dashboard:local:copilot` | Start the local dashboard preview with Copilot-assisted editing |
 | `npm run compile` | Dry-run compile of workflow `.md` sources with `gh aw compile` (no lock-file writes) |
@@ -84,7 +82,7 @@ Run these commands from the `dashboard/site/` directory:
 - Editing control-plane sources under `.github/cao/src/` → `npm run typecheck:cao && npm test`
 - Editing dashboard site under `dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
 - Debugging downloaded dashboard data → use `npm run dashboard:local -- --repo OWNER/REPOSITORY`
-- Editing activity scripts under `activity/` → run the focused activity tests and use `npm run activity:local` or `npm run activity:local:node` for local entrypoint debugging
+- Editing the Activity workflow or JSONL parser under `activity/` → run the focused activity tests and `npm run compile`
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)
 - Editing SVGs → `npm run check:svg`
 - Editing documentation under `docs/` → `npm run docs:build`

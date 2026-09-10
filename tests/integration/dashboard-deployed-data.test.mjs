@@ -16,9 +16,9 @@ import {
 } from "../../dashboard/site/src/data/storage/indexeddb.js";
 
 const deployedSourcesUrl = process.env.DASHBOARD_DATA_URL
-  || "https://githubnext.github.io/gh-aw-cao/cao/sources.json";
+  || "https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl";
 const deployedLogsUrl = process.env.GH_AW_LOGS_URL
-  || new URL("gh-aw-logs.json", deployedSourcesUrl).href;
+  || new URL("gh-aw-logs.jsonl", deployedSourcesUrl).href;
 
 function sorted(values) {
   return [...values].sort((left, right) => left.localeCompare(right));
@@ -50,7 +50,7 @@ function collectFirewallArtifacts(cachedJson, outputDirectory, runUrl) {
       "--stdin",
       "--audit",
       "--artifacts", "firewall",
-      "--cached-json", cachedJson,
+      "--cached-jsonl", cachedJson,
       "--output", outputDirectory,
       "--summary-file", "",
     ], {
@@ -163,14 +163,14 @@ test("deployed gh-aw logs produce the published firewall events", async () => {
       fetch(deployedLogsUrl, { signal: AbortSignal.timeout(60_000) }),
     ]);
     assert.equal(logsResponse.ok, true, `failed to download ${deployedLogsUrl}: ${logsResponse.status}`);
-    const logs = await logsResponse.json();
-    assert.ok(Array.isArray(logs.runs), "deployed gh-aw logs must contain runs");
+    const logs = (await logsResponse.text()).split(/\r?\n/).filter(Boolean).map(JSON.parse);
+    assert.ok(logs.length > 0, "deployed gh-aw logs must contain runs");
 
     const firewallEvents = sources.events.rows.filter(
       (event) => event["event-source"] === "firewall" || /^net_/.test(String(event["event-type"])),
     );
     assert.ok(firewallEvents.length > 0, "deployed events must contain firewall events");
-    const run = logs.runs.find((candidate) => firewallEvents.some(
+    const run = logs.find((candidate) => firewallEvents.some(
       (event) => String(event.run) === String(candidate.database_id ?? candidate.run_id ?? candidate.id),
     ));
     assert.ok(run, "deployed gh-aw logs must contain a run with published firewall events");
@@ -180,9 +180,9 @@ test("deployed gh-aw logs produce the published firewall events", async () => {
     const repository = String(run.repository ?? run.repository_name ?? "");
     assert.match(repository, /^[^/]+\/[^/]+$/, `run ${runId} must identify its repository`);
 
-    const cachedJson = path.join(root, "gh-aw-logs.json");
+    const cachedJson = path.join(root, "gh-aw-logs.jsonl");
     const outputDirectory = path.join(root, "logs");
-    await writeFile(cachedJson, `${JSON.stringify(logs)}\n`);
+    await writeFile(cachedJson, logs.map(JSON.stringify).join("\n") + "\n");
     await collectFirewallArtifacts(
       cachedJson,
       outputDirectory,
