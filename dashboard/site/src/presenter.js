@@ -2341,8 +2341,21 @@ function renderPageTitleLink(target, candidate) {
  */
 function renderCustomViewState(pageId, title, sourceName, availability, contextDetails, headingTag = 'h3', message) {
   return renderPageSection(pageId, title, [
-    h('p', { 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
-    ...renderCustomViewStateDetails(sourceName, contextDetails)
+    h(
+      'div',
+      {
+        className: 'view-state-card',
+        'data-view-state': availability,
+        role: availability === 'unavailable' ? 'alert' : 'status'
+      },
+      octicon(availability === 'unavailable' ? 'alert' : 'info'),
+      h(
+        'div',
+        { className: 'view-state-card-body' },
+        h('p', { className: 'view-state-message', 'data-view-availability': availability }, message ?? customViewAvailabilityMessage(availability)),
+        ...renderCustomViewStateDetails(sourceName, contextDetails)
+      )
+    )
   ], headingTag);
 }
 

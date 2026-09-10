@@ -7,7 +7,7 @@ import { octicon } from '../octicons.js';
 import { renderExperimentBadge } from './badge.js';
 import { computeObservationCoverage, countBy, formatCoveragePercent } from './count-formatters.js';
 import { renderExperimentEffect, renderExperimentSection, numericObservation, safeExperimentLink } from './experiment-view-primitives.js';
-import { renderDisclosure } from './ui-primitives.js';
+import { renderDisclosure, renderTableHeadRow } from './ui-primitives.js';
 
 const UNKNOWN = '—';
 
@@ -67,7 +67,7 @@ function renderMetricComparisonSection(metrics, experiment) {
       h(
         'table',
         { className: 'experiment-metric-table' },
-        h('thead', null, h('tr', null, ...['Role', 'Metric', 'Source', 'Direction', experiment.control, experiment.candidate, 'Δ normalized', 'Usable / excluded', 'Threshold'].map((label) => h('th', { scope: 'col' }, label)))),
+        h('thead', null, renderTableHeadRow(['Role', 'Metric', 'Source', 'Direction', experiment.control, experiment.candidate, 'Δ normalized', 'Usable / excluded', 'Threshold'])),
         h('tbody', null, ...metrics.map((metric) => h(
           'tr',
           null,
@@ -244,7 +244,7 @@ function renderRunEvidenceSection(model, experiment) {
       h(
         'table',
         { className: 'run-evidence-table' },
-        h('thead', null, h('tr', null, ...['Run', 'Variant', 'Primary', 'Guardrails', 'Evals', 'Included', 'Reason', 'Evidence'].map((label) => h('th', { scope: 'col' }, label)))),
+        h('thead', null, renderTableHeadRow(['Run', 'Variant', 'Primary', 'Guardrails', 'Evals', 'Included', 'Reason', 'Evidence'])),
         h('tbody', null, ...rows.map((row) => h(
           'tr',
           null,
