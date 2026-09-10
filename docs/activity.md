@@ -88,7 +88,7 @@ The package manifest installs two GitHub Actions workflows:
 
 It also installs the JavaScript resources used to collect admission and failure
 evidence, download logs, record GitHub telemetry, build run-health snapshots,
-and execute the activity pipeline. The package requires `gh-aw` v0.89.0 or
+and execute the activity pipeline. The package requires `gh-aw` v0.89.1 or
 newer and is currently experimental.
 
 The root CAO package installs Activity automatically. A focused installation can
@@ -101,8 +101,8 @@ step. The pipeline sequentially:
 
 1. restores the latest compatible CAO activity cache;
 2. removes retained agent directories from cached run folders;
-3. runs `gh aw logs --json --audit` once for compiled workflows in the checked-out control repository;
-4. requests usage, detection, evaluation, experiment, firewall, GitHub API, grader, MCP, and operational-value evidence while excluding heavy agent artifacts;
+3. runs `gh aw logs --audit --artifacts usage` once for compiled workflows in the checked-out control repository;
+4. retains compact run summaries plus normalized audit and agent/runtime/model/version metadata;
 5. records control policy and control-plane inventory;
 6. builds the deployed-workflow and run-health index; and
 7. saves an immutable snapshot for downstream consumers.

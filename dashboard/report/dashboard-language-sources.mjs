@@ -1836,7 +1836,7 @@ function mcpBase(run) {
     run: String(run.runId ?? ""),
     "rollout-mode": rolloutMode(run.mode),
     "engine-version": firstText(run.engineVersion) || "unknown",
-    "gh-aw-version": firstText(run.security?.mcp?.cliVersion) || "unknown",
+    "gh-aw-version": firstText(run.ghAwVersion, run.security?.agentInfo?.ghAwVersion, run.security?.mcp?.cliVersion) || "unknown",
     "observed-at": run.createdAt,
     "run-link": link("run", workflowRunUrl(run.repository, run.runId), `Run ${run.runId}`),
   };

@@ -23,7 +23,7 @@ gh aw logs --audit \
   --output "$output_directory" \
   --summary-file "" \
   --cached-json "$logs_path" \
-  --artifacts usage,detection,evals,experiment,firewall,github-api,graders,mcp,agent \
+  --artifacts usage \
   --start-date "-${window_days}d" \
   --cache-before "-${window_days}d" \
   --count "$run_limit" \
