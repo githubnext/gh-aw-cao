@@ -540,10 +540,15 @@ export function createModalDialog({ className, ariaLabel, onFallbackClose }) {
  * button's `aria-expanded` attribute and the panel's expanded CSS class in
  * sync. Shared by the work-item mobile filter sheet, the settings sheet, and
  * the notifications advanced-filter panel.
+ *
+ * The returned `close` helper collapses the panel and returns focus to the
+ * toggle button, consolidating the identical teardown that the mobile filter
+ * sheet and the settings sheet otherwise duplicated as separate
+ * `closeMobileSheet`/`closeSettings` functions.
  * @param {HTMLElement} toggle
  * @param {HTMLElement} panel
  * @param {{ expandedClass: string, onExpand?: (expanded: boolean) => void }} options
- * @returns {(expanded: boolean) => void} setExpanded
+ * @returns {{ setExpanded: (expanded: boolean) => void, close: () => void }}
  */
 export function createExpandableToggle(toggle, panel, { expandedClass, onExpand }) {
   /** @param {boolean} expanded */
@@ -552,8 +557,12 @@ export function createExpandableToggle(toggle, panel, { expandedClass, onExpand 
     panel.classList.toggle(expandedClass, expanded);
     if (onExpand) onExpand(expanded);
   };
+  const close = () => {
+    setExpanded(false);
+    if (toggle instanceof HTMLElement) toggle.focus();
+  };
   setExpanded(false);
-  return setExpanded;
+  return { setExpanded, close };
 }
 
 /**
