@@ -6,6 +6,10 @@ import { createModalDialog, renderCloseButton } from './ui-primitives.js';
 const APP_INDEXEDDB_PREFIX = 'gh-aw-cao-';
 
 /**
+ * Delete dashboard IndexedDB databases for this app. Always deletes the canonical
+ * database, and additionally deletes discovered `gh-aw-cao-` prefixed databases
+ * when `indexedDB.databases()` is available.
+ *
  * @param {IDBFactory} indexedDB
  */
 async function deleteAppDatabases(indexedDB) {
@@ -20,7 +24,6 @@ async function deleteAppDatabases(indexedDB) {
         const request = indexedDB.deleteDatabase(name);
         request.onsuccess = () => resolve(undefined);
         request.onerror = () => reject(request.error);
-        request.onblocked = () => reject(new Error(`Could not delete blocked database: ${name}`));
       }))
   );
 }
@@ -30,8 +33,11 @@ async function deleteAppDatabases(indexedDB) {
  * @param {IDBFactory} indexedDB
  */
 export async function resetLocalDashboardData(storage, indexedDB) {
-  await deleteAppDatabases(indexedDB);
-  storage.clear();
+  try {
+    await deleteAppDatabases(indexedDB);
+  } finally {
+    storage.clear();
+  }
 }
 
 function browserStorage() {
