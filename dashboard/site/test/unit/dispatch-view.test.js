@@ -81,7 +81,8 @@ describe('declarative dispatch view', () => {
     expect(rendered.querySelector('.table-filter input[type="search"]')?.getAttribute('placeholder')).toBe('Filter rows');
     const started = rendered.querySelector('tbody td time');
     expect(started?.getAttribute('datetime')).toBe('2026-08-30T07:00:00Z');
-    expect(started?.textContent).toBe('Aug 30, 2026, 7:00 AM');
+    expect(started?.getAttribute('title')).toBe('Aug 30, 2026, 7:00 AM UTC');
+    expect(started?.getAttribute('aria-label')).toContain('Aug 30, 2026, 7:00 AM UTC');
     expect(rendered.querySelector('tbody td a[href="https://github.com/githubnext/control/actions/runs/3"]')).not.toBeNull();
     expect(rendered.querySelector('a[href="https://github.com/githubnext/control/blob/HEAD/worker.yml"]')?.textContent).toBe('Dependency updater');
     expect(rendered.querySelector('a[href="https://github.com/githubnext/control"]')?.textContent).toBe('githubnext/control');
