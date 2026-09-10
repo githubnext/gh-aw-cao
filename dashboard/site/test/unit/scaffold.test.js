@@ -58,20 +58,32 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
-    const styleLines = styles.split('\n');
-    const ruleBySelector = (selector) => styleLines.find((line) => line.startsWith(`${selector} {`));
-    const dialogRule = ruleBySelector('.reset-dashboard-dialog');
-    const openRule = ruleBySelector('.reset-dashboard-dialog[open]');
-    const bodyRule = ruleBySelector('.reset-dashboard-dialog-body');
+    /** @param {string} value */
+    const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    /** @param {string} selector */
+    const declarationMap = (selector) => {
+      const match = styles.match(new RegExp(`^${escapeRegex(selector)}\\s*\\{([^}]*)\\}$`, 'm'));
+      expect(match).not.toBeNull();
+      const declarations = new Map();
+      for (const declaration of (match?.[1] ?? '').split(';').map((entry) => entry.trim()).filter(Boolean)) {
+        const separator = declaration.indexOf(':');
+        if (separator < 0) continue;
+        declarations.set(
+          declaration.slice(0, separator).trim(),
+          declaration.slice(separator + 1).trim()
+        );
+      }
+      return declarations;
+    };
+    const dialogRule = declarationMap('.reset-dashboard-dialog');
+    const openRule = declarationMap('.reset-dashboard-dialog[open]');
+    const bodyRule = declarationMap('.reset-dashboard-dialog-body');
 
-    expect(dialogRule).not.toBeUndefined();
-    expect(openRule).not.toBeUndefined();
-    expect(bodyRule).not.toBeUndefined();
-    expect(dialogRule).toContain('max-height: calc(100vh - 32px);');
-    expect(dialogRule).toContain('height: fit-content;');
-    expect(openRule).toContain('grid-template-rows: auto minmax(0, 1fr) auto;');
-    expect(bodyRule).toContain('align-content: start;');
-    expect(bodyRule).toContain('overflow-y: auto;');
+    expect(dialogRule.get('max-height')).toBe('calc(100vh - 32px)');
+    expect(dialogRule.get('height')).toBe('fit-content');
+    expect(openRule.get('grid-template-rows')).toBe('auto minmax(0, 1fr) auto');
+    expect(bodyRule.get('align-content')).toBe('start');
+    expect(bodyRule.get('overflow-y')).toBe('auto');
   });
 
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
