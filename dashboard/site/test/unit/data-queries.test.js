@@ -66,6 +66,11 @@ const dashboardQueries = JSON.parse(readFileSync(`${process.cwd()}/dashboard.jso
 describe('declarative dashboard queries', () => {
   it('counts database entities through the declared horizon queries', () => {
     const sources = {
+      repositories: {
+        source: 'repositories',
+        rows: [{ repository: 'gh-aw' }, { repository: 'gh-aw-cao' }, { repository: 'next' }],
+        metadata: metadata('repositories')
+      },
       workflows,
       runs: { source: 'runs', rows: [{ run: '1' }, { run: '2' }], metadata: metadata('runs') },
       events: { source: 'events', rows: [{ event: 'a' }, { event: 'b' }, { event: 'c' }], metadata: metadata('events') }
@@ -74,9 +79,10 @@ describe('declarative dashboard queries', () => {
     const result = executeDashboardQueries(
       dashboardQueries,
       sources,
-      ['database-workflow-count', 'database-run-count', 'database-event-count']
+      ['database-repository-count', 'database-workflow-count', 'database-run-count', 'database-event-count']
     );
 
+    expect(result['database-repository-count'].rows).toEqual([{ repositories: 3 }]);
     expect(result['database-workflow-count'].rows).toEqual([{ workflows: 2 }]);
     expect(result['database-run-count'].rows).toEqual([{ runs: 2 }]);
     expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);

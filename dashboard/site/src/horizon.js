@@ -6,6 +6,7 @@ const UNIT_LABELS = { h: 'hour', d: 'day', w: 'week' };
 
 export const DEFAULT_DASHBOARD_HORIZON = '1w';
 export const DASHBOARD_HORIZON_COUNT_SOURCES = [
+  'database-repository-count',
   'database-workflow-count',
   'database-run-count',
   'database-event-count'

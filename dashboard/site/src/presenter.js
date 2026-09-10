@@ -676,6 +676,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
   const settingsPage = pages.find((page) => page.id === 'configuration');
+  const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
+  const settingsDatabaseCounts = renderSettingsDatabaseCounts(loadDatabaseCounts);
   return h(
     'div',
     { className: 'app-main' },
@@ -710,7 +712,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts),
           dashboardRepository
             ? h(
               'a',
@@ -725,7 +727,12 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             : null,
           h(
             'details',
-            { className: 'account-menu' },
+            {
+              className: 'account-menu',
+              ontoggle: /** @param {Event} event */ (event) => {
+                if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) settingsDatabaseCounts.load();
+              }
+            },
             h(
               'summary',
               {
@@ -789,6 +796,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
               ),
+              settingsDatabaseCounts.element,
               renderResetDashboardControl()
             )
           )
@@ -824,6 +832,79 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
 }
 
 /**
+ * @typedef {{ repositories: unknown, workflows: unknown, runs: unknown, events: unknown }} DatabaseCounts
+ */
+
+/**
+ * @param {PresentationInput['loadHorizonSources']} loadSources
+ * @returns {() => Promise<DatabaseCounts>}
+ */
+function createDatabaseCountLoader(loadSources) {
+  /** @type {Promise<DatabaseCounts> | undefined} */
+  let countsPromise;
+  return () => {
+    if (!loadSources) return Promise.reject(new Error('Database count query unavailable'));
+    countsPromise ??= loadSources().then((sources) => {
+      const rows = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
+      if (rows.some((row) => !row)) throw new Error('Database count query unavailable');
+      return {
+        repositories: rows[0]?.repositories,
+        workflows: rows[1]?.workflows,
+        runs: rows[2]?.runs,
+        events: rows[3]?.events
+      };
+    });
+    return countsPromise;
+  };
+}
+
+/**
+ * @param {() => Promise<DatabaseCounts>} loadDatabaseCounts
+ * @returns {{ element: HTMLElement, load: () => void }}
+ */
+function renderSettingsDatabaseCounts(loadDatabaseCounts) {
+  const fields = /** @type {const} */ ([
+    ['repositories', 'Repositories'],
+    ['workflows', 'Workflows'],
+    ['runs', 'Runs'],
+    ['events', 'Events']
+  ]);
+  const values = Object.fromEntries(fields.map(([name]) => [
+    name,
+    h('strong', { dataset: { databaseCount: name } }, '—')
+  ]));
+  const status = h('span', { className: 'database-counts-status', 'aria-live': 'polite' }, 'Database counts load when opened');
+  let started = false;
+  const load = () => {
+    if (started) return;
+    started = true;
+    status.textContent = 'Loading database counts…';
+    loadDatabaseCounts()
+      .then((counts) => {
+        for (const [name] of fields) values[name].textContent = String(counts[name] ?? 0);
+        status.textContent = 'Database totals';
+      })
+      .catch(() => {
+        status.textContent = 'Database counts unavailable';
+      });
+  };
+  return {
+    element: h(
+      'fieldset',
+      { className: 'database-counts' },
+      h('legend', null, 'Database'),
+      h(
+        'div',
+        { className: 'database-count-grid' },
+        fields.map(([name, label]) => h('span', null, values[name], h('small', null, label)))
+      ),
+      status
+    ),
+    load
+  };
+}
+
+/**
  * @param {PresentableDashboard} dashboard
  * @param {Record<string, unknown>} dashboardDefaults
  * @param {string} horizonRange
@@ -831,10 +912,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
  * @param {DataState} effectiveState
- * @param {PresentationInput['loadHorizonSources']} loadHorizonSources
+ * @param {() => Promise<DatabaseCounts>} loadDatabaseCounts
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadHorizonSources) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts) {
   if (!hasData) {
     return h(
       'span',
@@ -865,13 +946,11 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   /** @type {Promise<void> | undefined} */
   let countsPromise;
   const loadCounts = () => {
-    if (!loadHorizonSources || countsPromise) return;
+    if (countsPromise) return;
     databaseCounts.textContent = 'Loading database counts…';
-    countsPromise = loadHorizonSources()
-      .then((sources) => {
-       const counts = DASHBOARD_HORIZON_COUNT_SOURCES.map((sourceName) => sources[sourceName]?.rows?.[0]);
-       if (counts.some((row) => !row)) throw new Error('Database count query unavailable');
-       databaseCounts.textContent = `${counts[0]?.workflows} workflows · ${counts[1]?.runs} runs · ${counts[2]?.events} events`;
+    countsPromise = loadDatabaseCounts()
+      .then((counts) => {
+       databaseCounts.textContent = `${counts.repositories} repositories · ${counts.workflows} workflows · ${counts.runs} runs · ${counts.events} events`;
       })
       .catch(() => {
        databaseCounts.textContent = 'Database counts unavailable';

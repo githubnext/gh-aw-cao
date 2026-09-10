@@ -332,6 +332,12 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .appearance-options button:last-child { border-radius: 0 6px 6px 0; }
 .appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
 .appearance-options .octicon { width: 14px; height: 14px; }
+.database-counts { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
+.database-counts legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
+.database-count-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.database-count-grid > span { min-width: 0; display: grid; gap: 2px; padding: 6px 3px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
+.database-count-grid strong { overflow: hidden; font-size: .8125rem; text-overflow: ellipsis; }
+.database-count-grid small, .database-counts-status { overflow: hidden; color: var(--muted); font-size: .625rem; text-overflow: ellipsis; }
 .reset-dashboard-control { padding-top: 8px; border-top: 1px solid var(--border); }
 .account-menu-reset { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; cursor: pointer; }
 .account-menu-reset:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
