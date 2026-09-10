@@ -3,7 +3,6 @@
  */
 
 import { h } from '../dom.js';
-import { octicon } from '../octicons.js';
 import { stringOrFallback } from '../view-formatters.js';
 
 /**
