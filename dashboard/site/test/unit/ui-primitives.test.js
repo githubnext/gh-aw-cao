@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat, renderWorkCardLabel } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -175,6 +175,17 @@ describe('ui primitives', () => {
     const cell = rendered.querySelector('td');
     expect(cell?.getAttribute('colspan')).toBe('8');
     expect(rendered.textContent).toBe('No packages discovered.');
+  });
+
+  it('renders the shared work-card label pill with a kind-specific modifier class', () => {
+    const packageLabel = renderWorkCardLabel('package', 'self-care');
+    expect(packageLabel.tagName).toBe('SPAN');
+    expect(packageLabel.className).toBe('work-card-label work-card-label-package');
+    expect(packageLabel.textContent).toBe('self-care');
+
+    const roleLabel = renderWorkCardLabel('role', 'worker');
+    expect(roleLabel.className).toBe('work-card-label work-card-label-role');
+    expect(roleLabel.textContent).toBe('worker');
   });
 
   it('renders the shared decorative legend swatch with the requested class and aria-hidden', () => {

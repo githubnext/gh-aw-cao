@@ -730,6 +730,19 @@ export function observeLoadMoreBoundary(observerCtor, boundaryElement, onLoadMor
 }
 
 /**
+ * Renders the shared `<span class="work-card-label">` pill used by the
+ * work-item card and work-item row to display a package or role tag. The
+ * `kind` selects the `work-card-label-{kind}` modifier class that supplies
+ * the pill's color treatment.
+ * @param {'package'|'role'} kind
+ * @param {string} text
+ * @returns {HTMLElement}
+ */
+export function renderWorkCardLabel(kind, text) {
+  return h('span', { className: `work-card-label work-card-label-${kind}` }, text);
+}
+
+/**
  * Checks whether a value is a URL string using the https protocol with no embedded
  * credentials, the safety bar every dashboard link and href renderer applies before
  * trusting externally-sourced link data.
