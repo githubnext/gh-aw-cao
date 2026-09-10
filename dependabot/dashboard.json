@@ -150,6 +150,7 @@
                 {
                   "field": "published-at",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Published"
                 }
               ],
@@ -219,6 +220,7 @@
                 {
                   "field": "evidence-cutoff",
                   "type": "temporal",
+                  "format": "human-friendly-timestamp",
                   "title": "Evidence cutoff"
                 }
               ]
@@ -247,6 +249,7 @@
               "x": {
                 "field": "observed-at",
                 "type": "temporal",
+                "format": "human-friendly-timestamp",
                 "time-unit": "day"
               },
               "y": {

@@ -2,6 +2,19 @@
  * Shared presentation-only formatting and aggregation helpers for custom dashboard views.
  */
 
+const HUMAN_RELATIVE_TIME_FORMAT = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+const HUMAN_DATE_FORMAT = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC'
+});
+const HUMAN_DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC'
+});
+
 /**
  * @param {Array<Record<string, unknown>>} rows
  * @param {string | null} fieldName
@@ -217,6 +230,40 @@ export function formatCompactElapsedTime(value, relativeTo) {
           ? [86_400, 'd']
           : [604_800, 'w'];
   return `${Math.floor(elapsedSeconds / divisor)}${unit} ago`;
+}
+
+/**
+ * Formats a timestamp for quick scanning while retaining stable absolute dates
+ * for older observations.
+ * @param {unknown} value
+ * @param {number | Date} [relativeTo]
+ * @returns {string}
+ */
+export function formatHumanFriendlyTimestamp(value, relativeTo = Date.now()) {
+  const valueMs = Date.parse(String(value ?? ''));
+  const relativeToMs = relativeTo instanceof Date ? relativeTo.getTime() : relativeTo;
+  if (!Number.isFinite(valueMs) || !Number.isFinite(relativeToMs)) return '';
+
+  const differenceSeconds = (valueMs - relativeToMs) / 1_000;
+  const absoluteSeconds = Math.abs(differenceSeconds);
+  if (absoluteSeconds < 45) return 'just now';
+
+  const roundedDifference = (/** @type {number} */ divisor) => (
+    Math.sign(differenceSeconds) * Math.round(absoluteSeconds / divisor)
+  );
+  if (absoluteSeconds < 90) return HUMAN_RELATIVE_TIME_FORMAT.format(Math.sign(differenceSeconds), 'minute');
+  if (absoluteSeconds < 45 * 60) return HUMAN_RELATIVE_TIME_FORMAT.format(roundedDifference(60), 'minute');
+  if (absoluteSeconds < 90 * 60) return HUMAN_RELATIVE_TIME_FORMAT.format(Math.sign(differenceSeconds), 'hour');
+  if (absoluteSeconds < 22 * 3_600) return HUMAN_RELATIVE_TIME_FORMAT.format(roundedDifference(3_600), 'hour');
+  if (absoluteSeconds < 36 * 3_600) return HUMAN_RELATIVE_TIME_FORMAT.format(Math.sign(differenceSeconds), 'day');
+  if (absoluteSeconds < 7 * 86_400) return HUMAN_RELATIVE_TIME_FORMAT.format(roundedDifference(86_400), 'day');
+
+  const valueDate = new Date(valueMs);
+  const relativeDate = new Date(relativeToMs);
+  const dateFormatter = valueDate.getUTCFullYear() === relativeDate.getUTCFullYear()
+    ? HUMAN_DATE_FORMAT
+    : HUMAN_DATE_WITH_YEAR_FORMAT;
+  return dateFormatter.format(valueDate);
 }
 
 /**

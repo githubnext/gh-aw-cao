@@ -3544,17 +3544,34 @@ function validateFieldDefinition(fieldNode, fieldDefinition, sourceName, path, a
       && !ADDITIVE_MEASURE_FIELDS.includes(fieldName)
       && !NON_ADDITIVE_MEASURE_FIELDS.includes(fieldName)
       && aggregate === 'none';
+    const intrinsicallyTemporal = fieldName !== null
+      && TEMPORAL_FIELD_NAMES.includes(fieldName)
+      && aggregate === 'none';
     if (
       format !== null
       && FIELD_FORMAT_VALUES.includes(format)
       && (
-        (typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type))
-        || (fieldDefinition.type === undefined && !intrinsicallyNominalOrOrdinal)
+        (
+          format === 'human-friendly-timestamp'
+          && (
+            (typeof fieldDefinition.type === 'string' && fieldDefinition.type !== 'temporal')
+            || (fieldDefinition.type === undefined && !intrinsicallyTemporal)
+          )
+        )
+        || (
+          format !== 'human-friendly-timestamp'
+          && (
+            (typeof fieldDefinition.type === 'string' && !['nominal', 'ordinal'].includes(fieldDefinition.type))
+            || (fieldDefinition.type === undefined && !intrinsicallyNominalOrOrdinal)
+          )
+        )
       )
     ) {
       errors.push(createError(
         ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-        `${format} format requires a nominal or ordinal field.`,
+        format === 'human-friendly-timestamp'
+          ? 'human-friendly-timestamp format requires a temporal field.'
+          : `${format} format requires a nominal or ordinal field.`,
         `${path}.format`
       ));
     }

@@ -39,6 +39,26 @@ describe('dashboard document validation', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('applies human-friendly formatting to every declarative temporal encoding', () => {
+    const documents = [authoritativeDashboardSource, ...packageDashboardSources].map((source) => JSON.parse(source));
+    /** @type {Array<Record<string, unknown>>} */
+    const temporalFields = [];
+    const visit = (/** @type {unknown} */ value) => {
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+      } else if (value && typeof value === 'object') {
+        if (/** @type {Record<string, unknown>} */ (value).type === 'temporal') {
+          temporalFields.push(/** @type {Record<string, unknown>} */ (value));
+        }
+        Object.values(/** @type {Record<string, unknown>} */ (value)).forEach(visit);
+      }
+    };
+    documents.forEach((document) => visit(document.dashboard.pages));
+
+    expect(temporalFields.length).toBeGreaterThan(38);
+    expect(temporalFields.every((field) => field.format === 'human-friendly-timestamp')).toBe(true);
+  });
+
   it('defines Overview child pages with exact attention filters and GitHub evidence links', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const pages = Object.fromEntries(document.dashboard.pages.map(
@@ -4004,7 +4024,7 @@ dashboard:
     expect(result.ok).toBe(true);
   });
 
-  it('DLS-VIEW-008 accepts workflow-relative-path formatting on nominal fields', () => {
+  it('DLS-VIEW-008 accepts canonical formatting on compatible fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: formatted-workflow-path
@@ -4025,6 +4045,9 @@ dashboard:
               - field: repository
                 type: nominal
                 format: workflow-run-url
+              - field: observed-at
+                type: temporal
+                format: human-friendly-timestamp
 `);
 
     expect(result.ok).toBe(true);
@@ -4099,7 +4122,7 @@ dashboard:
     }
   });
 
-  it('DLS-VIEW-008 rejects unknown field formats and workflow path formatting on quantitative fields', () => {
+  it('DLS-VIEW-008 rejects unknown field formats and formats on incompatible fields', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: invalid-formatted-workflow-path
@@ -4120,13 +4143,17 @@ dashboard:
               - field: workflow
                 type: quantitative
                 format: workflow-relative-path
+              - field: observed-at
+                type: nominal
+                format: human-friendly-timestamp
 `);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({ code: 'DLS-E005', path: '$.dashboard.pages[0].views[0].encoding.columns[0].format' }),
-        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' })
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[1].format' }),
+        expect.objectContaining({ code: 'DLS-E010', path: '$.dashboard.pages[0].views[0].encoding.columns[2].format' })
       ]));
     }
   });
