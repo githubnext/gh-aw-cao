@@ -634,7 +634,7 @@ test('data worker computes repository and package pages with request-scoped dash
   expect(result.navigated['package-inventory']).toMatchObject({
     rows: [{
       package: 'dashboard',
-      'package-name': 'Dashboard',
+      'package-name': 'CAO Dashboard',
       workflows: 1,
       roles: 'worker',
       modes: 'review',
