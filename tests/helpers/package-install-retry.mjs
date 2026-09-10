@@ -14,12 +14,12 @@ export function isTransientPackageInstallError(error) {
   return transientGitHubErrors.some((message) => output.includes(message));
 }
 
-export function retryTransientPackageInstall(install, attempts = 2) {
+export function retryTransientPackageInstall(install, maxAttempts = 2) {
   for (let attempt = 1; ; attempt += 1) {
     try {
       return install();
     } catch (error) {
-      if (attempt >= attempts || !isTransientPackageInstallError(error)) throw error;
+      if (attempt >= maxAttempts || !isTransientPackageInstallError(error)) throw error;
     }
   }
 }
