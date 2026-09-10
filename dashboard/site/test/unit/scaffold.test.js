@@ -62,10 +62,10 @@ describe('DLS-CONF-004 scaffold gates', () => {
     const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     /** @param {string} selector */
     const declarationMap = (selector) => {
-      const match = styles.match(new RegExp(`^${escapeRegex(selector)}\\s*\\{([^}]*)\\}$`, 'm'));
-      expect(match).not.toBeNull();
+      const matches = Array.from(styles.matchAll(new RegExp(`^${escapeRegex(selector)}\\s*\\{([^}]*)\\}$`, 'gm')));
+      expect(matches).toHaveLength(1);
       const declarations = new Map();
-      for (const declaration of (match?.[1] ?? '').split(';').map((entry) => entry.trim()).filter(Boolean)) {
+      for (const declaration of (matches[0]?.[1] ?? '').split(';').map((entry) => entry.trim()).filter(Boolean)) {
         const separator = declaration.indexOf(':');
         if (separator < 0) continue;
         declarations.set(
