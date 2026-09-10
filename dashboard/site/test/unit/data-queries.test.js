@@ -698,6 +698,242 @@ describe('declarative dashboard queries', () => {
     ).rows).toEqual([]);
   });
 
+  describe('join operator edge cases', () => {
+    /**
+     * @typedef {{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }} TestJoin
+     */
+    /** @param {TestJoin[]} joins */
+    const query = (joins) => ({ name: 'join-test', from: 'left', joins });
+    /**
+     * @param {Partial<TestJoin>} [overrides]
+     * @returns {TestJoin}
+     */
+    const join = (overrides = {}) => ({
+      source: 'right',
+      type: 'inner',
+      on: [{ left: 'id', right: 'id' }],
+      fields: [{ field: 'value', as: 'joined-value' }],
+      ...overrides
+    });
+    /**
+     * @param {string} name
+     * @param {Array<Record<string, unknown>>} rows
+     * @param {Partial<Record<string, string>>} [overrides]
+     * @returns {import('../../src/presenter.js').LogicalSourceInput}
+     */
+    const source = (name, rows, overrides = {}) => ({
+      source: name,
+      rows,
+      metadata: metadata(name, overrides)
+    });
+
+    it('matches composite keys without collisions and preserves base-row order', () => {
+      const result = executeDashboardQuery(query([join({
+        on: [
+          { left: 'organization', right: 'owner' },
+          { left: 'repository', right: 'repo' }
+        ]
+      })]), {
+        left: source('left', [
+          { organization: 'githubnext', repository: 'gh-aw-cao', ordinal: 2 },
+          { organization: 'github', repository: 'next/gh-aw-cao', ordinal: 1 },
+          { organization: 'githubnext/github', repository: 'aw-cao', ordinal: 3 }
+        ]),
+        right: source('right', [
+          { owner: 'github', repo: 'next/gh-aw-cao', value: 'second' },
+          { owner: 'githubnext/github', repo: 'aw-cao', value: 'third' },
+          { owner: 'githubnext', repo: 'gh-aw-cao', value: 'first' }
+        ])
+      });
+
+      expect(result.rows.map((row) => [row.ordinal, row['joined-value']])).toEqual([
+        [2, 'first'],
+        [1, 'second'],
+        [3, 'third']
+      ]);
+    });
+
+    it('normalizes primitive key values without conflating composite key parts', () => {
+      const result = executeDashboardQuery(query([join({
+        on: [
+          { left: 'major', right: 'major' },
+          { left: 'minor', right: 'minor' }
+        ]
+      })]), {
+        left: source('left', [
+          { major: ' 7 ', minor: true },
+          { major: 7, minor: false },
+          { major: '7,true', minor: 'x' }
+        ]),
+        right: source('right', [
+          { major: 7, minor: 'true', value: 'normalized' },
+          { major: '7', minor: false, value: 'boolean-false' },
+          { major: '7,true', minor: 'x', value: 'punctuation' }
+        ])
+      });
+
+      expect(result.rows.map((row) => row['joined-value']))
+        .toEqual(['normalized', 'boolean-false', 'punctuation']);
+    });
+
+    it('allows repeated base keys without multiplying them by the joined side', () => {
+      const leftRows = Array.from({ length: 10000 }, (_, index) => ({ id: 'shared', index }));
+      const result = executeDashboardQuery(query([join()]), {
+        left: source('left', leftRows),
+        right: source('right', [{ id: 'shared', value: 'one enrichment' }])
+      });
+
+      expect(result.rows).toHaveLength(leftRows.length);
+      expect(result.rows[0]).toMatchObject({ index: 0, 'joined-value': 'one enrichment' });
+      expect(result.rows.at(-1)).toMatchObject({ index: leftRows.length - 1, 'joined-value': 'one enrichment' });
+    });
+
+    it('can chain joins using a field produced by an earlier join', () => {
+      const result = executeDashboardQuery(query([
+        join({
+          source: 'owners',
+          fields: [{ field: 'team-id', as: 'resolved-team-id' }]
+        }),
+        join({
+          source: 'teams',
+          on: [{ left: 'resolved-team-id', right: 'team-id' }],
+          fields: [{ field: 'name', as: 'team-name' }]
+        })
+      ]), {
+        left: source('left', [{ id: 'repo-1' }, { id: 'repo-2' }]),
+        owners: source('owners', [{ id: 'repo-1', 'team-id': 'team-1' }]),
+        teams: source('teams', [{ 'team-id': 'team-1', name: 'CAO' }])
+      });
+
+      expect(result.rows).toEqual([{
+        id: 'repo-1',
+        'resolved-team-id': 'team-1',
+        'team-name': 'CAO'
+      }]);
+    });
+
+    it('handles empty base and joined inputs for inner and left joins', () => {
+      const emptyBase = {
+        left: source('left', []),
+        right: source('right', [{ id: 'one', value: 1 }])
+      };
+      expect(executeDashboardQuery(query([join()]), emptyBase).rows).toEqual([]);
+
+      const emptyRight = {
+        left: source('left', [{ id: 'one' }]),
+        right: source('right', [])
+      };
+      expect(executeDashboardQuery(query([join()]), emptyRight).rows).toEqual([]);
+      expect(executeDashboardQuery(query([join({ type: 'left' })]), emptyRight).rows)
+        .toEqual([{ id: 'one', 'joined-value': null }]);
+    });
+
+    it('does not match missing, structured, or whitespace-only key parts', () => {
+      const invalidKeys = [
+        undefined,
+        null,
+        '',
+        ' \t\n ',
+        {},
+        [],
+        new Date('2026-09-01T00:00:00Z')
+      ];
+      const result = executeDashboardQuery(query([join({ type: 'left' })]), {
+        left: source('left', invalidKeys.map((id, index) => ({ id, index }))),
+        right: source('right', invalidKeys.map((id, index) => ({ id, value: index })))
+      });
+
+      expect(result.rows).toHaveLength(invalidKeys.length);
+      expect(result.rows.every((row) => row['joined-value'] === null)).toBe(true);
+    });
+
+    it('rejects duplicate joined keys after key normalization even when no base row matches', () => {
+      const result = executeDashboardQuery(query([join()]), {
+        left: source('left', [{ id: 'unrelated' }]),
+        right: source('right', [
+          { id: 7, value: 'number' },
+          { id: ' 7 ', value: 'string' }
+        ])
+      });
+
+      expect(result.rows).toEqual([]);
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(result.metadata['query-diagnostic'])
+        .toContain('joined source "right" contains more than one row per join key');
+    });
+
+    it('fails closed before indexing an oversized joined source', () => {
+      const rows = Array.from(
+        { length: DASHBOARD_QUERY_LIMITS['max-input-rows'] + 1 },
+        (_, index) => ({ id: index, value: index })
+      );
+      const result = executeDashboardQuery(query([join()]), {
+        left: source('left', [{ id: 1 }]),
+        right: source('right', rows)
+      });
+
+      expect(result.rows).toEqual([]);
+      expect(result.metadata.availability).toBe('unavailable');
+      expect(result.metadata['query-diagnostic']).toContain(
+        `"right" exceeds the max-input-rows limit of ${DASHBOARD_QUERY_LIMITS['max-input-rows']} rows`
+      );
+    });
+
+    it('treats absent and non-array left-join inputs as optional missing data', () => {
+      const definition = query([join({ type: 'left' })]);
+      const missing = executeDashboardQuery(definition, {
+        left: source('left', [{ id: 'one' }])
+      });
+      const corrupt = executeDashboardQuery(definition, {
+        left: source('left', [{ id: 'one' }]),
+        right: { source: 'right', rows: /** @type {never} */ (null), metadata: metadata('right') }
+      });
+
+      for (const result of [missing, corrupt]) {
+        expect(result.rows).toEqual([{ id: 'one', 'joined-value': null }]);
+        expect(result.metadata).toMatchObject({ availability: 'available', completeness: 'partial' });
+        expect(result.metadata['query-diagnostic']).toBeUndefined();
+      }
+    });
+
+    it('fails closed for absent, unavailable, or non-array required join inputs', () => {
+      const inputs = [
+        undefined,
+        source('right', [], { availability: 'unavailable' }),
+        { source: 'right', rows: /** @type {never} */ ('corrupt'), metadata: metadata('right') }
+      ];
+
+      for (const right of inputs) {
+        const result = executeDashboardQuery(query([join()]), {
+          left: source('left', [{ id: 'one' }]),
+          ...(right ? { right } : {})
+        });
+        expect(result.rows).toEqual([]);
+        expect(result.metadata.availability).toBe('unavailable');
+        expect(result.metadata['query-diagnostic']).toContain('input source "right" is unavailable');
+      }
+    });
+
+    it('turns corrupted rows and join projections into diagnostics instead of throwing', () => {
+      const corruptRow = executeDashboardQuery(query([join()]), {
+        left: source('left', [{ id: 'one' }]),
+        right: source('right', [/** @type {never} */ (null)])
+      });
+      const corruptProjection = executeDashboardQuery(query([join({
+        fields: /** @type {never} */ (null)
+      })]), {
+        left: source('left', [{ id: 'one' }]),
+        right: source('right', [{ id: 'one', value: 1 }])
+      });
+
+      for (const result of [corruptRow, corruptProjection]) {
+        expect(result.rows).toEqual([]);
+        expect(result.metadata.availability).toBe('unavailable');
+        expect(result.metadata['query-diagnostic']).toMatch(/^\$\.dashboard\.queries\[join-test\]: /);
+      }
+    });
+  });
+
   it('reports an unavailable state when an input source is missing or unavailable', () => {
     const missing = executeDashboardQuery({ name: 'missing-input', from: 'runs' }, { workflows });
     expect(missing.metadata.availability).toBe('unavailable');
