@@ -4,16 +4,6 @@
       "repo": "actions/setup-python",
       "version": "v7.0.0",
       "sha": "5fda3b95a4ea91299a34e894583c3862153e4b97"
-    },
-    "github/gh-aw-actions/setup-cli@v0.89.0": {
-      "repo": "github/gh-aw-actions/setup-cli",
-      "version": "v0.89.0",
-      "sha": "af9516b9001c6aa6d4817b7484de4bb017ebb27f"
-    },
-    "github/gh-aw-actions/setup@v0.89.0": {
-      "repo": "github/gh-aw-actions/setup",
-      "version": "v0.89.0",
-      "sha": "af9516b9001c6aa6d4817b7484de4bb017ebb27f"
     }
   },
   "containers": {
@@ -169,8 +159,8 @@
     },
     "node:lts-alpine": {
       "image": "node:lts-alpine",
-      "digest": "sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf",
-      "pinned_image": "node:lts-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf"
+      "digest": "sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81",
+      "pinned_image": "node:lts-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81"
     }
   }
 }
