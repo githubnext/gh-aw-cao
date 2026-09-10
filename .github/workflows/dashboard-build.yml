@@ -10,14 +10,6 @@ on:
         required: false
         type: string
         default: cao
-      mode:
-        description: Refresh activity data or use only the most recently cached snapshot.
-        required: false
-        type: choice
-        options:
-          - live
-          - cache
-        default: live
       request-id:
         description: Correlation identifier supplied by a dispatching workflow.
         required: false
@@ -27,53 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  activity:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    outputs:
-      run-id: ${{ steps.dispatch.outputs.run-id }}
-      run-attempt: ${{ steps.dispatch.outputs.run-attempt }}
-      skipped: ${{ steps.dispatch.outputs.skipped }}
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Checkout trusted dashboard source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.workflow_sha }}
-          persist-credentials: false
-
-      - name: Check for a cached activity snapshot
-        if: inputs.mode == 'cache'
-        id: cache-check
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ${{ runner.temp }}/cao-activity
-          key: cao-activity-v2-lookup-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            cao-activity-v2-
-          lookup-only: true
-
-      - name: Dispatch activity refresh
-        id: dispatch
-        if: inputs.mode == 'live' || steps.cache-check.outputs.cache-matched-key == ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DISPATCH_WORKFLOW: activity.yml
-          DISPATCH_REF: ${{ github.ref_name }}
-          DISPATCH_RUN_NAME: CAO Activity / dashboard-build-${{ github.run_id }}-${{ github.run_attempt }}
-          DISPATCH_INPUTS: '{"request-id":"dashboard-build-${{ github.run_id }}-${{ github.run_attempt }}"}'
-        run: |
-          if [[ -f .github/aw/dashboard/dispatch-workflow.mjs ]]; then
-            node .github/aw/dashboard/dispatch-workflow.mjs
-          else
-            node dashboard/dispatch-workflow.mjs
-          fi
-
   build:
-    needs: activity
-    if: always() && needs.activity.result == 'success' && needs.activity.outputs.skipped != 'true'
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -82,12 +28,7 @@ jobs:
       - name: Validate dashboard site path
         env:
           DASHBOARD_SITE_PATH: ${{ inputs.site-path }}
-          DASHBOARD_MODE: ${{ inputs.mode }}
         run: |
-          if [[ "$DASHBOARD_MODE" != "live" && "$DASHBOARD_MODE" != "cache" ]]; then
-            echo "mode must be 'live' or 'cache'" >&2
-            exit 1
-          fi
           if [[ "$DASHBOARD_SITE_PATH" != "." && ! "$DASHBOARD_SITE_PATH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]]; then
             echo "site-path must be '.' or a relative URL path" >&2
             exit 1
@@ -120,9 +61,10 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/cao-activity
-          key: ${{ format('cao-activity-v2-{0}-{1}', needs.activity.outputs.run-id, needs.activity.outputs.run-attempt) }}
+          key: cao-activity-v2-lookup-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             cao-activity-v2-
+          fail-on-cache-miss: true
 
       - name: Require collected activity data
         env:
