@@ -30,6 +30,15 @@ bounded `gh aw logs --audit --artifacts usage` command for compiled workflows,
 and stores the resulting JSONL. Downloaded artifacts are job-local inputs to
 that command and are not cached.
 
+Activity uses the `central-agentic-ops-activity` concurrency group with
+`cancel-in-progress: false`, so a running refresh is never cancelled mid-flight
+by the next scheduled trigger; GitHub Actions queues at most one pending
+refresh behind it. A scheduled run also skips its own refresh (before
+restoring the cache or downloading logs) when a successful scheduled run
+already completed within the last 12 minutes, avoiding redundant work when a
+prior run finished close to the next tick. Manual `workflow_dispatch` runs are
+never skipped.
+
 ## Cache contract
 
 The cache holds only:
