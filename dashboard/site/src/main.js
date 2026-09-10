@@ -9,6 +9,7 @@
       import { renderRefreshError } from "./components/refresh-error.js";
       import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
+      import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -205,9 +206,7 @@
           const skeleton = document.createElement("div");
           skeleton.className = "dashboard-loading-skeleton";
           skeleton.setAttribute("aria-hidden", "true");
-          for (const className of ["skeleton-card", "skeleton-card", "skeleton-card", "skeleton-panel"]) {
-            const block = document.createElement("div");
-            block.className = className;
+          for (const block of renderLoadingPlaceholderBlocks()) {
             skeleton.append(block);
           }
           dashboard.querySelector(".report-body")?.prepend(skeleton);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -142,6 +142,21 @@ describe('ui primitives', () => {
     expect(rendered.className).toBe('dashboard-lazy-view-skeleton');
     expect(rendered.getAttribute('aria-hidden')).toBe('true');
     expect(rendered.querySelectorAll('span')).toHaveLength(3);
+  });
+
+  it('renders the shared loading placeholder blocks used by the dashboard shell and page skeletons', () => {
+    const blocks = renderLoadingPlaceholderBlocks();
+    expect(blocks).toHaveLength(4);
+    expect(blocks.map((block) => block.className)).toEqual([
+      'skeleton-card',
+      'skeleton-card',
+      'skeleton-card',
+      'skeleton-panel'
+    ]);
+    for (const block of blocks) {
+      expect(block.tagName).toBe('DIV');
+      expect(block.getAttribute('aria-hidden')).toBe('true');
+    }
   });
 
   it('renders a truncated digest in a code element, or null when empty', () => {
