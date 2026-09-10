@@ -323,6 +323,7 @@ describe('dashboard document validation', () => {
       (/** @type {{ field: string }} */ column) => column.field
     )).toEqual([
       'outcome-title',
+      'safe-output',
       'safe-output-kind',
       'outcome-status',
       'outcome-state',

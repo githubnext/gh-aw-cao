@@ -325,7 +325,10 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
             run: String(1000 + index),
             'published-at': '2026-09-10T04:00:00Z',
             'observed-at': '2026-09-10T05:00:00Z',
-            'external-link': { href: \`https://example.com/outputs/\${index + 1}\` }
+            'external-link': {
+              href: \`https://example.com/outputs/\${index + 1}\`,
+              label: \`Open retained output \${index + 1}\`
+            }
           }))
         }
       };
@@ -341,14 +344,16 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
   await expect(view.getByRole('searchbox', { name: 'Filter Safe output usage' })).toBeVisible();
-  await expect(view.locator('tbody a[href="#page-outcome-detail?outcome=output-1"]')).toBeVisible();
+  await expect(view.locator('tbody a[href="https://example.com/outputs/1"]')).toBeVisible();
   await expect(view.locator('tbody tr').first()).toContainText('create-issue');
+  await expect(view.locator('tbody tr').first()).toContainText('output-1');
 
-  await view.locator('[data-table-more]').click();
-  await expect(view.locator('tbody tr')).toHaveCount(50);
   await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('Retained output 60');
   await expect(view.locator('tbody tr:visible')).toHaveCount(1);
   await expect(view.locator('tbody tr:visible')).toContainText('Retained output 60');
+  await view.getByRole('searchbox', { name: 'Filter Safe output usage' }).fill('');
+  await view.locator('[data-table-more]').click();
+  await expect(view.locator('tbody tr')).toHaveCount(50);
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);

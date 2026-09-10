@@ -3304,6 +3304,11 @@
                   "display": "outcome-link"
                 },
                 {
+                  "field": "safe-output",
+                  "type": "nominal",
+                  "title": "Identifier"
+                },
+                {
                   "field": "safe-output-kind",
                   "type": "nominal",
                   "title": "Type"
