@@ -5,8 +5,22 @@ import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/d
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 const sources = {
+  packages: {
+    rows: [{
+      package: 'dashboard', 'package-name': 'CAO Dashboard', 'package-description': 'Deploy the dashboard.',
+      'package-icon': 'graph', 'package-mode': 'review', 'package-enabled': true,
+      'package-worker-count': 1, 'package-min-version': 'v0.89.2', 'package-experimental': true
+    }],
+    metadata
+  },
   repositories: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }], metadata },
-  workflows: { rows: [{ organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md' }], metadata },
+  workflows: {
+    rows: [{
+      organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
+      package: 'dashboard', 'package-name': 'CAO Dashboard', 'workflow-role': 'worker', 'rollout-mode': 'review'
+    }],
+    metadata
+  },
   runs: {
     rows: [{
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dashboard.md',
@@ -125,6 +139,31 @@ describe('canonical view sources', () => {
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' }
     });
+  });
+
+  it('projects package rows and workflow membership from canonical records', async () => {
+    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['packages', 'workflows']);
+
+    expect(projected.packages).toMatchObject({
+      source: 'packages',
+      rows: [{
+        package: 'dashboard',
+        'package-name': 'CAO Dashboard',
+        'package-description': 'Deploy the dashboard.',
+        'package-mode': 'review',
+        'package-worker-count': 1
+      }],
+      metadata: { 'source-kind': 'canonical-query' }
+    });
+    expect(projected.workflows.rows).toEqual([
+      expect.objectContaining({
+        package: 'dashboard',
+        'package-name': 'CAO Dashboard',
+        'workflow-role': 'worker'
+      })
+    ]);
   });
 
   it('keeps work items and security findings outside canonical entities', async () => {

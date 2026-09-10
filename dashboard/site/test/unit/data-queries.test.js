@@ -562,6 +562,16 @@ describe('declarative dashboard queries', () => {
       ],
       metadata: metadata('workflows')
     };
+    const packages = {
+      source: 'packages',
+      rows: [{
+        package: 'aw-doctor',
+        'package-name': 'AW Doctor',
+        'package-mode': 'review',
+        'package-registration': 'true'
+      }],
+      metadata: metadata('packages')
+    };
     const runs = {
       source: 'runs',
       rows: [
@@ -583,7 +593,7 @@ describe('declarative dashboard queries', () => {
 
     const derived = executeDashboardQueries(
       dashboardQueries,
-      { repositories, workflows: queryWorkflows, runs, outcomes, 'operational-values': operationalValues, usage },
+      { packages, repositories, workflows: queryWorkflows, runs, outcomes, 'operational-values': operationalValues, usage },
       ['repository-activity', 'package-inventory']
     );
 

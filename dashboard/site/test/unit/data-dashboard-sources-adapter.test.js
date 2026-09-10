@@ -11,6 +11,19 @@ const metadata = {
 describe('current dashboard source adapter', () => {
   it('converts real source-shaped repository, workflow, and run rows', () => {
     const adapted = adaptDashboardSources({
+      packages: {
+        rows: [{
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'package-description': 'Deploy the CAO dashboard.',
+          'package-icon': 'graph',
+          'package-mode': 'review',
+          'package-enabled': true,
+          'package-min-version': 'v0.89.2',
+          'package-experimental': true
+        }],
+        metadata
+      },
       repositories: {
         rows: [{
           organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': '2026-09-09T04:00:00Z',
@@ -24,6 +37,9 @@ describe('current dashboard source adapter', () => {
           organization: 'githubnext',
           repository: 'gh-aw-cao',
           workflow: '.github/workflows/dashboard.md',
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'workflow-role': 'worker',
           'workflow-name': 'Dashboard',
           'workflow-active': 'true',
           'gh-aw-version': '0.88.8',
@@ -82,12 +98,22 @@ describe('current dashboard source adapter', () => {
       fullName: 'githubnext/gh-aw-cao',
       repositoryLink: { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao' }
     });
+    expect(batch.packages[0]).toMatchObject({
+      id: 'package:dashboard-sources:dashboard',
+      slug: 'dashboard',
+      name: 'CAO Dashboard',
+      minVersion: 'v0.89.2',
+      experimental: true
+    });
     expect(batch.workflows[0]).toMatchObject({
       id: 'workflow:dashboard-sources:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
       repositoryId: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao',
       state: 'active',
       ghAwVersion: '0.88.8',
-      ghAwUpdateState: 'update-available'
+      ghAwUpdateState: 'update-available',
+      packageId: batch.packages[0].id,
+      package: 'dashboard',
+      role: 'worker'
     });
     expect(batch.runs[0]).toMatchObject({
       id: 'github:run:12345:attempt:2',

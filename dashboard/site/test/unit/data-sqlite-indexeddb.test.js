@@ -34,8 +34,14 @@ function temporaryDatabase() {
 
 function batch() {
   const canonical = normalize([]);
+  canonical.packages.push({ id: 'package:1', slug: 'dashboard' });
   canonical.repositories.push({ id: 'repository:1' });
-  canonical.workflows.push({ id: 'workflow:1', repositoryId: 'repository:1' });
+  canonical.workflows.push({
+    id: 'workflow:1',
+    repositoryId: 'repository:1',
+    packageId: 'package:1',
+    package: 'dashboard'
+  });
   canonical.runs.push({
     id: 'run:1',
     repositoryId: 'repository:1',
@@ -65,6 +71,7 @@ describe('SQLite IndexedDB compatibility layer', () => {
     const indexedDB = installSqliteIndexedDB(filename);
     const database = await openCanonicalDatabase(indexedDB);
     expect([...database.objectStoreNames]).toContain('events');
+    expect([...database.objectStoreNames]).toContain('packages');
     database.close();
 
     await upsertCanonicalBatch(indexedDB, batch());
@@ -191,6 +198,7 @@ describe('SQLite IndexedDB compatibility layer', () => {
         record.observedAt = '2020-01-01T00:00:00Z';
       }
     }
+    stale.workflows[0].packageId = stale.packages[0].id;
     stale.workflows[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].repositoryId = stale.repositories[0].id;
     stale.runs[0].workflowId = stale.workflows[0].id;

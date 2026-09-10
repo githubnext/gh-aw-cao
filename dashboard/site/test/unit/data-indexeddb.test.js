@@ -36,6 +36,7 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'events',
       'jobs',
+      'packages',
       'repositories',
       'runs',
       'sessions',

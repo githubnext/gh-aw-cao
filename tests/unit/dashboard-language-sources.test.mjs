@@ -1687,6 +1687,9 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       bundles: [{
         id: "ambient-context",
         name: "Ambient Context",
+        description: "Ambient context maintenance.",
+        minVersion: "v0.89.2",
+        experimental: true,
         workflow: ".github/workflows/package.md",
         controlPackage: "ambient-context",
         maxAiCredits: 500,
@@ -1696,7 +1699,26 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       }],
     },
     controlSettings: {
-      packages: { "ambient-context": { mode: "review", icon: "workflow" } },
+      packages: {
+        "ambient-context": {
+          enabled: true,
+          mode: "review",
+          icon: "workflow",
+          "max-repositories": 4,
+          "rollout-percent": 50,
+          "monthly-ai-credit-budget": 1000,
+          worker_policies: {
+            "ambient-context-curator": {
+              worker: "curator",
+              enabled: true,
+              max_mode: "review",
+            },
+          },
+          target_policies: {
+            "githubnext/gh-aw-cao": { mode: "review" },
+          },
+        },
+      },
     },
   });
 
@@ -1739,6 +1761,35 @@ test("dashboard source bridge carries package memberships, allowance, and invent
     },
   );
   assert.equal(sources.outcomes.rows[0]["run-conclusion"], "failure");
+  assert.deepEqual(sources.packages.rows, [{
+    package: "ambient-context",
+    "package-name": "Ambient Context",
+    "package-description": "Ambient context maintenance.",
+    "package-icon": "workflow",
+    "package-mode": "review",
+    "package-enabled": true,
+    "package-max-repositories": 4,
+    "package-rollout-percent": 50,
+    "package-monthly-ai-credit-budget": 1000,
+    "package-aic-allowance": 500,
+    "package-worker-count": 1,
+    "package-inventory-warnings": 0,
+    "package-workers": [{
+      id: "curator",
+      workflow: "ambient-context-curator",
+      enabled: true,
+      "max-mode": "review",
+    }],
+    "package-targets": [{
+      repository: "githubnext/gh-aw-cao",
+      mode: "review",
+    }],
+    "package-min-version": "v0.89.2",
+    "package-experimental": true,
+    "package-readme-path": "",
+    "package-readme": "",
+    "observed-at": "2026-08-30T12:00:00Z",
+  }]);
 });
 
 test("dashboard source bridge exposes an issue search link for workflows that create labeled issues", () => {

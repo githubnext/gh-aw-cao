@@ -1,6 +1,7 @@
-export const CANONICAL_SCHEMA_VERSION = 6;
+export const CANONICAL_SCHEMA_VERSION = 7;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
+  'package',
   'repository',
   'workflow',
   'run',
@@ -25,6 +26,7 @@ export const ENTITY_KINDS = /** @type {const} */ ([
 
 /**
  * @typedef {object} CanonicalBatch
+ * @property {Record<string, unknown>[]} packages
  * @property {Record<string, unknown>[]} repositories
  * @property {Record<string, unknown>[]} workflows
  * @property {Record<string, unknown>[]} runs
@@ -65,10 +67,13 @@ export function canonicalTimestamp(value, field) {
  * @returns {string[]}
  */
 export function relationshipErrors(batch) {
+  const packageRecords = batch.packages ?? [];
+  const packagesById = new Map(packageRecords.map((record) => [record.id, record]));
   const workflowsById = new Map(batch.workflows.map((record) => [record.id, record]));
   const jobsById = new Map(batch.jobs.map((record) => [record.id, record]));
   const ids = {
     repositories: new Set(batch.repositories.map((record) => record.id)),
+    packages: new Set(packageRecords.map((record) => record.id)),
     workflows: new Set(batch.workflows.map((record) => record.id)),
     runs: new Set(batch.runs.map((record) => record.id)),
     jobs: new Set(batch.jobs.map((record) => record.id)),
@@ -76,6 +81,7 @@ export function relationshipErrors(batch) {
   };
   const entityNames = {
     repositories: 'repository',
+    packages: 'package',
     workflows: 'workflow',
     runs: 'run',
     jobs: 'job',
@@ -99,6 +105,13 @@ export function relationshipErrors(batch) {
 
   for (const workflow of batch.workflows) {
     requireReference(workflow, 'repositoryId', 'repositories');
+    if (workflow.packageId !== undefined && workflow.packageId !== null) {
+      requireReference(workflow, 'packageId', 'packages');
+      const packageRecord = packagesById.get(workflow.packageId);
+      if (packageRecord && workflow.package !== packageRecord.slug) {
+        errors.push(`${String(workflow.id ?? '<unknown>')}.packageId references a different package slug`);
+      }
+    }
   }
   for (const run of batch.runs) {
     requireReference(run, 'repositoryId', 'repositories');

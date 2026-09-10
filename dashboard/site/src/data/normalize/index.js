@@ -3,6 +3,7 @@ import { canonicalTimestamp, requiredString } from '../model/schema.js';
 
 /** @type {Record<import('../model/schema.js').EntityKind, keyof import('../model/schema.js').CanonicalBatch>} */
 const COLLECTIONS = {
+  package: 'packages',
   repository: 'repositories',
   workflow: 'workflows',
   run: 'runs',
@@ -32,6 +33,8 @@ function identityFor(observation) {
   const data = observation.data;
   if (typeof data.id === 'string' && data.id.trim()) return data.id.trim();
   switch (observation.kind) {
+    case 'package':
+      return sourceId('package', observation.source, requiredIdentifier(data.slug, 'package.slug'));
     case 'repository': return repositoryId(requiredIdentifier(data.githubId, 'repository.githubId'));
     case 'workflow': return workflowId(requiredIdentifier(data.githubId, 'workflow.githubId'));
     case 'run': return runId(
@@ -105,6 +108,7 @@ export function normalize(observations, options = {}) {
   const sourcePrecedence = options.sourcePrecedence ?? {};
   /** @type {Record<keyof import('../model/schema.js').CanonicalBatch, Map<string, Record<string, unknown>>>} */
   const entities = {
+    packages: new Map(),
     repositories: new Map(),
     workflows: new Map(),
     runs: new Map(),

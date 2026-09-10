@@ -5,7 +5,7 @@ export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Stores whose retention is decided by observation time. Structural parents
- * (`repositories`, `workflows`) are retained by reachability instead so a
+ * (`packages`, `repositories`, `workflows`) are retained by reachability instead so a
  * retained run never loses its hierarchy.
  * @type {Record<string, string[]>}
  */
@@ -17,6 +17,7 @@ const RETENTION_TIMESTAMPS = {
 };
 
 const STORES = /** @type {const} */ ([
+  'packages',
   'repositories',
   'workflows',
   'runs',
@@ -91,6 +92,7 @@ function upsertRecords(previous, incoming, horizon) {
  * @param {Record<string, Map<string, Record<string, unknown>>>} merged
  */
 function pruneOrphans(merged) {
+  const packages = merged.packages;
   const repositories = merged.repositories;
   const workflows = merged.workflows;
   const runs = merged.runs;
@@ -98,7 +100,10 @@ function pruneOrphans(merged) {
   const sessions = merged.sessions;
 
   for (const [id, workflow] of workflows) {
-    if (!repositories.has(String(workflow.repositoryId))) workflows.delete(id);
+    if (!repositories.has(String(workflow.repositoryId))
+      || (workflow.packageId !== undefined
+        && workflow.packageId !== null
+        && !packages.has(String(workflow.packageId)))) workflows.delete(id);
   }
   for (const [id, run] of runs) {
     const workflow = workflows.get(String(run.workflowId));
@@ -135,11 +140,21 @@ function pruneOrphans(merged) {
  * @param {import('../model/schema.js').CanonicalBatch} incoming
  */
 function collectUnreferencedParents(merged, incoming) {
+  const incomingPackages = new Set(incoming.packages.map((record) => String(record.id)));
   const incomingWorkflows = new Set(incoming.workflows.map((record) => String(record.id)));
   const incomingRepositories = new Set(incoming.repositories.map((record) => String(record.id)));
   const referencedWorkflows = new Set([...merged.runs.values()].map((run) => String(run.workflowId)));
   for (const [id] of merged.workflows) {
     if (!incomingWorkflows.has(id) && !referencedWorkflows.has(id)) merged.workflows.delete(id);
+  }
+  const referencedPackages = new Set(
+    [...merged.workflows.values()]
+      .map((workflow) => workflow.packageId)
+      .filter((id) => id !== undefined && id !== null)
+      .map(String)
+  );
+  for (const [id] of merged.packages) {
+    if (!incomingPackages.has(id) && !referencedPackages.has(id)) merged.packages.delete(id);
   }
   const referencedRepositories = new Set([
     ...[...merged.workflows.values()].map((workflow) => String(workflow.repositoryId)),
