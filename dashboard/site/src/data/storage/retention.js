@@ -162,13 +162,16 @@ function collectUnreferencedParents(merged, incoming) {
  *
  * @param {import('../model/schema.js').CanonicalBatch} previous
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ now?: number }} [options]
+ * @param {{ now?: number, retentionWindowMs?: number }} [options]
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
 export function mergeRetainedRecords(previous, incoming, options = {}) {
   const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
   const reference = Math.max(now, newestObservation(incoming) ?? now);
-  const merged = upsertRecords(previous, incoming, reference - RETENTION_WINDOW_MS);
+  const retentionWindowMs = Number.isFinite(options.retentionWindowMs)
+    ? Math.max(0, Number(options.retentionWindowMs))
+    : RETENTION_WINDOW_MS;
+  const merged = upsertRecords(previous, incoming, reference - retentionWindowMs);
   pruneOrphans(merged);
   collectUnreferencedParents(merged, incoming);
 

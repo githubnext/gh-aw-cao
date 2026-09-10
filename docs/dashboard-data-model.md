@@ -124,6 +124,22 @@ npm run dashboard:data -- query \
   --limit 20
 ```
 
+Diagnose and repair the local database:
+
+```bash
+npm run dashboard:data -- doctor \
+  --database /tmp/cao-dashboard.sqlite
+```
+
+The doctor reports SQLite integrity, foreign-key and schema health, table and
+transaction counts, malformed records, and canonical relationship errors. It
+applies the canonical 30-day retention window, removes malformed and orphaned
+derived records, rebuilds damaged IndexedDB metadata, and runs SQLite
+reindexing, optimization, and compaction when repairs are required. Before
+changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next
+to the database. Use `--ttl-days DAYS` to select a different positive retention
+window.
+
 Run `npm run dashboard:data -- help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
 
 For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

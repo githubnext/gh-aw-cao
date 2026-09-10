@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../src/data/storage/indexeddb.js';
+import { doctorSqliteDatabase } from '../src/data/storage/sqlite-doctor.js';
 import { installSqliteIndexedDB } from '../src/data/storage/sqlite-indexeddb.js';
 
 const ENTITY_COLLECTIONS = [
@@ -23,6 +24,7 @@ const USAGE = `Usage:
   npm run dashboard:data -- ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY
   npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL
   npm run dashboard:data -- query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
+  npm run dashboard:data -- doctor --database FILE [--ttl-days DAYS]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}`;
 
@@ -114,6 +116,14 @@ function queryLimit(options) {
   return limit;
 }
 
+function ttlDays(options) {
+  const value = option(options, 'ttl-days', false);
+  if (!value) return undefined;
+  const days = Number(value);
+  if (!Number.isFinite(days) || days <= 0) throw new Error('--ttl-days must be greater than zero');
+  return days;
+}
+
 async function databaseCounts(indexedDB) {
   const counts = await Promise.all(ENTITY_COLLECTIONS.map(async (collection) => [
     collection,
@@ -187,12 +197,16 @@ async function runLegacyIngestion(contextPath, logDirectory) {
 export async function runCli(arguments_) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
-  if (!['ingest', 'ingest-jsonl', 'query'].includes(command) && arguments_.length === 2) {
+  if (!['ingest', 'ingest-jsonl', 'query', 'doctor'].includes(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
   }
   const options = parseOptions(optionArguments);
   if (options.help) return USAGE;
   const databasePath = option(options, 'database');
+  if (command === 'doctor') {
+    rejectUnknownOptions(options, ['database', 'ttl-days']);
+    return doctorSqliteDatabase(databasePath, { ttlDays: ttlDays(options) });
+  }
   const indexedDB = await createDatabase(databasePath);
 
   if (command === 'ingest') {
@@ -222,6 +236,7 @@ export async function runCli(arguments_) {
 async function main() {
   const output = await runCli(process.argv.slice(2));
   process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
+  if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 
-const METADATA_SCHEMA = `
+export const SQLITE_INDEXEDDB_METADATA_SCHEMA = `
   PRAGMA foreign_keys = ON;
   CREATE TABLE IF NOT EXISTS __idb_databases (
     name TEXT PRIMARY KEY,
@@ -39,7 +39,7 @@ const METADATA_SCHEMA = `
 function createConnection(filename) {
   const connection = new DatabaseSync(filename);
   connection.exec('PRAGMA busy_timeout = 5000;');
-  connection.exec(METADATA_SCHEMA);
+  connection.exec(SQLITE_INDEXEDDB_METADATA_SCHEMA);
   return connection;
 }
 
