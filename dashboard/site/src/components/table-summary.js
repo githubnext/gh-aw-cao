@@ -7,7 +7,7 @@ import { effect, state } from '../reactive.js';
 import { renderHistogramBins } from './histogram.js';
 import { formatCount, formatCountNoun } from './count-formatters.js';
 import { renderDefinitionListRows } from './view-chrome.js';
-import { formatMediumUtcDateTime, renderLegendList, renderTableSummaryEmpty } from './ui-primitives.js';
+import { formatMediumUtcDateTime, renderLegendList, renderSkeletonBars, renderTableSummaryEmpty } from './ui-primitives.js';
 import { formatClockDuration, formatPercent } from '../view-formatters.js';
 import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
 
@@ -75,13 +75,7 @@ function renderReactiveTableSummaryCell(column, index, summaries) {
  * @returns {HTMLElement}
  */
 function renderTableSummarySkeleton() {
-  return h(
-    'div',
-    { className: 'table-summary-skeleton', 'aria-hidden': 'true' },
-    h('span'),
-    h('span'),
-    h('span')
-  );
+  return renderSkeletonBars('table-summary-skeleton');
 }
 
 /**
