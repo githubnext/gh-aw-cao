@@ -42,10 +42,10 @@ function buildPresenterModuleUrl() {
  */
 async function expectTableFilterStaysOnOneRow(tableFilter) {
   const staysOnOneRow = await tableFilter.evaluate((element) => {
+    if (element.children.length === 0) throw new Error('.table-filter has no children to check for wrapping');
     // Filter controls are bottom-aligned (align-items: end), so compare bottom edges rather
     // than top edges, since labels and the result output have different intrinsic heights.
     const bottoms = [...element.children].map((child) => child.getBoundingClientRect().bottom);
-    if (bottoms.length === 0) throw new Error('.table-filter has no children to check for wrapping');
     // A 4px tolerance absorbs sub-pixel rounding while still catching a wrap onto a second row.
     return Math.max(...bottoms) - Math.min(...bottoms) < 4;
   });
