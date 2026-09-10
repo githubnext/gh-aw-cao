@@ -439,7 +439,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
 /* Keep the filter controls on one row, like the table header row, instead of wrapping and covering the table. */
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { flex: none; flex-wrap: nowrap; overflow-x: auto; }
-/* Reuse the base .table-filter label min-widths (160px / 240px for the first, wider search label) as fixed widths instead of flex-basis, since flex-wrap is now disabled. */
+/* Reuse the base .table-filter label min-widths (160px / 240px for the first, wider search label), but stop them from growing via flex-basis, since flex-wrap is now disabled. */
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter label { flex: 0 0 auto; min-width: 160px; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter label:first-child { min-width: 240px; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter-result { flex: 0 0 auto; }
