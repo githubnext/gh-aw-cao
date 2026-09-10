@@ -699,7 +699,15 @@ describe('declarative dashboard queries', () => {
   });
 
   describe('join operator edge cases', () => {
+    /**
+     * @typedef {{ source: string, type?: 'inner'|'left', on: Array<{ left: string, right: string }>, fields: Array<{ field: string, as: string }> }} TestJoin
+     */
+    /** @param {TestJoin[]} joins */
     const query = (joins) => ({ name: 'join-test', from: 'left', joins });
+    /**
+     * @param {Partial<TestJoin>} [overrides]
+     * @returns {TestJoin}
+     */
     const join = (overrides = {}) => ({
       source: 'right',
       type: 'inner',
@@ -707,6 +715,12 @@ describe('declarative dashboard queries', () => {
       fields: [{ field: 'value', as: 'joined-value' }],
       ...overrides
     });
+    /**
+     * @param {string} name
+     * @param {Array<Record<string, unknown>>} rows
+     * @param {Partial<Record<string, string>>} [overrides]
+     * @returns {import('../../src/presenter.js').LogicalSourceInput}
+     */
     const source = (name, rows, overrides = {}) => ({
       source: name,
       rows,
