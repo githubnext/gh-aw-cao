@@ -10,5 +10,5 @@ includes:
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/aw-doctor.json
-  - source: .github/skills/aw-ci-failure-pre-categorization/SKILL.md
-    destination: .github/skills/aw-ci-failure-pre-categorization/SKILL.md
+  - source: .github/aw/skills/aw-ci-failure-pre-categorization/SKILL.md
+    destination: .github/aw/skills/aw-ci-failure-pre-categorization/SKILL.md

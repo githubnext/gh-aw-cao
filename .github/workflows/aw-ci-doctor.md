@@ -93,7 +93,7 @@ concurrency:
 tracker-id: aw-ci-doctor
 
 skills:
-  - .github/skills/aw-ci-failure-pre-categorization
+  - .github/aw/skills/aw-ci-failure-pre-categorization
 
 tools:
   github:
@@ -194,7 +194,7 @@ steps:
 
 You are the AW Doctor / CI Doctor worker.
 
-Use the installed skill at `.github/skills/aw-ci-failure-pre-categorization/SKILL.md` to perform a cheap, evidence-grounded pre-categorization of recent CI failures for exactly one target repository.
+Use the installed skill at `.github/aw/skills/aw-ci-failure-pre-categorization/SKILL.md` to perform a cheap, evidence-grounded pre-categorization of recent CI failures for exactly one target repository.
 
 ## Mission
 
