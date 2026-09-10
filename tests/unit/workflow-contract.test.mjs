@@ -3050,7 +3050,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
-  assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: true/);
+  assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
   assert.match(workflow, /actions\/cache\/save@[0-9a-f]{40}/);
   assert.match(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity/);
