@@ -2,6 +2,19 @@
  * Shared presentation-only formatting and aggregation helpers for custom dashboard views.
  */
 
+const HUMAN_RELATIVE_TIME_FORMAT = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+const HUMAN_DATE_FORMAT = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC'
+});
+const HUMAN_DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC'
+});
+
 /**
  * @param {Array<Record<string, unknown>>} rows
  * @param {string | null} fieldName
@@ -214,25 +227,22 @@ export function formatHumanFriendlyTimestamp(value, relativeTo = Date.now()) {
   const absoluteSeconds = Math.abs(differenceSeconds);
   if (absoluteSeconds < 45) return 'just now';
 
-  const relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
   const roundedDifference = (/** @type {number} */ divisor) => (
     Math.sign(differenceSeconds) * Math.round(absoluteSeconds / divisor)
   );
-  if (absoluteSeconds < 90) return relativeFormatter.format(Math.sign(differenceSeconds), 'minute');
-  if (absoluteSeconds < 45 * 60) return relativeFormatter.format(roundedDifference(60), 'minute');
-  if (absoluteSeconds < 90 * 60) return relativeFormatter.format(Math.sign(differenceSeconds), 'hour');
-  if (absoluteSeconds < 22 * 3_600) return relativeFormatter.format(roundedDifference(3_600), 'hour');
-  if (absoluteSeconds < 36 * 3_600) return relativeFormatter.format(Math.sign(differenceSeconds), 'day');
-  if (absoluteSeconds < 7 * 86_400) return relativeFormatter.format(roundedDifference(86_400), 'day');
+  if (absoluteSeconds < 90) return HUMAN_RELATIVE_TIME_FORMAT.format(Math.sign(differenceSeconds), 'minute');
+  if (absoluteSeconds < 45 * 60) return HUMAN_RELATIVE_TIME_FORMAT.format(roundedDifference(60), 'minute');
+  if (absoluteSeconds < 90 * 60) return HUMAN_RELATIVE_TIME_FORMAT.format(Math.sign(differenceSeconds), 'hour');
+  if (absoluteSeconds < 22 * 3_600) return HUMAN_RELATIVE_TIME_FORMAT.format(roundedDifference(3_600), 'hour');
+  if (absoluteSeconds < 36 * 3_600) return HUMAN_RELATIVE_TIME_FORMAT.format(Math.sign(differenceSeconds), 'day');
+  if (absoluteSeconds < 7 * 86_400) return HUMAN_RELATIVE_TIME_FORMAT.format(roundedDifference(86_400), 'day');
 
   const valueDate = new Date(valueMs);
   const relativeDate = new Date(relativeToMs);
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    ...(valueDate.getUTCFullYear() === relativeDate.getUTCFullYear() ? {} : { year: 'numeric' }),
-    timeZone: 'UTC'
-  }).format(valueDate);
+  const dateFormatter = valueDate.getUTCFullYear() === relativeDate.getUTCFullYear()
+    ? HUMAN_DATE_FORMAT
+    : HUMAN_DATE_WITH_YEAR_FORMAT;
+  return dateFormatter.format(valueDate);
 }
 
 /**
