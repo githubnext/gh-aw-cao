@@ -1765,134 +1765,18 @@
         },
         "views": [
           {
-            "id": "repository-workflow-aic",
-            "title": "Top workflows by AIC",
-            "description": "The five workflows with the highest measured AI Credit totals in this repository.",
-            "data": {
-              "source": "repository-workflow-usage",
-              "route-field": "repository",
-              "limit": 5,
-              "order-by": [
-                {
-                  "field": "total-aic",
-                  "direction": "desc"
-                }
-              ]
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "encoding": {
-              "x": {
-                "field": "workflow",
-                "type": "nominal",
-                "format": "workflow-relative-path",
-                "title": "Workflow"
-              },
-              "y": {
-                "field": "aic",
-                "type": "quantitative",
-                "aggregate": "sum",
-                "as": "total-aic",
-                "title": "Total AIC",
-                "unit": "aic"
-              },
-              "href": {
-                "field": "workflow-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "third"
-          },
-          {
-            "id": "repository-run-health",
-            "title": "Repository run health trend",
-            "description": "Daily run conclusions are the leading execution-health signal for this repository.",
-            "data": {
-              "source": "runs",
-              "route-field": "repository",
-              "time": {
-                "range": "30d"
-              }
-            },
-            "mark": "chart",
-            "chart": "line",
-            "layout": "full",
-            "encoding": {
-              "x": {
-                "field": "started-at",
-                "type": "temporal",
-                "format": "human-friendly-timestamp",
-                "time-unit": "day"
-              },
-              "y": {
-                "field": "run",
-                "type": "quantitative",
-                "aggregate": "count"
-              },
-              "color": {
-                "field": "run-conclusion",
-                "type": "nominal"
-              }
-            }
-          },
-          {
-            "id": "repository-workflow-count",
-            "title": "Authored Agentic Workflows",
-            "description": "One canonical identity per authored .github/workflows/*.md source.",
-            "data": {
-              "source": "repository-detail-summary",
-              "route-field": "repository"
-            },
-            "mark": "metric",
-            "encoding": {
-              "value": {
-                "field": "workflows",
-                "type": "quantitative"
-              },
-              "href": {
-                "field": "external-link",
-                "type": "nominal"
-              }
-            },
-            "layout": "third"
-          },
-          {
-            "id": "repository-workflow-status",
-            "title": "Workflow registration status",
-            "description": "Current GitHub Actions registration state for authored workflows.",
-            "data": {
-              "source": "repository-workflow-status",
-              "route-field": "repository"
-            },
-            "mark": "chart",
-            "chart": "pie",
-            "encoding": {
-              "x": {
-                "field": "status",
-                "type": "nominal",
-                "title": "Status"
-              },
-              "y": {
-                "field": "workflows",
-                "type": "quantitative",
-                "title": "Workflows"
-              }
-            },
-            "layout": "half"
-          },
-          {
             "id": "repository-authored-workflows",
-            "disclosure-label": "Agentic workflows",
-            "disclosure": "supplemental",
-            "description": "Authored workflows with managed-package membership shown as data.",
+            "title": "Repository workflows",
+            "description": "All declared workflows belonging to this repository, with managed-package membership and observed execution totals.",
             "data": {
-              "source": "repository-workflows",
+              "source": "workflow-inventory",
               "route-field": "repository"
             },
             "mark": "table",
             "controls": "interactive",
+            "lazy-list": true,
             "column-summaries": true,
-            "empty-message": "No authored Agentic Workflows were observed for this repository.",
+            "empty-message": "No workflows were observed for this repository.",
             "encoding": {
               "columns": [
                 {
@@ -1930,10 +1814,9 @@
                   "unit": "aic"
                 },
                 {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Updated"
+                  "field": "runs",
+                  "type": "quantitative",
+                  "title": "Runs"
                 }
               ],
               "href": {
@@ -1941,7 +1824,7 @@
                 "type": "nominal"
               }
             },
-            "layout": "full"
+            "layout": "full-view"
           }
         ]
       },
