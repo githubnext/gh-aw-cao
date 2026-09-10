@@ -1160,7 +1160,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(overviewPage).toBeVisible();
   await expect(overviewPage.locator('.home-attention-metric')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(page.locator('.mobile-nav-section-label')).toHaveText('Experimental');
+  await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(overviewPage.locator('.home-attention-metric').first()).toBeInViewport();
