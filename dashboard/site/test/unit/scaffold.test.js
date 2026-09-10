@@ -59,8 +59,9 @@ describe('DLS-CONF-004 scaffold gates', () => {
   it('keeps reset confirmation dialog height content-sized on mobile', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
 
-    expect(styles).toContain('.reset-dashboard-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content;');
-    expect(styles).toContain('.reset-dashboard-dialog[open] { display: grid; grid-template-rows: auto auto auto; }');
+    expect(styles).toMatch(/\.reset-dashboard-dialog \{[^}]*max-height: calc\(100vh - 32px\);[^}]*height: fit-content;/);
+    expect(styles).toContain('.reset-dashboard-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }');
+    expect(styles).toMatch(/\.reset-dashboard-dialog-body \{[^}]*align-content: start;[^}]*overflow-y: auto;/);
   });
 
   it('keeps the JSON dashboard shell aligned with its shared component styles', () => {
