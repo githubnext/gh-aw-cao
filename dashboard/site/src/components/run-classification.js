@@ -10,12 +10,25 @@ import packageAicUtilizationThresholds from './package-aic-utilization-threshold
 const FAILURE_CONCLUSIONS = new Set(runConclusionClassification.failure ?? []);
 const APPROVAL_CONCLUSIONS = new Set(runConclusionClassification.approval ?? []);
 
+// Run statuses considered still in flight (not yet concluded). Shared by the
+// overview and notifications-inbox views, which both need to count or filter
+// runs that haven't reached a terminal status.
+const ACTIVE_RUN_STATUSES = new Set(['queued', 'in-progress', 'in_progress', 'waiting', 'pending']);
+
 /**
  * @param {unknown} conclusion
  * @returns {boolean}
  */
 export function isFailureConclusion(conclusion) {
   return FAILURE_CONCLUSIONS.has(String(conclusion));
+}
+
+/**
+ * @param {unknown} status
+ * @returns {boolean}
+ */
+export function isActiveRunStatus(status) {
+  return ACTIVE_RUN_STATUSES.has(String(status));
 }
 
 /**

@@ -5,6 +5,7 @@ import { listChartSeries, renderChartWidget, renderPieLegend } from './chart-ele
 import { renderLazyView } from './lazy-view.js';
 import { rowsFor } from './source-rows.js';
 import { renderDlRow } from './ui-primitives.js';
+import { isActiveRunStatus } from './run-classification.js';
 
 const FAILURE_CONCLUSIONS = new Set(['failure', 'timed-out', 'startup-failure', 'action-required']);
 
@@ -34,15 +35,14 @@ export function renderInsightsOverview(context) {
   const usageSeries = listChartSeries(usagePoints);
   const totalAic = usage.reduce((total, row) => total + finiteNumber(row.aic), 0);
 
-  const activeStatuses = new Set(['queued', 'in-progress', 'in_progress', 'waiting', 'pending']);
   const completedRuns = runs.filter((row) => {
     const status = String(row['run-status'] || '');
     const conclusion = String(row['run-conclusion'] || '');
-    return status === 'completed' || (!activeStatuses.has(status) && Boolean(conclusion) && conclusion !== 'unknown');
+    return status === 'completed' || (!isActiveRunStatus(status) && Boolean(conclusion) && conclusion !== 'unknown');
   });
   const successfulRuns = completedRuns.filter((row) => String(row['run-conclusion']) === 'success').length;
   const failedRuns = completedRuns.filter((row) => FAILURE_CONCLUSIONS.has(String(row['run-conclusion']))).length;
-  const activeRuns = runs.filter((row) => activeStatuses.has(String(row['run-status']))).length;
+  const activeRuns = runs.filter((row) => isActiveRunStatus(row['run-status'])).length;
   const runPoints = runs.flatMap((row, index) => {
     const observed = String(row['started-at'] || '');
     const conclusion = String(row['run-conclusion'] || '');

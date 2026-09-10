@@ -7,6 +7,7 @@ import { smellMark } from './agent-marketplace-view.js';
 import { renderLazyInfiniteList } from './lazy-infinite-list.js';
 import { formatRoundedPercent } from './count-formatters.js';
 import { createExpandableToggle, renderDlRow, renderLazyDisclosure, renderLiveRegion, renderSearchInput } from './ui-primitives.js';
+import { isActiveRunStatus } from './run-classification.js';
 
 const STORAGE_KEY = 'central-agentic-ops.dashboard.notifications';
 const CATCH_UP_STORAGE_KEY = 'central-agentic-ops.dashboard.last-catch-up';
@@ -417,8 +418,6 @@ function renderCauseGroups(rows, state, selected, bulkDone, render) {
   return content;
 }
 
-const ACTIVE_STATUSES = new Set(['queued', 'in-progress', 'in_progress', 'waiting', 'pending']);
-
 /**
  * @param {Record<string, unknown>[]} attentionRows
  * @param {{ runs?: Record<string, unknown>[], workItems?: Record<string, unknown>[], outcomes?: Record<string, unknown>[], operationalValues?: Record<string, unknown>[], evidenceRecords?: Record<string, unknown>[] }} sources
@@ -481,7 +480,7 @@ function renderCatchUpContent(attentionRows, sources, start, end, redraw, showNo
   const previousDelivered = previousOutcomes.filter((row) => row['outcome-state'] === 'lifecycle-close').length;
   const pending = currentOutcomes.filter((row) => row['outcome-state'] === 'pending').length;
   const activeWork = sources.workItems.filter((row) => ['active', 'in-progress', 'running'].includes(String(row['lifecycle-state']))).length;
-  const activeRuns = sources.runs.filter((row) => ACTIVE_STATUSES.has(String(row['run-status']))).length;
+  const activeRuns = sources.runs.filter((row) => isActiveRunStatus(row['run-status'])).length;
   const running = activeWork || activeRuns;
   const currentEvidence = within(sources.evidenceRecords, start, end);
   const acceptedEvidence = currentEvidence.filter((row) => row['verification-state'] === 'accepted').length;
