@@ -1643,18 +1643,17 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 th[aria-sort="ascending"] .table-sort::after { content: "↑"; opacity: 1; }
 th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter { min-width: 600px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
-.table-filter-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; color: var(--fg); cursor: pointer; font-size: .8125rem; font-weight: 600; list-style: none; }
+.table-filter-summary { display: flex; align-items: center; gap: 12px; padding: 10px 14px; color: var(--fg); cursor: pointer; font-size: .8125rem; font-weight: 600; list-style: none; }
 .table-filter-summary::-webkit-details-marker { display: none; }
 .table-filter-summary::before { content: "▸"; color: var(--muted); font-size: .75rem; }
 .table-filter-disclosure[open] > .table-filter-summary::before { content: "▾"; }
-.table-filter-summary > span:first-of-type { margin-right: auto; }
 .table-filter-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 16px; padding: 0 14px 10px; }
 .table-filter label { min-width: 160px; flex: 0 1 220px; }
 .table-filter label:first-child { min-width: 240px; flex-grow: 1; }
 .table-filter label > span { display: block; margin-bottom: 4px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .table-filter :is(input, select) { width: 100%; min-height: 34px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; }
 .table-filter :is(input, select):focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
-.table-filter-result, .table-filter-summary-count { flex: none; color: var(--muted); font-size: .75rem; font-weight: 400; }
+.table-filter-result { display: block; padding: 0 14px 10px 30px; color: var(--muted); font-size: .75rem; font-weight: 400; }
 .table-filter-more { min-height: 32px; margin: 10px 14px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .table-filter-more:hover { background: var(--neutral-muted); }
 table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: .875rem; }

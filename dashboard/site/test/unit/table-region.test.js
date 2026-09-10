@@ -112,10 +112,12 @@ describe('renderTableRegion', () => {
     expect(disclosure.open).toBe(false);
     expect(disclosure.querySelector('summary')?.textContent).toContain('Filters');
     expect(disclosure.querySelector('summary output')).toBeNull();
-    expect(rendered.querySelector('.table-filter > output')?.textContent).toBe('Showing 2 of 2 results');
+    const result = rendered.querySelector('.table-filter-result');
+    expect(result?.parentElement?.className).toBe('table-filter');
+    expect(disclosure.contains(result)).toBe(false);
     expect(input.closest('label')?.textContent).toBe('Filter recent runs');
     expect(input.closest('label')?.querySelector('span')?.classList.contains('sr-only')).toBe(true);
-    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 2 of 2 results');
+    expect(result?.textContent).toBe('Showing 2 of 2 results');
 
     input.value = 'failure';
     input.dispatchEvent(new Event('input'));

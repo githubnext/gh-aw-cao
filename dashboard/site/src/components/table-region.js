@@ -84,8 +84,7 @@ export function renderTableRegion(options) {
           h(
             'summary',
             { className: 'table-filter-summary' },
-            h('span', null, 'Filters'),
-            h('span', { className: 'table-filter-summary-count', 'aria-hidden': 'true' }, initialResultCount)
+            h('span', null, 'Filters')
           ),
           h(
             'div',
@@ -107,7 +106,7 @@ export function renderTableRegion(options) {
             ))
           )
         ),
-        h('output', { className: 'table-filter-result sr-only', 'aria-live': 'polite' }, initialResultCount)
+        h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, initialResultCount)
       )
       : null,
     h(
@@ -251,7 +250,6 @@ function cellText(row, columnIndex) {
 function enableTableFilter(region, options, rows) {
   const input = region.querySelector('[data-table-filter]');
   const output = region.querySelector('.table-filter-result');
-  const summaryCount = region.querySelector('.table-filter-summary-count');
   const more = region.querySelector('[data-table-more]');
   const body = region.querySelector('tbody');
   const scroll = region.querySelector('.table-scroll');
@@ -353,7 +351,6 @@ function enableTableFilter(region, options, rows) {
        : processed.length;
      const resultCount = formatResultCount(shown, total, options.resultNoun, options.resultNounPlural);
      output.textContent = resultCount;
-     if (summaryCount instanceof HTMLElement) summaryCount.textContent = resultCount;
      more.hidden = !continuationToken && shown >= processed.length;
    });
   };
