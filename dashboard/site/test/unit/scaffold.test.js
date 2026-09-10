@@ -42,6 +42,7 @@ describe('DLS-CONF-004 scaffold gates', () => {
     expect(styles).toContain('#page-preview .pie-chart-layout .chart-widget { border: 0; background: transparent; }');
     expect(styles).toContain('.table-summary-boolean .chart-widget .chart-series-1 { stroke: var(--success); }');
     expect(styles).toContain('.table-summary-boolean .chart-widget .chart-series-2 { stroke: var(--attention); }');
+    expect(styles).toContain('.table-summary-boolean .chart-widget .chart-series-3 { stroke: var(--muted); }');
     expect(styles).toContain('.chart-widget .chart-series-12 { stroke: var(--violet); }');
     expect(styles).toContain('transition: color 120ms ease;');
     expect(styles).toContain('transition: background-color 120ms ease, color 120ms ease;');
