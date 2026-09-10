@@ -72,6 +72,16 @@
     },
     "queries": [
       {
+        "name": "database-repository-count",
+        "intent": "Count repositories in the dashboard database.",
+        "from": "repositories",
+        "aggregate": {
+          "values": [
+            { "field": "repository", "as": "repositories", "reducer": "count" }
+          ]
+        }
+      },
+      {
         "name": "database-workflow-count",
         "intent": "Count workflows in the dashboard database.",
         "from": "workflows",

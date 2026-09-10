@@ -1,5 +1,5 @@
 import { h } from '../dom.js';
-import { renderIconSpan } from './ui-primitives.js';
+import { nameInitials, renderIconSpan } from './ui-primitives.js';
 import { clampPercent } from './count-formatters.js';
 
 /**
@@ -57,7 +57,7 @@ export function renderWorkItemTimelineLane(item, extents, index = 0, divisions =
       }, renderIconSpan('work-roadmap-primitive-icon', safeOutputIcon(item.safeOutputKind), { ariaHidden: true })),
       h('strong', { className: 'work-roadmap-bar-title' }, item.name),
       h('span', { className: 'work-roadmap-actor', title: `Involved actor: ${actor}` },
-        h('span', { className: 'work-roadmap-avatar', 'aria-hidden': 'true' }, actorInitial(actor)),
+        h('span', { className: 'work-roadmap-avatar', 'aria-hidden': 'true' }, nameInitials(actor, { maxParts: 1, placeholder: '' })),
         h('span', { className: 'work-roadmap-owner' }, actor)
       )
       ),
@@ -93,11 +93,6 @@ function safeOutputLabel(kind) {
     report: 'Report',
     'workflow-output': 'Workflow output'
   }[kind || ''] || 'Workflow output';
-}
-
-/** @param {string | undefined} actor */
-function actorInitial(actor) {
-  return (actor || '?').trim().charAt(0).toUpperCase() || '?';
 }
 
 /** @param {string | undefined} actor */

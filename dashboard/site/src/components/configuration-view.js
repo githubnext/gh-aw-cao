@@ -1,4 +1,6 @@
 import { h } from '../dom.js';
+import { collectFullDiagnostics } from '../diagnostics.js';
+import { copyTextToClipboard } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 
 /** @type {Record<string, string>} */
@@ -223,6 +225,28 @@ function renderSettingsEditor(policyDocument) {
       updateStatus();
     }
   }, 'Discard changes');
+  const diagnosticsStatus = /** @type {HTMLOutputElement} */ (h('output', {
+    className: 'configuration-copy-status',
+    'aria-live': 'polite'
+  }));
+  const diagnosticsButton = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button',
+    className: 'configuration-diagnostics-button',
+    onClick: async () => {
+      diagnosticsButton.disabled = true;
+      diagnosticsStatus.textContent = 'Collecting diagnostics…';
+      try {
+        const report = await collectFullDiagnostics();
+        const copied = await copyTextToClipboard(JSON.stringify(report, null, 2));
+        diagnosticsStatus.textContent = copied ? 'Diagnostics copied.' : 'Diagnostics collected; copy unavailable.';
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        diagnosticsStatus.textContent = `Unable to collect diagnostics: ${message}`;
+      } finally {
+        diagnosticsButton.disabled = false;
+      }
+    }
+  }, 'Collect diagnostics'));
   renderSettings();
   updateStatus();
 
@@ -232,7 +256,11 @@ function renderSettingsEditor(policyDocument) {
         h('strong', null, '.github/workflows/cao.json'),
         status
       ),
-      h('div', { className: 'configuration-editor-actions' }, resetButton)
+      h('div', { className: 'configuration-editor-actions' },
+        diagnosticsButton,
+        diagnosticsStatus,
+        resetButton
+      )
     ),
     settings,
     h('p', { className: 'configuration-save-note' },
