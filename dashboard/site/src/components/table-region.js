@@ -67,41 +67,42 @@ export function renderTableRegion(options) {
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
 
+  const filterControls = interactive
+    ? h(
+      'div',
+      { className: 'table-filter' },
+      renderLabeledControl(filterLabel ?? '', h('input', {
+        type: 'search',
+        placeholder: filterPlaceholder,
+        'data-table-filter': ''
+      }), { visuallyHiddenLabel: true }),
+      ...facets.map((facet) => renderLabeledControl(
+        facet.label,
+        h(
+          'select',
+          { 'data-table-facet': facet.key, 'data-table-column-index': String(facet.columnIndex) },
+          h('option', { value: '' }, facet.allLabel ?? `All ${facet.label.toLocaleLowerCase('en')}`),
+          ...facet.values.map((value) => h('option', { value }, value))
+        ),
+        { className: 'table-filter-facet' }
+      )),
+      h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural))
+    )
+    : null;
   const region = h(
     'div',
     {
       className: `table-region${regionClassName ? ` ${regionClassName}` : ''}`,
       ...(lazyList ? { 'data-lazy-list': '' } : {})
     },
-    interactive
-      ? h(
-        'div',
-        { className: 'table-filter' },
-        renderLabeledControl(filterLabel ?? '', h('input', {
-          type: 'search',
-          placeholder: filterPlaceholder,
-          'data-table-filter': ''
-        }), { visuallyHiddenLabel: true }),
-        ...facets.map((facet) => renderLabeledControl(
-          facet.label,
-          h(
-            'select',
-            { 'data-table-facet': facet.key, 'data-table-column-index': String(facet.columnIndex) },
-            h('option', { value: '' }, facet.allLabel ?? `All ${facet.label.toLocaleLowerCase('en')}`),
-            ...facet.values.map((value) => h('option', { value }, value))
-          ),
-          { className: 'table-filter-facet' }
-        )),
-        h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural))
-      )
-      : null,
     h(
       'div',
       {
         className: 'table-scroll',
         tabIndex: 0,
-        ...(filterLabel ? { role: 'region', 'aria-label': `${filterLabel} results` } : {})
+        ...(filterLabel ? { role: 'region', 'aria-label': `${filterLabel}: controls and results` } : {})
       },
+      filterControls,
       h(
         'table',
         {

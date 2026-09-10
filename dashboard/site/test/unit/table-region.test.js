@@ -195,10 +195,11 @@ describe('renderTableRegion', () => {
 
     const scroll = rendered.querySelector('.table-scroll');
     expect(scroll?.getAttribute('role')).toBe('region');
-    expect(scroll?.getAttribute('aria-label')).toBe('Filter runs results');
+    expect(scroll?.getAttribute('aria-label')).toBe('Filter runs: controls and results');
     expect(scroll?.getAttribute('tabindex')).toBe('0');
     expect(scroll?.querySelector('table')).toBeTruthy();
-    expect(rendered.querySelector('.table-scroll .table-filter')).toBeNull();
+    expect(scroll?.querySelector(':scope > .table-filter')).toBeTruthy();
+    expect([...rendered.children].some((child) => child.classList.contains('table-filter'))).toBe(false);
   });
 
   it('sorts rows numerically and temporally when a column header is activated', () => {
