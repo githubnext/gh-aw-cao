@@ -106,12 +106,13 @@ describe('renderTableRegion', () => {
     });
 
     const input = /** @type {HTMLInputElement} */ (rendered.querySelector('[data-table-filter]'));
-    const filter = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.table-filter'));
+    const disclosure = /** @type {HTMLDetailsElement} */ (rendered.querySelector('.table-filter-disclosure'));
     const rows = [...rendered.querySelectorAll('tbody tr')];
-    expect(filter.tagName).toBe('DETAILS');
-    expect(filter.open).toBe(false);
-    expect(filter.querySelector('summary')?.textContent).toContain('Filters');
-    expect(filter.querySelector('summary output')).toBeNull();
+    expect(disclosure.tagName).toBe('DETAILS');
+    expect(disclosure.open).toBe(false);
+    expect(disclosure.querySelector('summary')?.textContent).toContain('Filters');
+    expect(disclosure.querySelector('summary output')).toBeNull();
+    expect(rendered.querySelector('.table-filter > output')?.textContent).toBe('Showing 2 of 2 results');
     expect(input.closest('label')?.textContent).toBe('Filter recent runs');
     expect(input.closest('label')?.querySelector('span')?.classList.contains('sr-only')).toBe(true);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 2 of 2 results');

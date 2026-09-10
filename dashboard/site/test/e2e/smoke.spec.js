@@ -343,7 +343,7 @@ test('Safe Outputs renders every retained outcome in one progressive full-view t
   await expect(view).toHaveCount(1);
   await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
   await expect(view.locator('tbody tr:visible')).toHaveCount(25);
-  await expect(view.locator('.table-filter:not([open])')).toHaveCount(1);
+  await expect(view.locator('.table-filter-disclosure:not([open])')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Safe output usage' })).toBeHidden();
   await expect(view.locator('tbody a[href="https://example.com/outputs/1"]')).toBeVisible();
   await expect(view.locator('tbody tr').first()).toContainText('create-issue');
@@ -1579,7 +1579,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   await expect(pageTitle).toBeVisible();
   await expect(tableFilter).toBeVisible();
   await expect(lazyList).toHaveCount(1);
-  await expect(view.locator('.table-filter:not([open])')).toHaveCount(1);
+  await expect(view.locator('.table-filter-disclosure:not([open])')).toHaveCount(1);
   await expect(view.getByRole('searchbox', { name: 'Filter Inventory list' })).toBeHidden();
   await view.locator('.table-filter-summary').click();
   await expect(view.getByRole('searchbox', { name: 'Filter Inventory list' })).toBeVisible();

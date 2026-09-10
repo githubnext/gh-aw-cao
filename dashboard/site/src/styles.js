@@ -1646,8 +1646,8 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; color: var(--fg); cursor: pointer; font-size: .8125rem; font-weight: 600; list-style: none; }
 .table-filter-summary::-webkit-details-marker { display: none; }
 .table-filter-summary::before { content: "▸"; color: var(--muted); font-size: .75rem; }
-.table-filter[open] > .table-filter-summary::before { content: "▾"; }
-.table-filter-summary > span { margin-right: auto; }
+.table-filter-disclosure[open] > .table-filter-summary::before { content: "▾"; }
+.table-filter-summary > span:first-of-type { margin-right: auto; }
 .table-filter-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 16px; padding: 0 14px 10px; }
 .table-filter label { min-width: 160px; flex: 0 1 220px; }
 .table-filter label:first-child { min-width: 240px; flex-grow: 1; }
