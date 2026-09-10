@@ -1,6 +1,6 @@
 {
-  "source_sha": "bc7b4adf28dd6cb9c573b6f951269979bc325cee",
-  "next_category": "dependency installation and caching",
+  "source_sha": "8103fdd7d5ca4f82eb966ecb588e2352fce297a2",
+  "next_category": "Astro documentation generation",
   "evaluations": [
     {
       "evaluated_at": "2026-09-10T08:39:58Z",
@@ -99,6 +99,35 @@
       "category": "scheduling, concurrency, and avoidable rebuilds",
       "evidence_run_ids": [],
       "outcome": "no-op: latest GitHub Actions reads for docs.yml runs failed with HTTP 502 resource-labeling errors, and the latest 20 completed runs visible from the initial listing contained zero successful docs.yml runs, so the required minimum of five comparable successful runs in the last 14 days could not be assembled. Existing memory already records materially similar build-time suggestions, and no fresh evidence-backed non-duplicate recommendation could be made safely.",
+      "suggestion_fingerprint": ""
+    },
+    {
+      "evaluated_at": "2026-09-10T22:30:00Z",
+      "worker_run_id": 34537033011,
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        34537116136,
+        34536908393,
+        34535302452,
+        34534694523,
+        34515388863,
+        34514294038,
+        34511854306,
+        34510303717,
+        34510193706,
+        34508687201,
+        34508560352,
+        34507692283,
+        34507660767,
+        34505667727,
+        34504070699,
+        34502718508,
+        34502070391,
+        34501823640,
+        34499503292,
+        34497798828
+      ],
+      "outcome": "no-op: evidence window 2026-09-10T15:46:10Z to 2026-09-10T22:23:48Z. Analyzed 20 successful docs.yml runs in the latest completed sample. Parent workflow execution median was 90s (p90 117.1s) with dashboard/build/deploy job medians of 30s/29.5s/10s and queue median 0s. Trusted parent job step metadata showed the node_modules restore step ran on all 20 samples with median 6s (p90 8.1s), while Install dependencies and Save node_modules both completed in 0s on all 20 samples, consistent with cache hits rather than repeated installs. Build documentation median was 7s and Upload Pages artifact median 3s. The largest repeated parent cost remained the dashboard job plus dashboard artifact handoff, not dependency installation. Fresh child-run and open-issue reads could not be refreshed because subsequent GitHub Actions and issue API calls returned HTTP 502 resource-labeling failures, so no new non-duplicate actionable recommendation for this category was emitted safely.",
       "suggestion_fingerprint": ""
     }
   ]
