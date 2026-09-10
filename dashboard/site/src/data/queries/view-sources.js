@@ -30,23 +30,27 @@ function projectionMetadata(sources, sourceName, projectionName, available) {
   });
 }
 
-/** @param {Record<string, unknown>[]} tables */
-function databaseTablesSource(tables) {
+/**
+ * @param {Record<string, unknown>[]} tables
+ * @returns {import('../../presenter.js').LogicalSourceInput}
+ */
+function databaseSchemaSource(tables) {
   const asOf = String(tables[0]?.committedAt ?? '');
   return {
-    source: 'database-tables',
+    source: 'database-schema',
     rows: tables.map((table) => ({
       table: table.table,
       records: table.records,
       indexes: table.indexes,
+      'index-structure': table.indexStructure,
       'primary-key': table.keyPath,
       generation: table.generation,
       'database-version': table.databaseVersion,
       'schema-version': table.schemaVersion
     })),
     metadata: {
-      'source-id': 'database-tables',
-      'source-kind': 'canonical-query',
+      'source-id': 'database-schema',
+      'source-kind': 'database-introspection',
       'as-of': asOf,
       'retrieved-at': asOf,
       availability: 'available',
@@ -375,7 +379,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
   const [databaseTables, repositories, workflows, runs, jobs, failedRuns, workItems, findings] = await Promise.all([
-    requested.has('database-tables') ? queries.database.tables() : [],
+    requested.has('database-schema') ? queries.database.tables() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') ? queries.runs.list() : [],
@@ -389,7 +393,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, gener
   const sources = namedLogicalSources(logicalSources);
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const projected = {};
-  if (requested.has('database-tables')) projected['database-tables'] = databaseTablesSource(databaseTables);
+  if (requested.has('database-schema')) projected['database-schema'] = databaseSchemaSource(databaseTables);
   if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
   if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);

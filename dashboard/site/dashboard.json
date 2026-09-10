@@ -74,11 +74,12 @@
       {
         "name": "database-table-inventory",
         "intent": "List canonical database tables with record and schema statistics.",
-        "from": "database-tables",
+        "from": "database-schema",
         "select": [
           { "field": "table" },
           { "field": "records" },
           { "field": "indexes" },
+          { "field": "index-structure" },
           { "field": "primary-key" },
           { "field": "generation" },
           { "field": "schema-version" },
@@ -4345,6 +4346,11 @@
                   "field": "indexes",
                   "type": "quantitative",
                   "title": "Indexes"
+                },
+                {
+                  "field": "index-structure",
+                  "type": "nominal",
+                  "title": "Index structure"
                 },
                 {
                   "field": "primary-key",

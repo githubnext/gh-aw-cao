@@ -352,11 +352,13 @@ describe('presenter built-in and custom pages', () => {
           source: 'database-table-inventory',
           rows: [
             {
-              table: 'events', records: 89, indexes: 6, 'primary-key': 'generation, id',
+              table: 'events', records: 89, indexes: 6, 'index-structure': 'generation (generation)',
+              'primary-key': 'generation, id',
               generation: 'generation-a', 'schema-version': 1, 'database-version': 4
             },
             {
-              table: 'runs', records: 12, indexes: 6, 'primary-key': 'generation, id',
+              table: 'runs', records: 12, indexes: 6, 'index-structure': 'generation (generation)',
+              'primary-key': 'generation, id',
               generation: 'generation-a', 'schema-version': 1, 'database-version': 4
             }
           ],

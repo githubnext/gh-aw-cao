@@ -328,7 +328,7 @@ test('Data health navigates to a responsive full-view canonical database table',
       document: dashboard,
       sources,
       prepared: true,
-      loadPageSources: (pageId) => loadCanonicalDashboardPage(
+      loadPageSources: (/** @type {string} */ pageId) => loadCanonicalDashboardPage(
         presenter.dashboardPageSourceNames(dashboard, pageId),
         context
       )

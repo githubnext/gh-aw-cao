@@ -10,7 +10,7 @@ describe('JSON schema inference', () => {
   });
 
   it('bounds recursive values', () => {
-    const recursive = { id: 1 };
+    const recursive = /** @type {Record<string, unknown>} */ ({ id: 1 });
     recursive.self = recursive;
     expect(inferJsonSchema([recursive])).toBe('{ id: number, self: (circular) }');
   });

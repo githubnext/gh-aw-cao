@@ -5,8 +5,8 @@ const dashboardDocument = JSON.parse(readFileSync(`${process.cwd()}/dashboard.js
 
 describe('data health view', () => {
   it('declares one full-view table over the database table inventory query', () => {
-    const page = dashboardDocument.dashboard.pages.find(({ id }) => id === 'data-health');
-    const query = dashboardDocument.dashboard.queries.find(({ name }) => name === 'database-table-inventory');
+    const page = dashboardDocument.dashboard.pages.find((/** @type {{ id: string }} */ item) => item.id === 'data-health');
+    const query = dashboardDocument.dashboard.queries.find((/** @type {{ name: string }} */ item) => item.name === 'database-table-inventory');
 
     expect(page?.views).toEqual([
       expect.objectContaining({
@@ -19,11 +19,12 @@ describe('data health view', () => {
       })
     ]);
     expect(query).toMatchObject({
-      from: 'database-tables',
+      from: 'database-schema',
       select: [
         { field: 'table' },
         { field: 'records' },
         { field: 'indexes' },
+        { field: 'index-structure' },
         { field: 'primary-key' },
         { field: 'generation' },
         { field: 'schema-version' },

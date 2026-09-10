@@ -86,7 +86,7 @@ function mergeShapes(shapes) {
   return options.length === 1 ? options[0] : { kind: 'union', options };
 }
 
-/** @param {Shape} shape */
+/** @param {Shape} shape @returns {string} */
 function formatShape(shape) {
   if (shape.kind === 'circular') return '(circular)';
   if (shape.kind === 'primitive') return shape.type;
@@ -95,6 +95,7 @@ function formatShape(shape) {
   const keys = Object.keys(shape.properties).sort();
   if (!keys.length) return '{}';
   const visibleKeys = keys.slice(0, MAX_SCHEMA_PROPERTIES);
+  /** @type {string[]} */
   const fields = visibleKeys.map((key) => {
     const property = shape.properties[key];
     return `${key}${property.optional ? '?' : ''}: ${formatShape(property.shape)}`;

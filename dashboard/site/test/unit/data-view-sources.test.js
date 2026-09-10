@@ -97,23 +97,24 @@ describe('canonical view sources', () => {
       indexedDB,
       sources,
       metadata['artifact-generation'],
-      ['database-tables']
+      ['database-schema']
     );
 
-    expect(Object.keys(projected)).toEqual(['database-tables']);
-    expect(projected['database-tables']).toMatchObject({
-      source: 'database-tables',
+    expect(Object.keys(projected)).toEqual(['database-schema']);
+    expect(projected['database-schema']).toMatchObject({
+      source: 'database-schema',
       metadata: {
-        'source-kind': 'canonical-query',
+        'source-kind': 'database-introspection',
         availability: 'available',
         completeness: 'complete'
       }
     });
-    expect(projected['database-tables'].rows).toEqual(expect.arrayContaining([
+    expect(projected['database-schema'].rows).toEqual(expect.arrayContaining([
       expect.objectContaining({
         table: 'repositories',
         records: 1,
         indexes: 3,
+        'index-structure': 'byFullName (generation, fullName); byGithubId (generation, githubId); generation (generation)',
         'primary-key': 'generation, id',
         generation: 'generation-a',
         'database-version': 4,
@@ -121,7 +122,7 @@ describe('canonical view sources', () => {
       }),
       expect.objectContaining({ table: 'events', records: 0 })
     ]));
-    expect(projected['database-tables'].rows).toHaveLength(8);
+    expect(projected['database-schema'].rows).toHaveLength(8);
   });
 
   it('projects work items and security findings from canonical entities', async () => {

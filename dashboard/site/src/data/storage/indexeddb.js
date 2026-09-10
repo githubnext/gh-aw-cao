@@ -438,16 +438,21 @@ export async function readActiveDatabaseTables(indexedDB) {
   try {
     const active = await readMeta(database, ACTIVE_GENERATION_KEY);
     if (typeof active?.value !== 'string') return [];
-    const checkpoint = await readStoredCheckpoint(database, active.value, 'dashboard-sources');
+    const generation = active.value;
+    const checkpoint = await readStoredCheckpoint(database, generation, 'dashboard-sources');
     const transaction = database.transaction(GENERATION_STORES);
     const rows = await Promise.all(GENERATION_STORES.map(async (table) => {
       const store = transaction.objectStore(table);
       return {
         table,
-        records: await requestResult(store.index('generation').count(active.value)),
+        records: await requestResult(store.index('generation').count(generation)),
         indexes: store.indexNames.length,
+        indexStructure: Array.from(store.indexNames, (name) => {
+          const keyPath = store.index(name).keyPath;
+          return `${name} (${Array.isArray(keyPath) ? keyPath.join(', ') : String(keyPath)})`;
+        }).join('; '),
         keyPath: Array.isArray(store.keyPath) ? store.keyPath.join(', ') : String(store.keyPath ?? ''),
-        generation: active.value,
+        generation,
         databaseVersion: database.version,
         schemaVersion: Number(active.canonicalSchemaVersion) || null,
         committedAt: typeof checkpoint?.committedAt === 'string' ? checkpoint.committedAt : ''
