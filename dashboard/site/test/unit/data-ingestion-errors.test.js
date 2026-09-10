@@ -25,7 +25,7 @@ describe('canonical ingestion errors', () => {
     })).rejects.toMatchObject({
       name: 'CanonicalIngestionError',
       code: 'NORMALIZATION_FAILED',
-      phase: 'normalizing'
+      phase: 'adapting'
     });
   });
 

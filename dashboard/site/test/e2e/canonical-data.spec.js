@@ -206,7 +206,7 @@ test.beforeEach(async ({ context, page }) => {
   }), databaseName);
 });
 
-test('native IndexedDB activates and retains a canonical generation across reload', async ({ page }) => {
+test('native IndexedDB directly upserts and retains canonical data across reload', async ({ page }) => {
   const sources = canonicalSources();
 
   const first = await page.evaluate(async (sourceDocument) => {
@@ -225,7 +225,7 @@ test('native IndexedDB activates and retains a canonical generation across reloa
     return { result, repositories, workflows, runs, jobs };
   }, sources);
 
-  expect(first.result).toEqual({ generation: 'browser-generation', activated: true });
+  expect(first.result).toMatchObject({ updated: true });
   expect(first.repositories).toHaveLength(1);
   expect(first.workflows).toHaveLength(1);
   expect(first.runs[0].id).toBe('github:run:12345:attempt:2');
@@ -310,7 +310,7 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
-test('data worker reports only changed or newly hydrated refreshes', async ({ page }) => {
+test('data worker reports every fresh database update', async ({ page }) => {
   const refreshes = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { refreshCanonicalDashboardSources } = await import(processorUrl);
@@ -329,13 +329,13 @@ test('data worker reports only changed or newly hydrated refreshes', async ({ pa
     ];
   });
 
-  expect(refreshes.map((refresh) => refresh.changed)).toEqual([true, false]);
+  expect(refreshes.map((refresh) => refresh.changed)).toEqual([true, true]);
   expect(refreshes[0].sources['failed-runs'].rows).toMatchObject([
     { repository: 'gh-aw-cao', run: '12345' }
   ]);
 });
 
-test('data worker queries the retained active generation before downloading sources', async ({ page }) => {
+test('data worker queries retained canonical data before downloading sources', async ({ page }) => {
   await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { loadCanonicalDashboardSources } = await import(processorUrl);
@@ -693,7 +693,8 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
     return {
       rebuilt,
       replaced,
-      repositories: await storage.readCollection(indexedDB, 'repositories')
+      repositories: await storage.readCollection(indexedDB, 'repositories'),
+      runs: await storage.readCollection(indexedDB, 'runs')
     };
   }, {
     firstSources: canonicalSources('generation-a', '101'),
@@ -703,9 +704,14 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
 
   expect(result.rebuilt).toMatchObject({ updated: true });
   expect(result.replaced).toMatchObject({ updated: true });
-  expect(result.repositories.map((/** @type {Record<string, unknown>} */ repository) => repository.id)).toEqual([
-    'github:repository:101',
-    'github:repository:202'
+  expect(result.repositories).toEqual([
+    expect.objectContaining({
+      id: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao'
+    })
+  ]);
+  expect(result.runs.map((/** @type {Record<string, unknown>} */ run) => run.id)).toEqual([
+    'github:run:101:attempt:2',
+    'github:run:202:attempt:2'
   ]);
 });
 

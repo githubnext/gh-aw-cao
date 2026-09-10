@@ -1,4 +1,4 @@
-import { processCanonicalDashboardSources } from '../../data-processor.js';
+import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
 import { adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { relationshipErrors } from '../model/schema.js';
@@ -10,17 +10,16 @@ import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
 /**
  * @param {IDBFactory} indexedDB
- * @param {() => import('../model/schema.js').CanonicalBatch | Promise<import('../model/schema.js').CanonicalBatch>} buildBatch
+ * @param {import('../model/schema.js').CanonicalBatch} incoming
  * @param {{ storage?: StorageManager, now?: number }} options
  */
-async function ingestCanonicalBatch(indexedDB, buildBatch, options) {
+async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
     await Promise.allSettled([
       inspectStorage(options.storage),
       requestPersistentStorage(options.storage)
     ]);
   }
-  const incoming = await buildBatch();
   const retained = await readCanonicalBatch(indexedDB);
   const batch = mergeRetainedRecords(retained, incoming, { now: options.now });
   const errors = relationshipErrors(batch);
@@ -41,14 +40,11 @@ async function ingestCanonicalBatch(indexedDB, buildBatch, options) {
 export async function ingestDashboardSources(indexedDB, sources, options = {}) {
   let phase = 'adapting';
   try {
+    const adapted = adaptDashboardSources(sources);
     phase = 'normalizing';
-    const result = await ingestCanonicalBatch(
-      indexedDB,
-      () => processCanonicalDashboardSources(sources),
-      options
-    );
+    const batch = normalize(adapted.observations);
     phase = 'writing';
-    return result;
+    return await ingestCanonicalBatch(indexedDB, batch, options);
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -69,7 +65,7 @@ export async function ingestSqlExport(indexedDB, input, options = {}) {
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, () => batch, options);
+    return await ingestCanonicalBatch(indexedDB, batch, options);
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -90,7 +86,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, () => batch, options);
+    return await ingestCanonicalBatch(indexedDB, batch, options);
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
