@@ -109,6 +109,23 @@ describe('canonical retention merge', () => {
     expect(merged.sessions.map((session) => session.id)).toEqual(['session:1']);
   });
 
+  it('expires retained records that carry no usable observation time', () => {
+    const previous = batch('generation-a', [
+      { eventId: 'event:untimed', timestamp: '2026-09-01T04:00:00Z' }
+    ]);
+    for (const event of previous.events) {
+      delete event.timestamp;
+      delete event.observedAt;
+    }
+    const incoming = batch('generation-b', [
+      { eventId: 'event:current', timestamp: '2026-09-09T04:00:00Z' }
+    ]);
+
+    const merged = mergeRetainedGeneration(previous, incoming, { generation: 'generation-b', now: NOW });
+
+    expect(merged.events.map((event) => event.id)).toEqual(['event:current']);
+  });
+
   it('collects structural parents that no retained record still references', () => {
     const previous = batch('generation-a', [
       { eventId: 'event:expired', timestamp: '2026-07-01T04:00:00Z' }

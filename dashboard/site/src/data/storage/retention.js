@@ -30,6 +30,10 @@ const STORES = /** @type {const} */ ([
 ]);
 
 /**
+ * Reports the observation time that bounds a record's retention. Records in a
+ * time-bounded store without a usable timestamp are treated as expired so
+ * retention can never grow without limit.
+ *
  * @param {string} storeName
  * @param {Record<string, unknown>} record
  * @returns {number | null}
@@ -71,9 +75,10 @@ function upsertRecords(previous, incoming, generation, horizon) {
   for (const storeName of STORES) {
     /** @type {Map<string, Record<string, unknown>>} */
     const records = new Map();
+    const timeBound = storeName in RETENTION_TIMESTAMPS;
     for (const record of previous[storeName] ?? []) {
       const timestamp = recordTimestamp(storeName, record);
-      if (timestamp !== null && timestamp < horizon) continue;
+      if (timeBound && (timestamp === null || timestamp < horizon)) continue;
       records.set(String(record.id), { ...record, generation });
     }
     for (const record of incoming[storeName] ?? []) {
