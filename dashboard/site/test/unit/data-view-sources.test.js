@@ -1,7 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
-import { createCanonicalQueries } from '../../src/data/queries/index.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -128,8 +127,8 @@ describe('canonical view sources', () => {
     });
   });
 
-  it('projects work items and security findings from canonical entities', async () => {
-    await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+  it('keeps work items and security findings outside canonical entities', async () => {
+    const loaded = await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 
     const projected = await queryCanonicalViewSources(
       indexedDB,
@@ -137,25 +136,15 @@ describe('canonical view sources', () => {
       ['work-items', 'security-findings']
     );
 
-    expect(Object.keys(projected)).toEqual(['work-items', 'security-findings']);
-    expect(projected['work-items']).toMatchObject({
+    expect(projected).toEqual({});
+    expect(loaded['work-items']).toMatchObject({
       source: 'work-items',
-      rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }],
-      metadata: { 'source-kind': 'canonical-query' }
+      rows: [{ 'work-item-id': 'githubnext/gh-aw-cao:.github/workflows/dashboard.md', 'lifecycle-state': 'blocked' }]
     });
-
-    expect(projected['security-findings']).toMatchObject({
+    expect(loaded['security-findings']).toMatchObject({
       source: 'security-findings',
-      rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }],
-      metadata: { 'source-kind': 'canonical-query' }
+      rows: [{ 'smell-observation-id': 'threat-detection:observation-1', 'smell-severity': 'high' }]
     });
-    const queries = createCanonicalQueries(indexedDB);
-    await expect(queries.workItems.byLifecycleState('blocked')).resolves.toEqual([
-      expect.objectContaining({ lifecycleState: 'blocked', workItemId: 'githubnext/gh-aw-cao:.github/workflows/dashboard.md' })
-    ]);
-    await expect(queries.findings.bySeverity('high')).resolves.toEqual([
-      expect.objectContaining({ observationId: 'threat-detection:observation-1', severity: 'high' })
-    ]);
   });
 
   it('projects failed-run evidence from the active canonical generation', async () => {

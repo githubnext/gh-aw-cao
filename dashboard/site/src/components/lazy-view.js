@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from '../debug-events.js';
+import { renderSkeletonBars } from './ui-primitives.js';
 
 const renderers = new WeakMap();
 const hydrationPromises = new WeakMap();
@@ -65,13 +66,7 @@ export function renderLazyView({ label, headingLevel = 'h3', minHeight = 280, re
     },
     h(headingLevel, { className: 'sr-only' }, label),
     h('span', { className: 'sr-only' }, `Loading ${label}`),
-    h(
-      'div',
-      { className: 'dashboard-lazy-view-skeleton', 'aria-hidden': 'true' },
-      h('span'),
-      h('span'),
-      h('span')
-    )
+    renderSkeletonBars('dashboard-lazy-view-skeleton')
   );
   renderers.set(element, render);
   return element;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { completenessCaveat, coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -134,6 +134,14 @@ describe('ui primitives', () => {
     expect(rendered.tagName).toBe('SPAN');
     expect(rendered.className).toBe('table-summary-empty');
     expect(rendered.textContent).toBe('No timestamps');
+  });
+
+  it('renders the shared three-bar skeleton placeholder with the given class', () => {
+    const rendered = renderSkeletonBars('dashboard-lazy-view-skeleton');
+    expect(rendered.tagName).toBe('DIV');
+    expect(rendered.className).toBe('dashboard-lazy-view-skeleton');
+    expect(rendered.getAttribute('aria-hidden')).toBe('true');
+    expect(rendered.querySelectorAll('span')).toHaveLength(3);
   });
 
   it('renders a truncated digest in a code element, or null when empty', () => {

@@ -35,16 +35,33 @@ describe('canonical IndexedDB', () => {
 
     expect([...database.objectStoreNames]).toEqual([
       'events',
-      'findings',
       'jobs',
       'repositories',
       'runs',
       'sessions',
       'transactions',
-      'workItems',
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
+    database.close();
+  });
+
+  it('removes obsolete work item and finding stores during upgrade', async () => {
+    const legacy = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, 7);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('workItems', { keyPath: 'id' });
+        request.result.createObjectStore('findings', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    legacy.close();
+
+    const database = await openCanonicalDatabase(indexedDB);
+
+    expect(database.objectStoreNames.contains('workItems')).toBe(false);
+    expect(database.objectStoreNames.contains('findings')).toBe(false);
     database.close();
   });
 

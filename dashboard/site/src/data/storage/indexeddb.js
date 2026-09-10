@@ -1,7 +1,7 @@
 import { relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 7;
+export const DATABASE_VERSION = 8;
 
 const ENTITY_STORES = /** @type {const} */ ([
   'repositories',
@@ -9,9 +9,7 @@ const ENTITY_STORES = /** @type {const} */ ([
   'runs',
   'jobs',
   'sessions',
-  'events',
-  'workItems',
-  'findings'
+  'events'
 ]);
 const TRANSACTION_STORE = 'transactions';
 const DEFAULT_WRITE_BATCH_SIZE = 1000;
@@ -80,12 +78,6 @@ function createSchema(database) {
   createIndex(events, 'bySource', 'source');
   createIndex(events, 'byCorrelation', 'correlationId');
 
-  const workItems = database.createObjectStore('workItems', { keyPath: 'id' });
-  createIndex(workItems, 'byLifecycleState', 'lifecycleState');
-
-  const findings = database.createObjectStore('findings', { keyPath: 'id' });
-  createIndex(findings, 'bySeverity', 'severity');
-
   const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
   createIndex(transactions, 'byCreatedAt', 'createdAt');
   createIndex(transactions, 'byKind', 'kind');
@@ -118,13 +110,18 @@ export function openCanonicalDatabase(indexedDB) {
         // schema is discarded instead of migrated.
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
-      } else if (event.oldVersion < 7) {
-        if (database.objectStoreNames.contains('operations')) database.deleteObjectStore('operations');
-        const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
-        createIndex(transactions, 'byCreatedAt', 'createdAt');
-        createIndex(transactions, 'byKind', 'kind');
+      } else {
+        if (event.oldVersion < 7) {
+          if (database.objectStoreNames.contains('operations')) database.deleteObjectStore('operations');
+          const transactions = database.createObjectStore(TRANSACTION_STORE, { keyPath: 'id' });
+          createIndex(transactions, 'byCreatedAt', 'createdAt');
+          createIndex(transactions, 'byKind', 'kind');
+        }
+        if (event.oldVersion < 8) {
+          if (database.objectStoreNames.contains('workItems')) database.deleteObjectStore('workItems');
+          if (database.objectStoreNames.contains('findings')) database.deleteObjectStore('findings');
+        }
       }
-
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error('Unable to open canonical dashboard data'));

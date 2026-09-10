@@ -642,6 +642,16 @@ test("operations creation guidance scopes detection and omits worker evals", () 
   assert.match(packageSkill, /default new dispatchers to `hourly`/);
   assert.match(packageSkill, /`safe-outputs\.create-issue` or `safe-outputs\.create-pull-request`[\s\S]*?`labels: \[<package-slug>, <package-slug>:<worker-slug>\]`[\s\S]*?`title-prefix: "\[<package-slug>:<worker-slug>\] "`/);
   assert.match(packageSkill, /every created issue or pull request identifies both its owning operation and worker/);
+  assert.match(packageSkill, /when `safe-outputs\.create-issue` is enabled, configure `deduplicate-by-title: true`/);
+  assert.match(packageSkill, /canonical unprefixed subject that remains identical for the same unresolved repository work across reruns/);
+  assert.match(packageSkill, /search all open package-worker issues in the safe-output repository and reuse or comment on matching work, or call `noop`/);
+  assert.match(packageSkill, /every issue-creating worker configures `deduplicate-by-title: true` plus stable subject and existing-item reuse instructions/);
+  assert.match(packageSkill, /A model instruction alone is not sufficient when a handler-level safeguard exists/);
+  assert.match(packageSkill, /Pull requests:[\s\S]*stable branch or machine-readable body marker[\s\S]*search open pull requests/);
+  assert.match(packageSkill, /Comments and reviews:[\s\S]*do not post the same finding or status again/);
+  assert.match(packageSkill, /The orchestrator owns idempotent selection and dispatch\. Workers own idempotent repository outputs/);
+  assert.match(packageSkill, /singleton package concurrency with `group: "\$\{\{ github\.workflow \}\}"` and `cancel-in-progress: true`/);
+  assert.match(packageSkill, /unique worker, target repository, and effective mode tuple/);
   assert.match(packageSkill, /evaluate the potential follow-up actions/);
   assert.match(packageSkill, /single most important action with the highest expected return on investment/);
   assert.match(packageSkill, /<details><summary><b>Agent prompt<\/b><\/summary> \.\.\. <\/details>/);
@@ -3040,7 +3050,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
-  assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: true/);
+  assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.match(workflow, /actions\/cache\/restore@[0-9a-f]{40}/);
   assert.match(workflow, /actions\/cache\/save@[0-9a-f]{40}/);
   assert.match(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity/);
@@ -3140,7 +3150,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(deployedDataTest, /"aw", "logs"[\s\S]*?"--artifacts", "firewall"/);
   assert.match(deployedDataTest, /readRunTimeline\(/);
   for (const source of ["workflows", "runs", "events"]) {
-    assert.match(deployedDataTest, new RegExp(`readActiveCollection\\(indexedDB, "${source}"\\)`));
+    assert.match(deployedDataTest, new RegExp(`readCollection\\(indexedDB, "${source}"\\)`));
   }
   assert.doesNotMatch(workflow, /actions\/cache|cao-dashboard-/);
   assert.doesNotMatch(workflow, /GH_TOKEN:/);
