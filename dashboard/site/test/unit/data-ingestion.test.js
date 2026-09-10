@@ -138,6 +138,15 @@ describe('canonical source ingestion and queries', () => {
     expect(await queries.events.forSession(String(activeSessions[0].id))).toEqual([
       expect.objectContaining({ source: 'agent', type: 'agent_turn', sequence: 0 })
     ]);
+
+    await ingestCachedGhAwJsonl(indexedDB, `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id: 303, run_attempt: 1, organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', created_at: '2026-09-09T04:00:00Z', updated_at: '2026-09-09T05:01:00Z'
+    } })}\n`);
+    expect(await queries.sessions.forRun('github:run:303:attempt:1')).toContainEqual(
+      expect.objectContaining({ id: activeSessions[0].id, jobId: 'github:job:404' })
+    );
   });
 
   it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
