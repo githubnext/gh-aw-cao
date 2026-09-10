@@ -2961,6 +2961,9 @@ describe('presenter built-in and custom pages', () => {
     expect(emptySection?.textContent).toContain('Affected source: empty-usage');
 
     const unavailableSection = [...rendered.querySelectorAll('.page-section')].find((section) => section.textContent?.includes('Missing Source'));
+    const unavailableCard = unavailableSection?.querySelector('.view-state-card[data-view-state="unavailable"]');
+    expect(unavailableCard?.getAttribute('role')).toBe('alert');
+    expect(unavailableCard?.querySelector('.octicon-alert')).not.toBeNull();
     expect(unavailableSection?.querySelector('[data-view-availability="unavailable"]')?.textContent).toBe('This view cannot be shown because its data source is unavailable.');
     expect(unavailableSection?.textContent).toContain('Source unavailable: missing-source');
 
