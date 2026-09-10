@@ -944,6 +944,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
       muted: resolvedColor('--muted')
     };
   });
+  expect(attentionColors).not.toBeNull();
   expect(attentionColors?.activeReview).toBe(attentionColors?.purple);
   expect(attentionColors?.emptyMetric).toBe(attentionColors?.muted);
   await expect(overviewPage.locator('.home-attention-detail')).toHaveCount(0);
