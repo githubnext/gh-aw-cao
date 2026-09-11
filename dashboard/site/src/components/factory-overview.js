@@ -188,7 +188,7 @@ function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
   const baselinePoints = hasBaseline
     ? baselineAverages.map((value, index) => `${(index + 0.5) * (100 / 7)},${100 - (value / maximum * 100)}`).join(' ')
     : '';
-  const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, 'Select a day to view its summary.');
+  const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   /** @type {HTMLButtonElement[]} */
   const dayButtons = [];
   /** @param {number} index */

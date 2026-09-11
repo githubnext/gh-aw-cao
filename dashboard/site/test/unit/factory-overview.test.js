@@ -159,6 +159,43 @@ it('updates the factory rhythm day summary when selecting a bar', () => {
   expect(dayButtons[4]?.getAttribute('aria-pressed')).toBe('true');
 });
 
+it('preselects the most recent day with successful activity', () => {
+  const rendered = renderFactoryOverview({
+    sources: {
+      outcomes: { source: 'outcomes', rows: [], metadata },
+      runs: {
+        source: 'runs',
+        rows: [
+          { run: '1', 'run-conclusion': 'success', 'started-at': '2026-09-09T09:00:00Z' },
+          { run: '2', 'run-conclusion': 'success', 'started-at': '2026-09-11T10:00:00Z' }
+        ],
+        metadata
+      }
+    }
+  });
+  const dayButtons = [...rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
+
+  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Fri 2026-09-11: 1 successful run.');
+  expect(dayButtons[6]?.getAttribute('aria-pressed')).toBe('true');
+});
+
+it('falls back to the last observed day when no successful runs are present', () => {
+  const rendered = renderFactoryOverview({
+    sources: {
+      outcomes: { source: 'outcomes', rows: [], metadata },
+      runs: {
+        source: 'runs',
+        rows: [{ run: '1', 'run-conclusion': 'failure', 'started-at': '2026-09-11T10:00:00Z' }],
+        metadata
+      }
+    }
+  });
+  const dayButtons = [...rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
+
+  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Fri 2026-09-11: 0 successful runs.');
+  expect(dayButtons[6]?.getAttribute('aria-pressed')).toBe('true');
+});
+
 it('reflects arity with declared plural text variables and falls back to built-in labels', () => {
   const singularSources = {
     outcomes: { source: 'outcomes', rows: [], metadata },
