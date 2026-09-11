@@ -136,8 +136,8 @@ describe('GitHub API event dashboard', () => {
       expect(page.querySelector('[data-page-id="github-api"]')?.textContent).toContain('This view cannot be shown because its data source is unavailable.');
     });
 
-    expect(page.querySelector('[data-page-id="github-api"]')?.textContent).toContain('partial');
-    expect(page.querySelector('[data-page-id="github-api"]')?.textContent).toContain('stale');
+    expect(page.querySelector('[data-page-id="github-api"]')?.textContent).not.toContain('partial');
+    expect(page.querySelector('[data-page-id="github-api"]')?.textContent).not.toContain('stale');
     expect(page.querySelector('[data-page-id="github-api"]')?.textContent).not.toContain('0.0 %');
   });
 });

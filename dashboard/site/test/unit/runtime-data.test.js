@@ -73,7 +73,7 @@ describe('runtime data', () => {
     expect(sources['runtime-episode-summary'].rows).toEqual([
       { label: 'Root episodes', value: '1' },
       { label: 'Worker attribution', value: '0 / 1' },
-      { label: 'Run window', value: 'Complete 24h' },
+      { label: 'Run window', value: '24h' },
       { label: 'Repeated coverage', value: 'Unavailable' }
     ]);
     expect(sources['runtime-episodes'].rows).toEqual([

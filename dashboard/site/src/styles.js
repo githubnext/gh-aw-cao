@@ -281,20 +281,15 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .horizon-toggle:hover, .horizon-toggle[aria-expanded="true"] { background: var(--neutral-muted); color: var(--fg); }
 .horizon-toggle .octicon { width: 14px; height: 14px; }
 .horizon-tooltip { min-width: 190px; display: grid; gap: 3px; position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); color: var(--fg); font-size: .75rem; font-weight: 600; line-height: 1.35; white-space: nowrap; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 80ms linear, visibility 80ms linear; }
-.horizon-tooltip > span:not(.horizon-tooltip-quality) { color: var(--muted); font-size: .6875rem; font-weight: 400; }
+.horizon-tooltip > span { color: var(--muted); font-size: .6875rem; font-weight: 400; }
 .horizon-summary:hover .horizon-tooltip, .horizon-summary:focus-within .horizon-tooltip { visibility: visible; opacity: 1; }
 .filter-bar-expanded :is(.horizon-summary:hover, .horizon-summary:focus-within) .horizon-tooltip { visibility: hidden; opacity: 0; }
-.horizon-tooltip-quality { width: 7px; height: 7px; position: absolute; top: 12px; right: 10px; border-radius: 50%; background: var(--muted); }
-.horizon-tooltip-quality.status-success { background: var(--success); }
-.horizon-tooltip-quality.status-attention { background: var(--attention); }
 .horizon-details { display: none; }
 .filter-bar-expanded .horizon-details { width: 100%; display: grid; grid-template-columns: minmax(180px, 1fr) auto; align-items: center; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
 .horizon-details-description { color: var(--muted); font-size: .75rem; }
 .horizon-details-values { display: flex; align-items: center; justify-content: flex-end; gap: 12px; color: var(--muted); font-size: .6875rem; }
-.horizon-details-values > span:not(.horizon-data-status), .horizon-data-status, .horizon-data-status > span { display: flex; align-items: center; gap: 5px; }
+.horizon-details-values > span { display: flex; align-items: center; gap: 5px; }
 .horizon-details-values strong { color: var(--fg); font-weight: 600; }
-.horizon-data-status { font-weight: 500; }
-.horizon-data-status .status { font-size: .6875rem; }
 .dashboard-horizon-skeleton > span { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .tooltip-help { position: relative; display: inline-flex; }
 .tooltip-trigger { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: help; }
@@ -1115,7 +1110,6 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .package-chart-point:hover :is(.package-point-marker, .package-point-tooltip), .package-chart-point:focus-visible :is(.package-point-marker, .package-point-tooltip) { opacity: 1; }
 .package-chart-point:focus-visible .package-point-hit { fill: color-mix(in srgb, var(--focus) 18%, transparent); stroke: var(--focus); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .package-trend-axis { display: flex; justify-content: space-between; padding: 0 30px 8px; color: var(--muted); font-size: .6875rem; }
-.package-trend-coverage { margin: 0; padding: 0 16px 12px; color: var(--muted); font-size: .75rem; }
 .attention-panel { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .attention-panel > header { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .attention-panel > header h3, .managed-packages > header h3 { margin: 2px 0 0; font-size: 1.125rem; }
@@ -2096,7 +2090,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 @media (max-width: 350px) {
   .report-actions { flex-wrap: wrap; }
   .dashboard-horizon { max-width: 100%; gap: 2px; padding-right: 4px; }
-  .horizon-data-status { gap: 6px; padding-inline: 2px; font-size: .6875rem; }
 }
 @media (max-width: 340px) {
   .primary-nav, .nav-section-items { gap: 2px; }
