@@ -121,10 +121,7 @@ network:
     - dev-tools
     - opentelemetry.io
     - "*.opentelemetry.io"
-    - msfeed12.pkgs.visualstudio.com
-    - msfeed17.pkgs.visualstudio.com
-    - msfeed2.pkgs.visualstudio.com
-    - msfeed25.pkgs.visualstudio.com
+    - "*.pkgs.visualstudio.com"
 
 run-name: "Dependabot release train · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
