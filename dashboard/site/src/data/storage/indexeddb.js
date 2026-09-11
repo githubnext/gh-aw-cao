@@ -1,7 +1,7 @@
 import { relationshipErrors } from '../model/schema.js';
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 9;
+export const DATABASE_VERSION = 10;
 
 export const ENTITY_STORES = /** @type {const} */ ([
   'packages',
@@ -130,33 +130,11 @@ export function openCanonicalDatabase(indexedDB) {
   return new Promise((resolve, reject) => {
     request.onupgradeneeded = (event) => {
       const database = request.result;
-      if (event.oldVersion < 5) {
-        // Canonical data is a derived cache, so the incompatible generation-keyed
-        // schema is discarded instead of migrated.
+      if (event.oldVersion < DATABASE_VERSION) {
+        // Canonical data is a derived cache. Rebuild incompatible identities and
+        // schemas from authoritative dashboard inputs instead of migrating them.
         for (const storeName of [...database.objectStoreNames]) database.deleteObjectStore(storeName);
         createSchema(database);
-      } else {
-        if (event.oldVersion < 7) {
-          if (database.objectStoreNames.contains('operations')) database.deleteObjectStore('operations');
-          const definition = CANONICAL_DATABASE_SCHEMA[TRANSACTION_STORE];
-          const transactions = database.createObjectStore(TRANSACTION_STORE, {
-            keyPath: definition.keyPath
-          });
-          for (const [indexName, keyPath] of Object.entries(definition.indexes)) {
-            createIndex(transactions, indexName, keyPath);
-          }
-        }
-        if (event.oldVersion < 8) {
-          if (database.objectStoreNames.contains('workItems')) database.deleteObjectStore('workItems');
-          if (database.objectStoreNames.contains('findings')) database.deleteObjectStore('findings');
-        }
-        if (event.oldVersion < 9) {
-          const definition = CANONICAL_DATABASE_SCHEMA.packages;
-          const packages = database.createObjectStore('packages', { keyPath: definition.keyPath });
-          for (const [indexName, keyPath] of Object.entries(definition.indexes)) {
-            createIndex(packages, indexName, keyPath);
-          }
-        }
       }
     };
     request.onsuccess = () => resolve(request.result);

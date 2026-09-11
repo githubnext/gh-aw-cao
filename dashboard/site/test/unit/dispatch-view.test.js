@@ -61,7 +61,9 @@ describe('declarative dispatch view', () => {
     expect(pageFilter?.value).toBe('');
     const tables = rendered.querySelectorAll('table');
     expect(tables).toHaveLength(1);
-    expect([...tables[0].querySelectorAll('thead tr:first-child th')].map((cell) => cell.textContent)).toEqual([
+    expect([...tables[0].querySelectorAll('thead tr:first-child th')].map((cell) => (
+      cell.querySelector('select')?.options[0]?.textContent ?? cell.textContent
+    ))).toEqual([
       'Started',
       'Type',
       'Package',

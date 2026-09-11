@@ -1,4 +1,11 @@
-import { jobId, runId, sourceId } from '../model/ids.js';
+import {
+  jobId,
+  repositoryCoordinateId,
+  runId,
+  sourceId,
+  workflowCoordinateId,
+  workflowSourcePath
+} from '../model/ids.js';
 import { requiredString } from '../model/schema.js';
 
 const SOURCE = 'dashboard-sources';
@@ -97,7 +104,7 @@ export function adaptDashboardSources(sources) {
       sourceId: fullName,
       observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(repositories.metadata), 'repository.observed-at'),
       data: {
-        id: sourceId('repository', SOURCE, fullName.toLowerCase()),
+        id: repositoryCoordinateId(owner, name),
         owner,
         name,
         fullName,
@@ -115,17 +122,18 @@ export function adaptDashboardSources(sources) {
     const repository = requiredString(row.repository, 'workflow.repository');
     const path = requiredString(row.workflow, 'workflow.workflow');
     const fullName = `${owner}/${repository}`;
-    const coordinate = `${fullName}:${path}`.toLowerCase();
+    const canonicalPath = workflowSourcePath(path);
+    const coordinate = `${fullName}:${canonicalPath}`.toLowerCase();
     observations.push({
       kind: 'workflow',
       source: SOURCE,
       sourceId: coordinate,
       observedAt: requiredString(row['observed-at'] ?? metadataTimestamp(workflows.metadata), 'workflow.observed-at'),
       data: {
-        id: sourceId('workflow', SOURCE, coordinate),
-        repositoryId: sourceId('repository', SOURCE, fullName.toLowerCase()),
+        id: workflowCoordinateId(owner, repository, canonicalPath),
+        repositoryId: repositoryCoordinateId(owner, repository),
         name: row['workflow-name'] ?? path,
-        path,
+        path: canonicalPath,
         state: row['workflow-active'] === 'true' ? 'active'
           : row['workflow-active'] === 'false' ? 'disabled' : 'unknown',
         ghAwVersion: row['gh-aw-version'] ?? 'unknown',
@@ -162,12 +170,12 @@ export function adaptDashboardSources(sources) {
       observedAt: requiredString(row['ended-at'] ?? row['started-at'] ?? metadataTimestamp(runs.metadata), 'run observed time'),
       data: {
         id,
-        repositoryId: sourceId('repository', SOURCE, fullName.toLowerCase()),
-        workflowId: sourceId('workflow', SOURCE, `${fullName}:${path}`.toLowerCase()),
+        repositoryId: repositoryCoordinateId(owner, repository),
+        workflowId: workflowCoordinateId(owner, repository, path),
         owner,
         repository,
         repositoryFullName: fullName,
-        workflowPath: path,
+        workflowPath: workflowSourcePath(path),
         githubRunId,
         attempt,
         title: row['run-title'] ?? `Run ${githubRunId}`,

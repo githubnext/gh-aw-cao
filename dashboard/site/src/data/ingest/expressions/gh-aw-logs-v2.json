@@ -11,7 +11,7 @@
     },
     "run": {
       "payloadPath": "run",
-      "emits": ["repository", "workflow", "run", "session", "event"],
+      "emits": ["repository", "workflow", "run", "job", "session", "event"],
       "identity": ["run_id", "run_attempt"]
     },
     "github_api_rate_limit": {

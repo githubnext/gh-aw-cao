@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { normalize } from '../../src/data/normalize/index.js';
-import { mergeRetainedRecords, RETENTION_WINDOW_DAYS } from '../../src/data/storage/retention.js';
+import {
+  BROWSER_RETENTION_WINDOWS_MS,
+  mergeRetainedRecords,
+  RETENTION_WINDOW_DAYS
+} from '../../src/data/storage/retention.js';
 
 const NOW = Date.parse('2026-09-09T05:00:00Z');
 
@@ -88,6 +92,27 @@ describe('canonical retention merge', () => {
     const merged = mergeRetainedRecords(previous, incoming, { now: NOW });
 
     expect(merged.events.map((event) => event.id)).toEqual(['event:retained', 'event:current']);
+  });
+
+  it('keeps historical run summaries while pruning historical detail in the browser', () => {
+    const incoming = batch([
+      { eventId: 'event:historical', timestamp: '2026-07-01T04:00:00Z' }
+    ]);
+    incoming.runs[0].startedAt = '2026-07-01T04:00:00Z';
+    incoming.runs[0].observedAt = '2026-07-01T04:00:00Z';
+    incoming.sessions[0].startedAt = '2026-07-01T04:00:00Z';
+    incoming.sessions[0].observedAt = '2026-07-01T04:00:00Z';
+
+    const merged = mergeRetainedRecords(normalize([]), incoming, {
+      now: NOW,
+      retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
+    });
+
+    expect(merged.runs.map((run) => run.id)).toEqual(['run:1']);
+    expect(merged.sessions).toEqual([]);
+    expect(merged.events).toEqual([]);
+    expect(merged.workflows.map((workflow) => workflow.id)).toEqual(['workflow:1']);
+    expect(merged.repositories.map((repository) => repository.id)).toEqual(['repository:1']);
   });
 
   it('drops retained records whose parents no longer survive', () => {

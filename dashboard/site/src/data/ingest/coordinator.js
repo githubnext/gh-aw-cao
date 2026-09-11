@@ -10,7 +10,7 @@ import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
@@ -20,7 +20,11 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     ]);
   }
   const retained = await readCanonicalBatch(indexedDB);
-  const batch = mergeRetainedRecords(retained, incoming, { now: options.now });
+  const batch = mergeRetainedRecords(retained, incoming, {
+    now: options.now,
+    retentionWindowMs: options.retentionWindowMs,
+    retentionWindowMsByStore: options.retentionWindowMsByStore
+  });
   await replaceCanonicalBatch(indexedDB, batch);
   return {
     updated: true,
@@ -34,7 +38,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} [options]
  */
 export async function ingestDashboardSources(indexedDB, sources, options = {}) {
   let phase = 'adapting';
@@ -55,7 +59,7 @@ export async function ingestDashboardSources(indexedDB, sources, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} [options]
  */
 export async function ingestSqlExport(indexedDB, input, options = {}) {
   let phase = 'adapting';
@@ -76,7 +80,7 @@ export async function ingestSqlExport(indexedDB, input, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} [options]
  */
 export async function ingestGhAwLogs(indexedDB, input, options = {}) {
   let phase = 'adapting';
@@ -96,26 +100,40 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, context?: unknown }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
  */
 export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   try {
-    const adapted = adaptCachedGhAwJsonl(content, { context: options.context });
+    const adapted = adaptCachedGhAwJsonl(content, {
+      context: options.context,
+      workflowHints: options.workflowHints
+    });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
     await recordTransaction(indexedDB, {
       id: `ingest-jsonl:${createdAt}:${adapted.records}`,
       kind: 'ingest-jsonl',
       createdAt,
       records: adapted.records,
-      committedRecords: result.committedRecords
+      committedRecords: result.committedRecords,
+      rawPayloadRecords: adapted.rawPayloadRecords,
+      rawRuns: adapted.rawRuns,
+      agenticRunRecords: adapted.agenticRunRecords,
+      agenticRuns: adapted.agenticRuns,
+      duplicateRawRunObservations: adapted.duplicateRawRunObservations,
+      duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
+      unenrichedRuns: adapted.unenrichedRuns
     });
     return {
       ...result,
       records: adapted.records,
       rawPayloadRecords: adapted.rawPayloadRecords,
       rawRuns: adapted.rawRuns,
+      agenticRunRecords: adapted.agenticRunRecords,
       agenticRuns: adapted.agenticRuns,
+      duplicateRawRunObservations: adapted.duplicateRawRunObservations,
+      duplicateAgenticRunObservations: adapted.duplicateAgenticRunObservations,
+      unenrichedRuns: adapted.unenrichedRuns,
       sessions: adapted.sessions,
       events: adapted.events,
       rateLimits: adapted.rateLimits,

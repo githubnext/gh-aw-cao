@@ -152,6 +152,9 @@ safe-outputs:
     allowed-branches: ["dependabot-agent/*", "smart-dependabot/*"]
     preserve-branch-name: true
     recreate-ref: true
+    # This workflow's entire purpose is to update manifests and lockfiles, so
+    # protected-file review gating (meant for unrelated manifest edits) is disabled.
+    protected-files: allowed
     # Disabled while this workflow uses PAT-only authentication.
     # allow-workflows: true
     max-patch-files: 500

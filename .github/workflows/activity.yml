@@ -54,11 +54,11 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@e67822c8ebaae760c3be935622dbfe343a465306 # v0.89.3
+        uses: github/gh-aw-actions/setup-cli@690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42 # v0.89.4
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
-          version: v0.89.3
+          version: v0.89.4
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -121,7 +121,7 @@ jobs:
             --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
             --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
             --count 5 \
-            --timeout 5 \
+            --timeout 15 \
             --max-github-api-rate-limit -2000 \
             --max-storage 1200 \
             --prune-older-runs \
@@ -142,9 +142,11 @@ jobs:
           fi
           node "$ingestion_script" ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
-            --input "$REPORT_GH_AW_LOGS"
+            --input "$REPORT_GH_AW_LOGS" \
+            --run-retention-days all
           node "$ingestion_script" doctor \
-            --database "$ACTIVITY_DATABASE"
+            --database "$ACTIVITY_DATABASE" \
+            --run-ttl-days all
 
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

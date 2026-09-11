@@ -403,6 +403,7 @@ function renderSidebar(pages, title, navigation) {
         agenticWorkflowMark(),
         h('span', null, title)
       ),
+      h('div', { className: 'mobile-page-header' }),
       h('div', { className: 'mobile-report-actions', 'aria-label': 'Dashboard controls' }),
       h(
         'button',
@@ -627,13 +628,20 @@ function enableMobileNavigationMenu(root) {
 
 /**
  * Keeps global dashboard controls in the mobile navbar while preserving the
- * single control instances and their filter-bar event relationships.
+ * single control instances and their filter-bar event relationships. On
+ * narrow viewports the page title also moves into the compact mobile header
+ * row (replacing the app brand) so the page no longer shows a full-width
+ * secondary header that repeats the current page title, matching the
+ * single-row title bar used by the GitHub mobile app.
  * @param {HTMLElement} root
  */
 function enableResponsiveReportActions(root) {
   const actions = root.querySelector('.report-actions');
   const mobileSlot = root.querySelector('.mobile-report-actions');
   const desktopSlot = actions?.parentElement;
+  const overviewHeader = root.querySelector('.overview-header');
+  const mobileHeaderSlot = root.querySelector('.mobile-page-header');
+  const headerDesktopSlot = overviewHeader?.parentElement;
   const view = root.ownerDocument.defaultView;
   const media = view?.matchMedia?.('(max-width: 700px)');
   if (!(actions instanceof HTMLElement) || !(mobileSlot instanceof HTMLElement) || !desktopSlot || !media) return;
@@ -641,6 +649,13 @@ function enableResponsiveReportActions(root) {
   const placeActions = () => {
     const destination = media.matches ? mobileSlot : desktopSlot;
     if (actions.parentElement !== destination) destination.append(actions);
+    if (overviewHeader instanceof HTMLElement && mobileHeaderSlot instanceof HTMLElement && headerDesktopSlot) {
+      if (media.matches) {
+        if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.append(overviewHeader);
+      } else if (overviewHeader.parentElement !== headerDesktopSlot) {
+        headerDesktopSlot.prepend(overviewHeader);
+      }
+    }
   };
   placeActions();
   media.addEventListener?.('change', placeActions);

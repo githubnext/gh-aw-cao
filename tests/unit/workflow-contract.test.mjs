@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.3";
+const ghAwVersion = "v0.89.4";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -788,10 +788,23 @@ test("workers inherit human-first progressive report disclosure", () => {
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+role: worker$/m.test(source));
 
-  assert.match(packageSkill, /begin every durable output directly with a concise, unheaded executive summary/);
-  assert.doesNotMatch(packageSkill, /### Executive Summary/);
-  assert.match(packageSkill, /immediately expose one clear `\*\*Action:\*\*` with an owner and acceptance check/);
-  assert.match(packageSkill, /non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details>` sections/);
+  assert.match(packageSkill, /when `safe-outputs\.create-issue` or `safe-outputs\.create-pull-request` is enabled, require every created issue or pull request body to follow the complete Worker Report Formatting contract/);
+  assert.match(packageSkill, /mandatory for every worker that creates issues or pull requests and applies to the complete issue or pull request body/);
+  assert.match(packageSkill, /Make the report delightful to read, precise, terse, and easy to scan/);
+  assert.match(packageSkill, /Use plain language, short sentences, compact bullets, and descriptive labels/);
+  assert.match(packageSkill, /Keep the entire visible report to a single screen at normal GitHub desktop viewing/);
+  assert.match(packageSkill, /Show only the decision essentials; move everything else into progressive disclosure/);
+  assert.match(packageSkill, /Start directly with a concise executive-summary paragraph/);
+  assert.match(packageSkill, /Do not add a heading before this opening paragraph because the first paragraph is always the executive summary/);
+  assert.match(packageSkill, /After the opening paragraph, use `###` for every main section and `####` for subsections; never use `#` or `##`/);
+  assert.doesNotMatch(packageSkill, /Start with the h3 heading `### Summary`/);
+  assert.match(packageSkill, /states what happened, the decision-relevant result, critical findings, and key metrics/);
+  assert.match(packageSkill, /Immediately follow the summary with one clear `\*\*Action:\*\*` sentence naming who should do what next and the acceptance check/);
+  assert.match(packageSkill, /non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details><summary><b>\.\.\.<\/b><\/summary>/);
+  assert.match(packageSkill, /`\> \[!NOTE\]` for neutral status/);
+  assert.match(packageSkill, /`\> \[!WARNING\]` for warnings/);
+  assert.match(packageSkill, /`\> \[!CAUTION\]` for high-risk or blocking findings/);
+  assert.match(packageSkill, /Do not use emoji severity markers/);
   assert.match(sharedControl, /Begin directly with a short, plain-language executive summary/);
   assert.match(sharedControl, /do not add a heading for this opening summary/);
   assert.match(sharedControl, /Immediately follow it with one visible `\*\*Action:\*\*` sentence that says who should do what next and the acceptance check/);
@@ -2643,7 +2656,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     }
     for (const manifest of ["aw.yml", "activity/aw.yml", "aw-doctor/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
-      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll("v0.89.3", "v0.89.2"));
+      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll("v0.89.4", "v0.89.3"));
     }
     execFileSync("git", ["init", "--quiet"], { cwd: temporaryRoot });
 

@@ -232,6 +232,21 @@ describe('canonical view sources', () => {
     });
   });
 
+  it('projects workflow configuration onto runs when run metadata is absent', async () => {
+    const input = structuredClone(sources);
+    Reflect.deleteProperty(input.runs.rows[0], 'rollout-mode');
+    await loadCanonicalViewSources(indexedDB, input, { ingest: true });
+
+    const projected = await queryCanonicalViewSources(indexedDB, input, ['runs']);
+
+    expect(projected.runs.rows).toEqual([
+      expect.objectContaining({
+        workflow: '.github/workflows/dashboard.md',
+        'rollout-mode': 'review'
+      })
+    ]);
+  });
+
   it('projects event-backed view sources from retained canonical events', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
 

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -222,6 +222,86 @@ describe('SQLite IndexedDB compatibility layer', () => {
         status: 'available'
       })
     ]);
+
+    const audit = JSON.parse(execFileSync(process.execPath, [
+      script,
+      'audit-jsonl',
+      '--input', input
+    ], { encoding: 'utf8' }));
+    expect(audit).toMatchObject({
+      command: 'audit-jsonl',
+      source: {
+        records: 3,
+        rawRunObservations: 1,
+        uniqueRawRuns: 1,
+        duplicateRawRunObservations: 0,
+        enrichedRunObservations: 1,
+        uniqueEnrichedRuns: 1,
+        duplicateEnrichedRunObservations: 0,
+        unenrichedRuns: 0,
+        enrichmentCoveragePercent: 100
+      },
+      canonical: { repositories: 1, workflows: 1, runs: 1, sessions: 1 }
+    });
+  });
+
+  it('preserves backfilled history when retention is all', () => {
+    const filename = temporaryDatabase();
+    const directory = join(filename, '..');
+    const script = resolve('scripts/ingest-gh-aw-logs.mjs');
+    /** @param {number} databaseId @param {string} timestamp */
+    const input = (databaseId, timestamp) => JSON.stringify({
+      schema_version: 2,
+      kind: 'workflow_runs',
+      request: { repository: 'githubnext/gh-aw-cao' },
+      payload: [{
+        databaseId,
+        attempt: 1,
+        workflowName: 'Dashboard',
+        status: 'completed',
+        conclusion: 'success',
+        createdAt: timestamp,
+        updatedAt: timestamp
+      }]
+    });
+    const oldInput = join(directory, 'old.jsonl');
+    const currentInput = join(directory, 'current.jsonl');
+    writeFileSync(oldInput, `${input(100, '2020-01-01T00:00:00Z')}\n`);
+    writeFileSync(currentInput, `${input(200, '2026-09-11T00:00:00Z')}\n`);
+
+    for (const source of [oldInput, currentInput]) {
+      execFileSync(process.execPath, [
+        script,
+        'ingest-jsonl',
+        '--database', filename,
+        '--input', source,
+        '--run-retention-days', 'all'
+      ], { encoding: 'utf8' });
+    }
+
+    const runs = JSON.parse(execFileSync(process.execPath, [
+      script,
+      'query',
+      '--database', filename,
+      '--collection', 'runs'
+    ], { encoding: 'utf8' }));
+    expect(/** @type {{ id: string }[]} */ (runs).map((run) => run.id)).toEqual([
+      'github:run:100:attempt:1',
+      'github:run:200:attempt:1'
+    ]);
+
+    const diagnosis = JSON.parse(execFileSync(process.execPath, [
+      script,
+      'doctor',
+      '--database', filename,
+      '--run-ttl-days', 'all'
+    ], { encoding: 'utf8' }));
+    expect(diagnosis).toMatchObject({
+      healthy: true,
+      ttlDays: 30,
+      runTtlDays: 'all',
+      after: { counts: { runs: 2 } }
+    });
   });
 
   it('repairs malformed, orphaned, and expired canonical data', async () => {

@@ -25,6 +25,7 @@ export function renderCellDisplay(display, value, toText, unit = null, type, for
   if (display === 'label') return formatLabel(value);
   if (display === 'digest') return renderDigest(value) ?? 'unavailable';
   if (type === 'quantitative' && (value == null || value === '' || !Number.isFinite(Number(value)))) return '—';
+  if (type === 'temporal' && (value == null || value === '')) return '—';
   if (type === 'temporal' && typeof value === 'string' && Number.isFinite(Date.parse(value))) {
     const text = format === 'human-friendly-timestamp'
       ? formatHumanFriendlyTimestamp(value)

@@ -25,6 +25,13 @@ Snapshots use the immutable key
 reconstruct its immutable key from the returned run ID and attempt. The cache
 is an evictable transport optimization, not durable historical authority.
 
+The scheduled collector is intentionally rolling and bounded. It requests a
+30-day run window and at most five matching enriched runs across all targets in
+one invocation. Cached JSONL can contain repeated observations from later
+refreshes; canonical ingestion deduplicates them by stable run identity. Use a
+separate source and SQLite database when a complete historical archive is
+required.
+
 The `gh-aw-logs.mjs` resource provides the shared parser for consumers of the
 JSONL format. Agent jobs restore the same cache and install the SQLite CLI so
 they can query the normalized projection without repeating log acquisition.

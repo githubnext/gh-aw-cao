@@ -38,6 +38,8 @@ Use [`gh aw logs`](https://github.com/github/gh-aw/blob/main/docs/src/content/do
 
 For live feature-development data, run `npm run dashboard:data -- download`. It downloads the deployed Pages site's `gh-aw-logs.jsonl` and `gh-aw-logs.sqlite` unchanged into `_activity/`. Set `DASHBOARD_DATA_URL` or pass `--url URL` for another deployment, and pass `--output DIRECTORY` for another destination. The `npm run dashboard:data:download` shortcut invokes the same command. Query the downloaded SQLite database with `npm run dashboard:data -- query`, and use `npm run dashboard:data -- help` for the supported collections and filters. Live data is development evidence, not a schema authority; keep code aligned with the specifications and JSONL schema.
 
+Before treating a source as complete, run `npm run dashboard:data -- audit-jsonl --input FILE`. Distinguish repeated source observations from duplicate canonical records, and distinguish run-summary coverage from enriched artifact coverage. Use a separate SQLite database plus `--retention-days all` and `doctor --ttl-days all` for historical backfills; do not turn browser IndexedDB into an archive.
+
 ## Package file convention
 
 - Store an operation package's production Dashboard Language document at `<package>/dashboard.json`.

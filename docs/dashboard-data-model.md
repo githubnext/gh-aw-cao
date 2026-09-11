@@ -8,6 +8,99 @@ The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON obs
 > [!NOTE]
 > IndexedDB persists normalized Repository, Workflow, Run, Job, Session, and Event records, plus an ingestion transaction audit trail. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
 
+## Data flow
+
+Data is collected once and converted for two different users. SQLite supports
+agents and command-line tools. IndexedDB supports the browser dashboard.
+
+```mermaid
+flowchart LR
+  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
+  source --> sqlite["SQLite"]
+  sqlite --> agents["Agents"]
+  sqlite --> cli["CLI"]
+  source --> indexeddb["IndexedDB<br/>browser"]
+  indexeddb --> dashboard["Dashboard"]
+```
+
+SQLite and IndexedDB are rebuildable copies. Neither is the source for the
+other. Both use the same conversion rules. Both keep all run summaries available
+in the published JSONL. Detailed jobs, sessions, and events remain bounded to 30
+days unless a separate full-detail SQLite archive is requested.
+
+## Collection sequence
+
+```mermaid
+sequenceDiagram
+  participant Activity
+  participant JSONL as JSONL source
+  participant SQLite
+  participant Browser
+  participant IDB as IndexedDB
+  participant Dashboard
+
+  Activity->>JSONL: Collect logs
+  Activity->>SQLite: Build agent copy
+  Browser->>JSONL: Download logs
+  Browser->>IDB: Build browser copy
+  Dashboard->>IDB: Query data
+```
+
+## Completeness and duplicates
+
+The scheduled Activity workflow is a rolling operational snapshot, not a full
+historical archive. Data can be incomplete at these boundaries:
+
+| Boundary | What can be missing |
+| --- | --- |
+| Collection | Runs outside the configured 30-day window. |
+| Enrichment | The scheduled command downloads at most five matching usage artifacts across all workflow targets per Activity invocation. |
+| GitHub retention | Expired or unavailable artifacts cannot provide agent, usage, job, or audit detail. The run summary may still exist. |
+| Mapping | GitHub API rate-limit records without collection context are intentionally not attached to a run. |
+| Browser storage | IndexedDB keeps all published run summaries and expires detailed Job, Session, and Event records after 30 days. |
+
+Cached JSONL can repeat the same run in later snapshots. These are repeated
+observations, not duplicate database records. Raw runs are deduplicated by
+GitHub run ID and attempt. Enriched runs are deduplicated by run ID and attempt,
+with the newest observation winning.
+
+Audit a JSONL source without changing a database:
+
+```bash
+npm run dashboard:data -- audit-jsonl \
+  --input _activity/gh-aw-logs.jsonl
+```
+
+The report separates raw observations, unique raw runs, enriched observations,
+unique enriched runs, repeated observations, unenriched runs, and the canonical
+record counts that ingestion will produce.
+
+## Historical archives
+
+For a full-detail local archive, collect into
+`_activity/gh-aw-history.jsonl`, then audit and ingest it with unbounded
+retention:
+
+Audit and ingest the completed source into an archive database:
+
+```bash
+npm run dashboard:data -- audit-jsonl \
+  --input _activity/gh-aw-history.jsonl
+
+npm run dashboard:data -- ingest-jsonl \
+  --database _activity/gh-aw-history.sqlite \
+  --input _activity/gh-aw-history.jsonl \
+  --retention-days all
+
+npm run dashboard:data -- doctor \
+  --database _activity/gh-aw-history.sqlite \
+  --ttl-days all
+```
+
+"Full" means all run summaries discoverable in the selected range plus every
+artifact still available from GitHub. Expired artifacts remain visible as
+unenriched runs rather than being silently counted as complete.
+
 ## Entity map
 
 ```mermaid
@@ -71,7 +164,7 @@ The `gh-aw-logs.jsonl` cache is the dashboard's published operational input. The
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical database is `gh-aw-cao-dashboard-data`, schema version 9. It has stores for `packages`, `repositories`, `workflows`, `runs`, `jobs`, `sessions`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Schema upgrades discard incompatible schemas before version 5, replace the legacy `operations` audit store with `transactions` for versions 5 and 6, remove the former `workItems` and `findings` stores in version 8, and add `packages` in version 9.
+The canonical database is `gh-aw-cao-dashboard-data`, schema version 10. It has stores for `packages`, `repositories`, `workflows`, `runs`, `jobs`, `sessions`, and `events`; all use their canonical `id` as the key. The `transactions` store records ingestion outcomes and is indexed by `createdAt` and `kind`. Because this database is disposable derived state, schema upgrades rebuild its stores from authoritative dashboard inputs; version 10 resets source-scoped Repository and Workflow identities to canonical coordinates.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires time-bounded records outside the 30-day retention window, and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then replaces each canonical collection: it deletes records absent from the retained batch and puts every retained record. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 

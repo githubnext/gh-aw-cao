@@ -6,6 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestCachedGhAwJsonl, ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -229,27 +230,52 @@ export function processDataRequest(request, signal) {
       const jsonl = sourceUrl.pathname.endsWith('.jsonl');
       let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
       if (jsonl) {
-        const response = await fetch(sourceUrl.href);
-        if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
-        await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
-          storage: globalThis.navigator?.storage,
-          context: request.context && typeof request.context === 'object'
-            ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
-            : undefined
-        });
         const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
         const inventoryResponse = await fetch(inventoryUrl);
         if (inventoryResponse.ok) {
           sources = await inventoryResponse.json();
-          await ingestDashboardSources(indexedDB, sources, {
-            storage: globalThis.navigator?.storage
-          });
         } else if (inventoryResponse.status !== 404) {
           throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
         }
+        const workflowSource = sources.workflows && typeof sources.workflows === 'object'
+          ? /** @type {{ rows?: unknown }} */ (sources.workflows)
+          : null;
+        const workflowRows = Array.isArray(workflowSource?.rows) ? workflowSource.rows : [];
+        const workflowHints = workflowRows.flatMap((/** @type {unknown} */ candidate) => {
+          if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+          const row = /** @type {Record<string, unknown>} */ (candidate);
+          return typeof row.organization === 'string'
+            && typeof row.repository === 'string'
+            && typeof row['workflow-name'] === 'string'
+            && typeof row.workflow === 'string'
+            ? [{
+                owner: row.organization,
+                repository: row.repository,
+                name: row['workflow-name'],
+                path: row.workflow
+              }]
+            : [];
+        });
+        const response = await fetch(sourceUrl.href);
+        if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
+        await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
+          storage: globalThis.navigator?.storage,
+          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
+          workflowHints,
+          context: request.context && typeof request.context === 'object'
+            ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
+            : undefined
+        });
+        if (inventoryResponse.ok) {
+          await ingestDashboardSources(indexedDB, sources, {
+            storage: globalThis.navigator?.storage,
+            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
+          });
+        }
       } else {
         await ingestDashboardSources(indexedDB, sources, {
-          storage: globalThis.navigator?.storage
+          storage: globalThis.navigator?.storage,
+          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
         });
       }
       liveDashboard = {

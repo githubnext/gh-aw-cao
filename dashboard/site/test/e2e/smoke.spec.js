@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
@@ -1893,6 +1894,11 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   const scroll = view.locator('.table-scroll');
   const more = view.locator('[data-table-more]');
+  const sidebarBox = await page.locator('.org-sidebar').boundingBox();
+  const initialScrollBox = await scroll.boundingBox();
+  assert(sidebarBox);
+  assert(initialScrollBox);
+  expect(initialScrollBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width);
   await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
   await expect(view.locator('tbody > tr')).toHaveCount(50);
   await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
@@ -1913,6 +1919,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(fieldName).toHaveCSS('opacity', '0.8');
     await expect(summaryCell).toHaveCSS('opacity', '0');
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
+    const expandedScrollBox = await scroll.boundingBox();
+    assert(expandedScrollBox);
+    expect(expandedScrollBox.x).toBeLessThanOrEqual(1);
+    expect(expandedScrollBox.width).toBeGreaterThanOrEqual(998);
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     await scroll.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
@@ -2403,7 +2413,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(failedDispatchRows).toHaveCount(5);
   await expect(failedDispatchSection.locator('thead tr').first().locator('th')).toHaveText([
     'Action',
-    'Why',
+    /^Why/,
     'Started',
     'Workflow',
     'Run title',
@@ -3806,6 +3816,11 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await expect(tableRows).toHaveCount(30);
   await expect(visibleRows).toHaveCount(25);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 25 of 30 results');
+  await expect(page.locator('thead th').filter({ has: page.locator('[data-table-facet="rollout-mode"]') })).toHaveCount(1);
+  const modeFilter = page.getByRole('combobox', { name: 'Filter by Mode' });
+  await expect(modeFilter).toHaveValue('');
+  await expect(modeFilter).toHaveCSS('appearance', 'none');
+  await expect(modeFilter.locator('..')).toHaveCSS('border-radius', '999px');
 
   await page.getByRole('button', { name: 'Show all rows' }).click();
   await expect(visibleRows).toHaveCount(30);
@@ -3816,11 +3831,13 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await page.locator('[data-table-facet="rollout-mode"]').selectOption('review');
   await expect(visibleRows).toHaveCount(15);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 15 of 15 results');
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain('workflow-catalog.rollout-mode=review');
 
   await page.getByRole('searchbox', { name: 'Filter Workflow catalog' }).fill('workflow-29');
   await expect(visibleRows).toHaveCount(1);
   await expect(visibleRows).toContainText('workflow-29');
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 1 of 1 result');
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain('workflow-catalog.q=workflow-29');
 });
 
 test('DLS-SAFE-004 runtime links with embedded credentials, ftp schemes, and blank labels are not exposed in browser output', async ({ page }) => {
@@ -3945,6 +3962,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
 
 test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -3990,7 +4008,10 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(page.locator('.nav-section-items').first()).toHaveCSS('flex-direction', 'row');
   await expect(page.locator('.primary-nav')).not.toHaveCSS('overflow-x', 'auto');
 
-  await page.getByRole('button', { name: 'Select view' }).click();
+  const viewMenuButton = page.getByRole('button', { name: 'Select view' });
+  await expect(viewMenuButton).toHaveCSS('border-radius', '50%');
+  await expect(viewMenuButton).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await viewMenuButton.click();
   const menu = page.locator('.mobile-nav-menu-list');
   await expect(menu).toBeVisible();
   await expect(menu.locator('.octicon-package')).toBeVisible();
@@ -3999,6 +4020,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
   await expect(historyBack).toBeVisible();
+  await expect(historyBack).toHaveCSS('border-radius', '50%');
+  await expect(historyBack).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await historyBack.click();
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await expect(historyBack).toBeHidden();

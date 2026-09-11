@@ -69,6 +69,7 @@ describe('dashboard data operations', () => {
     })).toEqual([{
       kind: 'quantitative',
       count: 3,
+      total: 6,
       mean: 2,
       deviation: 1,
       bins: [

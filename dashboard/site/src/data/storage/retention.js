@@ -2,6 +2,9 @@ import { orderEvents } from '../normalize/index.js';
 
 export const RETENTION_WINDOW_DAYS = 30;
 export const RETENTION_WINDOW_MS = RETENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
+  runs: Number.MAX_SAFE_INTEGER
+});
 
 /**
  * Stores whose retention is decided by observation time. Structural parents
@@ -63,21 +66,30 @@ function newestObservation(batch) {
 /**
  * @param {import('../model/schema.js').CanonicalBatch} previous
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {number} horizon
+ * @param {number} reference
+ * @param {number} defaultRetentionWindowMs
+ * @param {Partial<Record<typeof STORES[number], number>>} retentionWindowMsByStore
  */
-function upsertRecords(previous, incoming, horizon) {
+function upsertRecords(previous, incoming, reference, defaultRetentionWindowMs, retentionWindowMsByStore) {
   /** @type {Record<string, Map<string, Record<string, unknown>>>} */
   const merged = {};
   for (const storeName of STORES) {
     /** @type {Map<string, Record<string, unknown>>} */
     const records = new Map();
     const timeBound = storeName in RETENTION_TIMESTAMPS;
+    const configuredWindow = retentionWindowMsByStore[storeName];
+    const retentionWindowMs = Number.isFinite(configuredWindow)
+      ? Math.max(0, Number(configuredWindow))
+      : defaultRetentionWindowMs;
+    const horizon = reference - retentionWindowMs;
     for (const record of previous[storeName] ?? []) {
       const timestamp = recordTimestamp(storeName, record);
       if (timeBound && (timestamp === null || timestamp < horizon)) continue;
       records.set(String(record.id), record);
     }
     for (const record of incoming[storeName] ?? []) {
+      const timestamp = recordTimestamp(storeName, record);
+      if (timeBound && (timestamp === null || timestamp < horizon)) continue;
       records.set(String(record.id), record);
     }
     merged[storeName] = records;
@@ -180,6 +192,7 @@ function collectUnreferencedParents(merged, incoming) {
  * @param {{
  *   now?: number,
  *   retentionWindowMs?: number,
+ *   retentionWindowMsByStore?: Partial<Record<typeof STORES[number], number>>,
  *   includePreviousInReference?: boolean,
  *   preserveUnreferencedParents?: boolean
  * }} [options]
@@ -195,7 +208,13 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
   const retentionWindowMs = Number.isFinite(options.retentionWindowMs)
     ? Math.max(0, Number(options.retentionWindowMs))
     : RETENTION_WINDOW_MS;
-  const merged = upsertRecords(previous, incoming, reference - retentionWindowMs);
+  const merged = upsertRecords(
+    previous,
+    incoming,
+    reference,
+    retentionWindowMs,
+    options.retentionWindowMsByStore ?? {}
+  );
   pruneOrphans(merged);
   if (!options.preserveUnreferencedParents) collectUnreferencedParents(merged, incoming);
 
