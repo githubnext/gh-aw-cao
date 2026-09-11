@@ -85,9 +85,13 @@ function projectedRun(run, publishedRuns) {
     'gh-aw-version': run.ghAwVersion,
     'aic-total': run.aicTotal,
     engine: run.engine,
+    'engine-id': run.engineId,
     'engine-version': run.engineVersion,
     'requested-model': run.requestedModel,
-    'resolved-model': run.resolvedModel
+    'resolved-model': run.resolvedModel,
+    'agent-runtime': run.agentRuntime,
+    'firewall-version': run.firewallVersion,
+    'gateway-version': run.gatewayVersion
   };
 }
 

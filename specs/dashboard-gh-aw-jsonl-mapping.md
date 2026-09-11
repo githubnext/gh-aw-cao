@@ -19,9 +19,9 @@ Session -> Run
 Event -> Session
 ```
 
-The expression SHALL NOT emit Package, Job, or Transaction observations.
-Transactions remain the database-operation audit ledger maintained by the
-ingestion coordinator.
+The mapping SHALL NOT emit Package or Transaction observations. Transactions
+remain the database-operation audit ledger maintained by the ingestion
+coordinator. Enriched `job_details` SHALL emit canonical Job observations.
 
 ## 1 `workflow_runs` envelope
 
@@ -68,8 +68,10 @@ github:run:<databaseId>:attempt:<attempt>
 
 The `run` envelope contains the enriched agentic workflow-run observation.
 Records SHALL be deduplicated by `run_id` and `run_attempt`. The observation
-with the latest valid `updated_at` SHALL win; equal timestamps SHALL use a
-deterministic content tie-breaker.
+with the latest valid `updated_at` SHALL win. Records with equal timestamps
+SHALL merge in source order so fields appended by audit enrichment do not
+discard fields from the earlier record. Later fields, including explicit
+`null` values, SHALL override earlier fields.
 
 The enriched observation SHALL update the same canonical Run identity created
 from `workflow_runs`. When no raw listing exists, the enriched observation MAY
@@ -91,15 +93,18 @@ create the base Run using its own GitHub and workflow fields.
 | `failure_kind` | `failureKind` |
 | `duration` | `duration` |
 | `action_minutes` | `actionMinutes` |
-| `agent_id`, `agent`, or `engine_id` | `agentId` |
-| `agent_version` or `engine_version` | `agentVersion` |
-| `model_id`, `resolved_model`, `model`, or dominant `by_model` entry | `modelId` |
-| `gh_aw_version`, `ghAwVersion`, `cli_version`, or `version` | `ghAwVersion` |
-| `engine` | `engine` |
-| `engine_id` | `engineId` |
-| `engine_version` | `engineVersion` |
+| `agent_id`, `agent`, `engine_id`, or `aw_info.engine_id` | `agentId` |
+| `agent_version`, `engine_version`, or `aw_info.version` | `agentVersion` |
+| `model_id`, `resolved_model`, `model`, `aw_info.model`, or dominant `by_model` entry | `modelId` |
+| `gh_aw_version`, `ghAwVersion`, `cli_version`, `version`, or `aw_info.cli_version` | `ghAwVersion` |
+| `engine` or `aw_info.engine_name` | `engine` |
+| `engine_id` or `aw_info.engine_id` | `engineId` |
+| `engine_version` or `aw_info.version` | `engineVersion` |
 | `requested_model` | `requestedModel` |
-| `resolved_model` | `resolvedModel` |
+| `resolved_model`, `model`, or `aw_info.model` | `resolvedModel` |
+| `agent_runtime` or `aw_info.agent_runtime` | `agentRuntime` |
+| `firewall_version`, `aw_info.firewall_version`, or `aw_info.awf_version` | `firewallVersion` |
+| `gateway_version` or `aw_info.awmg_version` | `gatewayVersion` |
 | `token_usage_summary.total_aic` or `aic` | `aic`, `aicTotal` |
 | `token_usage_summary` or `token_usage` | `tokenUsage` |
 | `ambient_context` | `ambientContext` |
@@ -121,7 +126,15 @@ variants contain the field. Enriched values SHALL own agentic analysis fields.
 Absent, explicit `null`, zero, `false`, and empty collections SHALL remain
 distinct.
 
-## 3 Agentic Session mapping
+## 3 Job mapping
+
+Each `job_details[]` item SHALL emit one Job belonging to the canonical Run.
+Job identity SHALL use the GitHub job ID. The mapping SHALL preserve `name`,
+`status`, `conclusion`, `started_at`, and `completed_at`; it SHALL derive
+`durationSeconds` when both timestamps are valid. Runner fields SHALL remain
+`unknown` because cached JSONL does not provide authoritative runner identity.
+
+## 4 Agentic Session mapping
 
 Every unique enriched Run SHALL emit one Session:
 
@@ -133,9 +146,9 @@ Every unique enriched Run SHALL emit one Session:
 | `status` | Enriched `status`, otherwise `unknown` |
 | `startedAt` | `started_at`, then `created_at`, then observation time |
 | `completedAt` | `updated_at` only when status is `completed` |
-| `jobId` | Omitted because this source provides no authoritative Job ID |
+| `jobId` | Omitted because one enriched Run can contain multiple Jobs |
 
-## 4 Agentic Event mapping
+## 5 Agentic Event mapping
 
 Agentic Events SHALL use the mapped Session ID, source `gh-aw-logs`, a stable
 semantic ID, the source line as `payloadRef`, and the source line-derived
@@ -144,6 +157,7 @@ sequence as `sourceSequence`.
 | Source condition | Event `type` |
 | --- | --- |
 | Enriched Run has a start or creation time | `workflow_run_started` |
+| Every enriched Run | `agent.session` with source `agent` |
 | Enriched Run is completed | `workflow_run_completed` |
 | Conclusion is failure or `failure_kind` exists | `workflow_run_failed` |
 | Token usage or AIC exists | `workflow_run_usage` |
@@ -153,6 +167,21 @@ sequence as `sourceSequence`.
 | Each `graders.results[]` item | `workflow_run_grader` |
 | `safe_items_count` exists | `workflow_run_safe_outputs` |
 | `comparison` exists | `workflow_run_comparison` |
+
+Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `tool.call` Event and a
+correlated outcome Event. A `success` status SHALL emit `tool.result`; every
+other source status SHALL emit `tool.error` while preserving that status. Both
+Events SHALL use source `mcp` and the source `tool_call_id` as `correlationId`.
+
+Audit arrays SHALL map to compact canonical Events rather than an audit-shaped
+store: `key_findings` to `audit.finding`, `observability_insights` to
+`audit.observability`, `recommendations` to `audit.recommendation`,
+`missing_tools` to `audit.missing_tool`, `missing_data` to
+`audit.missing_data`, `noops` to `audit.noop`, `mcp_failures` to
+`audit.mcp_failure`, and `skill_activations` to `audit.skill_activation`.
+
+Each `safe_outputs[]` item, or `audit.created_items[]` when `safe_outputs` is
+absent, SHALL emit `safe_output.created` with source `safe-output`.
 
 Event records SHALL populate only the existing Event model fields:
 
@@ -172,7 +201,7 @@ observedAt
 provenance
 ```
 
-## 5 `github_api_rate_limit` envelope
+## 6 `github_api_rate_limit` envelope
 
 Each `github_api_rate_limit` envelope SHALL map to one Event:
 
@@ -193,7 +222,14 @@ SHALL create or resolve a deterministic collection Session for that Run.
 Missing collection context SHALL leave rate-limit records unmapped rather than
 assign them to an adjacent or inferred Run.
 
-## 6 Validation and accounting
+## 7 Privacy boundary
+
+The canonical mapping SHALL retain only fields required by existing Run, Job,
+Session, and Event contracts. It SHALL NOT persist complete audit objects, MCP
+arguments, responses, error bodies, artifact contents, or other opaque source
+payloads. It SHALL NOT query the GitHub API to fill absent operational fields.
+
+## 8 Validation and accounting
 
 Unsupported non-empty source schema versions SHALL fail explicitly. Unknown
 record kinds in a supported source version SHALL also fail explicitly.

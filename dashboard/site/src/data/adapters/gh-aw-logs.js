@@ -46,6 +46,9 @@ function finiteNumber(value) {
 
 /** @param {Record<string, unknown>} run */
 function runMetadata(run) {
+  const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
+    ? /** @type {Record<string, unknown>} */ (run.aw_info)
+    : {};
   const tokenUsage = run.token_usage_summary ?? run.token_usage ?? null;
   const summary = tokenUsage && typeof tokenUsage === 'object' && !Array.isArray(tokenUsage)
     ? /** @type {Record<string, unknown>} */ (tokenUsage)
@@ -63,10 +66,17 @@ function runMetadata(run) {
     .sort((left, right) => right.aic - left.aic || left.model.localeCompare(right.model))[0]?.model;
   const aicTotal = finiteNumber(summary.total_aic) ?? finiteNumber(run.aic);
   return {
-    agentId: optionalString(run.agent_id ?? run.agent ?? run.engine_id),
-    agentVersion: optionalString(run.agent_version ?? run.engine_version),
-    modelId: optionalString(run.model_id ?? run.resolved_model ?? run.model ?? dominantModel),
-    ghAwVersion: optionalString(run.gh_aw_version ?? run.ghAwVersion ?? run.cli_version ?? run.version),
+    agentId: optionalString(run.agent_id ?? run.agent ?? run.engine_id ?? awInfo.engine_id),
+    agentVersion: optionalString(run.agent_version ?? run.engine_version ?? awInfo.version),
+    modelId: optionalString(run.model_id ?? run.resolved_model ?? run.model ?? awInfo.model ?? dominantModel),
+    ghAwVersion: optionalString(run.gh_aw_version ?? run.ghAwVersion ?? run.cli_version ?? run.version ?? awInfo.cli_version),
+    engine: optionalString(run.engine ?? awInfo.engine_name),
+    engineId: optionalString(run.engine_id ?? awInfo.engine_id),
+    engineVersion: optionalString(run.engine_version ?? awInfo.version),
+    resolvedModel: optionalString(run.resolved_model ?? run.model ?? awInfo.model),
+    agentRuntime: optionalString(run.agent_runtime ?? awInfo.agent_runtime),
+    firewallVersion: optionalString(run.firewall_version ?? awInfo.firewall_version ?? awInfo.awf_version),
+    gatewayVersion: optionalString(run.gateway_version ?? awInfo.awmg_version),
     aicTotal,
     tokenUsage
   };
@@ -126,17 +136,19 @@ function repositoryCoordinates(repositoryName, fallbackOwner = '') {
 }
 
 /**
- * @template {{ observedAt: string, value: Record<string, unknown> }} T
+ * @template {{ line: number, observedAt: string, value: Record<string, unknown> }} T
  * @param {T} left
  * @param {T} right
  * @returns {T}
  */
 function preferNewer(left, right) {
-  return Date.parse(right.observedAt) > Date.parse(left.observedAt)
-    || (right.observedAt === left.observedAt
-      && JSON.stringify(right.value).localeCompare(JSON.stringify(left.value)) > 0)
-    ? right
-    : left;
+  const rightIsNewer = Date.parse(right.observedAt) > Date.parse(left.observedAt)
+    || (right.observedAt === left.observedAt && right.line > left.line);
+  if (!rightIsNewer) return left;
+  return {
+    ...right,
+    value: { ...left.value, ...right.value }
+  };
 }
 
 /** @param {unknown} input */
@@ -664,11 +676,14 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         agentVersion: metadata.agentVersion ?? null,
         modelId: metadata.modelId ?? null,
         ghAwVersion: metadata.ghAwVersion ?? null,
-        engine: optionalString(enrichedValue.engine) ?? 'unknown',
-        engineId: optionalString(enrichedValue.engine_id),
-        engineVersion: optionalString(enrichedValue.engine_version),
+        engine: metadata.engine ?? 'unknown',
+        engineId: metadata.engineId,
+        engineVersion: metadata.engineVersion,
         requestedModel: optionalString(enrichedValue.requested_model),
-        resolvedModel: optionalString(enrichedValue.resolved_model),
+        resolvedModel: metadata.resolvedModel,
+        agentRuntime: metadata.agentRuntime,
+        firewallVersion: metadata.firewallVersion,
+        gatewayVersion: metadata.gatewayVersion,
         aic: metadata.aicTotal,
         aicTotal: metadata.aicTotal,
         tokenUsage: metadata.tokenUsage,
@@ -723,6 +738,9 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   let derivedEvents = 0;
   for (const [id, enriched] of [...enrichedRuns.entries()].sort()) {
     const run = enriched.value;
+    const awInfo = run.aw_info && typeof run.aw_info === 'object' && !Array.isArray(run.aw_info)
+      ? /** @type {Record<string, unknown>} */ (run.aw_info)
+      : {};
     const sessionSourceId = `${id}:agentic`;
     const sessionId = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
     const startedAt = timestamp(run.started_at ?? run.created_at) ?? enriched.observedAt;
@@ -751,8 +769,9 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
      * @param {string} summary
      * @param {string | undefined} status
      * @param {unknown} identity
+     * @param {{ source?: string, correlationId?: string }} [fields]
      */
-    const emitEvent = (type, eventTimestamp, summary, status, identity = type) => {
+    const emitEvent = (type, eventTimestamp, summary, status, identity = type, fields = {}) => {
       if (!eventTimestamp) return;
       observations.push({
         kind: 'event',
@@ -762,10 +781,11 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         data: withoutUndefined({
           sessionId,
           timestamp: eventTimestamp,
-          source: 'gh-aw-logs',
+          source: fields.source ?? 'gh-aw-logs',
           type,
           summary,
           status,
+          correlationId: fields.correlationId,
           payloadRef: `gh-aw-logs.jsonl#L${enriched.line}`,
           sourceSequence
         })
@@ -780,6 +800,17 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
       detail([optionalString(run.workflow_name) ?? '', optionalString(run.display_title) ?? '']),
       optionalString(run.status),
       { type: 'started', startedAt }
+    );
+    emitEvent(
+      'agent.session',
+      startedAt,
+      detail([
+        optionalString(run.engine) ?? optionalString(awInfo.engine_name) ?? '',
+        optionalString(run.model) ?? optionalString(awInfo.model) ?? ''
+      ]),
+      optionalString(run.status),
+      { type: 'agent-session', engine: run.engine_id, model: run.model },
+      { source: 'agent' }
     );
     if (completedAt) {
       emitEvent(
@@ -864,6 +895,95 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         optionalString(record.name) ?? optionalString(record.id) ?? `Grader ${index + 1}`,
         optionalString(record.status) ?? (record.passed === true ? 'passed' : record.passed === false ? 'failed' : undefined),
         { type: 'grader', index, record }
+      );
+    });
+    const mcpToolUsage = run.mcp_tool_usage && typeof run.mcp_tool_usage === 'object'
+      && !Array.isArray(run.mcp_tool_usage)
+      ? /** @type {Record<string, unknown>} */ (run.mcp_tool_usage)
+      : {};
+    const toolCalls = Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
+    toolCalls.forEach((toolCall, index) => {
+      const record = toolCall && typeof toolCall === 'object' && !Array.isArray(toolCall)
+        ? /** @type {Record<string, unknown>} */ (toolCall)
+        : {};
+      const eventTimestamp = timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt;
+      const correlationId = optionalString(record.tool_call_id) ?? `${id}:mcp:${index}`;
+      const summary = detail([
+        optionalString(record.server_name) ?? 'unknown',
+        optionalString(record.tool_name) ?? 'unknown'
+      ]);
+      const status = optionalString(record.status) ?? 'unknown';
+      emitEvent(
+        'tool.call',
+        eventTimestamp,
+        summary,
+        'started',
+        { type: 'mcp-call', index, server: record.server_name, tool: record.tool_name },
+        { source: 'mcp', correlationId }
+      );
+      emitEvent(
+        status === 'success' ? 'tool.result' : 'tool.error',
+        eventTimestamp,
+        summary,
+        status,
+        { type: 'mcp-outcome', index, status },
+        { source: 'mcp', correlationId }
+      );
+    });
+    const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
+      ? /** @type {Record<string, unknown>} */ (run.audit)
+      : {};
+    /**
+     * @param {string} field
+     * @param {string} type
+     * @param {string} summaryField
+     * @param {string} statusField
+     */
+    const emitAuditEvents = (field, type, summaryField, statusField) => {
+      const entries = Array.isArray(audit[field]) ? audit[field] : [];
+      entries.forEach((entry, index) => {
+        const record = entry && typeof entry === 'object' && !Array.isArray(entry)
+          ? /** @type {Record<string, unknown>} */ (entry)
+          : {};
+        emitEvent(
+          type,
+          timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
+          optionalString(record[summaryField]) ?? type,
+          optionalString(record[statusField]),
+          { type, index, summary: record[summaryField], status: record[statusField] },
+          { source: 'audit' }
+        );
+      });
+    };
+    emitAuditEvents('key_findings', 'audit.finding', 'title', 'severity');
+    emitAuditEvents('observability_insights', 'audit.observability', 'title', 'severity');
+    emitAuditEvents('recommendations', 'audit.recommendation', 'action', 'priority');
+    emitAuditEvents('missing_tools', 'audit.missing_tool', 'tool', 'status');
+    emitAuditEvents('missing_data', 'audit.missing_data', 'data_type', 'status');
+    emitAuditEvents('noops', 'audit.noop', 'message', 'status');
+    emitAuditEvents('mcp_failures', 'audit.mcp_failure', 'server_name', 'status');
+    emitAuditEvents('skill_activations', 'audit.skill_activation', 'name', 'status');
+    const safeOutputs = Array.isArray(run.safe_outputs)
+      ? run.safe_outputs
+      : Array.isArray(audit.created_items) ? audit.created_items : [];
+    safeOutputs.forEach((safeOutput, index) => {
+      const record = safeOutput && typeof safeOutput === 'object' && !Array.isArray(safeOutput)
+        ? /** @type {Record<string, unknown>} */ (safeOutput)
+        : {};
+      emitEvent(
+        'safe_output.created',
+        timestamp(record.timestamp) ?? completedAt ?? enriched.observedAt,
+        detail([
+          optionalString(record.type) ?? 'safe output',
+          optionalString(record.repo) ?? '',
+          optionalString(record.number) ?? ''
+        ]),
+        'created',
+        { type: 'safe-output', index, outputType: record.type, url: record.url },
+        {
+          source: 'safe-output',
+          correlationId: optionalString(record.url ?? record.temporaryId)
+        }
       );
     });
     if (run.safe_items_count !== undefined) {
