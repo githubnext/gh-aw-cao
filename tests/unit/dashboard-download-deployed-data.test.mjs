@@ -107,8 +107,11 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
         "query",
         "--stdin",
       ], JSON.stringify({
-        collection: "runs",
-        where: ["conclusion=success"],
+        name: "successful-runs",
+        from: "runs",
+        filter: {
+          predicates: [{ field: "conclusion", equals: "success" }],
+        },
         limit: 1,
       }), { cwd: root });
       const stdinRuns = JSON.parse(stdinStdout);

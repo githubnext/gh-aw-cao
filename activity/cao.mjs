@@ -10,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { adaptCachedGhAwJsonl } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
+import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
@@ -42,7 +43,7 @@ const USAGE = `Usage:
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
 Query stdin JSON:
-  {"collection":"runs","where":["conclusion=failure"],"limit":20}
+  {"name":"failed-runs","from":"runs","filter":{"predicates":[{"field":"conclusion","equals":"failure"}]},"limit":20}
 
 Download defaults:
   URL        DASHBOARD_DATA_URL or ${DEFAULT_DEPLOYED_DATA_URL}
@@ -96,7 +97,7 @@ function parseOptions(arguments_) {
   return options;
 }
 
-async function queryOptionsFromStdin(options, input) {
+async function rawQueryFromStdin(options, input) {
   for (const name of ['collection', 'id', 'where', 'limit']) {
     if (options[name] !== undefined) {
       throw new Error(`Option --${name} cannot be combined with --stdin`);
@@ -116,29 +117,10 @@ async function queryOptionsFromStdin(options, input) {
   if (!query || typeof query !== 'object' || Array.isArray(query)) {
     throw new Error('--stdin requires a JSON object');
   }
-
-  rejectUnknownOptions(query, ['collection', 'id', 'where', 'limit']);
-  const normalized = { database: options.database };
-  for (const name of ['collection', 'id']) {
-    if (query[name] !== undefined) {
-      if (typeof query[name] !== 'string') throw new Error(`Query field "${name}" must be a string`);
-      normalized[name] = query[name];
-    }
+  if (typeof query.name !== 'string' || typeof query.from !== 'string') {
+    throw new Error('--stdin query requires string fields "name" and "from"');
   }
-  if (query.where !== undefined) {
-    const where = Array.isArray(query.where) ? query.where : [query.where];
-    if (where.some((value) => typeof value !== 'string')) {
-      throw new Error('Query field "where" must be a string or an array of strings');
-    }
-    normalized.where = where;
-  }
-  if (query.limit !== undefined) {
-    if (!Number.isInteger(query.limit) || query.limit < 1) {
-      throw new Error('Query field "limit" must be a positive integer');
-    }
-    normalized.limit = String(query.limit);
-  }
-  return normalized;
+  return query;
 }
 
 function option(options, name, required = true) {
@@ -357,6 +339,43 @@ export async function queryCanonicalData(indexedDB, options) {
   return limit ? records.slice(0, limit) : records;
 }
 
+async function queryRawCanonicalData(indexedDB, query) {
+  const inputNames = queryInputNames(query);
+  const unknown = inputNames.find((name) => !QUERY_COLLECTIONS.includes(name));
+  if (unknown) throw new Error(`Unknown collection: ${unknown}`);
+  const sources = Object.fromEntries(await Promise.all(inputNames.map(async (name) => [
+    name,
+    {
+      source: name,
+      rows: name === 'transactions'
+        ? await readTransactions(indexedDB)
+        : await readCollection(indexedDB, name),
+      metadata: {
+        'source-id': name,
+        'source-kind': 'canonical-query',
+        availability: 'available',
+        completeness: 'complete',
+        freshness: 'unknown'
+      }
+    }
+  ])));
+  const time = console.time;
+  const timeEnd = console.timeEnd;
+  let result;
+  try {
+    console.time = () => {};
+    console.timeEnd = () => {};
+    result = executeDashboardQuery(query, sources);
+  } finally {
+    console.time = time;
+    console.timeEnd = timeEnd;
+  }
+  if (result.metadata?.availability === 'unavailable') {
+    throw new Error(String(result.metadata['query-diagnostic'] ?? 'Query is unavailable'));
+  }
+  return result.rows;
+}
+
 async function createDatabase(databasePath) {
   const filename = path.resolve(databasePath);
   await mkdir(path.dirname(filename), { recursive: true });
@@ -405,10 +424,10 @@ export async function runCli(arguments_, input = process.stdin) {
     rejectUnknownOptions(options, ['input']);
     return auditJsonl(option(options, 'input', false) || DEFAULT_LOGS_PATH);
   }
-  const queryOptions = command === 'query' && options.stdin
-    ? await queryOptionsFromStdin(options, input)
-    : options;
-  const databasePath = option(queryOptions, 'database', false) || DEFAULT_DATABASE_PATH;
+  const rawQuery = command === 'query' && options.stdin
+    ? await rawQueryFromStdin(options, input)
+    : undefined;
+  const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
   if (command === 'doctor') {
     rejectUnknownOptions(options, ['database', 'ttl-days', 'run-ttl-days']);
     return doctorSqliteDatabase(databasePath, {
@@ -448,8 +467,10 @@ export async function runCli(arguments_, input = process.stdin) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {
-    rejectUnknownOptions(queryOptions, ['database', 'collection', 'id', 'where', 'limit']);
-    return queryCanonicalData(indexedDB, queryOptions);
+    rejectUnknownOptions(options, ['database', 'collection', 'id', 'where', 'limit', 'stdin']);
+    return rawQuery
+      ? queryRawCanonicalData(indexedDB, rawQuery)
+      : queryCanonicalData(indexedDB, options);
   }
   throw new Error(`Unknown command: ${command}`);
 }

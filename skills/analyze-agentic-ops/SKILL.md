@@ -59,16 +59,21 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    ```
 
    Pass `--database FILE` only when querying a non-default SQLite path.
-7. For generated or complex queries, pass the query JSON through standard input. The object supports `collection`, `id`, `where` (a string or array of strings), and `limit`:
+7. For generated or complex queries, pass a raw Dashboard Language query object through standard input:
 
    ```bash
    jq -n \
      --arg conclusion failure \
-     '{collection: "runs", where: ["conclusion=\($conclusion)"], limit: 20}' |
+     '{
+       name: "failed-runs",
+       from: "runs",
+       filter: {predicates: [{field: "conclusion", equals: $conclusion}]},
+       limit: 20
+     }' |
      cao query --stdin
    ```
 
-   `--database FILE` may be combined with `--stdin`; do not combine the other query flags with it.
+   `--database FILE` may be combined with `--stdin`; do not combine `--collection`, `--id`, `--where`, or `--limit` with it.
 8. Query by ID when the user asks about one known record:
 
    ```bash
