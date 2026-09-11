@@ -147,6 +147,7 @@ safe-outputs:
   create-pull-request:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
     title-prefix: "[dependabot-agent] "
+    labels: [dependabot, dependabot:release-train-updater]
     draft: true
     max: 1
     if-no-changes: ignore
