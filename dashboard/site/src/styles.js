@@ -1977,7 +1977,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .app-main { height: auto; overflow: visible; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-inline: 14px; overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-mobile-page-padding-inline) 28px; }
-  .dashboard-mobile-overview-actions .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
@@ -2185,6 +2184,9 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .work-roadmap-visual .work-roadmap-track { min-height: 40px; display: block; }
   .work-roadmap-today { display: none; }
   .workflow-identity { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 700px) {
+  .dashboard-mobile-overview-actions .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
 }
 @media (max-width: 420px) {
   .primary-nav .nav-item.narrow-mobile-nav-overflow { display: none; }
