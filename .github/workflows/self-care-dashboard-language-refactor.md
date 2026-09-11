@@ -115,7 +115,6 @@ safe-outputs:
       - "dashboard/site/src/**/*.json"
       - "dashboard/site/test/**/*"
       - "docs/dashboard-language-specification.md"
-  noop:
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}

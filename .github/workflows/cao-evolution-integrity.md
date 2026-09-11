@@ -109,7 +109,6 @@ safe-outputs:
     required-title-prefix: "[cao-evolution:integrity] "
     hide-older-comments: true
     max: 1
-  noop:
 
 timeout-minutes: 35
 ---

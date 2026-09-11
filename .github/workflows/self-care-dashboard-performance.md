@@ -122,7 +122,6 @@ safe-outputs:
       - "self-care-dashboard-performance-evidence/**"
     defaults:
       if-no-files: ignore
-  noop:
 pre-agent-steps:
   - name: Install dashboard dependencies
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}

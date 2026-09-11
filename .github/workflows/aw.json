@@ -4,6 +4,6 @@
     "options": ["--pre-releases"]
   },
   "maintenance": {
-    "action_failure_issue_expires": 168
+    "action_failure_issue_expires": 24
   }
 }

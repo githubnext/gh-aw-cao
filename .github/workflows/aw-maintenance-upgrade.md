@@ -102,6 +102,7 @@ tracker-id: aw-maintenance-upgrade
 safe-outputs:
   create-issue:
     expires: 30d
+    deduplicate-by-title: true
     title-prefix: "[aw-doctor:upgrade] "
     labels: [aw-doctor, aw-doctor:upgrade]
     max: 1

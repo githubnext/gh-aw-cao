@@ -49,6 +49,8 @@ safe-outputs:
       - "public/assets/*-dark.svg"
     if-no-changes: warn
     expires: 1d
+  noop:
+    report-as-issue: false
 steps:
   - name: Gather documentation diagram state
     shell: bash

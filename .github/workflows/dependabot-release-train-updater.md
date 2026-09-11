@@ -403,7 +403,6 @@ safe-outputs:
     deduplicate-by-title: true
     expires: 14d
     max: 2
-  noop:
 
 timeout-minutes: 60
 

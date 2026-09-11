@@ -54,6 +54,7 @@ safe-outputs:
     protected-files: allowed
     if-no-changes: ignore
   noop:
+    report-as-issue: false
 steps:
   - name: Setup Node.js
     uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0

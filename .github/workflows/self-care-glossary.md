@@ -111,7 +111,6 @@ safe-outputs:
     max-patch-files: 1
     allowed-files:
       - "docs/glossary.md"
-  noop:
 
 pre-agent-steps:
   - name: Install documentation dependencies
