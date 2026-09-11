@@ -1,10 +1,10 @@
 ---
-name: "CAO Maintenance"
+name: "CAO Evolution"
 
 description: "Maintains the integrity, reliability, and efficiency of Central Agentic Ops control planes"
 intent: Maintain trustworthy, reliable, and cost-efficient CAO control planes without duplicating target-repository operations or maintainer work.
 
-run-name: "${{ github.event_name == 'schedule' && 'CAO Maintenance · scheduled' || format('CAO Maintenance · {0} · {1}', inputs.target_repo || 'discovery', inputs.safe_output_mode || 'review') }}"
+run-name: "${{ github.event_name == 'schedule' && 'CAO Evolution · scheduled' || format('CAO Evolution · {0} · {1}', inputs.target_repo || 'discovery', inputs.safe_output_mode || 'review') }}"
 
 max-ai-credits: 250
 max-daily-ai-credits: -1
@@ -64,7 +64,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-maintenance
+      package: cao-evolution
       role: orchestrator
       dispatch_max: 3
       orchestrator_credits: 250
@@ -90,14 +90,14 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [cao-maintenance-integrity, cao-maintenance-reliability, cao-maintenance-efficiency]
+    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency]
     max: 3
   threat-detection: false
 ---
 
-{{#runtime-import? .github/cao/cao-maintenance.md}}
+{{#runtime-import? .github/cao/cao-evolution.md}}
 
-# CAO Maintenance
+# CAO Evolution
 
 Maintain repositories that operate a Central Agentic Ops control plane. Select control repositories only; target-repository maintenance remains owned by the packages dispatched from those control planes.
 
@@ -118,9 +118,9 @@ Skip archived repositories, repositories without a readable default branch, ordi
 
 ## Workers
 
-- `cao-maintenance-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
-- `cao-maintenance-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
-- `cao-maintenance-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
+- `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
+- `cao-evolution-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
+- `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
 
 Dispatch each eligible worker at most once for each selected repository and effective mode. Do not retry a failed dispatch in the same run. Workers own repository analysis and all durable outputs.
 
