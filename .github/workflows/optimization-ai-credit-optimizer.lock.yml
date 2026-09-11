@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"aee5722c7e000afe67784f6f9758c08d3885faa218bffd26fe3b34ece36f12e1","body_hash":"ad0e3c2eafff7cc9ae56c4f8932e7d419745d38178b147be2c1e74b736576565","compiler_version":"v0.89.4","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.83"}}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42","version":"v0.89.4"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15","digest":"sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15@sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15","digest":"sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15@sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15","digest":"sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15@sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.20","digest":"sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.20@sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23"}],"mcp_servers":[{"name":"github","tools":["actions_get","actions_list","get_commit","get_file_contents","get_job_logs","get_latest_release","get_release_by_tag","get_tag","issue_read","list_branches","list_commits","list_issue_types","list_issues","list_releases","list_starred_repositories","list_tags","search_code","search_issues","search_repositories"]},{"name":"safeoutputs","tools":["create_issue","missing_data","missing_tool","noop"]}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"200ac8912ac91e8943b9e515b7daf71bca71b4ee346021e3e1cd1d509c225124","body_hash":"233288d2373bfd9a208b495a43b9fa2fccd5289cfe4123f5ca6550aa1ccd7db7","compiler_version":"v0.89.4","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.83"}}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42","version":"v0.89.4"}],"skills":[".github/skills/analyze-agentic-ops"],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15","digest":"sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15@sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15","digest":"sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15@sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15","digest":"sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15@sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.20","digest":"sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.20@sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23"}],"mcp_servers":[{"name":"github","tools":["actions_get","actions_list","get_commit","get_file_contents","get_job_logs","get_latest_release","get_release_by_tag","get_tag","issue_read","list_branches","list_commits","list_issue_types","list_issues","list_releases","list_starred_repositories","list_tags","search_code","search_issues","search_repositories"]},{"name":"safeoutputs","tools":["create_issue","missing_data","missing_tool","noop"]}]}
 # This file was automatically generated by gh-aw (v0.89.4). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -150,6 +150,8 @@ jobs:
       setup-parent-span-id: ${{ steps.setup.outputs.parent-span-id || steps.setup.outputs.span-id }}
       setup-span-id: ${{ steps.setup.outputs.span-id }}
       setup-trace-id: ${{ steps.setup.outputs.trace-id }}
+      skill_install_errors: ${{ steps.collect-skill-install-failures.outputs.errors || '' }}
+      skill_install_failure_count: ${{ steps.collect-skill-install-failures.outputs.failure_count || '0' }}
       stale_lock_file_failed: ${{ steps.check-lock-file.outputs.stale_lock_file_failed == 'true' }}
     steps:
       - name: Setup Scripts
@@ -200,6 +202,7 @@ jobs:
           GH_AW_INFO_BODY_MODIFIED: "false"
           GH_AW_INFO_FRONTMATTER_EMOJI: ":bar_chart:"
           GH_AW_COMPILED_STRICT: "true"
+          GH_AW_INFO_SKILLS: '[".github/skills/analyze-agentic-ops"]'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -276,6 +279,36 @@ jobs:
             const { setupGlobals } = require(path.join(actionsDir, 'setup_globals.cjs'));
             setupGlobals(core, github, context, exec, io, getOctokit);
             const { main } = require(path.join(actionsDir, 'check_version_updates.cjs'));
+            await main();
+      - name: Upgrade gh CLI for frontmatter skills
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/ensure_gh_cli_min_version.sh" "2.90.0"
+      - name: "Install frontmatter skill: .github/skills/analyze-agentic-ops"
+        env:
+          GH_TOKEN: ${{ steps.activation-app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          GH_AW_INFO_ENGINE_ID: "copilot"
+          GH_AW_GH_SKILL_AGENT_NAME: "github-copilot"
+          GH_AW_SKILL_DIR: ".github/skills"
+          GH_AW_FRONTMATTER_SKILLS: ".github/skills/analyze-agentic-ops"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const path = require('path');
+            const actionsDir = path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions');
+            const { setupGlobals } = require(path.join(actionsDir, 'setup_globals.cjs'));
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require(path.join(actionsDir, 'install_frontmatter_skills.cjs'));
+            await main();
+      - name: Collect skill install failures
+        id: collect-skill-install-failures
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const path = require('path');
+            const actionsDir = path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions');
+            const { setupGlobals } = require(path.join(actionsDir, 'setup_globals.cjs'));
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require(path.join(actionsDir, 'collect_skill_install_failures.cjs'));
             await main();
       - name: Log runtime features
         if: ${{ contains(toJSON(vars), '"GH_AW_RUNTIME_FEATURES":') }}
@@ -565,13 +598,6 @@ jobs:
           MEMORY_DIR: /tmp/gh-aw/repo-memory/default
           CREATE_ORPHAN: true
         run: bash "${RUNNER_TEMP}/gh-aw/actions/clone_repo_memory_branch.sh"
-      - env:
-          GH_REPO: ${{ inputs.target_repo }}
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-        name: Download recent agentic workflow logs
-        run: "set -euo pipefail\nmkdir -p /tmp/gh-aw/token-audit\n\necho \"📥 Downloading agentic workflow logs (last 7 days)...\"\n\nRAW_LOGS=/tmp/gh-aw/token-audit/all-runs.raw.json\nLOG_EXIT=0\ngh aw logs \\\n  --repo \"$TARGET_REPO\" \\\n  --output /tmp/gh-aw/token-audit/logs \\\n  --start-date -7d \\\n  --json \\\n  -c 50 \\\n  --timeout 15 \\\n  --max-github-api-rate-limit -2000 \\\n  --max-storage 1024 \\\n  > \"$RAW_LOGS\" || LOG_EXIT=$?\n\nif jq -e . \"$RAW_LOGS\" >/dev/null 2>&1; then\n  jq '\n    ((.runs // []) | unique_by(.run_id)) as $runs |\n    {\n      summary: {\n        total_runs: ($runs | length),\n        total_tokens: ($runs | map(.token_usage // 0) | add // 0),\n        total_aic: ($runs | map(.aic // 0) | add // 0)\n      },\n      runs: $runs\n    }\n  ' \"$RAW_LOGS\" > /tmp/gh-aw/token-audit/all-runs.json\n  TOTAL=$(jq '.runs | length' /tmp/gh-aw/token-audit/all-runs.json)\n  echo \"✅ Downloaded $TOTAL agentic workflow runs (last 7 days, exit code $LOG_EXIT)\"\nelse\n  echo \"⚠️ Agentic workflow logs were unavailable or invalid (exit code $LOG_EXIT)\"\n  echo '{\"runs\":[],\"summary\":{}}' > /tmp/gh-aw/token-audit/all-runs.json\nfi\nrm -f \"$RAW_LOGS\"\n\nBEFORE_COUNT=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)\nif [[ \"$TARGET_REPO\" != \"githubnext/gh-aw-cao\" ]]; then\n  jq '\n      (.runs // [])\n      | map(select(\n          (.workflow_path // \"\") != \".github/workflows/optimization-ai-credit-optimizer.lock.yml\"\n          and (.workflow_path // \"\") != \".github/workflows/optimization-ai-credit-auditor.lock.yml\"\n        )) as $runs\n      | {\n          summary: {\n            total_runs: ($runs | length),\n            total_tokens: ($runs | map(.token_usage // 0) | add // 0),\n            total_aic: ($runs | map(.aic // 0) | add // 0)\n          },\n          runs: $runs\n        }\n  ' /tmp/gh-aw/token-audit/all-runs.json > /tmp/gh-aw/token-audit/all-runs.filtered.json\n  mv /tmp/gh-aw/token-audit/all-runs.filtered.json /tmp/gh-aw/token-audit/all-runs.json\n  AFTER_COUNT=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)\n  echo \"🚫 Excluded AI credit monitoring family from candidate pool: $((BEFORE_COUNT - AFTER_COUNT)) run(s) removed\"\nelse\n  echo \"ℹ️ Running in source repo — AI credit monitoring family remains in candidate pool\"\n  AFTER_COUNT=$BEFORE_COUNT\nfi\n"
-      - name: Aggregate top workflows by AI credit usage
-        run: "set -euo pipefail\nmkdir -p /tmp/gh-aw/token-audit\n\njq '{\n  generated_at: (now | todateiso8601),\n  window_days: 7,\n  top_workflows: (\n    [.runs[]\n      | select(.status == \"completed\")\n        | select((.aic // 0) > 0)\n      | {\n          workflow_name: .workflow_name,\n        workflow_path: (.workflow_path // .workflow_name),\n          ai_credits: (.aic // 0),\n          tokens: (.token_usage // 0),\n          turns: (.turns // 0),\n          action_minutes: (.action_minutes // 0)\n        }\n    ]\n      | group_by(.workflow_path)\n    | map({\n        workflow_name: .[0].workflow_name,\n        workflow_path: .[0].workflow_path,\n        run_count: length,\n        total_ai_credits: (map(.ai_credits) | add),\n        avg_ai_credits: ((map(.ai_credits) | add) / length),\n        total_tokens: (map(.tokens) | add),\n        avg_tokens: ((map(.tokens) | add) / length),\n        total_turns: (map(.turns) | add),\n        total_action_minutes: (map(.action_minutes) | add)\n      })\n    | sort_by(.total_ai_credits)\n    | reverse\n    | .[:10]\n  )\n}' /tmp/gh-aw/token-audit/all-runs.json > /tmp/gh-aw/token-audit/top-workflows.json\n\necho \"✅ Generated top workflow summary at /tmp/gh-aw/token-audit/top-workflows.json\"\njq '.top_workflows' /tmp/gh-aw/token-audit/top-workflows.json\n"
       - name: Load optimization history
         run: "set -euo pipefail\n\nTARGET_PREFIX=$(printf '%s' \"$TARGET_REPO\" | sed 's|/|__|')\nOPT_LOG=\"/tmp/gh-aw/repo-memory/default/${TARGET_PREFIX}__optimization-log.json\"\nif [ -f \"$OPT_LOG\" ]; then\n  echo \"✅ Previous optimizations:\"\n  jq -r '.[] | \"\\(.date): \\(.workflow_name)\"' \"$OPT_LOG\"\nelse\n  echo \"ℹ️ No previous optimization history found.\"\nfi"
 
@@ -1347,7 +1373,8 @@ jobs:
       - safe_outputs
     if: >
       always() && (needs.agent.result != 'skipped' || needs.activation.outputs.lockdown_check_failed == 'true' ||
-      needs.activation.outputs.oauth_token_check_failed == 'true' || needs.activation.outputs.stale_lock_file_failed == 'true')
+      needs.activation.outputs.oauth_token_check_failed == 'true' || needs.activation.outputs.stale_lock_file_failed == 'true' ||
+      needs.activation.outputs.skill_install_failure_count != '' && needs.activation.outputs.skill_install_failure_count != '0')
     runs-on: ubuntu-slim
     environment: central-agentic-ops
     permissions:
@@ -1590,6 +1617,8 @@ jobs:
           GH_AW_LOCKDOWN_CHECK_FAILED: ${{ needs.activation.outputs.lockdown_check_failed }}
           GH_AW_OAUTH_TOKEN_CHECK_FAILED: ${{ needs.activation.outputs.oauth_token_check_failed }}
           GH_AW_STALE_LOCK_FILE_FAILED: ${{ needs.activation.outputs.stale_lock_file_failed }}
+          GH_AW_SKILL_INSTALL_FAILURE_COUNT: ${{ needs.activation.outputs.skill_install_failure_count || '0' }}
+          GH_AW_SKILL_INSTALL_ERRORS: ${{ needs.activation.outputs.skill_install_errors || '' }}
           GH_AW_SAFE_OUTPUT_MESSAGES: "{\"footerInstall\":\"\\u003c!-- --\\u003e\"}"
           GH_AW_PUSH_REPO_MEMORY_RESULT: ${{ needs.push_repo_memory.result }}
           GH_AW_REPO_MEMORY_VALIDATION_FAILED_default: ${{ needs.push_repo_memory.outputs.validation_failed_default }}

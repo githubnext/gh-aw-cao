@@ -47,7 +47,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
   }
 });
 
-test("packages install the agentic operations analysis skill", () => {
+test("root package installs the agentic operations analysis skill", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   const resources = new Map(rootManifest.resources.map(({ source, destination }) => [source, destination]));
   const skill = readFileSync(
@@ -60,12 +60,6 @@ test("packages install the agentic operations analysis skill", () => {
     resources.get("docs/dashboard-language-specification.md"),
     ".github/aw/specs/dashboard-language-specification.md",
   );
-  for (const manifest of ["aw-doctor/aw.yml", "cao-evolution/aw.yml", "optimization/aw.yml", "self-care/aw.yml"]) {
-    assert.ok(
-      parse(readFileSync(join(root, manifest), "utf8")).includes.includes(".github/skills/analyze-agentic-ops"),
-      manifest,
-    );
-  }
   assert.match(skill, /^---\nname: analyze-agentic-ops\n/);
   assert.match(skill, /restored the CAO activity cache/);
   assert.match(skill, /gh-aw-logs\.sqlite/);
@@ -108,17 +102,13 @@ test("operational workflows use the transitive CAO package bundle", () => {
   assert.match(readFileSync(join(root, "activity", "aw.yml"), "utf8"), /source: gh-aw-logs\.mjs/);
 });
 
-test("AI Credit workers collect all workflow logs with bounded resources", () => {
+test("AI Credit workers query cached canonical activity with bounded resources", () => {
   for (const name of ["optimization-ai-credit-auditor.md", "optimization-ai-credit-optimizer.md"]) {
     const source = workflow(name);
-    const commands = source.match(/gh aw logs \\\n/g) || [];
-    assert.equal(commands.length, 1, name);
-    assert.match(source, /--repo "\$TARGET_REPO"/);
-    assert.match(source, /--output \/tmp\/gh-aw\/token-audit\/logs/);
-    assert.match(source, /--timeout \d+/);
-    assert.match(source, /--max-github-api-rate-limit -2000/);
-    assert.match(source, /--max-storage 1024/);
-    assert.doesNotMatch(source, /for workflow in target\/\.github\/workflows\/\*\.md/);
+    assert.match(source, /gh-aw-logs\.sqlite/, name);
+    assert.match(source, /Sallie CLI/, name);
+    assert.match(source, /bounded `query` calls/, name);
+    assert.doesNotMatch(source, /^\s+gh aw logs\b/m, name);
   }
 });
 
@@ -1323,7 +1313,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   assert.match(auditorEvaluator, /workflow_path \/\/ \.workflow_name/);
   assert.match(auditorEvaluator, /evidenceRepo: \.run\.repository/);
   assert.match(optimizerWorker, /last seven full days/);
-  assert.doesNotMatch(optimizerWorker, /gh aw logs \\\/);
+  assert.doesNotMatch(optimizerWorker, /^\s+gh aw logs\b/m);
   assert.match(optimizerWorker, /\$\{TARGET_PREFIX\}__optimization-log\.json/);
   assert.match(optimizerWorker, /"optimizer_run_id":"\$\{\{ github\.run_id \}\}"/);
   assert.match(optimizerEvaluator, /\.optimizer_run_id \| tostring/);
@@ -2275,7 +2265,7 @@ test("SelfCare open source failures queries canonical activity evidence", () => 
   assert.doesNotMatch(source, /deployed-workflows\.json|gh-aw-logs\.jsonl/);
   assert.match(source, /exactly `githubnext\/gh-aw-cao`/);
   assert.match(source, /safe_output_mode` is `live`/);
-  assert.match(source, /Do not discover repositories/);
+  assert.match(source, /do not discover repositories/i);
   assert.match(source, /conclusion-only runs[\s\S]*?corroborating recurrence/);
   assert.match(source, /labels: \[self-care, self-care:open-source-failures\]/);
   assert.match(source, /title-prefix: "\[self-care:open-source-failures\] "/);

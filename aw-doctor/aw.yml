@@ -3,7 +3,6 @@ description: Organization-wide workflow for maintaining installed GitHub Agentic
 min-version: v0.89.4
 experimental: true
 includes:
-  - .github/skills/analyze-agentic-ops
   - .github/workflows/aw-doctor.md
   - .github/workflows/aw-failures-investigator.md
   - .github/workflows/aw-maintenance-compiler-security.md

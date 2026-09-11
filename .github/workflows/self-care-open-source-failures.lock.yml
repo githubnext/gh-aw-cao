@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"abb27d9e9e2d7bddbd24648da52b65b958a567d8446b6b056e0ed7b8b5c066a4","body_hash":"34f3d9294dcebcef537344ee155f746faa6fd677bf3e70fb942120e5afe325eb","compiler_version":"v0.89.4","strict":true,"agent_id":"pi","agent_model":"copilot/gpt-5.4","engine_versions":{"pi":"0.85.1"}}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42","version":"v0.89.4"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15","digest":"sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15@sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15","digest":"sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15@sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c"},{"image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.15","digest":"sha256:0f7c2e2b61c7241b16c61a778a22115d17fc6bff777fb55c88c787579ee1bcea","pinned_image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.15@sha256:0f7c2e2b61c7241b16c61a778a22115d17fc6bff777fb55c88c787579ee1bcea"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15","digest":"sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15@sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.20","digest":"sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.20@sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23"},{"image":"ghcr.io/github/github-mcp-server:v1.12.1","digest":"sha256:0ba840c46a237879c8300e7fddb0b6347f20e029ccb9cbe2ce4a943daa1ff560","pinned_image":"ghcr.io/github/github-mcp-server:v1.12.1@sha256:0ba840c46a237879c8300e7fddb0b6347f20e029ccb9cbe2ce4a943daa1ff560"}],"mcp_servers":[{"name":"safeoutputs","tools":["create_issue","missing_data","missing_tool","noop"]}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"b28fbef6d61fd6eac550ead3936297bea8396fcd2f9e0b6054a374ccc072d5e8","body_hash":"613bdb461e4fc82f723546d1ffbfd82193a972615b814ef58c0b9ec8c3f44d27","compiler_version":"v0.89.4","strict":true,"agent_id":"pi","agent_model":"copilot/gpt-5.4","engine_versions":{"pi":"0.85.1"}}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/cache/restore","sha":"55cc8345863c7cc4c66a329aec7e433d2d1c52a9","version":"v6.1.0"},{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/setup-node","sha":"820762786026740c76f36085b0efc47a31fe5020","version":"v7.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42","version":"v0.89.4"}],"skills":[".github/skills/analyze-agentic-ops"],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15","digest":"sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15@sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15","digest":"sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15@sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c"},{"image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.15","digest":"sha256:0f7c2e2b61c7241b16c61a778a22115d17fc6bff777fb55c88c787579ee1bcea","pinned_image":"ghcr.io/github/gh-aw-firewall/cli-proxy:0.28.15@sha256:0f7c2e2b61c7241b16c61a778a22115d17fc6bff777fb55c88c787579ee1bcea"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15","digest":"sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15@sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.20","digest":"sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.20@sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23"},{"image":"ghcr.io/github/github-mcp-server:v1.12.1","digest":"sha256:0ba840c46a237879c8300e7fddb0b6347f20e029ccb9cbe2ce4a943daa1ff560","pinned_image":"ghcr.io/github/github-mcp-server:v1.12.1@sha256:0ba840c46a237879c8300e7fddb0b6347f20e029ccb9cbe2ce4a943daa1ff560"}],"mcp_servers":[{"name":"safeoutputs","tools":["create_issue","missing_data","missing_tool","noop"]}]}
 # This file was automatically generated by gh-aw (v0.89.4). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -150,6 +150,8 @@ jobs:
       setup-parent-span-id: ${{ steps.setup.outputs.parent-span-id || steps.setup.outputs.span-id }}
       setup-span-id: ${{ steps.setup.outputs.span-id }}
       setup-trace-id: ${{ steps.setup.outputs.trace-id }}
+      skill_install_errors: ${{ steps.collect-skill-install-failures.outputs.errors || '' }}
+      skill_install_failure_count: ${{ steps.collect-skill-install-failures.outputs.failure_count || '0' }}
       stale_lock_file_failed: ${{ steps.check-lock-file.outputs.stale_lock_file_failed == 'true' }}
     steps:
       - name: Setup Scripts
@@ -195,6 +197,7 @@ jobs:
           GH_AW_INFO_FIREWALL_TYPE: "squid"
           GH_AW_INFO_AGENT_RUNTIME: ""
           GH_AW_COMPILED_STRICT: "true"
+          GH_AW_INFO_SKILLS: '[".github/skills/analyze-agentic-ops"]'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
@@ -271,6 +274,36 @@ jobs:
             const { setupGlobals } = require(path.join(actionsDir, 'setup_globals.cjs'));
             setupGlobals(core, github, context, exec, io, getOctokit);
             const { main } = require(path.join(actionsDir, 'check_version_updates.cjs'));
+            await main();
+      - name: Upgrade gh CLI for frontmatter skills
+        run: bash "${RUNNER_TEMP}/gh-aw/actions/ensure_gh_cli_min_version.sh" "2.90.0"
+      - name: "Install frontmatter skill: .github/skills/analyze-agentic-ops"
+        env:
+          GH_TOKEN: ${{ steps.activation-app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          GH_AW_INFO_ENGINE_ID: "pi"
+          GH_AW_GH_SKILL_AGENT_NAME: "pi"
+          GH_AW_SKILL_DIR: ".pi/skills"
+          GH_AW_FRONTMATTER_SKILLS: ".github/skills/analyze-agentic-ops"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const path = require('path');
+            const actionsDir = path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions');
+            const { setupGlobals } = require(path.join(actionsDir, 'setup_globals.cjs'));
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require(path.join(actionsDir, 'install_frontmatter_skills.cjs'));
+            await main();
+      - name: Collect skill install failures
+        id: collect-skill-install-failures
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const path = require('path');
+            const actionsDir = path.join(process.env.RUNNER_TEMP, 'gh-aw', 'actions');
+            const { setupGlobals } = require(path.join(actionsDir, 'setup_globals.cjs'));
+            setupGlobals(core, github, context, exec, io, getOctokit);
+            const { main } = require(path.join(actionsDir, 'collect_skill_install_failures.cjs'));
             await main();
       - name: Log runtime features
         if: ${{ contains(toJSON(vars), '"GH_AW_RUNTIME_FEATURES":') }}
@@ -515,11 +548,6 @@ jobs:
         with:
           name: activation
           path: /tmp/gh-aw
-      - env:
-          ACTIVITY_ROOT: ${{ runner.temp }}/cao-activity
-        name: Prepare bounded public failure evidence
-        run: "node <<'EOF'\nconst fs = require(\"node:fs\");\nconst path = require(\"node:path\");\n\nconst outputPath = \"/tmp/gh-aw/agent/self-care-open-source-failures/evidence.json\";\nconst sourcePath = path.join(process.env.ACTIVITY_ROOT, \"deployed-workflows.json\");\nconst now = Date.now();\nconst freshnessMs = 2 * 60 * 60 * 1000;\nconst windowMs = 7 * 24 * 60 * 60 * 1000;\nconst failedConclusions = new Set([\"failure\", \"timed_out\", \"startup_failure\"]);\n\nfunction write(payload) {\n  fs.mkdirSync(path.dirname(outputPath), { recursive: true });\n  fs.writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\\n`, \"utf8\");\n}\n\nfunction incomplete(reason) {\n  write({\n    schemaVersion: 1,\n    status: \"incomplete\",\n    reason,\n    source: \"cao-dashboard-activity\",\n    generatedAt: new Date(now).toISOString(),\n    projects: [],\n    failures: [],\n  });\n}\n\nif (!fs.existsSync(sourcePath)) {\n  incomplete(\"CAO activity snapshot is unavailable\");\n  process.exit(0);\n}\n\nlet snapshot;\ntry {\n  snapshot = JSON.parse(fs.readFileSync(sourcePath, \"utf8\"));\n} catch {\n  incomplete(\"CAO activity snapshot is not valid JSON\");\n  process.exit(0);\n}\n\nif (snapshot.schemaVersion !== 1) {\n  incomplete(\"CAO activity snapshot schemaVersion is not 1\");\n  process.exit(0);\n}\nconst generatedAt = Date.parse(snapshot.generatedAt);\nif (!Number.isFinite(generatedAt) || now - generatedAt > freshnessMs || generatedAt > now + 5 * 60 * 1000) {\n  incomplete(\"CAO activity snapshot is stale or has an invalid generatedAt\");\n  process.exit(0);\n}\nif (snapshot.runHealth?.available !== true || snapshot.runHealth?.complete !== true) {\n  incomplete(\"CAO activity run-health coverage is unavailable or incomplete\");\n  process.exit(0);\n}\nif (!Number.isFinite(snapshot.runHealth?.windowHours) || snapshot.runHealth.windowHours < 168) {\n  incomplete(\"CAO activity run-health window is shorter than seven days\");\n  process.exit(0);\n}\nif (!Array.isArray(snapshot.workflows)) {\n  incomplete(\"CAO activity snapshot has no workflow records\");\n  process.exit(0);\n}\n\nconst publicWorkflows = snapshot.workflows.filter(\n  (workflow) => workflow && workflow.visibility === \"public\" && typeof workflow.repository === \"string\",\n);\nconst projects = [...new Set(publicWorkflows.map((workflow) => workflow.repository))].sort();\nconst failures = [];\n\nfor (const workflow of publicWorkflows) {\n  for (const run of workflow.runHealth?.runRecords || []) {\n    if (!failedConclusions.has(String(run?.conclusion || \"\").toLowerCase())) continue;\n    const createdAt = Date.parse(run.createdAt);\n    if (!Number.isFinite(createdAt) || now - createdAt > windowMs || createdAt > now + 5 * 60 * 1000) continue;\n    failures.push({\n      repository: workflow.repository,\n      workflow: workflow.path,\n      workflowName: workflow.name,\n      runId: run.runId,\n      runAttempt: run.runAttempt,\n      createdAt: run.createdAt,\n      conclusion: run.conclusion,\n      failureJob: run.failureJob || null,\n      failureStep: run.failureStep || null,\n      failureMessage: run.failureMessage || null,\n      url: run.runId ? `https://github.com/${workflow.repository}/actions/runs/${run.runId}` : workflow.htmlUrl,\n    });\n  }\n}\n\nfailures.sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));\nwrite({\n  schemaVersion: 1,\n  status: \"complete\",\n  source: \"cao-dashboard-activity\",\n  snapshotGeneratedAt: snapshot.generatedAt,\n  evidenceWindowHours: 168,\n  repositoryScope: snapshot.repositoryScope,\n  allowedRepositories: snapshot.allowedRepositories || [],\n  projectCount: projects.length,\n  projects,\n  failureCount: failures.length,\n  failures: failures.slice(0, 100),\n  truncated: failures.length > 100,\n});\nEOF"
-
       - name: Configure Git credentials
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -1149,7 +1177,8 @@ jobs:
       - safe_outputs
     if: >
       always() && (needs.agent.result != 'skipped' || needs.activation.outputs.lockdown_check_failed == 'true' ||
-      needs.activation.outputs.oauth_token_check_failed == 'true' || needs.activation.outputs.stale_lock_file_failed == 'true')
+      needs.activation.outputs.oauth_token_check_failed == 'true' || needs.activation.outputs.stale_lock_file_failed == 'true' ||
+      needs.activation.outputs.skill_install_failure_count != '' && needs.activation.outputs.skill_install_failure_count != '0')
     runs-on: ubuntu-slim
     environment: central-agentic-ops
     permissions:
@@ -1359,6 +1388,8 @@ jobs:
           GH_AW_LOCKDOWN_CHECK_FAILED: ${{ needs.activation.outputs.lockdown_check_failed }}
           GH_AW_OAUTH_TOKEN_CHECK_FAILED: ${{ needs.activation.outputs.oauth_token_check_failed }}
           GH_AW_STALE_LOCK_FILE_FAILED: ${{ needs.activation.outputs.stale_lock_file_failed }}
+          GH_AW_SKILL_INSTALL_FAILURE_COUNT: ${{ needs.activation.outputs.skill_install_failure_count || '0' }}
+          GH_AW_SKILL_INSTALL_ERRORS: ${{ needs.activation.outputs.skill_install_errors || '' }}
           GH_AW_SAFE_OUTPUT_MESSAGES: "{\"footerInstall\":\"\\u003c!-- --\\u003e\"}"
           GH_AW_GROUP_REPORTS: "false"
           GH_AW_FAILURE_REPORT_AS_ISSUE: "true"

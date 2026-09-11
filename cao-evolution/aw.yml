@@ -3,7 +3,6 @@ description: Control-plane integrity, reliability, and efficiency maintenance fo
 min-version: v0.89.4
 experimental: true
 includes:
-  - .github/skills/analyze-agentic-ops
   - .github/workflows/cao-evolution-efficiency.md
   - .github/workflows/cao-evolution-integrity.md
   - .github/workflows/cao-evolution-reliability.md

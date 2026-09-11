@@ -3,7 +3,6 @@ description: Repository-local live checks for dashboard quality, data schemas, a
 min-version: v0.89.4
 experimental: true
 includes:
-  - .github/skills/analyze-agentic-ops
   - .github/workflows/self-care-data-acquisition-audit.md
   - .github/workflows/self-care-dashboard-performance.md
   - .github/workflows/self-care-dashboard-data-schema.md

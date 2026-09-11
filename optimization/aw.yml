@@ -3,7 +3,6 @@ description: Organization-wide workflows for optimizing GitHub Agentic Workflow 
 min-version: v0.89.4
 experimental: true
 includes:
-  - .github/skills/analyze-agentic-ops
   - .github/workflows/optimization-agents-md-curator.md
   - .github/workflows/optimization-ai-credit-auditor.md
   - .github/workflows/optimization-ai-credit-optimizer.md
