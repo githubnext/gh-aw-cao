@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Install Copilot CLI
-        uses: actions/setup-copilot@01f2415004771e22d440e2a31d90783faa968731 # v0.0.5
+        uses: actions/setup-copilot@v0.0.5
       - name: Install agent plugin
         run: copilot plugin install .
 
