@@ -3042,6 +3042,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
   assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
   assert.match(buildWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?REPORT_CONTROL_SETTINGS: \$\{\{ runner\.temp \}\}\/cao-activity\/control-settings\.json[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?test -s "\$REPORT_GH_AW_LOGS"[\s\S]*?test -s "\$ACTIVITY_DATABASE"[\s\S]*?test -s "\$REPORT_CONTROL_SETTINGS"[\s\S]*?test -s "\$REPORT_INVENTORY_SOURCES"/);
+  assert.match(activityWorkflow, /name: Save activity cache[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.jsonl[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
   assert.match(buildWorkflow, /name: Assess activity database health[\s\S]*?doctor --database "\$ACTIVITY_DATABASE"/);
   assert.doesNotMatch(buildWorkflow, /control-settings\.mjs|ACTIVITY_ROOT/);
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
