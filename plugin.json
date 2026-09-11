@@ -1,0 +1,24 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "central-agentic-ops",
+  "version": "0.1.0",
+  "description": "Create Central Agentic Ops packages and open deployed CAO dashboards.",
+  "author": {
+    "name": "GitHub Next"
+  },
+  "homepage": "https://githubnext.github.io/gh-aw-cao/",
+  "repository": "https://github.com/githubnext/gh-aw-cao",
+  "license": "MIT",
+  "keywords": [
+    "agentic-ops",
+    "canvas",
+    "github",
+    "github-agentic-workflows",
+    "operations"
+  ],
+  "extensions": {
+    "com.github.copilot": {
+      "logo": "docs/assets/logo.svg"
+    }
+  }
+}

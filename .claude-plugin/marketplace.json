@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "central-agentic-ops",
+  "description": "Central Agentic Ops skills for Claude Code.",
+  "owner": {
+    "name": "GitHub Next"
+  },
+  "plugins": [
+    {
+      "name": "central-agentic-ops",
+      "description": "Create Central Agentic Ops packages.",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}
