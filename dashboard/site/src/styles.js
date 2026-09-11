@@ -1649,7 +1649,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 th[aria-sort="ascending"] .table-sort::after { content: "↑"; opacity: 1; }
 th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter { min-width: 600px; display: flex; align-items: center; gap: 12px; padding: 6px 14px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
-.table-filter label { min-width: 240px; flex: 1; }
+.table-filter label { min-width: 160px; flex: 1; }
 .table-filter input { width: 100%; min-height: 32px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; }
 .table-filter :is(input, select):focus-visible, .table-header-filter:focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
 .table-filter-result { flex: none; color: var(--muted); font-size: .75rem; }

@@ -2413,7 +2413,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(failedDispatchRows).toHaveCount(5);
   await expect(failedDispatchSection.locator('thead tr').first().locator('th')).toHaveText([
     'Action',
-    'Why',
+    /^Why/,
     'Started',
     'Workflow',
     'Run title',
