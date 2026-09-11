@@ -217,7 +217,7 @@
           const status = document.createElement("p");
           status.className = "source-loading-status";
           status.setAttribute("role", "status");
-          status.textContent = "Showing cached data while loading the latest dashboard data…";
+          status.textContent = "Showing cached data…";
           dashboard.querySelector(".report-body")?.prepend(status);
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
