@@ -56,7 +56,6 @@ const ukAiAdvisoryExpectedFiles = [
   ".github/workflows/uk-ai-advisory-package-maintainer.md",
   ".github/workflows/uk-ai-advisory-operational-resilience.md",
   ".github/workflows/uk-ai-advisory.md",
-  ".github/workflows/shared/control.md",
 ];
 const craExpectedFiles = [
   ".github/aw/dashboards/eu-cra-compliance.json",
@@ -78,7 +77,6 @@ const craExpectedFiles = [
   ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
   ".github/workflows/eu-cra-compliance.md",
   ".github/workflows/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
-  ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
   ".github/workflows/dashboard-build.yml",

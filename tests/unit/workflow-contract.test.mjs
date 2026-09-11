@@ -1059,6 +1059,38 @@ test("package manifests exclude repository-only tests", () => {
   }
 });
 
+test("focused package manifests do not cross-own package files", () => {
+  const manifestPaths = readdirSync(root)
+    .map((name) => join(name, "aw.yml"))
+    .filter((relativePath) => relativePath !== "aw.yml" && existsSync(join(root, relativePath)))
+    .sort();
+  const destinations = new Map();
+
+  for (const relativePath of manifestPaths) {
+    const packageName = relativePath.split("/")[0];
+    const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
+    const files = [
+      ...(manifest.includes ?? []).map((entry) => typeof entry === "string" ? {
+        source: entry,
+        destination: entry,
+      } : entry),
+      ...(manifest.resources ?? []),
+    ];
+
+    for (const file of files) {
+      const owners = destinations.get(file.destination) ?? [];
+      owners.push(`${packageName}:${file.source}`);
+      destinations.set(file.destination, owners);
+    }
+  }
+
+  const duplicateOwners = [...destinations.entries()]
+    .filter(([, owners]) => owners.length > 1)
+    .map(([destination, owners]) => `${destination} <= ${owners.join(", ")}`)
+    .sort();
+  assert.deepEqual(duplicateOwners, [], "package manifests must not declare the same destination from multiple packages");
+});
+
 test("root package keeps GitHub App setup opt-in", () => {
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
 
