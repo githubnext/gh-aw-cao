@@ -1198,7 +1198,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
     }, {
       defaultRange: isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.range === 'string'
         ? dashboardDefaults.time.range
-        : '1w',
+        : 'all',
       referenceEnd: latestSourceCoverageEnd(page.id === 'readiness'
         ? [sources.runs, sources.findings, sources.outcomes]
         : [...pageSources.values()])
@@ -2757,6 +2757,7 @@ function resolveViewTime(time, dashboardTime) {
  */
 function resolveDashboardDefaults(defaults, horizonRange, evaluatedAt) {
   const configured = isPlainObject(defaults) ? defaults : {};
+  if (!isPlainObject(configured.time)) return configured;
   const evaluatedAtMs = Date.parse(evaluatedAt);
   const start = new Date(evaluatedAtMs - dashboardHorizonHours(horizonRange) * 3_600_000).toISOString();
   return {

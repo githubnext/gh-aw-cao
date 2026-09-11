@@ -36,7 +36,7 @@ export function renderFilterBar(onChange, options = {}) {
     updateCount(parsed);
     onChange(parsed, horizonControl.value());
   };
-  horizonControl = renderHorizonControl(options.defaultRange ?? '1w', options.referenceEnd, emit);
+  horizonControl = renderHorizonControl(options.defaultRange ?? ALL_RECORDED, options.referenceEnd, emit);
   const root = h(
     'div',
     { className: 'toolbar filter-bar', 'aria-label': 'Dashboard filters' },
@@ -115,7 +115,7 @@ export function renderFilterBar(onChange, options = {}) {
     && (persistedModes.length !== MODE_OPTIONS.length
       || persistedModes.some((mode, index) => mode !== MODE_OPTIONS[index]));
   const hasCustomizedSettings = filters.value.length > 0
-    || (typeof persisted.range === 'string' && persisted.range !== (options.defaultRange ?? '1w'))
+    || (typeof persisted.range === 'string' && persisted.range !== (options.defaultRange ?? ALL_RECORDED))
     || hasModeOverride;
   if (hasCustomizedSettings) queueMicrotask(emit);
   return root;
@@ -130,9 +130,9 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
   const persisted = readHorizonSettings();
   let range = typeof persisted.range === 'string' ? persisted.range : defaultRange;
   if (range === 'All recorded') range = ALL_RECORDED;
-  if (!TIME_RANGE_OPTIONS.includes(range) && range !== 'custom' && range !== ALL_RECORDED) range = '1w';
+  if (!TIME_RANGE_OPTIONS.includes(range) && range !== 'custom' && range !== ALL_RECORDED) range = ALL_RECORDED;
   const initialWindow = relativeTimeWindow(
-    range === 'custom' || range === ALL_RECORDED ? defaultRange : range,
+    range === 'custom' || range === ALL_RECORDED ? '1w' : range,
     referenceEnd
   );
   const persistedStart = typeof persisted.start === 'string' ? persisted.start : null;
@@ -150,7 +150,7 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
     'select',
     { 'aria-label': 'Time window' },
     ...TIME_RANGE_OPTIONS.map((value) => h('option', { value }, `Last ${formatDashboardHorizon(value)}`)),
-    h('option', { value: ALL_RECORDED }, 'All recorded'),
+    h('option', { value: ALL_RECORDED }, 'All time'),
     h('option', { value: 'custom' }, 'Custom range')
   ));
   select.value = range;
