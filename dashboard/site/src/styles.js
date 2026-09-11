@@ -1752,6 +1752,7 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .filter-select-control:hover { border-color: color-mix(in srgb, var(--fg) 30%, var(--border)); background: var(--canvas-subtle); color: var(--fg); }
 .filter-select-control:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
 .filter-select-control-input { min-width: 0; max-width: 100%; grid-area: control; padding: 3px 26px 3px 10px; appearance: none; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.filter-select-control-input option { background: var(--canvas); color: var(--fg); }
 .filter-select-control-input:focus-visible { outline: 0; }
 .table-sort-icon { width: 22px; min-width: 22px; height: 24px; justify-content: center; }
 .table-sort-icon::after { margin: 0; }
