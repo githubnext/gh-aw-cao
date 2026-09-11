@@ -1,10 +1,10 @@
 ---
-name: "CAO Maintenance"
+name: "CAO Evolution"
 
 description: "Maintains the integrity, reliability, and efficiency of Central Agentic Ops control planes"
 intent: Maintain trustworthy, reliable, and cost-efficient CAO control planes without duplicating target-repository operations or maintainer work.
 
-run-name: "${{ github.event_name == 'schedule' && 'CAO Maintenance · scheduled' || format('CAO Maintenance · {0} · {1}', inputs.target_repo || 'discovery', inputs.safe_output_mode || 'review') }}"
+run-name: "${{ github.event_name == 'schedule' && 'CAO Evolution · scheduled' || format('CAO Evolution · {0} · {1}', inputs.target_repo || 'discovery', inputs.safe_output_mode || 'review') }}"
 
 max-ai-credits: 250
 max-daily-ai-credits: -1
@@ -97,7 +97,7 @@ safe-outputs:
 
 {{#runtime-import? .github/cao/cao-maintenance.md}}
 
-# CAO Maintenance
+# CAO Evolution
 
 Maintain repositories that operate a Central Agentic Ops control plane. Select control repositories only; target-repository maintenance remains owned by the packages dispatched from those control planes.
 

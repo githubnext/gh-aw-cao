@@ -127,15 +127,15 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   }
 });
 
-test("CAO Maintenance is review-first, control-plane scoped, and deduplicated", () => {
+test("CAO Evolution is review-first, control-plane scoped, and deduplicated", () => {
   const manifest = parse(readFileSync(join(root, "cao-maintenance", "aw.yml"), "utf8"));
   const dashboard = JSON.parse(readFileSync(join(root, "cao-maintenance", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const orchestrator = workflow("cao-maintenance.md");
   const workers = ["efficiency", "integrity", "reliability"];
 
-  assert.equal(manifest.name, "CAO Maintenance");
-  assert.equal(dashboard.dashboard.title, "CAO Maintenance");
+  assert.equal(manifest.name, "CAO Evolution");
+  assert.equal(dashboard.dashboard.title, "CAO Evolution");
   assert.deepEqual(dashboard.dashboard.pages[0].views[0], {
     id: "cao-maintenance-outcome-health",
     title: "Maintenance outcome health",

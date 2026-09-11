@@ -1,5 +1,5 @@
 ---
-name: "CAO Maintenance / Efficiency"
+name: "CAO Evolution / Efficiency"
 
 description: "Finds portfolio-level CAO dispatch, acquisition, schedule, API, and AI Credit waste without duplicating workflow optimization"
 intent: Reduce avoidable CAO control-plane cost and latency while preserving policy enforcement, evidence quality, and operational coverage.

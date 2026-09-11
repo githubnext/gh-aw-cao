@@ -1,5 +1,5 @@
 ---
-name: "CAO Maintenance / Reliability"
+name: "CAO Evolution / Reliability"
 
 description: "Finds actionable recurring failures across CAO admission, dispatch, workers, activity collection, review bundles, and dashboard data"
 intent: Reduce time spent diagnosing recurring CAO control-plane failures while avoiding duplicate incidents and target-repository noise.

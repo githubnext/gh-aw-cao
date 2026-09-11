@@ -2,13 +2,13 @@
   "language-version": "0.1.0",
   "dashboard": {
     "id": "cao-maintenance-dashboard",
-    "title": "CAO Maintenance",
+    "title": "CAO Evolution",
     "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
         "name": "cao-maintenance-runs",
-        "intent": "List CAO Maintenance runs so operators can verify activation and investigate failed control-plane checks.",
+        "intent": "List CAO Evolution runs so operators can verify activation and investigate failed control-plane checks.",
         "from": "runs",
         "filter": {
           "predicates": [
@@ -32,7 +32,7 @@
       },
       {
         "name": "cao-maintenance-outcomes",
-        "intent": "List retained CAO Maintenance outcomes so operators can act on current control-plane integrity, reliability, and efficiency work.",
+        "intent": "List retained CAO Evolution outcomes so operators can act on current control-plane integrity, reliability, and efficiency work.",
         "from": "outcomes",
         "filter": {
           "predicates": [
@@ -54,7 +54,7 @@
       {
         "id": "cao-maintenance-dashboard",
         "kind": "custom",
-        "title": "CAO Maintenance",
+        "title": "CAO Evolution",
         "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
         "icon": "gear",
         "views": [
@@ -106,7 +106,7 @@
             "lazy-list": true,
             "column-summaries": true,
             "layout": "full-view",
-            "empty-message": "No CAO Maintenance runs were observed in the last 30 days.",
+            "empty-message": "No CAO Evolution runs were observed in the last 30 days.",
             "encoding": {
               "href": {
                 "field": "run-link",
@@ -155,7 +155,7 @@
               ],
               "actions": [
                 {
-                  "intent": "Investigate this failed CAO Maintenance run using retained workflow and control-plane evidence.",
+                  "intent": "Investigate this failed CAO Evolution run using retained workflow and control-plane evidence.",
                   "presentation": "copy-prompt",
                   "icon": "search",
                   "label": "Investigate",
@@ -187,7 +187,7 @@
             "controls": "interactive",
             "lazy-list": true,
             "layout": "full-view",
-            "empty-message": "No CAO Maintenance outcomes were retained.",
+            "empty-message": "No CAO Evolution outcomes were retained.",
             "encoding": {
               "href": {
                 "field": "external-link",
@@ -226,7 +226,7 @@
               ],
               "actions": [
                 {
-                  "intent": "Review this CAO Maintenance outcome, verify its retained evidence, and identify the bounded next action.",
+                  "intent": "Review this CAO Evolution outcome, verify its retained evidence, and identify the bounded next action.",
                   "presentation": "copy-prompt",
                   "icon": "search",
                   "label": "Review",

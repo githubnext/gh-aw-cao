@@ -1,5 +1,5 @@
 ---
-name: "CAO Maintenance / Integrity"
+name: "CAO Evolution / Integrity"
 
 description: "Checks CAO policy, authority, package ownership, installed workflows, and dashboard configuration for actionable drift"
 intent: Reduce maintainer effort spent finding control-plane configuration and authority drift without creating duplicate or unsupported work.

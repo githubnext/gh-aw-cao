@@ -1,4 +1,4 @@
-name: CAO Maintenance
+name: CAO Evolution
 description: Control-plane integrity, reliability, and efficiency maintenance for Central Agentic Ops repositories.
 min-version: v0.89.3
 experimental: true

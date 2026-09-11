@@ -1,6 +1,6 @@
-# CAO Maintenance Package
+# CAO Evolution Package
 
-CAO Maintenance operates on verified Central Agentic Ops control repositories. It keeps control-plane authority and package configuration consistent, surfaces recurring runtime failures, and identifies portfolio-level waste without taking over target-repository work.
+CAO Evolution operates on verified Central Agentic Ops control repositories. It keeps control-plane authority and package configuration consistent, surfaces recurring runtime failures, and identifies portfolio-level waste without taking over target-repository work.
 
 | Workflow | Responsibility |
 | --- | --- |
