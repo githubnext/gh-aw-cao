@@ -793,8 +793,10 @@ test("workers inherit human-first progressive report disclosure", () => {
   assert.match(packageSkill, /Use plain language, short sentences, compact bullets, and descriptive labels/);
   assert.match(packageSkill, /Keep the entire visible report to a single screen at normal GitHub desktop viewing/);
   assert.match(packageSkill, /Show only the decision essentials; move everything else into progressive disclosure/);
-  assert.match(packageSkill, /Start with the h3 heading `### Summary`/);
-  assert.match(packageSkill, /Use `###` for every main section and `####` for subsections; never use `#` or `##`/);
+  assert.match(packageSkill, /Start directly with a concise executive-summary paragraph/);
+  assert.match(packageSkill, /Do not add a heading before this opening paragraph because the first paragraph is always the executive summary/);
+  assert.match(packageSkill, /After the opening paragraph, use `###` for every main section and `####` for subsections; never use `#` or `##`/);
+  assert.doesNotMatch(packageSkill, /Start with the h3 heading `### Summary`/);
   assert.match(packageSkill, /states what happened, the decision-relevant result, critical findings, and key metrics/);
   assert.match(packageSkill, /Immediately follow the summary with one clear `\*\*Action:\*\*` sentence naming who should do what next and the acceptance check/);
   assert.match(packageSkill, /non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details><summary><b>\.\.\.<\/b><\/summary>/);
