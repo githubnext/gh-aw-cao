@@ -84,7 +84,7 @@ concurrency:
 
 graders:
   operational-value:
-    run: ./../graders/optimization-ai-credit-optimizer-operational-value.sh
+    run: ./graders/optimization-ai-credit-optimizer-operational-value.sh
 
 tracker-id: optimization-ai-credit-optimizer
 

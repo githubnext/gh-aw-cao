@@ -10,10 +10,10 @@ const suites = [
     manifest: "aw.yml",
     testPattern: "root package",
     prefixes: [
-      ".github/graders/aw-failures-",
-      ".github/graders/aw-maintenance-",
-      ".github/graders/dependabot-",
-      ".github/graders/optimization-",
+      ".github/workflows/graders/aw-failures-",
+      ".github/workflows/graders/aw-maintenance-",
+      ".github/workflows/graders/dependabot-",
+      ".github/workflows/graders/optimization-",
       ".github/workflows/shared/",
     ],
   },
@@ -28,8 +28,8 @@ const suites = [
     manifest: "aw-doctor/aw.yml",
     testPattern: "focused AW Doctor package contract",
     prefixes: [
-      ".github/graders/aw-failures-",
-      ".github/graders/aw-maintenance-",
+      ".github/workflows/graders/aw-failures-",
+      ".github/workflows/graders/aw-maintenance-",
       ".github/workflows/aw-",
       ".github/workflows/shared/",
     ],
@@ -39,7 +39,6 @@ const suites = [
     manifest: "eu-cra-compliance/aw.yml",
     testPattern: "focused EU CRA package contract",
     prefixes: [
-      ".github/graders/eu-cra-compliance",
       ".github/workflows/eu-cra-compliance",
       ".github/workflows/graders/eu-cra-compliance",
       ".github/workflows/shared/",
@@ -59,7 +58,7 @@ const suites = [
     manifest: "self-care/aw.yml",
     testPattern: "focused SelfCare package contract",
     prefixes: [
-      ".github/graders/self-care-",
+      ".github/workflows/graders/self-care-",
       ".github/workflows/self-care",
       ".github/workflows/shared/",
     ],
@@ -69,7 +68,7 @@ const suites = [
     manifest: "software-development-practices/aw.yml",
     testPattern: "focused Software Development Practices package contract",
     prefixes: [
-      ".github/graders/software-development-practices-",
+      ".github/workflows/graders/software-development-practices-",
       ".github/workflows/shared/",
       ".github/workflows/software-development-practices",
     ],
@@ -85,7 +84,7 @@ const suites = [
     manifest: "dependabot/aw.yml",
     testPattern: "update replaces",
     prefixes: [
-      ".github/graders/dependabot-",
+      ".github/workflows/graders/dependabot-",
       ".github/workflows/dependabot",
       ".github/workflows/shared/",
     ],

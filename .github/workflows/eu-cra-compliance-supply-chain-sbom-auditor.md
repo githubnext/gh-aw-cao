@@ -110,7 +110,7 @@ tools:
 
 graders:
   operational-value:
-    run: ./../graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh
+    run: ./graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh
 
 safe-outputs:
   create-issue:

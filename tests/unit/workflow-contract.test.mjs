@@ -197,7 +197,7 @@ test("operational-value graders cap GitHub API usage while collecting logs", () 
     "optimization-ai-credit-auditor-operational-value.sh",
     "optimization-ai-credit-optimizer-operational-value.sh",
   ]) {
-    const source = readFileSync(join(root, ".github", "graders", name), "utf8");
+    const source = readFileSync(join(root, ".github", "workflows", "graders", name), "utf8");
     assert.match(source, /gh aw logs[\s\S]*--max-github-api-rate-limit -2000/, name);
   }
 });
@@ -1241,12 +1241,6 @@ test("repository-local SelfCare uses organization-billed Copilot authentication"
   assert.match(selfCareManifest, /\.github\/workflows\/self-care\.md/);
   assert.match(selfCareManifest, /\.github\/workflows\/self-care-data-acquisition-audit\.md/);
   assert.match(selfCareManifest, /\.github\/workflows\/self-care-docs-build-time-investigator\.md/);
-  assert.equal(
-    script("self-care-docs-build-time-investigator-operational-value.sh", join(root, "self-care", ".github", "graders")),
-    script("self-care-docs-build-time-investigator-operational-value.sh", join(root, ".github", "graders")),
-    "focused SelfCare package must mirror its grader-backed worker evaluator",
-  );
-
   for (const workflowId of workflowIds) {
     const source = workflow(`${workflowId}.md`);
     const lock = workflow(`${workflowId}.lock.yml`);
@@ -1274,12 +1268,9 @@ test("compiled workflow expressions do not contain HTML-escaped operators", () =
 });
 
 test("operational-value graders expose deterministic run-scoped contracts", () => {
-  const gradersDirectory = join(root, ".github", "graders");
-  const packageGradersDirectory = join(root, ".github", "workflows", "graders");
-  const packageMaintainerGrader = "eu-cra-compliance-package-maintainer-operational-value.sh";
+  const gradersDirectory = join(root, ".github", "workflows", "graders");
   const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
-  const packageGraders = readdirSync(packageGradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
-  assert.deepEqual([...graders, ...packageGraders].sort(), [
+  assert.deepEqual(graders.sort(), [
     "aw-failures-investigator-operational-value.sh",
     "aw-maintenance-compiler-security-operational-value.sh",
     "dependabot-release-train-updater-operational-value.sh",
@@ -1297,34 +1288,10 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     "software-development-practices-github-well-architected-operational-value.sh",
     "software-development-practices-nist-ssdf-operational-value.sh",
   ]);
-  assert.deepEqual(packageGraders, [packageMaintainerGrader]);
-  for (const name of [
-    "aw-failures-investigator-operational-value.sh",
-    "aw-maintenance-compiler-security-operational-value.sh",
-  ]) {
-    assert.equal(
-      script(name, join(root, "aw-doctor", ".github", "graders")),
-      script(name, gradersDirectory),
-      `focused AW Doctor package must mirror ${name}`,
-    );
-  }
-  for (const name of [
-    "optimization-agents-md-curator-operational-value.sh",
-    "optimization-ai-credit-auditor-operational-value.sh",
-    "optimization-ai-credit-optimizer-operational-value.sh",
-  ]) {
-    assert.equal(
-      script(name, join(root, "optimization", ".github", "graders")),
-      script(name, gradersDirectory),
-      `focused AW Optimization package must mirror ${name}`,
-    );
-  }
-
-  for (const name of [...graders, ...packageGraders]) {
-    const isPackageMaintainer = name === packageMaintainerGrader;
-    const executable = join(isPackageMaintainer ? packageGradersDirectory : gradersDirectory, name);
+  for (const name of graders) {
+    const executable = join(gradersDirectory, name);
     const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    const runPath = isPackageMaintainer ? `./graders/${name}` : `./../graders/${name}`;
+    const runPath = `./graders/${name}`;
     assert.match(
       workflow(workflowName),
       new RegExp(`graders:\\s+operational-value:\\s+run: ${runPath.replaceAll(".", "\\.")}`),
@@ -1961,7 +1928,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
     assert.match(source, /Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`/);
     assert.match(source, /Never (?:submit|notify)/i);
     assert.match(source, /Do not put secrets, personal data, exploit details/);
-    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.\/\.\.\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
+    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
     assert.match(source, /<!-- operational-value: domain=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
     assert.match(source, /### Human Acceptance/);
     assert.match(source, /max-ai-credits: 100/);
@@ -2057,7 +2024,7 @@ test("Dev Practices preserves evidence and advisory boundaries", () => {
     assert.match(worker, /analyzed commit SHA/);
     assert.match(worker, /create-issue:[\s\S]*?close-older-issues: true[\s\S]*?close-older-key:.*inputs\.target_repo[\s\S]*?max: 1/);
     assert.match(worker, /^\s+web-fetch:$/m);
-    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.\/\.\.\/graders\/software-development-practices-.+-operational-value\.sh$/m);
+    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.\/graders\/software-development-practices-.+-operational-value\.sh$/m);
     assert.match(worker, /<!-- operational-value: framework=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
   }
   assert.match(readme, /Operational value is attainment-only/);
@@ -2209,7 +2176,7 @@ test("AW Doctor compiler security worker runs the full validation suite", () => 
 
   assert.match(source, /^name: "AW Doctor \/ Compiler Security"$/m);
   assert.match(source, /worker: compiler-security/);
-  assert.match(source, /run: \.github\/graders\/aw-maintenance-compiler-security-operational-value\.sh/);
+  assert.match(source, /run: \.\/graders\/aw-maintenance-compiler-security-operational-value\.sh/);
   assert.match(source, />"\$report_dir\/result\.json"/);
   assert.match(source, /gh aw compile \\/);
   for (const flag of [
