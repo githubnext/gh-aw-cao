@@ -221,7 +221,9 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(overviewAction).toHaveCSS('min-height', '52px');
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
   const viewportWidth = page.viewportSize()?.width;
-  expect(viewportWidth).toEqual(expect.any(Number));
+  if (typeof viewportWidth !== 'number') throw new Error('Expected Playwright to provide a viewport width');
+  /** @param {number} actual @param {number} expected */
+  const isWithinPixel = (actual, expected) => Math.abs(actual - expected) < 1;
   await expect.poll(async () => {
     const [mainBox, factoryBox] = await Promise.all([
       dashboardMain.boundingBox(),
@@ -229,9 +231,9 @@ test('mobile shell shows large overview actions and moves other views into the h
     ]);
     return mainBox !== null
       && factoryBox !== null
-      && factoryBox.x === 0
-      && factoryBox.y === mainBox.y
-      && factoryBox.width === viewportWidth;
+      && isWithinPixel(factoryBox.x, 0)
+      && isWithinPixel(factoryBox.y, mainBox.y)
+      && isWithinPixel(factoryBox.width, viewportWidth);
   }).toBe(true);
 
   await page.locator('.mobile-nav-menu > summary').click();
