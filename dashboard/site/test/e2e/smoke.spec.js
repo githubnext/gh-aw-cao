@@ -399,7 +399,17 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect(view).toHaveCount(1);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
-  await expect(view.locator('.table-summary-row')).toBeVisible();
+  const summaryRow = view.locator('.table-summary-row');
+  const summaryToggle = summaryRow.getByRole('button', { name: 'Collapse column summaries' });
+  await expect(summaryRow).toBeVisible();
+  const expandedHeight = await summaryRow.evaluate((element) => element.getBoundingClientRect().height);
+  await summaryToggle.click();
+  await expect(summaryRow).toHaveClass(/table-summary-collapsed/);
+  await expect(summaryRow.locator('.table-summary-expanded').first()).toBeHidden();
+  await expect(summaryRow.locator('.table-summary-compact:visible').first()).toBeVisible();
+  expect(await summaryRow.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(expandedHeight);
+  await summaryRow.getByRole('button', { name: 'Expand column summaries' }).click();
+  await expect(summaryRow).not.toHaveClass(/table-summary-collapsed/);
   await expect(view.locator('.custom-table tbody tr')).toHaveCount(2);
   await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
 
