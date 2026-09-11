@@ -24,6 +24,8 @@ This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It
 
 Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `create-ops-package` with an operational strategy and target-repository description.
 
+In Copilot CLI, the plugin also provides a **Central Agentic Ops** Canvas. Open it to load the current repository's deployed Pages dashboard, or specify an `OWNER/REPOSITORY`, a site path, or an HTTPS dashboard URL.
+
 ## GitHub Pages setup
 
 The default Central Agentic Ops package installs the dashboard builder and manual Pages publisher. Before running **Central Agentic Ops Dashboard** for the first time:
