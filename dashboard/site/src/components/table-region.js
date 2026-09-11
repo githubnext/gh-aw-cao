@@ -264,6 +264,19 @@ function enableTableFilter(region, options, rows) {
      facet.value = value;
    }
   }
+  const refreshFacets = () => {
+    for (const facet of facets) {
+      const selected = facet.value;
+      const allOption = facet.options[0];
+      const columnIndex = Number(facet.dataset.tableColumnIndex);
+      if (!allOption || !Number.isInteger(columnIndex)) continue;
+      facet.replaceChildren(
+        allOption,
+        ...getFacetValues(rows, columnIndex).map((value) => h('option', { value }, value))
+      );
+      facet.value = [...facet.options].some((option) => option.value === selected) ? selected : '';
+    }
+  };
 
   let limit = options.pageSize;
   let revision = 0;
@@ -374,6 +387,7 @@ function enableTableFilter(region, options, rows) {
      try {
        const next = await options.continuation.load(continuationToken);
        rows.push(...next.rows);
+       refreshFacets();
        continuationToken = next.continuationToken;
        more.textContent = 'Load more rows';
        delete more.dataset.loadError;
@@ -445,16 +459,23 @@ function formatResultCount(shown, matched, noun = 'result', pluralNoun = `${noun
 function getTableFacets(bodyRows, filterFields, rowCount) {
   if (!Array.isArray(bodyRows)) return [];
   return filterFields.flatMap((field) => {
-   const values = [...new Set(bodyRows
-     .map((row) => row instanceof HTMLTableRowElement
-       ? row.cells[field.columnIndex]?.textContent?.trim() ?? ''
-       : '')
-     .filter(Boolean))]
-     .sort((left, right) => left.localeCompare(right));
+   const values = getFacetValues(bodyRows, field.columnIndex);
    return ((values.length > 1 && values.length < rowCount && values.length <= 10) || (field.always && values.length > 0))
      ? [{ ...field, values }]
      : [];
   });
+}
+
+/**
+ * @param {HTMLTableRowElement[]} rows
+ * @param {number} columnIndex
+ * @returns {string[]}
+ */
+function getFacetValues(rows, columnIndex) {
+  return [...new Set(rows
+    .map((row) => row.cells[columnIndex]?.textContent?.trim() ?? '')
+    .filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right));
 }
 
 /**
