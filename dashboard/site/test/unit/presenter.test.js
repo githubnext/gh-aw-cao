@@ -1434,7 +1434,7 @@ describe('presenter built-in and custom pages', () => {
       sources: {}
     });
 
-    expect(authoritativeDashboardDocument.dashboard.defaults?.time).toEqual({ range: '1w' });
+    expect(authoritativeDashboardDocument.dashboard.defaults?.time).toBeUndefined();
     expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('aria-label')).toBe('Horizon unavailable');
     expect(rendered.querySelector('.dashboard-horizon')?.classList.contains('dashboard-horizon-skeleton')).toBe(true);
     expect(rendered.querySelectorAll('.dashboard-horizon')).toHaveLength(1);
@@ -1448,6 +1448,9 @@ describe('presenter built-in and custom pages', () => {
       await activatePage(rendered, pageId);
       const filterBar = rendered.querySelector('.report-actions > .filter-bar');
       expect(filterBar?.querySelector('input')?.value).toBe('');
+      expect(/** @type {HTMLSelectElement | null} */ (
+        filterBar?.querySelector('[aria-label="Time window"]')
+      )?.value).toBe('all');
       expect(filterBar?.querySelector('.count-badge')?.textContent).toBe('3');
       expect([...filterBar?.querySelectorAll('.mode-filter-control input') ?? []].every(
         (input) => /** @type {HTMLInputElement} */ (input).checked
