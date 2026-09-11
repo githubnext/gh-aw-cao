@@ -38,6 +38,16 @@ const idleWorkflow = { repository: 'control-plane', workflow: '.github/workflows
 function queryScenarioSources() {
   const metadata = { 'as-of': asOf, 'artifact-generation': generation };
   return {
+    packages: {
+      rows: [{
+        package: 'dashboard',
+        'package-name': 'CAO Dashboard',
+        'package-mode': 'review',
+        'package-registration': 'enabled',
+        'observed-at': asOf
+      }],
+      metadata
+    },
     repositories: {
       rows: [
         { organization: 'githubnext', repository: 'gh-aw-cao', 'observed-at': asOf },
@@ -50,6 +60,9 @@ function queryScenarioSources() {
         organization: 'githubnext',
         repository: workflow.repository,
         workflow: workflow.workflow,
+        ...(workflow === dashboardWorkflow
+          ? { package: 'dashboard', 'package-name': 'CAO Dashboard', 'workflow-role': 'worker' }
+          : {}),
         'observed-at': asOf
       })),
       metadata
@@ -91,6 +104,8 @@ function queryScenarioSources() {
       ],
       metadata
     },
+    usage: { rows: [], metadata },
+    'operational-values': { rows: [], metadata },
     outcomes: {
       rows: [
         {
@@ -299,6 +314,27 @@ test('the authored Safe Outputs query returns every canonical outcome for the us
     source: 'safe-output-usage',
     metadata: { 'source-kind': 'derived', 'query-name': 'safe-output-usage' }
   });
+});
+
+test('the authored basic table queries return the populated canonical database rows', async ({ page }) => {
+  const dashboard = JSON.parse(readFileSync(join(siteRoot, 'dashboard.json'), 'utf8'));
+  const requested = ['repository-activity', 'workflow-inventory', 'runs-table', 'package-inventory'];
+  const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
+
+  expect(payload['repository-activity'].rows.map((row) => row.repository)).toEqual([
+    'githubnext/gh-aw-cao',
+    'githubnext/control-plane'
+  ]);
+  expect(payload['workflow-inventory'].rows.map((row) => [row.repository, row.workflow])).toEqual([
+    ['githubnext/control-plane', '.github/workflows/audit.md'],
+    ['githubnext/control-plane', '.github/workflows/idle.md'],
+    ['githubnext/gh-aw-cao', '.github/workflows/dashboard.md'],
+    ['githubnext/gh-aw-cao', '.github/workflows/doctor.md']
+  ]);
+  expect(payload['runs-table'].rows.map((row) => row.run)).toEqual(['1005', '1004', '1003', '1002', '1001']);
+  expect(payload['package-inventory'].rows).toEqual([
+    expect.objectContaining({ package: 'dashboard', 'package-name': 'CAO Dashboard', workflows: 1, runs: 3 })
+  ]);
 });
 
 test('scenario 4: a left join keeps unmatched rows and fills joined fields with null', async ({ page }) => {
