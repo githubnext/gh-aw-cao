@@ -422,6 +422,11 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
+  const columnHeaders = view.locator('thead > tr:first-child > th');
+  const expectAlignedColumnHeaders = async () => {
+    const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
+    expect(Math.max(...headerTops) - Math.min(...headerTops)).toBeLessThanOrEqual(1);
+  };
   await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
@@ -441,9 +446,11 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect(summaryRow).not.toHaveClass(/table-summary-collapsed/);
   await expect(view.locator('.custom-table tbody tr')).toHaveCount(2);
   await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
+  await expectAlignedColumnHeaders();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(table).toBeVisible();
+  await expectAlignedColumnHeaders();
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
@@ -3601,9 +3608,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
   `);
   const reportLink = page.locator('#page-workflow-detail .custom-table tbody a').first();
   await expect(reportLink).toHaveAttribute('href', '#page-outcome-detail?outcome=report-1');
-  await reportLink.evaluate((link) => {
-    if (link instanceof HTMLElement) link.click();
-  });
+  await reportLink.press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Debug ambient context workflow failure');
   await expect(page.locator('.outcome-meta a', { hasText: 'Ambient Context' })).toHaveAttribute(
     'href',

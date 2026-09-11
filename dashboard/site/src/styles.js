@@ -1654,7 +1654,8 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter input { width: 100%; min-height: 32px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; }
 .table-filter :is(input, select):focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
 .table-filter-result { flex: none; color: var(--muted); font-size: .75rem; }
-.table-filter-heading { display: flex; align-items: center; gap: 4px; padding-block: 6px; }
+.table-filter-heading { padding-block: 6px; white-space: nowrap; }
+.table-filter-heading .table-sort-icon { margin-left: 4px; vertical-align: middle; }
 .filter-select-control { min-width: 0; max-width: 100%; display: inline-grid; grid-template-areas: "control"; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent); color: var(--muted); }
 .filter-select-control::after { width: 5px; height: 5px; grid-area: control; justify-self: end; margin: 0 10px 3px 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; pointer-events: none; transform: rotate(45deg); }
 .filter-select-control:hover { border-color: color-mix(in srgb, var(--fg) 30%, var(--border)); background: var(--canvas-subtle); color: var(--fg); }
