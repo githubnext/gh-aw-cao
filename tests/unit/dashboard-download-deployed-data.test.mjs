@@ -8,6 +8,16 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 const executeFile = promisify(execFile);
+const packageJson = JSON.parse(
+  await readFile(new URL("../../package.json", import.meta.url), "utf8"),
+);
+const cao = path.resolve(packageJson.bin.cao);
+
+test("exposes the dashboard data CLI as cao", async () => {
+  const { stdout } = await executeFile(cao, ["help"]);
+  assert.match(stdout, /^Usage:\n  cao ingest /);
+  assert.match(stdout, /\n  cao download /);
+});
 
 test("downloads the deployed JSONL and SQLite files without rebuilding", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-data-"));
@@ -28,8 +38,7 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
   try {
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const { stdout } = await executeFile(process.execPath, [
-      path.resolve("dashboard/site/scripts/ingest-gh-aw-logs.mjs"),
+    const { stdout } = await executeFile(cao, [
       "download",
       "--url",
       `http://127.0.0.1:${address.port}/cao/gh-aw-logs.jsonl`,

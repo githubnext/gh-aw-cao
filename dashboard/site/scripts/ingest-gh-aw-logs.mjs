@@ -29,12 +29,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download']);
 
 const USAGE = `Usage:
-  npm run dashboard:data -- ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  npm run dashboard:data -- audit-jsonl --input GH_AW_LOGS_JSONL
-  npm run dashboard:data -- query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
-  npm run dashboard:data -- doctor --database FILE [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
-  npm run dashboard:data -- download [--url URL] [--output DIRECTORY]
+  cao ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao audit-jsonl --input GH_AW_LOGS_JSONL
+  cao query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
+  cao doctor --database FILE [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+  cao download [--url URL] [--output DIRECTORY]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
