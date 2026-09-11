@@ -228,7 +228,7 @@ steps:
       echo "Forecast exit code: $FORECAST_EXIT_CODE"
       echo "Forecast JSON valid: $FORECAST_JSON_VALID"
 
-source: githubnext/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
+source: github/gh-aw-cao/.github/workflows/optimization-ai-credit-auditor.md@main
 ---
 
 {{#runtime-import? .github/cao/optimization.md}}
