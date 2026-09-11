@@ -229,6 +229,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .sidebar-toggle { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .sidebar-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
 .mobile-report-actions { display: none; }
+.mobile-page-header { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
 .sidebar-collapsed .sidebar-header { justify-content: center; gap: 0; margin-left: 0; }
@@ -1786,7 +1787,12 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .sidebar-header { position: relative; margin: 0 0 8px; }
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--fg); cursor: pointer; }
   .mobile-history-back:hover { background: var(--neutral-muted); }
-  .sidebar-brand { font-size: 1rem; }
+  .sidebar-brand { display: none; }
+  .mobile-page-header { min-width: 0; display: flex; flex: 1 1 auto; align-items: center; overflow: hidden; margin: 0 4px; }
+  .mobile-page-header .overview-header { width: 100%; min-width: 0; flex-basis: auto; }
+  .mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none; }
+  .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-report-actions { min-width: 0; display: flex; align-items: center; margin-left: auto; }
   .mobile-report-actions .report-actions { width: auto; position: static; margin-left: 0; gap: 6px; }
   .mobile-report-actions .dashboard-horizon { max-width: 130px; }
@@ -1815,7 +1821,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-nav-menu-list a[aria-current="page"] { background: var(--neutral-muted); }
   .mobile-nav-section-label { margin: 8px 8px 2px; color: var(--muted); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .mobile-nav-section-label:first-child { margin-top: 2px; }
-  .app-main > .top-nav .shell { flex-wrap: wrap; gap: 10px; padding-inline: 14px; }
+  .app-main > .top-nav { display: none; }
   .site-callouts { padding-inline: 14px; }
   .breadcrumb-context > :is([data-breadcrumb-root], [data-breadcrumb-dashboard]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .report-actions { width: 100%; position: relative; margin-left: 0; }
