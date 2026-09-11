@@ -109,7 +109,7 @@ tools:
 
 graders:
   operational-value:
-    run: .github/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh
+    run: ./../graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh
 
 safe-outputs:
   create-issue:

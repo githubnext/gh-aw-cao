@@ -1324,7 +1324,7 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
     const isPackageMaintainer = name === packageMaintainerGrader;
     const executable = join(isPackageMaintainer ? packageGradersDirectory : gradersDirectory, name);
     const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    const runPath = isPackageMaintainer ? `./graders/${name}` : `.github/graders/${name}`;
+    const runPath = isPackageMaintainer ? `./graders/${name}` : `./../graders/${name}`;
     assert.match(
       workflow(workflowName),
       new RegExp(`graders:\\s+operational-value:\\s+run: ${runPath.replaceAll(".", "\\.")}`),
@@ -1961,7 +1961,7 @@ test("EU CRA workflows preserve advisory and human-review boundaries", () => {
     assert.match(source, /Never output `CRA COMPLIANT`, `LEGALLY COMPLIANT`, `CERTIFIED`, or `CE APPROVED`/);
     assert.match(source, /Never (?:submit|notify)/i);
     assert.match(source, /Do not put secrets, personal data, exploit details/);
-    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.github\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
+    assert.match(source, /^graders:\n\s+operational-value:\n\s+run: \.\/\.\.\/graders\/eu-cra-compliance-.+-operational-value\.sh$/m);
     assert.match(source, /<!-- operational-value: domain=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
     assert.match(source, /### Human Acceptance/);
     assert.match(source, /max-ai-credits: 100/);
@@ -2057,7 +2057,7 @@ test("Dev Practices preserves evidence and advisory boundaries", () => {
     assert.match(worker, /analyzed commit SHA/);
     assert.match(worker, /create-issue:[\s\S]*?close-older-issues: true[\s\S]*?close-older-key:.*inputs\.target_repo[\s\S]*?max: 1/);
     assert.match(worker, /^\s+web-fetch:$/m);
-    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.github\/graders\/software-development-practices-.+-operational-value\.sh$/m);
+    assert.match(worker, /^graders:\n\s+operational-value:\n\s+run: \.\/\.\.\/graders\/software-development-practices-.+-operational-value\.sh$/m);
     assert.match(worker, /<!-- operational-value: framework=[a-z0-9-]+ target=OWNER\/REPO target-sha=40_HEX_SHA -->/);
   }
   assert.match(readme, /Operational value is attainment-only/);

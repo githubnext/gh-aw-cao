@@ -72,7 +72,7 @@ run-name: "SelfCare docs build time · ${{ inputs.target_repo }} · ${{ inputs.s
 
 graders:
   operational-value:
-    run: .github/graders/self-care-docs-build-time-investigator-operational-value.sh
+    run: ./../graders/self-care-docs-build-time-investigator-operational-value.sh
 
 concurrency:
   group: "${{ github.workflow }}-${{ inputs.target_repo }}"
