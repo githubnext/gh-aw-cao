@@ -174,11 +174,16 @@ describe('gh-aw logs adapter', () => {
               timestamp: '2026-09-09T04:00:45Z'
             }]
           },
+          agent_id: '',
+          agent_version: '',
+          model_id: '',
+          engine_id: '',
+          model: '',
           aw_info: {
             engine_id: 'copilot',
             engine_name: 'GitHub Copilot CLI',
             model: 'gpt-5.4',
-            version: '1.0.83',
+            agent_version: '1.0.83',
             cli_version: 'v0.89.4',
             workflow_name: 'Dashboard',
             staged: false,
