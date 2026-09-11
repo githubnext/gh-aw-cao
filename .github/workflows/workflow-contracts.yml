@@ -16,6 +16,17 @@ permissions:
   contents: read
 
 jobs:
+  agent-plugin:
+    name: Install agent plugin with Copilot CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install Copilot CLI
+        uses: mvkaran/setup-copilot-cli@d05a47209e6b3185c9c55702bef49f28e6eebef7 # v1.0.0
+      - name: Install agent plugin
+        run: copilot plugin install .
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
