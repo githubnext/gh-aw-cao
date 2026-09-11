@@ -69,6 +69,17 @@ export function renderTableRegion(options) {
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
 
+  const renderFacet = (facet) => h(
+    'select',
+    {
+      className: 'table-header-filter',
+      'aria-label': `Filter by ${facet.label}`,
+      'data-table-facet': facet.key,
+      'data-table-column-index': String(facet.columnIndex)
+    },
+    h('option', { value: '' }, facet.label),
+    ...facet.values.map((value) => h('option', { value }, value))
+  );
   const filterControls = interactive
     ? h(
       'div',
@@ -78,16 +89,6 @@ export function renderTableRegion(options) {
         placeholder: filterPlaceholder,
         'data-table-filter': ''
       }), { visuallyHiddenLabel: true }),
-      ...facets.map((facet) => renderLabeledControl(
-        facet.label,
-        h(
-          'select',
-          { 'data-table-facet': facet.key, 'data-table-column-index': String(facet.columnIndex) },
-          h('option', { value: '' }, facet.allLabel ?? `All ${facet.label.toLocaleLowerCase('en')}`),
-          ...facet.values.map((value) => h('option', { value }, value))
-        ),
-        { className: 'table-filter-facet' }
-      )),
       h('output', { className: 'table-filter-result', 'aria-live': 'polite' }, formatResultCount(Math.min(rowCount, pageSize), rowCount, resultNoun, resultNounPlural))
     )
     : null;
@@ -118,21 +119,43 @@ export function renderTableRegion(options) {
           h(
             'tr',
             null,
-            ...headCells.map((cell, columnIndex) => (hasRows && sortable && !unsortableColumns.includes(columnIndex)
-              ? h(
+            ...headCells.map((cell, columnIndex) => {
+              const facet = facets.find((candidate) => candidate.columnIndex === columnIndex);
+              const canSort = hasRows && sortable && !unsortableColumns.includes(columnIndex);
+              if (!facet) {
+                return canSort
+                  ? h(
+                    'th',
+                    { scope: 'col', 'aria-sort': 'none' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'table-sort',
+                        'data-table-sort': String(columnIndex)
+                      },
+                      cell
+                    )
+                  )
+                  : h('th', { scope: 'col' }, cell);
+              }
+              return h(
                 'th',
-                { scope: 'col', 'aria-sort': 'none' },
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'table-sort',
-                    'data-table-sort': String(columnIndex)
-                  },
-                  cell
-                )
-              )
-              : h('th', { scope: 'col' }, cell)))
+                { scope: 'col', className: 'table-filter-heading', ...(canSort ? { 'aria-sort': 'none' } : {}) },
+                renderFacet(facet),
+                canSort
+                  ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'table-sort table-sort-icon',
+                      'data-table-sort': String(columnIndex),
+                      'aria-label': `Sort by ${cell}`
+                    }
+                  )
+                  : null
+              );
+            })
           ),
           summaryColumns.length > 0 ? renderDeferredTableSummaryRow(summaryColumns) : null
         ),
@@ -252,7 +275,9 @@ function enableTableFilter(region, options, rows) {
   ) return;
 
   const window = region.ownerDocument.defaultView;
-  const parameters = new URLSearchParams(window?.location.search ?? '');
+  const hash = window?.location.hash ?? '';
+  const hashQueryIndex = hash.indexOf('?');
+  const parameters = new URLSearchParams(hashQueryIndex === -1 ? '' : hash.slice(hashQueryIndex + 1));
   /** @param {string} name */
   const parameterName = (name) => options.filterId ? `${options.filterId}.${name}` : null;
   const queryParameter = parameterName('q');
@@ -358,7 +383,10 @@ function enableTableFilter(region, options, rows) {
 
   const syncUrl = () => {
    if (!window || !options.filterId || !['http:', 'https:'].includes(window.location.protocol)) return;
-   const currentParameters = new URLSearchParams(window.location.search);
+   const currentHash = window.location.hash;
+   const queryIndex = currentHash.indexOf('?');
+   const route = queryIndex === -1 ? currentHash : currentHash.slice(0, queryIndex);
+   const currentParameters = new URLSearchParams(queryIndex === -1 ? '' : currentHash.slice(queryIndex + 1));
    const values = [
      ['q', input.value.trim()],
      ...facets.map((facet) => [facet.dataset.tableFacet ?? '', facet.value])
@@ -370,7 +398,11 @@ function enableTableFilter(region, options, rows) {
      else currentParameters.delete(key);
    }
    const query = currentParameters.toString();
-   window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+   window.history.replaceState(
+     null,
+     '',
+     `${window.location.pathname}${window.location.search}${route || '#'}${query ? `?${query}` : ''}`
+   );
   };
 
   for (const control of [input, ...facets]) {
