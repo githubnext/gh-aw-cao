@@ -32,6 +32,7 @@ describe('renderTableSummaryRow', () => {
       values: [1, 2, 3]
     }]);
 
+    expect(rendered.textContent).toContain('Total6');
     expect(rendered.textContent).toContain('Avg2');
     expect(rendered.textContent).toContain('Stddev1');
     expect(rendered.textContent).not.toContain('Median');

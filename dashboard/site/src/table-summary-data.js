@@ -12,7 +12,7 @@ function histogramBinCountForSampleSize(sampleSize) {
 
 /**
  * @typedef {{ field?: string, label: string, type?: string, display?: string, values: unknown[] }} TableSummaryColumn
- * @typedef {{ kind: 'none' } | { kind: 'empty', message: string } | { kind: 'boolean', count: number, trueCount: number, missingCount: number } | { kind: 'count', count: number } | { kind: 'categorical', values: Array<{ label: string, ratio: number }> } | { kind: 'quantitative', count: number, mean: number, deviation: number | null, bins: HistogramBin[] } | { kind: 'temporal', start: number, stop: number }} TableColumnSummary
+ * @typedef {{ kind: 'none' } | { kind: 'empty', message: string } | { kind: 'boolean', count: number, trueCount: number, missingCount: number } | { kind: 'count', count: number } | { kind: 'categorical', values: Array<{ label: string, ratio: number }> } | { kind: 'quantitative', count: number, total: number, mean: number, deviation: number | null, bins: HistogramBin[] } | { kind: 'temporal', start: number, stop: number }} TableColumnSummary
  * @typedef {{ lower: number, upper: number, count: number }} HistogramBin
  */
 
@@ -57,10 +57,12 @@ function summarizeTableColumn(column) {
       return { kind: 'empty', message: 'No numeric values' };
     }
 
-    const mean = numericValues.reduce((total, value) => total + value, 0) / numericValues.length;
+    const total = numericValues.reduce((sum, value) => sum + value, 0);
+    const mean = total / numericValues.length;
     return {
       kind: 'quantitative',
       count: numericValues.length,
+      total,
       mean,
       deviation: numericValues.length > 1
         ? Math.sqrt(
