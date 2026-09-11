@@ -3,10 +3,16 @@ title: Central Agentic Ops Dashboard Data Architecture Specification
 description: Canonical data model, ingestion, IndexedDB persistence, consistency, recovery, and scale requirements for the gh-aw-cao dashboard.
 version: 1.0.0
 status: Working Draft
+
+IndexedDB SHALL retain all available canonical Repository, Workflow, and Run
+summaries so dashboard trends and run history can cover the complete published
+source. It SHALL retain detailed Job, Session, and Event records for the bounded
+30-day operational window. Expiring detail MUST NOT remove its retained Run or
+the Run's structural parents.
 editors:
   - GitHub Next
 ---
-
+| Browser storage | IndexedDB keeps all available run summaries and expires detailed Job, Session, and Event records after 30 days. |
 # Central Agentic Ops Dashboard Data Architecture Specification
 
 **Version:** 1.0.0
@@ -202,51 +208,48 @@ Views MUST read only the active canonical generation. The completed implementati
 
 # 5. Target Architecture
 
-```text
-                     AUTHORITATIVE INPUTS
-
-        GitHub     gh-aw     logs     SQL     snapshots
-           \         |        |       |         /
-            +--------+--------+-------+--------+
-                             |
-                             v
-                       Source Adapters
-                             |
-                             v
-                    Canonical Observations
-                             |
-                             v
-                      Normalization Layer
-                             |
-                             v
-                     Canonical Entities
-                             |
-                             v
-                    Published Generation
-                    manifest + chunks
-                             |
-                             v
-                        Browser Worker
-                             |
-                     verify / normalize
-                             |
-                             v
-                Staging IndexedDB Generation
-                             |
-                         validation
-                             |
-                         COMPLETE?
-                         /       \
-                       no         yes
-                       |           |
-                    discard     activate
-                                   |
-                                   v
-                           Canonical Queries
-                                   |
-                                   v
-                                Views
+```mermaid
+flowchart LR
+  logs["gh aw logs"] --> jsonl["JSONL source"]
+  jsonl --> sqlite["SQLite database"]
+  sqlite --> agents["Agents"]
+  sqlite --> cli["CLI"]
+  jsonl --> indexeddb["IndexedDB cache"]
+  indexeddb --> views["Dashboard"]
 ```
+
+SQLite and IndexedDB SHALL use the same adapters, identities, normalization,
+and relationship validation. They MAY use different retention windows because
+SQLite can serve a historical archive while IndexedDB remains a bounded browser
+cache. Neither database SHALL become an input to the other.
+
+IndexedDB and the Activity SQLite database SHALL retain all available canonical
+Repository, Workflow, and Run summaries. They SHALL retain detailed Job,
+Session, and Event records for the bounded 30-day operational window. Expiring
+detail MUST NOT remove its retained Run or the Run's structural parents.
+
+## 5.1 Completeness and archives
+
+The scheduled Activity collection SHALL be treated as a rolling operational
+snapshot, not as a complete historical archive. Completeness SHALL be reported
+separately for:
+
+* run-summary coverage from `workflow_runs` envelopes;
+* enriched artifact coverage from `run` envelopes; and
+* the requested historical time range.
+
+Repeated source observations are expected when cached JSONL is refreshed.
+Ingestion SHALL report repeated raw and enriched observations, deduplicate them
+by the canonical identities defined in this specification, and MUST NOT create
+duplicate canonical records.
+
+A full-detail local archive SHALL use a separate SQLite file with a retention
+window that covers the requested history. A later rolling Activity refresh MUST
+NOT silently shorten that archive to the dashboard's default detail window.
+
+Expired or unavailable GitHub Actions artifacts SHALL be reported as missing
+enrichment. Their run summaries MAY still be present and MUST NOT be described
+as fully enriched runs.
 
 ---
 

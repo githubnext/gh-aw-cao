@@ -7,7 +7,9 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
+import { adaptCachedGhAwJsonl } from '../src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../src/data/ingest/coordinator.js';
+import { normalize } from '../src/data/normalize/index.js';
 import { createCanonicalQueries } from '../src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../src/data/storage/indexeddb.js';
 import { doctorSqliteDatabase } from '../src/data/storage/sqlite-doctor.js';
@@ -23,12 +25,15 @@ const ENTITY_COLLECTIONS = [
 ];
 const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
 const DEFAULT_DEPLOYED_DATA_URL = 'https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download']);
 
 const USAGE = `Usage:
-  npm run dashboard:data -- ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY
-  npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON]
+  npm run dashboard:data -- ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  npm run dashboard:data -- audit-jsonl --input GH_AW_LOGS_JSONL
   npm run dashboard:data -- query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
-  npm run dashboard:data -- doctor --database FILE [--ttl-days DAYS]
+  npm run dashboard:data -- doctor --database FILE [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   npm run dashboard:data -- download [--url URL] [--output DIRECTORY]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
@@ -128,8 +133,44 @@ function queryLimit(options) {
 function ttlDays(options) {
   const value = option(options, 'ttl-days', false);
   if (!value) return undefined;
+  if (value === 'all') return 'all';
   const days = Number(value);
-  if (!Number.isFinite(days) || days <= 0) throw new Error('--ttl-days must be greater than zero');
+  if (!Number.isFinite(days) || days <= 0) throw new Error('--ttl-days must be a positive number or all');
+  return days;
+}
+
+function retentionWindowMs(options) {
+  const value = option(options, 'retention-days', false);
+  if (!value) return undefined;
+  if (value === 'all') return Number.MAX_SAFE_INTEGER;
+  const days = Number(value);
+  const milliseconds = days * DAY_MS;
+  if (!Number.isFinite(days) || days <= 0 || !Number.isSafeInteger(milliseconds)) {
+    throw new Error('--retention-days must be a positive number or all');
+  }
+  return milliseconds;
+}
+
+function runRetentionWindowMs(options) {
+  const value = option(options, 'run-retention-days', false);
+  if (!value) return undefined;
+  if (value === 'all') return Number.MAX_SAFE_INTEGER;
+  const days = Number(value);
+  const milliseconds = days * DAY_MS;
+  if (!Number.isFinite(days) || days <= 0 || !Number.isSafeInteger(milliseconds)) {
+    throw new Error('--run-retention-days must be a positive number or all');
+  }
+  return milliseconds;
+}
+
+function runTtlDays(options) {
+  const value = option(options, 'run-ttl-days', false);
+  if (!value) return undefined;
+  if (value === 'all') return 'all';
+  const days = Number(value);
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error('--run-ttl-days must be a positive number or all');
+  }
   return days;
 }
 
@@ -139,6 +180,33 @@ async function databaseCounts(indexedDB) {
     (await readCollection(indexedDB, collection)).length
   ]));
   return Object.fromEntries(counts);
+}
+
+async function auditJsonl(inputPath) {
+  const input = path.resolve(inputPath);
+  const adapted = adaptCachedGhAwJsonl(await readFile(input, 'utf8'));
+  const canonical = normalize(adapted.observations);
+  return {
+    command: 'audit-jsonl',
+    input,
+    source: {
+      records: adapted.records,
+      rawRunObservations: adapted.rawPayloadRecords,
+      uniqueRawRuns: adapted.rawRuns,
+      duplicateRawRunObservations: adapted.duplicateRawRunObservations,
+      enrichedRunObservations: adapted.agenticRunRecords,
+      uniqueEnrichedRuns: adapted.agenticRuns,
+      duplicateEnrichedRunObservations: adapted.duplicateAgenticRunObservations,
+      unenrichedRuns: adapted.unenrichedRuns,
+      enrichmentCoveragePercent: canonical.runs.length === 0
+        ? 0
+        : Number((adapted.agenticRuns / canonical.runs.length * 100).toFixed(1))
+    },
+    canonical: Object.fromEntries(ENTITY_COLLECTIONS.map((collection) => [
+      collection,
+      canonical[collection].length
+    ]))
+  };
 }
 
 function deployedDataUrl(value) {
@@ -203,12 +271,12 @@ export async function downloadDeployedDashboardData({
   }
 }
 
-export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirectory) {
+export async function ingestGhAwLogDirectory(indexedDB, contextPath, logDirectory, options = {}) {
   const context = JSON.parse(await readFile(contextPath, 'utf8'));
   return ingestGhAwLogs(indexedDB, {
     ...context,
     files: await jsonlFiles(logDirectory)
-  });
+  }, options);
 }
 
 export async function queryCanonicalData(indexedDB, options) {
@@ -268,7 +336,7 @@ async function runLegacyIngestion(contextPath, logDirectory) {
 export async function runCli(arguments_) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
-  if (!['ingest', 'ingest-jsonl', 'query', 'doctor'].includes(command) && arguments_.length === 2) {
+  if (!COMMANDS.has(command) && arguments_.length === 2) {
     return runLegacyIngestion(command, optionArguments[0]);
   }
   const options = parseOptions(optionArguments);
@@ -280,29 +348,42 @@ export async function runCli(arguments_) {
       output: option(options, 'output', false)
     });
   }
+  if (command === 'audit-jsonl') {
+    rejectUnknownOptions(options, ['input']);
+    return auditJsonl(option(options, 'input'));
+  }
   const databasePath = option(options, 'database');
   if (command === 'doctor') {
-    rejectUnknownOptions(options, ['database', 'ttl-days']);
-    return doctorSqliteDatabase(databasePath, { ttlDays: ttlDays(options) });
+    rejectUnknownOptions(options, ['database', 'ttl-days', 'run-ttl-days']);
+    return doctorSqliteDatabase(databasePath, {
+      ttlDays: ttlDays(options),
+      runTtlDays: runTtlDays(options)
+    });
   }
   const indexedDB = await createDatabase(databasePath);
 
   if (command === 'ingest') {
-    rejectUnknownOptions(options, ['database', 'context', 'logs']);
+    rejectUnknownOptions(options, ['database', 'context', 'logs', 'retention-days', 'run-retention-days']);
     const result = await ingestGhAwLogDirectory(
       indexedDB,
       path.resolve(option(options, 'context')),
-      path.resolve(option(options, 'logs'))
+      path.resolve(option(options, 'logs')),
+      {
+        retentionWindowMs: retentionWindowMs(options),
+        retentionWindowMsByStore: { runs: runRetentionWindowMs(options) }
+      }
     );
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input', 'context']);
+    rejectUnknownOptions(options, ['database', 'input', 'context', 'retention-days', 'run-retention-days']);
     const contextPath = option(options, 'context', false);
     const result = await ingestCachedGhAwJsonl(
       indexedDB,
       await readFile(path.resolve(option(options, 'input')), 'utf8'),
       {
+        retentionWindowMs: retentionWindowMs(options),
+        retentionWindowMsByStore: { runs: runRetentionWindowMs(options) },
         context: contextPath
           ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
           : undefined

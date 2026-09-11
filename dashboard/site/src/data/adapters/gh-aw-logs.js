@@ -429,7 +429,11 @@ export function adaptGhAwLogs(input) {
  *   records: number,
  *   rawPayloadRecords: number,
  *   rawRuns: number,
+ *   agenticRunRecords: number,
  *   agenticRuns: number,
+ *   duplicateRawRunObservations: number,
+ *   duplicateAgenticRunObservations: number,
+ *   unenrichedRuns: number,
  *   sessions: number,
  *   events: number,
  *   rateLimits: number,
@@ -479,6 +483,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
 
   /** @type {Map<string, CachedRun>} */
   const enrichedRuns = new Map();
+  let agenticRunRecords = 0;
   /** @type {Map<string, Set<string>>} */
   const workflowPaths = new Map();
   for (const hint of options.workflowHints ?? []) {
@@ -490,6 +495,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   }
   for (const { envelope, line } of envelopes) {
     if (envelope.kind !== 'run') continue;
+    agenticRunRecords += 1;
     const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
     const organization = requiredString(run.organization, `gh-aw JSONL line ${line}.run.organization`);
     const coordinates = repositoryCoordinates(
@@ -1196,7 +1202,11 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     records: envelopes.length,
     rawPayloadRecords,
     rawRuns: rawRuns.size,
+    agenticRunRecords,
     agenticRuns: enrichedRuns.size,
+    duplicateRawRunObservations: rawPayloadRecords - rawRuns.size,
+    duplicateAgenticRunObservations: agenticRunRecords - enrichedRuns.size,
+    unenrichedRuns: runIds.size - enrichedRuns.size,
     sessions: enrichedRuns.size + (mappedRateLimits > 0 ? 1 : 0),
     events: derivedEvents + mappedRateLimits,
     rateLimits: rateLimitEnvelopes.length,

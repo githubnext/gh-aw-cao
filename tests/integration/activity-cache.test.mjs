@@ -28,6 +28,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.doesNotMatch(workflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(workflow, /--count 5/);
   assert.match(workflow, /--timeout 5/);
+  assert.match(workflow, /ingest-jsonl[\s\S]*?--run-retention-days all[\s\S]*?doctor[\s\S]*?--run-ttl-days all/);
   assert.doesNotMatch(
     workflow,
     /github-script|run-activity\.mjs|REPORT_GH_AW_LOGS_STATE|REPORT_DEPLOYED_WORKFLOWS|REPORT_RECORDS/,
