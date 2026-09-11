@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -37,6 +37,63 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
     requests.push(request.url);
     response.writeHead(200, { "content-type": "application/x-ndjson" });
     response.end(request.url?.endsWith(".sqlite") ? databaseContent : logsContent);
+  });
+
+  test("uses .cao as the default download location", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-default-output-"));
+    const logsContent = '{"schema_version":2,"kind":"run","run":{"run_id":404}}\n';
+    const databaseContent = Buffer.from("default sqlite bytes");
+    const server = createServer((request, response) => {
+      response.writeHead(200, { "content-type": "application/x-ndjson" });
+      response.end(request.url?.endsWith(".sqlite") ? databaseContent : logsContent);
+    });
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address === "object");
+      await executeFile(cao, [
+        "download",
+        "--url",
+        `http://127.0.0.1:${address.port}/cao/gh-aw-logs.jsonl`,
+      ], { cwd: root });
+      assert.equal(await readFile(path.join(root, ".cao", "gh-aw-logs.jsonl"), "utf8"), logsContent);
+      assert.deepEqual(await readFile(path.join(root, ".cao", "gh-aw-logs.sqlite")), databaseContent);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("uses default .cao input and database when omitted", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-default-input-database-"));
+    const fixture = path.resolve("dashboard/site/test/fixtures/gh-aw-logs/cached-v2.jsonl");
+    const caoRoot = path.join(root, ".cao");
+    try {
+      await mkdir(caoRoot, { recursive: true });
+      await copyFile(fixture, path.join(caoRoot, "gh-aw-logs.jsonl"));
+      const { stdout: auditStdout } = await executeFile(cao, ["audit-jsonl"], { cwd: root });
+      const audit = JSON.parse(auditStdout);
+      assert.equal(audit.command, "audit-jsonl");
+      assert.equal(audit.source.records, 3);
+
+      await executeFile(cao, ["ingest-jsonl"], { cwd: root });
+      const { stdout: runsStdout } = await executeFile(cao, [
+        "query",
+        "--collection",
+        "runs",
+        "--where",
+        "conclusion=success",
+      ], { cwd: root });
+      const runs = JSON.parse(runsStdout);
+      assert.equal(runs.length, 1);
+      assert.equal(runs[0].id, "github:run:303:attempt:1");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
