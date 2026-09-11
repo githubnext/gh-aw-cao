@@ -20,7 +20,11 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /Save activity cache[\s\S]*?path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/,
+    /Save activity cache[\s\S]*?path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-gh-aw-logs\/drain3_weights\.json/,
+  );
+  assert.match(
+    workflow,
+    /Restore activity cache[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-gh-aw-logs\/drain3_weights\.json[\s\S]*?if \[\[ -f "\$REPORT_AIC_CACHE\/drain3_weights\.json" \]\][\s\S]*?--drain3-weights "\$REPORT_AIC_CACHE\/drain3_weights\.json"/,
   );
   assert.doesNotMatch(workflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.doesNotMatch(workflow, /Skip scheduled run|steps\.freshness/);

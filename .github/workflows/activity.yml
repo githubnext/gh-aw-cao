@@ -72,6 +72,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
             cao-activity-v3-
@@ -108,6 +109,10 @@ jobs:
         run: |
           mkdir -p "$(dirname "$REPORT_GH_AW_LOGS")"
           touch "$REPORT_GH_AW_LOGS"
+          drain3_args=()
+          if [[ -f "$REPORT_AIC_CACHE/drain3_weights.json" ]]; then
+            drain3_args+=(--drain3-weights "$REPORT_AIC_CACHE/drain3_weights.json")
+          fi
           targets=()
           for workflow in .github/workflows/*.lock.yml; do
             [[ -f "$workflow" ]] || continue
@@ -125,6 +130,7 @@ jobs:
             --max-github-api-rate-limit -2000 \
             --max-storage 1200 \
             --prune-older-runs \
+            "${drain3_args[@]}" \
             "${targets[@]}"
 
       - name: Ingest activity database
@@ -156,4 +162,5 @@ jobs:
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
             ${{ runner.temp }}/cao-activity/control-settings.json
             ${{ runner.temp }}/cao-activity/inventory-sources.json
+            ${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json
           key: ${{ steps.activity-cache-key.outputs.value }}

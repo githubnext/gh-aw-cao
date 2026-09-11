@@ -4765,6 +4765,26 @@
             },
             "mark": "element",
             "element": "outcomes-overview",
+            "config": {
+              "labels": {
+                "repositories": {
+                  "singular": "Repository",
+                  "plural": "Repositories"
+                },
+                "successful-runs": {
+                  "singular": "Successful run",
+                  "plural": "Successful runs"
+                },
+                "dispatches": {
+                  "singular": "Dispatch",
+                  "plural": "Dispatches"
+                },
+                "value-gains": {
+                  "singular": "Value gain",
+                  "plural": "Value gains"
+                }
+              }
+            },
             "layout": "full"
           }
         ]

@@ -21,7 +21,7 @@ sequenceDiagram
   Activity->>Cache: Restore latest cao-activity-v3-* snapshot
   Activity->>Activity: Run gh aw logs once
   Activity->>Activity: Ingest JSONL into SQLite
-  Activity->>Cache: Save refreshed JSONL and SQLite
+  Activity->>Cache: Save refreshed JSONL, SQLite, and Drain3 weights
   Consumer->>Cache: Restore compatible snapshot
 ```
 
@@ -29,7 +29,9 @@ The scheduled and manually dispatchable `.github/workflows/activity.yml`
 checks out the trusted control-repository source, restores its cache, collects
 compiled workflow evidence with `gh aw logs --audit --artifacts usage`, ingests
 the resulting JSONL through the dashboard's Node.js canonical data pipeline,
-and stores both files. Downloaded artifacts are job-local inputs and are not
+and stores both data files plus the generated Drain3 weights. Restored weights
+are passed to the next `gh aw logs` invocation so log clustering can continue
+learning across runs. Downloaded artifacts are job-local inputs and are not
 cached.
 
 Activity uses the `central-agentic-ops-activity` concurrency group with
@@ -48,6 +50,7 @@ The cache holds:
 ```text
 $RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl
 $RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite
+$RUNNER_TEMP/cao-gh-aw-logs/drain3_weights.json
 ```
 
 Its immutable key is

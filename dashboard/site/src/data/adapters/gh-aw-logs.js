@@ -118,6 +118,17 @@ function text(value) {
   return value === undefined || value === null ? '' : String(value);
 }
 
+/** @param {unknown} value */
+function firewallDomain(value) {
+  const host = text(value).trim();
+  if (!host || host === '-') return '';
+  try {
+    return new URL(host.includes('://') ? host : `https://${host}`).hostname;
+  } catch {
+    return host.replace(/:\d+$/, '');
+  }
+}
+
 /** @param {string[]} parts */
 function detail(parts) {
   return parts.filter(Boolean).join('/');
@@ -284,14 +295,18 @@ function firewallEvents(sessionId, file) {
   return parseJsonl(file.content, file.path).flatMap(({ value, line }) => {
     const eventTimestamp = timestamp(value.ts);
     const host = text(value.host ?? value.domain);
-    if (!eventTimestamp || !host || host === '-' || value.url === 'error:transaction-end-before-headers') return [];
+    const domain = firewallDomain(host);
+    if (!eventTimestamp || !domain || value.url === 'error:transaction-end-before-headers') return [];
     const decision = text(value.decision ?? value.squid_request_status);
     const status = Number(value.status ?? value.http_status);
     const blocked = /denied|blocked|reject/i.test(decision)
       || (Number.isFinite(status) && status >= 400 && status < 600);
     return [eventObservation(sessionId, file.path, line, eventTimestamp, 'firewall', blocked ? 'net_blocked' : 'net_allowed', {
       summary: [host, text(value.method)].filter(Boolean).join(' '),
-      status: Number.isFinite(status) && status > 0 ? String(status) : blocked ? 'blocked' : 'allowed'
+      status: Number.isFinite(status) && status > 0 ? String(status) : blocked ? 'blocked' : 'allowed',
+      domain,
+      decision: blocked ? 'denied' : 'allowed',
+      requestCount: 1
     })];
   });
 }
@@ -802,7 +817,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
      * @param {string} summary
      * @param {string | undefined} status
      * @param {unknown} identity
-     * @param {{ source?: string, correlationId?: string }} [fields]
+     * @param {Record<string, unknown> & { source?: string, correlationId?: string }} [fields]
      */
     const emitEvent = (type, eventTimestamp, summary, status, identity = type, fields = {}) => {
       if (!eventTimestamp) return;
@@ -820,7 +835,8 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
           status,
           correlationId: fields.correlationId,
           payloadRef: `gh-aw-logs.jsonl#L${enriched.line}`,
-          sourceSequence
+          sourceSequence,
+          ...fields
         })
       });
       sourceSequence += 1;
@@ -996,6 +1012,35 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     emitAuditEvents('noops', 'audit.noop', 'message', 'status');
     emitAuditEvents('mcp_failures', 'audit.mcp_failure', 'server_name', 'status');
     emitAuditEvents('skill_activations', 'audit.skill_activation', 'name', 'status');
+    const firewallAnalysis = audit.firewall_analysis && typeof audit.firewall_analysis === 'object'
+      && !Array.isArray(audit.firewall_analysis)
+      ? /** @type {Record<string, unknown>} */ (audit.firewall_analysis)
+      : {};
+    const requestsByDomain = firewallAnalysis.requests_by_domain
+      && typeof firewallAnalysis.requests_by_domain === 'object'
+      && !Array.isArray(firewallAnalysis.requests_by_domain)
+      ? /** @type {Record<string, unknown>} */ (firewallAnalysis.requests_by_domain)
+      : {};
+    for (const [host, counts] of Object.entries(requestsByDomain)) {
+      const domain = firewallDomain(host);
+      if (!domain || !counts || typeof counts !== 'object' || Array.isArray(counts)) continue;
+      const record = /** @type {Record<string, unknown>} */ (counts);
+      for (const [decision, field, type] of [
+        ['allowed', 'allowed', 'net_allowed'],
+        ['denied', 'blocked', 'net_blocked']
+      ]) {
+        const requestCount = finiteNumber(record[field]);
+        if (!requestCount || requestCount < 0) continue;
+        emitEvent(
+          type,
+          completedAt ?? enriched.observedAt,
+          host,
+          decision,
+          { type: 'firewall', host, decision },
+          { source: 'firewall', domain, decision, requestCount }
+        );
+      }
+    }
     const safeOutputs = Array.isArray(run.safe_outputs)
       ? run.safe_outputs
       : Array.isArray(audit.created_items) ? audit.created_items : [];
