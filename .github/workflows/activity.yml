@@ -152,4 +152,6 @@ jobs:
           path: |
             ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
             ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
+            ${{ runner.temp }}/cao-activity/control-settings.json
+            ${{ runner.temp }}/cao-activity/inventory-sources.json
           key: ${{ steps.activity-cache-key.outputs.value }}
