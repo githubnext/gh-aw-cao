@@ -321,8 +321,9 @@ function writeCanonicalDatabase(connection, batch, transactions) {
  * @param {string} checkedAt
  * @param {number} now
  * @param {number} retentionWindowMs
+ * @param {number | undefined} runRetentionWindowMs
  */
-async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs) {
+async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindowMs, runRetentionWindowMs) {
   const connection = openConnection(filename);
   let backupPath = null;
   let candidateBackupPath = null;
@@ -356,6 +357,7 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
     const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
       now,
       retentionWindowMs,
+      retentionWindowMsByStore: { runs: runRetentionWindowMs },
       includePreviousInReference: true,
       preserveUnreferencedParents: true
     });
@@ -420,17 +422,31 @@ function maintainSqlite(filename, actions, errors) {
  * Diagnoses and repairs the canonical SQLite-backed IndexedDB database.
  *
  * @param {string} filename
- * @param {{ now?: number, ttlDays?: number }} [options]
+ * @param {{ now?: number, ttlDays?: number | 'all', runTtlDays?: number | 'all' }} [options]
  */
 export async function doctorSqliteDatabase(filename, options = {}) {
   const databasePath = path.resolve(filename);
   const databaseStat = await stat(databasePath);
   if (!databaseStat.isFile()) throw new Error(`SQLite database is not a file: ${databasePath}`);
   const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
-  const ttlDays = Number.isFinite(options.ttlDays) ? Number(options.ttlDays) : RETENTION_WINDOW_DAYS;
-  const retentionWindowMs = ttlDays * DAY_MS;
-  if (ttlDays <= 0 || !Number.isFinite(retentionWindowMs)) {
+  const retainAll = options.ttlDays === 'all';
+  const ttlDays = retainAll
+    ? 'all'
+    : Number.isFinite(options.ttlDays) ? Number(options.ttlDays) : RETENTION_WINDOW_DAYS;
+  const retentionWindowMs = retainAll ? Number.MAX_SAFE_INTEGER : Number(ttlDays) * DAY_MS;
+  if (!retainAll && (Number(ttlDays) <= 0 || !Number.isFinite(retentionWindowMs))) {
     throw new TypeError('TTL days must produce a finite window greater than zero');
+  }
+  const retainAllRuns = options.runTtlDays === 'all';
+  const runTtlDays = retainAllRuns
+    ? 'all'
+    : Number.isFinite(options.runTtlDays) ? Number(options.runTtlDays) : undefined;
+  const runRetentionWindowMs = retainAllRuns
+    ? Number.MAX_SAFE_INTEGER
+    : runTtlDays === undefined ? undefined : Number(runTtlDays) * DAY_MS;
+  if (!retainAllRuns && runTtlDays !== undefined
+    && (Number(runTtlDays) <= 0 || !Number.isFinite(runRetentionWindowMs))) {
+    throw new TypeError('Run TTL days must produce a finite window greater than zero');
   }
   const checkedAt = new Date(now).toISOString();
   const actions = /** @type {string[]} */ ([]);
@@ -515,6 +531,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   const repairedBatch = mergeRetainedRecords(scanned.batch, emptyBatch(), {
     now,
     retentionWindowMs,
+    retentionWindowMsByStore: { runs: runRetentionWindowMs },
     includePreviousInReference: true,
     preserveUnreferencedParents: true
   });
@@ -539,7 +556,13 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   if (needsRepair) {
     let repair;
     try {
-      repair = await repairCanonicalDatabase(databasePath, checkedAt, now, retentionWindowMs);
+      repair = await repairCanonicalDatabase(
+        databasePath,
+        checkedAt,
+        now,
+        retentionWindowMs,
+        runRetentionWindowMs
+      );
       backupPath = repair.backupPath;
     } catch (error) {
       backupPath = error && typeof error === 'object' && 'backupPath' in error
@@ -608,6 +631,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     database: databasePath,
     checkedAt,
     ttlDays,
+    runTtlDays,
     healthy,
     before: {
       sizeBytes: databaseStat.size,

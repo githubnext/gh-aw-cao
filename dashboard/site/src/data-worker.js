@@ -6,6 +6,7 @@ import { adaptDashboardSources } from './data/adapters/dashboard-sources.js';
 import { ingestCachedGhAwJsonl, ingestDashboardSources } from './data/ingest/coordinator.js';
 import { normalize } from './data/normalize/index.js';
 import { queryCanonicalViewSources } from './data/queries/view-sources.js';
+import { BROWSER_RETENTION_WINDOWS_MS } from './data/storage/retention.js';
 import { DashboardQueryCancelledError, continuationRevision, executeDashboardQueries, paginateDashboardSources, resolveDashboardQuerySources } from './data/queries/declarative.js';
 import { loadDashboardSources } from './source-loader.js';
 import { deriveOverviewSources } from './overview-data.js';
@@ -259,6 +260,7 @@ export function processDataRequest(request, signal) {
         if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
         await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
           storage: globalThis.navigator?.storage,
+          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
           workflowHints,
           context: request.context && typeof request.context === 'object'
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
@@ -266,12 +268,14 @@ export function processDataRequest(request, signal) {
         });
         if (inventoryResponse.ok) {
           await ingestDashboardSources(indexedDB, sources, {
-            storage: globalThis.navigator?.storage
+            storage: globalThis.navigator?.storage,
+            retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
           });
         }
       } else {
         await ingestDashboardSources(indexedDB, sources, {
-          storage: globalThis.navigator?.storage
+          storage: globalThis.navigator?.storage,
+          retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
         });
       }
       liveDashboard = {

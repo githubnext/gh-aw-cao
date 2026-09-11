@@ -15,7 +15,7 @@ agents and command-line tools. IndexedDB supports the browser dashboard.
 
 ```mermaid
 flowchart LR
-  logs["gh aw logs"] --> source["JSONL<br/>source"]
+  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
   source --> sqlite["SQLite"]
   sqlite --> agents["Agents"]
   sqlite --> cli["CLI"]
@@ -24,7 +24,9 @@ flowchart LR
 ```
 
 SQLite and IndexedDB are rebuildable copies. Neither is the source for the
-other. Both use the same conversion rules.
+other. Both use the same conversion rules. Both keep all run summaries available
+in the published JSONL. Detailed jobs, sessions, and events remain bounded to 30
+days unless a separate full-detail SQLite archive is requested.
 
 ## Collection sequence
 
@@ -43,6 +45,61 @@ sequenceDiagram
   Browser->>IDB: Build browser copy
   Dashboard->>IDB: Query data
 ```
+
+## Completeness and duplicates
+
+The scheduled Activity workflow is a rolling operational snapshot, not a full
+historical archive. Data can be incomplete at these boundaries:
+
+| Boundary | What can be missing |
+| --- | --- |
+| Collection | Runs outside the configured 30-day window. |
+| Enrichment | The scheduled command downloads at most five matching usage artifacts across all workflow targets per Activity invocation. |
+| GitHub retention | Expired or unavailable artifacts cannot provide agent, usage, job, or audit detail. The run summary may still exist. |
+| Mapping | GitHub API rate-limit records without collection context are intentionally not attached to a run. |
+| Browser storage | IndexedDB keeps all published run summaries and expires detailed Job, Session, and Event records after 30 days. |
+
+Cached JSONL can repeat the same run in later snapshots. These are repeated
+observations, not duplicate database records. Raw runs are deduplicated by
+GitHub run ID and attempt. Enriched runs are deduplicated by run ID and attempt,
+with the newest observation winning.
+
+Audit a JSONL source without changing a database:
+
+```bash
+npm run dashboard:data -- audit-jsonl \
+  --input _activity/gh-aw-logs.jsonl
+```
+
+The report separates raw observations, unique raw runs, enriched observations,
+unique enriched runs, repeated observations, unenriched runs, and the canonical
+record counts that ingestion will produce.
+
+## Historical archives
+
+For a full-detail local archive, collect into
+`_activity/gh-aw-history.jsonl`, then audit and ingest it with unbounded
+retention:
+
+Audit and ingest the completed source into an archive database:
+
+```bash
+npm run dashboard:data -- audit-jsonl \
+  --input _activity/gh-aw-history.jsonl
+
+npm run dashboard:data -- ingest-jsonl \
+  --database _activity/gh-aw-history.sqlite \
+  --input _activity/gh-aw-history.jsonl \
+  --retention-days all
+
+npm run dashboard:data -- doctor \
+  --database _activity/gh-aw-history.sqlite \
+  --ttl-days all
+```
+
+"Full" means all run summaries discoverable in the selected range plus every
+artifact still available from GitHub. Expired artifacts remain visible as
+unenriched runs rather than being silently counted as complete.
 
 ## Entity map
 

@@ -26,20 +26,20 @@ sequenceDiagram
 ```
 
 The scheduled and manually dispatchable `.github/workflows/activity.yml`
-checks out the trusted control-repository source, restores its cache, runs one
-bounded `gh aw logs --audit --artifacts usage` command for compiled workflows,
-ingests the resulting JSONL through the dashboard's Node.js canonical data
-pipeline, and stores both files. Downloaded artifacts are job-local inputs to
-that command and are not cached.
+checks out the trusted control-repository source, restores its cache, collects
+compiled workflow evidence with `gh aw logs --audit --artifacts usage`, ingests
+the resulting JSONL through the dashboard's Node.js canonical data pipeline,
+and stores both files. Downloaded artifacts are job-local inputs and are not
+cached.
 
 Activity uses the `central-agentic-ops-activity` concurrency group with
 `cancel-in-progress: false`, so a running refresh is never cancelled mid-flight
 by the next scheduled trigger; GitHub Actions queues at most one pending
-refresh behind it. A scheduled run also skips its own refresh (before
-restoring the cache or downloading logs) when a successful scheduled run
-already completed within the last 12 minutes, avoiding redundant work when a
-prior run finished close to the next tick. Manual `workflow_dispatch` runs are
-never skipped.
+refresh behind it.
+
+Runs collect a rolling 30-day window and recent artifact detail. The canonical
+stores preserve every run summary available in the collected JSONL while
+expiring detailed jobs, sessions, and events after 30 days.
 
 ## Cache contract
 

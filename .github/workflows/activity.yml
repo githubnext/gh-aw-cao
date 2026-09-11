@@ -121,7 +121,7 @@ jobs:
             --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
             --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
             --count 1000 \
-            --timeout 5 \
+            --timeout 15 \
             --max-github-api-rate-limit -2000 \
             --max-storage 1200 \
             --prune-older-runs \
@@ -142,9 +142,11 @@ jobs:
           fi
           node "$ingestion_script" ingest-jsonl \
             --database "$ACTIVITY_DATABASE" \
-            --input "$REPORT_GH_AW_LOGS"
+            --input "$REPORT_GH_AW_LOGS" \
+            --run-retention-days all
           node "$ingestion_script" doctor \
-            --database "$ACTIVITY_DATABASE"
+            --database "$ACTIVITY_DATABASE" \
+            --run-ttl-days all
 
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
