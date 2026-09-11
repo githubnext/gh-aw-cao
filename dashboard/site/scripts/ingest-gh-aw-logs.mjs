@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -404,7 +404,7 @@ async function main() {
   if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n\n${USAGE}\n`);
     process.exitCode = 1;

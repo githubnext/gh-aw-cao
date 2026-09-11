@@ -1,5 +1,6 @@
 {
   "name": "central-agentic-ops",
+  "version": "0.0.0",
   "private": true,
   "bin": {
     "cao": "dashboard/site/scripts/ingest-gh-aw-logs.mjs"
