@@ -73,6 +73,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
   assert.match(control, /dispatch_max:\n\s+type: number/);
   assert.match(control, /orchestrator_credits:\n\s+type: number/);
   assert.match(control, /worker_credits_per_target:\n\s+type: number/);
+  assert.match(control, /footer-install: "<!-- -->"/);
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
