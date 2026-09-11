@@ -11,7 +11,7 @@
         "title": "Dashboard data is partial",
         "description": "Data Health reports a collection gap caused by a GitHub API rate limit.",
         "icon": "alert",
-        "navigation-page": "data-health",
+        "navigation-page": "coverage",
         "visible-when": {
           "source": "data-health-collections",
           "field": "failure-class",
@@ -4292,70 +4292,6 @@
         }
       },
       {
-        "id": "data-health",
-        "kind": "custom",
-        "title": "Data health",
-        "navigation-label": "Data health",
-        "description": "Whether dashboard evidence is sufficiently complete, current, compatible, and consistent to represent the live agentic system.",
-        "icon": "pulse",
-        "class-name": "data-health-page",
-        "views": [
-          {
-            "id": "data-health-sources",
-            "description": "Secondary diagnostics distinguish cache population from live-system confidence.",
-            "data": {
-              "source": "data-health-sources"
-            },
-            "mark": "table",
-            "controls": "interactive",
-            "empty-message": "No cached data sources available.",
-            "encoding": {
-              "columns": [
-                {
-                  "field": "source",
-                  "type": "nominal",
-                  "title": "Source"
-                },
-                {
-                  "field": "rows",
-                  "type": "quantitative",
-                  "title": "Rows"
-                },
-                {
-                  "field": "fields",
-                  "type": "quantitative",
-                  "title": "Fields"
-                },
-                {
-                  "field": "field-coverage",
-                  "type": "nominal",
-                  "title": "Fields populated"
-                },
-                {
-                  "field": "cell-coverage",
-                  "type": "nominal",
-                  "title": "Cells populated"
-                },
-                {
-                  "field": "status",
-                  "type": "nominal",
-                  "title": "Confidence",
-                  "display": "status"
-                },
-                {
-                  "field": "availability",
-                  "type": "nominal",
-                  "title": "Availability",
-                  "display": "status"
-                }
-              ]
-            },
-            "layout": "full-view",
-            "lazy-list": true
-          }
-        ]
-      },
-      {
         "id": "coverage",
         "kind": "custom",
         "title": "Coverage diagnostics",
@@ -5217,7 +5153,6 @@
           "admission",
           "preview",
           "readiness",
-          "data-health",
           "github-api",
           "updates"
         ]

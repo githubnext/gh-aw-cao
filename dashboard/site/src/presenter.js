@@ -19,7 +19,7 @@ import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
-import { processDataHealthSources, processRows } from './data-processor.js';
+import { processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
@@ -258,19 +258,7 @@ export function renderDashboard(input) {
       if (input.loadPageSources) {
         return input.loadPageSources(pageId).then(render);
       }
-      /** @param {Record<string, LogicalSourceInput>} resolved */
-      const withDataHealth = (resolved) => ({
-        ...derivedSources,
-        ...Object.fromEntries(Object.entries(resolved).filter(([name]) => name.startsWith('data-health-')))
-      });
-      const dataHealth = pageId === 'data-health'
-        ? processDataHealthSources(rawSources, { githubUrlBase, dashboardRepository })
-        : null;
-      const renderedPage = dataHealth instanceof Promise
-        ? dataHealth.then((resolved) => render(withDataHealth(resolved)))
-        : dataHealth
-          ? render(withDataHealth(dataHealth))
-          : render(sources);
+      const renderedPage = render(sources);
       /** @param {HTMLElement} rendered */
       const annotate = (rendered) => {
         void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
@@ -2322,7 +2310,7 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
   if (!rendered) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag);
   }
-  return ['summary-grid', 'readiness-verdict', 'data-health-domain-list'].includes(elementName)
+  return ['summary-grid', 'readiness-verdict'].includes(elementName)
     ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered;
 }

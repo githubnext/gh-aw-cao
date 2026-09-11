@@ -50,10 +50,6 @@ test("every production dashboard page starts with an executive summary or prescr
         && summary.element === "insights-overview";
       const isOverviewDrillDown = page.route?.["navigation-page"] === "overview"
         && summary.mark === "table";
-      const isDataHealthConfidenceSummary = page.id === "data-health"
-        && summary.mark === "table"
-        && summary.id === "data-health-summary"
-        && summary.encoding?.columns?.some((column) => column.field === "confidence" && column.display === "status");
       const isFullViewTable = views.length === 1
         && summary.mark === "table"
         && summary.controls === "interactive"
@@ -95,7 +91,6 @@ test("every production dashboard page starts with an executive summary or prescr
           || isPackageDetail
           || isWorkProjectView
           || isInsightsOverview
-          || isDataHealthConfidenceSummary
           || isFullViewTable
           || isOverviewDrillDown
           || isDeclarativeOverview

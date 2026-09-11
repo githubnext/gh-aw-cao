@@ -20,7 +20,7 @@ import { renderConfigurationActions } from './configuration-actions.js';
 import { renderWorkProjectView } from './work-project-view.js';
 import { renderAgentMarketplaceView } from './agent-marketplace-view.js';
 import { renderInsightsOverview } from './insights-overview.js';
-import { modeBadgeClassName, renderStatusBadge } from './badge.js';
+import { modeBadgeClassName } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
@@ -51,7 +51,6 @@ const ELEMENT_RENDERERS = new Map([
   ['summary-grid', renderSummaryGridElement],
   ['readiness-verdict', renderReadinessVerdictElement],
   ['context-summary', renderContextSummaryElement],
-  ['data-health-domain-list', renderDataHealthDomainListElement],
   ['anomaly-readiness', renderAnomalyReadinessElement],
   ['signal-list', renderSignalListElement],
   ['package-activity', ({ sources, pageId }) => renderPackagesView(sources, pageId)],
@@ -76,7 +75,7 @@ const ELEMENT_RENDERERS = new Map([
   ['outcomes-overview', renderFactoryOverview]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
@@ -437,28 +436,6 @@ function renderSummaryGridElement(context) {
     value: stringValue(row.value)
   }));
   return renderDefinitionList('summary-grid', rows);
-}
-
-/** @param {ElementRenderContext} context */
-function renderDataHealthDomainListElement(context) {
-  const rows = rowsFor(context, context.sourceNames[0]);
-  if (rows.length === 0) {
-    return h('p', { className: 'data-health-domain-list-empty' }, 'No dashboard domain contracts are available.');
-  }
-  return h(
-    'dl',
-    { className: 'data-health-domain-list' },
-    ...rows.map((row) => renderDlRow(
-      stringValue(row.domain),
-      h(
-        'div',
-        { className: 'data-health-domain-value' },
-        renderStatusBadge(row.confidence),
-        h('span', { className: 'data-health-domain-reason' }, stringValue(row.reason)),
-        h('span', { className: 'data-health-domain-action' }, stringValue(row['next-action']))
-      )
-    ))
-  );
 }
 
 /** @param {ElementRenderContext} context */

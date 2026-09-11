@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveDataHealthSources, evidenceConfidence } from '../../src/data-health.js';
+import { deriveDataHealthSources } from '../../src/data-health.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'fixture',
@@ -50,76 +50,7 @@ function completeSources() {
   };
 }
 
-describe('data health confidence', () => {
-  it.each([
-    [{ availability: 'available', completeness: 'complete', freshness: 'fresh' }, 'trusted'],
-    [{ availability: 'available', completeness: 'partial', freshness: 'fresh' }, 'degraded'],
-    [{ availability: 'available', completeness: 'complete', freshness: 'stale' }, 'degraded'],
-    [{ availability: 'unavailable', completeness: 'complete', freshness: 'fresh' }, 'insufficient'],
-    [{ availability: 'available', completeness: 'unknown', freshness: 'fresh' }, 'unknown']
-  ])('keeps availability, completeness, and freshness independent: %j', (state, expected) => {
-    expect(evidenceConfidence(state)).toBe(expected);
-  });
-
-  it('trusts complete, fresh, compatible, reconciled critical evidence', () => {
-    const derived = deriveDataHealthSources(completeSources());
-    expect(derived['data-health-summary'].rows[0]).toMatchObject({
-      confidence: 'trusted',
-      availability: 'available',
-      completeness: 'complete',
-      freshness: 'fresh'
-    });
-    expect(derived['data-health-domains'].rows.every((row) => row.confidence === 'trusted')).toBe(true);
-  });
-
-  it('reports critical collection failure as insufficient and stale partial evidence as degraded', () => {
-    const failed = completeSources();
-    failed.runs.metadata.availability = 'unavailable';
-    failed.runs.metadata['failure-class'] = 'rate-limit';
-    expect(deriveDataHealthSources(failed)['data-health-summary'].rows[0].confidence).toBe('insufficient');
-
-    const stale = completeSources();
-    stale.usage.metadata.freshness = 'stale';
-    stale.usage.metadata.completeness = 'partial';
-    expect(deriveDataHealthSources(stale)['data-health-summary'].rows[0].confidence).toBe('degraded');
-  });
-
-  it('keeps missing critical scope and state unknown', () => {
-    const sources = completeSources();
-    sources.repositories.metadata.completeness = 'unknown';
-    expect(deriveDataHealthSources(sources)['data-health-summary'].rows[0].confidence).toBe('unknown');
-  });
-});
-
 describe('coverage and collection provenance', () => {
-  it('summarizes available data and reports per-field shape statistics', () => {
-    const sources = completeSources();
-    sources.runs.rows = [
-      { organization: 'acme', repository: 'app', workflow: 'agent', run: '42', attempts: 1 },
-      { organization: 'acme', repository: 'app', workflow: 'agent', run: '43', attempts: '2', conclusion: null }
-    ];
-    const derived = deriveDataHealthSources(sources);
-    const summary = derived['data-health-summary'].rows[0];
-    const attempts = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'attempts');
-    const conclusion = derived['data-health-fields'].rows.find((item) => item.source === 'runs' && item.field === 'conclusion');
-    const runsFile = derived['data-health-files'].rows.find((item) => item.source === 'runs');
-
-    expect(summary).toMatchObject({
-      sources: Object.keys(sources).length,
-      'available-sources': Object.keys(sources).length
-    });
-    expect(summary.rows).toBeGreaterThan(0);
-    expect(summary.fields).toBe(derived['data-health-fields'].rows.length);
-    expect(attempts).toMatchObject({ types: 'number, string', rows: 2, populated: 2, empty: 0, coverage: '100%', shape: 'mixed' });
-    expect(conclusion).toMatchObject({ types: 'Unknown', rows: 2, populated: 0, empty: 2, coverage: '0%', shape: 'unknown' });
-    expect(runsFile).toMatchObject({ file: 'runs.json', rows: 2, status: 'available' });
-    expect(runsFile?.size).toBeGreaterThan(0);
-    expect(runsFile?.['display-size']).toMatch(/^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/);
-    const fileSizes = /** @type {number[]} */ (derived['data-health-files'].rows.map((row) => row.size));
-    expect(fileSizes).toEqual(fileSizes.toSorted((left, right) => right - left));
-    expect(summary['total-size']).toMatch(/^\d+(?:\.\d)? (?:B|KB|MB|GB|TB)$/);
-  });
-
   it('calculates authoritative expected-versus-observed coverage', () => {
     const sources = completeSources();
     sources.workflows.metadata['coverage-expected'] = 100;
@@ -184,47 +115,6 @@ describe('coverage and collection provenance', () => {
   });
 });
 
-describe('producer compatibility and reconciliation', () => {
-  it('classifies current, legacy, unsupported, and unknown producers without penalizing legacy optional fields', () => {
-    const sources = completeSources();
-    const base = { organization: 'acme', repository: 'app', 'gh-aw-current-version': '0.90.0' };
-    sources.workflows.rows = [
-      { ...base, workflow: 'current', 'gh-aw-version': '0.90.0', 'gh-aw-metadata': {} },
-      { ...base, workflow: 'legacy', 'gh-aw-version': '0.80.0' },
-      { ...base, workflow: 'unsupported', 'gh-aw-version': '1.0.0' },
-      { ...base, workflow: 'unknown' }
-    ];
-    const rows = /** @type {Array<Record<string, any>>} */ (deriveDataHealthSources(sources)['data-health-compatibility'].rows);
-    expect(rows.map((row) => [row.workflow.split(':').at(-1), row.compatibility, row['missing-field-class']])).toEqual([
-      ['current', 'compatible', 'none'],
-      ['legacy', 'limited', 'expected'],
-      ['unsupported', 'unsupported', 'none'],
-      ['unknown', 'unknown', 'none']
-    ]);
-  });
-
-  it('marks required fields missing from a current producer as unexpected', () => {
-    const sources = completeSources();
-    delete sources.workflows.rows[0]['gh-aw-metadata'];
-    expect(deriveDataHealthSources(sources)['data-health-compatibility'].rows[0]).toMatchObject({
-      compatibility: 'limited',
-      'missing-fields': 'gh-aw-metadata',
-      'missing-field-class': 'unexpected'
-    });
-  });
-
-  it('detects silent stable-identifier gaps and preserves unknown denominators', () => {
-    const sources = completeSources();
-    sources.usage.rows = [];
-    let row = deriveDataHealthSources(sources)['data-health-reconciliation'].rows.find((item) => item.relationship === 'Runs → usage');
-    expect(row).toMatchObject({ expected: 1, observed: 0, missing: 1, coverage: '0%', state: 'partial' });
-
-    sources.runs.metadata.completeness = 'unknown';
-    row = deriveDataHealthSources(sources)['data-health-reconciliation'].rows.find((item) => item.relationship === 'Runs → usage');
-    expect(row).toMatchObject({ expected: 'Unknown', coverage: 'Unknown', state: 'unknown' });
-  });
-});
-
 describe('data shape preview', () => {
   it('infers a recursive schema merged across sampled rows, marking optional and mixed-type fields', () => {
     const sources = completeSources();
@@ -249,50 +139,10 @@ describe('data shape preview', () => {
     expect(schema.schema).toContain('self: (circular)');
   });
 
-  it('does not treat shared non-cyclic objects as circular in file diagnostics', () => {
-    const sources = completeSources();
-    const shared = { retries: 1 };
-    sources.runs.rows = [{ shared }, { shared }];
-    const expectedSize = new TextEncoder().encode(JSON.stringify(sources.runs)).length;
-    const file = deriveDataHealthSources(sources)['data-health-files'].rows.find((item) => item.source === 'runs');
-    expect(file?.size).toBe(expectedSize);
-  });
-
   it('reports an empty-object shape when a source has no cached rows', () => {
     const sources = completeSources();
     sources.runs.rows = [];
     const schema = /** @type {any} */ (deriveDataHealthSources(sources)['data-health-schema'].rows.find((item) => item.source === 'runs'));
     expect(schema.schema).toBe('{}');
-  });
-});
-
-describe('CAO Activity debugging link', () => {
-  it('links the data health summary to the CAO Activity workflow when repository context is known', () => {
-    const sources = completeSources();
-    const summary = deriveDataHealthSources(sources, {
-      githubUrlBase: 'https://github.com',
-      dashboardRepository: 'acme/app'
-    })['data-health-summary'].rows[0];
-    expect(summary['external-link']).toEqual({
-      href: 'https://github.com/acme/app/actions/workflows/activity.yml',
-      label: 'CAO Activity'
-    });
-  });
-
-  it('omits the activity link when repository context is unavailable', () => {
-    const sources = completeSources();
-    const summary = deriveDataHealthSources(sources)['data-health-summary'].rows[0];
-    expect(summary['external-link']).toBeNull();
-  });
-
-  it('normalizes a trailing slash in the GitHub URL base', () => {
-    const summary = deriveDataHealthSources(completeSources(), {
-      githubUrlBase: 'https://github.com/',
-      dashboardRepository: 'acme/app'
-    })['data-health-summary'].rows[0];
-    expect(summary['external-link']).toEqual({
-      href: 'https://github.com/acme/app/actions/workflows/activity.yml',
-      label: 'CAO Activity'
-    });
   });
 });
