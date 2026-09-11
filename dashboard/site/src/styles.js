@@ -1769,7 +1769,6 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
 .report-footer-status { min-width: 0; display: flex; align-items: center; gap: 5px; }
 .report-footer-status time { color: var(--fg); font-weight: 600; white-space: nowrap; }
 .empty, .page-placeholder { margin: 0; padding: 28px 16px; color: var(--muted); text-align: center; }
-.source-loading-status { margin: 0 0 16px; color: var(--muted); font-size: .8125rem; }
 .source-refresh-error { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--attention); border-radius: 6px; background: var(--attention-muted); }
 .source-refresh-error-message { min-width: 0; }
 .source-refresh-error-message strong { display: block; color: var(--fg); }

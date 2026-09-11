@@ -213,12 +213,6 @@
         } else if (state === "cached") {
           dashboard.classList.add("dashboard-refreshing");
           dashboard.setAttribute("aria-busy", "true");
-
-          const status = document.createElement("p");
-          status.className = "source-loading-status";
-          status.setAttribute("role", "status");
-          status.textContent = "Showing cached data while loading the latest dashboard data…";
-          dashboard.querySelector(".report-body")?.prepend(status);
         } else if (state === "stale") {
           dashboard.classList.add("dashboard-stale");
           if (retryRefresh) {
