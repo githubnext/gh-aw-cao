@@ -1969,8 +1969,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     const expandedScrollBox = await scroll.boundingBox();
     assert(expandedScrollBox);
-    expect(expandedScrollBox.x).toBeLessThanOrEqual(1);
-    expect(expandedScrollBox.width).toBeGreaterThanOrEqual(998);
+    expect(expandedScrollBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width);
+    expect(expandedScrollBox.width).toBeCloseTo(initialScrollBox.width, 0);
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     await scroll.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
@@ -2011,8 +2011,92 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   });
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.top-nav')).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
+});
+
+test('full-view scrolling with a small overscroll range does not jitter the app chrome', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 1000, height: 900 });
+
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+
+      const metadata = {
+        'source-id': 'small-overscroll-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-01T03:00:00Z',
+        'retrieved-at': '2026-09-01T03:01:00Z',
+        'coverage-start': '2026-08-31T03:00:00Z',
+        'coverage-end': '2026-09-01T03:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        inventory: {
+          source: 'inventory',
+          rows: Array.from({ length: 20 }, (_, index) => ({
+            organization: 'githubnext',
+            repository: \`repository-\${index + 1}\`
+          })),
+          metadata
+        }
+      };
+      const dashboardDocument = {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'small-overscroll-layout',
+          title: 'Small Overscroll Layout',
+          pages: [{
+            id: 'inventory',
+            kind: 'custom',
+            title: 'Inventory',
+            views: [{
+              id: 'inventory-list',
+              title: 'Inventory list',
+              data: { source: 'inventory' },
+              mark: 'table',
+              controls: 'interactive',
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'organization', type: 'nominal' },
+                  { field: 'repository', type: 'nominal' }
+                ]
+              }
+            }]
+          }],
+          navigation: [{ label: 'Explore', pages: ['inventory'] }]
+        }
+      };
+
+      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+    </script>
+  `);
+
+  const view = page.locator('[data-view-layout="full-view"]');
+  const dashboardRoot = page.locator('.dashboard-root');
+  const scroll = view.locator('.table-scroll');
+  await expect(view).toHaveCount(1);
+
+  // Force a small scrollable range (below the minimum jitter-guard threshold) regardless of
+  // the exact table height rendered by the browser, so the test is deterministic.
+  await scroll.evaluate((element) => {
+    Object.defineProperty(element, 'scrollHeight', { value: element.clientHeight + 20, configurable: true });
+  });
+
+  for (const scrollTop of [10, 30, 10, 30, 0]) {
+    await scroll.evaluate((element, top) => {
+      element.scrollTop = top;
+      element.dispatchEvent(new Event('scroll'));
+    }, scrollTop);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(page.locator('.top-nav')).toBeVisible();
+    await expect(page.locator('.org-sidebar')).toBeVisible();
+  }
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {

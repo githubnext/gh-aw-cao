@@ -43,6 +43,9 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
   assert.match(source, /joinSession\(\{\s*canvases:/);
   assert.match(source, /createCanvas\(\{/);
   assert.match(source, /context\.session\?\.workingDirectory/);
+  assert.match(source, /oneOf:/);
+  assert.match(source, /minLength: 1/);
+  assert.match(source, /additionalProperties: false/);
 });
 
 test("repository parsing accepts common GitHub remotes", () => {
@@ -95,6 +98,30 @@ test("dashboard resolution supports explicit and detected targets", async () => 
   await assert.rejects(
     resolveDashboardUrl({ url: "http://cao.example.test" }),
     /must use HTTPS/,
+  );
+  await assert.rejects(
+    resolveDashboardUrl({
+      url: "https://cao.example.test",
+      repository: "octo-org/control-plane",
+    }),
+    /either an HTTPS dashboard URL or repository-derived options/,
+  );
+  const credentialUrl = new URL("https://cao.example.test");
+  credentialUrl.username = "user";
+  await assert.rejects(
+    resolveDashboardUrl({ url: credentialUrl.href }),
+    /must not include credentials/,
+  );
+  await assert.rejects(
+    resolveDashboardUrl({ unexpected: "value" }),
+    /Unsupported dashboard input field/,
+  );
+  await assert.rejects(
+    resolveDashboardUrl(
+      { repository: "not-a-repository" },
+      { environment: { GITHUB_REPOSITORY: "octo-org/control-plane" } },
+    ),
+    /OWNER\/REPOSITORY format/,
   );
   assert.throws(
     () => pagesUrlForRepository("octo-org/control-plane", "../private"),
