@@ -313,31 +313,37 @@ describe('renderTableRegion', () => {
       rows: Array.from({ length: 5 }, (_, index) => h(
         'tr',
         null,
-        h('td', null, String(index + 6))
+        h('td', null, String(index + 6)),
+        h('td', null, index === 0 ? 'failure' : 'success')
       )).filter((row) => row instanceof HTMLTableRowElement),
       continuationToken: undefined
     }));
     const rendered = renderTableRegion({
       tableClassName: 'custom-table',
       emptyMessage: 'No runs available.',
-      colSpan: 1,
-      headCells: ['Run'],
+      colSpan: 2,
+      headCells: ['Run', 'Status'],
       bodyRows: Array.from({ length: 5 }, (_, index) => h(
         'tr',
         null,
-        h('td', null, String(index + 1))
+        h('td', null, String(index + 1)),
+        h('td', null, 'success')
       )),
       filterLabel: 'Filter runs',
+      filterFields: [{ key: 'status', label: 'Status', columnIndex: 1, always: true }],
       lazyList: true,
       pageSize: 5,
       continuation: { token: 'next-page', totalRows: 10, load }
     });
 
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 5 of 10 results');
+    const status = /** @type {HTMLSelectElement} */ (rendered.querySelector('[data-table-facet="status"]'));
+    expect([...status.options].map((option) => option.value)).toEqual(['', 'success']);
     /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]')).click();
     await vi.waitFor(() => expect(rendered.querySelectorAll('tbody > tr')).toHaveLength(10));
 
     expect(load).toHaveBeenCalledWith('next-page');
+    expect([...status.options].map((option) => option.value)).toEqual(['', 'failure', 'success']);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 10 of 10 results');
     expect(rendered.querySelector('[data-table-more]')?.hasAttribute('hidden')).toBe(true);
   });
