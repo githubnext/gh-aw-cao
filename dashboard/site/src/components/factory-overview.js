@@ -241,13 +241,13 @@ function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
         return button;
       }))
   );
-  const selectedIndex = seedSelectedRhythmDay(days);
+  const selectedIndex = defaultSelectedDayIndex(days);
   if (selectedIndex >= 0) selectDay(selectedIndex);
   return section;
 }
 
 /** @param {{ label: string, date: string, count: number }[]} days */
-function seedSelectedRhythmDay(days) {
+function defaultSelectedDayIndex(days) {
   for (let index = days.length - 1; index >= 0; index -= 1) {
     if (days[index].count > 0) return index;
   }
