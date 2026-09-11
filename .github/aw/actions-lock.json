@@ -4,6 +4,16 @@
       "repo": "actions/setup-python",
       "version": "v7",
       "sha": "5fda3b95a4ea91299a34e894583c3862153e4b97"
+    },
+    "github/gh-aw-actions/setup-cli@v0.89.4": {
+      "repo": "github/gh-aw-actions/setup-cli",
+      "version": "v0.89.4",
+      "sha": "690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42"
+    },
+    "github/gh-aw-actions/setup@v0.89.4": {
+      "repo": "github/gh-aw-actions/setup",
+      "version": "v0.89.4",
+      "sha": "690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42"
     }
   },
   "containers": {
