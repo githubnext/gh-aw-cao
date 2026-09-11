@@ -125,14 +125,15 @@ Download the JSONL and SQLite projection currently published by the deployed
 CAO Pages site:
 
 ```bash
-npm run dashboard:data:download
+npm run dashboard:data -- download
 ```
 
 This writes `_activity/gh-aw-logs.jsonl` and
 `_activity/gh-aw-logs.sqlite`. Set `DASHBOARD_DATA_URL` or pass `--url URL`
 to use another deployment, and pass `--output DIRECTORY` to select another
 destination. Both files are downloaded unchanged; this command does not run
-ingestion locally.
+ingestion locally. `npm run dashboard:data:download` remains available as a
+shortcut.
 
 Query a canonical collection, optionally selecting an ID, filtering fields, or limiting output:
 
