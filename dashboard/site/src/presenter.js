@@ -14,7 +14,7 @@ import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
-import { renderFilterBar } from './components/filter-bar.js';
+import { enableHorizonOutsideClickDismissal, renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
@@ -242,6 +242,7 @@ export function renderDashboard(input) {
   enableSidebarToggle(root);
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
+  enableHorizonOutsideClickDismissal(root);
   enableResponsiveReportActions(root);
   enableDashboardPageNavigation(
     root,
