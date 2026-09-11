@@ -3955,6 +3955,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
 
 test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
