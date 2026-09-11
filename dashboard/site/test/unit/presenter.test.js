@@ -1351,6 +1351,7 @@ describe('presenter built-in and custom pages', () => {
     const menuLinks = [...rendered.querySelectorAll('.mobile-nav-menu-list [data-mobile-nav-page-id]')];
 
     expect(menu?.querySelector('summary')?.getAttribute('aria-label')).toBe('Select view');
+    expect(rendered.classList.contains('dashboard-mobile-overview-actions')).toBe(true);
     expect(menuLinks.every((link) => link.querySelector('.octicon') !== null)).toBe(true);
     expect(menuLinks.map((link) => link.textContent?.trim())).toEqual([
       'Overview',
@@ -1394,6 +1395,9 @@ describe('presenter built-in and custom pages', () => {
 
     expect(menu?.hasAttribute('open')).toBe(false);
     expect(costLink?.getAttribute('aria-current')).toBe('page');
+    expect(rendered.classList.contains('dashboard-mobile-overview-actions')).toBe(false);
+    /** @type {HTMLAnchorElement | undefined} */ (menuLinks.find((link) => link.textContent?.trim() === 'Overview'))?.click();
+    expect(rendered.classList.contains('dashboard-mobile-overview-actions')).toBe(true);
     window.history.replaceState(null, '', '/');
   });
 

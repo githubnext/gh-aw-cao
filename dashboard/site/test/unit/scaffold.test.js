@@ -122,6 +122,16 @@ describe('DLS-CONF-004 scaffold gates', () => {
     }
   });
 
+  it('keeps mobile overview navigation as large actions and hides it on other views', () => {
+    const styles = readFileSync(resolve('src/styles.js'), 'utf8');
+
+    expect(styles).toContain('.primary-nav { display: none; }');
+    expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav { width: 100%; display: flex; flex: none; flex-direction: row; gap: 8px; overflow-x: auto;');
+    expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav .nav-item { width: auto; min-height: 52px; flex: 0 0 auto; gap: 8px; padding: 0 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--canvas-subtle); }');
+    expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav .nav-item .nav-label { display: inline; }');
+    expect(styles).toContain('.dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }');
+  });
+
   it('stacks the expanded filter panel above the page header and hides the horizon tooltip', () => {
     const styles = readFileSync(resolve('src/styles.js'), 'utf8');
     /** @param {string} rule */
