@@ -58,6 +58,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data/continuation.js
   - source: site/src/data/ingest/coordinator.js
     destination: .github/aw/dashboard/site/src/data/ingest/coordinator.js
+  - source: site/src/data/ingest/expressions/gh-aw-logs-v2.json
+    destination: .github/aw/dashboard/site/src/data/ingest/expressions/gh-aw-logs-v2.json
   - source: site/src/data/ingest/errors.js
     destination: .github/aw/dashboard/site/src/data/ingest/errors.js
   - source: site/src/data/model/ids.js
