@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderDataView } from '../../src/components/data-view.js';
 import { processDataRequest } from '../../src/data-worker.js';
+import { HORIZON_FILTER_STORAGE_KEY } from '../../src/components/filter-bar.js';
 
 const metadata = {
   'source-id': 'fixture',
@@ -13,6 +14,10 @@ const metadata = {
 };
 
 describe('data view renderer', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it('renders a unit-bearing metric selected by the JSON mark', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',
@@ -684,5 +689,89 @@ describe('data view renderer', () => {
     expect(externalOutput?.querySelectorAll('a')).toHaveLength(1);
     expect(externalOutput?.querySelector('a')?.getAttribute('href')).toBe('https://example.com/evidence/42');
     expect(externalOutput?.querySelector('a')?.getAttribute('title')).toBe(evidence);
+  });
+
+  it('renders the plain configured empty message when no time-window filter is active', () => {
+    const rendered = renderDataView('table', {
+      pageId: 'runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'empty-message': 'No runs observed.',
+        encoding: { columns: [{ field: 'run', type: 'nominal' }] }
+      },
+      sourceName: 'runs-table',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const emptyCell = rendered?.querySelector('tbody td');
+    expect(emptyCell?.textContent).toBe('No runs observed.');
+    expect(emptyCell?.querySelector('button')).toBeNull();
+  });
+
+  it('hints at an active time-window filter and offers an accessible way to clear it', () => {
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range: '24h' }));
+
+    const rendered = renderDataView('table', {
+      pageId: 'runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'empty-message': 'No runs observed.',
+        encoding: { columns: [{ field: 'run', type: 'nominal' }] }
+      },
+      sourceName: 'runs-table',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const emptyCell = rendered?.querySelector('tbody td');
+    expect(emptyCell?.textContent).toBe('No runs observed. 0 rows match the current time window filter.Clear time filter');
+    expect(emptyCell?.getAttribute('aria-live')).toBe('polite');
+    const button = emptyCell?.querySelector('button.table-empty-action');
+    expect(button?.textContent).toBe('Clear time filter');
+  });
+
+  it('does not add the time-filter hint when the table genuinely has no data', () => {
+    window.localStorage.setItem(HORIZON_FILTER_STORAGE_KEY, JSON.stringify({ range: 'all' }));
+
+    const rendered = renderDataView('table', {
+      pageId: 'runs',
+      title: 'Runs',
+      view: {
+        mark: 'table',
+        controls: 'interactive',
+        'empty-message': 'No runs observed.',
+        encoding: { columns: [{ field: 'run', type: 'nominal' }] }
+      },
+      sourceName: 'runs-table',
+      rows: [],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    const emptyCell = rendered?.querySelector('tbody td');
+    expect(emptyCell?.textContent).toBe('No runs observed.');
+    expect(emptyCell?.querySelector('button')).toBeNull();
   });
 });

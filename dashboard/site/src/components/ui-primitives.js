@@ -305,13 +305,27 @@ export function renderListOrEmptyMessage(listClassName, items, renderItem, empty
 /**
  * Renders the shared "single `<td>` spanning the full table width" empty-body
  * row used by table regions and package summary tables when there is no data
- * to display.
+ * to display. An optional `action` renders an inline button after `message`
+ * (for example, a "Clear time filter" recovery action) without changing the
+ * plain-message shape existing callers rely on.
  * @param {number} colSpan
  * @param {string} message
+ * @param {{ label: string, onActivate: (event: MouseEvent) => void }} [action]
  * @returns {HTMLElement}
  */
-export function renderEmptyTableRow(colSpan, message) {
-  return h('tr', null, h('td', { colSpan }, message));
+export function renderEmptyTableRow(colSpan, message, action) {
+  return h(
+    'tr',
+    null,
+    h(
+      'td',
+      { colSpan, ...(action ? { 'aria-live': 'polite' } : {}) },
+      message,
+      action
+        ? h('button', { type: 'button', className: 'table-empty-action', onclick: action.onActivate }, action.label)
+        : null
+    )
+  );
 }
 
 /**

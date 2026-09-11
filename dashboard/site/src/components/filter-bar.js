@@ -9,6 +9,7 @@ const FILTER_DEBOUNCE_MS = 500;
 const TIME_RANGE_OPTIONS = ['1h', '6h', '24h', '3d', '1w', '2w', '4w', '30d'];
 const MODE_OPTIONS = ['review', 'live', 'unknown'];
 const ALL_RECORDED = 'all';
+const TIME_WINDOW_SELECT_LABEL = 'Time window';
 export const HORIZON_FILTER_STORAGE_KEY = 'central-agentic-ops.dashboard.horizon-filter-settings';
 
 /**
@@ -148,7 +149,7 @@ function renderHorizonControl(defaultRange, referenceEnd, onChange) {
 
   const select = /** @type {HTMLSelectElement} */ (h(
     'select',
-    { 'aria-label': 'Time window' },
+    { 'aria-label': TIME_WINDOW_SELECT_LABEL },
     ...TIME_RANGE_OPTIONS.map((value) => h('option', { value }, `Last ${formatDashboardHorizon(value)}`)),
     h('option', { value: ALL_RECORDED }, 'All time'),
     h('option', { value: 'custom' }, 'Custom range')
@@ -277,6 +278,39 @@ function readHorizonSettings() {
   } catch {
     return {};
   }
+}
+
+/**
+ * Reports whether the dashboard's persisted (or otherwise effective)
+ * time-window range currently narrows results away from "All time". A table
+ * view with zero rows uses this to distinguish "no data was ever recorded"
+ * from "a time window filter is hiding recorded rows" and offer an
+ * accessible {@link clearTimeWindowFilter} action instead of leaving
+ * operators to guess why an otherwise populated source renders empty.
+ * @param {string} [defaultRange]
+ * @returns {boolean}
+ */
+export function isTimeWindowFilterActive(defaultRange = ALL_RECORDED) {
+  const persisted = readHorizonSettings();
+  const range = typeof persisted.range === 'string' && persisted.range.length > 0 ? persisted.range : defaultRange;
+  return (range === 'All recorded' ? ALL_RECORDED : range) !== ALL_RECORDED;
+}
+
+/**
+ * Resets the rendered time-window control (scoped to `root`, defaulting to
+ * the whole document) to "All time" and dispatches the same `change` event
+ * the control's own select emits, so the existing persistence and
+ * re-render wiring in {@link renderHorizonControl} runs unchanged. A no-op
+ * when no time-window control is present in `root`, or it is already
+ * cleared. Callers that live inside one dashboard page should scope `root`
+ * to that page's container so this only clears the visible control.
+ * @param {ParentNode} [root]
+ */
+export function clearTimeWindowFilter(root = globalThis.document) {
+  const select = root?.querySelector?.(`[aria-label="${TIME_WINDOW_SELECT_LABEL}"]`);
+  if (!(select instanceof HTMLSelectElement) || select.value === ALL_RECORDED) return;
+  select.value = ALL_RECORDED;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /** @param {string} range @param {string | undefined} referenceEnd @returns {TimeWindow} */
