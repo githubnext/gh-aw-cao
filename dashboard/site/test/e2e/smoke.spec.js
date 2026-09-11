@@ -1530,6 +1530,8 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
 
   await page.setViewportSize({ width: 393, height: 852 });
   await page.locator('.mobile-nav-menu > summary').click();
+  await expect(details).toBeHidden();
+  await trigger.click();
   await expect(details).toBeVisible();
   await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
