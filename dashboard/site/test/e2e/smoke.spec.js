@@ -409,6 +409,86 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
+test('Runs hints at an active time-window filter when it empties an otherwise populated table, and offers an accessible way to clear it', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      // Simulate an operator who narrowed the global horizon control to a
+      // window that predates every recorded run, the same way "Last 1 hour"
+      // (or a stale persisted setting) would hide 700+ real runs.
+      window.localStorage.setItem(
+        'central-agentic-ops.dashboard.horizon-filter-settings',
+        JSON.stringify({ range: 'custom', start: '2020-01-01T00:00:00.000Z', end: '2020-01-02T00:00:00.000Z' })
+      );
+      const metadata = {
+        'source-id': 'runs-empty-time-filter-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-10T12:00:00Z',
+        'retrieved-at': '2026-09-10T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'runs-table': {
+          source: 'runs-table',
+          metadata,
+          rows: [
+            {
+              run: '2',
+              'run-status': 'completed',
+              'run-conclusion': 'failure',
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/aw-doctor.md',
+              'rollout-mode': 'review',
+              engine: 'copilot',
+              'engine-version': '1.2.3',
+              'requested-model': 'gpt-5',
+              'resolved-model': 'gpt-5',
+              'started-at': '2026-09-10T12:00:00Z',
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
+            }
+          ]
+        }
+      };
+      window.location.hash = '#page-runs';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const runsPage = page.locator('[data-page-id="runs"]');
+  const view = runsPage.locator('[data-view-layout="full-view"]');
+  const rows = view.locator('.custom-table tbody tr');
+  const emptyCell = rows.locator('td');
+  const clearButton = view.getByRole('button', { name: 'Clear time filter' });
+  // The shared time-window select lives once in the top-nav filter bar
+  // (relocated there for the active page), not nested inside the page section.
+  const horizonFilter = page.getByLabel('Dashboard filters');
+  const select = horizonFilter.locator('[aria-label="Time window"]');
+
+  // The table renders exactly one <tr>: the empty-state placeholder row, not a data row.
+  await expect(rows).toHaveCount(1);
+  await expect(rows.locator('a')).toHaveCount(0);
+  await expect(emptyCell).toContainText('0 rows match the current time window filter.');
+  await expect(emptyCell).toHaveAttribute('aria-live', 'polite');
+  await expect(clearButton).toBeVisible();
+  await expect(select).toHaveValue('custom');
+
+  await clearButton.click();
+
+  // After clearing, the horizon resets to "all" and the real run row appears.
+  await expect(select).toHaveValue('all');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('2');
+  await expect(rows.locator('a').first()).toBeVisible();
+  await expect(view.getByRole('button', { name: 'Clear time filter' })).toHaveCount(0);
+});
+
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });

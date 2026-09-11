@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   HORIZON_FILTER_STORAGE_KEY,
+  clearTimeWindowFilter,
+  isTimeWindowFilterActive,
   relativeTimeWindow,
   renderFilterBar
 } from '../../src/components/filter-bar.js';
@@ -128,6 +130,57 @@ describe('time-window filter bar', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(filterBar.classList.contains('filter-bar-expanded')).toBe(false);
     expect(document.activeElement).toBe(toggle);
+  });
+
+  it('reports no active time filter by default', () => {
+    expect(isTimeWindowFilterActive()).toBe(false);
+  });
+
+  it('reports an active time filter once a narrower range is persisted', async () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, { defaultRange: '24h' });
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    select.value = '6h';
+    select.dispatchEvent(new Event('change'));
+
+    expect(isTimeWindowFilterActive('24h')).toBe(true);
+  });
+
+  it('is a no-op when clearing a time filter that is already "All time"', async () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange);
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    clearTimeWindowFilter(document);
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('clears an active time filter and re-applies the change through the rendered control', async () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange, {
+      defaultRange: '24h',
+      referenceEnd: '2026-09-04T12:00:00Z'
+    });
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    const select = /** @type {HTMLSelectElement} */ (filterBar.querySelector('[aria-label="Time window"]'));
+    select.value = '6h';
+    select.dispatchEvent(new Event('change'));
+    expect(isTimeWindowFilterActive('24h')).toBe(true);
+    onChange.mockClear();
+
+    clearTimeWindowFilter(document);
+
+    expect(select.value).toBe('all');
+    expect(onChange).toHaveBeenLastCalledWith(new Map([['mode', ['review', 'live', 'unknown']]]), undefined);
+    expect(isTimeWindowFilterActive('24h')).toBe(false);
+    expect(JSON.parse(window.localStorage.getItem(HORIZON_FILTER_STORAGE_KEY) ?? '{}')).toMatchObject({ range: 'all' });
   });
 
   it('shares persisted horizon and mode settings across filter bars', async () => {

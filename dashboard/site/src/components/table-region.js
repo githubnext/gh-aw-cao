@@ -22,6 +22,7 @@ const DEFAULT_PAGE_SIZE = 25;
  *   tableClassName: string,
  *   regionClassName?: string,
  *   emptyMessage: string,
+ *   emptyAction?: { label: string, onActivate: (event: MouseEvent) => void },
  *   colSpan: number,
  *   headCells: string[],
  *   unsortableColumns?: number[],
@@ -46,6 +47,7 @@ export function renderTableRegion(options) {
     tableClassName,
     regionClassName,
     emptyMessage,
+    emptyAction,
     colSpan,
     headCells,
     unsortableColumns = [],
@@ -139,7 +141,7 @@ export function renderTableRegion(options) {
           null,
           hasRows
             ? bodyRows
-            : renderEmptyTableRow(colSpan, emptyMessage)
+            : renderEmptyTableRow(colSpan, emptyMessage, emptyAction)
         )
       )
     ),

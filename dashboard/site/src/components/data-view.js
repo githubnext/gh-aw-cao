@@ -13,6 +13,7 @@ import { createEntityAwareCellRenderer } from './linked-text.js';
 import { renderTableRegion } from './table-region.js';
 import { renderPageSection, renderViewSectionChrome } from './view-chrome.js';
 import { renderCloseButton, isPlainObject, isSafeHttpsUrl, createCopyControl, createModalDialog } from './ui-primitives.js';
+import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js';
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 
@@ -216,13 +217,36 @@ function renderTableView(context) {
   const continuation = context.continuation;
 
   const interactive = view.controls !== 'static';
+  const staticEmptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.';
+  // A table can render zero rows either because the source truly has no data, or
+  // because the dashboard-wide time-window filter is narrowing an otherwise
+  // populated source. Only the latter case gets an actionable hint: operators
+  // should never be left guessing why a source with recorded data renders empty.
+  const emptyDueToTimeFilter = renderedRowCount === 0 && isTimeWindowFilterActive();
+  const emptyMessage = emptyDueToTimeFilter
+    ? `${staticEmptyMessage} 0 rows match the current time window filter.`
+    : staticEmptyMessage;
+  const emptyAction = emptyDueToTimeFilter
+    ? {
+        label: 'Clear time filter',
+        onActivate: (/** @type {MouseEvent} */ event) => {
+          // The shared time-window select can live outside this view's own
+          // page section (the presenter relocates the active page's filter
+          // bar into the shared toolbar), so resolve via the owner document
+          // rather than assuming a `.dashboard-page` ancestor still contains it.
+          const ownerDocument = event.target instanceof Element ? event.target.ownerDocument : undefined;
+          clearTimeWindowFilter(ownerDocument ?? undefined);
+        }
+      }
+    : undefined;
   return renderPageSection(pageId, title, [
     ...renderViewSectionChrome(metadata, contextDetails),
     renderTableRegion({
       tableClassName: 'custom-table',
       tableRole: tree ? 'treegrid' : undefined,
       regionClassName: interactive ? undefined : 'table-region-static',
-      emptyMessage: typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No rows available.',
+      emptyMessage,
+      emptyAction,
       colSpan: Math.max(columns.length + actions.length, 1),
       headCells: [...actions.map(() => 'Action'), ...columns.map(fieldTitle)],
       unsortableColumns: actions.map((_, index) => index),
