@@ -173,6 +173,19 @@ describe('canonical source ingestion and queries', () => {
           'gpt-5.4': { aic: 2 }
         }
       },
+      audit: {
+        mcp_tool_usage: {
+          tool_calls: [{
+            tool_call_id: 'call-7',
+            timestamp: '2026-01-01T00:00:30Z',
+            server_name: 'github',
+            tool_name: 'get_file',
+            input_size: 42,
+            output_size: 128,
+            status: 'success'
+          }]
+        }
+      },
       url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303', logs_path: 'logs', event: 'push', branch: 'main'
     } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {
       host: 'github.com',
@@ -217,6 +230,23 @@ describe('canonical source ingestion and queries', () => {
         durationSeconds: 50
       })
     ]);
+    const [session] = await createCanonicalQueries(indexedDB).sessions.forRun('github:run:303:attempt:1');
+    await expect(createCanonicalQueries(indexedDB).events.forSession(String(session.id))).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'mcp',
+          type: 'tool.call',
+          correlationId: 'call-7',
+          summary: 'github/get_file'
+        }),
+        expect.objectContaining({
+          source: 'mcp',
+          type: 'tool.result',
+          correlationId: 'call-7',
+          status: 'success'
+        })
+      ])
+    );
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({ kind: 'ingest-jsonl', records: 3 })
     ]);

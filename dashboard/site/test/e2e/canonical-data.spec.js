@@ -235,7 +235,19 @@ test.beforeEach(async ({ context, page }) => {
           conclusion: 'success',
           created_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:05:00Z',
+          url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/12345',
           audit: {
+            mcp_tool_usage: {
+              tool_calls: [{
+                tool_call_id: 'call-12345',
+                timestamp: '2026-09-09T04:02:00Z',
+                server_name: 'github',
+                tool_name: 'search_issues',
+                input_size: 42,
+                output_size: 128,
+                status: 'success'
+              }]
+            },
             firewall_analysis: {
               requests_by_domain: {
                 'api.github.com:443': { allowed: 4, blocked: 2 },
@@ -549,7 +561,7 @@ test('data worker returns declarative MCP activity on initial and navigated requ
       queries: dashboard.dashboard.queries
     };
     const initial = await loadCanonicalDashboardSources(
-      `${location.origin}/sources.json`,
+      `${location.origin}/gh-aw-logs.jsonl`,
       ['mcp-tool-activity'],
       context
     );
