@@ -32,6 +32,8 @@ safe-outputs:
     client-id: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID }}
     private-key: ${{ secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY }}
     ignore-if-missing: true
+  messages:
+    footer-install: "<!-- -->"
 
 env:
   CAO_PACKAGE: ${{ github.aw.import-inputs.package }}
