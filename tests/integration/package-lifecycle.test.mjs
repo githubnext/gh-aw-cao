@@ -31,6 +31,7 @@ const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software
 const activityExpectedFiles = [
   ".github/aw/activity/actions-context.mjs",
   ".github/aw/activity/actions-log.mjs",
+  ".github/aw/activity/cao.mjs",
   ".github/aw/activity/control-settings.mjs",
   ".github/aw/activity/gh-aw-logs.mjs",
   ".github/aw/activity/inventory.mjs",

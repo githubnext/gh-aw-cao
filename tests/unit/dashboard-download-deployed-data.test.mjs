@@ -14,6 +14,7 @@ const packageJson = JSON.parse(
 const cao = path.resolve(packageJson.bin.cao);
 
 test("exposes the dashboard data CLI as cao", async () => {
+  assert.equal(packageJson.bin.cao, "activity/cao.mjs");
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-"));
   const installedCommand = path.join(root, "cao");
   try {

@@ -7,13 +7,13 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
-import { adaptCachedGhAwJsonl } from '../src/data/adapters/gh-aw-logs.js';
-import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../src/data/ingest/coordinator.js';
-import { normalize } from '../src/data/normalize/index.js';
-import { createCanonicalQueries } from '../src/data/queries/index.js';
-import { readCollection, readRecord, readTransactions } from '../src/data/storage/indexeddb.js';
-import { doctorSqliteDatabase } from '../src/data/storage/sqlite-doctor.js';
-import { installSqliteIndexedDB } from '../src/data/storage/sqlite-indexeddb.js';
+import { adaptCachedGhAwJsonl } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../dashboard/site/src/data/ingest/coordinator.js';
+import { normalize } from '../dashboard/site/src/data/normalize/index.js';
+import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
+import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
+import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
+import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
 
 const ENTITY_COLLECTIONS = [
   'repositories',

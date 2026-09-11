@@ -3007,6 +3007,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
 
 test("Dashboard package supports embedded and explicit standalone deployment", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
+  const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
@@ -3111,7 +3112,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 2);
   assert.doesNotMatch(activityWorkflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
-  assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
+  assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);
   assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
   assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
@@ -3168,6 +3169,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     ".github/workflows/cao-maintenance.yml",
   ]);
   assert.deepEqual(activityManifest.resources, [
+    { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },

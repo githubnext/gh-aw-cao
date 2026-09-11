@@ -106,13 +106,13 @@ jobs:
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
         run: |
-          echo "Resolving dashboard SQLite doctor"
-          if [[ -f dashboard/site/scripts/ingest-gh-aw-logs.mjs ]]; then
-            doctor_script=dashboard/site/scripts/ingest-gh-aw-logs.mjs
-          elif [[ -f .github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs ]]; then
-            doctor_script=.github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs
+          echo "Resolving activity SQLite doctor"
+          if [[ -f activity/cao.mjs ]]; then
+            doctor_script=activity/cao.mjs
+          elif [[ -f .github/aw/activity/cao.mjs ]]; then
+            doctor_script=.github/aw/activity/cao.mjs
           else
-            echo "Dashboard SQLite doctor is unavailable" >&2
+            echo "Activity SQLite doctor is unavailable" >&2
             exit 1
           fi
           echo "Assessing activity database health"
