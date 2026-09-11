@@ -141,10 +141,19 @@ describe('canonical source ingestion and queries', () => {
   });
 
   it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
-    const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+    const content = `${JSON.stringify({ schema_version: 2, kind: 'workflow_runs', request: {
+      host: 'github.com', repository: 'githubnext/gh-aw-cao', args: ['run', 'list']
+    }, payload: [{
+      databaseId: 303, attempt: 1, number: 7, workflowName: 'Dashboard',
+      displayTitle: 'Build dashboard', event: 'push', status: 'completed', conclusion: 'success',
+      headBranch: 'main', headSha: 'abc123', createdAt: '2026-01-01T00:00:00Z',
+      startedAt: '2026-01-01T00:00:01Z', updatedAt: '2026-01-01T00:01:00Z',
+      url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303'
+    }] })}\n${JSON.stringify({ schema_version: 2, kind: 'run', run: {
       run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'githubnext/gh-aw-cao',
       workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
       status: 'completed', classification: 'success', created_at: '2026-01-01T00:00:00Z',
+      started_at: '2026-01-01T00:00:01Z', updated_at: '2026-01-01T00:01:00Z',
       agent: 'copilot', engine: 'GitHub Copilot CLI', agent_version: '1.2.3',
       gh_aw_version: '0.89.1',
       token_usage_summary: {
@@ -155,9 +164,28 @@ describe('canonical source ingestion and queries', () => {
         }
       },
       url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303', logs_path: 'logs', event: 'push', branch: 'main'
-    } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {} })}\n`;
-    await expect(ingestCachedGhAwJsonl(indexedDB, content, { now: Date.parse('2026-01-01T00:00:00Z') }))
-      .resolves.toMatchObject({ updated: true, records: 1 });
+    } })}\n${JSON.stringify({ schema_version: 2, kind: 'github_api_rate_limit', rate_limit: {
+      host: 'github.com',
+      start: { limit: 15000, remaining: 15000, reset: 1, used: 0 },
+      end: { limit: 15000, remaining: 14990, reset: 2, used: 10 }
+    } })}\n`;
+    const context = {
+      observedAt: '2026-01-01T00:01:00Z',
+      repository: { githubId: '101', owner: 'githubnext', name: 'gh-aw-cao' },
+      workflow: { githubId: '202', name: 'Dashboard', path: '.github/workflows/dashboard.md' },
+      run: { githubRunId: '303', attempt: 1, status: 'completed' }
+    };
+    await expect(ingestCachedGhAwJsonl(indexedDB, content, {
+      now: Date.parse('2026-01-01T00:00:00Z'),
+      context
+    })).resolves.toMatchObject({
+      updated: true,
+      records: 3,
+      rawRuns: 1,
+      agenticRuns: 1,
+      sessions: 2,
+      mappedRateLimits: 1
+    });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([
       expect.objectContaining({
         id: 'github:run:303:attempt:1',
@@ -170,7 +198,7 @@ describe('canonical source ingestion and queries', () => {
       })
     ]);
     await expect(readTransactions(indexedDB)).resolves.toEqual([
-      expect.objectContaining({ kind: 'ingest-jsonl', records: 1 })
+      expect.objectContaining({ kind: 'ingest-jsonl', records: 3 })
     ]);
     await ingestCachedGhAwJsonl(indexedDB, '', { now: Date.parse('2026-02-01T00:00:00Z') });
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);

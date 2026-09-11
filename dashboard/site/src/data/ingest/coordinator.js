@@ -96,12 +96,12 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number }} [options]
+ * @param {{ storage?: StorageManager, now?: number, context?: unknown }} [options]
  */
 export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   try {
-    const adapted = adaptCachedGhAwJsonl(content);
+    const adapted = adaptCachedGhAwJsonl(content, { context: options.context });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
     await recordTransaction(indexedDB, {
       id: `ingest-jsonl:${createdAt}:${adapted.records}`,
@@ -110,7 +110,17 @@ export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
       records: adapted.records,
       committedRecords: result.committedRecords
     });
-    return { ...result, records: adapted.records };
+    return {
+      ...result,
+      records: adapted.records,
+      rawPayloadRecords: adapted.rawPayloadRecords,
+      rawRuns: adapted.rawRuns,
+      agenticRuns: adapted.agenticRuns,
+      sessions: adapted.sessions,
+      events: adapted.events,
+      rateLimits: adapted.rateLimits,
+      mappedRateLimits: adapted.mappedRateLimits
+    };
   } catch (error) {
     await recordTransaction(indexedDB, {
       id: `ingest-jsonl-failed:${createdAt}`,
