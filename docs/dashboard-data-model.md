@@ -8,6 +8,42 @@ The dashboard converts GitHub, gh-aw, activity, log, SQL, and published JSON obs
 > [!NOTE]
 > IndexedDB persists normalized Repository, Workflow, Run, Job, Session, and Event records, plus an ingestion transaction audit trail. The dedicated data worker owns source download, hydration, canonical ingestion, and queries. It retains noncanonical logical sources in memory for the current page session and sends the main thread only bounded page-scoped projections; source-shaped rows are never duplicated into IndexedDB or sent as one whole-dashboard object graph.
 
+## Data flow
+
+Data is collected once and converted for two different users. SQLite supports
+agents and command-line tools. IndexedDB supports the browser dashboard.
+
+```mermaid
+flowchart LR
+  logs["gh aw logs"] --> source["JSONL<br/>source"]
+  source --> sqlite["SQLite"]
+  sqlite --> agents["Agents"]
+  sqlite --> cli["CLI"]
+  source --> indexeddb["IndexedDB<br/>browser"]
+  indexeddb --> dashboard["Dashboard"]
+```
+
+SQLite and IndexedDB are rebuildable copies. Neither is the source for the
+other. Both use the same conversion rules.
+
+## Collection sequence
+
+```mermaid
+sequenceDiagram
+  participant Activity
+  participant JSONL as JSONL source
+  participant SQLite
+  participant Browser
+  participant IDB as IndexedDB
+  participant Dashboard
+
+  Activity->>JSONL: Collect logs
+  Activity->>SQLite: Build agent copy
+  Browser->>JSONL: Download logs
+  Browser->>IDB: Build browser copy
+  Dashboard->>IDB: Query data
+```
+
 ## Entity map
 
 ```mermaid
