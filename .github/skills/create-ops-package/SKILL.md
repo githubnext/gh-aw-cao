@@ -149,10 +149,12 @@ Use a dedicated `target/` checkout when the worker must inspect a target reposit
 
 Follow the GitHub/gh-aw report conventions for every human-facing durable worker output:
 
-1. Start with the h3 heading `### Summary`, followed by a concise executive summary that states what happened, the decision-relevant result, critical findings, and key metrics. Use `###` for every main section and `####` for subsections; never use `#` or `##`.
-2. Immediately follow the summary with one clear `**Action:**` sentence naming who should do what next and the acceptance check. Use `**Action:** None.` when no action remains.
-3. Keep only the summary, action, and critical findings visible. Put non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details><summary><b>...</b></summary>...</details>` sections.
-4. Use GitHub alerts for callouts: `> [!NOTE]` for neutral status, `> [!WARNING]` for warnings, and `> [!CAUTION]` for high-risk or blocking findings. Do not use emoji severity markers.
+1. Make the report delightful to read, precise, terse, and easy to scan. Use plain language, short sentences, compact bullets, and descriptive labels; remove repetition, filler, boilerplate, and tables of contents.
+2. Keep the entire visible report to a single screen at normal GitHub desktop viewing. Show only the decision essentials; move everything else into progressive disclosure.
+3. Start with the h3 heading `### Summary`, followed by a concise executive summary that states what happened, the decision-relevant result, critical findings, and key metrics. Use `###` for every main section and `####` for subsections; never use `#` or `##`.
+4. Immediately follow the summary with one clear `**Action:**` sentence naming who should do what next and the acceptance check. Use `**Action:** None.` when no action remains.
+5. Keep only the summary, action, and critical findings visible. Put non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details><summary><b>...</b></summary>...</details>` sections.
+6. Use GitHub alerts for callouts: `> [!NOTE]` for neutral status, `> [!WARNING]` for warnings, and `> [!CAUTION]` for high-risk or blocking findings. Do not use emoji severity markers.
 
 ### Worker Value
 
@@ -207,7 +209,7 @@ Before finishing:
 12. Run `gh aw compile <workflow.md>` for every new orchestrator and worker. Then run the repository's narrowest relevant tests or validation command if one exists.
 13. Review the generated diff for accidental lockfile churn, secret exposure, unsafe live defaults, fabricated value evidence, and deviations from the nearest package that are not justified by the strategy.
 14. Confirm every orchestrator and worker uses the same optional `.github/cao/<package-slug>.md` runtime import and that no package-owned steering file was added.
-15. Confirm every worker preserves the report contract: the output starts with `### Summary` and a concise executive summary of what happened; one clear `**Action:**` follows it; critical information stays visible; non-essential background and supporting detail use `<details><summary><b>...</b></summary>...</details>` sections; and callouts use `> [!NOTE]`, `> [!WARNING]`, or `> [!CAUTION]` instead of emoji severity markers.
+15. Confirm every worker preserves the report contract: the visible report is delightful, precise, terse, and compact enough for a single screen; it starts with `### Summary` and a concise executive summary of what happened; one clear `**Action:**` follows it; critical information stays visible; non-essential background and supporting detail use `<details><summary><b>...</b></summary>...</details>` sections; and callouts use `> [!NOTE]`, `> [!WARNING]`, or `> [!CAUTION]` instead of emoji severity markers.
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
 17. Confirm orchestrator concurrency is package-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items.
 

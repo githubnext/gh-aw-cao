@@ -787,6 +787,10 @@ test("workers inherit human-first progressive report disclosure", () => {
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+role: worker$/m.test(source));
 
+  assert.match(packageSkill, /Make the report delightful to read, precise, terse, and easy to scan/);
+  assert.match(packageSkill, /Use plain language, short sentences, compact bullets, and descriptive labels/);
+  assert.match(packageSkill, /Keep the entire visible report to a single screen at normal GitHub desktop viewing/);
+  assert.match(packageSkill, /Show only the decision essentials; move everything else into progressive disclosure/);
   assert.match(packageSkill, /Start with the h3 heading `### Summary`/);
   assert.match(packageSkill, /Use `###` for every main section and `####` for subsections; never use `#` or `##`/);
   assert.match(packageSkill, /states what happened, the decision-relevant result, critical findings, and key metrics/);
