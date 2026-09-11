@@ -787,6 +787,8 @@ test("workers inherit human-first progressive report disclosure", () => {
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+role: worker$/m.test(source));
 
+  assert.match(packageSkill, /when `safe-outputs\.create-issue` or `safe-outputs\.create-pull-request` is enabled, require every created issue or pull request body to follow the complete Worker Report Formatting contract/);
+  assert.match(packageSkill, /mandatory for every worker that creates issues or pull requests and applies to the complete issue or pull request body/);
   assert.match(packageSkill, /Make the report delightful to read, precise, terse, and easy to scan/);
   assert.match(packageSkill, /Use plain language, short sentences, compact bullets, and descriptive labels/);
   assert.match(packageSkill, /Keep the entire visible report to a single screen at normal GitHub desktop viewing/);
