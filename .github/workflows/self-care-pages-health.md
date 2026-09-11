@@ -130,19 +130,19 @@ safe-outputs:
 
 pre-agent-steps:
   - name: Install dashboard dependencies
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: timeout 10m npm ci --prefix dashboard/site --ignore-scripts
   - name: Cache Chromium
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
     with:
       path: ~/.cache/ms-playwright
       key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('dashboard/site/package-lock.json') }}-chromium
   - name: Install Chromium
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: timeout 10m npm exec --prefix dashboard/site -- playwright install --with-deps chromium
   - name: Collect deployed Pages health evidence
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       PAGES_HEALTH_URL: https://githubnext.github.io/gh-aw-cao/cao/
       PAGES_HEALTH_OUTPUT_DIR: ${{ github.workspace }}/self-care-pages-health-evidence

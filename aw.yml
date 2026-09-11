@@ -1,6 +1,6 @@
 name: Central Agentic Ops
 description: Central agentic workflow control plane for reusable packages at the organization level
-min-version: v0.89.4
+min-version: v0.89.5
 experimental: true
 includes:
   - .github/workflows/aw.json
