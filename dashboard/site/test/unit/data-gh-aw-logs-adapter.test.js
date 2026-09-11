@@ -91,11 +91,95 @@ describe('gh-aw logs adapter', () => {
           started_at: '2026-09-09T04:00:00Z',
           updated_at: '2026-09-09T04:01:00Z',
           token_usage_summary: { total_aic: 2.5 },
+          job_details: [{
+            id: 404,
+            name: 'agent',
+            status: 'completed',
+            conclusion: 'success',
+            started_at: '2026-09-09T04:00:00Z',
+            completed_at: '2026-09-09T04:01:00Z'
+          }],
+          mcp_tool_usage: {
+            tool_calls: [{
+              tool_call_id: 'call-7',
+              timestamp: '2026-09-09T04:00:15Z',
+              server_name: 'github',
+              tool_name: 'get_file',
+              input_size: 42,
+              output_size: 128,
+              status: 'success'
+            }]
+          },
           agentic_assessments: [{
             kind: 'deterministic',
             severity: 'low',
             summary: 'Stable result'
           }]
+        }
+      },
+      {
+        schema_version: 2,
+        kind: 'run',
+        run: {
+          run_id: 303,
+          run_attempt: '1',
+          organization: 'githubnext',
+          repository: 'githubnext/gh-aw-cao',
+          workflow_name: 'Dashboard',
+          workflow_path: '.github/workflows/dashboard.md',
+          display_title: 'Build dashboard',
+          event: 'workflow_dispatch',
+          status: 'completed',
+          conclusion: 'success',
+          classification: 'success',
+          created_at: '2026-09-09T03:59:00Z',
+          started_at: '2026-09-09T04:00:00Z',
+          updated_at: '2026-09-09T04:01:00Z',
+          token_usage_summary: { total_aic: 2.5 },
+          job_details: [{
+            id: 404,
+            name: 'agent',
+            status: 'completed',
+            conclusion: 'success',
+            started_at: '2026-09-09T04:00:00Z',
+            completed_at: '2026-09-09T04:01:00Z'
+          }],
+          mcp_tool_usage: {
+            tool_calls: [{
+              tool_call_id: 'call-7',
+              timestamp: '2026-09-09T04:00:15Z',
+              server_name: 'github',
+              tool_name: 'get_file',
+              input_size: 42,
+              output_size: 128,
+              status: 'success'
+            }]
+          },
+          audit_path: '/tmp/run-303/audit.json',
+          audit: {
+            key_findings: [{ title: 'Slow response', severity: 'medium' }],
+            missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
+            skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
+            created_items: [{
+              type: 'create_issue',
+              url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
+              number: 42,
+              repo: 'githubnext/gh-aw-cao',
+              timestamp: '2026-09-09T04:00:45Z'
+            }]
+          },
+          aw_info: {
+            engine_id: 'copilot',
+            engine_name: 'GitHub Copilot CLI',
+            model: 'gpt-5.4',
+            version: '1.0.83',
+            cli_version: 'v0.89.4',
+            workflow_name: 'Dashboard',
+            staged: false,
+            cache_memory: true,
+            created_at: '2026-09-09T03:59:00Z',
+            awf_version: 'v0.28.15'
+          }
         }
       },
       {
@@ -114,7 +198,7 @@ describe('gh-aw logs adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(adapted).toMatchObject({
-      records: 3,
+      records: 4,
       rawPayloadRecords: 1,
       rawRuns: 1,
       agenticRuns: 1,
@@ -128,7 +212,24 @@ describe('gh-aw logs adapter', () => {
         id: 'github:run:303:attempt:1',
         workflowPath: '.github/workflows/dashboard.md',
         number: 7,
-        aicTotal: 2.5
+        aicTotal: 2.5,
+        agentId: 'copilot',
+        agentVersion: '1.0.83',
+        modelId: 'gpt-5.4',
+        ghAwVersion: 'v0.89.4',
+        engine: 'GitHub Copilot CLI',
+        engineId: 'copilot',
+        engineVersion: '1.0.83',
+        resolvedModel: 'gpt-5.4',
+        firewallVersion: 'v0.28.15'
+      })
+    ]);
+    expect(batch.jobs).toEqual([
+      expect.objectContaining({
+        id: 'github:job:404',
+        runId: 'github:run:303:attempt:1',
+        name: 'agent',
+        conclusion: 'success'
       })
     ]);
     expect(batch.sessions).toHaveLength(2);
@@ -137,7 +238,33 @@ describe('gh-aw logs adapter', () => {
       'workflow_run_completed',
       'workflow_run_usage',
       'workflow_run_assessment',
+      'agent.session',
+      'tool.call',
+      'tool.result',
+      'audit.finding',
+      'audit.missing_tool',
+      'audit.skill_activation',
+      'safe_output.created',
       'github_api_rate_limit'
+    ]));
+    expect(batch.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source: 'mcp',
+        type: 'tool.call',
+        correlationId: 'call-7',
+        summary: 'github/get_file'
+      }),
+      expect.objectContaining({
+        source: 'mcp',
+        type: 'tool.result',
+        correlationId: 'call-7',
+        status: 'success'
+      }),
+      expect.objectContaining({
+        source: 'safe-output',
+        type: 'safe_output.created',
+        correlationId: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+      })
     ]));
   });
 
