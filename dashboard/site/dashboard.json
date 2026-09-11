@@ -435,6 +435,7 @@
           }
         ],
         "select": [
+          { "field": "session" },
           { "field": "correlation-id" },
           { "field": "result-status" }
         ]
@@ -460,6 +461,7 @@
           }
         ],
         "select": [
+          { "field": "session" },
           { "field": "correlation-id" },
           { "field": "error-status" }
         ]
@@ -488,6 +490,7 @@
             "source": "mcp-tool-results",
             "type": "left",
             "on": [
+              { "left": "session", "right": "session" },
               { "left": "correlation-id", "right": "correlation-id" }
             ],
             "fields": [
@@ -498,6 +501,7 @@
             "source": "mcp-tool-errors",
             "type": "left",
             "on": [
+              { "left": "session", "right": "session" },
               { "left": "correlation-id", "right": "correlation-id" }
             ],
             "fields": [
@@ -507,7 +511,8 @@
         ],
         "filter": {
           "predicates": [
-            { "field": "event-type", "equals": "tool.call" }
+            { "field": "event-type", "equals": "tool.call" },
+            { "field": "event-source", "equals": "mcp" }
           ]
         },
         "compute": [
