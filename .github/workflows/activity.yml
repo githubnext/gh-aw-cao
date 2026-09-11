@@ -121,7 +121,7 @@ jobs:
             --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
             --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
             --count 1000 \
-            --timeout 5 \
+            --timeout 15 \
             --max-github-api-rate-limit -2000 \
             --max-storage 1200 \
             --prune-older-runs \

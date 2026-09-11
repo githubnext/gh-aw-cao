@@ -15,7 +15,7 @@ agents and command-line tools. IndexedDB supports the browser dashboard.
 
 ```mermaid
 flowchart LR
-  logs["gh aw logs"] --> source["JSONL<br/>source"]
+  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
   source --> sqlite["SQLite"]
   sqlite --> agents["Agents"]
   sqlite --> cli["CLI"]
