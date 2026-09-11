@@ -22,7 +22,7 @@ The dashboard package publishes an access-controlled static view of Central Agen
 - `.github/aw/dashboard/site`: the packaged Dashboard Language validator, presenter, configuration, and browser runtime.
 - `.github/aw/dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
 
-The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot. The dashboard publisher restores that snapshot and emits a deterministic `inventory-sources.json` sidecar from the reviewed control policy and local workflow inventory. The browser ingests the sidecar before the activity JSONL so configured packages, including packages without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
+The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy and local workflow inventory. The dashboard publisher restores these files from the same cache. The browser ingests the activity JSONL and then the sidecar so configured packages, including packages without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
 The **GitHub API** view reads the activity snapshot's `cao-gh.jsonl` ledger. It charts rate-limit capacity and lists the before/after credential class and aggregate cache-hydration state for each instrumented collection operation.
 

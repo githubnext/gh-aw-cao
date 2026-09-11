@@ -3041,7 +3041,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(maintenanceWorkflow, /workflow_dispatch:[\s\S]*?command:[\s\S]*?clear-cache/);
   assert.match(maintenanceWorkflow, /permissions:[\s\S]*?actions: write/);
   assert.match(maintenanceWorkflow, /gh api --paginate[\s\S]*?gh cache delete/);
-  assert.match(buildWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?test -s "\$REPORT_GH_AW_LOGS"[\s\S]*?test -s "\$ACTIVITY_DATABASE"/);
+  assert.match(buildWorkflow, /Validate restored activity data[\s\S]*?ACTIVITY_DATABASE: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite[\s\S]*?REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?REPORT_INVENTORY_SOURCES: \$\{\{ runner\.temp \}\}\/cao-activity\/inventory-sources\.json[\s\S]*?test -s "\$REPORT_GH_AW_LOGS"[\s\S]*?test -s "\$ACTIVITY_DATABASE"[\s\S]*?test -s "\$REPORT_INVENTORY_SOURCES"/);
   assert.match(buildWorkflow, /name: Assess activity database health[\s\S]*?doctor --database "\$ACTIVITY_DATABASE"/);
   assert.match(buildWorkflow, /echo "Refreshing authoritative control policy"[\s\S]*?echo "Building dashboard site from source layout"/);
   assert.doesNotMatch(buildWorkflow, /Discover deployed agentic workflows/);
@@ -3088,6 +3088,8 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CONCURRENCY/);
   assert.match(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-gh-aw-logs/);
   assert.doesNotMatch(activityWorkflow, /REPORT_AIC_CACHE: \$\{\{ runner\.temp \}\}\/cao-activity\//);
+  assert.match(activityWorkflow, /Collect dashboard inventory[\s\S]*?inventory-sources\.mjs[\s\S]*?Download agentic workflow logs/);
+  assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/inventory-sources\.json" "\$REPORT_OUTPUT\/inventory-sources\.json"/);
   assert.equal((activityWorkflow.match(/REPORT_GH_AW_LOGS: \$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl/g) || []).length, 2);
   assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
   assert.doesNotMatch(activityWorkflow, /Install SQLite|apt-get install.*sqlite3/);
