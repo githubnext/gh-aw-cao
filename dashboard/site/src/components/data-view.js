@@ -97,7 +97,7 @@ function renderMetricView(context) {
   const valueText = formatAggregateValue(rows, fieldName, aggregate, toText, fieldUnit(valueDefinition, units));
   if (isPlainObject(view.metric) && view.metric.style === 'card') {
     const available = metadata.availability !== 'unavailable';
-    const displayedValue = available ? valueText : '—';
+    const displayedValue = available ? valueText : '';
     const active = available && Number(displayedValue) > 0;
     const icon = typeof view.metric.icon === 'string' ? view.metric.icon : 'dash';
     const tone = typeof view.metric.tone === 'string' ? view.metric.tone : 'neutral';

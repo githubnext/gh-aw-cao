@@ -4011,6 +4011,7 @@ dashboard:
       name: AI Credits
       symbol: AIC
       significant: 1
+      format: number
     human-duration:
       name: Human-friendly duration
       symbol: s

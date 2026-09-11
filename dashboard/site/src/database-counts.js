@@ -63,7 +63,7 @@ export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
   ]);
   const values = Object.fromEntries(fields.map(([name]) => [
     name,
-    h('strong', { dataset: { databaseCount: name } }, '—')
+    h('strong', { dataset: { databaseCount: name } }, '')
   ]));
   const status = h('span', { className: 'database-counts-status', 'aria-live': 'polite' }, 'Open to load database counts');
   let started = false;

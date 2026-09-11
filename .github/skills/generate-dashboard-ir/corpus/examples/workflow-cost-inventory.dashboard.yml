@@ -13,6 +13,7 @@ dashboard:
       name: AI Credits
       symbol: AIC
       significant: 0.1
+      format: number
   queries:
     - name: workflow-aic-totals
       intent: Summarize observed AI Credit usage by declared workflow.

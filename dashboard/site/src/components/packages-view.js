@@ -79,12 +79,12 @@ function renderPackageSummaryRow(entry, summary) {
     'tr',
     { dataset: { packageSummaryKey: entry.key } },
     h('th', { scope: 'row' }, renderPackageIdentityLink(entry, 'span')),
-    h('td', null, formatNumber(summary?.runs ?? 0)),
-    h('td', null, formatNumber(summary?.successful ?? 0)),
-    h('td', null, formatNumber(summary?.failed ?? 0)),
-    h('td', null, summary?.warnings === null || summary?.warnings === undefined ? '—' : formatNumber(summary.warnings)),
-    h('td', null, summary?.inventoryWarnings === null || summary?.inventoryWarnings === undefined ? '—' : formatNumber(summary.inventoryWarnings)),
-    h('td', null, summary?.aic === null || summary?.aic === undefined ? '—' : formatAic(summary.aic)),
+    h('td', null, summary ? formatNumber(summary.runs) : ''),
+    h('td', null, summary ? formatNumber(summary.successful) : ''),
+    h('td', null, summary ? formatNumber(summary.failed) : ''),
+    h('td', null, summary?.warnings === null || summary?.warnings === undefined ? '' : formatNumber(summary.warnings)),
+    h('td', null, summary?.inventoryWarnings === null || summary?.inventoryWarnings === undefined ? '' : formatNumber(summary.inventoryWarnings)),
+    h('td', null, summary?.aic === null || summary?.aic === undefined ? '' : formatAic(summary.aic)),
     h('td', null, summary?.latestActivity ? formatDate(summary.latestActivity) : 'No activity yet')
   ));
 }
@@ -109,7 +109,7 @@ function summarizePackageActivity(packages, sources, mode) {
     failed: 0,
     warnings: findingsAvailable ? 0 : null,
     inventoryWarnings: packageInventoryWarnings(entry),
-    aic: usageAvailable ? 0 : null,
+    aic: /** @type {number | null} */ (null),
     latestActivity: null
   }]));
 
@@ -340,7 +340,7 @@ function renderUtilizationCard(entry, utilization, available) {
   const used = utilization?.used ?? 0;
   const allowed = utilization?.allowed ?? 0;
   const reportedRuns = utilization?.reportedRuns ?? 0;
-  const ratio = available && allowed > 0 ? used / allowed : null;
+  const ratio = available && allowed > 0 && reportedRuns > 0 ? used / allowed : null;
   const meterPercent = ratio === null ? 0 : Math.min(100, ratio * 100);
   const status = ratio === null ? 'empty' : classifyUtilizationRatio(ratio);
   const detail = !available
@@ -373,7 +373,7 @@ function renderUtilizationCard(entry, utilization, available) {
         renderPackageIdentityLink(entry, 'strong'),
         scopeLabel ? h('small', null, scopeLabel) : null
       ),
-      h('span', { className: 'package-utilization-value' }, ratio === null ? '—' : formatPercent(ratio))
+      h('span', { className: 'package-utilization-value' }, ratio === null ? '' : formatPercent(ratio))
     ),
     h(
       'div',

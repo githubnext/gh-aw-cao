@@ -35,12 +35,13 @@ describe('view formatter helpers', () => {
   });
 
   it('DLS-VIEW-013 formats aggregate metric edge cases for missing fields, empty rows, and non-numeric values', () => {
-    expect(formatAggregateValue([], 'aic', 'sum', toText)).toBe('0');
-    expect(formatAggregateValue([], 'aic', 'mean', toText)).toBe('Unavailable');
-    expect(formatAggregateValue([], 'aic', 'none', toText)).toBe('Unavailable');
-    expect(formatAggregateValue([{ aic: 'bad' }], 'aic', 'mean', toText)).toBe('0');
-    expect(formatAggregateValue([{ repository: '' }], 'repository', 'distinct-count', toText)).toBe('1');
-    expect(formatAggregateValue([{ repository: 'repo-a' }], null, 'count', toText)).toBe('Unavailable');
+    expect(formatAggregateValue([], 'aic', 'sum', toText)).toBe('');
+    expect(formatAggregateValue([], 'aic', 'mean', toText)).toBe('');
+    expect(formatAggregateValue([], 'aic', 'none', toText)).toBe('');
+    expect(formatAggregateValue([{ aic: 'bad' }], 'aic', 'mean', toText)).toBe('');
+    expect(formatAggregateValue([{ aic: 0 }], 'aic', 'sum', toText)).toBe('0');
+    expect(formatAggregateValue([{ repository: '' }], 'repository', 'distinct-count', toText)).toBe('');
+    expect(formatAggregateValue([{ repository: 'repo-a' }], null, 'count', toText)).toBe('');
   });
 
   it('formats shared numeric helpers deterministically', () => {
@@ -50,6 +51,8 @@ describe('view formatter helpers', () => {
     expect(formatNumber(2.5)).toBe('2.50');
     expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('3 AIC');
     expect(formatNumber(-2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1 })).toBe('-3 AIC');
+    expect(formatNumber(2.5, { name: 'AI Credits', symbol: 'AIC', significant: 1, format: 'number' })).toBe('3');
+    expect(formatNumber(0.0341, { name: 'US dollars', symbol: 'USD', significant: 0.001, format: 'number' })).toBe('0.034');
     expect(formatNumber(1.24, { name: 'Dollars', symbol: 'USD', significant: 0.01 })).toBe('1.24 USD');
     const usd = { name: 'US dollars', symbol: 'USD', significant: 0.001, format: 'usd' };
     expect(formatNumber(0.0341, usd)).toBe('$0.035');
