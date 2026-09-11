@@ -242,6 +242,41 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
+  it('persists activity collection transactions embedded in cached JSONL', async () => {
+    const content = `${JSON.stringify({
+      schema_version: 2,
+      kind: 'transaction',
+      transaction: {
+        id: 'activity-collection:githubnext/gh-aw-cao:303:1',
+        kind: 'activity-collection',
+        created_at: '2026-09-11T14:00:00Z',
+        status: 'collected',
+        repository: 'githubnext/gh-aw-cao',
+        workflow: '.github/workflows/activity.yml',
+        run_id: '303',
+        run_attempt: 1,
+        event_name: 'schedule',
+        ref: 'refs/heads/main',
+        sha: 'abc123',
+        run_url: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303'
+      }
+    })}\n`;
+
+    await expect(ingestCachedGhAwJsonl(indexedDB, content, {
+      now: Date.parse('2026-09-11T14:01:00Z')
+    })).resolves.toMatchObject({ records: 1, transactions: 1 });
+    await expect(readTransactions(indexedDB)).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'activity-collection:githubnext/gh-aw-cao:303:1',
+        kind: 'activity-collection',
+        createdAt: '2026-09-11T14:00:00.000Z',
+        run: '303',
+        runAttempt: 1
+      }),
+      expect.objectContaining({ kind: 'ingest-jsonl', records: 1 })
+    ]));
+  });
+
   it('records failed JSONL ingestion without storing partial entities', async () => {
     await expect(ingestCachedGhAwJsonl(indexedDB, '{"schema_version":2,"kind":"run","run":')).rejects.toThrow();
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);

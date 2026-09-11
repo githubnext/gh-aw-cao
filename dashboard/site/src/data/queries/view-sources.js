@@ -1,5 +1,6 @@
 import { ingestDashboardSources } from '../ingest/coordinator.js';
 import { createCanonicalQueries } from './index.js';
+import { readTransactions } from '../storage/indexeddb.js';
 
 /**
  * @param {Record<string, unknown>} sources
@@ -323,6 +324,59 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
+/**
+ * @param {Record<string, unknown>[]} transactions
+ * @param {Record<string, unknown>} sources
+ */
+function transactionsSource(transactions, sources) {
+  const rows = transactions.map((transaction) => {
+    const run = transaction.run === undefined ? undefined : String(transaction.run);
+    const runUrl = typeof transaction.runUrl === 'string' ? transaction.runUrl : '';
+    let runLink;
+    try {
+      const url = new URL(runUrl);
+      if (url.protocol === 'https:' && !url.username && !url.password) {
+        runLink = {
+          relation: 'run',
+          href: url.href,
+          label: run ? `View run ${run}` : 'View run'
+        };
+      }
+    } catch {
+      runLink = undefined;
+    }
+    return definedFields({
+      transaction: transaction.id,
+      'transaction-kind': transaction.kind,
+      'created-at': transaction.createdAt,
+      status: transaction.status
+        ?? (transaction.kind === 'ingest-jsonl-failed' ? 'failed' : 'committed'),
+      repository: transaction.repository,
+      workflow: transaction.workflow,
+      run,
+      'run-attempt': transaction.runAttempt,
+      'event-name': transaction.eventName,
+      'request-id': transaction.requestId,
+      ref: transaction.ref,
+      sha: transaction.sha,
+      records: transaction.records,
+      'committed-records': transaction.committedRecords,
+      'run-link': runLink
+    });
+  });
+  const latest = rows
+    .map((row) => String(row['created-at'] ?? ''))
+    .filter((value) => Number.isFinite(Date.parse(value)))
+    .sort()
+    .at(-1);
+  const metadata = projectionMetadata(sources, 'transactions', 'transactions', true);
+  if (latest) {
+    metadata['as-of'] = latest;
+    metadata['retrieved-at'] = latest;
+  }
+  return { source: 'transactions', rows, metadata };
+}
+
 /** @param {unknown} source */
 function sourceRows(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
@@ -372,7 +426,8 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
       'runs',
       'job-performance',
       'failed-runs',
-      'events'
+      'events',
+      'transactions'
     ])
   };
 }
@@ -390,7 +445,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
-  const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
+  const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events, transactions] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
@@ -399,7 +454,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
     requested.has('events') ? queries.sessions.list() : [],
-    requested.has('events') ? queries.events.list() : []
+    requested.has('events') ? queries.events.list() : [],
+    requested.has('transactions') ? readTransactions(indexedDB) : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
@@ -415,5 +471,6 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (requested.has('transactions')) projected.transactions = transactionsSource(transactions, sources);
   return projected;
 }

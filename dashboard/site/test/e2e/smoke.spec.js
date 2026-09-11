@@ -420,6 +420,76 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
+test('Transactions renders activity collection writes as a responsive full-view table', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      const metadata = {
+        'source-id': 'transactions-viewport-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-11T14:00:00Z',
+        'retrieved-at': '2026-09-11T14:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        transactions: {
+          source: 'transactions',
+          metadata,
+          rows: [{
+            transaction: 'activity-collection:githubnext/gh-aw-cao:303:1',
+            'transaction-kind': 'activity-collection',
+            'created-at': '2026-09-11T14:00:00Z',
+            status: 'collected',
+            repository: 'githubnext/gh-aw-cao',
+            workflow: '.github/workflows/activity.yml',
+            run: '303',
+            'run-attempt': 1,
+            records: 4,
+            'committed-records': 27,
+            'run-link': {
+              relation: 'run',
+              href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/303',
+              label: 'View run 303'
+            }
+          }]
+        }
+      };
+      window.location.hash = '#page-transactions';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const dashboardRoot = page.locator('.dashboard-root');
+  const transactionsPage = page.locator('[data-page-id="transactions"]');
+  const view = transactionsPage.locator('[data-view-layout="full-view"]');
+  const scroll = view.locator('.table-scroll');
+  await expect(page.getByRole('heading', { name: 'Transactions', level: 1 })).toBeVisible();
+  await expect(page.locator('[data-nav-page-id="transactions"]')).toHaveAttribute('aria-current', 'page');
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
+  await expect(view).toBeVisible();
+  await expect(view.locator('[data-table-filter]')).toBeVisible();
+  await expect(view.locator('tbody')).toContainText('activity-collection');
+  await expect(view.locator('tbody a').first()).toHaveAttribute(
+    'href',
+    'https://github.com/githubnext/gh-aw-cao/actions/runs/303'
+  );
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(view).toBeVisible();
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
+    (element) => element.scrollWidth <= element.clientWidth
+  )).toBe(true);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+});
+
 test('Runs hints at an active time-window filter when it empties an otherwise populated table, and offers an accessible way to clear it', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });

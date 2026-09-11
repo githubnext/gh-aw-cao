@@ -18,6 +18,11 @@
       "payloadPath": "rate_limit",
       "emits": ["event"],
       "requiresContext": ["repository", "workflow", "run", "observedAt"]
+    },
+    "transaction": {
+      "payloadPath": "transaction",
+      "emits": ["transaction"],
+      "identity": ["id"]
     }
   }
 }

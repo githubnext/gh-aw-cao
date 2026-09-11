@@ -437,7 +437,8 @@ export function adaptGhAwLogs(input) {
  *   sessions: number,
  *   events: number,
  *   rateLimits: number,
- *   mappedRateLimits: number
+ *   mappedRateLimits: number,
+ *   transactions: Array<{ id: string, kind: string, createdAt: string, [field: string]: unknown }>
  * }}
  */
 export function adaptCachedGhAwJsonl(content, options = {}) {
@@ -467,6 +468,33 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     }
     envelopes.push({ envelope, line: index + 1 });
   }
+
+  const transactions = envelopes
+    .filter(({ envelope }) => envelope.kind === 'transaction')
+    .map(({ envelope, line }) => {
+      const transaction = objectValue(envelope.transaction, `gh-aw JSONL line ${line}.transaction`);
+      const runAttempt = transaction.run_attempt === undefined
+        ? undefined
+        : positiveInteger(transaction.run_attempt, `gh-aw JSONL line ${line}.transaction.run_attempt`);
+      return withoutUndefined({
+        id: requiredString(transaction.id, `gh-aw JSONL line ${line}.transaction.id`),
+        kind: requiredString(transaction.kind, `gh-aw JSONL line ${line}.transaction.kind`),
+        createdAt: canonicalTimestamp(
+          transaction.created_at,
+          `gh-aw JSONL line ${line}.transaction.created_at`
+        ),
+        status: optionalString(transaction.status),
+        repository: optionalString(transaction.repository),
+        workflow: optionalString(transaction.workflow),
+        run: optionalString(transaction.run_id),
+        runAttempt,
+        eventName: optionalString(transaction.event_name),
+        requestId: optionalString(transaction.request_id),
+        ref: optionalString(transaction.ref),
+        sha: optionalString(transaction.sha),
+        runUrl: optionalString(transaction.run_url)
+      });
+    });
 
   /**
    * @typedef {{
@@ -1210,6 +1238,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     sessions: enrichedRuns.size + (mappedRateLimits > 0 ? 1 : 0),
     events: derivedEvents + mappedRateLimits,
     rateLimits: rateLimitEnvelopes.length,
-    mappedRateLimits
+    mappedRateLimits,
+    transactions
   };
 }

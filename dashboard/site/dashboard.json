@@ -4033,6 +4033,95 @@
         ]
       },
       {
+        "id": "transactions",
+        "kind": "custom",
+        "title": "Transactions",
+        "icon": "database",
+        "description": "Inspect canonical database writes and activity data-collection runs.",
+        "views": [
+          {
+            "id": "transaction-inspection",
+            "title": "Database transactions",
+            "description": "Persisted transactions ordered from newest to oldest with collection and ingestion context.",
+            "intent": "Trace each database write to the activity run or ingestion operation that produced it.",
+            "data": {
+              "source": "transactions",
+              "order-by": [
+                {
+                  "field": "created-at",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No database transactions were recorded.",
+            "encoding": {
+              "href": {
+                "field": "run-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "created-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Created"
+                },
+                {
+                  "field": "transaction-kind",
+                  "type": "nominal",
+                  "title": "Transaction"
+                },
+                {
+                  "field": "status",
+                  "type": "nominal",
+                  "display": "status",
+                  "title": "Status"
+                },
+                {
+                  "field": "repository",
+                  "type": "nominal",
+                  "title": "Repository"
+                },
+                {
+                  "field": "workflow",
+                  "type": "nominal",
+                  "title": "Workflow"
+                },
+                {
+                  "field": "run",
+                  "type": "nominal",
+                  "title": "Run"
+                },
+                {
+                  "field": "run-attempt",
+                  "type": "quantitative",
+                  "title": "Attempt"
+                },
+                {
+                  "field": "records",
+                  "type": "quantitative",
+                  "title": "Records"
+                },
+                {
+                  "field": "committed-records",
+                  "type": "quantitative",
+                  "title": "Committed"
+                },
+                {
+                  "field": "transaction",
+                  "type": "nominal",
+                  "title": "ID"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
         "id": "engines-models",
         "kind": "custom",
         "title": "Engines Models",
@@ -5245,7 +5334,8 @@
         "pages": [
           "workflows",
           "runs",
-          "events"
+          "events",
+          "transactions"
         ]
       },
       {

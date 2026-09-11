@@ -110,6 +110,9 @@ export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
       workflowHints: options.workflowHints
     });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
+    for (const transaction of adapted.transactions) {
+      await recordTransaction(indexedDB, transaction);
+    }
     await recordTransaction(indexedDB, {
       id: `ingest-jsonl:${createdAt}:${adapted.records}`,
       kind: 'ingest-jsonl',
@@ -137,7 +140,8 @@ export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
       sessions: adapted.sessions,
       events: adapted.events,
       rateLimits: adapted.rateLimits,
-      mappedRateLimits: adapted.mappedRateLimits
+      mappedRateLimits: adapted.mappedRateLimits,
+      transactions: adapted.transactions.length
     };
   } catch (error) {
     await recordTransaction(indexedDB, {

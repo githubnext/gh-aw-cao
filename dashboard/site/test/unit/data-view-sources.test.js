@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -277,6 +277,47 @@ describe('canonical view sources', () => {
       }),
       expect.objectContaining({ event: 'event:agent-turn', 'event-source': 'agent', 'event-type': 'agent_turn' })
     ]);
+  });
+
+  it('projects persisted database transactions for declarative views', async () => {
+    await recordTransaction(indexedDB, {
+      id: 'activity-collection:githubnext/gh-aw-cao:42:2',
+      kind: 'activity-collection',
+      createdAt: '2026-09-09T05:00:00Z',
+      status: 'collected',
+      repository: 'githubnext/gh-aw-cao',
+      workflow: '.github/workflows/activity.yml',
+      run: '42',
+      runAttempt: 2,
+      runUrl: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42'
+    });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['transactions']);
+
+    expect(Object.keys(projected)).toEqual(['transactions']);
+    expect(projected.transactions).toMatchObject({
+      source: 'transactions',
+      metadata: {
+        'source-kind': 'canonical-query',
+        'as-of': '2026-09-09T05:00:00Z',
+        availability: 'available'
+      },
+      rows: [{
+        transaction: 'activity-collection:githubnext/gh-aw-cao:42:2',
+        'transaction-kind': 'activity-collection',
+        'created-at': '2026-09-09T05:00:00Z',
+        status: 'collected',
+        repository: 'githubnext/gh-aw-cao',
+        workflow: '.github/workflows/activity.yml',
+        run: '42',
+        'run-attempt': 2,
+        'run-link': {
+          relation: 'run',
+          href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/42',
+          label: 'View run 42'
+        }
+      }]
+    });
   });
 
   it('keeps retained events available to event-backed views after a partial collection', async () => {

@@ -127,6 +127,42 @@ jobs:
             --prune-older-runs \
             "${targets[@]}"
 
+      - name: Record activity collection transaction
+        env:
+          REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          ACTIVITY_REQUEST_ID: ${{ inputs.request-id || '' }}
+          ACTIVITY_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from "node:fs";
+
+          const workflowRef = process.env.GITHUB_WORKFLOW_REF || "";
+          const repositoryPrefix = `${process.env.GITHUB_REPOSITORY}/`;
+          const workflow = (workflowRef.startsWith(repositoryPrefix)
+            ? workflowRef.slice(repositoryPrefix.length)
+            : workflowRef).split("@")[0];
+          const transaction = {
+            schema_version: 2,
+            kind: "transaction",
+            transaction: {
+              id: `activity-collection:${process.env.GITHUB_REPOSITORY}:${process.env.GITHUB_RUN_ID}:${process.env.GITHUB_RUN_ATTEMPT}`,
+              kind: "activity-collection",
+              created_at: new Date().toISOString(),
+              status: "collected",
+              repository: process.env.GITHUB_REPOSITORY,
+              workflow,
+              run_id: process.env.GITHUB_RUN_ID,
+              run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              event_name: process.env.GITHUB_EVENT_NAME,
+              request_id: process.env.ACTIVITY_REQUEST_ID || undefined,
+              ref: process.env.GITHUB_REF,
+              sha: process.env.GITHUB_SHA,
+              run_url: process.env.ACTIVITY_RUN_URL,
+            },
+          };
+          appendFileSync(process.env.REPORT_GH_AW_LOGS, `${JSON.stringify(transaction)}\n`);
+          NODE
+
       - name: Ingest activity database
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite

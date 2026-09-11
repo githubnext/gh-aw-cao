@@ -12,6 +12,10 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.match(workflow, /--cached-jsonl "\$REPORT_GH_AW_LOGS"/);
   assert.match(
     workflow,
+    /Record activity collection transaction[\s\S]*?kind: "transaction"[\s\S]*?kind: "activity-collection"[\s\S]*?appendFileSync\(process\.env\.REPORT_GH_AW_LOGS/,
+  );
+  assert.match(
+    workflow,
     /Ingest activity database[\s\S]*?ingest-jsonl[\s\S]*?--database "\$ACTIVITY_DATABASE"[\s\S]*?--input "\$REPORT_GH_AW_LOGS"/,
   );
   assert.match(
