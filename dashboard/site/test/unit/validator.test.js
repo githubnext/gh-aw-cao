@@ -511,7 +511,7 @@ describe('dashboard document validation', () => {
     expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
       view.id === 'runs-runs-source'
     )).toMatchObject({
-      data: { source: 'runs-table' },
+      data: { source: 'runs-table', time: {} },
       mark: 'table'
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

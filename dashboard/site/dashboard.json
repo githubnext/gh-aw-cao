@@ -3216,7 +3216,8 @@
               "title": "Runs",
               "description": "Observed workflow runs across the configured repository scope.",
               "data": {
-                "source": "runs-table"
+                "source": "runs-table",
+                "time": {}
               },
               "mark": "table",
               "controls": "interactive",
