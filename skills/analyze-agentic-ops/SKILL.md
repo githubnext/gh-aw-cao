@@ -28,46 +28,47 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    cao download
    ```
 
-   This writes `_activity/gh-aw-logs.jsonl` and `_activity/gh-aw-logs.sqlite`.
+   This writes `.cao/gh-aw-logs.jsonl` and `.cao/gh-aw-logs.sqlite` by default.
 3. For another deployment, prefer the explicit source requested by the user:
 
    ```bash
-   cao download --url URL --output _activity
+   cao download --url URL
    ```
 
-   `DASHBOARD_DATA_URL=URL cao download` is equivalent. The URL must point at `gh-aw-logs.jsonl`; the CLI derives the sibling `gh-aw-logs.sqlite` URL.
+   `DASHBOARD_DATA_URL=URL cao download` is equivalent. The URL must point at `gh-aw-logs.jsonl`; the CLI derives the sibling `gh-aw-logs.sqlite` URL. Pass `--output DIRECTORY` only when the user requests a non-default destination.
 4. Check source coverage before treating the snapshot as complete:
 
    ```bash
-   cao audit-jsonl --input _activity/gh-aw-logs.jsonl
+   cao audit-jsonl
    ```
 
+   Pass `--input FILE` only when auditing a non-default JSONL path.
 5. Query the downloaded SQLite projection with canonical collection names:
 
    ```bash
-   cao query --database _activity/gh-aw-logs.sqlite --collection runs --limit 20
+   cao query --collection runs --limit 20
    ```
 
 6. Add filters with repeated exact-match `--where FIELD=VALUE` options. Use dotted fields for nested values when needed:
 
    ```bash
    cao query \
-     --database _activity/gh-aw-logs.sqlite \
      --collection runs \
      --where conclusion=failure \
      --limit 20
    ```
 
+   Pass `--database FILE` only when querying a non-default SQLite path.
 7. Query by ID when the user asks about one known record:
 
    ```bash
-   cao query --database _activity/gh-aw-logs.sqlite --collection sessions --id SESSION_ID
+   cao query --collection sessions --id SESSION_ID
    ```
 
 8. If database health is in doubt, run:
 
    ```bash
-   cao doctor --database _activity/gh-aw-logs.sqlite
+   cao doctor
    ```
 
    Use `--ttl-days all` only for intentional historical backfills.
@@ -91,4 +92,4 @@ Use `cao help` for the current command syntax and collection list. The canonical
 - Use JSONL audit results to explain source completeness and enrichment coverage.
 - Attribute findings to the collection, record ID, workflow, run ID, and timestamp whenever available.
 - Report uncertainty explicitly when evidence is unavailable, stale, partial, or outside the requested scope.
-- Keep downloaded `_activity/` files uncommitted.
+- Keep downloaded `.cao/` files uncommitted.
