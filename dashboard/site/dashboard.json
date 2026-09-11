@@ -1197,9 +1197,7 @@
         "description": "Current operational attention across runtime, controls, value, episodes, cost, and evidence.",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -1664,9 +1662,7 @@
         "icon": "server",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -1789,9 +1785,7 @@
         "class-name": "repositories-page",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -2400,9 +2394,7 @@
         "description": "Activity from centrally managed packages.",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -2952,9 +2944,7 @@
         "description": "Inspect declared central package and repository-owned workflow relationships. This inventory does not assert that a dispatch occurred.",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -3211,9 +3201,7 @@
         "icon": "play",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -3569,9 +3557,7 @@
         "description": "Understand whether agent changes improve outcomes without regressions. Observed associations are presented without implying causation.",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -3655,9 +3641,7 @@
         "icon": "server",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -3752,9 +3736,7 @@
         "icon": "server",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -3846,9 +3828,7 @@
         "icon": "graph",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -4217,9 +4197,7 @@
         "icon": "server",
         "definition": {
           "data-state": {
-            "availability": true,
-            "completeness": true,
-            "freshness": true
+            "availability": true
           },
           "views": [
             {
@@ -4364,18 +4342,6 @@
                   "field": "availability",
                   "type": "nominal",
                   "title": "Availability",
-                  "display": "status"
-                },
-                {
-                  "field": "completeness",
-                  "type": "nominal",
-                  "title": "Completeness",
-                  "display": "status"
-                },
-                {
-                  "field": "freshness",
-                  "type": "nominal",
-                  "title": "Freshness",
                   "display": "status"
                 }
               ]
@@ -5208,7 +5174,7 @@
             "id": "agents-marketplace",
             "locked": true,
             "title": "Operations",
-            "description": "Operation package or standalone workflow name, description, permissions, runtime, and freshness.",
+            "description": "Operation package or standalone workflow name, description, permissions, and runtime.",
             "data": {
               "sources": [
                 "agent-assignments",

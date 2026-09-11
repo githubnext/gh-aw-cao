@@ -2033,8 +2033,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: usage-summary
             data:
@@ -2097,8 +2095,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: organizations-view
             data:
@@ -2152,8 +2148,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: run-aggregates-view
             data:
@@ -2305,8 +2299,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: run-table
             data:
@@ -2381,8 +2373,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: workflows-view
             data:
@@ -2456,7 +2446,7 @@ dashboard:
     }
   });
 
-  it('DLS-PAGE-014 rejects a built-in page definition that does not expose independent availability, completeness, and freshness', () => {
+  it('DLS-PAGE-014 rejects a built-in page definition that does not expose availability', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: missing-built-in-data-state
@@ -2497,14 +2487,14 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state',
-            message: 'built-in page definition must expose independent availability, completeness, and freshness state.'
+            message: 'built-in page definition must expose availability state.'
           })
         ])
       );
     }
   });
 
-  it('DLS-PAGE-014 rejects a built-in page definition with non-canonical independent data-state markers', () => {
+  it('DLS-PAGE-014 rejects a built-in page definition with a non-canonical availability marker', () => {
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: invalid-built-in-data-state
@@ -2517,8 +2507,6 @@ dashboard:
       definition:
         data-state:
           availability: available
-          completeness: false
-          freshness: maybe
           extra-axis: true
         views:
           - id: usage-table
@@ -2551,17 +2539,7 @@ dashboard:
           expect.objectContaining({
             code: 'DLS-E003',
             path: '$.dashboard.pages[0].definition.data-state.availability',
-            message: 'built-in page definition must expose independent availability state with canonical boolean true.'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.data-state.completeness',
-            message: 'built-in page definition must expose independent completeness state with canonical boolean true.'
-          }),
-          expect.objectContaining({
-            code: 'DLS-E003',
-            path: '$.dashboard.pages[0].definition.data-state.freshness',
-            message: 'built-in page definition must expose independent freshness state with canonical boolean true.'
+            message: 'built-in page definition must expose availability state with canonical boolean true.'
           })
         ])
       );
@@ -2581,8 +2559,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: repository-inventory
             data:
@@ -2666,8 +2642,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: run-table
             data:
@@ -2702,8 +2676,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: usage-table
             data:
@@ -2734,8 +2706,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: operational-value-table
             data:
@@ -2762,8 +2732,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: findings-table
             data:
@@ -2790,7 +2758,7 @@ dashboard:
     const result = validateDashboardDocument(`language-version: "0.1.0"
 dashboard:
   id: overview-provenance-freshness
-  title: Overview Provenance Freshness
+  title: Overview Provenance
   pages:
     - id: overview
       kind: built-in
@@ -2799,8 +2767,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: repository-inventory
             data:

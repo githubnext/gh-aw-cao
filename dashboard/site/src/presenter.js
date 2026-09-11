@@ -6,7 +6,6 @@ import builtInDashboard from '../dashboard.json' with { type: 'json' };
 import { h } from './dom.js';
 import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
-import { renderStatusBadge } from './components/badge.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
 import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
@@ -715,7 +714,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
         h(
           'div',
           { className: 'report-actions' },
-          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts),
+          renderDashboardHorizon(document.dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, loadDatabaseCounts),
           dashboardRepository
             ? h(
               'a',
@@ -841,11 +840,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
  * @param {string} evaluatedAt
  * @param {boolean} hasData
  * @param {{ start: string, end: string, hours: number } | null} dataHorizon
- * @param {DataState} effectiveState
  * @param {() => Promise<import('./database-counts.js').DatabaseCounts>} loadDatabaseCounts
  * @returns {HTMLElement}
  */
-function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, effectiveState, loadDatabaseCounts) {
+function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, evaluatedAt, hasData, dataHorizon, loadDatabaseCounts) {
   if (!hasData) {
     return h(
       'span',
@@ -865,13 +863,6 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
   const end = dataHorizon?.end ?? (isPlainObject(dashboardDefaults.time) && typeof dashboardDefaults.time.end === 'string'
     ? dashboardDefaults.time.end
     : evaluatedAt);
-  const completeness = effectiveState?.completeness ?? 'unknown';
-  const freshness = effectiveState?.freshness ?? 'unknown';
-  const qualityState = completeness === 'complete' && freshness === 'fresh'
-    ? 'success'
-    : completeness === 'unknown' || freshness === 'unknown'
-      ? 'muted'
-      : 'attention';
   const databaseCounts = h('span', { className: 'horizon-tooltip-counts' }, 'Database counts load on hover');
   /** @type {Promise<void> | undefined} */
   let countsPromise;
@@ -908,9 +899,8 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
         'span',
         { id: 'dashboard-horizon-tooltip', className: 'horizon-tooltip', role: 'tooltip' },
         h('strong', null, duration),
-        h('span', null, `${label} · Completeness ${completeness} · Freshness ${freshness}`),
-        databaseCounts,
-        h('span', { className: `horizon-tooltip-quality status-${qualityState}`, 'aria-hidden': 'true' })
+        h('span', null, label),
+        databaseCounts
       )
     ),
     h(
@@ -926,13 +916,7 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
         { className: 'horizon-details-values' },
         renderLabeledSpan('Start', h('time', { dateTime: start }, `${formatReportDate(start)} UTC`)),
         renderLabeledSpan('End', h('time', { dateTime: end }, `${formatReportDate(end)} UTC`)),
-        renderLabeledSpan('Duration', duration),
-        h(
-          'span',
-          { className: 'horizon-data-status', role: 'group', 'aria-label': 'Data status' },
-          h('span', null, h('span', { className: 'horizon-status-label' }, 'Completeness'), renderStatusBadge(completeness)),
-          h('span', null, h('span', { className: 'horizon-status-label' }, 'Freshness'), renderStatusBadge(freshness))
-        )
+        renderLabeledSpan('Duration', duration)
       )
     )
   );

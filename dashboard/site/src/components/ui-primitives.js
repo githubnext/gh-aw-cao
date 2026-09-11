@@ -154,21 +154,6 @@ export function coverageWindowHours(metadata) {
 }
 
 /**
- * Builds a short caveat sentence for a source's `completeness` metadata,
- * describing a named subject (e.g. `'usage'`, `'run'`) as partially or
- * unknowingly covered. Returns an empty string for complete or unrecognized
- * completeness values.
- * @param {string | undefined} completeness
- * @param {string} subject
- * @returns {string}
- */
-export function completenessCaveat(completeness, subject) {
-  if (completeness === 'partial') return `Partial ${subject} coverage.`;
-  if (completeness === 'unknown') return `${subject[0].toUpperCase()}${subject.slice(1)} coverage is unknown.`;
-  return '';
-}
-
-/**
  * Formats a `Date`, timestamp, or parseable date string as a short local
  * date (e.g. `Aug 30, 2026`), with no time-of-day or time-zone
  * normalization. Shared by the agent marketplace's last-observed label and

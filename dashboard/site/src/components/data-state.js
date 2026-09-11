@@ -11,8 +11,7 @@ import { renderStatusBadge } from './badge.js';
 
 /**
  * Renders a single `metric-card` `<div>` with a labeled `<dt>`/`<dd>` pair
- * and a status badge, tagged with a `data-state-axis` attribute for the
- * given data-state axis (e.g. `availability`, `completeness`, `freshness`).
+ * and a status badge, tagged with a `data-state-axis` attribute.
  * @param {string} label
  * @param {string} axis
  * @param {unknown} status
@@ -37,14 +36,10 @@ function renderDataStateMetricCard(label, axis, status) {
  */
 export function renderDataStateMetrics(effectiveState) {
   const availability = effectiveState?.availability ?? 'available';
-  const completeness = effectiveState?.completeness ?? 'complete';
-  const freshness = effectiveState?.freshness ?? 'fresh';
 
   return h(
     'dl',
     { className: 'data-state-summary metrics' },
-    renderDataStateMetricCard('Availability', 'availability', availability),
-    renderDataStateMetricCard('Completeness', 'completeness', completeness),
-    renderDataStateMetricCard('Freshness', 'freshness', freshness),
+    renderDataStateMetricCard('Availability', 'availability', availability)
   );
 }
