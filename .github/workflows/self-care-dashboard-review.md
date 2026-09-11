@@ -232,7 +232,7 @@ Provide only the unprefixed subject as the safe-output title. The configured `ti
 
 Use `###` headings only and structure the issue as:
 
-- an unheaded opening summary with completion status, verified defect count, persona efficiency grades, and prioritized next actions;
+- a `### Summary` section with completion status, verified defect count, persona efficiency grades, and prioritized next actions;
 - `### View grades`: affected view scores, metric-level evidence, dashboard build run, and the applicable literature references carried by the grader;
 - `### Verified defects`: expected versus observed values, viewport when relevant, and trusted comparison evidence, or `None`;
 - `<details><summary>Persona assessments</summary>...</details>`: CFO, CSO, and CTO mood, question, answer or unanswered information, exploration path, evidence, and efficiency rationale;

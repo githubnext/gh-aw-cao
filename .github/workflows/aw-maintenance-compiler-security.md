@@ -191,7 +191,7 @@ Do not rerun the compiler or scanners. The deterministic step already ran the co
 
 Provide only an unprefixed issue subject. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
-Begin directly with a short, plain-language executive summary naming the target, compiler result, finding count by category, highest-severity finding supported by the tools, and recommended next action. Do not add a heading to this opening summary.
+Start with `### Summary`, followed by a short, plain-language executive summary naming the target, compiler result, finding count by category, highest-severity finding supported by the tools, and recommended next action.
 
 Immediately after the summary, keep one action visible:
 

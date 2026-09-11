@@ -278,14 +278,15 @@ Provide only the unprefixed subject as the safe-output title. The configured `ti
 
 Apply the inherited worker report contract exactly:
 
-- Begin the issue body directly with a concise, unheaded executive summary. In one or two short paragraphs, state the decision-relevant result, the most important barrier or clean result, key counts, and the recommended next action. Do not put workflow metadata or the `### Control Plane` section before this summary.
+- Begin the issue body with `### Summary` and a concise executive summary. In one or two short paragraphs, state the decision-relevant result, the most important barrier or clean result, key counts, and the recommended next action. Do not put workflow metadata or the `### Control Plane` section before this summary.
 - Keep critical findings, a compact metrics line, and the recommended next action visible. Use a GitHub alert when a blocker, infrastructure failure, or clean result deserves emphasis; never use emoji severity markers.
 - Put non-essential background, verbose supporting evidence, logs, the complete finding inventory, and per-page coverage inside `<details><summary><b>...</b></summary>...</details>` sections.
 - Use `###` (h3) or lower for headings, never `#` or `##`.
 - End with context and no more than three relevant workflow references. Do not add generated-by attribution because the safe-output system appends it.
 
 ```markdown
-{One or two short, unheaded paragraphs summarizing the result, user impact, key counts, and best next action.}
+### Summary
+{One or two short paragraphs summarizing the result, user impact, key counts, and best next action.}
 
 > [!CAUTION]
 > {Blocker status and immediate user impact. Omit this alert when there is no blocker.}

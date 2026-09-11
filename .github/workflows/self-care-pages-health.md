@@ -175,7 +175,7 @@ Audit the deployed GitHub Pages dashboard at `https://githubnext.github.io/gh-aw
 
 Upload `self-care-pages-health-evidence` once as `self-care-pages-health-${{ github.run_id }}` before the final result whenever evidence files exist. If the collector is incomplete, no actionable problem is evidenced, or the quick wins are not validated, Call `noop` exactly once with the blocker and stop. If the audit identifies one to three bounded JavaScript improvements with concrete production evidence and the relevant dashboard validation passes, Call `create_pull_request` exactly once. Provide only the unprefixed pull request subject because the configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
-Begin the pull request body directly with a concise, unheaded executive summary stating production health, complete profile/page/view coverage, the most important error or performance result, and the recommended next action. Immediately follow it with one `**Action:**` sentence naming the owner, the work to do, and an evidence-based acceptance check.
+Begin the pull request body with `### Summary` and a concise executive summary stating production health, complete profile/page/view coverage, the most important error or performance result, and the recommended next action. Immediately follow it with one `**Action:**` sentence naming the owner, the work to do, and an evidence-based acceptance check.
 
 Use `###` headings only and include:
 

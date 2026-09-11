@@ -802,24 +802,26 @@ test("workers inherit human-first progressive report disclosure", () => {
   assert.match(packageSkill, /`\> \[!WARNING\]` for warnings/);
   assert.match(packageSkill, /`\> \[!CAUTION\]` for high-risk or blocking findings/);
   assert.match(packageSkill, /Do not use emoji severity markers/);
-  assert.match(sharedControl, /Begin directly with a short, plain-language executive summary/);
-  assert.match(sharedControl, /do not add a heading for this opening summary/);
+  assert.match(sharedControl, /delightful to read, precise, terse, and easy to scan/);
+  assert.match(sharedControl, /Keep the entire visible report to a single screen/);
+  assert.match(sharedControl, /start with `### Summary`/);
   assert.match(sharedControl, /Immediately follow it with one visible `\*\*Action:\*\*` sentence that says who should do what next and the acceptance check/);
   assert.match(sharedControl, /tell the maintainer to assign the issue to Copilot/);
   assert.match(sharedControl, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(sharedControl, /when no action is required, say `\*\*Action:\*\* None\.`/);
-  assert.doesNotMatch(sharedControl, /### Executive Summary/);
-  assert.match(sharedControl, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details>/);
+  assert.match(sharedControl, /Use `###` for every main section and `####` for subsections; never use `#` or `##`/);
+  assert.match(sharedControl, /`\> \[!NOTE\]` for neutral status/);
+  assert.match(sharedControl, /Do not use emoji severity markers/);
+  assert.match(sharedControl, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details><summary><b>\.\.\.<\/b><\/summary>/);
   assert.ok(workers.length > 0, "expected at least one worker workflow");
   for (const [name] of workers) {
     const generated = workflow(name.replace(/\.md$/, ".lock.yml"));
-    assert.match(generated, /Begin directly with a short, plain-language executive summary/, name);
-    assert.match(generated, /do not add a heading for this opening summary/, name);
+    assert.match(generated, /start with `### Summary`/, name);
     assert.match(generated, /Immediately follow it with one visible `\*\*Action:\*\*` sentence/, name);
     assert.match(generated, /tell the maintainer to assign the issue to Copilot/, name);
     assert.match(generated, /<details><summary><b>Agent prompt<\/b><\/summary>/, name);
-    assert.doesNotMatch(generated, /### Executive Summary/, name);
-    assert.match(generated, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details>/, name);
+    assert.match(generated, /Use `###` for every main section and `####` for subsections; never use `#` or `##`/, name);
+    assert.match(generated, /non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details><summary><b>\.\.\.<\/b><\/summary>/, name);
   }
 });
 
@@ -2226,7 +2228,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /create-issue:\n\s+target-repo:.*\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
   assert.match(source, /labels: \[self-care, self-care:accessibility-checker\]/);
   assert.match(source, /close-older-key: self-care-accessibility-checker/);
-  assert.match(source, /Begin the issue body directly with a concise, unheaded executive summary/);
+  assert.match(source, /Begin the issue body with `### Summary` and a concise executive summary/);
   assert.match(source, /select the single most important action with the highest expected return on investment/);
   assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /<details><summary><b>All Findings and Evidence<\/b><\/summary>/);

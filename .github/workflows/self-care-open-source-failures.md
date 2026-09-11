@@ -256,7 +256,7 @@ Create at most one concise digest issue and at most two remediation issues for t
 
 Provide only the unprefixed subject for every title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
-Begin every issue body directly with a concise, unheaded executive summary. Evaluate the potential follow-up actions, select the single most important action with the highest expected return on investment, and immediately expose it:
+Begin every issue body with `### Summary` and a concise executive summary. Evaluate the potential follow-up actions, select the single most important action with the highest expected return on investment, and immediately expose it:
 
 `**Action:** <owner> should <next step>; accept when <verification>.`
 

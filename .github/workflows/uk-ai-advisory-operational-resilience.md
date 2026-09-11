@@ -351,7 +351,7 @@ Create at most one consolidated issue containing:
 
 Provide only the unprefixed subject as the safe-output title. The configured `title-prefix` is added automatically; do not repeat it or add a semantically equivalent category prefix.
 
-Start directly with a concise, unheaded executive summary. In one or two short paragraphs, state the decision-relevant result, advisory status, highest proposed tier, seven-day window, most important control gap, key metrics, explicit limitations, and recommended next action. Follow it with:
+Start with `### Summary` and a concise executive summary. In one or two short paragraphs, state the decision-relevant result, advisory status, highest proposed tier, seven-day window, most important control gap, key metrics, explicit limitations, and recommended next action. Follow it with:
 
 1. `### Advisory Status` — `ADVISORY_READY`, `HUMAN_REVIEW_REQUIRED`, `NO_MATERIAL_CHANGE`, or `INCOMPLETE`;
 2. `### Scope and Evidence`, separating observed, inaccessible, and out-of-repository evidence;
