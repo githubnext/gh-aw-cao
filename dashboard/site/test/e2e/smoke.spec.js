@@ -1931,8 +1931,9 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     const expandedScrollBox = await scroll.boundingBox();
     assert(expandedScrollBox);
-    expect(expandedScrollBox.x).toBeLessThanOrEqual(1);
-    expect(expandedScrollBox.width).toBeGreaterThanOrEqual(998);
+    await expect(page.locator('.org-sidebar')).toBeVisible();
+    expect(expandedScrollBox.x).toBe(initialScrollBox.x);
+    expect(expandedScrollBox.width).toBe(initialScrollBox.width);
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     await scroll.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
@@ -1973,7 +1974,7 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   });
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.top-nav')).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
 });
 
