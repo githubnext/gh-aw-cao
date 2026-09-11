@@ -35,11 +35,14 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input GH_AW_LOGS_JSONL] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input GH_AW_LOGS_JSONL]
-  cao query [--database FILE] --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
+  cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
+
+Query stdin JSON:
+  {"collection":"runs","where":["conclusion=failure"],"limit":20}
 
 Download defaults:
   URL        DASHBOARD_DATA_URL or ${DEFAULT_DEPLOYED_DATA_URL}
@@ -74,8 +77,8 @@ function parseOptions(arguments_) {
     const argument = arguments_[index];
     if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`);
     const name = argument.slice(2);
-    if (name === 'help') {
-      options.help = 'true';
+    if (name === 'help' || name === 'stdin') {
+      options[name] = 'true';
       continue;
     }
     const value = arguments_[index + 1];
@@ -91,6 +94,51 @@ function parseOptions(arguments_) {
     }
   }
   return options;
+}
+
+async function queryOptionsFromStdin(options, input) {
+  for (const name of ['collection', 'id', 'where', 'limit']) {
+    if (options[name] !== undefined) {
+      throw new Error(`Option --${name} cannot be combined with --stdin`);
+    }
+  }
+
+  let content = '';
+  for await (const chunk of input) content += chunk;
+  if (!content.trim()) throw new Error('--stdin requires a JSON object');
+
+  let query;
+  try {
+    query = JSON.parse(content);
+  } catch (error) {
+    throw new Error(`Invalid query JSON from stdin: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!query || typeof query !== 'object' || Array.isArray(query)) {
+    throw new Error('--stdin requires a JSON object');
+  }
+
+  rejectUnknownOptions(query, ['collection', 'id', 'where', 'limit']);
+  const normalized = { database: options.database };
+  for (const name of ['collection', 'id']) {
+    if (query[name] !== undefined) {
+      if (typeof query[name] !== 'string') throw new Error(`Query field "${name}" must be a string`);
+      normalized[name] = query[name];
+    }
+  }
+  if (query.where !== undefined) {
+    const where = Array.isArray(query.where) ? query.where : [query.where];
+    if (where.some((value) => typeof value !== 'string')) {
+      throw new Error('Query field "where" must be a string or an array of strings');
+    }
+    normalized.where = where;
+  }
+  if (query.limit !== undefined) {
+    if (!Number.isInteger(query.limit) || query.limit < 1) {
+      throw new Error('Query field "limit" must be a positive integer');
+    }
+    normalized.limit = String(query.limit);
+  }
+  return normalized;
 }
 
 function option(options, name, required = true) {
@@ -338,7 +386,7 @@ async function runLegacyIngestion(contextPath, logDirectory) {
   }
 }
 
-export async function runCli(arguments_) {
+export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (!COMMANDS.has(command) && arguments_.length === 2) {
@@ -357,7 +405,10 @@ export async function runCli(arguments_) {
     rejectUnknownOptions(options, ['input']);
     return auditJsonl(option(options, 'input', false) || DEFAULT_LOGS_PATH);
   }
-  const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
+  const queryOptions = command === 'query' && options.stdin
+    ? await queryOptionsFromStdin(options, input)
+    : options;
+  const databasePath = option(queryOptions, 'database', false) || DEFAULT_DATABASE_PATH;
   if (command === 'doctor') {
     rejectUnknownOptions(options, ['database', 'ttl-days', 'run-ttl-days']);
     return doctorSqliteDatabase(databasePath, {
@@ -397,8 +448,8 @@ export async function runCli(arguments_) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {
-    rejectUnknownOptions(options, ['database', 'collection', 'id', 'where', 'limit']);
-    return queryCanonicalData(indexedDB, options);
+    rejectUnknownOptions(queryOptions, ['database', 'collection', 'id', 'where', 'limit']);
+    return queryCanonicalData(indexedDB, queryOptions);
   }
   throw new Error(`Unknown command: ${command}`);
 }
