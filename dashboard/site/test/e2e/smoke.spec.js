@@ -222,19 +222,17 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
   const viewportWidth = page.viewportSize()?.width;
   if (typeof viewportWidth !== 'number') throw new Error('Expected Playwright to provide a viewport width');
-  /** @param {number} actual @param {number} expected */
-  const isWithinPixel = (actual, expected) => Math.abs(actual - expected) < 1;
-  await expect.poll(async () => {
-    const [mainBox, factoryBox] = await Promise.all([
-      dashboardMain.boundingBox(),
-      factoryOverview.boundingBox()
-    ]);
-    return mainBox !== null
-      && factoryBox !== null
-      && isWithinPixel(factoryBox.x, 0)
-      && isWithinPixel(factoryBox.y, mainBox.y)
-      && isWithinPixel(factoryBox.width, viewportWidth);
-  }).toBe(true);
+  await expect(factoryOverview).toBeVisible();
+  const [mainBox, factoryBox] = await Promise.all([
+    dashboardMain.boundingBox(),
+    factoryOverview.boundingBox()
+  ]);
+  expect(mainBox).not.toBeNull();
+  expect(factoryBox).not.toBeNull();
+  if (mainBox === null || factoryBox === null) throw new Error('Expected overview layout boxes to be available');
+  expect(Math.abs(factoryBox.x)).toBeLessThan(1);
+  expect(Math.abs(factoryBox.y - mainBox.y)).toBeLessThan(1);
+  expect(Math.abs(factoryBox.width - viewportWidth)).toBeLessThan(1);
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
