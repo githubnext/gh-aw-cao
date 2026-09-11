@@ -23,7 +23,14 @@ Read the specification and relevant built-in queries and views before authoring 
 
 ## Acquire evidence
 
-1. Run the CLI with `help` before relying on remembered options.
+1. Set the CLI paths for the current checkout, using the catalog alternatives above when the installed paths are absent:
+
+   ```bash
+   SALLIE_CLI=.github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs
+   SALLIE_PREVIEW=.github/aw/dashboard/local-server.mjs
+   ```
+
+   Run `node "$SALLIE_CLI" help` before relying on remembered options.
 2. Download into a disposable directory:
 
    ```bash

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
@@ -55,10 +55,7 @@ test("root package installs the agentic operations analysis skill and specificat
     "utf8",
   );
 
-  assert.equal(
-    resources.get(".github/skills/analyze-agentic-ops/SKILL.md"),
-    ".github/skills/analyze-agentic-ops/SKILL.md",
-  );
+  assert.ok(manifest.includes.includes(".github/skills/analyze-agentic-ops"));
   assert.equal(
     resources.get("docs/dashboard-language-specification.md"),
     ".github/aw/specs/dashboard-language-specification.md",
@@ -1107,6 +1104,7 @@ test("root package composes its operational packages through manifests", () => {
 
   assert.deepEqual(rootManifest.includes, [
     ".github/workflows/aw.json",
+    ".github/skills/analyze-agentic-ops",
     "activity/aw.yml",
     "aw-doctor/aw.yml",
     "cao-evolution/aw.yml",
@@ -2672,6 +2670,11 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     cpSync(join(root, "AGENTS.md"), join(temporaryRoot, "AGENTS.md"));
     cpSync(join(root, "aw.yml"), join(temporaryRoot, "aw.yml"));
     cpSync(join(root, "README.md"), join(temporaryRoot, "README.md"));
+    mkdirSync(join(temporaryRoot, "docs"));
+    cpSync(
+      join(root, "docs", "dashboard-language-specification.md"),
+      join(temporaryRoot, "docs", "dashboard-language-specification.md"),
+    );
     for (const packageDirectory of ["activity", "aw-doctor", "cao-evolution", "dashboard", "dependabot", "optimization"]) {
       cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
     }
