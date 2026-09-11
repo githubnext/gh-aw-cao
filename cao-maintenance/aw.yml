@@ -1,6 +1,6 @@
 name: CAO Maintenance
 description: Control-plane integrity, reliability, and efficiency maintenance for Central Agentic Ops repositories.
-min-version: v0.89.2
+min-version: v0.89.3
 experimental: true
 includes:
   - .github/workflows/cao-maintenance-efficiency.md
