@@ -3577,7 +3577,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
-  await page.locator('#page-workflow-detail .custom-table tbody a').first().click();
+  await page.locator('#page-workflow-detail .custom-table tbody a').first().press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Debug ambient context workflow failure');
   await expect(page.locator('.outcome-meta a', { hasText: 'Ambient Context' })).toHaveAttribute(
     'href',
