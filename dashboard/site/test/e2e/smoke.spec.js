@@ -1015,14 +1015,66 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
         },
         outcomes: {
           source: 'outcomes',
-          rows: [{
-            'safe-output': 'dependabot-review',
-            'outcome-title': 'Dependabot review retained',
-            repository: 'gh-aw',
-            'outcome-state': 'accepted',
-            'observed-at': '2026-08-29T09:40:00Z',
-            'external-link': evidenceLink
-          }],
+          rows: [
+            {
+              'safe-output': 'dependabot-review',
+              'safe-output-kind': 'create-issue',
+              'outcome-category': 'issue',
+              'outcome-title': 'Dependabot review retained',
+              repository: 'gh-aw',
+              'outcome-state': 'accepted',
+              'observed-at': '2026-08-29T09:40:00Z',
+              'external-link': evidenceLink
+            },
+            {
+              'safe-output': 'dependabot-update',
+              'safe-output-kind': 'create-pull-request',
+              'outcome-category': 'pull-request',
+              'outcome-title': 'Dependabot update retained',
+              repository: 'gh-aw',
+              'outcome-state': 'accepted',
+              'observed-at': '2026-08-29T09:45:00Z',
+              'external-link': evidenceLink
+            }
+          ],
+          metadata
+        },
+        runs: {
+          source: 'runs',
+          rows: [
+            ...Array.from({ length: 80 }, (_, index) => ({
+              repository: 'gh-aw', workflow: 'review', run: String(index + 1),
+              'run-status': 'completed', 'run-conclusion': 'failure', 'started-at': '2026-08-29T09:30:00Z'
+            })),
+            ...Array.from({ length: 20 }, (_, index) => ({
+              repository: 'gh-aw', workflow: 'update', run: String(index + 81),
+              event: index < 12 ? 'workflow_dispatch' : 'schedule',
+              'run-status': 'completed', 'run-conclusion': 'success', 'started-at': '2026-08-29T09:35:00Z'
+            })),
+            {
+              repository: 'gh-aw', workflow: 'dispatch', run: '101',
+              'run-status': 'in-progress', 'run-conclusion': 'unknown', 'started-at': '2026-08-29T09:50:00Z'
+            }
+          ],
+          metadata
+        },
+        repositories: {
+          source: 'repositories',
+          rows: [{ repository: 'gh-aw', 'rollout-mode': 'review', 'observed-at': '2026-08-29T09:30:00Z' }],
+          metadata
+        },
+        workflows: {
+          source: 'workflows',
+          rows: [
+            { repository: 'gh-aw', workflow: 'dispatch', 'workflow-role': 'orchestrator', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' },
+            { repository: 'gh-aw', workflow: 'review', 'workflow-role': 'worker', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' },
+            { repository: 'gh-aw', workflow: 'update', 'workflow-role': 'worker', 'workflow-active': 'true', 'observed-at': '2026-08-29T09:30:00Z' }
+          ],
+          metadata
+        },
+        'safe-output-performance': {
+          source: 'safe-output-performance',
+          rows: [{ 'safe-output-count': 1, 'observed-at': '2026-08-29T09:40:00Z' }],
           metadata
         },
         'operational-values': {
@@ -1170,75 +1222,19 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
-  await expect(overviewPage.getByText('Overview Attention', { exact: true })).toHaveCount(0);
-  await expect(overviewPage.getByRole('heading', { name: '80 items need your attention' })).toBeVisible();
-  await expect(overviewPage.locator('.metric-card-widget')).toHaveCount(4);
-  await expect(overviewPage.locator('.metric-card-widget-icon .octicon')).toHaveCount(4);
-  const metricGeometry = await overviewPage.locator('.metric-card-widget').evaluateAll((metrics) => metrics.map((metric) => {
-    const metricBox = metric.getBoundingClientRect();
-    const centers = ['.metric-card-widget-icon', 'strong', '.metric-card-widget-label'].map((selector) => {
-      const box = metric.querySelector(selector)?.getBoundingClientRect();
-      return box ? box.left + box.width / 2 : null;
-    });
-    const iconBox = metric.querySelector('.metric-card-widget-icon .octicon')?.getBoundingClientRect();
-    return {
-      center: metricBox.left + metricBox.width / 2,
-      centers,
-      iconSize: iconBox ? [iconBox.width, iconBox.height] : null
-    };
-  }));
-  for (const geometry of metricGeometry) {
-    expect(geometry.iconSize).toEqual([32, 32]);
-    for (const center of geometry.centers) {
-      expect(Math.abs(Number(center) - geometry.center)).toBeLessThan(1);
-    }
-  }
-  const firstMetric = overviewPage.locator('.metric-card-widget').first();
-  const verticalOrder = await firstMetric.locator('strong, .metric-card-widget-label, .metric-card-widget-icon').evaluateAll((elements) => elements.map((element) => element.className || element.tagName.toLowerCase()));
-  expect(verticalOrder).toEqual(['metric-card-widget-value', 'metric-card-widget-label', 'metric-card-widget-icon']);
-  const metricRowTops = await overviewPage.locator('.metric-card-widget').evaluateAll((metrics) => metrics.map((metric) => ({
-    icon: metric.querySelector('.metric-card-widget-icon')?.getBoundingClientRect().top,
-    count: metric.querySelector('strong')?.getBoundingClientRect().top,
-    label: metric.querySelector('.metric-card-widget-label')?.getBoundingClientRect().top
-  })));
-  for (const tops of [
-    metricRowTops.map((positions) => positions.icon),
-    metricRowTops.map((positions) => positions.count),
-    metricRowTops.map((positions) => positions.label)
-  ]) {
-    const numericTops = tops.filter((value) => typeof value === 'number');
-    expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
-  }
-  await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('80');
-  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('');
-  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('');
-  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('');
-  const overviewElement = await overviewPage.elementHandle();
-  expect(overviewElement).not.toBeNull();
-  const attentionColors = await overviewElement?.evaluate((element) => {
-    const root = element.closest('.dashboard-root');
-    const activeDanger = element.querySelector('.metric-card-widget-danger.metric-card-widget-active strong');
-    const unavailableMetric = element.querySelector('[href="#page-overview-blocked-work"] strong');
-    if (!(root instanceof HTMLElement) || !(activeDanger instanceof HTMLElement) || !(unavailableMetric instanceof HTMLElement)) return null;
-    /** @param {string} token */
-    const resolvedColor = (token) => {
-      const probe = document.createElement('span');
-      probe.style.color = `var(${token})`;
-      root.append(probe);
-      const color = getComputedStyle(probe).color;
-      probe.remove();
-      return color;
-    };
-    return {
-      activeDanger: getComputedStyle(activeDanger).color,
-      unavailableMetric: getComputedStyle(unavailableMetric).color,
-      danger: resolvedColor('--danger'),
-      muted: resolvedColor('--muted')
-    };
-  });
-  expect(attentionColors).not.toBeNull();
-  expect(attentionColors?.activeDanger).toBe(attentionColors?.danger);
-  expect(attentionColors?.unavailableMetric).toBe(attentionColors?.muted);
+  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
+  await expect(overviewPage.locator('.factory-running')).toContainText('1 run in motion');
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
+  await expect(overviewPage.locator('.factory-station small')).toHaveText([
+    'connected',
+    '80 failed',
+    '2 workflows observed',
+    'Coming soon'
+  ]);
+  await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
+  await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
@@ -1246,7 +1242,10 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
-  await overviewPage.locator('[href="#page-overview-failed-runs"]').click();
+  await overviewPage.locator('.factory-station small a').click();
+  await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
+  await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
+  await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });
   const failedRunsPage = page.locator('[data-page-id="overview-failed-runs"]');
   await expect(failedRunsPage).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
@@ -1269,7 +1268,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
 
-  await overviewPage.locator('[href="#page-overview-awaiting-review"]').click();
+  await page.evaluate(() => { window.location.hash = '#page-overview-awaiting-review'; });
   const reviewPage = page.locator('[data-page-id="overview-awaiting-review"]');
   await expect(reviewPage).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-full-view/);
@@ -1308,13 +1307,14 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await page.setViewportSize({ width: 305, height: 844 });
   await page.evaluate(() => { window.location.hash = '#page-overview'; });
   await expect(overviewPage).toBeVisible();
-  await expect(overviewPage.locator('.metric-card-widget')).toHaveCount(4);
+  await expect(overviewPage.locator('.agent-factory')).toBeVisible();
+  await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(page.locator('.mobile-nav-section-label')).toHaveText(['Data', 'Experimental']);
   await expect(page.locator('[data-mobile-nav-page-id="operations"]')).toBeVisible();
   await page.locator('.mobile-nav-menu > summary').click();
-  await expect(overviewPage.locator('.metric-card-widget').first()).toBeInViewport();
-  await expect(overviewPage.locator('.custom-view')).toHaveCount(4);
+  await expect(overviewPage.locator('.factory-intro')).toBeInViewport();
+  await expect(overviewPage.locator('.custom-view')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await expect(overviewPage.locator('.table-scroll')).toHaveCount(0);
 

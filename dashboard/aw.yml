@@ -166,6 +166,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/count-formatters.js
   - source: site/src/components/data-state.js
     destination: .github/aw/dashboard/site/src/components/data-state.js
+  - source: site/src/components/factory-overview.js
+    destination: .github/aw/dashboard/site/src/components/factory-overview.js
   - source: site/src/components/data-view.js
     destination: .github/aw/dashboard/site/src/components/data-view.js
   - source: site/src/components/dispatch-type-classification.json

@@ -984,10 +984,10 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
-    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open account menu for The Octocat');
-    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(false);
-    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('src')).toBe('https://avatars.githubusercontent.com/u/583231?v=4');
-    expect(rendered.querySelector('.account-menu-avatar-image')?.getAttribute('referrerpolicy')).toBe('no-referrer');
+    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open settings menu');
+    expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
+    expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
+    expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
     expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
     expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
     const systemTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="system"]'));
@@ -1093,6 +1093,13 @@ describe('presenter built-in and custom pages', () => {
           rows: [],
           metadata: { ...metadata, availability: 'unavailable' }
         },
+        outcomes: { source: 'outcomes', rows: [], metadata },
+        'safe-output-performance': { source: 'safe-output-performance', rows: [], metadata },
+        'operational-values': { source: 'operational-values', rows: [], metadata },
+        usage: { source: 'usage', rows: [], metadata },
+        runs: { source: 'runs', rows: [], metadata },
+        repositories: { source: 'repositories', rows: [], metadata },
+        'work-items': { source: 'work-items', rows: [], metadata },
         workflows: {
           source: 'workflows',
           rows: [{
@@ -1118,10 +1125,12 @@ describe('presenter built-in and custom pages', () => {
     document.body.append(rendered);
 
     const page = await activatePage(rendered, 'overview');
-    expect(page?.querySelector('[data-section-layout="horizontal"]')).not.toBeNull();
-    expect(page?.querySelectorAll('.metric-card-widget')).toHaveLength(4);
+    expect(page?.querySelector('.agent-factory')).not.toBeNull();
+    expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
+    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
-    expect(page?.querySelector('[href="#page-overview-security-findings"] [data-metric-value="count"]')?.textContent).toBe('');
+    expect(page?.querySelector('.factory-status')).toBeNull();
+    expect(page?.querySelector('.factory-all-clear')).toBeNull();
     expect(page?.querySelector('.home-attention-detail')).toBeNull();
     expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();

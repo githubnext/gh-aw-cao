@@ -755,19 +755,11 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             h(
               'summary',
               {
-                className: viewer?.avatarUrl ? 'account-menu-avatar' : 'account-menu-avatar account-menu-icon',
-                'aria-label': viewer ? `Open account menu for ${viewer.name || viewer.login}` : 'Open account menu',
-                title: viewer ? `${viewer.name || viewer.login} (${viewer.login})` : 'Open account menu'
+                className: 'account-menu-avatar account-menu-icon',
+                'aria-label': 'Open settings menu',
+                title: 'Settings'
               },
-              viewer?.avatarUrl
-                ? h('img', {
-                  className: 'account-menu-avatar-image',
-                  src: viewer.avatarUrl,
-                  alt: '',
-                  referrerPolicy: 'no-referrer'
-                })
-                : octicon('gear'),
-              h('span', { className: 'sr-only action-label' }, viewer ? (viewer.name || viewer.login) : 'Account')
+              octicon('gear')
             ),
             h(
               'div',
@@ -1168,7 +1160,9 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
         page.id === 'readiness' ? undefined : timeWindow,
         page.id === 'readiness'
           ? new Set(['runs', 'findings', 'outcomes'])
-          : new Set(pageSources.keys())
+          : new Set([...pageSources.keys()].filter((name) => (
+            page.id !== 'overview' || !['repositories', 'workflows', 'factory-rhythm-baseline'].includes(name)
+          )))
       );
       /** @type {(filteredSources: Record<string, LogicalSourceInput>) => void} */
       const apply = (filteredSources) => {

@@ -517,36 +517,27 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines Overview with declarative count queries and metric cards', () => {
+  it('defines Overview as one evidence-backed outcomes element', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const page = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) =>
       candidate.id === 'overview'
     );
-    const queryNames = new Set(document.dashboard.queries.map(
-      (/** @type {{ name: string }} */ query) => query.name
-    ));
 
-    expect(page.sections).toEqual([expect.objectContaining({
-      layout: 'horizontal',
-      'count-sources': page.views.map((/** @type {{ data: { source: string } }} */ view) => view.data.source),
-      'count-field': 'count',
-      'count-label': 'items need your attention',
-      views: page.views.map((/** @type {{ id: string }} */ view) => view.id)
+    expect(page.views).toEqual([expect.objectContaining({
+      id: 'overview-outcomes',
+      data: { sources: expect.arrayContaining([
+        'outcomes',
+        'runs',
+        'dispatches',
+        'factory-rhythm-baseline',
+        'grader-observations',
+        'repositories',
+        'workflows'
+      ]) },
+      mark: 'element',
+      element: 'outcomes-overview',
+      layout: 'full'
     })]);
-    expect(page.views).toHaveLength(4);
-    for (const view of page.views) {
-      expect(view).toMatchObject({
-        mark: 'metric',
-        metric: {
-          style: 'card',
-          icon: expect.any(String),
-          tone: expect.any(String),
-          'navigation-page': expect.any(String)
-        },
-        encoding: { value: { field: 'count', type: 'quantitative' } }
-      });
-      expect(queryNames.has(view.data.source)).toBe(true);
-    }
     expect(validateDashboardDocument(authoritativeDashboardSource).ok).toBe(true);
   });
 

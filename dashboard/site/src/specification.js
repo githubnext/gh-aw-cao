@@ -83,7 +83,8 @@ export const VIEW_ELEMENT_VALUES = [
   'configuration-actions',
   'work-project-view',
   'agent-marketplace-view',
-  'insights-overview'
+  'insights-overview',
+  'outcomes-overview'
 ];
 export const VIEW_CHART_VALUES = ['bar', 'dot', 'heatmap', 'histogram', 'line', 'pie', 'scatter', 'swimlane'];
 export const VIEW_METRIC_KEYS = ['style', 'icon', 'tone', 'navigation-page'];
@@ -374,6 +375,7 @@ export const SOURCE_VALUES = [
   'runtime-anomaly-readiness',
   'runtime-signals',
   'dispatches',
+  'factory-rhythm-baseline',
   'dispatch-activation-summary',
   'package-dispatch-state',
   'repository-summary',
@@ -473,6 +475,7 @@ export const SOURCE_FIELDS = {
   'runtime-anomaly-readiness': ['icon', 'title', 'detail'],
   'runtime-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-href'],
   dispatches: ['started-at', 'dispatch-type', 'package', 'package-name', 'workflow-name', 'run-title', 'runtime-repository', 'status', 'status-detail', 'status-detail-at', 'run-link'],
+  'factory-rhythm-baseline': ['daily-averages', 'weeks'],
   'dispatch-activation-summary': ['label', 'value'],
   'package-dispatch-state': ['package', 'package-name', 'dispatch-runs', 'skipped', 'failed', 'succeeded', 'worker-dispatches', 'aic', 'agent', 'model'],
   'repository-summary': ['label', 'value', 'items'],
