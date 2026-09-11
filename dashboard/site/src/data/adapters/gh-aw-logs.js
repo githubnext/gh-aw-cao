@@ -1,4 +1,11 @@
-import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
+import {
+  jobId,
+  repositoryCoordinateId,
+  runId,
+  sourceId,
+  workflowCoordinateId,
+  workflowSourcePath
+} from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 
@@ -73,7 +80,8 @@ function runMetadata(run) {
     engine: optionalString(run.engine ?? awInfo.engine_name),
     engineId: optionalString(run.engine_id ?? awInfo.engine_id),
     engineVersion: optionalString(run.engine_version ?? awInfo.version),
-    resolvedModel: optionalString(run.resolved_model ?? run.model ?? awInfo.model),
+    requestedModel: optionalString(run.requested_model ?? run.model ?? awInfo.model),
+    resolvedModel: optionalString(run.resolved_model),
     agentRuntime: optionalString(run.agent_runtime ?? awInfo.agent_runtime),
     firewallVersion: optionalString(run.firewall_version ?? awInfo.firewall_version ?? awInfo.awf_version),
     gatewayVersion: optionalString(run.gateway_version ?? awInfo.awmg_version),
@@ -325,7 +333,12 @@ export function adaptGhAwLogs(input) {
   const job = document.job === undefined || document.job === null ? null : objectValue(document.job, 'gh-aw logs job');
 
   const repositoryGithubId = identifier(repository.githubId, 'repository.githubId');
+  const repositoryOwner = requiredString(repository.owner, 'repository.owner');
+  const repositoryName = requiredString(repository.name, 'repository.name');
+  const canonicalRepositoryId = repositoryCoordinateId(repositoryOwner, repositoryName);
   const workflowGithubId = identifier(workflow.githubId, 'workflow.githubId');
+  const workflowPath = requiredString(workflow.path, 'workflow.path');
+  const canonicalWorkflowId = workflowCoordinateId(repositoryOwner, repositoryName, workflowPath);
   const githubRunId = identifier(run.githubRunId, 'run.githubRunId');
   const attempt = positiveInteger(run.attempt, 'run.attempt');
   const canonicalRunId = runId(githubRunId, attempt);
@@ -338,10 +351,11 @@ export function adaptGhAwLogs(input) {
     {
       kind: 'repository', source: OBSERVATION_SOURCE, sourceId: `repository:${repositoryGithubId}`, observedAt,
       data: {
+        id: canonicalRepositoryId,
         githubId: repositoryGithubId,
-        owner: requiredString(repository.owner, 'repository.owner'),
-        name: requiredString(repository.name, 'repository.name'),
-        fullName: `${requiredString(repository.owner, 'repository.owner')}/${requiredString(repository.name, 'repository.name')}`,
+        owner: repositoryOwner,
+        name: repositoryName,
+        fullName: `${repositoryOwner}/${repositoryName}`,
         visibility: optionalString(repository.visibility) ?? 'unknown'
       }
 
@@ -349,10 +363,11 @@ export function adaptGhAwLogs(input) {
     {
       kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: `workflow:${workflowGithubId}`, observedAt,
       data: {
+        id: canonicalWorkflowId,
         githubId: workflowGithubId,
-        repositoryId: repositoryId(repositoryGithubId),
+        repositoryId: canonicalRepositoryId,
         name: requiredString(workflow.name, 'workflow.name'),
-        path: requiredString(workflow.path, 'workflow.path'),
+        path: workflowSourcePath(workflowPath),
         state: optionalString(workflow.state) ?? 'unknown'
       }
     },
@@ -361,8 +376,8 @@ export function adaptGhAwLogs(input) {
       data: {
         githubRunId,
         attempt,
-        repositoryId: repositoryId(repositoryGithubId),
-        workflowId: workflowId(workflowGithubId),
+        repositoryId: canonicalRepositoryId,
+        workflowId: canonicalWorkflowId,
         event: optionalString(run.event) ?? 'unknown',
         status: optionalString(run.status) ?? 'unknown',
         conclusion: optionalString(run.conclusion) ?? null,
@@ -408,7 +423,7 @@ export function adaptGhAwLogs(input) {
 
 /**
  * @param {string} content
- * @param {{ context?: unknown }} [options]
+ * @param {{ context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
  * @returns {{
  *   observations: import('../model/schema.js').CanonicalObservation[],
  *   records: number,
@@ -466,6 +481,13 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   const enrichedRuns = new Map();
   /** @type {Map<string, Set<string>>} */
   const workflowPaths = new Map();
+  for (const hint of options.workflowHints ?? []) {
+    const coordinates = repositoryCoordinates(`${hint.owner}/${hint.repository}`);
+    const lookup = `${coordinates.fullName.toLowerCase()}:${hint.name.toLowerCase()}`;
+    const paths = workflowPaths.get(lookup) ?? new Set();
+    paths.add(hint.path);
+    workflowPaths.set(lookup, paths);
+  }
   for (const { envelope, line } of envelopes) {
     if (envelope.kind !== 'run') continue;
     const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
@@ -505,7 +527,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
       : candidate);
     const lookup = `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`;
     const paths = workflowPaths.get(lookup) ?? new Set();
-    paths.add(workflowPath);
+    paths.add(workflowSourcePath(workflowPath));
     workflowPaths.set(lookup, paths);
   }
 
@@ -569,11 +591,16 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
   /** @param {CachedRun} candidate */
   const structuralIds = (candidate) => {
     const repositorySourceId = candidate.fullName.toLowerCase();
-    const workflowCoordinate = candidate.workflowPath
-      ? `${repositorySourceId}:path:${candidate.workflowPath.toLowerCase()}`
+    const canonicalWorkflowPath = candidate.workflowPath
+      ? workflowSourcePath(candidate.workflowPath)
+      : undefined;
+    const workflowCoordinate = canonicalWorkflowPath
+      ? `${repositorySourceId}:path:${canonicalWorkflowPath}`
       : `${repositorySourceId}:name:${candidate.workflowName.toLowerCase()}`;
-    const repository = sourceId('repository', OBSERVATION_SOURCE, repositorySourceId);
-    const workflow = sourceId('workflow', OBSERVATION_SOURCE, workflowCoordinate);
+    const repository = repositoryCoordinateId(candidate.owner, candidate.name);
+    const workflow = canonicalWorkflowPath
+      ? workflowCoordinateId(candidate.owner, candidate.name, canonicalWorkflowPath)
+      : sourceId('workflow', OBSERVATION_SOURCE, workflowCoordinate);
     repositories.set(repository, {
       kind: 'repository',
       source: OBSERVATION_SOURCE,
@@ -596,7 +623,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         id: workflow,
         repositoryId: repository,
         name: candidate.workflowName,
-        path: candidate.workflowPath,
+        path: canonicalWorkflowPath,
         state: 'unknown'
       }
     });
@@ -641,7 +668,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         owner: structural.owner,
         repository: structural.name,
         repositoryFullName: structural.fullName,
-        workflowPath: structural.workflowPath,
+        workflowPath: structural.workflowPath ? workflowSourcePath(structural.workflowPath) : undefined,
         githubRunId,
         attempt,
         number: finiteNumber(rawValue.number) ?? finiteNumber(enrichedValue.number),
@@ -679,7 +706,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         engine: metadata.engine ?? 'unknown',
         engineId: metadata.engineId,
         engineVersion: metadata.engineVersion,
-        requestedModel: optionalString(enrichedValue.requested_model),
+        requestedModel: metadata.requestedModel,
         resolvedModel: metadata.resolvedModel,
         agentRuntime: metadata.agentRuntime,
         firewallVersion: metadata.firewallVersion,
@@ -1042,8 +1069,6 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         contextWorkflow.githubId,
         'gh-aw JSONL collection context workflow.githubId'
       );
-      const repository = repositoryId(repositoryGithubId);
-      const workflow = workflowId(workflowGithubId);
       const owner = requiredString(
         contextRepository.owner,
         'gh-aw JSONL collection context repository.owner'
@@ -1052,6 +1077,12 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         contextRepository.name,
         'gh-aw JSONL collection context repository.name'
       );
+      const repository = repositoryCoordinateId(owner, name);
+      const contextWorkflowPath = requiredString(
+        contextWorkflow.path,
+        'gh-aw JSONL collection context workflow.path'
+      );
+      const workflow = workflowCoordinateId(owner, name, contextWorkflowPath);
       observations.push(
         {
           kind: 'repository',
@@ -1059,6 +1090,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
           sourceId: `collection-repository:${repositoryGithubId}`,
           observedAt,
           data: {
+            id: repository,
             githubId: repositoryGithubId,
             owner,
             name,
@@ -1072,16 +1104,14 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
           sourceId: `collection-workflow:${workflowGithubId}`,
           observedAt,
           data: {
+            id: workflow,
             githubId: workflowGithubId,
             repositoryId: repository,
             name: requiredString(
               contextWorkflow.name,
               'gh-aw JSONL collection context workflow.name'
             ),
-            path: requiredString(
-              contextWorkflow.path,
-              'gh-aw JSONL collection context workflow.path'
-            ),
+            path: workflowSourcePath(contextWorkflowPath),
             state: optionalString(contextWorkflow.state) ?? 'unknown'
           }
         },

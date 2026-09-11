@@ -551,7 +551,7 @@ if [ "$1" = "api" ]; then
     printf 'main\\n'
     exit
   fi
-  if [ "$2" = "repos/acme/control/actions/artifacts?name=central-agentic-ops-dashboard-data&per_page=100" ]; then
+  if [ "$2" = "repos/acme/control/actions/artifacts?name=central-agentic-ops-dashboard&per_page=100" ]; then
     printf '42\\n'
     exit
   fi
@@ -565,12 +565,13 @@ fi
   [ "$2" = "download" ] &&
   [ "$3" = "42" ] &&
   [ "$4" = "--name" ] &&
-  [ "$5" = "central-agentic-ops-dashboard-data" ] &&
+  [ "$5" = "central-agentic-ops-dashboard" ] &&
   [ "$6" = "--dir" ] &&
   [ "$8" = "--repo" ] &&
   [ "$9" = "acme/control" ] || exit 3
-mkdir -p "$7"
-printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/sources.json"
+mkdir -p "$7/cao"
+printf '%s\n' '{"schema_version":2,"repository":"acme/control"}' > "$7/cao/gh-aw-logs.jsonl"
+printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/cao/inventory-sources.json"
 `);
   await chmod(ghExecutable, 0o755);
 
@@ -584,8 +585,15 @@ printf '{"repositories":{"rows":[{"repository":"control"}]}}' > "$7/sources.json
     port: 0,
   });
   try {
-    const response = await fetch(`${preview.url}/sources.json`);
-    assert.deepEqual(await response.json(), {
+    const logsResponse = await fetch(`${preview.url}/gh-aw-logs.jsonl`);
+    assert.equal(logsResponse.status, 200);
+    assert.equal(logsResponse.headers.get("content-type"), "application/x-ndjson; charset=utf-8");
+    assert.deepEqual(JSON.parse((await logsResponse.text()).trim()), {
+      schema_version: 2,
+      repository: "acme/control",
+    });
+    const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
+    assert.deepEqual(await inventoryResponse.json(), {
       repositories: { rows: [{ repository: "control" }] },
     });
   } finally {

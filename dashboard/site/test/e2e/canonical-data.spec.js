@@ -75,6 +75,7 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'engine-version': '1.2.3',
         'requested-model': 'model-a',
         'resolved-model': 'model-b',
+        'aic-total': 17,
         'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}` }
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -692,7 +693,7 @@ test('deployed JSONL ingestion includes the published package inventory', async 
   });
 
   expect(result.packages.rows).toHaveLength(1);
-  expect(result.workflows.rows).toHaveLength(2);
+  expect(result.workflows.rows).toHaveLength(1);
   expect(result['package-inventory']).toMatchObject({
     rows: [{
       package: 'dashboard',
@@ -825,7 +826,7 @@ test('deletion rebuilds derived state and fresh data is directly upserted', asyn
   expect(result.replaced).toMatchObject({ updated: true });
   expect(result.repositories).toEqual([
     expect.objectContaining({
-      id: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao'
+      id: 'repository:githubnext%2Fgh-aw-cao'
     })
   ]);
   expect(result.runs.map((/** @type {Record<string, unknown>} */ run) => run.id)).toEqual([

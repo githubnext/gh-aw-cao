@@ -61,24 +61,41 @@ function runKey(run) {
     .map(normalizedKey).join(':');
 }
 
-/** @param {Record<string, unknown>} run @param {Map<string, Record<string, unknown>>} publishedRuns */
-function projectedRun(run, publishedRuns) {
+/**
+ * @param {Record<string, unknown>} run
+ * @param {Map<string, Record<string, unknown>>} publishedRuns
+ * @param {Map<unknown, Record<string, unknown>>} workflowsById
+ */
+function projectedRun(run, publishedRuns, workflowsById) {
+  const workflow = workflowsById.get(run.workflowId) ?? {};
   return {
     ...(publishedRuns.get(runKey(run)) ?? {}),
     organization: run.owner,
     repository: run.repository,
-    workflow: run.workflowPath,
+    workflow: run.workflowPath ?? workflow.path,
     run: String(run.githubRunId ?? ''),
     'run-attempt': run.attempt,
     'run-title': run.title,
     event: run.event,
+    branch: run.branch,
+    'head-sha': run.headSha,
+    'created-at': run.createdAt,
     'started-at': run.startedAt,
     'ended-at': run.completedAt,
+    'updated-at': run.updatedAt,
     'run-status': run.status,
     'run-conclusion': run.conclusion,
+    classification: run.classification,
+    duration: run.duration,
+    'action-minutes': run.actionMinutes,
+    'github-api-calls': run.githubApiCalls,
+    'safe-items-count': run.safeItemsCount,
+    'error-count': run.errorCount,
     'failure-detail': run.failureDetail,
     'run-link': run.runLink,
-    'rollout-mode': run.rolloutMode,
+    'rollout-mode': run.rolloutMode && run.rolloutMode !== 'unknown'
+      ? run.rolloutMode
+      : workflow.rolloutMode,
     'agent-id': run.agentId,
     'agent-version': run.agentVersion,
     'model-id': run.modelId,
@@ -95,12 +112,16 @@ function projectedRun(run, publishedRuns) {
   };
 }
 
-/** @param {Record<string, unknown>[]} runs @param {Record<string, unknown>} sources */
-function runsSource(runs, sources) {
+/**
+ * @param {Record<string, unknown>[]} runs
+ * @param {Map<unknown, Record<string, unknown>>} workflowsById
+ * @param {Record<string, unknown>} sources
+ */
+function runsSource(runs, workflowsById, sources) {
   const publishedRuns = new Map(sourceRows(sources.runs).map((run) => [runKey(run), run]));
   return {
     source: 'runs',
-    rows: runs.map((run) => projectedRun(run, publishedRuns)),
+    rows: runs.map((run) => projectedRun(run, publishedRuns, workflowsById)),
     metadata: projectionMetadata(sources, 'runs', 'runs', true)
   };
 }
@@ -372,7 +393,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
-    requested.has('workflows') ? queries.workflows.list() : [],
+    requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
     requested.has('runs') || requested.has('job-performance') || requested.has('events')
       ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
@@ -381,6 +402,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
     requested.has('events') ? queries.events.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
+  const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
   const runsById = new Map(runs.map((run) => [run.id, run]));
   const sessionsById = new Map(sessions.map((session) => [session.id, session]));
   const sources = namedLogicalSources(logicalSources);
@@ -390,7 +412,7 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('repositories')) projected.repositories = repositoriesSource(repositories, sources);
   if (requested.has('workflows')) projected.workflows = workflowsSource(workflows, repositoriesById, sources);
   if (requested.has('job-performance')) projected['job-performance'] = jobsSource(jobs, runsById, sources);
-  if (requested.has('runs')) projected.runs = runsSource(runs, sources);
+  if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
   return projected;

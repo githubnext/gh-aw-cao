@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { jobId, repositoryId, runId, sourceId, workflowId } from '../../src/data/model/ids.js';
+import {
+  jobId,
+  repositoryCoordinateId,
+  repositoryId,
+  runId,
+  sourceId,
+  workflowCoordinateId,
+  workflowId,
+  workflowSourcePath
+} from '../../src/data/model/ids.js';
 
 describe('canonical data identities', () => {
   it('uses immutable GitHub IDs rather than renameable labels', () => {
@@ -11,6 +20,21 @@ describe('canonical data identities', () => {
   it('distinguishes attempts of the same workflow run', () => {
     expect(runId(123456789, 1)).toBe('github:run:123456789:attempt:1');
     expect(runId(123456789, 2)).not.toBe(runId(123456789, 1));
+  });
+
+  it('normalizes repository coordinates independently of their source', () => {
+    expect(repositoryCoordinateId('GitHubNext', 'GH-AW-CAO')).toBe(
+      'repository:githubnext%2Fgh-aw-cao'
+    );
+  });
+
+  it('maps compiled workflows to their authored workflow coordinate', () => {
+    expect(workflowSourcePath('.github/workflows/Example.lock.yml')).toBe(
+      '.github/workflows/example.md'
+    );
+    expect(workflowCoordinateId('GitHubNext', 'GH-AW-CAO', '.github/workflows/example.lock.yml')).toBe(
+      workflowCoordinateId('githubnext', 'gh-aw-cao', '.github/workflows/example.md')
+    );
   });
 
   it('derives stable source-coordinate identities without random values', () => {

@@ -564,7 +564,11 @@ describe('presenter built-in and custom pages', () => {
       sources: applyDashboardQueries({
         runs: {
           source: 'runs',
-          rows: [],
+          rows: [
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dependabot.yml', run: '1', 'aic-total': 12 },
+            { organization: 'githubnext', repository: 'gh-aw-cao', workflow: '.github/workflows/dependabot.yml', run: '2', 'aic-total': 18 },
+            { organization: 'github', repository: 'target-service', workflow: '.github/workflows/ci.yml', run: '3', 'aic-total': 5 }
+          ],
           metadata: {
             'source-id': 'workflow-runs-fixture',
             'source-kind': 'fixture',

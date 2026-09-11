@@ -41,7 +41,7 @@ const defaultCatalogRoot = basename(resolve(scriptDirectory, "..", "..")) === ".
   ? null
   : resolve(scriptDirectory, "..");
 const socketEndpoint = "/__dashboard_socket";
-const dataArtifactName = "central-agentic-ops-dashboard-data";
+const dataArtifactName = "central-agentic-ops-dashboard";
 const devServerPidFileName = ".cao-dashboard-dev-server.json";
 const maxCopilotDashboardRepairAttempts = 3;
 const trustedDashboardWorkflowPaths = new Set([
@@ -58,6 +58,7 @@ const contentTypes = new Map([
   [".jpg", "image/jpeg"],
   [".js", "text/javascript; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
+  [".jsonl", "application/x-ndjson; charset=utf-8"],
   [".md", "text/markdown; charset=utf-8"],
   [".mjs", "text/javascript; charset=utf-8"],
   [".png", "image/png"],
@@ -67,6 +68,7 @@ const contentTypes = new Map([
 const redactedTextExtensions = new Set([".css", ".html", ".js", ".md", ".mjs", ".svg"]);
 const compressibleContentTypes = new Set([
   "application/json; charset=utf-8",
+  "application/x-ndjson; charset=utf-8",
   "image/svg+xml",
   "text/css; charset=utf-8",
   "text/html; charset=utf-8",
@@ -274,6 +276,25 @@ async function downloadDashboardData(destination, repository, ghExecutable) {
   }
 }
 
+async function findCanonicalDashboardData(root) {
+  const matches = [];
+  const visit = async (directory) => {
+    const entries = await readdir(directory, { withFileTypes: true });
+    const names = new Set(entries.map((entry) => entry.name));
+    if (names.has("gh-aw-logs.jsonl") && names.has("inventory-sources.json")) {
+      matches.push(directory);
+    }
+    await Promise.all(entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => visit(join(directory, entry.name))));
+  };
+  await visit(root);
+  if (matches.length > 1) {
+    throw new Error("The dashboard artifact contains multiple canonical data directories.");
+  }
+  return matches[0] ?? null;
+}
+
 async function sourceSignature(paths) {
   const entries = await Promise.all(paths.map(async (path) => `${path}\0${await readFile(path, "utf8")}`));
   return entries.join("\n");
@@ -410,6 +431,12 @@ function redactJsonSecrets(source) {
     return redactSecretValues(value);
   };
   return JSON.stringify(redact(JSON.parse(source)), null, 2);
+}
+
+function redactJsonlSecrets(source) {
+  return source.split(/\r?\n/).map((line) => line.trim()
+    ? JSON.stringify(JSON.parse(redactJsonSecrets(line)))
+    : "").join("\n");
 }
 
 function redactedLogValue(value) {
@@ -1363,20 +1390,32 @@ export async function startDashboardServer({
   let sourcesContent;
   let sourceManifestContent;
   let viewerContent;
+  let ghAwLogsContent;
+  let inventorySourcesContent;
   const splitSourceContent = new Map();
   try {
     await downloadData(dashboardDataDirectory, repository, ghExecutable);
-    sourcesContent = redactJsonSecrets(
-      await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
-    );
-    const parsedSources = JSON.parse(sourcesContent);
-    for (const [name, logicalSource] of Object.entries(parsedSources)) {
-      const browserSource = name === "runs"
-        ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
-        : logicalSource;
-      splitSourceContent.set(name, JSON.stringify(browserSource));
+    const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
+    if (canonicalDataDirectory) {
+      ghAwLogsContent = redactJsonlSecrets(
+        await readFile(join(canonicalDataDirectory, "gh-aw-logs.jsonl"), "utf8"),
+      );
+      inventorySourcesContent = redactJsonSecrets(
+        await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
+      );
+    } else {
+      sourcesContent = redactJsonSecrets(
+        await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
+      );
+      const parsedSources = JSON.parse(sourcesContent);
+      for (const [name, logicalSource] of Object.entries(parsedSources)) {
+        const browserSource = name === "runs"
+          ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
+          : logicalSource;
+        splitSourceContent.set(name, JSON.stringify(browserSource));
+      }
+      sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
     }
-    sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
     viewerContent = JSON.stringify(normalizeLocalViewer(await loadViewer(ghExecutable).catch(() => null)));
   } catch (error) {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -1883,7 +1922,27 @@ export async function startDashboardServer({
       }
       if (pathname === "/") pathname = "/index.html";
       if (pathname === "/sources.json") {
+        if (sourcesContent === undefined) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
         sendContent(request, response, contentTypes.get(".json"), sourcesContent);
+        return;
+      }
+      if (pathname === "/gh-aw-logs.jsonl") {
+        if (ghAwLogsContent === undefined) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        sendContent(request, response, contentTypes.get(".jsonl"), ghAwLogsContent);
+        return;
+      }
+      if (pathname === "/inventory-sources.json") {
+        if (inventorySourcesContent === undefined) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        sendContent(request, response, contentTypes.get(".json"), inventorySourcesContent);
         return;
       }
       if (pathname === "/viewer.json") {
@@ -1891,6 +1950,10 @@ export async function startDashboardServer({
         return;
       }
       if (pathname === "/sources/manifest.json") {
+        if (sourceManifestContent === undefined) {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
         sendContent(request, response, contentTypes.get(".json"), sourceManifestContent);
         return;
       }
