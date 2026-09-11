@@ -13,6 +13,18 @@ afterEach(() => {
 });
 
 describe('time-window filter bar', () => {
+  it('defaults to all time', async () => {
+    const onChange = vi.fn();
+    const filterBar = renderFilterBar(onChange);
+    document.body.append(filterBar);
+    await Promise.resolve();
+
+    expect(/** @type {HTMLSelectElement} */ (
+      filterBar.querySelector('[aria-label="Time window"]')
+    ).value).toBe('all');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('anchors relative windows to the latest source timestamp', () => {
     expect(relativeTimeWindow('24h', '2026-09-04T12:00:00Z')).toEqual({
       range: '24h',
