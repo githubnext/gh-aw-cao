@@ -198,6 +198,35 @@ test('mobile Catch Up completes with persistent Done, Later, Open, and Notificat
     .toHaveAttribute('href', 'https://github.com/githubnext/mobile/actions/runs/42');
 });
 
+test('mobile shell shows large overview actions and moves other views into the hamburger', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources: {} }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const primaryNav = page.locator('.primary-nav');
+  const overviewAction = page.locator('[data-nav-page-id="overview"]');
+  await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(primaryNav).toHaveCSS('display', 'flex');
+  await expect(overviewAction).toHaveCSS('min-height', '52px');
+  await expect(overviewAction.locator('.nav-label')).toBeVisible();
+
+  await page.locator('.mobile-nav-menu > summary').click();
+  await page.locator('[data-mobile-nav-page-id="cost"]').click();
+
+  await expect(root).not.toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(primaryNav).toHaveCSS('display', 'none');
+  await expect(page.locator('[data-mobile-nav-page-id="overview"]')).toHaveAttribute('href', '#page-overview');
+});
+
 test('production pages expose a responsive executive chart', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
