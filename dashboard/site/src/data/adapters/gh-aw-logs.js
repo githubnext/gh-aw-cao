@@ -1,5 +1,6 @@
 import { jobId, repositoryId, runId, sourceId, workflowId } from '../model/ids.js';
 import { canonicalTimestamp, requiredString } from '../model/schema.js';
+import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 
 const OBSERVATION_SOURCE = 'gh-aw-logs';
 
@@ -29,6 +30,11 @@ function positiveInteger(value, field) {
 /** @param {unknown} value */
 function optionalString(value) {
   return value === undefined || value === null || value === '' ? undefined : String(value);
+}
+
+/** @param {Record<string, unknown>} value */
+function withoutUndefined(value) {
+  return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined));
 }
 
 /** @param {unknown} value */
@@ -97,6 +103,40 @@ function text(value) {
 /** @param {string[]} parts */
 function detail(parts) {
   return parts.filter(Boolean).join('/');
+}
+
+/** @param {unknown} value */
+function stableDigest(value) {
+  const input = JSON.stringify(value);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/** @param {string} repositoryName @param {string} [fallbackOwner] */
+function repositoryCoordinates(repositoryName, fallbackOwner = '') {
+  const parts = repositoryName.split('/').filter(Boolean);
+  const owner = parts.length === 2 ? parts[0] : fallbackOwner;
+  const name = parts.length === 2 ? parts[1] : repositoryName;
+  if (!owner || !name) throw new TypeError(`Repository must use OWNER/REPOSITORY form: ${repositoryName}`);
+  return { owner, name, fullName: `${owner}/${name}` };
+}
+
+/**
+ * @template {{ observedAt: string, value: Record<string, unknown> }} T
+ * @param {T} left
+ * @param {T} right
+ * @returns {T}
+ */
+function preferNewer(left, right) {
+  return Date.parse(right.observedAt) > Date.parse(left.observedAt)
+    || (right.observedAt === left.observedAt
+      && JSON.stringify(right.value).localeCompare(JSON.stringify(left.value)) > 0)
+    ? right
+    : left;
 }
 
 /** @param {unknown} input */
@@ -356,42 +396,631 @@ export function adaptGhAwLogs(input) {
 
 /**
  * @param {string} content
- * @returns {{ observations: import('../model/schema.js').CanonicalObservation[], records: number }}
+ * @param {{ context?: unknown }} [options]
+ * @returns {{
+ *   observations: import('../model/schema.js').CanonicalObservation[],
+ *   records: number,
+ *   rawPayloadRecords: number,
+ *   rawRuns: number,
+ *   agenticRuns: number,
+ *   sessions: number,
+ *   events: number,
+ *   rateLimits: number,
+ *   mappedRateLimits: number
+ * }}
  */
-export function adaptCachedGhAwJsonl(content) {
+export function adaptCachedGhAwJsonl(content, options = {}) {
   if (typeof content !== 'string') throw new TypeError('gh-aw JSONL must be a string');
-  /** @type {import('../model/schema.js').CanonicalObservation[]} */
-  const observations = [];
-  let records = 0;
+  if (cachedJsonlExpression.contract !== 'gh-aw-cao.jsonl-ingestion'
+    || cachedJsonlExpression.version !== 1) {
+    throw new TypeError('Unsupported cached gh-aw ingestion expression');
+  }
+  const sourceSchemaVersion = cachedJsonlExpression.sourceSchemaVersion;
+  const knownKinds = new Set(Object.keys(cachedJsonlExpression.variants));
+  /** @type {{ envelope: Record<string, unknown>, line: number }[]} */
+  const envelopes = [];
   for (const [index, line] of content.split(/\r?\n/).entries()) {
     if (!line.trim()) continue;
     let envelope;
     try { envelope = objectValue(JSON.parse(line), `gh-aw JSONL line ${index + 1}`); } catch (error) {
       throw new TypeError(`gh-aw JSONL line ${index + 1} must contain valid JSON`, { cause: error });
     }
-    if (envelope.schema_version !== 2 || envelope.kind !== 'run' || !envelope.run) continue;
-    const run = objectValue(envelope.run, `gh-aw JSONL line ${index + 1}.run`);
-    const organization = requiredString(run.organization, 'run.organization');
-    const repositoryName = requiredString(run.repository, 'run.repository');
-    const repositoryParts = repositoryName.split('/');
-    const owner = repositoryParts.length === 2 ? repositoryParts[0] : organization;
-    const name = repositoryParts.length === 2 ? repositoryParts[1] : repositoryName;
-    const fullName = `${owner}/${name}`;
-    const path = requiredString(run.workflow_path, 'run.workflow_path');
-    const githubRunId = identifier(run.run_id, 'run.run_id');
-    const attempt = positiveInteger(run.run_attempt ?? 1, 'run.run_attempt');
-    const observedAt = canonicalTimestamp(run.updated_at ?? run.created_at, 'run.created_at');
-    const repositorySourceId = fullName.toLowerCase();
-    const workflowSourceId = `${repositorySourceId}:${path}`.toLowerCase();
-    const repository = sourceId('repository', OBSERVATION_SOURCE, repositorySourceId);
-    const workflow = sourceId('workflow', OBSERVATION_SOURCE, workflowSourceId);
-    const metadata = runMetadata(run);
-    observations.push(
-      { kind: 'repository', source: OBSERVATION_SOURCE, sourceId: `repository:${repositorySourceId}`, observedAt, data: { id: repository, owner, name, fullName, visibility: 'unknown' } },
-      { kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: `workflow:${workflowSourceId}`, observedAt, data: { id: workflow, repositoryId: repository, name: requiredString(run.workflow_name, 'run.workflow_name'), path, state: 'unknown' } },
-      { kind: 'run', source: OBSERVATION_SOURCE, sourceId: `run:${githubRunId}:${attempt}`, observedAt, data: { id: runId(githubRunId, attempt), repositoryId: repository, workflowId: workflow, owner, repository: name, repositoryFullName: fullName, workflowPath: path, githubRunId, attempt, title: optionalString(run.display_title) ?? `Run ${githubRunId}`, event: optionalString(run.event) ?? optionalString(run.event_name) ?? 'unknown', status: optionalString(run.status) ?? 'unknown', conclusion: optionalString(run.conclusion) ?? null, createdAt: optionalString(run.created_at) ?? null, startedAt: optionalString(run.started_at) ?? null, completedAt: optionalString(run.updated_at) ?? null, engine: optionalString(run.engine) ?? 'unknown', agentId: metadata.agentId ?? null, agentVersion: metadata.agentVersion ?? null, modelId: metadata.modelId ?? null, ghAwVersion: metadata.ghAwVersion ?? null, aic: metadata.aicTotal, aicTotal: metadata.aicTotal, tokenUsage: metadata.tokenUsage, runLink: optionalString(run.url) ?? null } }
-    );
-    records += 1;
+    if (envelope.schema_version !== sourceSchemaVersion) {
+      throw new TypeError(
+        `Unsupported gh-aw JSONL schema version at line ${index + 1}: ${String(envelope.schema_version)}`
+      );
+    }
+    const kind = requiredString(envelope.kind, `gh-aw JSONL line ${index + 1}.kind`);
+    if (!knownKinds.has(kind)) {
+      throw new TypeError(`Unsupported gh-aw JSONL kind at line ${index + 1}: ${kind}`);
+    }
+    envelopes.push({ envelope, line: index + 1 });
   }
-  return { observations, records };
+
+  /**
+   * @typedef {{
+   *   line: number,
+   *   observedAt: string,
+   *   value: Record<string, unknown>,
+   *   owner: string,
+   *   name: string,
+   *   fullName: string,
+   *   workflowName: string,
+   *   workflowPath?: string
+   * }} CachedRun
+   */
+
+  /** @type {Map<string, CachedRun>} */
+  const enrichedRuns = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const workflowPaths = new Map();
+  for (const { envelope, line } of envelopes) {
+    if (envelope.kind !== 'run') continue;
+    const run = objectValue(envelope.run, `gh-aw JSONL line ${line}.run`);
+    const organization = requiredString(run.organization, `gh-aw JSONL line ${line}.run.organization`);
+    const coordinates = repositoryCoordinates(
+      requiredString(run.repository, `gh-aw JSONL line ${line}.run.repository`),
+      organization
+    );
+    const workflowName = requiredString(
+      run.workflow_name,
+      `gh-aw JSONL line ${line}.run.workflow_name`
+    );
+    const workflowPath = requiredString(
+      run.workflow_path,
+      `gh-aw JSONL line ${line}.run.workflow_path`
+    );
+    const githubRunId = identifier(run.run_id, `gh-aw JSONL line ${line}.run.run_id`);
+    const attempt = positiveInteger(
+      run.run_attempt ?? 1,
+      `gh-aw JSONL line ${line}.run.run_attempt`
+    );
+    const id = runId(githubRunId, attempt);
+    const observedAt = canonicalTimestamp(
+      run.updated_at ?? run.created_at,
+      `gh-aw JSONL line ${line}.run.updated_at`
+    );
+    const candidate = {
+      line,
+      observedAt,
+      value: run,
+      ...coordinates,
+      workflowName,
+      workflowPath
+    };
+    enrichedRuns.set(id, enrichedRuns.has(id)
+      ? preferNewer(/** @type {CachedRun} */ (enrichedRuns.get(id)), candidate)
+      : candidate);
+    const lookup = `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`;
+    const paths = workflowPaths.get(lookup) ?? new Set();
+    paths.add(workflowPath);
+    workflowPaths.set(lookup, paths);
+  }
+
+  /** @type {Map<string, CachedRun>} */
+  const rawRuns = new Map();
+  let rawPayloadRecords = 0;
+  for (const { envelope, line } of envelopes) {
+    if (envelope.kind !== 'workflow_runs') continue;
+    const request = objectValue(envelope.request, `gh-aw JSONL line ${line}.request`);
+    const coordinates = repositoryCoordinates(
+      requiredString(request.repository, `gh-aw JSONL line ${line}.request.repository`)
+    );
+    if (!Array.isArray(envelope.payload)) {
+      throw new TypeError(`gh-aw JSONL line ${line}.payload must be an array`);
+    }
+    for (const [payloadIndex, candidateValue] of envelope.payload.entries()) {
+      rawPayloadRecords += 1;
+      const run = objectValue(candidateValue, `gh-aw JSONL line ${line}.payload[${payloadIndex}]`);
+      const githubRunId = identifier(
+        run.databaseId,
+        `gh-aw JSONL line ${line}.payload[${payloadIndex}].databaseId`
+      );
+      const attempt = positiveInteger(
+        run.attempt ?? 1,
+        `gh-aw JSONL line ${line}.payload[${payloadIndex}].attempt`
+      );
+      const workflowName = requiredString(
+        run.workflowName,
+        `gh-aw JSONL line ${line}.payload[${payloadIndex}].workflowName`
+      );
+      const paths = workflowPaths.get(
+        `${coordinates.fullName.toLowerCase()}:${workflowName.toLowerCase()}`
+      );
+      const workflowPath = paths?.size === 1 ? [...paths][0] : undefined;
+      const observedAt = canonicalTimestamp(
+        run.updatedAt ?? run.createdAt,
+        `gh-aw JSONL line ${line}.payload[${payloadIndex}].updatedAt`
+      );
+      const id = runId(githubRunId, attempt);
+      const candidate = {
+        line,
+        observedAt,
+        value: run,
+        ...coordinates,
+        workflowName,
+        workflowPath
+      };
+      rawRuns.set(id, rawRuns.has(id)
+        ? preferNewer(/** @type {CachedRun} */ (rawRuns.get(id)), candidate)
+        : candidate);
+    }
+  }
+
+  /** @type {import('../model/schema.js').CanonicalObservation[]} */
+  const observations = [];
+  /** @type {Map<string, import('../model/schema.js').CanonicalObservation>} */
+  const repositories = new Map();
+  /** @type {Map<string, import('../model/schema.js').CanonicalObservation>} */
+  const workflows = new Map();
+
+  /** @param {CachedRun} candidate */
+  const structuralIds = (candidate) => {
+    const repositorySourceId = candidate.fullName.toLowerCase();
+    const workflowCoordinate = candidate.workflowPath
+      ? `${repositorySourceId}:path:${candidate.workflowPath.toLowerCase()}`
+      : `${repositorySourceId}:name:${candidate.workflowName.toLowerCase()}`;
+    const repository = sourceId('repository', OBSERVATION_SOURCE, repositorySourceId);
+    const workflow = sourceId('workflow', OBSERVATION_SOURCE, workflowCoordinate);
+    repositories.set(repository, {
+      kind: 'repository',
+      source: OBSERVATION_SOURCE,
+      sourceId: `repository:${repositorySourceId}`,
+      observedAt: candidate.observedAt,
+      data: {
+        id: repository,
+        owner: candidate.owner,
+        name: candidate.name,
+        fullName: candidate.fullName,
+        visibility: 'unknown'
+      }
+    });
+    workflows.set(workflow, {
+      kind: 'workflow',
+      source: OBSERVATION_SOURCE,
+      sourceId: `workflow:${workflowCoordinate}`,
+      observedAt: candidate.observedAt,
+      data: {
+        id: workflow,
+        repositoryId: repository,
+        name: candidate.workflowName,
+        path: candidate.workflowPath,
+        state: 'unknown'
+      }
+    });
+    return { repository, workflow };
+  };
+
+  const runIds = new Set([...rawRuns.keys(), ...enrichedRuns.keys()]);
+  for (const id of [...runIds].sort()) {
+    const raw = rawRuns.get(id);
+    const enriched = enrichedRuns.get(id);
+    const structural = /** @type {CachedRun} */ (enriched ?? raw);
+    const { repository, workflow } = structuralIds(structural);
+    const rawValue = raw?.value ?? {};
+    const enrichedValue = enriched?.value ?? {};
+    const githubRunId = identifier(
+      rawValue.databaseId ?? enrichedValue.run_id,
+      `${id}.githubRunId`
+    );
+    const attempt = positiveInteger(
+      rawValue.attempt ?? enrichedValue.run_attempt ?? 1,
+      `${id}.attempt`
+    );
+    const metadata = runMetadata(enrichedValue);
+    const status = optionalString(rawValue.status)
+      ?? optionalString(enrichedValue.status)
+      ?? 'unknown';
+    const updatedAt = optionalString(rawValue.updatedAt)
+      ?? optionalString(enrichedValue.updated_at)
+      ?? null;
+    const observedAt = raw && enriched
+      ? (Date.parse(raw.observedAt) >= Date.parse(enriched.observedAt) ? raw.observedAt : enriched.observedAt)
+      : /** @type {CachedRun} */ (raw ?? enriched).observedAt;
+    observations.push({
+      kind: 'run',
+      source: OBSERVATION_SOURCE,
+      sourceId: `run:${githubRunId}:${attempt}`,
+      observedAt,
+      data: withoutUndefined({
+        id,
+        repositoryId: repository,
+        workflowId: workflow,
+        owner: structural.owner,
+        repository: structural.name,
+        repositoryFullName: structural.fullName,
+        workflowPath: structural.workflowPath,
+        githubRunId,
+        attempt,
+        number: finiteNumber(rawValue.number) ?? finiteNumber(enrichedValue.number),
+        title: optionalString(rawValue.displayTitle)
+          ?? optionalString(enrichedValue.display_title)
+          ?? `Run ${githubRunId}`,
+        event: optionalString(rawValue.event)
+          ?? optionalString(enrichedValue.event)
+          ?? optionalString(enrichedValue.event_name)
+          ?? 'unknown',
+        status,
+        conclusion: optionalString(rawValue.conclusion)
+          ?? optionalString(enrichedValue.conclusion)
+          ?? null,
+        branch: optionalString(rawValue.headBranch) ?? optionalString(enrichedValue.branch),
+        headSha: optionalString(rawValue.headSha) ?? optionalString(enrichedValue.head_sha),
+        createdAt: optionalString(rawValue.createdAt)
+          ?? optionalString(enrichedValue.created_at)
+          ?? null,
+        startedAt: optionalString(rawValue.startedAt)
+          ?? optionalString(enrichedValue.started_at)
+          ?? null,
+        completedAt: status === 'completed' ? updatedAt : null,
+        updatedAt,
+        runLink: optionalString(rawValue.url) ?? optionalString(enrichedValue.url) ?? null,
+        classification: optionalString(enrichedValue.classification),
+        intentionalFailure: enrichedValue.intentional_failure,
+        failureKind: optionalString(enrichedValue.failure_kind),
+        duration: optionalString(enrichedValue.duration),
+        actionMinutes: finiteNumber(enrichedValue.action_minutes),
+        agentId: metadata.agentId ?? null,
+        agentVersion: metadata.agentVersion ?? null,
+        modelId: metadata.modelId ?? null,
+        ghAwVersion: metadata.ghAwVersion ?? null,
+        engine: optionalString(enrichedValue.engine) ?? 'unknown',
+        engineId: optionalString(enrichedValue.engine_id),
+        engineVersion: optionalString(enrichedValue.engine_version),
+        requestedModel: optionalString(enrichedValue.requested_model),
+        resolvedModel: optionalString(enrichedValue.resolved_model),
+        aic: metadata.aicTotal,
+        aicTotal: metadata.aicTotal,
+        tokenUsage: metadata.tokenUsage,
+        ambientContext: enrichedValue.ambient_context,
+        workingSet: enrichedValue.working_set,
+        behaviorFingerprint: enrichedValue.behavior_fingerprint,
+        taskDomain: enrichedValue.task_domain,
+        comparison: enrichedValue.comparison,
+        agenticAssessments: enrichedValue.agentic_assessments,
+        graders: enrichedValue.graders,
+        context: enrichedValue.context,
+        githubApiCalls: finiteNumber(enrichedValue.github_api_calls),
+        safeItemsCount: finiteNumber(enrichedValue.safe_items_count),
+        errorCount: finiteNumber(enrichedValue.error_count),
+        logsPath: optionalString(enrichedValue.logs_path),
+        auditPath: optionalString(enrichedValue.audit_path)
+      })
+    });
+  }
+
+  observations.unshift(...repositories.values(), ...workflows.values());
+
+  let derivedEvents = 0;
+  for (const [id, enriched] of [...enrichedRuns.entries()].sort()) {
+    const run = enriched.value;
+    const sessionSourceId = `${id}:agentic`;
+    const sessionId = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
+    const startedAt = timestamp(run.started_at ?? run.created_at) ?? enriched.observedAt;
+    const completedAt = run.status === 'completed'
+      ? timestamp(run.updated_at) ?? enriched.observedAt
+      : null;
+    observations.push({
+      kind: 'session',
+      source: OBSERVATION_SOURCE,
+      sourceId: sessionSourceId,
+      observedAt: enriched.observedAt,
+      data: {
+        id: sessionId,
+        runId: id,
+        kind: 'unified-operational-log',
+        status: optionalString(run.status) ?? 'unknown',
+        startedAt,
+        completedAt
+      }
+    });
+
+    let sourceSequence = enriched.line * 1000;
+    /**
+     * @param {string} type
+     * @param {string | null} eventTimestamp
+     * @param {string} summary
+     * @param {string | undefined} status
+     * @param {unknown} identity
+     */
+    const emitEvent = (type, eventTimestamp, summary, status, identity = type) => {
+      if (!eventTimestamp) return;
+      observations.push({
+        kind: 'event',
+        source: OBSERVATION_SOURCE,
+        sourceId: `${sessionSourceId}:${type}:${stableDigest(identity)}`,
+        observedAt: enriched.observedAt,
+        data: withoutUndefined({
+          sessionId,
+          timestamp: eventTimestamp,
+          source: 'gh-aw-logs',
+          type,
+          summary,
+          status,
+          payloadRef: `gh-aw-logs.jsonl#L${enriched.line}`,
+          sourceSequence
+        })
+      });
+      sourceSequence += 1;
+      derivedEvents += 1;
+    };
+
+    emitEvent(
+      'workflow_run_started',
+      startedAt,
+      detail([optionalString(run.workflow_name) ?? '', optionalString(run.display_title) ?? '']),
+      optionalString(run.status),
+      { type: 'started', startedAt }
+    );
+    if (completedAt) {
+      emitEvent(
+        'workflow_run_completed',
+        completedAt,
+        optionalString(run.classification) ?? optionalString(run.conclusion) ?? 'completed',
+        optionalString(run.conclusion) ?? optionalString(run.status),
+        { type: 'completed', completedAt, conclusion: run.conclusion }
+      );
+    }
+    if (run.conclusion === 'failure' || run.failure_kind !== undefined) {
+      emitEvent(
+        'workflow_run_failed',
+        completedAt ?? enriched.observedAt,
+        optionalString(run.failure_kind) ?? 'workflow run failed',
+        'failure',
+        { type: 'failure', failureKind: run.failure_kind, errorCount: run.error_count }
+      );
+    }
+    if (run.token_usage_summary !== undefined || run.token_usage !== undefined || run.aic !== undefined) {
+      const tokenSummary = run.token_usage_summary && typeof run.token_usage_summary === 'object'
+        && !Array.isArray(run.token_usage_summary)
+        ? /** @type {Record<string, unknown>} */ (run.token_usage_summary)
+        : {};
+      emitEvent(
+        'workflow_run_usage',
+        completedAt ?? enriched.observedAt,
+        `AIC ${String(finiteNumber(tokenSummary.total_aic) ?? finiteNumber(run.aic) ?? 'unknown')}`,
+        'observed',
+        { type: 'usage', tokenUsage: run.token_usage_summary ?? run.token_usage, aic: run.aic }
+      );
+    }
+    if (run.working_set !== undefined) {
+      emitEvent(
+        'workflow_run_working_set',
+        completedAt ?? enriched.observedAt,
+        'Working set measured',
+        'observed',
+        { type: 'working-set', value: run.working_set }
+      );
+    }
+    if (run.behavior_fingerprint !== undefined || run.task_domain !== undefined) {
+      const taskDomain = run.task_domain && typeof run.task_domain === 'object'
+        && !Array.isArray(run.task_domain)
+        ? /** @type {Record<string, unknown>} */ (run.task_domain)
+        : {};
+      emitEvent(
+        'workflow_run_behavior',
+        completedAt ?? enriched.observedAt,
+        optionalString(taskDomain.label) ?? 'Behavior classified',
+        'observed',
+        { type: 'behavior', fingerprint: run.behavior_fingerprint, taskDomain: run.task_domain }
+      );
+    }
+    if (Array.isArray(run.agentic_assessments)) {
+      run.agentic_assessments.forEach((assessment, index) => {
+        const record = assessment && typeof assessment === 'object' && !Array.isArray(assessment)
+          ? /** @type {Record<string, unknown>} */ (assessment)
+          : {};
+        emitEvent(
+          'workflow_run_assessment',
+          completedAt ?? enriched.observedAt,
+          optionalString(record.summary) ?? optionalString(record.kind) ?? `Assessment ${index + 1}`,
+          optionalString(record.severity),
+          { type: 'assessment', index, record }
+        );
+      });
+    }
+    const graders = run.graders && typeof run.graders === 'object' && !Array.isArray(run.graders)
+      ? /** @type {Record<string, unknown>} */ (run.graders)
+      : {};
+    const graderResults = Array.isArray(graders.results)
+      ? graders.results
+      : [];
+    graderResults.forEach((grader, index) => {
+      const record = grader && typeof grader === 'object' && !Array.isArray(grader)
+        ? /** @type {Record<string, unknown>} */ (grader)
+        : {};
+      emitEvent(
+        'workflow_run_grader',
+        completedAt ?? enriched.observedAt,
+        optionalString(record.name) ?? optionalString(record.id) ?? `Grader ${index + 1}`,
+        optionalString(record.status) ?? (record.passed === true ? 'passed' : record.passed === false ? 'failed' : undefined),
+        { type: 'grader', index, record }
+      );
+    });
+    if (run.safe_items_count !== undefined) {
+      emitEvent(
+        'workflow_run_safe_outputs',
+        completedAt ?? enriched.observedAt,
+        `${String(run.safe_items_count)} safe output items`,
+        'observed',
+        { type: 'safe-outputs', count: run.safe_items_count }
+      );
+    }
+    if (run.comparison !== undefined) {
+      const comparison = run.comparison && typeof run.comparison === 'object'
+        && !Array.isArray(run.comparison)
+        ? /** @type {Record<string, unknown>} */ (run.comparison)
+        : {};
+      emitEvent(
+        'workflow_run_comparison',
+        completedAt ?? enriched.observedAt,
+        comparison.baseline_found === true ? 'Baseline comparison available' : 'No baseline comparison',
+        comparison.baseline_found === true ? 'available' : 'unavailable',
+        { type: 'comparison', value: run.comparison }
+      );
+    }
+  }
+
+  const rateLimitEnvelopes = envelopes.filter(({ envelope }) =>
+    envelope.kind === 'github_api_rate_limit'
+  );
+  let mappedRateLimits = 0;
+  if (rateLimitEnvelopes.length > 0 && options.context !== undefined) {
+    const context = objectValue(options.context, 'gh-aw JSONL collection context');
+    const observedAt = canonicalTimestamp(
+      context.observedAt,
+      'gh-aw JSONL collection context observedAt'
+    );
+    const contextRun = objectValue(context.run, 'gh-aw JSONL collection context run');
+    const collectionRunId = runId(
+      identifier(contextRun.githubRunId, 'gh-aw JSONL collection context run.githubRunId'),
+      positiveInteger(contextRun.attempt, 'gh-aw JSONL collection context run.attempt')
+    );
+    if (!runIds.has(collectionRunId)) {
+      const contextRepository = objectValue(
+        context.repository,
+        'gh-aw JSONL collection context repository'
+      );
+      const contextWorkflow = objectValue(
+        context.workflow,
+        'gh-aw JSONL collection context workflow'
+      );
+      const repositoryGithubId = identifier(
+        contextRepository.githubId,
+        'gh-aw JSONL collection context repository.githubId'
+      );
+      const workflowGithubId = identifier(
+        contextWorkflow.githubId,
+        'gh-aw JSONL collection context workflow.githubId'
+      );
+      const repository = repositoryId(repositoryGithubId);
+      const workflow = workflowId(workflowGithubId);
+      const owner = requiredString(
+        contextRepository.owner,
+        'gh-aw JSONL collection context repository.owner'
+      );
+      const name = requiredString(
+        contextRepository.name,
+        'gh-aw JSONL collection context repository.name'
+      );
+      observations.push(
+        {
+          kind: 'repository',
+          source: OBSERVATION_SOURCE,
+          sourceId: `collection-repository:${repositoryGithubId}`,
+          observedAt,
+          data: {
+            githubId: repositoryGithubId,
+            owner,
+            name,
+            fullName: `${owner}/${name}`,
+            visibility: optionalString(contextRepository.visibility) ?? 'unknown'
+          }
+        },
+        {
+          kind: 'workflow',
+          source: OBSERVATION_SOURCE,
+          sourceId: `collection-workflow:${workflowGithubId}`,
+          observedAt,
+          data: {
+            githubId: workflowGithubId,
+            repositoryId: repository,
+            name: requiredString(
+              contextWorkflow.name,
+              'gh-aw JSONL collection context workflow.name'
+            ),
+            path: requiredString(
+              contextWorkflow.path,
+              'gh-aw JSONL collection context workflow.path'
+            ),
+            state: optionalString(contextWorkflow.state) ?? 'unknown'
+          }
+        },
+        {
+          kind: 'run',
+          source: OBSERVATION_SOURCE,
+          sourceId: `collection-run:${collectionRunId}`,
+          observedAt,
+          data: {
+            githubRunId: identifier(
+              contextRun.githubRunId,
+              'gh-aw JSONL collection context run.githubRunId'
+            ),
+            attempt: positiveInteger(
+              contextRun.attempt,
+              'gh-aw JSONL collection context run.attempt'
+            ),
+            repositoryId: repository,
+            workflowId: workflow,
+            owner,
+            repository: name,
+            repositoryFullName: `${owner}/${name}`,
+            workflowPath: requiredString(
+              contextWorkflow.path,
+              'gh-aw JSONL collection context workflow.path'
+            ),
+            event: optionalString(contextRun.event) ?? 'unknown',
+            status: optionalString(contextRun.status) ?? 'unknown',
+            conclusion: optionalString(contextRun.conclusion) ?? null,
+            startedAt: optionalString(contextRun.startedAt) ?? null,
+            completedAt: optionalString(contextRun.completedAt) ?? null
+          }
+        }
+      );
+      runIds.add(collectionRunId);
+    }
+
+    const sessionSourceId = `${collectionRunId}:github-api-collection`;
+    const sessionId = sourceId('session', OBSERVATION_SOURCE, sessionSourceId);
+    observations.push({
+      kind: 'session',
+      source: OBSERVATION_SOURCE,
+      sourceId: sessionSourceId,
+      observedAt,
+      data: {
+        id: sessionId,
+        runId: collectionRunId,
+        kind: 'unified-operational-log',
+        status: optionalString(contextRun.status) ?? 'unknown',
+        startedAt: optionalString(contextRun.startedAt) ?? observedAt,
+        completedAt: optionalString(contextRun.completedAt) ?? observedAt
+      }
+    });
+    for (const { envelope, line } of rateLimitEnvelopes) {
+      const rateLimit = objectValue(envelope.rate_limit, `gh-aw JSONL line ${line}.rate_limit`);
+      const end = objectValue(rateLimit.end, `gh-aw JSONL line ${line}.rate_limit.end`);
+      const remaining = finiteNumber(end.remaining);
+      const limit = finiteNumber(end.limit);
+      observations.push({
+        kind: 'event',
+        source: OBSERVATION_SOURCE,
+        sourceId: `${sessionSourceId}:github_api_rate_limit:${line}`,
+        observedAt,
+        data: {
+          sessionId,
+          timestamp: observedAt,
+          source: 'github-api',
+          type: 'github_api_rate_limit',
+          summary: `${String(remaining ?? 'unknown')} of ${String(limit ?? 'unknown')} requests remaining`,
+          status: remaining !== null && remaining > 0 ? 'available' : 'exhausted',
+          correlationId: optionalString(rateLimit.host),
+          payloadRef: `gh-aw-logs.jsonl#L${line}`,
+          sourceSequence: line
+        }
+      });
+      mappedRateLimits += 1;
+    }
+  }
+
+  return {
+    observations,
+    records: envelopes.length,
+    rawPayloadRecords,
+    rawRuns: rawRuns.size,
+    agenticRuns: enrichedRuns.size,
+    sessions: enrichedRuns.size + (mappedRateLimits > 0 ? 1 : 0),
+    events: derivedEvents + mappedRateLimits,
+    rateLimits: rateLimitEnvelopes.length,
+    mappedRateLimits
+  };
 }

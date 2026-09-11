@@ -232,7 +232,10 @@ export function processDataRequest(request, signal) {
         const response = await fetch(sourceUrl.href);
         if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
         await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
-          storage: globalThis.navigator?.storage
+          storage: globalThis.navigator?.storage,
+          context: request.context && typeof request.context === 'object'
+            ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
+            : undefined
         });
       } else {
         await ingestDashboardSources(indexedDB, sources, {

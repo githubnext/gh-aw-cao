@@ -1,0 +1,23 @@
+{
+  "contract": "gh-aw-cao.jsonl-ingestion",
+  "version": 1,
+  "source": "gh-aw-logs",
+  "sourceSchemaVersion": 2,
+  "variants": {
+    "workflow_runs": {
+      "payloadPath": "payload",
+      "emits": ["repository", "workflow", "run"],
+      "identity": ["databaseId", "attempt"]
+    },
+    "run": {
+      "payloadPath": "run",
+      "emits": ["repository", "workflow", "run", "session", "event"],
+      "identity": ["run_id", "run_attempt"]
+    },
+    "github_api_rate_limit": {
+      "payloadPath": "rate_limit",
+      "emits": ["event"],
+      "requiresContext": ["repository", "workflow", "run", "observedAt"]
+    }
+  }
+}
