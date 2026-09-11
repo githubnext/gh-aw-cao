@@ -79,8 +79,7 @@ it('summarizes retained Actions activity and useful outputs while routing failur
   expect(rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')).toHaveLength(7);
   expect(rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day[type="button"]')).toHaveLength(7);
   expect(rendered.querySelectorAll('.factory-rhythm-tooltip')).toHaveLength(7);
-  expect(rendered.querySelectorAll('.factory-rhythm-comparison')).toHaveLength(1);
-  expect(rendered.querySelectorAll('.factory-rhythm-comparison circle')).toHaveLength(7);
+  expect(rendered.querySelector('.factory-rhythm-comparison')).toBeNull();
   expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toContain('Fri 2026-09-11: 2 successful runs.');
   expect(rendered.querySelector('.factory-status')).toBeNull();
   expect(rendered.querySelector('.factory-station:nth-child(2) strong a')?.getAttribute('href')).toBe('#page-runs?runs-runs-source.run-conclusion=success');
