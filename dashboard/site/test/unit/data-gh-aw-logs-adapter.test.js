@@ -160,6 +160,12 @@ describe('gh-aw logs adapter', () => {
             key_findings: [{ title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
             skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
+            firewall_analysis: {
+              requests_by_domain: {
+                'api.github.com:443': { allowed: 3, blocked: 1 },
+                'objects.githubusercontent.com:443': { allowed: 2, blocked: 0 }
+              }
+            },
             created_items: [{
               type: 'create_issue',
               url: 'https://github.com/githubnext/gh-aw-cao/issues/42',
@@ -245,6 +251,8 @@ describe('gh-aw logs adapter', () => {
       'audit.finding',
       'audit.missing_tool',
       'audit.skill_activation',
+      'net_allowed',
+      'net_blocked',
       'safe_output.created',
       'github_api_rate_limit'
     ]));
@@ -265,6 +273,20 @@ describe('gh-aw logs adapter', () => {
         source: 'safe-output',
         type: 'safe_output.created',
         correlationId: 'https://github.com/githubnext/gh-aw-cao/issues/42'
+      }),
+      expect.objectContaining({
+        source: 'firewall',
+        type: 'net_allowed',
+        domain: 'api.github.com',
+        decision: 'allowed',
+        requestCount: 3
+      }),
+      expect.objectContaining({
+        source: 'firewall',
+        type: 'net_blocked',
+        domain: 'api.github.com',
+        decision: 'denied',
+        requestCount: 1
       })
     ]));
   });

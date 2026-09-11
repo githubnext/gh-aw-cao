@@ -234,7 +234,15 @@ test.beforeEach(async ({ context, page }) => {
           status: 'completed',
           conclusion: 'success',
           created_at: '2026-09-09T04:00:00Z',
-          updated_at: '2026-09-09T04:05:00Z'
+          updated_at: '2026-09-09T04:05:00Z',
+          audit: {
+            firewall_analysis: {
+              requests_by_domain: {
+                'api.github.com:443': { allowed: 4, blocked: 2 },
+                'objects.githubusercontent.com:443': { allowed: 3, blocked: 0 }
+              }
+            }
+          }
         } })}\n`
       });
       return;
@@ -627,6 +635,31 @@ test('data worker queries firewall domain totals on initial and navigated reques
       metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
     });
   }
+});
+
+test('gh-aw logs audit populates the firewall domain query from canonical events', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const processorUrl = `${location.origin}/src/data-processor.js`;
+    const { loadCanonicalDashboardSources } = await import(processorUrl);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    return loadCanonicalDashboardSources(
+      `${location.origin}/gh-aw-logs.jsonl`,
+      ['firewall-domain-totals'],
+      {
+        githubUrlBase: 'https://github.com',
+        pages: dashboard.dashboard.pages,
+        queries: dashboard.dashboard.queries
+      }
+    );
+  });
+
+  expect(result['firewall-domain-totals']).toMatchObject({
+    rows: [
+      { domain: 'api.github.com', run: 1, accepted: 4, blocked: 2 },
+      { domain: 'objects.githubusercontent.com', run: 1, accepted: 3, blocked: 0 }
+    ],
+    metadata: { 'source-kind': 'derived', 'query-name': 'firewall-domain-totals' }
+  });
 });
 
 test('data worker computes repository and package pages with request-scoped dashboard queries', async ({ page }) => {
