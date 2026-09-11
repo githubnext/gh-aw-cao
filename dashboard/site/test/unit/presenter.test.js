@@ -1514,6 +1514,7 @@ describe('presenter built-in and custom pages', () => {
 
   it('applies the JSON horizon and lazily loads database counts for its tooltip', async () => {
     const loadHorizonSources = vi.fn().mockResolvedValue({
+      'database-package-count': { rows: [{ packages: 2 }] },
       'database-repository-count': { rows: [{ repositories: 3 }] },
       'database-workflow-count': { rows: [{ workflows: 4 }] },
       'database-run-count': { rows: [{ runs: 12 }] },
@@ -1590,7 +1591,7 @@ describe('presenter built-in and custom pages', () => {
 
     await vi.waitFor(() => {
       expect(rendered.querySelector('.horizon-tooltip-counts')?.textContent)
-        .toBe('3 repositories · 4 workflows · 12 runs · 89 events');
+        .toBe('2 packages · 3 repositories · 4 workflows · 12 runs · 89 events');
     });
     expect(loadHorizonSources).toHaveBeenCalledOnce();
 
@@ -1600,7 +1601,7 @@ describe('presenter built-in and custom pages', () => {
     accountMenu.dispatchEvent(new Event('toggle'));
     await vi.waitFor(() => {
       expect([...rendered.querySelectorAll('[data-database-count]')].map((node) => node.textContent))
-        .toEqual(['3', '4', '12', '89']);
+        .toEqual(['2', '3', '4', '12', '89']);
     });
     expect(rendered.querySelector('.database-counts-status')?.textContent).toBe('Database totals');
     expect(loadHorizonSources).toHaveBeenCalledOnce();

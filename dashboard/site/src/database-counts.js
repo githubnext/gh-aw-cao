@@ -1,6 +1,7 @@
 import { h } from './dom.js';
 
 export const DATABASE_COUNT_SOURCE_NAMES = [
+  'database-package-count',
   'database-repository-count',
   'database-workflow-count',
   'database-run-count',
@@ -8,7 +9,7 @@ export const DATABASE_COUNT_SOURCE_NAMES = [
 ];
 
 /**
- * @typedef {{ repositories: unknown, workflows: unknown, runs: unknown, events: unknown }} DatabaseCounts
+ * @typedef {{ packages: unknown, repositories: unknown, workflows: unknown, runs: unknown, events: unknown }} DatabaseCounts
  */
 
 /**
@@ -21,14 +22,15 @@ export function createDatabaseCountLoader(loadSources) {
   return () => {
     if (!loadSources) return Promise.reject(new Error('Database count query unavailable'));
     countsPromise ??= loadSources().then((sources) => {
+      const packages = sources['database-package-count']?.rows?.[0]?.packages;
       const repositories = sources['database-repository-count']?.rows?.[0]?.repositories;
       const workflows = sources['database-workflow-count']?.rows?.[0]?.workflows;
       const runs = sources['database-run-count']?.rows?.[0]?.runs;
       const events = sources['database-event-count']?.rows?.[0]?.events;
-      if ([repositories, workflows, runs, events].some((count) => count === undefined)) {
+      if ([packages, repositories, workflows, runs, events].some((count) => count === undefined)) {
         throw new Error('Database count query unavailable');
       }
-      return { repositories, workflows, runs, events };
+      return { packages, repositories, workflows, runs, events };
     });
     return countsPromise;
   };
@@ -39,7 +41,7 @@ export function createDatabaseCountLoader(loadSources) {
  * @returns {string}
  */
 export function formatDatabaseCounts(counts) {
-  return `${formatDatabaseCount(counts.repositories)} repositories · ${formatDatabaseCount(counts.workflows)} workflows · ${formatDatabaseCount(counts.runs)} runs · ${formatDatabaseCount(counts.events)} events`;
+  return `${formatDatabaseCount(counts.packages)} packages · ${formatDatabaseCount(counts.repositories)} repositories · ${formatDatabaseCount(counts.workflows)} workflows · ${formatDatabaseCount(counts.runs)} runs · ${formatDatabaseCount(counts.events)} events`;
 }
 
 /** @param {unknown} count */
@@ -53,6 +55,7 @@ function formatDatabaseCount(count) {
  */
 export function renderSettingsDatabaseCounts(loadDatabaseCounts) {
   const fields = /** @type {const} */ ([
+    ['packages', 'Packages'],
     ['repositories', 'Repositories'],
     ['workflows', 'Workflows'],
     ['runs', 'Runs'],

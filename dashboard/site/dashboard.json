@@ -78,6 +78,16 @@
     },
     "queries": [
       {
+        "name": "database-package-count",
+        "intent": "Count packages in the dashboard database.",
+        "from": "packages",
+        "aggregate": {
+          "values": [
+            { "field": "package", "as": "packages", "reducer": "count" }
+          ]
+        }
+      },
+      {
         "name": "database-repository-count",
         "intent": "Count repositories in the dashboard database.",
         "from": "repositories",
