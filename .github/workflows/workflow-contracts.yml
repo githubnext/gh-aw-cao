@@ -16,6 +16,17 @@ permissions:
   contents: read
 
 jobs:
+  agent-plugin:
+    name: Install agent plugin with Copilot CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install Copilot CLI
+        run: npm_config_before="$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)" npm install -g @github/copilot
+      - name: Install agent plugin
+        run: copilot plugin install "$(pwd)"
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
