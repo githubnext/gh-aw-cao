@@ -202,51 +202,20 @@ Views MUST read only the active canonical generation. The completed implementati
 
 # 5. Target Architecture
 
-```text
-                     AUTHORITATIVE INPUTS
-
-        GitHub     gh-aw     logs     SQL     snapshots
-           \         |        |       |         /
-            +--------+--------+-------+--------+
-                             |
-                             v
-                       Source Adapters
-                             |
-                             v
-                    Canonical Observations
-                             |
-                             v
-                      Normalization Layer
-                             |
-                             v
-                     Canonical Entities
-                             |
-                             v
-                    Published Generation
-                    manifest + chunks
-                             |
-                             v
-                        Browser Worker
-                             |
-                     verify / normalize
-                             |
-                             v
-                Staging IndexedDB Generation
-                             |
-                         validation
-                             |
-                         COMPLETE?
-                         /       \
-                       no         yes
-                       |           |
-                    discard     activate
-                                   |
-                                   v
-                           Canonical Queries
-                                   |
-                                   v
-                                Views
+```mermaid
+flowchart LR
+  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
+  source --> sqlite["SQLite"]
+  sqlite --> agents["Agents"]
+  sqlite --> cli["CLI"]
+  source --> indexeddb["IndexedDB<br/>browser"]
+  indexeddb --> views["Dashboard views"]
 ```
+
+The SQLite and IndexedDB projections SHALL be independently reconstructable
+from authoritative external inputs. Neither projection SHALL become the source
+for the other. Publishing SQLite MAY support headless consumers, but browser
+ingestion SHALL continue to use the published JSONL and inventory inputs.
 
 ---
 
