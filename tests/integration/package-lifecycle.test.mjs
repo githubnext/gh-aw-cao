@@ -39,6 +39,7 @@ const activityExpectedFiles = [
   ".github/workflows/cao-maintenance.yml",
 ];
 const awDoctorExpectedFiles = [
+  ".github/skills/analyze-agentic-ops/SKILL.md",
   ".github/aw/dashboards/aw-doctor.json",
   ".github/graders/aw-failures-investigator-operational-value.sh",
   ".github/graders/aw-maintenance-compiler-security-operational-value.sh",
@@ -87,6 +88,7 @@ const dashboardExpectedFiles = [
   ).matchAll(/^\s+destination: (.+)$/gm)].map((match) => match[1]),
 ];
 const selfCareExpectedFiles = [
+  ".github/skills/analyze-agentic-ops/SKILL.md",
   ".github/aw/dashboards/self-care.json",
   ".github/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/self-care-accessibility-checker.md",

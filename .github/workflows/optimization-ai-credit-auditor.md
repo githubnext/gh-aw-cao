@@ -97,6 +97,9 @@ graders:
 
 tracker-id: optimization-ai-credit-auditor
 
+skills:
+  - .github/skills/analyze-agentic-ops
+
 tools:
   github:
     mode: remote
@@ -143,53 +146,6 @@ steps:
   - name: Install Python chart dependencies
     run: |
       python3 -m pip install --quiet --target /tmp/gh-aw/token-audit/site-packages pandas matplotlib seaborn
-  - name: Download agentic workflow logs
-    env:
-      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ inputs.target_repo }}
-    run: |
-      set -euo pipefail
-      mkdir -p /tmp/gh-aw/token-audit
-      WINDOW_END=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
-      WINDOW_START=$(date -u -d "$WINDOW_END - 24 hours" +%Y-%m-%dT%H:%M:%SZ)
-
-      RAW_LOGS=/tmp/gh-aw/token-audit/workflow-logs.raw.json
-      LOG_EXIT=0
-      gh aw logs \
-        --repo "$TARGET_REPO" \
-        --output /tmp/gh-aw/token-audit/logs \
-        --start-date -2d \
-        --json \
-        -c 100 \
-        --timeout 10 \
-        --max-github-api-rate-limit -2000 \
-        --max-storage 1024 \
-        > "$RAW_LOGS" || LOG_EXIT=$?
-
-      if jq -e . "$RAW_LOGS" >/dev/null 2>&1; then
-        jq --arg windowStart "$WINDOW_START" --arg windowEnd "$WINDOW_END" '
-          ((.runs // []) | unique_by(.run_id)
-            | map(select(.created_at >= $windowStart and .created_at < $windowEnd))) as $runs |
-          {
-            window_start: $windowStart,
-            window_end: $windowEnd,
-            summary: {
-              total_runs: ($runs | length),
-              total_tokens: ($runs | map(.token_usage // 0) | add // 0),
-              total_aic: ($runs | map(.aic // 0) | add // 0)
-            },
-            runs: $runs
-          }
-        ' "$RAW_LOGS" > /tmp/gh-aw/token-audit/workflow-logs.json
-        TOTAL=$(jq '.runs | length' /tmp/gh-aw/token-audit/workflow-logs.json)
-        echo "✅ Downloaded $TOTAL agentic workflow runs (last 24 hours, exit code $LOG_EXIT)"
-      else
-        echo "⚠️ Agentic workflow logs were unavailable or invalid (exit code $LOG_EXIT)"
-        jq -cn --arg windowStart "$WINDOW_START" --arg windowEnd "$WINDOW_END" \
-          '{window_start:$windowStart,window_end:$windowEnd,runs:[],summary:{}}' \
-          > /tmp/gh-aw/token-audit/workflow-logs.json
-      fi
-      rm -f "$RAW_LOGS"
   - name: Forecast AI Credit spend
     env:
       GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
@@ -245,47 +201,18 @@ Recreate safe outputs there without pretending the control-plane repo is the tar
 
 ## Mission
 
-1. Parse the pre-downloaded agentic workflow logs and compute per-workflow AI credit spend and token usage metrics.
+1. Query canonical activity data and compute per-workflow AI credit spend and token usage metrics.
 2. Validate the precomputed `gh aw forecast` output and calculate weekly and monthly AIC and estimated USD scenarios.
 3. Persist today's snapshot to repo-memory so the optimizer (and future runs of this audit) can read historical data.
 4. Publish a concise audit issue summarizing today's AI credit spend, projected cost, data quality, and trend highlights.
 
 ## Data Sources
 
-### Pre-downloaded logs
+### Canonical activity
 
-The workflow logs are at `/tmp/gh-aw/token-audit/workflow-logs.json`. The file is the raw JSON output of `gh aw logs --json` with this top-level shape:
+Use the installed `analyze-agentic-ops` skill to inspect `${RUNNER_TEMP}/cao-activity/gh-aw-logs.sqlite`. Locate the Sallie CLI as directed by the skill, run `help` and `doctor`, then issue bounded `query` calls against canonical `repositories`, `workflows`, `runs`, `jobs`, `sessions`, `events`, and `transactions` as needed. Filter exactly to `TARGET_REPO` and the preceding 24 full hours before aggregating.
 
-```json
-{
-  "summary": { "total_runs": N, "total_tokens": N, ... },
-  "runs": [ ... ],
-  "tool_usage": [ ... ],
-  "mcp_tool_usage": { ... },
-  ...
-}
-```
-
-Each element of `.runs` is a `RunData` object with (among others):
-
-| Field | Type | Notes |
-|---|---|---|
-| `workflow_name` | string | Human-readable name |
-| `workflow_path` | string | `.github/workflows/....lock.yml` |
-| `aic` | float | AI Credits (AIC) consumed (primary billing metric; 1 AI credit = $0.01 USD) |
-| `token_usage` | int | Total tokens (`omitempty` — treat missing/null as 0) |
-| `effective_tokens` | int | Legacy normalized token metric (deprecated; use `aic` for billing) |
-| `action_minutes` | float | Billable GitHub Actions minutes |
-| `turns` | int | Number of agent turns |
-| `duration` | string | Human-readable duration |
-| `created_at` | ISO 8601 | Run creation time |
-| `run_id` | int64 | Unique run ID |
-| `url` | string | Link to the run |
-| `status` | string | `completed`, `in_progress`, etc. |
-| `conclusion` | string | `success`, `failure`, etc. |
-| `error_count` | int | Errors encountered |
-| `warning_count` | int | Warnings encountered |
-| `token_usage_summary` | object or null | Firewall-level breakdown by model |
+Inspect the returned canonical field names rather than assuming the former `gh aw logs --json` shape. Do not run the skill's `download` command, parse the sibling JSONL, invoke `gh aw logs`, or mutate the shared cache. Preserve unavailable usage fields as unknown rather than zero, and disclose incomplete scope, freshness, or enrichment.
 
 ### Precomputed forecast
 
@@ -312,13 +239,13 @@ AI Credits are the gh-aw cost metric. Use `1 AIC = $0.01 USD` for estimated cost
 
 Previous snapshots live at `/tmp/gh-aw/repo-memory/default/`. For local runs, each daily snapshot is stored as `YYYY-MM-DD.json`. For central runs with `target_repo`, normalize the target repository by replacing `/` with `__` and use `<owner>__<repo>__YYYY-MM-DD.json` so multiple target repositories do not overwrite each other.
 
-## Phase 1 — Process Logs
+## Phase 1 — Query Activity
 
-Write a Python script to `/tmp/gh-aw/token-audit/process_audit.py` and run it. The script must:
+Save the bounded canonical run query to `/tmp/gh-aw/token-audit/canonical-runs.json`. Write a Python script to `/tmp/gh-aw/token-audit/process_audit.py` and run it. The script must:
 
-1. Load `/tmp/gh-aw/token-audit/workflow-logs.json`; preserve its `window_start` and `window_end`, and extract `.runs`.
-2. Filter to `status == "completed"` runs only.
-3. Group by `workflow_path` (falling back to `workflow_name` only when the path is absent) and compute per-workflow aggregates. Preserve both fields so distinct workflows with the same display name never merge:
+1. Load the canonical query result and retain only records inside the exact 24-hour window.
+2. Filter to completed runs only.
+3. Inspect the available fields, join workflow records when needed, group by stable workflow identity, and compute per-workflow aggregates. Preserve both workflow name and path so distinct workflows with the same display name never merge:
    - `run_count`, `total_ai_credits`, `avg_ai_credits`, `total_tokens`, `avg_tokens`, `total_turns`, `avg_turns`, `total_action_minutes`, `error_count`, `warning_count`
 4. Compute an overall summary: total runs, total AI credits, total tokens, total action minutes.
 5. Sort workflows descending by `total_ai_credits`.
@@ -356,7 +283,7 @@ Write a Python script to `/tmp/gh-aw/token-audit/process_audit.py` and run it. T
 }
 ```
 
-Handle null/missing `aic` and `token_usage` by treating them as 0.
+Represent an aggregate as unknown when its source field is unavailable for every qualifying run. Do not silently replace missing AIC or token evidence with zero.
 
 ## Phase 2 — Validate and Summarize the Forecast
 
@@ -385,8 +312,8 @@ Also maintain a rolling summary file that contains an array of daily overall tot
 
 Do not append a synthetic zero-valued entry to `rolling-summary.json` when either of these conditions is true:
 
-- the raw `.runs` array is empty
-- the raw `.runs` array is non-empty but there are zero completed runs in the current window
+- the canonical run query is empty
+- the canonical run query is non-empty but there are zero completed runs in the current window
 
 Report those two cases differently in the issue as described below so the empty-window diagnosis stays precise while the historical trend remains unchanged.
 
@@ -486,7 +413,7 @@ Summarize AI credit, token, and active-workflow changes from `rolling-summary.js
 
 ## Important Notes
 
-- Use `// 0` (null coalescing) in jq and `.get(field, 0)` in Python for nullable numeric fields (`aic`, `token_usage`).
+- Keep missing canonical numeric evidence unknown; use zero only for a field explicitly present with value zero.
 - Distinguish between these two cases in the issue:
   - the raw `.runs` array is empty
   - the raw `.runs` array is non-empty but none of the runs are `status == "completed"`

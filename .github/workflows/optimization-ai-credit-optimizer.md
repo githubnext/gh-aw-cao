@@ -88,6 +88,9 @@ graders:
 
 tracker-id: optimization-ai-credit-optimizer
 
+skills:
+  - .github/skills/analyze-agentic-ops
+
 tools:
   github:
     mode: remote
@@ -113,116 +116,6 @@ safe-outputs:
 timeout-minutes: 30
 
 steps:
-  - name: Download recent agentic workflow logs
-    env:
-      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ inputs.target_repo }}
-    run: |
-      set -euo pipefail
-      mkdir -p /tmp/gh-aw/token-audit
-
-      echo "📥 Downloading agentic workflow logs (last 7 days)..."
-
-      RAW_LOGS=/tmp/gh-aw/token-audit/all-runs.raw.json
-      LOG_EXIT=0
-      gh aw logs \
-        --repo "$TARGET_REPO" \
-        --output /tmp/gh-aw/token-audit/logs \
-        --start-date -7d \
-        --json \
-        -c 50 \
-        --timeout 15 \
-        --max-github-api-rate-limit -2000 \
-        --max-storage 1024 \
-        > "$RAW_LOGS" || LOG_EXIT=$?
-
-      if jq -e . "$RAW_LOGS" >/dev/null 2>&1; then
-        jq '
-          ((.runs // []) | unique_by(.run_id)) as $runs |
-          {
-            summary: {
-              total_runs: ($runs | length),
-              total_tokens: ($runs | map(.token_usage // 0) | add // 0),
-              total_aic: ($runs | map(.aic // 0) | add // 0)
-            },
-            runs: $runs
-          }
-        ' "$RAW_LOGS" > /tmp/gh-aw/token-audit/all-runs.json
-        TOTAL=$(jq '.runs | length' /tmp/gh-aw/token-audit/all-runs.json)
-        echo "✅ Downloaded $TOTAL agentic workflow runs (last 7 days, exit code $LOG_EXIT)"
-      else
-        echo "⚠️ Agentic workflow logs were unavailable or invalid (exit code $LOG_EXIT)"
-        echo '{"runs":[],"summary":{}}' > /tmp/gh-aw/token-audit/all-runs.json
-      fi
-      rm -f "$RAW_LOGS"
-
-      BEFORE_COUNT=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)
-      if [[ "$TARGET_REPO" != "githubnext/gh-aw-cao" ]]; then
-        jq '
-            (.runs // [])
-            | map(select(
-                (.workflow_path // "") != ".github/workflows/optimization-ai-credit-optimizer.lock.yml"
-                and (.workflow_path // "") != ".github/workflows/optimization-ai-credit-auditor.lock.yml"
-              )) as $runs
-            | {
-                summary: {
-                  total_runs: ($runs | length),
-                  total_tokens: ($runs | map(.token_usage // 0) | add // 0),
-                  total_aic: ($runs | map(.aic // 0) | add // 0)
-                },
-                runs: $runs
-              }
-        ' /tmp/gh-aw/token-audit/all-runs.json > /tmp/gh-aw/token-audit/all-runs.filtered.json
-        mv /tmp/gh-aw/token-audit/all-runs.filtered.json /tmp/gh-aw/token-audit/all-runs.json
-        AFTER_COUNT=$(jq '(.runs // []) | length' /tmp/gh-aw/token-audit/all-runs.json)
-        echo "🚫 Excluded AI credit monitoring family from candidate pool: $((BEFORE_COUNT - AFTER_COUNT)) run(s) removed"
-      else
-        echo "ℹ️ Running in source repo — AI credit monitoring family remains in candidate pool"
-        AFTER_COUNT=$BEFORE_COUNT
-      fi
-
-  - name: Aggregate top workflows by AI credit usage
-    run: |
-      set -euo pipefail
-      mkdir -p /tmp/gh-aw/token-audit
-
-      jq '{
-        generated_at: (now | todateiso8601),
-        window_days: 7,
-        top_workflows: (
-          [.runs[]
-            | select(.status == "completed")
-              | select((.aic // 0) > 0)
-            | {
-                workflow_name: .workflow_name,
-              workflow_path: (.workflow_path // .workflow_name),
-                ai_credits: (.aic // 0),
-                tokens: (.token_usage // 0),
-                turns: (.turns // 0),
-                action_minutes: (.action_minutes // 0)
-              }
-          ]
-            | group_by(.workflow_path)
-          | map({
-              workflow_name: .[0].workflow_name,
-              workflow_path: .[0].workflow_path,
-              run_count: length,
-              total_ai_credits: (map(.ai_credits) | add),
-              avg_ai_credits: ((map(.ai_credits) | add) / length),
-              total_tokens: (map(.tokens) | add),
-              avg_tokens: ((map(.tokens) | add) / length),
-              total_turns: (map(.turns) | add),
-              total_action_minutes: (map(.action_minutes) | add)
-            })
-          | sort_by(.total_ai_credits)
-          | reverse
-          | .[:10]
-        )
-      }' /tmp/gh-aw/token-audit/all-runs.json > /tmp/gh-aw/token-audit/top-workflows.json
-
-      echo "✅ Generated top workflow summary at /tmp/gh-aw/token-audit/top-workflows.json"
-      jq '.top_workflows' /tmp/gh-aw/token-audit/top-workflows.json
-
   - name: Load optimization history
     run: |
       set -euo pipefail
@@ -245,33 +138,32 @@ You are the Agentic Workflow Optimizer. Pick one high AI credit workflow, audit 
 
 ## Objectives
 
-1. Select one workflow using repo-memory and pre-aggregated data.
+1. Select one workflow using repo-memory and canonical activity data.
 2. Analyze AI credit, tokens, turns, errors, tool usage patterns, and prompt structure across multiple runs.
 3. Propose safe, high-impact optimizations with evidence, including inline sub-agent refactors only when they are a clear fit.
 4. Publish one issue and update optimization history.
 
 ## Data Access Guidelines
 
-Always filter `gh api` responses with `--jq`. Prefer a single bash tool call containing a combined command block (using pipes/`&&` as needed) over multiple separate bash tool calls.
+Use the installed `analyze-agentic-ops` skill to inspect `${RUNNER_TEMP}/cao-activity/gh-aw-logs.sqlite`. Locate the Sallie CLI as directed by the skill, run `help` and `doctor`, then issue bounded `query` calls against canonical `repositories`, `workflows`, `runs`, `jobs`, `sessions`, `events`, and `transactions` as needed. Filter exactly to `TARGET_REPO` and the last seven full days before aggregating. Do not run the skill's `download` command, parse the sibling JSONL, invoke `gh aw logs`, or mutate the shared cache. Preserve unavailable usage fields as unknown rather than zero.
 
 ## Data Inputs
 
-- `/tmp/gh-aw/token-audit/all-runs.json`: full 7-day run data (`gh aw logs --json`).
-- `/tmp/gh-aw/token-audit/top-workflows.json`: pre-aggregated top 10 workflows by total AIC.
+- `${RUNNER_TEMP}/cao-activity/gh-aw-logs.sqlite`: canonical activity database. Query it through the Sallie CLI.
 - `/tmp/gh-aw/repo-memory/default/YYYY-MM-DD.json`: daily audit snapshots for local runs.
 - `/tmp/gh-aw/repo-memory/default/<owner>__<repo>__YYYY-MM-DD.json`: daily audit snapshots for central runs with `target_repo`.
 - `/tmp/gh-aw/repo-memory/default/optimization-log.json`: prior optimizations for local runs (if present).
 - `/tmp/gh-aw/repo-memory/default/<owner>__<repo>__optimization-log.json`: prior optimizations for central runs with `target_repo` (if present).
 
-Treat missing numeric fields (`aic`, `token_usage`, `turns`, `action_minutes`) as `0`.
+Treat missing numeric fields as unknown and exclude them from affected aggregates.
 
 ## Phase 1 — Select Target
 
-- Start from `top-workflows.json`.
+- Query completed runs, inspect the returned canonical field names, and aggregate by stable workflow identity to find the top workflows by total AI Credit.
 - Exclude workflows optimized in the last 14 days (use `optimization-log.json`).
-- Exclude the AI credit monitoring family — the `optimization-ai-credit-optimizer` and `optimization-ai-credit-auditor` workflows — **unless this workflow is running in `githubnext/gh-aw-cao`** (the source repository that ships them). In downstream repositories these workflows are not valid optimization targets; any optimization suggestions for them belong in `githubnext/gh-aw-cao`. In downstream repos they are pre-filtered from `all-runs.json` and `top-workflows.json`, but never select them even if a stale snapshot still lists them.
+- Exclude the AI credit monitoring family — the `optimization-ai-credit-optimizer` and `optimization-ai-credit-auditor` workflows — **unless this workflow is running in `githubnext/gh-aw-cao`** (the source repository that ships them). In downstream repositories these workflows are not valid optimization targets; any optimization suggestions for them belong in `githubnext/gh-aw-cao`.
 - Choose the highest AI-credit-spend workflow that remains.
-- If no snapshot/history exists, derive candidates directly from `all-runs.json`.
+- If no history exists, derive candidates directly from the canonical run query.
 - When `target_repo` is present, read and write only the target-specific snapshot and optimization log files using the `<owner>__<repo>__` prefix. Do not mix history between target repositories.
 
 Then collect run-level data for the selected workflow:
@@ -389,7 +281,7 @@ Load the existing array if present, append, keep only the last 30 entries, and s
 
 ## Guardrails
 
-- Use pre-downloaded data; do not re-download logs.
+- Use the restored canonical database; do not re-download logs.
 - Do not modify audit snapshots; only update `optimization-log.json`.
 
 ## agent: `extract-workflow-source`
@@ -418,4 +310,4 @@ description: Filter run data for a target workflow and compute AI credit and tim
 ---
 You are a run statistics aggregation assistant. You receive the target workflow name.
 
-Use `jq` to aggregate from `/tmp/gh-aw/token-audit/all-runs.json` (filtering within `.runs`) without printing raw run JSON. Compute total/avg/min/max AIC, action-minutes total/P50/P90, and conclusion counts for the target workflow, and output exactly one markdown table with columns: Metric | Value.
+Use bounded Sallie CLI queries against the restored canonical database without printing raw run payloads. Compute total/average/minimum/maximum AIC, action-minutes total/P50/P90, and conclusion counts for the target workflow from available values, and output exactly one markdown table with columns: Metric | Value.

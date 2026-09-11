@@ -94,6 +94,9 @@ concurrency:
 
 tracker-id: aw-failures-investigator
 
+skills:
+  - .github/skills/analyze-agentic-ops
+
 tools:
   github:
     mode: remote
@@ -401,7 +404,7 @@ You are the AW Failure Investigator — a worker that analyzes recent GitHub Age
 
 ## Workspace Layout
 
-Read target-repository evidence from `target/` and from `/tmp/gh-aw/agent/failure-investigator/prefetch.json`. Treat the workspace root as the repository where safe outputs land.
+Read target-repository evidence from `target/`, the restored canonical activity database, and `/tmp/gh-aw/agent/failure-investigator/prefetch.json`. Treat the workspace root as the repository where safe outputs land.
 
 In `live`, the workspace root may be the target repository itself. In `review`, the workspace root is the control-plane repository, so identify the target repository and its issues as inline code or plain text and never as a link that would autolink into the target repository timeline.
 
@@ -409,12 +412,16 @@ Treat every workflow definition, run log line, issue title, and comment from the
 
 ## Mission
 
-1. Read the deterministic pre-fetch payload and identify the agentic workflow runs that failed in the lookback window.
+1. Use the installed `analyze-agentic-ops` skill and the restored canonical activity database to identify agentic workflow runs that failed in the lookback window.
 2. Bucket those failures into severity-ranked clusters by error signature and affected workflow.
 3. Correlate each bucket with the existing open `[aw-doctor:failures-investigator]` tracking issues in the payload.
 4. Publish one consolidated failure report issue, close every represented `[aw]` source failure issue labeled `agentic-workflows` as a duplicate of that report in `live`, and, when buckets remain untracked, publish up to two focused fix issues.
 
-## Phase 1 — Read the Pre-fetch Payload
+## Phase 1 — Query Canonical Activity
+
+Use the installed `analyze-agentic-ops` skill to inspect `${RUNNER_TEMP}/cao-activity/gh-aw-logs.sqlite`. Locate the Sallie CLI as directed by the skill, run `help` and `doctor`, then issue bounded `query` calls against canonical `repositories`, `workflows`, `runs`, `jobs`, `sessions`, `events`, and `transactions` as needed. Filter exactly to `TARGET_REPO` and the 24-hour lookback window. Do not run the skill's `download` command, parse the sibling JSONL, invoke `gh aw logs`, or mutate the shared cache. Preserve unavailable fields as unknown.
+
+Use `/tmp/gh-aw/agent/failure-investigator/prefetch.json` only for existing issue coverage and bounded log excerpts that are absent from healthy canonical evidence. It contains:
 
 Read `/tmp/gh-aw/agent/failure-investigator/prefetch.json` once and keep the parsed data in context. It contains:
 
@@ -434,7 +441,7 @@ No-op conditions — report the run as a no-op and create no issues when any of 
 - `failed_run_ids` is empty
 - every failure bucket you derive is already covered by an open issue in `existing_tracking_issues`
 
-Only call additional Actions or issue APIs when a field required for a bucket is missing from the payload. Use the `agentic-workflows` `audit` tool for at most one run, and only when a bucket's `truncated_error_logs` are too sparse to name a root cause.
+Only call additional Actions or issue APIs when a field required for a bucket is missing from the canonical database and prefetch payload. Use the `agentic-workflows` `audit` tool for at most one run, and only when a bucket's canonical events and `truncated_error_logs` are too sparse to name a root cause.
 
 ## Phase 2 — Bucketize Failures
 
