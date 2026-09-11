@@ -579,8 +579,7 @@ function summarizeRunHealth(runs) {
 function coverageLabel(metadata) {
   if (metadata?.availability !== 'available') return 'Actions run data unavailable';
   const hours = coverageWindowHours(metadata);
-  const completeness = metadata.completeness === 'complete' ? 'Complete' : metadata.completeness === 'partial' ? 'Partial' : 'Unknown';
-  return `${completeness}${hours ? ` ${hours}-hour` : ''} Actions run window`;
+  return `${hours ? `${hours}-hour ` : ''}Actions run window`;
 }
 
 /** @param {string} label @param {import('../presenter.js').SourceMetadata | undefined} metadata */
@@ -622,5 +621,4 @@ function formatObservationDate(value) {
   const date = text(value);
   return Number.isFinite(Date.parse(date)) ? formatUtcDateTime(date) : 'Unknown';
 }
-
 

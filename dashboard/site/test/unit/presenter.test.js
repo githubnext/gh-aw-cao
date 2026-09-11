@@ -632,7 +632,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.getAttribute('data-page-description')).toContain('does not assert that a dispatch occurred');
     expect(page?.querySelector('.view-metadata-summary')).toBeNull();
     expect(rendered.querySelector('.horizon-summary [aria-label="Data status"]')).toBeNull();
-    expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')?.textContent).toBe('CompletenesscompleteFreshnessfresh');
+    expect(rendered.querySelector('.filter-tuning-controls .horizon-details [aria-label="Data status"]')).toBeNull();
     expect(page?.querySelector('[data-view-layout="full-view"]')).not.toBeNull();
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('[data-table-filter]')).not.toBeNull();
@@ -1580,7 +1580,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.dashboard-horizon')?.getAttribute('data-dashboard-evaluated-at')).toBe('2026-09-01T12:00:00.000Z');
     expect(rendered.querySelector('.horizon-toggle')?.getAttribute('aria-label')).toContain('2 days');
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details')?.textContent).toBe(
-      'Data is included from the start up to the exclusive end.StartAug 30, 2026, 12:30 PM UTCEndSep 1, 2026, 12:00 PM UTCDuration2 daysCompletenesscompleteFreshnessfresh'
+      'Data is included from the start up to the exclusive end.StartAug 30, 2026, 12:30 PM UTCEndSep 1, 2026, 12:00 PM UTCDuration2 days'
     );
     expect(rendered.querySelector('.filter-tuning-controls .horizon-details time:first-of-type')?.getAttribute('datetime')).toBe('2026-08-30T12:30:00.000Z');
     expect(rendered.querySelectorAll('.filter-tuning-controls .horizon-details time')[1]?.getAttribute('datetime')).toBe('2026-09-01T12:00:00.000Z');
@@ -1972,9 +1972,7 @@ describe('presenter built-in and custom pages', () => {
             title: 'Overview',
             definition: {
               'data-state': {
-                availability: true,
-                completeness: true,
-                freshness: true
+                availability: true
               },
               views: [
                 { id: 'workflows-source', data: { source: 'workflows' } },
@@ -2204,7 +2202,7 @@ describe('presenter built-in and custom pages', () => {
             page: 'overview',
             title: 'Overview',
             definition: {
-              'data-state': { availability: true, completeness: true, freshness: true },
+              'data-state': { availability: true },
               views: [{ id: 'workflows-source', data: { source: 'workflows' } }]
             }
           }
@@ -2261,7 +2259,7 @@ describe('presenter built-in and custom pages', () => {
           title: 'Packages',
           description: 'Activity from centrally managed packages.',
           definition: {
-            'data-state': { availability: true, completeness: true, freshness: true },
+            'data-state': { availability: true },
             views: [
               { id: 'package-workflows', data: { source: 'workflows' } },
               { id: 'package-runs', data: { source: 'runs' } },
@@ -2439,9 +2437,7 @@ describe('presenter built-in and custom pages', () => {
       expect(page.id).toBe(page.page === 'overview' ? 'operations' : page.page);
       expect(typeof page.icon).toBe('string');
       expect(page.definition?.['data-state']).toEqual({
-        availability: true,
-        completeness: true,
-        freshness: true
+        availability: true
       });
       expect(Array.isArray(page.definition?.views)).toBe(true);
       expect(page.definition.views.length).toBeGreaterThan(0);
@@ -2499,9 +2495,7 @@ describe('presenter built-in and custom pages', () => {
             title: 'Runs',
             definition: {
               'data-state': {
-                availability: true,
-                completeness: true,
-                freshness: true
+                availability: true
               },
               views: [
                 { id: 'runs-table', title: 'Runs Inventory First', data: { source: 'runs' } },
@@ -2587,9 +2581,7 @@ describe('presenter built-in and custom pages', () => {
             title: 'Evals',
             definition: {
               'data-state': {
-                availability: true,
-                completeness: true,
-                freshness: true
+                availability: true
               },
               views: [
                 { id: 'evals-source', data: { source: 'evals' } },
@@ -2677,9 +2669,7 @@ describe('presenter built-in and custom pages', () => {
             title: 'Findings',
             definition: {
               'data-state': {
-                availability: true,
-                completeness: true,
-                freshness: true
+                availability: true
               },
               views: [
                 { id: 'findings-source', data: { source: 'findings' } }

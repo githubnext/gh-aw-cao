@@ -1435,9 +1435,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
               title: 'Overview',
               definition: {
                 'data-state': {
-                  availability: true,
-                  completeness: true,
-                  freshness: true
+                  availability: true
                 },
                 views: [
                   { id: 'workflows-source', data: { source: 'workflows' } },
@@ -2013,7 +2011,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
               title: 'Packages',
               description: 'Activity from centrally managed packages.',
               definition: {
-                'data-state': { availability: true, completeness: true, freshness: true },
+                'data-state': { availability: true },
                 views: [
                   { id: 'package-workflows', data: { source: 'workflows' } },
                   { id: 'package-runs', data: { source: 'runs' } },
@@ -2483,9 +2481,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
               title: 'Evals',
               definition: {
                 'data-state': {
-                  availability: true,
-                  completeness: true,
-                  freshness: true
+                  availability: true
                 },
                 views: [
                   { id: 'evals-source', data: { source: 'evals' } },
@@ -2573,9 +2569,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
               title: 'Findings',
               definition: {
                 'data-state': {
-                  availability: true,
-                  completeness: true,
-                  freshness: true
+                  availability: true
                 },
                 views: [
                   { id: 'findings-source', data: { source: 'findings' } }
@@ -3272,7 +3266,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
   await expect(page.locator('.horizon-summary').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await page.locator('.horizon-toggle').click();
-  await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
   await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();

@@ -179,7 +179,7 @@ function deriveEpisodeSummary(model, runsMetadata) {
       label: 'Worker attribution',
       value: `${formatCount(model.attributedWorkerRuns.length)} / ${formatCount(model.workerRuns.length)}`
     },
-    { label: 'Run window', value: `${runsMetadata?.completeness === 'complete' ? 'Complete' : 'Partial'} ${formatCount(windowHours)}h` },
+    { label: 'Run window', value: `${formatCount(windowHours)}h` },
     { label: 'Repeated coverage', value: 'Unavailable' }
   ];
 }

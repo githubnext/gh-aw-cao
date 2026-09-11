@@ -1290,7 +1290,6 @@ function buildOverviewStatusRow(input) {
   const usageCoverage = usage.length > 0
     ? `${formatNumber(new Set(usage.map((row) => String(row.run ?? '')).filter(Boolean)).size)} AIC artifacts`
     : 'AIC unavailable';
-  const usageCompleteness = sources.usage?.metadata?.completeness === 'partial' ? 'partial' : '';
 
   return {
     scope,
@@ -1299,7 +1298,7 @@ function buildOverviewStatusRow(input) {
     'status-label': status.label,
     'status-copy': statusCopy,
     'health-total': health.total,
-    'coverage-label': `${usageCoverage}${usageCompleteness ? ` · ${usageCompleteness}` : ''}`,
+    'coverage-label': usageCoverage,
     packages: packages.length,
     'managed-workers': packages.reduce((total, entry) => total + entry.workers, 0),
     'active-workflows': workflows.filter(isActiveWorkflow).length,
