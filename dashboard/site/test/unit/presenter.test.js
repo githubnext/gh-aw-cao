@@ -515,6 +515,8 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.textContent).toContain('Produced a review');
     expect(page?.textContent).toContain('assistant_message');
+    expect(page?.querySelector('thead')?.textContent).toContain('Correlation');
+    expect(page?.querySelector('tbody')?.textContent).toContain('correlation-1');
     expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
   });
 
@@ -1119,7 +1121,7 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-section-layout="horizontal"]')).not.toBeNull();
     expect(page?.querySelectorAll('.metric-card-widget')).toHaveLength(4);
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
-    expect(page?.querySelector('[href="#page-overview-security-findings"] [data-metric-value="count"]')?.textContent).toBe('—');
+    expect(page?.querySelector('[href="#page-overview-security-findings"] [data-metric-value="count"]')?.textContent).toBe('');
     expect(page?.querySelector('.home-attention-detail')).toBeNull();
     expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();
@@ -2179,7 +2181,8 @@ describe('presenter built-in and custom pages', () => {
     expect(cards[2]?.textContent).toContain('2 signals');
     expect(cards[3]?.textContent).toContain('3 gaps');
     expect(cards[4]?.textContent).toContain('Threshold unavailable');
-    expect(cards[5]?.textContent).toContain('35 AIC');
+    expect(cards[5]?.textContent).toContain('35');
+    expect(cards[5]?.textContent).not.toContain('35 AIC');
     expect(cards[5]?.textContent).toContain('Monitor');
     expect(cards.map((card) => card.getAttribute('href'))).toEqual([
       '#page-runtime',

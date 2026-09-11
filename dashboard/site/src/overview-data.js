@@ -663,14 +663,15 @@ function buildCostSummary(usageSource) {
   const measuredRows = (usageSource?.rows ?? []).filter((row) => Number.isFinite(Number(row.aic)) && Number(row.aic) >= 0);
   const measuredAic = measuredRows.reduce((total, row) => total + Number(row.aic), 0);
   const measuredRuns = new Set(measuredRows.map((row) => usageRunKey(row)).filter(Boolean)).size;
+  const measured = available && measuredRows.length > 0;
   return [
     {
       label: 'Measured AIC',
-      value: available ? formatAic(measuredAic) : '—'
+      value: measured ? formatAic(measuredAic) : ''
     },
-    { label: 'Measured runs', value: available ? formatNumber(measuredRuns) : '—' },
-    { label: 'Measured episode AIC', value: '—' },
-    { label: 'Episode output yield', value: '—' }
+    { label: 'Measured runs', value: measured ? formatNumber(measuredRuns) : '' },
+    { label: 'Measured episode AIC', value: '' },
+    { label: 'Episode output yield', value: '' }
   ];
 }
 
@@ -742,7 +743,7 @@ function buildValueSummary(graderObservations, operationalValues, outcomes) {
   return [
     { label: 'Grader coverage', value: `${operationalValues.length} / ${selected}` },
     { label: 'Mature evidence', value: operationalValues.filter((row) => String(row['maturity-status']) === 'matured').length },
-    { label: 'Mean operational value', value: mean === null ? '—' : formatPercent(mean) },
+    { label: 'Mean operational value', value: mean === null ? '' : formatPercent(mean) },
     { label: 'Open outputs', value: outcomes.filter((row) => String(row['outcome-state']) === 'pending').length }
   ];
 }
@@ -1055,7 +1056,7 @@ function buildDomainAttentionRows(input) {
           state: !usageAvailable ? 'Unavailable' : !usageComplete ? 'Investigate' : 'Monitor',
           icon: 'meter',
           domain: 'Cost & efficiency',
-          value: usageAvailable ? `${formatAic(usageTotal)} AIC` : 'Not observed',
+          value: usageAvailable ? formatAic(usageTotal) : 'Not observed',
           detail: usageAvailable
             ? `${formatCount(measuredRuns)} measured runs · ${usageComplete ? 'monthly budget verdict unavailable' : 'usage coverage is partial; monthly budget verdict unavailable'}`
             : 'AI Credit usage telemetry is unavailable; this does not change workflow registration evidence.',
@@ -1120,7 +1121,7 @@ function buildSecuritySummary(input) {
     { label: 'Approval gates', value: input.runs.filter((row) => String(row['run-conclusion']) === 'action-required').length },
     { label: 'Explicit warnings', value: input.findings.filter(isAuthoredWarning).length },
     { label: 'Package integrity gaps', value: input.workflows.filter((row) => row['inventory-ready'] === false).length },
-    { label: 'Vulnerability findings', value: '—' }
+    { label: 'Vulnerability findings', value: '' }
   ];
 }
 
@@ -1314,6 +1315,7 @@ function buildOverviewStatusRow(input) {
 function buildOverviewVitals(input) {
   const { sources, packages, health, workflows, repositories, runs } = input;
   const hasRunTelemetry = sources.runs?.metadata?.availability !== 'unavailable';
+  const hasRunObservations = hasRunTelemetry && (sources.runs?.rows.length ?? 0) > 0;
   const disabledWorkflows = workflows.filter((row) => String(row['workflow-active']) === 'false').length;
   const managedWorkers = packages.reduce((total, entry) => total + entry.workers, 0);
   const repositoryCount = repositories.length > 0
@@ -1322,10 +1324,10 @@ function buildOverviewVitals(input) {
   return [
     { label: 'Managed packages', value: packages.length, detail: `${managedWorkers} worker workflow${pluralSuffix(managedWorkers)}` },
     { label: 'Active workflows', value: workflows.filter(isActiveWorkflow).length, detail: `${disabledWorkflows} disabled · ${repositoryCount} repositories` },
-    { label: 'Runs · 24h', value: hasRunTelemetry ? health.total : '—', detail: sourceWindowLabel(sources.runs) },
+    { label: 'Runs · 24h', value: hasRunObservations ? health.total : '', detail: sourceWindowLabel(sources.runs) },
     {
       label: 'Failure rate',
-      value: hasRunTelemetry && health.total > 0 ? formatPercent(health.failed / health.total) : '—',
+      value: hasRunObservations && health.total > 0 ? formatPercent(health.failed / health.total) : '',
       detail: hasRunTelemetry ? `${health.failed} failed runs` : 'Telemetry unavailable',
       className: 'vital-failures'
     }
@@ -1395,14 +1397,14 @@ function buildPackageUtilizationRow(entry, usageByPackage, usageSource) {
   const used = usageByPackage.used.get(entry.id) ?? 0;
   const reportedRuns = usageByPackage.reportedRuns.get(entry.id) ?? 0;
   const allowance = /** @type {number} */ (entry.allowance);
-  const ratio = available && allowance > 0 ? used / allowance : null;
+  const ratio = available && allowance > 0 && reportedRuns > 0 ? used / allowance : null;
   const meterPercent = ratio === null ? 0 : Math.min(100, ratio * 100);
   const status = !available || ratio === null ? 'empty' : classifyUtilizationRatio(ratio);
   return {
     package: entry.id,
     title: entry.name,
     status,
-    value: !available || ratio === null ? '—' : formatPercent(ratio),
+    value: !available || ratio === null ? '' : formatPercent(ratio),
     'meter-percent': meterPercent,
     detail: !available
       ? 'AI Credit usage artifacts are unavailable.'

@@ -114,6 +114,7 @@ test("AI Credit timeline uses compact summary tool calls and skips checkout evid
   await writeFile(path.join(runPath, "run_summary.json"), JSON.stringify({
     mcp_tool_usage: {
       tool_calls: [{
+        tool_call_id: "call-43",
         timestamp: "2026-09-03T05:01:00Z",
         server_name: "github",
         tool_name: "get_file",
@@ -129,11 +130,13 @@ test("AI Credit timeline uses compact summary tool calls and skips checkout evid
       type: event.type,
       summary: event.summary,
       status: event.status,
+      correlationId: event.correlationId,
     })), [{
       source: "gateway",
       type: "tool_call",
       summary: "github/get_file",
       status: "success",
+      correlationId: "call-43",
     }]);
   } finally {
     await rm(root, { recursive: true, force: true });

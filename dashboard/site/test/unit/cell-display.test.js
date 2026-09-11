@@ -24,7 +24,8 @@ describe('table cell display helper', () => {
     expect(/** @type {HTMLElement} */ (graderPass).className).toBe('status status-success');
     expect(/** @type {HTMLElement} */ (graderUnavailable).className).toBe('status status-attention');
     expect(renderCellDisplay('label', 'matured', toText)).toBe('Mature');
-    expect(renderCellDisplay(undefined, null, toText, null, 'quantitative')).toBe('—');
+    expect(renderCellDisplay(undefined, null, toText, null, 'quantitative')).toBe('');
+    expect(renderCellDisplay(undefined, 0, toText, null, 'quantitative')).toBe('0');
     expect(/** @type {HTMLElement} */ (renderCellDisplay('digest', '1234567890abcdef', toText)).textContent).toBe('1234567890ab');
     expect(renderCellDisplay(undefined, 'plain', toText)).toBe('plain');
     expect(renderCellDisplay(undefined, '.github/workflows/daily.md', toText, null, 'nominal', 'workflow-relative-path')).toBe('daily.md');
@@ -44,8 +45,8 @@ describe('table cell display helper', () => {
     expect(workflowRun.rel).toBe('noopener noreferrer');
     expect(renderCellDisplay(undefined, 'https://example.com/actions/runs/12345', toText, null, 'nominal', 'workflow-run-url'))
       .toBe('https://example.com/actions/runs/12345');
-    expect(renderCellDisplay('unsupported', null, toText)).toBe('unknown');
-    expect(renderCellDisplay(undefined, null, toText, null, 'temporal', 'human-friendly-timestamp')).toBe('—');
+    expect(renderCellDisplay('unsupported', null, toText)).toBe('');
+    expect(renderCellDisplay(undefined, null, toText, null, 'temporal', 'human-friendly-timestamp')).toBe('');
     const temporal = /** @type {HTMLElement} */ (renderCellDisplay(undefined, '2026-08-30T07:00:00Z', toText, null, 'temporal'));
     expect(temporal.tagName).toBe('TIME');
     expect(temporal.getAttribute('datetime')).toBe('2026-08-30T07:00:00Z');

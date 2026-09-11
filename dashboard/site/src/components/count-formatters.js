@@ -127,7 +127,7 @@ export function computeObservationCoverage(usable, excluded) {
  * @param {string} [unknown]
  * @returns {string}
  */
-export function formatCoveragePercent(coverage, unknown = '—') {
+export function formatCoveragePercent(coverage, unknown = '') {
   return coverage === null ? unknown : `${(coverage * 100).toFixed(1)}%`;
 }
 
@@ -139,7 +139,7 @@ export function formatCoveragePercent(coverage, unknown = '—') {
  * @param {string} [unknown]
  * @returns {string}
  */
-export function formatRoundedPercent(ratio, unknown = '—') {
+export function formatRoundedPercent(ratio, unknown = '') {
   return ratio === null || !Number.isFinite(ratio) ? unknown : `${Math.round(ratio * 100)}%`;
 }
 

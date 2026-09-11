@@ -688,7 +688,7 @@ function renderValueGain(values, delta) {
   const coordinates = points.map((value, index) => `${8 + index * (104 / Math.max(1, points.length - 1))},${42 - Math.max(0, Math.min(1, value)) * 32}`).join(' ');
   return renderMiniChartPanel({ label: 'Insights', icon: 'graph', tone: 'insights' }, 'Value gained',
     h('div', { className: 'home-value-gain' },
-      renderSignedDeltaHeadline(delta === null ? null : Math.round(delta * 100), '—', (points) => `${points} pts`),
+      renderSignedDeltaHeadline(delta === null ? null : Math.round(delta * 100), '', (points) => `${points} pts`),
       h('svg', { viewBox: '0 0 120 48', role: 'img', 'aria-label': delta === null ? 'Operational value change unavailable' : `Operational value changed ${Math.round(delta * 100)} points` },
         h('line', { x1: 8, y1: 42, x2: 112, y2: 42, className: 'home-chart-grid' }),
         h('polyline', { points: coordinates, className: 'home-value-line' }))));

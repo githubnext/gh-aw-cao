@@ -100,8 +100,8 @@ create the base Run using its own GitHub and workflow fields.
 | `engine` or `aw_info.engine_name` | `engine` |
 | `engine_id` or `aw_info.engine_id` | `engineId` |
 | `engine_version` or `aw_info.version` | `engineVersion` |
-| `requested_model` | `requestedModel` |
-| `resolved_model`, `model`, or `aw_info.model` | `resolvedModel` |
+| `requested_model` or `requestedModel` | `requestedModel` |
+| `resolved_model`, `resolvedModel`, `model_resolved`, `model`, `aw_info.model`, or dominant `by_model` entry | `resolvedModel` |
 | `agent_runtime` or `aw_info.agent_runtime` | `agentRuntime` |
 | `firewall_version`, `aw_info.firewall_version`, or `aw_info.awf_version` | `firewallVersion` |
 | `gateway_version` or `aw_info.awmg_version` | `gatewayVersion` |

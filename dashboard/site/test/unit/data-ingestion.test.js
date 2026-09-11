@@ -203,6 +203,7 @@ describe('canonical source ingestion and queries', () => {
         agentId: 'copilot',
         agentVersion: '1.2.3',
         modelId: 'gpt-5.4',
+        resolvedModel: 'gpt-5.4',
         ghAwVersion: '0.89.1',
         aicTotal: 2.5
       })

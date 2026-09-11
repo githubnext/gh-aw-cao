@@ -31,13 +31,14 @@
       "aic": {
         "name": "AI Credits",
         "symbol": "AIC",
-        "significant": 1
+        "significant": 1,
+        "format": "number"
       },
       "usd": {
         "name": "US dollars",
         "symbol": "USD",
         "significant": 0.001,
-        "format": "usd"
+        "format": "number"
       },
       "grade": {
         "name": "Grade",

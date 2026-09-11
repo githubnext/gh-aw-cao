@@ -87,7 +87,7 @@ function renderRuntimeMetrics(context, workflow, runs, usage) {
       renderVitalStat('Registration', registration, 'Current GitHub Actions state'),
       renderVitalStat(
         recentMetricLabel('AI Credits', usageMetadata),
-        usageAvailable && usageMeasured ? formatNumber(usageTotal, { name: 'AI Credits', symbol: 'AIC', significant: 0.1 }) : '—',
+        usageAvailable && usageMeasured ? formatNumber(usageTotal, { name: 'AI Credits', symbol: 'AIC', significant: 0.1, format: 'number' }) : '',
         usageAvailable
           ? `${formatCount(usage.length)} ${usage.length === 1 ? 'run' : 'runs'} with AIC telemetry; ${coverageLabel(usageMetadata)}`
           : 'AI Credit data unavailable'
@@ -108,7 +108,7 @@ function renderRunHealthMetric(health, available, coverage, label) {
       'div',
       { className: 'workflow-run-health' },
       h('dt', null, label),
-      h('dd', null, '—'),
+      h('dd', null, ''),
       h('p', null, coverage)
     );
   }

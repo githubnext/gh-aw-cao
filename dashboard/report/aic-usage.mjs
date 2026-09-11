@@ -120,6 +120,7 @@ export async function readRunTimeline(outputDirectory, runId, sessionId, evidenc
         type: "tool_call",
         summary: [serverName, toolName].filter(Boolean).join("/"),
         status: firstText(call?.status),
+        correlationId: firstText(call?.tool_call_id, call?.toolCallId, call?.correlation_id, call?.correlationId),
         payloadRef: `run_summary.json#mcp_tool_usage.tool_calls[${index}]`,
         sourceSequence: index + 1,
       }];
