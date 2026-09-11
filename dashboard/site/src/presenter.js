@@ -1698,6 +1698,14 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   });
 
+  // Hiding the app chrome (sidebar/top nav) while a full-view table scrolls resizes the
+  // scroll container, which can shrink its scrollable range enough to clamp scrollTop back
+  // toward 0. That reflow re-fires the scroll handler and toggles the chrome back on, which
+  // then re-triggers the same reflow: a hide/show feedback loop ("menu jitter"). A minimum
+  // scrollable-range guard plus enter/exit hysteresis around scrollTop breaks that loop.
+  const FULL_VIEW_SCROLL_MIN_RANGE = 48;
+  const FULL_VIEW_SCROLL_ENTER = 24;
+  const FULL_VIEW_SCROLL_EXIT = 4;
   let fullViewScrollFrame = 0;
   root.addEventListener('scroll', (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
@@ -1705,9 +1713,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (scroll === event.target) {
       const syncScrolledState = () => {
         fullViewScrollFrame = 0;
-        if (scroll.isConnected && root.classList.contains('dashboard-full-view')) {
-          root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > 0);
+        if (!scroll.isConnected || !root.classList.contains('dashboard-full-view')) return;
+        const scrollableRange = scroll.scrollHeight - scroll.clientHeight;
+        if (scrollableRange < FULL_VIEW_SCROLL_MIN_RANGE) {
+          root.classList.remove('dashboard-full-view-scrolled');
+          return;
         }
+        const wasScrolled = root.classList.contains('dashboard-full-view-scrolled');
+        const threshold = wasScrolled ? FULL_VIEW_SCROLL_EXIT : FULL_VIEW_SCROLL_ENTER;
+        root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > threshold);
       };
       if (defaultView?.requestAnimationFrame) {
         if (fullViewScrollFrame) defaultView.cancelAnimationFrame(fullViewScrollFrame);

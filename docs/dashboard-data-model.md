@@ -67,8 +67,7 @@ with the newest observation winning.
 Audit a JSONL source without changing a database:
 
 ```bash
-cao audit-jsonl \
-  --input _activity/gh-aw-logs.jsonl
+cao audit-jsonl
 ```
 
 The report separates raw observations, unique raw runs, enriched observations,
@@ -206,7 +205,7 @@ Alternatively, ingest the schema-v2 JSONL produced by `gh aw logs`:
 ```bash
 cao ingest-jsonl \
   --database /tmp/cao-dashboard.sqlite \
-  --input _activity/gh-aw-logs.jsonl
+  --input .cao/gh-aw-logs.jsonl
 ```
 
 Pass `--context CONTEXT_JSON` when the JSONL's `github_api_rate_limit`
@@ -221,8 +220,8 @@ CAO Pages site:
 cao download
 ```
 
-This writes `_activity/gh-aw-logs.jsonl` and
-`_activity/gh-aw-logs.sqlite`. Set `DASHBOARD_DATA_URL` or pass `--url URL`
+This writes `.cao/gh-aw-logs.jsonl` and
+`.cao/gh-aw-logs.sqlite` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL`
 to use another deployment, and pass `--output DIRECTORY` to select another
 destination. Both files are downloaded unchanged; this command does not run
 ingestion locally.
@@ -231,7 +230,6 @@ Query a canonical collection, optionally selecting an ID, filtering fields, or l
 
 ```bash
 cao query \
-  --database /tmp/cao-dashboard.sqlite \
   --collection runs \
   --where conclusion=failure \
   --limit 20
