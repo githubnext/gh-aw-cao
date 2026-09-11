@@ -25,7 +25,7 @@ jobs:
       - name: Install Copilot CLI
         run: npm_config_before="$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)" npm install -g @github/copilot
       - name: Install agent plugin
-        run: copilot plugin install .
+        run: copilot plugin install "$(pwd)"
 
   test:
     runs-on: ubuntu-latest
