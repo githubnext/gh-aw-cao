@@ -76,10 +76,27 @@ jobs:
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
         run: |
           echo "Validating restored activity data"
-          test -s "$REPORT_GH_AW_LOGS"
-          test -s "$ACTIVITY_DATABASE"
-          test -s "$REPORT_CONTROL_SETTINGS"
-          test -s "$REPORT_INVENTORY_SOURCES"
+          validation_failed=0
+          for activity_file in \
+            "$REPORT_GH_AW_LOGS" \
+            "$ACTIVITY_DATABASE" \
+            "$REPORT_CONTROL_SETTINGS" \
+            "$REPORT_INVENTORY_SOURCES"; do
+            if [[ ! -e "$activity_file" ]]; then
+              echo "::error::Required activity data file is missing: $activity_file"
+              validation_failed=1
+            elif [[ ! -s "$activity_file" ]]; then
+              echo "::error::Required activity data file is empty: $activity_file"
+              validation_failed=1
+            else
+              echo "Validated $activity_file ($(stat -c %s -- "$activity_file") bytes)"
+            fi
+          done
+          if [[ "$validation_failed" -ne 0 ]]; then
+            echo "Restored activity cache directory contents:"
+            find "$RUNNER_TEMP/cao-activity" -maxdepth 1 -type f -printf "  %f (%s bytes)\n" | sort
+            exit 1
+          fi
 
       - name: Assess activity database health
         env:
