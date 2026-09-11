@@ -228,7 +228,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .mobile-history-back { display: none; }
 .sidebar-toggle { width: 28px; height: 28px; display: grid; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .sidebar-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
-.mobile-report-actions { display: none; }
+.mobile-nav-menu-actions { display: none; }
 .mobile-page-header { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
@@ -424,7 +424,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .metric-card-widget-review { --metric-card-color: var(--purple); }
 .metric-card-widget[href]:hover { background: color-mix(in srgb, var(--metric-card-color, var(--accent)) 12%, var(--canvas-subtle)); }
 .metric-card-widget:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.metric-card-widget-value { align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.metric-card-widget-value { min-height: 1em; align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
 .metric-card-widget-active .metric-card-widget-value { color: var(--metric-card-color); }
 .metric-card-widget-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }
 .metric-card-widget-active .metric-card-widget-label { color: var(--fg); }
@@ -1815,11 +1815,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-report-actions { min-width: 0; display: flex; align-items: center; margin-left: auto; }
-  .mobile-report-actions .report-actions { width: auto; position: static; margin-left: 0; gap: 6px; }
-  .mobile-report-actions .dashboard-horizon { max-width: 130px; }
-  .mobile-report-actions .horizon-summary { position: static; }
-  .mobile-report-actions .horizon-tooltip { top: calc(100% + 64px); right: 0; }
+  .mobile-nav-menu-actions { min-width: 0; display: flex; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--border-muted); }
+  .mobile-nav-menu-actions .report-actions { width: 100%; flex-wrap: wrap; position: static; margin-left: 0; gap: 6px; }
+  .mobile-nav-menu-actions .dashboard-horizon { max-width: 100%; }
+  .mobile-nav-menu-actions .horizon-summary { position: static; }
+  .mobile-nav-menu-actions .horizon-tooltip { top: calc(100% + 4px); right: 0; left: auto; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .org-sidebar { padding: 14px 12px 10px; }
   .sidebar-collapsed .sidebar-brand > span, .sidebar-collapsed .nav-label { display: initial; }

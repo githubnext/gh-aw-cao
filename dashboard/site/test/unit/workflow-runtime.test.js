@@ -143,7 +143,8 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.querySelector('.workflow-run-health dt')?.textContent).toBe('Run health (last 24h)');
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('24-hour Actions run window');
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('Registrationactive');
-    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('AI Credits (last 24h)50.0 AIC');
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('AI Credits (last 24h)50.0');
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).not.toContain('50.0 AIC');
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('2 runs with AIC telemetry; 24-hour Actions run window');
     expect(rendered.querySelector('.value-report-empty')?.textContent).toContain('No workflow observations yet');
     expect(rendered.querySelector('.value-report-empty code')?.textContent).toBe('grader_results.json');
@@ -161,7 +162,7 @@ describe('renderWorkflowRuntime', () => {
 
     const usageMetric = [...rendered.querySelectorAll('.workflow-runtime-metrics > div')]
       .find((metric) => metric.querySelector('dt')?.textContent?.startsWith('AI Credits'));
-    expect(usageMetric?.querySelector('dd')?.textContent).toBe('—');
+    expect(usageMetric?.querySelector('dd')?.textContent).toBe('');
     expect(usageMetric?.querySelector('p')?.textContent).toBe('0 runs with AIC telemetry; 24-hour Actions run window');
   });
 

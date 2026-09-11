@@ -189,6 +189,29 @@ test("transaction logs retain a session when artifacts contain no timeline", () 
   }]);
 });
 
+test("transaction log events preserve correlation ids", () => {
+  const rows = transactionLogRows({
+    generatedAt: "2026-09-09T05:00:00Z",
+    securityRuns: [{
+      repository: "githubnext/gh-aw-cao",
+      workflowPath: ".github/workflows/dashboard.lock.yml",
+      runId: 305,
+      runAttempt: 1,
+      createdAt: "2026-09-09T04:02:00Z",
+      logsPayload: { status: "completed" },
+      timeline: [{
+        sourceId: "event-1",
+        timestamp: "2026-09-09T04:02:01Z",
+        source: "gateway",
+        type: "tool_call",
+        correlationId: "call-305",
+      }],
+    }],
+  });
+
+  assert.equal(rows.events[0]["correlation-id"], "call-305");
+});
+
 test("detection observations preserve verdict, warning, tooling, skipped, and unknown states", () => {
   const clear = { promptInjection: false, secretLeak: false, maliciousPatch: false, warnings: [] };
   const usage = {

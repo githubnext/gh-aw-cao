@@ -93,7 +93,7 @@ describe('count formatters', () => {
   it('formats coverage ratios as one-decimal percentages, with a placeholder for null', () => {
     expect(formatCoveragePercent(0.9)).toBe('90.0%');
     expect(formatCoveragePercent(0.12345)).toBe('12.3%');
-    expect(formatCoveragePercent(null)).toBe('—');
+    expect(formatCoveragePercent(null)).toBe('');
     expect(formatCoveragePercent(null, 'n/a')).toBe('n/a');
   });
 
@@ -101,9 +101,9 @@ describe('count formatters', () => {
     expect(formatRoundedPercent(0.9)).toBe('90%');
     expect(formatRoundedPercent(0.125)).toBe('13%');
     expect(formatRoundedPercent(0)).toBe('0%');
-    expect(formatRoundedPercent(null)).toBe('—');
+    expect(formatRoundedPercent(null)).toBe('');
     expect(formatRoundedPercent(null, 'n/a')).toBe('n/a');
-    expect(formatRoundedPercent(Number.NaN)).toBe('—');
+    expect(formatRoundedPercent(Number.NaN)).toBe('');
   });
 
   it('tallies rows into a Map keyed by a derived label', () => {

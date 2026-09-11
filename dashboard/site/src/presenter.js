@@ -404,7 +404,28 @@ function renderSidebar(pages, title, navigation) {
         h('span', null, title)
       ),
       h('div', { className: 'mobile-page-header' }),
-      h('div', { className: 'mobile-report-actions', 'aria-label': 'Dashboard controls' }),
+      h(
+        'details',
+        { className: 'mobile-nav-menu' },
+        h(
+          'summary',
+          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
+          octicon('three-bars')
+        ),
+        h(
+          'div',
+          { className: 'mobile-nav-menu-list' },
+          h('div', { className: 'mobile-nav-menu-actions', 'aria-label': 'Dashboard controls' }),
+          ...navigationSections.flatMap((section) => [
+            ...(typeof section.label === 'string' && section.label.length > 0
+              ? [h('span', {
+                  className: 'mobile-nav-section-label'
+                }, section.label)]
+              : []),
+            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
+          ])
+        )
+      ),
       h(
         'button',
         {
@@ -446,28 +467,7 @@ function renderSidebar(pages, title, navigation) {
               h('div', { className: 'nav-section-items' }, ...items)
             )]
           : items;
-      }),
-      h(
-        'details',
-        { className: 'mobile-nav-menu' },
-        h(
-          'summary',
-          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
-          octicon('three-bars')
-        ),
-        h(
-          'div',
-          { className: 'mobile-nav-menu-list' },
-          navigationSections.flatMap((section) => [
-            ...(typeof section.label === 'string' && section.label.length > 0
-              ? [h('span', {
-                  className: 'mobile-nav-section-label'
-                }, section.label)]
-              : []),
-            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
-          ])
-        )
-      )
+      })
     )
   );
 }
@@ -627,17 +627,17 @@ function enableMobileNavigationMenu(root) {
 }
 
 /**
- * Keeps global dashboard controls in the mobile navbar while preserving the
- * single control instances and their filter-bar event relationships. On
- * narrow viewports the page title also moves into the compact mobile header
- * row (replacing the app brand) so the page no longer shows a full-width
- * secondary header that repeats the current page title, matching the
- * single-row title bar used by the GitHub mobile app.
+ * Keeps global dashboard controls inside the mobile hamburger menu while
+ * preserving the single control instances and their filter-bar event
+ * relationships. On narrow viewports the page title also moves into the
+ * compact mobile header row (replacing the app brand) so the page no longer
+ * shows a full-width secondary header that repeats the current page title,
+ * matching the single-row title bar used by the GitHub mobile app.
  * @param {HTMLElement} root
  */
 function enableResponsiveReportActions(root) {
   const actions = root.querySelector('.report-actions');
-  const mobileSlot = root.querySelector('.mobile-report-actions');
+  const mobileSlot = root.querySelector('.mobile-nav-menu-actions');
   const desktopSlot = actions?.parentElement;
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');

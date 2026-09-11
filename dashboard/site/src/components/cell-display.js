@@ -18,14 +18,14 @@ import { formatUtcDateTime, renderDigest } from './ui-primitives.js';
  * @returns {string | HTMLElement}
  */
 export function renderCellDisplay(display, value, toText, unit = null, type, format) {
+  if (value == null || value === '') return '';
   if (display === 'mode') return renderModeBadge(value);
   if (display === 'active-state') return renderActiveStateBadge(value);
   if (display === 'status') return renderStatusBadge(value);
   if (display === 'grader-status') return renderGraderStatusBadge(value);
   if (display === 'label') return formatLabel(value);
   if (display === 'digest') return renderDigest(value) ?? 'unavailable';
-  if (type === 'quantitative' && (value == null || value === '' || !Number.isFinite(Number(value)))) return '—';
-  if (type === 'temporal' && (value == null || value === '')) return '—';
+  if (type === 'quantitative' && !Number.isFinite(Number(value))) return '';
   if (type === 'temporal' && typeof value === 'string' && Number.isFinite(Date.parse(value))) {
     const text = format === 'human-friendly-timestamp'
       ? formatHumanFriendlyTimestamp(value)

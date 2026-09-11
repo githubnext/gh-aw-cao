@@ -702,6 +702,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   await horizonFilter.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.mobile-nav-menu > summary').click();
   await expect(horizonFilter.locator('.time-window-control')).toBeHidden();
   await horizonFilter.locator('.horizon-toggle').click();
   await expect(horizonFilter.locator('.time-window-control')).toBeVisible();
@@ -1173,9 +1174,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
   }
   await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('80');
-  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('—');
-  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('—');
-  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('');
+  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('');
+  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('');
   const overviewElement = await overviewPage.elementHandle();
   expect(overviewElement).not.toBeNull();
   const attentionColors = await overviewElement?.evaluate((element) => {
@@ -1492,6 +1493,7 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
   await expect(details).toContainText('Duration1 week');
 
   await page.setViewportSize({ width: 393, height: 852 });
+  await page.locator('.mobile-nav-menu > summary').click();
   await expect(details).toBeVisible();
   await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
@@ -2407,7 +2409,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   ]);
   await expect(packageWorkflowRows.first()).toContainText('OrchestratorAmbient Context');
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
-  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('—');
+  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
 
   await page.getByRole('navigation', { name: 'Ambient Context views' }).getByRole('link', { name: 'Dispatches' }).click();
@@ -2546,6 +2548,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await page.setViewportSize({ width: 400, height: 900 });
   expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
+  await page.locator('.mobile-nav-menu > summary').click();
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
   expect(horizonBox).not.toBeNull();
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
@@ -3681,7 +3684,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
     'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
   );
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('1');
-  await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7 AIC');
+  await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7');
   await expect(page.getByRole('heading', { name: 'No workflow observations yet' })).toBeVisible();
 });
 

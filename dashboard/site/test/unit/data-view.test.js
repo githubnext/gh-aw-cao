@@ -79,7 +79,7 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
   });
 
-  it('does not present an unavailable metric card as zero', () => {
+  it('presents an unavailable metric card as empty', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',
       title: 'Security findings',
@@ -106,7 +106,7 @@ describe('data view renderer', () => {
     });
 
     expect(rendered?.classList.contains('metric-card-widget-active')).toBe(false);
-    expect(rendered?.querySelector('[data-metric-value="count"]')?.textContent).toBe('—');
+    expect(rendered?.querySelector('[data-metric-value="count"]')?.textContent).toBe('');
   });
 
   it('returns null for an unsupported JSON mark', () => {

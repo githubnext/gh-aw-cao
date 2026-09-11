@@ -36,10 +36,10 @@ export function renderWorkItemRow(item) {
       )
     ),
     h('span', { className: 'work-task-status-cell' }, h('span', { className: `work-state work-state-${item.state}` }, item.stateLabel)),
-    h('span', { className: 'work-task-type' }, item.workType === 'unknown' ? '—' : item.workType),
+    h('span', { className: 'work-task-type' }, item.workType === 'unknown' ? '' : item.workType),
     h('span', { className: 'work-task-labels' }, item.packageName
       ? h('span', { className: 'work-card-label work-card-label-package' }, item.packageName)
-      : '—'),
+      : ''),
     h('time', { dateTime: item.started, title: item.timeLabel }, item.startedLabel),
     h('span', { className: 'work-task-end' }, item.timeLabel === 'Observed' ? 'Point observation' : item.stoppedLabel),
     renderRepositoryOwner(item.repository, item.repositoryLink)

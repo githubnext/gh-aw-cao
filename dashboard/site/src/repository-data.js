@@ -54,7 +54,7 @@ export function deriveRepositorySources(sources) {
         'failure-summary': runsAvailable
           ? summary.runs > 0
             ? `${formatPercent(summary.failed / summary.runs)} · ${formatCount(summary.failed)} failed`
-            : '—'
+            : ''
           : 'Unavailable',
         aic: summary.aic,
         status: repositoryStatus(summary),

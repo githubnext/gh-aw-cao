@@ -840,7 +840,7 @@ function renderHeatmapChart(points, valueLabel, unit) {
                   className: 'heatmap-cell heatmap-cell-empty',
                   tabIndex: 0,
                   'aria-label': `${column}, ${row}: no observation`
-                }, '—');
+                }, '');
               }
               const value = toNumber(point.y);
               const formatted = formatNumber(value, unit);

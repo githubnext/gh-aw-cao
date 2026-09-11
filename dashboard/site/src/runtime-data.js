@@ -293,7 +293,7 @@ function dispatchStatusDetail(run, status) {
     if (failedJob) return `Job failed: ${failedJob}`;
     return 'Open GitHub Actions for failure details';
   }
-  return '—';
+  return '';
 }
 
 /**
@@ -411,14 +411,14 @@ function addText(values, value) {
 
 /** @param {Set<string>} values */
 function joinValues(values) {
-  return values.size > 0 ? [...values].sort().join(', ') : '—';
+  return values.size > 0 ? [...values].sort().join(', ') : '';
 }
 
 /** @param {Map<string, number>} workers */
 function formatWorkerDispatches(workers) {
   return workers.size > 0
     ? [...workers].sort(([left], [right]) => left.localeCompare(right)).map(([worker, count]) => `${worker}: ${formatCount(count)}`).join(', ')
-    : '—';
+    : '';
 }
 
 /**
@@ -505,7 +505,7 @@ export function durationBetween(start, end) {
 
 /** @param {number | null} duration */
 export function formatDuration(duration) {
-  if (!Number.isFinite(duration)) return '—';
+  if (!Number.isFinite(duration)) return '';
   return formatClockDuration(Number(duration), { includeDays: false });
 }
 

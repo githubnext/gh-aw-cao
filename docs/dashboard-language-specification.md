@@ -524,6 +524,7 @@ units:
     name: AI Credits
     symbol: AIC
     significant: 1
+    format: number
   usd:
     name: US dollars
     symbol: USD
@@ -536,12 +537,12 @@ units:
     format: duration
 ```
 
-The AIC definition uses a significance of `1` because one AI Credit is the integral accounting unit worth one cent; AIC values are presented without a decimal fraction. The `duration` format interprets values as seconds and presents compact cascading components. It presents values below one minute as seconds (`45s`), values below one hour as minutes and seconds (`1m 30s`), values below one day as hours and minutes (`1h 23m`), and longer values as days and hours (`1d 3h`). The lower component is retained when zero, and components below the selected precision are omitted. The `usd` format presents US dollars with a dollar sign, two fractional digits when fewer are needed, and no more than three fractional digits. Values requiring more than three fractional digits are rounded upward at the third fractional digit.
+The AIC definition uses a significance of `1` because one AI Credit is the integral accounting unit worth one cent. Its `number` format presents the rounded numeric value without appending the unit symbol. The `duration` format interprets values as seconds and presents compact cascading components. It presents values below one minute as seconds (`45s`), values below one hour as minutes and seconds (`1m 30s`), values below one day as hours and minutes (`1h 23m`), and longer values as days and hours (`1d 3h`). The lower component is retained when zero, and components below the selected precision are omitted. The `usd` format presents US dollars with a dollar sign, two fractional digits when fewer are needed, and no more than three fractional digits. Values requiring more than three fractional digits are rounded upward at the third fractional digit.
 
 - **DLS-UNIT-001:** A field `unit`, when present, **MUST** reference exactly one unit declared by `dashboard.units`.
 - **DLS-UNIT-002:** Unit formatting **MUST** affect presentation only and **MUST NOT** change filtering, aggregation, ordering, limiting, source data, or provenance.
-- **DLS-UNIT-003:** For a unit without `format`, a presenter **MUST** append the declared `symbol` to a unit-bearing value and round it to the nearest multiple of `significant`, with halfway cases rounded away from zero.
-- **DLS-UNIT-004:** `format`, when present, **MUST** be `duration` or `usd`. A `duration` unit **MUST** declare `symbol: s` and `significant: 1`. A presenter **MUST** round its value to the nearest whole second with halfway cases rounded away from zero, preserve the sign, and present its absolute components using the compact cascading form defined above. Component suffixes are intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
+- **DLS-UNIT-003:** For a unit without `format`, a presenter **MUST** append the declared `symbol` to a unit-bearing value and round it to the nearest multiple of `significant`, with halfway cases rounded away from zero. A `number` unit **MUST** apply the same rounding without appending the symbol.
+- **DLS-UNIT-004:** `format`, when present, **MUST** be `duration`, `number`, or `usd`. A `duration` unit **MUST** declare `symbol: s` and `significant: 1`. A presenter **MUST** round its value to the nearest whole second with halfway cases rounded away from zero, preserve the sign, and present its absolute components using the compact cascading form defined above. Component suffixes are intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
 - **DLS-UNIT-005:** A `usd` unit **MUST** declare `symbol: USD` and `significant: 0.001`. A presenter **MUST** prefix its value with the dollar sign, retain at least two and no more than three fractional digits, and round upward at the third fractional digit. The currency marker is intrinsic to this format, so the presenter **MUST NOT** append another `symbol`.
 
 ### 7.3 Aggregates
@@ -841,7 +842,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 - **DLS-VIEW-011:** A custom view **MUST NOT** contain scripts, joins, formulas, expressions, templates, plugins, or undeclared transforms. A view **MAY** select a derived source declared by `dashboard.queries` under Section 5.5; joins and computed fields **MUST** be declared there and **MUST NOT** appear inside a view.
 - **DLS-VIEW-012:** A custom view **MUST** apply defaults, filtering, aggregation, ordering, and limiting in the order defined by Sections 6, 7, and 11.2, and ordering **MUST** use the resolved output identifier before applying `limit` and then the canonical post-aggregation row order from **DLS-AGG-008**, using the same algorithm whether `order-by` is explicit or omitted. A `chart`'s series and a `table`'s rows **MUST** inherit this canonical post-aggregation row order without constraining visual styling beyond the mark defaults in **DLS-VIEW-006**.
 - **DLS-VIEW-013:** Before mark-specific rendering, a custom view **MUST** determine and expose exactly one view-level availability state of `available`, `empty`, or `unavailable`, together with its source provenance, effective scope, effective time range, and effective filters. An `empty` or `unavailable` state **MUST NOT** make the view invalid or cause the presenter to omit it; its textual state output **MUST** identify the affected source or sources, effective scope, time range, and filters.
-- **DLS-VIEW-014:** Under `empty`, a `metric` **MUST** render an absent aggregate value, except that `count` and `distinct-count` **MUST** render zero; a `table` **MUST** render zero rows; and a `chart` **MUST** render zero points. Under `unavailable`, a `metric` **MUST** render no numeric value and a `table` or `chart` **MUST** render no rows or points. An `element` **MUST** preserve each declared source's data state. A presenter **MUST NOT** synthesize placeholder observations, zero-valued non-count aggregates, or links for either state.
+- **DLS-VIEW-014:** Under `empty`, a `metric` **MUST** render an absent aggregate value; a `table` **MUST** render zero rows; and a `chart` **MUST** render zero points. Under `unavailable`, a `metric` **MUST** render no numeric value and a `table` or `chart` **MUST** render no rows or points. An `element` **MUST** preserve each declared source's data state. A presenter **MUST NOT** synthesize placeholder observations, zero-valued aggregates, or links for either state.
 - **DLS-VIEW-015:** A presenter rendering `href` **MUST** use the referenced link object's `href` as the navigation target and **MUST** expose the link object's `label` as the accessible link label. If the referenced link field is absent for a datum, including every resulting datum, the datum and view **MUST** remain valid and **MUST** render without links.
 - **DLS-VIEW-016:** `disclosure`, when present, **MUST** be exactly `essential` or `supplemental`; an omitted value **MUST** default to `essential`.
 - **DLS-VIEW-017:** A page containing one or more views with `disclosure` **MUST** have at least one and no more than four effective essential views. Declarative built-in view definitions and custom page views use the same count. Section references **MUST NOT** be counted as additional views.
@@ -1172,6 +1173,7 @@ dashboard:
       name: AI Credits
       symbol: AIC
       significant: 1
+      format: number
   pages:
     - id: overview
       kind: built-in
