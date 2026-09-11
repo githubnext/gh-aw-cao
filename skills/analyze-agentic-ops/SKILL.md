@@ -59,13 +59,28 @@ Use this skill when a user asks to inspect, analyze, investigate, or summarize C
    ```
 
    Pass `--database FILE` only when querying a non-default SQLite path.
-7. Query by ID when the user asks about one known record:
+7. For generated or complex queries, pass a raw Dashboard Language query object through standard input:
+
+   ```bash
+   jq -n \
+     --arg conclusion failure \
+     '{
+       name: "failed-runs",
+       from: "runs",
+       filter: {predicates: [{field: "conclusion", equals: $conclusion}]},
+       limit: 20
+     }' |
+     cao query --stdin
+   ```
+
+   `--database FILE` may be combined with `--stdin`; do not combine `--collection`, `--id`, `--where`, or `--limit` with it.
+8. Query by ID when the user asks about one known record:
 
    ```bash
    cao query --collection sessions --id SESSION_ID
    ```
 
-8. If database health is in doubt, run:
+9. If database health is in doubt, run:
 
    ```bash
    cao doctor

@@ -8,6 +8,16 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 const executeFile = promisify(execFile);
+function executeFileWithInput(file, arguments_, input, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(file, arguments_, options, (error, stdout, stderr) => {
+      if (error) reject(error);
+      else resolve({ stdout, stderr });
+    });
+    child.stdin.end(input);
+  });
+}
+
 const packageJson = JSON.parse(
   await readFile(new URL("../../package.json", import.meta.url), "utf8"),
 );
@@ -22,6 +32,7 @@ test("exposes the dashboard data CLI as cao", async () => {
     const { stdout } = await executeFile(installedCommand, ["help"]);
     assert.match(stdout, /^Usage:\n  cao ingest /);
     assert.match(stdout, /\n  cao download /);
+    assert.match(stdout, /cao query .*--stdin/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -91,6 +102,30 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
       const runs = JSON.parse(runsStdout);
       assert.equal(runs.length, 1);
       assert.equal(runs[0].id, "github:run:303:attempt:1");
+
+      const { stdout: stdinStdout } = await executeFileWithInput(cao, [
+        "query",
+        "--stdin",
+      ], JSON.stringify({
+        name: "successful-runs",
+        from: "runs",
+        filter: {
+          predicates: [{ field: "conclusion", equals: "success" }],
+        },
+        limit: 1,
+      }), { cwd: root });
+      const stdinRuns = JSON.parse(stdinStdout);
+      assert.deepEqual(stdinRuns, runs);
+
+      await assert.rejects(
+        executeFileWithInput(cao, [
+          "query",
+          "--stdin",
+          "--collection",
+          "runs",
+        ], '{"collection":"runs"}', { cwd: root }),
+        /Option --collection cannot be combined with --stdin/,
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }

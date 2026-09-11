@@ -10,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { adaptCachedGhAwJsonl } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../dashboard/site/src/data/normalize/index.js';
+import { executeDashboardQuery, queryInputNames } from '../dashboard/site/src/data/queries/declarative.js';
 import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
 import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
 import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
@@ -35,11 +36,14 @@ const USAGE = `Usage:
   cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input GH_AW_LOGS_JSONL] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input GH_AW_LOGS_JSONL]
-  cao query [--database FILE] --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
+  cao query [--database FILE] (--collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT] | --stdin)
   cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
   cao download [--url URL] [--output DIRECTORY]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
+
+Query stdin JSON:
+  {"name":"failed-runs","from":"runs","filter":{"predicates":[{"field":"conclusion","equals":"failure"}]},"limit":20}
 
 Download defaults:
   URL        DASHBOARD_DATA_URL or ${DEFAULT_DEPLOYED_DATA_URL}
@@ -74,8 +78,8 @@ function parseOptions(arguments_) {
     const argument = arguments_[index];
     if (!argument.startsWith('--')) throw new Error(`Unexpected argument: ${argument}`);
     const name = argument.slice(2);
-    if (name === 'help') {
-      options.help = 'true';
+    if (name === 'help' || name === 'stdin') {
+      options[name] = 'true';
       continue;
     }
     const value = arguments_[index + 1];
@@ -91,6 +95,32 @@ function parseOptions(arguments_) {
     }
   }
   return options;
+}
+
+async function rawQueryFromStdin(options, input) {
+  for (const name of ['collection', 'id', 'where', 'limit']) {
+    if (options[name] !== undefined) {
+      throw new Error(`Option --${name} cannot be combined with --stdin`);
+    }
+  }
+
+  let content = '';
+  for await (const chunk of input) content += chunk;
+  if (!content.trim()) throw new Error('--stdin requires a JSON object');
+
+  let query;
+  try {
+    query = JSON.parse(content);
+  } catch (error) {
+    throw new Error(`Invalid query JSON from stdin: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!query || typeof query !== 'object' || Array.isArray(query)) {
+    throw new Error('--stdin requires a JSON object');
+  }
+  if (typeof query.name !== 'string' || typeof query.from !== 'string') {
+    throw new Error('--stdin query requires string fields "name" and "from"');
+  }
+  return query;
 }
 
 function option(options, name, required = true) {
@@ -309,6 +339,43 @@ export async function queryCanonicalData(indexedDB, options) {
   return limit ? records.slice(0, limit) : records;
 }
 
+async function queryRawCanonicalData(indexedDB, query) {
+  const inputNames = queryInputNames(query);
+  const unknown = inputNames.find((name) => !QUERY_COLLECTIONS.includes(name));
+  if (unknown) throw new Error(`Unknown collection: ${unknown}`);
+  const sources = Object.fromEntries(await Promise.all(inputNames.map(async (name) => [
+    name,
+    {
+      source: name,
+      rows: name === 'transactions'
+        ? await readTransactions(indexedDB)
+        : await readCollection(indexedDB, name),
+      metadata: {
+        'source-id': name,
+        'source-kind': 'canonical-query',
+        availability: 'available',
+        completeness: 'complete',
+        freshness: 'unknown'
+      }
+    }
+  ])));
+  const time = console.time;
+  const timeEnd = console.timeEnd;
+  let result;
+  try {
+    console.time = () => {};
+    console.timeEnd = () => {};
+    result = executeDashboardQuery(query, sources);
+  } finally {
+    console.time = time;
+    console.timeEnd = timeEnd;
+  }
+  if (result.metadata?.availability === 'unavailable') {
+    throw new Error(String(result.metadata['query-diagnostic'] ?? 'Query is unavailable'));
+  }
+  return result.rows;
+}
+
 async function createDatabase(databasePath) {
   const filename = path.resolve(databasePath);
   await mkdir(path.dirname(filename), { recursive: true });
@@ -338,7 +405,7 @@ async function runLegacyIngestion(contextPath, logDirectory) {
   }
 }
 
-export async function runCli(arguments_) {
+export async function runCli(arguments_, input = process.stdin) {
   const [command, ...optionArguments] = arguments_;
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (!COMMANDS.has(command) && arguments_.length === 2) {
@@ -357,6 +424,9 @@ export async function runCli(arguments_) {
     rejectUnknownOptions(options, ['input']);
     return auditJsonl(option(options, 'input', false) || DEFAULT_LOGS_PATH);
   }
+  const rawQuery = command === 'query' && options.stdin
+    ? await rawQueryFromStdin(options, input)
+    : undefined;
   const databasePath = option(options, 'database', false) || DEFAULT_DATABASE_PATH;
   if (command === 'doctor') {
     rejectUnknownOptions(options, ['database', 'ttl-days', 'run-ttl-days']);
@@ -397,8 +467,10 @@ export async function runCli(arguments_) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'query') {
-    rejectUnknownOptions(options, ['database', 'collection', 'id', 'where', 'limit']);
-    return queryCanonicalData(indexedDB, options);
+    rejectUnknownOptions(options, ['database', 'collection', 'id', 'where', 'limit', 'stdin']);
+    return rawQuery
+      ? queryRawCanonicalData(indexedDB, rawQuery)
+      : queryCanonicalData(indexedDB, options);
   }
   throw new Error(`Unknown command: ${command}`);
 }

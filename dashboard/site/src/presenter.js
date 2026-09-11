@@ -740,7 +740,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                 'aria-label': `View ${dashboardRepository} on GitHub`,
                 title: `View ${dashboardRepository} on GitHub`
               },
-              octicon('mark-github')
+              octicon('mark-github'),
+              h('span', { className: 'sr-only action-label' }, dashboardRepository)
             )
             : null,
           h(
@@ -902,7 +903,8 @@ function renderDashboardHorizon(dashboard, dashboardDefaults, horizonRange, eval
           'aria-label': `${label} ${duration}. Show time and mode filters`,
           'aria-describedby': 'dashboard-horizon-tooltip'
         },
-        octicon('clock')
+        octicon('clock'),
+        h('span', { className: 'sr-only action-label' }, `${label} ${duration}`)
       ),
       h(
         'span',
