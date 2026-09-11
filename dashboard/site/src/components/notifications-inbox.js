@@ -599,7 +599,7 @@ function renderOutcomeMomentum(outcomes, start, end, delivered, previousDelivere
   return h('section', { className: 'home-momentum-panel' },
     h('header', null,
       h('div', null, renderOriginBadge({ label: 'Work', icon: 'project-roadmap', tone: 'work' }), h('h3', null, 'Outcome momentum')),
-      h('strong', { className: gain !== null && gain >= 0 ? 'home-positive' : '' }, gain === null ? `${delivered} delivered` : `${gain >= 0 ? '+' : ''}${gain}%`),
+      renderSignedDeltaHeadline(gain, `${delivered} delivered`, (value) => `${value}%`),
       h('small', null, gain === null ? 'this interval' : 'vs previous interval')),
     h('svg', { className: 'home-momentum-chart', viewBox: '0 0 520 126', role: 'img', 'aria-label': `${delivered} delivered outcomes and ${outcomes.filter((row) => row['outcome-state'] === 'pending').length} pending outcomes` },
       ...[24, 54, 84, 114].map((y) => h('line', { x1: 8, y1: y, x2: 512, y2: y, className: 'home-chart-grid' })),
@@ -615,6 +615,25 @@ function renderOutcomeMomentum(outcomes, start, end, delivered, previousDelivere
     h('div', { className: 'home-chart-legend' },
       h('span', null, h('i', { className: 'home-legend-delivered' }), 'Delivered'),
       h('span', null, h('i', { className: 'home-legend-pending' }), 'Needs review')));
+}
+
+/**
+ * Renders the shared `<strong class="home-positive">` signed-delta headline
+ * used by the catch-up "Outcome momentum" and "Value gained" charts, which
+ * both need a `+`-prefixed magnitude when the change is non-negative, a
+ * plain magnitude when negative, and a fallback string when there is no
+ * prior value to compare against.
+ * @param {number | null} delta
+ * @param {string} fallbackText
+ * @param {(magnitude: number) => string} formatMagnitude
+ * @returns {HTMLElement}
+ */
+function renderSignedDeltaHeadline(delta, fallbackText, formatMagnitude) {
+  return h(
+    'strong',
+    { className: delta !== null && delta >= 0 ? 'home-positive' : '' },
+    delta === null ? fallbackText : `${delta >= 0 ? '+' : ''}${formatMagnitude(delta)}`
+  );
 }
 
 /** @param {number} start @param {number} end @param {number} count @returns {{ start: number, end: number, delivered: number, pending: number, other: number }[]} */
@@ -669,7 +688,7 @@ function renderValueGain(values, delta) {
   const coordinates = points.map((value, index) => `${8 + index * (104 / Math.max(1, points.length - 1))},${42 - Math.max(0, Math.min(1, value)) * 32}`).join(' ');
   return renderMiniChartPanel({ label: 'Insights', icon: 'graph', tone: 'insights' }, 'Value gained',
     h('div', { className: 'home-value-gain' },
-      h('strong', { className: delta !== null && delta >= 0 ? 'home-positive' : '' }, delta === null ? '—' : `${delta >= 0 ? '+' : ''}${Math.round(delta * 100)} pts`),
+      renderSignedDeltaHeadline(delta === null ? null : Math.round(delta * 100), '—', (points) => `${points} pts`),
       h('svg', { viewBox: '0 0 120 48', role: 'img', 'aria-label': delta === null ? 'Operational value change unavailable' : `Operational value changed ${Math.round(delta * 100)} points` },
         h('line', { x1: 8, y1: 42, x2: 112, y2: 42, className: 'home-chart-grid' }),
         h('polyline', { points: coordinates, className: 'home-value-line' }))));

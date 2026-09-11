@@ -504,4 +504,28 @@ describe('catch up queue', () => {
     expect(stored.done).toHaveLength(1);
     expect(document.activeElement).toBe(rendered.querySelector('.home-catchup-mobile-progress'));
   });
+
+  it('marks the outcome momentum and value gain headlines positive only for a non-negative change', () => {
+    const now = Date.now();
+    const rendered = renderNotificationsInbox(catchUpRows(), {
+      outcomes: [
+        { 'outcome-id': 'outcome-previous', 'outcome-state': 'lifecycle-close', 'observed-at': new Date(now - 10 * 86_400_000).toISOString() },
+        { 'outcome-id': 'outcome-a', 'outcome-state': 'lifecycle-close', 'observed-at': new Date(now - 60_000).toISOString() },
+        { 'outcome-id': 'outcome-b', 'outcome-state': 'lifecycle-close', 'observed-at': new Date(now - 30_000).toISOString() }
+      ],
+      operationalValues: [
+        { 'observation-id': 'value-a', 'maturity-status': 'matured', 'operational-value': 0.4, 'observed-at': new Date(now - 6 * 86_400_000).toISOString() },
+        { 'observation-id': 'value-b', 'maturity-status': 'matured', 'operational-value': 0.7, 'observed-at': new Date(now - 60_000).toISOString() }
+      ]
+    });
+    document.body.append(rendered);
+
+    const momentumHeadline = rendered.querySelector('.home-momentum-panel header strong');
+    expect(momentumHeadline?.textContent).toBe('+100%');
+    expect(momentumHeadline?.className).toBe('home-positive');
+
+    const valueGainHeadline = rendered.querySelector('.home-value-gain strong');
+    expect(valueGainHeadline?.textContent).toBe('+30 pts');
+    expect(valueGainHeadline?.className).toBe('home-positive');
+  });
 });
