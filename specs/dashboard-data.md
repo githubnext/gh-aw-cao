@@ -210,18 +210,23 @@ Views MUST read only the active canonical generation. The completed implementati
 
 ```mermaid
 flowchart LR
-  logs["gh aw logs"] --> jsonl["JSONL source"]
-  jsonl --> sqlite["SQLite database"]
+  logs["gh aw logs"] --> source["JSONL<br/>authoritative input"]
+  source --> sqlite["SQLite"]
   sqlite --> agents["Agents"]
   sqlite --> cli["CLI"]
-  jsonl --> indexeddb["IndexedDB cache"]
-  indexeddb --> views["Dashboard"]
+  source --> indexeddb["IndexedDB<br/>browser"]
+  indexeddb --> views["Dashboard views"]
 ```
+
+The SQLite and IndexedDB projections SHALL be independently reconstructable
+from authoritative external inputs. Neither projection SHALL become the source
+for the other. Publishing SQLite MAY support headless consumers, but browser
+ingestion SHALL continue to use the published JSONL and inventory inputs.
 
 SQLite and IndexedDB SHALL use the same adapters, identities, normalization,
 and relationship validation. They MAY use different retention windows because
 SQLite can serve a historical archive while IndexedDB remains a bounded browser
-cache. Neither database SHALL become an input to the other.
+cache.
 
 IndexedDB and the Activity SQLite database SHALL retain all available canonical
 Repository, Workflow, and Run summaries. They SHALL retain detailed Job,
