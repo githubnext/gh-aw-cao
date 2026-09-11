@@ -3962,6 +3962,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
 
 test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.setContent(`
     <div id="root"></div>
@@ -4007,7 +4008,10 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(page.locator('.nav-section-items').first()).toHaveCSS('flex-direction', 'row');
   await expect(page.locator('.primary-nav')).not.toHaveCSS('overflow-x', 'auto');
 
-  await page.getByRole('button', { name: 'Select view' }).click();
+  const viewMenuButton = page.getByRole('button', { name: 'Select view' });
+  await expect(viewMenuButton).toHaveCSS('border-radius', '50%');
+  await expect(viewMenuButton).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await viewMenuButton.click();
   const menu = page.locator('.mobile-nav-menu-list');
   await expect(menu).toBeVisible();
   await expect(menu.locator('.octicon-package')).toBeVisible();
@@ -4016,6 +4020,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
   await expect(historyBack).toBeVisible();
+  await expect(historyBack).toHaveCSS('border-radius', '50%');
+  await expect(historyBack).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await historyBack.click();
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await expect(historyBack).toBeHidden();
