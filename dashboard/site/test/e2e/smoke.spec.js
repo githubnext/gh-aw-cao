@@ -223,7 +223,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   const viewportWidth = page.viewportSize()?.width;
   if (typeof viewportWidth !== 'number') throw new Error('Expected Playwright to provide a viewport width');
   await expect(factoryOverview).toBeVisible();
-  const pixelTolerance = 1;
+  const layoutPixelTolerance = 1;
   const [mainBox, factoryBox] = await Promise.all([
     dashboardMain.boundingBox(),
     factoryOverview.boundingBox()
@@ -231,9 +231,9 @@ test('mobile shell shows large overview actions and moves other views into the h
   expect(mainBox).not.toBeNull();
   expect(factoryBox).not.toBeNull();
   if (mainBox === null || factoryBox === null) throw new Error('Expected overview layout boxes to be available');
-  expect(Math.abs(factoryBox.x)).toBeLessThan(pixelTolerance);
-  expect(Math.abs(factoryBox.y - mainBox.y)).toBeLessThan(pixelTolerance);
-  expect(Math.abs(factoryBox.width - viewportWidth)).toBeLessThan(pixelTolerance);
+  expect(Math.abs(factoryBox.x)).toBeLessThan(layoutPixelTolerance);
+  expect(Math.abs(factoryBox.y - mainBox.y)).toBeLessThan(layoutPixelTolerance);
+  expect(Math.abs(factoryBox.width - viewportWidth)).toBeLessThan(layoutPixelTolerance);
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
