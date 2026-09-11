@@ -9,7 +9,7 @@
       {
         "id": "partial-data-rate-limit",
         "title": "Dashboard data is partial",
-        "description": "Data Health reports a collection gap caused by a GitHub API rate limit.",
+        "description": "Coverage diagnostics report a collection gap caused by a GitHub API rate limit.",
         "icon": "alert",
         "navigation-page": "coverage",
         "visible-when": {
