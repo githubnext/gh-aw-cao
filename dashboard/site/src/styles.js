@@ -461,8 +461,6 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll { max-height: none; }
 /* Keep the search inside the table scroll surface without giving it a second horizontal scrollbar. */
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-filter { width: 100%; max-width: 100%; box-sizing: border-box; position: sticky; left: 0; z-index: 2; flex: none; min-width: 0; overflow-x: visible; }
-.dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
-.dashboard-root.dashboard-full-view-scrolled .org-sidebar,
 .dashboard-root.dashboard-full-view-scrolled .app-main > .top-nav,
 .dashboard-root.dashboard-full-view-scrolled .site-callouts { display: none; }
 .dashboard-full-view .custom-view[data-view-layout="full-view"] .table-scroll thead > tr:first-child > th,
@@ -1796,6 +1794,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .pie-chart-card { grid-template-columns: 1fr; }
   .pie-chart-layout { grid-column: 1; grid-row: auto; }
   .pie-chart-card > .view-source, .pie-chart-card > .view-metadata, .pie-chart-card > .view-context { grid-column: 1; }
+  .dashboard-root.dashboard-full-view-scrolled .app-shell { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
 }
 @media (max-width: 700px) {
   .source-refresh-error { align-items: flex-start; flex-direction: column; }
@@ -1806,6 +1806,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-root.dashboard-full-view { height: 100dvh; min-height: 0; overflow: hidden; }
   .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
   .org-sidebar { height: auto; display: block; overflow: visible; padding: 14px 12px 10px; border-right: 0; border-bottom: 1px solid var(--border); background: var(--canvas); }
+  .dashboard-root.dashboard-full-view-scrolled .org-sidebar { display: none; }
   .dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
