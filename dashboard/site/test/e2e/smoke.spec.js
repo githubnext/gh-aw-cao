@@ -1223,19 +1223,18 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await cleanNavigation.filter({ hasText: 'Overview' }).click();
   const overviewPage = page.locator('[data-page-id="overview"]');
   await expect(overviewPage.locator('.agent-factory')).toBeVisible();
-  await expect(overviewPage.getByRole('heading', { name: 'Useful work is landing.' })).toBeVisible();
-  await expect(overviewPage.locator('.factory-running')).toContainText('1 run active');
+  await expect(overviewPage.getByRole('heading', { name: 'Your factory is humming.' })).toBeVisible();
+  await expect(overviewPage.locator('.factory-running')).toContainText('1 run in motion');
   await expect(overviewPage.locator('.factory-station')).toHaveCount(4);
-  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '2']);
+  await expect(overviewPage.locator('.factory-station strong')).toHaveText(['1', '20', '12', '0']);
   await expect(overviewPage.locator('.factory-station small')).toHaveText([
-    'in scope',
+    'connected',
     '80 failed',
-    '2 worker workflows',
-    '1 issue · 1 pull request'
+    '2 workflows observed',
+    'Coming soon'
   ]);
   await expect(overviewPage.locator('.factory-output')).toHaveCount(0);
-  await expect(overviewPage.locator('.factory-status')).toContainText('80 runs need maintenance');
-  await expect(overviewPage.locator('.factory-status a')).toHaveAttribute('href', '#page-runs?runs-runs-source.run-conclusion=failure');
+  await expect(overviewPage.locator('.factory-status')).toHaveCount(0);
   await expect(overviewPage.locator('.notifications-inbox')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   const shellSize = await page.locator('.top-nav > .shell').evaluate((element) => {
@@ -1243,7 +1242,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
-  await overviewPage.locator('.factory-status a').click();
+  await overviewPage.locator('.factory-station small a').click();
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
   await page.evaluate(() => { window.location.hash = '#page-overview-failed-runs'; });

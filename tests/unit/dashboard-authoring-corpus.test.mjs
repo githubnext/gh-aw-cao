@@ -71,6 +71,11 @@ test("every production dashboard page starts with an executive summary or prescr
         && page.sections[0].views.length === 4
         && views.length === 4
         && views.every((view) => view.mark === "metric" && view.metric?.style === "card");
+      const isFactoryOverview = page.id === "overview"
+        && page["class-name"] === "dashboard-overview-page"
+        && views.length === 1
+        && summary.mark === "element"
+        && summary.element === "outcomes-overview";
       if (isAttentionFirstHome) {
         assert.deepEqual(
           views.map((view) => view.id),
@@ -94,6 +99,7 @@ test("every production dashboard page starts with an executive summary or prescr
           || isFullViewTable
           || isOverviewDrillDown
           || isDeclarativeOverview
+          || isFactoryOverview
           || isAttentionFirstHome,
         `${path}: page "${page.id}" must start with an executive summary or its prescribed attention view`
           + ` (first view "${summary.id ?? "<unnamed>"}" has ${summaryDescription})`,

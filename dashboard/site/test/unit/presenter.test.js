@@ -1127,10 +1127,10 @@ describe('presenter built-in and custom pages', () => {
     const page = await activatePage(rendered, 'overview');
     expect(page?.querySelector('.agent-factory')).not.toBeNull();
     expect(page?.querySelectorAll('.factory-station')).toHaveLength(4);
-    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Good work is moving.');
+    expect(page?.querySelector('.factory-intro h2')?.textContent).toBe('Your factory is idle.');
     expect(page?.querySelector('.notifications-inbox')).toBeNull();
-    expect(page?.querySelector('.factory-status')?.textContent).toContain('Evidence is current');
-    expect(page?.querySelector('.factory-all-clear')?.textContent).toContain('No maintenance needed');
+    expect(page?.querySelector('.factory-status')).toBeNull();
+    expect(page?.querySelector('.factory-all-clear')).toBeNull();
     expect(page?.querySelector('.home-attention-detail')).toBeNull();
     expect(page?.textContent).not.toContain('Malicious patch detected');
     rendered.remove();
