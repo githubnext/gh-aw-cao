@@ -37,6 +37,15 @@ function buildPresenterModuleUrl() {
 }
 
 /**
+ * @param {number} actual
+ * @param {number} expected
+ * @param {number} tolerance
+ */
+function expectLayoutWithin(actual, expected, tolerance) {
+  expect(Math.abs(actual - expected)).toBeLessThan(tolerance);
+}
+
+/**
  * Full-view table filters live inside the table scroller but remain contained
  * within the visible viewport instead of owning a separate horizontal scrollbar;
  * wrapping is allowed on narrow screens so controls stay reachable.
@@ -233,9 +242,9 @@ test('mobile shell shows large overview actions and moves other views into the h
   expect(mainBox).not.toBeNull();
   expect(factoryBox).not.toBeNull();
   if (mainBox === null || factoryBox === null) throw new Error('Expected overview layout boxes to be available');
-  expect(Math.abs(factoryBox.x)).toBeLessThan(layoutPixelTolerance);
-  expect(Math.abs(factoryBox.y - mainBox.y)).toBeLessThan(layoutPixelTolerance);
-  expect(Math.abs(factoryBox.width - viewportWidth)).toBeLessThan(layoutPixelTolerance);
+  expectLayoutWithin(factoryBox.x, 0, layoutPixelTolerance);
+  expectLayoutWithin(factoryBox.y, mainBox.y, layoutPixelTolerance);
+  expectLayoutWithin(factoryBox.width, viewportWidth, layoutPixelTolerance);
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();

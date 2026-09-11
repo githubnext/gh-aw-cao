@@ -1896,7 +1896,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .source-refresh-error { align-items: flex-start; flex-direction: column; }
   .timeline-chart-axis span:not(:first-child):not(:last-child):nth-child(even) { display: none; }
   :is(.mode-badge, .mode-indicator) .octicon { display: none; }
-  .dashboard-root { --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-inline: 14px; height: auto; min-height: 100vh; overflow: visible; }
+  .dashboard-root { --dashboard-mobile-page-padding-top: 16px; --dashboard-mobile-page-padding-inline: 14px; --dashboard-mobile-page-padding-bottom: 28px; height: auto; min-height: 100vh; overflow: visible; }
   .app-shell { height: auto; min-height: 100vh; display: block; overflow: visible; }
   .dashboard-root.dashboard-full-view { height: 100dvh; min-height: 0; overflow: hidden; }
   .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
@@ -1976,8 +1976,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .time-window-control > button { min-height: 44px; }
   .app-main { height: auto; overflow: visible; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
-  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-mobile-page-padding-inline) 28px; }
-  /* The mobile overview root class expands the active overview page by the same root padding variables used by main.dashboard-prototype, preserving bottom padding. */
+  main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: var(--dashboard-mobile-page-padding-top) var(--dashboard-mobile-page-padding-inline) var(--dashboard-mobile-page-padding-bottom); }
+  /* Paired with the mobile main padding above: cancel top/inline overview inset, but do not negate bottom padding. */
   .dashboard-mobile-overview-actions .dashboard-overview-page { margin: calc(-1 * var(--dashboard-mobile-page-padding-top)) calc(-1 * var(--dashboard-mobile-page-padding-inline)) 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
