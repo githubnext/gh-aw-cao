@@ -198,6 +198,35 @@ test('mobile Catch Up completes with persistent Done, Later, Open, and Notificat
     .toHaveAttribute('href', 'https://github.com/githubnext/mobile/actions/runs/42');
 });
 
+test('mobile shell shows large overview actions and moves other views into the hamburger', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources: {} }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const primaryNav = page.locator('.primary-nav');
+  const overviewAction = page.locator('[data-nav-page-id="overview"]');
+  await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(primaryNav).toHaveCSS('display', 'flex');
+  await expect(overviewAction).toHaveCSS('min-height', '52px');
+  await expect(overviewAction.locator('.nav-label')).toBeVisible();
+
+  await page.locator('.mobile-nav-menu > summary').click();
+  await page.locator('[data-mobile-nav-page-id="cost"]').click();
+
+  await expect(root).not.toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(primaryNav).toHaveCSS('display', 'none');
+  await expect(page.locator('[data-mobile-nav-page-id="overview"]')).toHaveAttribute('href', '#page-overview');
+});
+
 test('production pages expose a responsive executive chart', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
@@ -3577,7 +3606,9 @@ test('workflow page template follows its JSON-declared route and renders attribu
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
-  await page.locator('#page-workflow-detail .custom-table tbody a').first().press('Enter');
+  const reportLink = page.locator('#page-workflow-detail .custom-table tbody a').first();
+  await expect(reportLink).toHaveAttribute('href', '#page-outcome-detail?outcome=report-1');
+  await reportLink.press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Debug ambient context workflow failure');
   await expect(page.locator('.outcome-meta a', { hasText: 'Ambient Context' })).toHaveAttribute(
     'href',
@@ -3980,7 +4011,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
 });
 
-test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {
+test('phone navigation uses overview actions and a full-label view menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -4018,7 +4049,9 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   const historyBack = page.getByRole('button', { name: 'Go back' });
   await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
-  await expect(activeItem.locator('.nav-label')).toBeHidden();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(activeItem.locator('.nav-label')).toBeVisible();
+  await expect(activeItem).toHaveCSS('min-height', '52px');
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
   await expect(shortcuts).toHaveCount(6);
   await expect(shortcuts.nth(4)).toBeVisible();
@@ -4026,7 +4059,7 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(shortcuts.nth(5)).toBeHidden();
   await expect(page.locator('.nav-section').first()).toHaveCSS('flex-direction', 'row');
   await expect(page.locator('.nav-section-items').first()).toHaveCSS('flex-direction', 'row');
-  await expect(page.locator('.primary-nav')).not.toHaveCSS('overflow-x', 'auto');
+  await expect(page.locator('.primary-nav')).toHaveCSS('overflow-x', 'auto');
 
   const viewMenuButton = page.getByRole('button', { name: 'Select view' });
   await expect(viewMenuButton).toHaveCSS('border-radius', '50%');
@@ -4039,6 +4072,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(page.locator('.primary-nav')).toHaveCSS('display', 'none');
   await expect(historyBack).toBeVisible();
   await expect(historyBack).toHaveCSS('border-radius', '50%');
   await expect(historyBack).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');

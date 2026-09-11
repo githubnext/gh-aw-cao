@@ -1544,6 +1544,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     }
     activePageId = pageId;
+    root.classList.toggle('dashboard-mobile-overview-actions', pageId === overviewPage?.dataset.pageId);
     const pageIndex = pages.findIndex((candidate) => candidate.dataset.pageId === pageId);
     const pendingPage = pages[pageIndex];
     if (pendingPage?.hasAttribute('data-page-pending')) {
