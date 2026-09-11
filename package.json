@@ -43,7 +43,7 @@
     "astro-mermaid": "2.1.0",
     "mermaid": "11.17.2",
     "starlight-github-alerts": "0.4.0",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@actions/core": "^2.0.2",
