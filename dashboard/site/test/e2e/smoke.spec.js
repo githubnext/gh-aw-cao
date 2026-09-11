@@ -217,7 +217,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
-  await expect(overviewAction.locator('.nav-label')).toBeVisible();
+  await expect(overviewAction.locator('.nav-label')).toBeHidden();
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
@@ -4134,7 +4134,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
-  await expect(activeItem.locator('.nav-label')).toBeVisible();
+  await expect(activeItem.locator('.nav-label')).toBeHidden();
   await expect(activeItem).toHaveCSS('min-height', '52px');
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
   await expect(shortcuts).toHaveCount(6);

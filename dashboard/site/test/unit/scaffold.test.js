@@ -127,8 +127,8 @@ describe('DLS-CONF-004 scaffold gates', () => {
 
     expect(styles).toContain('.primary-nav { display: none; }');
     expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav { width: 100%; display: flex; flex: none; flex-direction: row; gap: 8px; overflow-x: auto;');
-    expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav .nav-item { width: auto; min-height: 52px; flex: 0 0 auto; gap: 8px; padding: 0 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--canvas-subtle); }');
-    expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav .nav-item .nav-label { display: inline; }');
+    expect(styles).toContain('.dashboard-mobile-overview-actions .primary-nav .nav-item { width: 52px; min-height: 52px; flex: 0 0 52px; gap: 0; padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--canvas-subtle); }');
+    expect(styles).toContain('.primary-nav .nav-item .nav-label { display: none; }');
     expect(styles).toContain('.dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }');
   });
 
