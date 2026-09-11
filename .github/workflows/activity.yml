@@ -120,7 +120,7 @@ jobs:
             --artifacts usage \
             --start-date "-${REPORT_RUN_WINDOW_DAYS}d" \
             --cache-before "-${REPORT_RUN_WINDOW_DAYS}d" \
-            --count 5 \
+            --count 1000 \
             --timeout 5 \
             --max-github-api-rate-limit -2000 \
             --max-storage 1200 \
