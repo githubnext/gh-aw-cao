@@ -39,6 +39,10 @@ test("Claude Code manifest and marketplace expose the plugin", async () => {
   );
 
   assert.equal(manifest.name, "central-agentic-ops");
+  assert.equal(
+    marketplace.$schema,
+    "https://json.schemastore.org/claude-code-marketplace.json",
+  );
   assert.deepEqual(
     marketplace.plugins.map(({ name, source }) => ({ name, source })),
     [{ name: "central-agentic-ops", source: "./" }],
