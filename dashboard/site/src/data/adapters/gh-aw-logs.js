@@ -476,7 +476,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
       const runAttempt = transaction.run_attempt === undefined
         ? undefined
         : positiveInteger(transaction.run_attempt, `gh-aw JSONL line ${line}.transaction.run_attempt`);
-      return withoutUndefined({
+      return /** @type {{ id: string, kind: string, createdAt: string, [field: string]: unknown }} */ (withoutUndefined({
         id: requiredString(transaction.id, `gh-aw JSONL line ${line}.transaction.id`),
         kind: requiredString(transaction.kind, `gh-aw JSONL line ${line}.transaction.kind`),
         createdAt: canonicalTimestamp(
@@ -493,7 +493,7 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         ref: optionalString(transaction.ref),
         sha: optionalString(transaction.sha),
         runUrl: optionalString(transaction.run_url)
-      });
+      }));
     });
 
   /**

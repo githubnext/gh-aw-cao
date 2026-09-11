@@ -4043,7 +4043,6 @@
             "id": "transaction-inspection",
             "title": "Database transactions",
             "description": "Persisted transactions ordered from newest to oldest with collection and ingestion context.",
-            "intent": "Trace each database write to the activity run or ingestion operation that produced it.",
             "data": {
               "source": "transactions",
               "order-by": [

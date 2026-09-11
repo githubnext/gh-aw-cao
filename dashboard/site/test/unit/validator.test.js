@@ -631,7 +631,8 @@ dashboard:
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => section.label === 'Data').pages).toEqual([
       'workflows',
       'runs',
-      'events'
+      'events',
+      'transactions'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
