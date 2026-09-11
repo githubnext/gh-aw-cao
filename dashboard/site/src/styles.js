@@ -1476,6 +1476,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
   .factory-rhythm { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 @media (max-width: 700px) {
+  .agent-factory { border: 0; border-radius: 0; }
   .factory-intro { min-height: 0; gap: 24px; padding: 24px 20px; }
   .factory-intro h2 { font-size: 2rem; }
   .factory-capacity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
