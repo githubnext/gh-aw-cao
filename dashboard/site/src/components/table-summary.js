@@ -10,6 +10,7 @@ import { renderDefinitionListRows } from './view-chrome.js';
 import { formatMediumUtcDateTime, renderLegendList, renderSkeletonBars, renderTableSummaryEmpty } from './ui-primitives.js';
 import { formatClockDuration, formatPercent } from '../view-formatters.js';
 import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
+import { octicon } from '../octicons.js';
 
 /**
  * @typedef {import('../table-summary-data.js').TableColumnSummary & { label: string }} RenderableTableColumnSummary
@@ -20,15 +21,13 @@ import { chartSeriesClassName, renderChartWidget } from './chart-elements.js';
  * @returns {HTMLTableRowElement}
  */
 export function renderTableSummaryRow(columns) {
-  return /** @type {HTMLTableRowElement} */ (h(
+  const row = /** @type {HTMLTableRowElement} */ (h(
     'tr',
     { className: 'table-summary-row' },
-    ...columns.map((column) => h(
-      'th',
-      { scope: 'col', className: 'table-summary-cell' },
-      renderColumnSummary(column)
-    ))
+    ...columns.map((column) => renderTableSummaryCell(column))
   ));
+  addTableSummaryToggle(row);
+  return row;
 }
 
 /**
@@ -43,8 +42,21 @@ export function renderReactiveTableSummaryRow(columns, pendingSummaries) {
     { className: 'table-summary-row' },
     ...columns.map((column, index) => renderReactiveTableSummaryCell(column, index, summaries))
   ));
+  addTableSummaryToggle(row);
   pendingSummaries.then((value) => summaries.set(value)).catch(() => summaries.set([]));
   return row;
+}
+
+/**
+ * @param {RenderableTableColumnSummary} column
+ * @returns {HTMLTableCellElement}
+ */
+function renderTableSummaryCell(column) {
+  return /** @type {HTMLTableCellElement} */ (h(
+    'th',
+    { scope: 'col', className: 'table-summary-cell' },
+    renderTableSummaryContent(column)
+  ));
 }
 
 /**
@@ -54,21 +66,66 @@ export function renderReactiveTableSummaryRow(columns, pendingSummaries) {
  * @returns {HTMLTableCellElement}
  */
 function renderReactiveTableSummaryCell(column, index, summaries) {
+  const content = h('div', { className: 'table-summary-content' }, renderTableSummarySkeleton());
   const cell = /** @type {HTMLTableCellElement} */ (h(
     'th',
     { scope: 'col', className: 'table-summary-cell', 'aria-busy': 'true' },
-    renderTableSummarySkeleton()
+    content
   ));
   const handle = effect(() => {
     const value = summaries.get();
     if (value === null) return;
     const summary = value[index] ?? { kind: 'none' };
-    const content = renderColumnSummary({ ...summary, label: column.label });
-    cell.replaceChildren(...(content ? [content] : []));
+    content.replaceChildren(renderTableSummaryContent({ ...summary, label: column.label }));
     cell.removeAttribute('aria-busy');
     handle.stop();
   });
   return cell;
+}
+
+/**
+ * @param {RenderableTableColumnSummary} column
+ * @returns {HTMLElement}
+ */
+function renderTableSummaryContent(column) {
+  const expanded = renderColumnSummary(column);
+  const compact = renderCompactColumnSummary(column);
+  return h(
+    'div',
+    { className: 'table-summary-content' },
+    h('div', { className: 'table-summary-expanded' }, expanded),
+    h('div', { className: 'table-summary-compact', hidden: true }, compact)
+  );
+}
+
+/**
+ * @param {HTMLTableRowElement} row
+ */
+function addTableSummaryToggle(row) {
+  const firstCell = row.cells[0];
+  if (!firstCell) return;
+  const toggle = h(
+    'button',
+    {
+      type: 'button',
+      className: 'table-summary-toggle',
+      'aria-expanded': 'true',
+      'aria-label': 'Collapse column summaries',
+      title: 'Collapse column summaries'
+    },
+    octicon('chevron-up')
+  );
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', expanded ? 'Collapse column summaries' : 'Expand column summaries');
+    toggle.setAttribute('title', expanded ? 'Collapse column summaries' : 'Expand column summaries');
+    toggle.replaceChildren(octicon(expanded ? 'chevron-up' : 'chevron-down'));
+    row.classList.toggle('table-summary-collapsed', !expanded);
+    for (const content of row.querySelectorAll('.table-summary-expanded')) content.toggleAttribute('hidden', !expanded);
+    for (const content of row.querySelectorAll('.table-summary-compact')) content.toggleAttribute('hidden', expanded);
+  });
+  firstCell.prepend(toggle);
 }
 
 /**
@@ -121,6 +178,42 @@ function renderColumnSummary(column) {
     return renderCountSummary(column.count);
   }
   return renderCategoricalSummary(column.values);
+}
+
+/**
+ * @param {RenderableTableColumnSummary} column
+ * @returns {HTMLElement | null}
+ */
+function renderCompactColumnSummary(column) {
+  if (column.kind === 'none') return null;
+  if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
+  if (column.kind === 'boolean') {
+    const observedCount = Math.max(0, column.count - column.missingCount);
+    if (observedCount === 0) return null;
+    const yesCount = Math.min(observedCount, Math.max(0, column.trueCount));
+    const entries = [
+      ['yes', yesCount],
+      ['no', Math.max(0, observedCount - yesCount)],
+      ['skipped', Math.max(0, column.missingCount)]
+    ].filter(([, value]) => value > 0);
+    return h(
+      'div',
+      { className: 'table-summary-compact-chart' },
+      renderChartWidget('pie', [], [], { entries, total: column.count }, `${column.label} values`)
+    );
+  }
+  if (column.kind === 'quantitative') {
+    return renderHistogramBins({
+      bins: column.bins,
+      label: `${column.label} distribution, ${formatCount(column.count)} values`
+    });
+  }
+  if (column.kind === 'temporal') return h('span', null, formatDuration(column.stop - column.start));
+  if (column.kind === 'count') return renderCountSummary(column.count);
+  const leading = column.values[0];
+  return leading
+    ? h('span', { className: 'table-summary-compact-value', title: leading.label }, leading.label, h('strong', null, formatPercent(leading.ratio)))
+    : null;
 }
 
 /**

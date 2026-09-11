@@ -1671,7 +1671,22 @@ table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: .87
 caption { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); color: var(--muted); text-align: left; font-weight: 600; font-size: .8125rem; }
 th, td { padding: 10px 14px; border-bottom: 1px solid var(--border-muted); text-align: left; font-variant-numeric: tabular-nums; }
 thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75rem; font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
-.table-summary-row th { min-width: 150px; padding-block: 8px; vertical-align: top; white-space: normal; }
+.table-summary-row th { min-width: 150px; padding-block: 8px; position: relative; vertical-align: top; white-space: normal; }
+.table-summary-row th:first-child { padding-left: 38px; }
+.table-summary-toggle { width: 24px; height: 24px; display: grid; place-items: center; position: absolute; top: 7px; left: 8px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--muted); cursor: pointer; }
+.table-summary-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
+.table-summary-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.table-summary-toggle .octicon { width: 14px; height: 14px; }
+.table-summary-collapsed th { height: 40px; padding-block: 7px; vertical-align: middle; }
+.table-summary-compact { min-width: 0; overflow: hidden; color: var(--fg); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.table-summary-compact[hidden], .table-summary-expanded[hidden] { display: none; }
+.table-summary-compact-value { display: flex; min-width: 0; justify-content: space-between; gap: 8px; }
+.table-summary-compact-value > :first-child { overflow: hidden; text-overflow: ellipsis; }
+.table-summary-compact-value strong { flex: none; }
+.table-summary-compact .table-summary-histogram { height: 24px; display: block; }
+.table-summary-compact-chart .chart-widget { min-height: 26px; margin: 0; }
+.table-summary-compact-chart .chart-widget svg { width: 26px; height: 26px; }
+.table-summary-compact-chart .pie-chart-total-value, .table-summary-compact-chart .pie-chart-total-label { display: none; }
 .table-summary-skeleton { display: grid; gap: 6px; padding-block: 2px; }
 .table-summary-skeleton span { height: 10px; border-radius: 4px; background: linear-gradient(90deg, var(--canvas-subtle) 25%, var(--neutral-muted) 50%, var(--canvas-subtle) 75%); background-size: 200% 100%; animation: dashboard-skeleton-pulse 1.5s ease-in-out infinite; }
 .table-summary-skeleton span:first-child { height: 32px; }
