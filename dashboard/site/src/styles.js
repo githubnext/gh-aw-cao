@@ -1671,9 +1671,9 @@ table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: .87
 caption { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); color: var(--muted); text-align: left; font-weight: 600; font-size: .8125rem; }
 th, td { padding: 10px 14px; border-bottom: 1px solid var(--border-muted); text-align: left; font-variant-numeric: tabular-nums; }
 thead th { background: var(--canvas-subtle); color: var(--muted); font-size: .75rem; font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
-.table-summary-row th { min-width: 150px; padding-block: 8px; position: relative; vertical-align: top; white-space: normal; }
+.table-summary-row th { min-width: 150px; padding-block: 8px; vertical-align: top; white-space: normal; }
 .table-summary-row th:first-child { padding-left: 38px; }
-.table-summary-toggle { width: 24px; height: 24px; display: grid; place-items: center; position: absolute; top: 7px; left: 8px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--muted); cursor: pointer; }
+.table-summary-toggle { width: 24px; height: 24px; display: grid; place-items: center; float: left; margin-left: -30px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--muted); cursor: pointer; }
 .table-summary-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
 .table-summary-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .table-summary-toggle .octicon { width: 14px; height: 14px; }
