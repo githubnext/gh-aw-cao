@@ -4750,104 +4750,22 @@
         "class-name": "dashboard-overview-page",
         "views": [
           {
-            "id": "overview-failed-runs-count",
-            "title": "Failed runs",
+            "id": "overview-outcomes",
+            "title": "How are we doing?",
             "data": {
-              "source": "overview-failed-run-count"
+              "sources": [
+                "outcomes",
+                "runs",
+                "dispatches",
+                "factory-rhythm-baseline",
+                "grader-observations",
+                "repositories",
+                "workflows"
+              ]
             },
-            "mark": "metric",
-            "metric": {
-              "style": "card",
-              "icon": "x-circle",
-              "tone": "danger",
-              "navigation-page": "overview-failed-runs"
-            },
-            "encoding": {
-              "value": {
-                "field": "count",
-                "type": "quantitative"
-              }
-            }
-          },
-          {
-            "id": "overview-blocked-work-count",
-            "title": "Blocked work",
-            "data": {
-              "source": "overview-blocked-work-count"
-            },
-            "mark": "metric",
-            "metric": {
-              "style": "card",
-              "icon": "stop",
-              "tone": "attention",
-              "navigation-page": "overview-blocked-work"
-            },
-            "encoding": {
-              "value": {
-                "field": "count",
-                "type": "quantitative"
-              }
-            }
-          },
-          {
-            "id": "overview-awaiting-review-count",
-            "title": "Awaiting review",
-            "data": {
-              "source": "overview-awaiting-review-count"
-            },
-            "mark": "metric",
-            "metric": {
-              "style": "card",
-              "icon": "person",
-              "tone": "review",
-              "navigation-page": "overview-awaiting-review"
-            },
-            "encoding": {
-              "value": {
-                "field": "count",
-                "type": "quantitative"
-              }
-            }
-          },
-          {
-            "id": "overview-security-findings-count",
-            "title": "Security findings",
-            "data": {
-              "source": "overview-security-finding-count"
-            },
-            "mark": "metric",
-            "metric": {
-              "style": "card",
-              "icon": "shield",
-              "tone": "danger",
-              "navigation-page": "overview-security-findings"
-            },
-            "encoding": {
-              "value": {
-                "field": "count",
-                "type": "quantitative"
-              }
-            }
-          }
-        ],
-        "sections": [
-          {
-            "id": "attention",
-            "layout": "horizontal",
-            "count-sources": [
-              "overview-failed-run-count",
-              "overview-blocked-work-count",
-              "overview-awaiting-review-count",
-              "overview-security-finding-count"
-            ],
-            "count-field": "count",
-            "count-label": "items need your attention",
-            "views": [
-              "overview-failed-runs-count",
-              "overview-blocked-work-count",
-              "overview-awaiting-review-count",
-              "overview-security-findings-count"
-            ]
+            "mark": "element",
+            "element": "outcomes-overview",
+            "layout": "full"
           }
         ]
       },

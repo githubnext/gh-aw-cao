@@ -172,6 +172,37 @@ describe('runtime data', () => {
     ]);
   });
 
+  it('retains dispatch evidence when workflow metadata is unavailable', () => {
+    const sources = deriveRuntimeSources({
+      workflows: { source: 'workflows', rows: [], metadata },
+      runs: {
+        source: 'runs',
+        rows: [{ organization: 'githubnext', repository: 'control', workflow: 'missing.yml', run: '9', event: 'workflow_dispatch', 'run-conclusion': 'success' }],
+        metadata
+      }
+    });
+
+    expect(sources.dispatches.rows).toEqual([
+      expect.objectContaining({ 'dispatch-type': 'Standalone workflow', workflow: 'missing.yml', status: 'success' })
+    ]);
+  });
+
+  it('derives a daily success baseline from prior complete weeks', () => {
+    const day = 86_400_000;
+    const end = Date.parse('2026-09-11T12:00:00Z');
+    const rows = Array.from({ length: 35 }, (_, index) => ({
+      run: String(index),
+      'run-conclusion': 'success',
+      'started-at': new Date(end - ((34 - index) * day)).toISOString()
+    }));
+    const sources = deriveRuntimeSources({
+      workflows: { source: 'workflows', rows: [], metadata },
+      runs: { source: 'runs', rows, metadata }
+    });
+
+    expect(sources['factory-rhythm-baseline'].rows).toEqual([{ 'daily-average': 1, weeks: 4 }]);
+  });
+
   it('uses retained Actions job and step evidence for failed dispatch details', () => {
     const sources = deriveRuntimeSources({
       workflows: {

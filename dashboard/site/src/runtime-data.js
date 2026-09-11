@@ -23,6 +23,7 @@ export function deriveRuntimeSources(sources) {
     : undefined;
   const signals = [];
   const dispatches = deriveDispatches(model);
+  const factoryRhythmBaseline = deriveFactoryRhythmBaseline(model.runs);
   const dispatchActivationSummary = deriveDispatchActivationSummary(dispatches);
   const packageDispatchState = derivePackageDispatchState(model, sources);
   const episodeSummary = deriveEpisodeSummary(model, sources.runs?.metadata);
@@ -131,6 +132,11 @@ export function deriveRuntimeSources(sources) {
       rows: dispatches,
       metadata: combinedMetadata(sources)
     },
+    'factory-rhythm-baseline': {
+      source: 'factory-rhythm-baseline',
+      rows: factoryRhythmBaseline ? [factoryRhythmBaseline] : [],
+      metadata: combinedMetadata(sources)
+    },
     'dispatch-activation-summary': {
       source: 'dispatch-activation-summary',
       rows: dispatchActivationSummary,
@@ -157,6 +163,26 @@ export function deriveRuntimeSources(sources) {
       metadata: combinedMetadata(sources)
     }
   };
+}
+
+/** @param {Row[]} runs */
+function deriveFactoryRhythmBaseline(runs) {
+  const successfulTimestamps = runs
+    .filter((run) => text(run['run-conclusion']) === 'success')
+    .map((run) => Date.parse(text(run['started-at']) || text(run['observed-at'])))
+    .filter(Number.isFinite)
+    .sort((left, right) => left - right);
+  if (successfulTimestamps.length === 0) return null;
+  const dayMs = 86_400_000;
+  const latestDay = Math.floor((successfulTimestamps.at(-1) ?? 0) / dayMs) * dayMs;
+  const earliestDay = Math.floor((successfulTimestamps[0] ?? 0) / dayMs) * dayMs;
+  const currentWindowStart = latestDay - (6 * dayMs);
+  const availableWeeks = Math.floor((currentWindowStart - earliestDay) / (7 * dayMs));
+  const weeks = Math.min(4, availableWeeks);
+  if (weeks < 1) return null;
+  const baselineStart = currentWindowStart - (weeks * 7 * dayMs);
+  const successes = successfulTimestamps.filter((timestamp) => timestamp >= baselineStart && timestamp < currentWindowStart).length;
+  return { 'daily-average': successes / (weeks * 7), weeks };
 }
 
 /** @param {Row} run */
@@ -233,9 +259,8 @@ function deriveDispatches(model) {
     .filter((run) => text(run.event) === 'workflow_dispatch')
     .flatMap((run) => {
       const workflow = model.workflows.get(runKey(run));
-      if (!workflow) return [];
-      const packaged = Boolean(text(workflow.package));
-      const role = text(workflow['workflow-role']);
+      const packaged = Boolean(text(workflow?.package));
+      const role = text(workflow?.['workflow-role']);
       const classification = dispatchTypeClassification.find((rule) => (
         rule.packaged === packaged && (rule.role === role || rule.role === '*')
       ));
@@ -248,8 +273,8 @@ function deriveDispatches(model) {
       return [{
         'started-at': run['started-at'],
         'dispatch-type': classification?.label ?? 'Standalone workflow',
-        package: text(workflow.package),
-        'package-name': text(workflow['package-name']) || text(workflow.package) || 'Not packaged',
+        package: text(workflow?.package),
+        'package-name': text(workflow?.['package-name']) || text(workflow?.package) || 'Not packaged',
         'workflow-name': workflowName(workflow, run),
         'run-title': runTitle(run, workflow),
         'runtime-repository': text(run.organization) ? `${text(run.organization)}/${repository}` : repository,
@@ -261,7 +286,7 @@ function deriveDispatches(model) {
         workflow: run.workflow,
         'run-link': run['run-link'],
         'repository-link': run['repository-link'],
-        'workflow-link': workflow['workflow-link'] ?? run['workflow-link']
+        'workflow-link': workflow?.['workflow-link'] ?? run['workflow-link']
       }];
     })
     .sort((left, right) => Date.parse(text(right['started-at'])) - Date.parse(text(left['started-at'])));

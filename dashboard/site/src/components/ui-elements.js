@@ -24,6 +24,7 @@ import { modeBadgeClassName, renderStatusBadge } from './badge.js';
 import { rowsFor as rowsForSource } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 import { renderWorkflowRoutePage } from './workflow-route-page.js';
+import { renderFactoryOverview } from './factory-overview.js';
 /**
  * @typedef {{
  *   pageId: string,
@@ -71,10 +72,11 @@ const ELEMENT_RENDERERS = new Map([
   ['configuration-actions', renderConfigurationActions],
   ['work-project-view', renderWorkProjectView],
   ['agent-marketplace-view', renderAgentMarketplaceView],
-  ['insights-overview', renderInsightsOverview]
+  ['insights-overview', renderInsightsOverview],
+  ['outcomes-overview', renderFactoryOverview]
 ]);
 
-const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview']);
+const EMPTY_AWARE_ELEMENTS = new Set(['summary-grid', 'readiness-verdict', 'context-summary', 'data-health-domain-list', 'signal-list', 'package-insights', 'package-detail', 'package-dispatches', 'package-reports', 'package-route', 'workflow-route', 'workflow-route-page', 'outcome-detail', 'outcome-detail-section', 'configuration-policy', 'configuration-actions', 'package-activity-shell', 'work-project-view', 'agent-marketplace-view', 'insights-overview', 'outcomes-overview']);
 
 /**
  * Builds a lazy element renderer that dynamically imports a module on first
