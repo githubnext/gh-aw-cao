@@ -156,6 +156,16 @@ describe('canonical source ingestion and queries', () => {
       started_at: '2026-01-01T00:00:01Z', updated_at: '2026-01-01T00:01:00Z',
       agent: 'copilot', engine: 'GitHub Copilot CLI', agent_version: '1.2.3',
       gh_aw_version: '0.89.1',
+      job_details: [{
+        id: 404,
+        run_attempt: 1,
+        name: 'agent',
+        status: 'completed',
+        conclusion: 'success',
+        created_at: '2026-01-01T00:00:00Z',
+        started_at: '2026-01-01T00:00:01Z',
+        completed_at: '2026-01-01T00:00:51Z'
+      }],
       token_usage_summary: {
         total_aic: 2.5,
         by_model: {
@@ -195,6 +205,15 @@ describe('canonical source ingestion and queries', () => {
         modelId: 'gpt-5.4',
         ghAwVersion: '0.89.1',
         aicTotal: 2.5
+      })
+    ]);
+    await expect(createCanonicalQueries(indexedDB).jobs.forRun('github:run:303:attempt:1')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'github:job:404',
+        name: 'agent',
+        status: 'completed',
+        conclusion: 'success',
+        durationSeconds: 50
       })
     ]);
     await expect(readTransactions(indexedDB)).resolves.toEqual([

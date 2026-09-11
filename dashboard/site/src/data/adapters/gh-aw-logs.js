@@ -687,6 +687,35 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         auditPath: optionalString(enrichedValue.audit_path)
       })
     });
+    if (Array.isArray(enrichedValue.job_details)) {
+      for (const [jobIndex, candidate] of enrichedValue.job_details.entries()) {
+        const job = objectValue(candidate, `${id}.job_details[${jobIndex}]`);
+        const githubJobId = identifier(job.id, `${id}.job_details[${jobIndex}].id`);
+        const startedAt = timestamp(job.started_at) ?? timestamp(job.created_at);
+        const completedAt = timestamp(job.completed_at);
+        observations.push({
+          kind: 'job',
+          source: OBSERVATION_SOURCE,
+          sourceId: `job:${githubJobId}`,
+          observedAt: completedAt ?? startedAt ?? observedAt,
+          data: {
+            githubJobId,
+            runId: id,
+            name: requiredString(job.name, `${id}.job_details[${jobIndex}].name`),
+            status: optionalString(job.status) ?? 'unknown',
+            conclusion: optionalString(job.conclusion) ?? null,
+            startedAt,
+            completedAt,
+            durationSeconds: startedAt && completedAt
+              ? Math.max(0, (Date.parse(completedAt) - Date.parse(startedAt)) / 1000)
+              : null,
+            runner: 'unknown',
+            runnerName: 'unknown',
+            runnerGroup: 'unknown'
+          }
+        });
+      }
+    }
   }
 
   observations.unshift(...repositories.values(), ...workflows.values());
