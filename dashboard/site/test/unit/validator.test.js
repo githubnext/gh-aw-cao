@@ -194,7 +194,7 @@ describe('dashboard document validation', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const firewall = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'firewall');
     expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Explore'
+      (/** @type {{ label: string }} */ section) => section.label === 'Data'
     ).pages).toContain('firewall');
     expect(firewall.sections).toBeUndefined();
     expect(firewall.views).toHaveLength(1);
