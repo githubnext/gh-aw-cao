@@ -1651,15 +1651,15 @@ th[aria-sort="descending"] .table-sort::after { content: "↓"; opacity: 1; }
 .table-filter { min-width: 600px; display: flex; align-items: center; gap: 12px; padding: 6px 14px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .table-filter label { min-width: 160px; flex: 1; }
 .table-filter input { width: 100%; min-height: 32px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); color: var(--fg); font: inherit; }
-.table-filter :is(input, select):focus-visible, .table-header-filter:focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
+.table-filter :is(input, select):focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
 .table-filter-result { flex: none; color: var(--muted); font-size: .75rem; }
 .table-filter-heading { display: flex; align-items: center; gap: 4px; padding-block: 6px; }
-.table-header-filter-control { min-width: 0; max-width: 100%; display: inline-grid; grid-template-areas: "control"; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent); color: var(--muted); }
-.table-header-filter-control::after { width: 5px; height: 5px; grid-area: control; justify-self: end; margin: 0 10px 3px 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; pointer-events: none; transform: rotate(45deg); }
-.table-header-filter-control:hover { border-color: color-mix(in srgb, var(--fg) 30%, var(--border)); background: var(--canvas-subtle); color: var(--fg); }
-.table-header-filter-control:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
-.table-header-filter { min-width: 0; max-width: 100%; grid-area: control; padding: 3px 26px 3px 10px; appearance: none; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
-.table-header-filter:focus-visible { outline: 0; }
+.filter-select-control { min-width: 0; max-width: 100%; display: inline-grid; grid-template-areas: "control"; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--canvas); box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent); color: var(--muted); }
+.filter-select-control::after { width: 5px; height: 5px; grid-area: control; justify-self: end; margin: 0 10px 3px 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; content: ""; pointer-events: none; transform: rotate(45deg); }
+.filter-select-control:hover { border-color: color-mix(in srgb, var(--fg) 30%, var(--border)); background: var(--canvas-subtle); color: var(--fg); }
+.filter-select-control:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.filter-select-control-input { min-width: 0; max-width: 100%; grid-area: control; padding: 3px 26px 3px 10px; appearance: none; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.filter-select-control-input:focus-visible { outline: 0; }
 .table-sort-icon { width: 22px; min-width: 22px; height: 24px; justify-content: center; }
 .table-sort-icon::after { margin: 0; }
 .table-filter-more { min-height: 32px; margin: 10px 14px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }

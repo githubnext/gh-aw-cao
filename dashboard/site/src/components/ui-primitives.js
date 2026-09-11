@@ -373,6 +373,17 @@ export function renderFilterSelect(ariaLabel, placeholderLabel, values, compareF
 }
 
 /**
+ * Renders a rounded filter control around a select while preserving the
+ * select's native keyboard and form behavior.
+ * @param {HTMLSelectElement} select
+ * @returns {HTMLElement}
+ */
+export function renderFilterSelectControl(select) {
+  select.classList.add('filter-select-control-input');
+  return h('span', { className: 'filter-select-control' }, select);
+}
+
+/**
  * Renders the shared `type="search"` filter/search input pattern used by the
  * agent marketplace, work-project, and notifications-inbox toolbars, which
  * all pair an identical placeholder and `aria-label` with a disabled

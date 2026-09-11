@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { processRows, processTableSummaries } from '../data-processor.js';
 import { formatCount } from './count-formatters.js';
 import { renderReactiveTableSummaryRow, renderTableSummaryRow } from './table-summary.js';
-import { renderEmptyTableRow, renderLabeledControl, observeLoadMoreBoundary } from './ui-primitives.js';
+import { renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderLabeledControl, observeLoadMoreBoundary } from './ui-primitives.js';
 
 /**
  * @typedef {{ key: string, label: string, allLabel?: string, columnIndex: number, always?: boolean }} TableFilterField
@@ -70,21 +70,12 @@ export function renderTableRegion(options) {
   const interactive = hasRows && Boolean(filterLabel);
 
   /** @param {TableFilterField & { values: string[] }} facet */
-  const renderFacet = (facet) => h(
-    'span',
-    { className: 'table-header-filter-control' },
-    h(
-      'select',
-      {
-        className: 'table-header-filter',
-        'aria-label': `Filter by ${facet.label}`,
-        'data-table-facet': facet.key,
-        'data-table-column-index': String(facet.columnIndex)
-      },
-      h('option', { value: '' }, facet.label),
-      ...facet.values.map((value) => h('option', { value }, value))
-    )
-  );
+  const renderFacet = (facet) => {
+    const select = renderFilterSelect(`Filter by ${facet.label}`, facet.label, facet.values);
+    select.dataset.tableFacet = facet.key;
+    select.dataset.tableColumnIndex = String(facet.columnIndex);
+    return renderFilterSelectControl(select);
+  };
   const filterControls = interactive
     ? h(
       'div',
