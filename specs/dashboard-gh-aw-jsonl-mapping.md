@@ -169,9 +169,11 @@ sequence as `sourceSequence`.
 | `comparison` exists | `workflow_run_comparison` |
 
 Each `mcp_tool_usage.tool_calls[]` item SHALL emit a `tool.call` Event and a
-correlated outcome Event. A `success` status SHALL emit `tool.result`; every
-other source status SHALL emit `tool.error` while preserving that status. Both
-Events SHALL use source `mcp` and the source `tool_call_id` as `correlationId`.
+correlated outcome Event. When the run-level projection is absent or empty,
+`audit.mcp_tool_usage.tool_calls[]` SHALL provide the tool calls. A `success`
+status SHALL emit `tool.result`; every other source status SHALL emit
+`tool.error` while preserving that status. Both Events SHALL use source `mcp`
+and the source `tool_call_id` as `correlationId`.
 
 Audit arrays SHALL map to compact canonical Events rather than an audit-shaped
 store: `key_findings` to `audit.finding`, `observability_insights` to

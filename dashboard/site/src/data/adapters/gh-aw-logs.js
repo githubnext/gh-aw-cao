@@ -946,10 +946,21 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         { type: 'grader', index, record }
       );
     });
-    const mcpToolUsage = run.mcp_tool_usage && typeof run.mcp_tool_usage === 'object'
+    const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
+      ? /** @type {Record<string, unknown>} */ (run.audit)
+      : {};
+    const runMcpToolUsage = run.mcp_tool_usage && typeof run.mcp_tool_usage === 'object'
       && !Array.isArray(run.mcp_tool_usage)
       ? /** @type {Record<string, unknown>} */ (run.mcp_tool_usage)
       : {};
+    const auditMcpToolUsage = audit.mcp_tool_usage && typeof audit.mcp_tool_usage === 'object'
+      && !Array.isArray(audit.mcp_tool_usage)
+      ? /** @type {Record<string, unknown>} */ (audit.mcp_tool_usage)
+      : {};
+    const mcpToolUsage = Array.isArray(runMcpToolUsage.tool_calls)
+      && runMcpToolUsage.tool_calls.length > 0
+      ? runMcpToolUsage
+      : auditMcpToolUsage;
     const toolCalls = Array.isArray(mcpToolUsage.tool_calls) ? mcpToolUsage.tool_calls : [];
     toolCalls.forEach((toolCall, index) => {
       const record = toolCall && typeof toolCall === 'object' && !Array.isArray(toolCall)
@@ -979,9 +990,6 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
         { source: 'mcp', correlationId }
       );
     });
-    const audit = run.audit && typeof run.audit === 'object' && !Array.isArray(run.audit)
-      ? /** @type {Record<string, unknown>} */ (run.audit)
-      : {};
     /**
      * @param {string} field
      * @param {string} type

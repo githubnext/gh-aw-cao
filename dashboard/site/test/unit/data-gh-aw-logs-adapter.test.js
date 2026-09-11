@@ -144,19 +144,19 @@ describe('gh-aw logs adapter', () => {
             started_at: '2026-09-09T04:00:00Z',
             completed_at: '2026-09-09T04:01:00Z'
           }],
-          mcp_tool_usage: {
-            tool_calls: [{
-              tool_call_id: 'call-7',
-              timestamp: '2026-09-09T04:00:15Z',
-              server_name: 'github',
-              tool_name: 'get_file',
-              input_size: 42,
-              output_size: 128,
-              status: 'success'
-            }]
-          },
           audit_path: '/tmp/run-303/audit.json',
           audit: {
+            mcp_tool_usage: {
+              tool_calls: [{
+                tool_call_id: 'call-7',
+                timestamp: '2026-09-09T04:00:15Z',
+                server_name: 'github',
+                tool_name: 'get_file',
+                input_size: 42,
+                output_size: 128,
+                status: 'success'
+              }]
+            },
             key_findings: [{ title: 'Slow response', severity: 'medium' }],
             missing_tools: [{ tool: 'search', timestamp: '2026-09-09T04:00:20Z' }],
             skill_activations: [{ name: 'review', status: 'success', timestamp: '2026-09-09T04:00:30Z' }],
