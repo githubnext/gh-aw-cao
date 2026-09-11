@@ -219,9 +219,10 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
+  const viewportWidth = page.viewportSize()?.width ?? 390;
   await expect.poll(async () => {
     const box = await factoryOverview.boundingBox();
-    return box !== null && box.x === 0 && box.width === 390;
+    return box !== null && box.x === 0 && box.width === viewportWidth;
   }).toBe(true);
 
   await page.locator('.mobile-nav-menu > summary').click();

@@ -1977,7 +1977,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .app-main { height: auto; overflow: visible; }
   .dashboard-full-view .app-main { height: 100%; min-height: 0; overflow: hidden; }
   main.dashboard-prototype { overflow: visible; overflow-x: clip; padding: 16px 14px 28px; }
-  .dashboard-mobile-overview-actions main.dashboard-prototype { padding-inline: 0; }
+  .dashboard-mobile-overview-actions main.dashboard-prototype:has(.dashboard-overview-page:not([hidden])) { padding-inline: 0; }
   .dashboard-full-view .custom-view[data-view-layout="full-view"] > .view-state-card { margin-inline: 14px; }
   .data-state-summary, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-section[data-section-layout="wide"], .layout-section[data-section-layout="narrow"] { grid-column: span 12; }
