@@ -406,7 +406,7 @@ safe-outputs:
 
 timeout-minutes: 60
 
-source: githubnext/gh-aw-cao/.github/workflows/dependabot-release-train-updater.md@main
+source: github/gh-aw-cao/.github/workflows/dependabot-release-train-updater.md@main
 ---
 
 {{#runtime-import? .github/cao/dependabot.md}}
