@@ -2757,7 +2757,9 @@ function resolveViewTime(time, dashboardTime) {
  */
 function resolveDashboardDefaults(defaults, horizonRange, evaluatedAt) {
   const configured = isPlainObject(defaults) ? defaults : {};
-  if (!isPlainObject(configured.time)) return configured;
+  if (!isPlainObject(configured.time)) {
+    return { ...configured, time: { end: evaluatedAt } };
+  }
   const evaluatedAtMs = Date.parse(evaluatedAt);
   const start = new Date(evaluatedAtMs - dashboardHorizonHours(horizonRange) * 3_600_000).toISOString();
   return {
