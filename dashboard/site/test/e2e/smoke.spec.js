@@ -231,7 +231,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
   const viewportSize = page.viewportSize();
   expect(viewportSize).not.toBeNull();
-  if (viewportSize === null) return;
+  if (viewportSize === null) throw new Error('Expected Playwright to provide a viewport size');
   const viewportWidth = viewportSize.width;
   await expect(factoryOverview).toBeVisible();
   const layoutPixelTolerance = 1;
