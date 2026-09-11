@@ -322,8 +322,8 @@ test('the authored basic table queries return the populated canonical database r
   const payload = await loadThroughWorker(page, dashboard.dashboard.queries, requested);
 
   expect(payload['repository-activity'].rows.map((row) => row.repository)).toEqual([
-    'githubnext/control-plane',
-    'githubnext/gh-aw-cao'
+    'githubnext/gh-aw-cao',
+    'githubnext/control-plane'
   ]);
   expect(payload['workflow-inventory'].rows.map((row) => [row.repository, row.workflow])).toEqual([
     ['githubnext/control-plane', '.github/workflows/audit.md'],
