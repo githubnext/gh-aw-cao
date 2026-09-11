@@ -221,7 +221,7 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(overviewAction).toHaveCSS('min-height', '52px');
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
   const viewportWidth = page.viewportSize()?.width;
-  expect(viewportWidth).toBeDefined();
+  expect(viewportWidth).toEqual(expect.any(Number));
   await expect.poll(async () => {
     const [mainBox, factoryBox] = await Promise.all([
       dashboardMain.boundingBox(),
