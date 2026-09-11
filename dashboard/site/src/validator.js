@@ -92,6 +92,8 @@ import {
   VIEW_ENCODING_KEYS,
   VIEW_ELEMENT_CONFIG_KEYS,
   VIEW_ELEMENT_VALUES,
+  PLURAL_LABEL_ELEMENTS,
+  PLURAL_TEXT_KEYS,
   VIEW_KEYS,
   VIEW_LAYOUT_VALUES,
   VIEW_MARK_VALUES,
@@ -1479,6 +1481,54 @@ function validateCustomPage(page, pageNode, path, errors) {
 }
 
 /**
+ * @param {unknown} labels
+ * @param {unknown} labelsNode
+ * @param {string} path
+ * @param {ValidationError[]} errors
+ */
+function validatePluralLabels(labels, labelsNode, path, errors) {
+  if (!isPlainObject(labels) || Object.keys(labels).length === 0) {
+    errors.push(createError(
+      ERROR_CODES.missingOrInvalidRequiredField,
+      'config.labels must be a non-empty mapping of plural text variables.',
+      path
+    ));
+    return;
+  }
+  for (const [labelId, text] of Object.entries(labels)) {
+    const labelPath = `${path}.${labelId}`;
+    if (!IDENTIFIER_PATTERN.test(labelId)) {
+      errors.push(createError(
+        ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+        'plural text identifiers must use canonical kebab-case.',
+        labelPath
+      ));
+    }
+    if (!isPlainObject(text)) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'a plural text variable must be a mapping with singular and plural text.',
+        labelPath
+      ));
+      continue;
+    }
+    validateObjectKeys(getValueNodeByKey(labelsNode, labelId), PLURAL_TEXT_KEYS, labelPath, errors);
+    for (const key of Object.keys(text)) {
+      if (!PLURAL_TEXT_KEYS.includes(key) && getMappingItems(labelsNode) === undefined) {
+        errors.push(createError(
+          ERROR_CODES.unknownOrDuplicateKey,
+          `Unknown key "${key}" is not allowed.`,
+          `${labelPath}.${key}`
+        ));
+      }
+    }
+    for (const key of PLURAL_TEXT_KEYS) {
+      validateStringField(text[key], `${labelPath}.${key}`, true, errors);
+    }
+  }
+}
+
+/**
  * @param {unknown} view
  * @param {unknown} viewNode
  * @param {string} path
@@ -1778,6 +1828,17 @@ function validateView(view, viewNode, path, viewIds, errors) {
          'config.sections is supported only for the work-project-view element.',
          `${path}.config.sections`
        ));
+      }
+      if (view.config.labels !== undefined) {
+        if (!PLURAL_LABEL_ELEMENTS.includes(String(view.element))) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `config.labels is supported only for the ${PLURAL_LABEL_ELEMENTS.join(', ')} element.`,
+            `${path}.config.labels`
+          ));
+        } else {
+          validatePluralLabels(view.config.labels, getValueNodeByKey(getValueNodeByKey(viewNode, 'config'), 'labels'), `${path}.config.labels`, errors);
+        }
       }
     }
   }
