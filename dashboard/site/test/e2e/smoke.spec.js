@@ -220,8 +220,10 @@ test('mobile shell shows large overview actions and moves other views into the h
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
-  const viewportWidth = page.viewportSize()?.width;
-  if (typeof viewportWidth !== 'number') throw new Error('Expected Playwright to provide a viewport width');
+  const viewportSize = page.viewportSize();
+  expect(viewportSize).not.toBeNull();
+  if (viewportSize === null) return;
+  const viewportWidth = viewportSize.width;
   await expect(factoryOverview).toBeVisible();
   const layoutPixelTolerance = 1;
   const [mainBox, factoryBox] = await Promise.all([
