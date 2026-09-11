@@ -106,8 +106,8 @@ function summarizeTableColumn(column) {
  * @returns {boolean | null}
  */
 function normalizeBooleanValue(value) {
-  if (value === true || value === 1 || value === 'true' || value === '1') return true;
-  if (value === false || value === 0 || value === 'false' || value === '0') return false;
+  if (value === true || value === 1 || value === 'true' || value === '1' || value === 'yes') return true;
+  if (value === false || value === 0 || value === 'false' || value === '0' || value === 'no') return false;
   return null;
 }
 
