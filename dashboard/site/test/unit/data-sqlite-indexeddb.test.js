@@ -179,6 +179,51 @@ describe('SQLite IndexedDB compatibility layer', () => {
     });
   });
 
+  it('ingests cached JSONL with collection context across separate Node.js processes', () => {
+    const filename = temporaryDatabase();
+    const script = resolve('scripts/ingest-gh-aw-logs.mjs');
+    const input = resolve('test/fixtures/gh-aw-logs/cached-v2.jsonl');
+    const context = resolve('test/fixtures/gh-aw-logs/cached-v2-context.json');
+
+    const ingestion = JSON.parse(execFileSync(process.execPath, [
+      script,
+      'ingest-jsonl',
+      '--database', filename,
+      '--input', input,
+      '--context', context
+    ], { encoding: 'utf8' }));
+    expect(ingestion).toMatchObject({
+      result: {
+        records: 3,
+        rawRuns: 1,
+        agenticRuns: 1,
+        sessions: 2,
+        mappedRateLimits: 1
+      },
+      counts: {
+        repositories: 1,
+        workflows: 1,
+        runs: 1,
+        sessions: 2
+      }
+    });
+
+    const events = JSON.parse(execFileSync(process.execPath, [
+      script,
+      'query',
+      '--database', filename,
+      '--collection', 'events',
+      '--where', 'type=github_api_rate_limit'
+    ], { encoding: 'utf8' }));
+    expect(events).toEqual([
+      expect.objectContaining({
+        source: 'github-api',
+        type: 'github_api_rate_limit',
+        status: 'available'
+      })
+    ]);
+  });
+
   it('repairs malformed, orphaned, and expired canonical data', async () => {
     const filename = temporaryDatabase();
     const indexedDB = createSqliteIndexedDB(filename);

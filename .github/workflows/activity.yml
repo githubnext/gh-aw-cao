@@ -54,11 +54,11 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@e67822c8ebaae760c3be935622dbfe343a465306 # v0.89.2
+        uses: github/gh-aw-actions/setup-cli@e67822c8ebaae760c3be935622dbfe343a465306 # v0.89.3
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
-          version: v0.89.2
+          version: v0.89.3
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -69,7 +69,9 @@ jobs:
         id: activity-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
             cao-activity-v3-
@@ -147,5 +149,7 @@ jobs:
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           key: ${{ steps.activity-cache-key.outputs.value }}

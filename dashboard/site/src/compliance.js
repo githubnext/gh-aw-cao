@@ -33,8 +33,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: repository-overview
             data:
@@ -101,8 +99,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: workflow-inventory
             data:
@@ -377,7 +373,7 @@ export function runComplianceSmokeSuite() {
       sources: appendixASources
     });
     const summaryText = element.textContent || '';
-    const exposesDataState = summaryText.includes('Availability') && summaryText.includes('Completeness') && summaryText.includes('Freshness');
+    const exposesDataState = summaryText.includes('Availability');
     results.push(createResult(
       'T-DATA-001',
       'DLS-DATA-003',
@@ -542,9 +538,6 @@ function runPageComplianceChecks(document, sources) {
   const rendered = renderDashboard({ document, sources });
   const text = rendered.textContent || '';
   const exposesAvailability = text.includes('Availability');
-  const exposesCompleteness = text.includes('Completeness');
-  const exposesFreshness = text.includes('Freshness');
-  const hasIndependentDataStates = exposesAvailability && exposesCompleteness && exposesFreshness;
   const pageTitles = ['Overview', 'Workflows', 'Usage by Repository'];
   const hasRequiredPageTitles = pageTitles.every((title) => text.includes(title));
 
@@ -558,8 +551,8 @@ function runPageComplianceChecks(document, sources) {
     createResult(
     'T-PAGE-001',
     'DLS-PAGE-014',
-    hasIndependentDataStates,
-    hasIndependentDataStates ? null : 'Rendered built-in fixture did not expose independent availability, completeness, and freshness text.'
+    exposesAvailability,
+    exposesAvailability ? null : 'Rendered built-in fixture did not expose availability text.'
     )
   ];
 }
@@ -698,8 +691,6 @@ dashboard:
       definition:
         data-state:
           availability: true
-          completeness: true
-          freshness: true
         views:
           - id: experiments-definition
             data:

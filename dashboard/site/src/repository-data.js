@@ -178,10 +178,10 @@ function buildRepositorySummaryRows(sources) {
   const windowHours = coverageHours(runs?.metadata);
   const runWindow = runs?.metadata?.availability === 'unavailable'
     ? 'Actions run data unavailable'
-    : `${titleCase(runs?.metadata?.completeness ?? 'unknown')}${windowHours ? ` ${windowHours}-hour` : ''} Actions run window`;
+    : `${windowHours ? `${windowHours}-hour ` : ''}Actions run window`;
   const usageCoverage = usage?.metadata?.availability === 'unavailable'
     ? 'Usage data unavailable'
-    : `${formatCount(usage?.rows.length ?? 0)} artifacts · ${usage?.metadata?.completeness ?? 'unknown'}`;
+    : `${formatCount(usage?.rows.length ?? 0)} artifacts`;
 
   return [
     {

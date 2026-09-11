@@ -154,21 +154,6 @@ export function coverageWindowHours(metadata) {
 }
 
 /**
- * Builds a short caveat sentence for a source's `completeness` metadata,
- * describing a named subject (e.g. `'usage'`, `'run'`) as partially or
- * unknowingly covered. Returns an empty string for complete or unrecognized
- * completeness values.
- * @param {string | undefined} completeness
- * @param {string} subject
- * @returns {string}
- */
-export function completenessCaveat(completeness, subject) {
-  if (completeness === 'partial') return `Partial ${subject} coverage.`;
-  if (completeness === 'unknown') return `${subject[0].toUpperCase()}${subject.slice(1)} coverage is unknown.`;
-  return '';
-}
-
-/**
  * Formats a `Date`, timestamp, or parseable date string as a short local
  * date (e.g. `Aug 30, 2026`), with no time-of-day or time-zone
  * normalization. Shared by the agent marketplace's last-observed label and
@@ -320,13 +305,27 @@ export function renderListOrEmptyMessage(listClassName, items, renderItem, empty
 /**
  * Renders the shared "single `<td>` spanning the full table width" empty-body
  * row used by table regions and package summary tables when there is no data
- * to display.
+ * to display. An optional `action` renders an inline button after `message`
+ * (for example, a "Clear time filter" recovery action) without changing the
+ * plain-message shape existing callers rely on.
  * @param {number} colSpan
  * @param {string} message
+ * @param {{ label: string, onActivate: (event: MouseEvent) => void }} [action]
  * @returns {HTMLElement}
  */
-export function renderEmptyTableRow(colSpan, message) {
-  return h('tr', null, h('td', { colSpan }, message));
+export function renderEmptyTableRow(colSpan, message, action) {
+  return h(
+    'tr',
+    null,
+    h(
+      'td',
+      { colSpan, ...(action ? { 'aria-live': 'polite' } : {}) },
+      message,
+      action
+        ? h('button', { type: 'button', className: 'table-empty-action', onclick: action.onActivate }, action.label)
+        : null
+    )
+  );
 }
 
 /**

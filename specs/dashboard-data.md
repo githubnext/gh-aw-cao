@@ -778,6 +778,11 @@ Each row SHALL contain `entity_kind`, `source_id`, and `observed_at`. The remain
 
 The relational interchange SHALL consist of one manifest row and denormalized entity rows. A producer MAY expose these as tables or views. Database-specific extraction queries and credentials remain upstream concerns and MUST NOT be shipped to the browser.
 
+## 14.4 Cached gh-aw JSONL
+
+The normative mapping for cached schema-v2 `gh-aw-logs.jsonl` input is
+defined in [Cached gh-aw JSONL Mapping](dashboard-gh-aw-jsonl-mapping.md).
+
 ---
 
 # 15. Normalization

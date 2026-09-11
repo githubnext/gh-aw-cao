@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { formatNumber, formatPercent } from '../view-formatters.js';
 import { formatAic, pluralSuffix, titleCase } from './count-formatters.js';
 import { classifyUtilizationRatio, isFailureConclusion } from './run-classification.js';
-import { completenessCaveat, coverageWindowHours, formatMediumUtcDate, formatMediumUtcDateTime, renderEmptyMessage, renderEmptyTableRow, renderIdentityLink, renderLegendSwatch, renderPanelHeader, renderTableHeadRow } from './ui-primitives.js';
+import { coverageWindowHours, formatMediumUtcDate, formatMediumUtcDateTime, renderEmptyMessage, renderEmptyTableRow, renderIdentityLink, renderLegendSwatch, renderPanelHeader, renderTableHeadRow } from './ui-primitives.js';
 import { rowsFor } from './source-rows.js';
 import { renderPackagesModeShell } from './packages-mode-shell.js';
 const DAY_IN_MILLISECONDS = 86_400_000;
@@ -305,7 +305,6 @@ export function renderPackageUtilization(sources, mode = 'all') {
   const utilization = summarizeUtilization(packages, usage, mode);
   const usageMetadata = sources.usage?.metadata;
   const available = Boolean(sources.usage) && usageMetadata?.availability !== 'unavailable';
-  const completeness = usageMetadata?.completeness ?? 'unknown';
   const windowLabel = sourceWindowLabel(usageMetadata);
   const modeLabel = mode;
   const headingId = 'packages-utilization-heading';
@@ -325,7 +324,7 @@ export function renderPackageUtilization(sources, mode = 'all') {
       'div',
       { className: 'package-utilization-grid' },
       ...(packages.length > 0
-        ? packages.map((entry) => renderUtilizationCard(entry, utilization.get(entry.key), available, completeness))
+        ? packages.map((entry) => renderUtilizationCard(entry, utilization.get(entry.key), available))
         : [renderEmptyMessage('No centrally managed packages were observed.')])
     )
   );
@@ -335,10 +334,9 @@ export function renderPackageUtilization(sources, mode = 'all') {
  * @param {ReturnType<typeof summarizePackages>[number]} entry
  * @param {{ used: number, allowed: number, reportedRuns: number } | undefined} utilization
  * @param {boolean} available
- * @param {string} completeness
  * @returns {HTMLElement}
  */
-function renderUtilizationCard(entry, utilization, available, completeness) {
+function renderUtilizationCard(entry, utilization, available) {
   const used = utilization?.used ?? 0;
   const allowed = utilization?.allowed ?? 0;
   const reportedRuns = utilization?.reportedRuns ?? 0;
@@ -350,9 +348,6 @@ function renderUtilizationCard(entry, utilization, available, completeness) {
     : reportedRuns === 0
       ? 'No AIC usage was reported in the retained window.'
       : `${formatAic(used)} of ${formatAic(allowed)} AIC across ${formatNumber(reportedRuns)} reported run${pluralSuffix(reportedRuns)}.`;
-  const coverage = !available
-    ? ''
-    : completenessCaveat(completeness, 'usage');
   const ariaLabel = ratio === null
     ? `${entry.name}: no utilization available`
     : `${entry.name}: ${formatAic(used)} of ${formatAic(allowed)} AI Credits used, ${formatPercent(ratio)}`;
@@ -385,7 +380,7 @@ function renderUtilizationCard(entry, utilization, available, completeness) {
       { className: 'utilization-track', role: 'img', 'aria-label': ariaLabel },
       h('span', { style: `width: ${meterPercent.toFixed(2)}%` })
     ),
-    h('p', null, detail, coverage ? ` ${coverage}` : ''),
+    h('p', null, detail),
     h(
       'small',
       null,
@@ -429,7 +424,6 @@ export function renderRunTrend(sources, mode = 'all') {
   };
   const maximum = Math.max(1, ...series.successful, ...series.failed, ...series.cancelled);
   const chartDescription = `Daily cumulative successful, failed, and cancelled ${modeLabel.toLowerCase()} package run counts.`;
-  const coverage = completenessCaveat(runsSource.metadata?.completeness, 'run') || null;
 
   return h(
     'section',
@@ -487,8 +481,7 @@ export function renderRunTrend(sources, mode = 'all') {
         h('span', null, formatDate(trendDays[0], true)),
         h('span', null, formatDate(trendDays.at(-1), true))
       )
-    ),
-    coverage ? h('p', { className: 'package-trend-coverage' }, coverage) : null
+    )
   );
 }
 

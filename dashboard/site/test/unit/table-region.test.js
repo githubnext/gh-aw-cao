@@ -56,6 +56,26 @@ describe('renderTableRegion', () => {
     expect(emptyCell?.textContent).toBe('No findings available.');
   });
 
+  it('renders an accessible empty-state action button when provided', () => {
+    const onActivate = vi.fn();
+    const rendered = renderTableRegion({
+      tableClassName: 'runs-table',
+      emptyMessage: 'No runs observed. 0 rows match the current time window filter.',
+      emptyAction: { label: 'Clear time filter', onActivate },
+      colSpan: 2,
+      headCells: ['Run', 'Status'],
+      bodyRows: []
+    });
+
+    const emptyCell = rendered.querySelector('tbody td');
+    expect(emptyCell?.getAttribute('aria-live')).toBe('polite');
+    expect(emptyCell?.textContent).toBe('No runs observed. 0 rows match the current time window filter.Clear time filter');
+    const button = /** @type {HTMLButtonElement} */ (emptyCell?.querySelector('button.table-empty-action'));
+    expect(button?.type).toBe('button');
+    button?.click();
+    expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves the custom table view data attribute', () => {
     const table = renderTableRegion({
       tableClassName: 'custom-table',

@@ -22,7 +22,7 @@ const QUERY_COLLECTIONS = [...ENTITY_COLLECTIONS, 'transactions'];
 
 const USAGE = `Usage:
   npm run dashboard:data -- ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY
-  npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL
+  npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON]
   npm run dashboard:data -- query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
   npm run dashboard:data -- doctor --database FILE [--ttl-days DAYS]
 
@@ -219,10 +219,16 @@ export async function runCli(arguments_) {
     return { result, counts: await databaseCounts(indexedDB) };
   }
   if (command === 'ingest-jsonl') {
-    rejectUnknownOptions(options, ['database', 'input']);
+    rejectUnknownOptions(options, ['database', 'input', 'context']);
+    const contextPath = option(options, 'context', false);
     const result = await ingestCachedGhAwJsonl(
       indexedDB,
-      await readFile(path.resolve(option(options, 'input')), 'utf8')
+      await readFile(path.resolve(option(options, 'input')), 'utf8'),
+      {
+        context: contextPath
+          ? JSON.parse(await readFile(path.resolve(contextPath), 'utf8'))
+          : undefined
+      }
     );
     return { result, counts: await databaseCounts(indexedDB) };
   }

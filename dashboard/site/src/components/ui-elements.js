@@ -490,8 +490,7 @@ function renderReadinessVerdictElement(context) {
             ? 'The control plane should not be treated as ready for the next operation.'
             : 'Current readiness cannot be determined reliably.'),
         h('div', { className: 'readiness-snapshot-meta' },
-          renderLabeledSpan('Snapshot', ` ${snapshotAge(metadata)}`),
-          renderLabeledSpan('Evidence', ` ${evidenceState(metadata)}`)
+          renderLabeledSpan('Snapshot', ` ${snapshotAge(metadata)}`)
         ),
         h('span', { className: 'readiness-verdict-legacy' }, verdict)
       ),
@@ -544,13 +543,6 @@ function snapshotAge(metadata) {
 function elapsedSince(date) {
   const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
   return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
-}
-
-/** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
-function evidenceState(metadata) {
-  if (!metadata || metadata.availability === 'unavailable') return 'Unavailable';
-  if (metadata.completeness !== 'complete' || metadata.freshness !== 'fresh') return 'Incomplete';
-  return '✓ Complete';
 }
 
 /**

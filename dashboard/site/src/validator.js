@@ -1337,7 +1337,7 @@ function validateBuiltInPageDataState(dataState, path, errors) {
   if (!isPlainObject(dataState)) {
     errors.push(createError(
       ERROR_CODES.missingOrInvalidRequiredField,
-      'built-in page definition must expose independent availability, completeness, and freshness state.',
+      'built-in page definition must expose availability state.',
       dataStatePath
     ));
     return;
@@ -1357,7 +1357,7 @@ function validateBuiltInPageDataState(dataState, path, errors) {
     if (dataState[key] !== true) {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
-        `built-in page definition must expose independent ${key} state with canonical boolean true.`,
+        `built-in page definition must expose ${key} state with canonical boolean true.`,
         `${dataStatePath}.${key}`
       ));
     }

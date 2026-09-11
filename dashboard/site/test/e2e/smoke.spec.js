@@ -409,6 +409,86 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
 
+test('Runs hints at an active time-window filter when it empties an otherwise populated table, and offers an accessible way to clear it', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const documentModel = ${JSON.stringify(documentModel)};
+      // Simulate an operator who narrowed the global horizon control to a
+      // window that predates every recorded run, the same way "Last 1 hour"
+      // (or a stale persisted setting) would hide 700+ real runs.
+      window.localStorage.setItem(
+        'central-agentic-ops.dashboard.horizon-filter-settings',
+        JSON.stringify({ range: 'custom', start: '2020-01-01T00:00:00.000Z', end: '2020-01-02T00:00:00.000Z' })
+      );
+      const metadata = {
+        'source-id': 'runs-empty-time-filter-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-10T12:00:00Z',
+        'retrieved-at': '2026-09-10T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        'runs-table': {
+          source: 'runs-table',
+          metadata,
+          rows: [
+            {
+              run: '2',
+              'run-status': 'completed',
+              'run-conclusion': 'failure',
+              organization: 'githubnext',
+              repository: 'gh-aw-cao',
+              workflow: '.github/workflows/aw-doctor.md',
+              'rollout-mode': 'review',
+              engine: 'copilot',
+              'engine-version': '1.2.3',
+              'requested-model': 'gpt-5',
+              'resolved-model': 'gpt-5',
+              'started-at': '2026-09-10T12:00:00Z',
+              'run-link': { relation: 'run', href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/2', label: 'Run 2' }
+            }
+          ]
+        }
+      };
+      window.location.hash = '#page-runs';
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
+    </script>
+  `);
+
+  const runsPage = page.locator('[data-page-id="runs"]');
+  const view = runsPage.locator('[data-view-layout="full-view"]');
+  const rows = view.locator('.custom-table tbody tr');
+  const emptyCell = rows.locator('td');
+  const clearButton = view.getByRole('button', { name: 'Clear time filter' });
+  // The shared time-window select lives once in the top-nav filter bar
+  // (relocated there for the active page), not nested inside the page section.
+  const horizonFilter = page.getByLabel('Dashboard filters');
+  const select = horizonFilter.locator('[aria-label="Time window"]');
+
+  // The table renders exactly one <tr>: the empty-state placeholder row, not a data row.
+  await expect(rows).toHaveCount(1);
+  await expect(rows.locator('a')).toHaveCount(0);
+  await expect(emptyCell).toContainText('0 rows match the current time window filter.');
+  await expect(emptyCell).toHaveAttribute('aria-live', 'polite');
+  await expect(clearButton).toBeVisible();
+  await expect(select).toHaveValue('custom');
+
+  await clearButton.click();
+
+  // After clearing, the horizon resets to "all" and the real run row appears.
+  await expect(select).toHaveValue('all');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('2');
+  await expect(rows.locator('a').first()).toBeVisible();
+  await expect(view.getByRole('button', { name: 'Clear time filter' })).toHaveCount(0);
+});
+
 test('full-view unavailable-data callout keeps responsive page margins', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
@@ -1435,9 +1515,7 @@ test('DLS-PAGE-002 DLS-PAGE-014 built-in overview page renders the report-style 
               title: 'Overview',
               definition: {
                 'data-state': {
-                  availability: true,
-                  completeness: true,
-                  freshness: true
+                  availability: true
                 },
                 views: [
                   { id: 'workflows-source', data: { source: 'workflows' } },
@@ -2013,7 +2091,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
               title: 'Packages',
               description: 'Activity from centrally managed packages.',
               definition: {
-                'data-state': { availability: true, completeness: true, freshness: true },
+                'data-state': { availability: true },
                 views: [
                   { id: 'package-workflows', data: { source: 'workflows' } },
                   { id: 'package-runs', data: { source: 'runs' } },
@@ -2424,7 +2502,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await filterBar.locator('.horizon-toggle').click();
   const filterInput = filterBar.getByRole('searchbox', { name: 'Current filters' });
   await expect(filterInput).toHaveValue('');
-  await expect(filterBar.getByRole('combobox', { name: 'Time window' })).toHaveValue('1w');
+  await expect(filterBar.getByRole('combobox', { name: 'Time window' })).toHaveValue('all');
   await expect(filterBar.getByRole('checkbox')).toHaveCount(3);
   expect(await filterBar.getByRole('checkbox').evaluateAll(
     (inputs) => inputs.every((input) => /** @type {HTMLInputElement} */ (input).checked)
@@ -2483,9 +2561,7 @@ test('DLS-PAGE-009 DLS-PAGE-014 built-in evals page renders distinguishable defi
               title: 'Evals',
               definition: {
                 'data-state': {
-                  availability: true,
-                  completeness: true,
-                  freshness: true
+                  availability: true
                 },
                 views: [
                   { id: 'evals-source', data: { source: 'evals' } },
@@ -2573,9 +2649,7 @@ test('DLS-SAFE-004 DLS-SAFE-007 DLS-SAFE-008 DLS-SAFE-010 built-in findings page
               title: 'Findings',
               definition: {
                 'data-state': {
-                  availability: true,
-                  completeness: true,
-                  freshness: true
+                  availability: true
                 },
                 views: [
                   { id: 'findings-source', data: { source: 'findings' } }
@@ -3272,7 +3346,7 @@ test('workflow page template follows its JSON-declared route and renders attribu
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ambient Context');
   await expect(page.locator('.horizon-summary').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await page.locator('.horizon-toggle').click();
-  await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toContainText('CompletenesscompleteFreshnessfresh');
+  await expect(page.locator('.filter-tuning-controls .horizon-details').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs').getByRole('group', { name: 'Data status' })).toHaveCount(0);
   await expect(page.locator('#page-workflow-runs .custom-table tbody tr')).toHaveCount(2);
   await page.locator('#page-workflow-runs').getByRole('button', { name: /^Started/ }).click();

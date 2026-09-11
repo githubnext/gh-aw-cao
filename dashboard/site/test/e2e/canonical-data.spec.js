@@ -36,7 +36,7 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'package-mode': 'review',
         'package-enabled': true,
         'package-worker-count': 1,
-        'package-min-version': 'v0.89.2',
+        'package-min-version': 'v0.89.3',
         'package-experimental': true,
         'observed-at': '2026-09-09T05:00:00Z'
       }],
