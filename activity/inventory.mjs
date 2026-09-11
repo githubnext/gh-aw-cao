@@ -2,8 +2,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { setActionsGlobals } from "../../activity/actions-context.mjs";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { setActionsGlobals } from "./actions-context.mjs";
+import { actionsLog as log } from "./actions-log.mjs";
 
 export async function main(actions = {}) {
   setActionsGlobals(actions);

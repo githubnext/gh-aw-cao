@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildDashboardLanguageSources,
-  buildInventoryDashboardSources,
   detectionObservationRows,
   transactionLogRows,
 } from "../../dashboard/report/dashboard-language-sources.mjs";
+import { buildInventoryDashboardSources } from "../../activity/inventory-sources.mjs";
 
 function detectionRun(runId, verdict, overrides = {}) {
   return {
@@ -88,14 +88,18 @@ test("builds deployable package and workflow inventory sources", () => {
       }],
     },
     controlSettings: {
+      allowed_repositories: ["githubnext/control"],
       packages: {
         "daily-ops": {
           icon: "clock",
           mode: "review",
+          "rollout-percent": 25,
           worker_policies: {
             "daily-worker": { worker: "daily-worker", enabled: true },
           },
-          target_policies: {},
+          target_policies: {
+            "githubnext/control": { mode: "live" },
+          },
         },
       },
     },
@@ -110,13 +114,13 @@ test("builds deployable package and workflow inventory sources", () => {
     "package-mode": "review",
     "package-enabled": true,
     "package-max-repositories": null,
-    "package-rollout-percent": null,
+    "package-rollout-percent": 25,
     "package-monthly-ai-credit-budget": null,
     "package-aic-allowance": 300,
     "package-worker-count": 1,
     "package-inventory-warnings": 0,
     "package-workers": [{ id: "daily-worker", workflow: "daily-worker", enabled: true, "max-mode": null }],
-    "package-targets": [],
+    "package-targets": [{ repository: "githubnext/control", mode: "live" }],
     "package-min-version": "",
     "package-experimental": false,
     "package-readme-path": "",
@@ -133,6 +137,32 @@ test("builds deployable package and workflow inventory sources", () => {
       { workflow: ".github/workflows/daily-ops.md", package: "daily-ops", role: "orchestrator" },
       { workflow: ".github/workflows/daily-worker.md", package: "daily-ops", role: "worker" },
     ],
+  );
+  assert.deepEqual(
+    sources.workflows.rows.find((workflow) => workflow.workflow === ".github/workflows/daily-worker.md"),
+    {
+      organization: "githubnext",
+      repository: "control",
+      package: "daily-ops",
+      "package-name": "Daily Operations",
+      "package-icon": "clock",
+      "package-aic-allowance": 300,
+      "package-worker-count": 1,
+      "package-inventory-warnings": 0,
+      "max-ai-credits": 200,
+      "package-description": "Daily operational checks.",
+      "package-rollout-percent": 25,
+      "package-targets": [{ repository: "githubnext/control", mode: "live" }],
+      "inventory-ready": true,
+      "admission-status": "authorized",
+      "admission-reason": "authorized",
+      workflow: ".github/workflows/daily-worker.md",
+      "workflow-name": "Daily Worker",
+      "workflow-role": "worker",
+      "workflow-active": "true",
+      "rollout-mode": "live",
+      "observed-at": generatedAt,
+    },
   );
 });
 

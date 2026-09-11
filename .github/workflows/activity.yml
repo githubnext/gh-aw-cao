@@ -81,21 +81,21 @@ jobs:
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
         run: |
           rm -f "$REPORT_CONTROL_SETTINGS" "$REPORT_INVENTORY" "$REPORT_INVENTORY_SOURCES"
-          if [[ -f dashboard/report/inventory-sources.mjs ]]; then
-            dashboard_report_root=dashboard/report
-          elif [[ -f .github/aw/dashboard/report/inventory-sources.mjs ]]; then
-            dashboard_report_root=.github/aw/dashboard/report
+          if [[ -f activity/inventory-sources.mjs ]]; then
+            activity_root=activity
+          elif [[ -f .github/aw/activity/inventory-sources.mjs ]]; then
+            activity_root=.github/aw/activity
           else
-            echo "Dashboard inventory collector is not installed; skipping dashboard inventory"
-            exit 0
+            echo "Activity inventory collector is unavailable" >&2
+            exit 1
           fi
           mkdir -p "$RUNNER_TEMP/cao-activity"
-          node "$dashboard_report_root/control-settings.mjs" \
+          node "$activity_root/control-settings.mjs" \
             .github/cao/src/control.mjs \
             .github/workflows/cao.json \
             "$REPORT_CONTROL_SETTINGS"
-          node "$dashboard_report_root/inventory.mjs"
-          node "$dashboard_report_root/inventory-sources.mjs"
+          node "$activity_root/inventory.mjs"
+          node "$activity_root/inventory-sources.mjs"
 
       - name: Download agentic workflow logs
         env:

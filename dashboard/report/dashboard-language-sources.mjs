@@ -750,33 +750,6 @@ function workflowRows(deployed, generatedAt, inventory, controlSettings) {
   });
 }
 
-export function buildInventoryDashboardSources({
-  inventory = {},
-  controlSettings = {},
-  repository = "",
-  generatedAt = inventory.generatedAt || new Date().toISOString(),
-}) {
-  const workflows = (inventory.workflows || []).map((workflow) => ({
-    repository,
-    path: workflow.sourcePath,
-    name: workflow.name,
-    role: workflow.role,
-    state: workflow.compiled === true ? "active" : "uncompiled",
-    updatedAt: generatedAt,
-  }));
-  const deployed = { workflows, bundles: inventory.bundles || [], latestGhAwVersion: null };
-  const names = repositoryParts(repository);
-  return {
-    packages: source("packages", packageRows(inventory, controlSettings, generatedAt), generatedAt),
-    repositories: source("repositories", [{
-      ...names,
-      "repository-name": names.repository,
-      "observed-at": generatedAt,
-    }], generatedAt),
-    workflows: source("workflows", workflowRows(deployed, generatedAt, inventory, controlSettings), generatedAt),
-  };
-}
-
 function runRows(deployed, usage) {
   const rows = new Map();
   const dataByRun = new Map([...(usage.securityRuns || []), ...(usage.runs || [])].map((run) => [

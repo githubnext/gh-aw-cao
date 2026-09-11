@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { setActionsGlobals } from "./actions-context.mjs";
 import { actionsLog as log } from "./actions-log.mjs";
 
@@ -14,11 +14,13 @@ const COLLECT_GH_AW_LOGS_OPERATION = "collect-gh-aw-logs";
 // Matches github-telemetry.mjs's fallback so paths stay consistent when
 // RUNNER_TEMP is unset (e.g. local/debug runs on non-standard runners).
 const runnerTemp = process.env.RUNNER_TEMP || "/tmp";
+const defaultActivityRoot = path.dirname(fileURLToPath(import.meta.url));
 
 export async function runActivity(actions = {}) {
   const logsModulePath = process.env.ACTIVITY_LOGS;
   const telemetryModulePath = process.env.GITHUB_TELEMETRY;
   const indexerModulePath = process.env.ACTIVITY_INDEXER;
+  const activityRoot = process.env.ACTIVITY_ROOT || defaultActivityRoot;
   const dashboardReportRoot = process.env.DASHBOARD_REPORT_ROOT;
   const dashboardCollectionEnabled = process.env.DASHBOARD_COLLECTION === "true";
   const missing = [
@@ -59,10 +61,10 @@ export async function runActivity(actions = {}) {
   if (dashboardCollectionEnabled) {
     const controlSettingsPath =
       process.env.REPORT_CONTROL_SETTINGS || path.join(runnerTemp, "cao-activity", "control-settings.json");
-    const controlSettings = await importModule(path.join(dashboardReportRoot, "control-settings.mjs"));
+    const controlSettings = await importModule(path.join(activityRoot, "control-settings.mjs"));
     await controlSettings.main(actions, [".github/cao/src/control.mjs", ".github/workflows/cao.json", controlSettingsPath]);
 
-    const inventory = await importModule(path.join(dashboardReportRoot, "inventory.mjs"));
+    const inventory = await importModule(path.join(activityRoot, "inventory.mjs"));
     await inventory.main(actions);
   }
 
