@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderFilterSelectControl, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -413,6 +413,15 @@ describe('ui primitives', () => {
       (left, right) => left.localeCompare(right));
 
     expect([...select.options].map((option) => option.value)).toEqual(['', 'alpha', 'bravo', 'Bravo']);
+  });
+
+  it('wraps a filter select in the shared rounded control', () => {
+    const select = renderFilterSelect('Filter by mode', 'Mode', ['review', 'live']);
+    const control = renderFilterSelectControl(select);
+
+    expect(control.className).toBe('filter-select-control');
+    expect(control.querySelector('select')).toBe(select);
+    expect(select.classList.contains('filter-select-control-input')).toBe(true);
   });
 
   it('renders a search input with a shared placeholder and aria-label', () => {

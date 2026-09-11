@@ -138,7 +138,8 @@ describe('renderTableRegion', () => {
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 1 of 1 result');
   });
 
-  it('ports report-style facets, URL state, and progressive disclosure generically', () => {
+  it('renders facets as field headers and restores hash URL state', () => {
+    window.history.replaceState(null, '', '/#page-workflows?workflow-catalog.mode=live');
     const rows = Array.from({ length: 60 }, (_, index) => h(
       'tr',
       null,
@@ -160,14 +161,17 @@ describe('renderTableRegion', () => {
 
     const mode = /** @type {HTMLSelectElement} */ (rendered.querySelector('[data-table-facet="mode"]'));
     const more = /** @type {HTMLButtonElement} */ (rendered.querySelector('[data-table-more]'));
-    expect([...mode.options].map((option) => option.value)).toEqual(['', 'live', 'review']);
+    expect(mode.closest('th')).not.toBeNull();
+    expect(mode.getAttribute('aria-label')).toBe('Filter by Mode');
+    expect([...mode.options].map((option) => option.textContent)).toEqual(['Mode', 'live', 'review']);
+    expect(mode.value).toBe('live');
     expect(more.textContent).toBe('Show all rows');
     expect(rows.filter((row) => !row.hidden)).toHaveLength(25);
-    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 60 results');
-    expect(more.hidden).toBe(false);
+    expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 30 results');
+    expect(rendered.querySelector('.table-filter')?.querySelector('select')).toBeNull();
 
     more.click();
-    expect(rows.filter((row) => !row.hidden)).toHaveLength(60);
+    expect(rows.filter((row) => !row.hidden)).toHaveLength(30);
     expect(more.hidden).toBe(true);
     expect(rendered.classList.contains('table-region-expanded')).toBe(true);
 
@@ -176,7 +180,8 @@ describe('renderTableRegion', () => {
     expect(rows.filter((row) => !row.hidden)).toHaveLength(25);
     expect(rendered.querySelector('.table-filter-result')?.textContent).toBe('Showing 25 of 30 results');
     expect(rendered.classList.contains('table-region-expanded')).toBe(false);
-    expect(window.location.search).toContain('workflow-catalog.mode=review');
+    expect(window.location.hash).toBe('#page-workflows?workflow-catalog.mode=review');
+    expect(window.location.search).toBe('');
 
     window.history.replaceState(null, '', '/');
   });
@@ -199,7 +204,7 @@ describe('renderTableRegion', () => {
     });
 
     expect(rendered.querySelector('input')?.getAttribute('placeholder')).toBe('Run, package, worker, status, or repository');
-    expect([...rendered.querySelectorAll('select option')].map((option) => option.textContent)).toEqual(['All packages', 'Dependabot']);
+    expect([...rendered.querySelectorAll('select option')].map((option) => option.textContent)).toEqual(['Package', 'Dependabot']);
     expect(rendered.querySelector('output')?.textContent).toBe('Showing 2 of 2 dispatches');
   });
 
