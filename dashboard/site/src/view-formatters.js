@@ -25,36 +25,42 @@ const HUMAN_DATE_WITH_YEAR_FORMAT = new Intl.DateTimeFormat('en', {
  */
 export function formatAggregateValue(rows, fieldName, aggregate, toText, unit = null) {
   if (!fieldName) {
-    return 'Unavailable';
+    return '';
   }
 
+  const presentValues = rows.map((row) => row[fieldName]).filter((value) => value != null && value !== '');
+  const numericValues = presentValues.filter((value) => isFiniteNumber(value));
   if (aggregate === 'count') {
-    return formatNumber(rows.filter((row) => row[fieldName] != null && row[fieldName] !== '').length, unit);
+    return presentValues.length > 0 ? formatNumber(presentValues.length, unit) : '';
   }
   if (aggregate === 'distinct-count') {
-    return formatNumber(new Set(rows.map((row) => toText(row[fieldName]))).size, unit);
+    return presentValues.length > 0 ? formatNumber(new Set(presentValues.map(toText)).size, unit) : '';
   }
   if (aggregate === 'sum') {
-    return formatNumber(rows.reduce((total, row) => total + toNumber(row[fieldName]), 0), unit);
+    return numericValues.length > 0
+      ? formatNumber(numericValues.reduce((total, value) => total + value, 0), unit)
+      : '';
   }
   if (aggregate === 'mean') {
-    const numericValues = rows.map((row) => toNumber(row[fieldName])).filter((value) => Number.isFinite(value));
     return numericValues.length > 0
       ? formatNumber(numericValues.reduce((total, value) => total + value, 0) / numericValues.length, unit)
-      : 'Unavailable';
+      : '';
   }
   if (aggregate === 'min') {
-    const numericValues = rows.map((row) => toNumber(row[fieldName])).filter((value) => Number.isFinite(value));
-    return numericValues.length > 0 ? formatNumber(Math.min(...numericValues), unit) : 'Unavailable';
+    return numericValues.length > 0 ? formatNumber(Math.min(...numericValues), unit) : '';
   }
   if (aggregate === 'max') {
-    const numericValues = rows.map((row) => toNumber(row[fieldName])).filter((value) => Number.isFinite(value));
-    return numericValues.length > 0 ? formatNumber(Math.max(...numericValues), unit) : 'Unavailable';
+    return numericValues.length > 0 ? formatNumber(Math.max(...numericValues), unit) : '';
   }
   const value = rows[0]?.[fieldName];
   return rows.length > 0 && unit && typeof value === 'number' && Number.isFinite(value)
     ? formatNumber(value, unit)
-    : rows.length > 0 ? toText(value) : 'Unavailable';
+    : value != null && value !== '' ? toText(value) : '';
+}
+
+/** @param {unknown} value @returns {value is number} */
+function isFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 /**
@@ -127,7 +133,7 @@ export function formatNumber(value, unit = null, includeUnit = true) {
     if (unit.format === 'usd') {
       return formatUsd(value);
     }
-    return `${rounded.toFixed(fractionDigits(unit.significant))}${includeUnit ? ` ${unit.symbol}` : ''}`;
+    return `${rounded.toFixed(fractionDigits(unit.significant))}${includeUnit && unit.format !== 'number' ? ` ${unit.symbol}` : ''}`;
   }
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }

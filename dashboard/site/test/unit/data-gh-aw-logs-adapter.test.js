@@ -221,6 +221,7 @@ describe('gh-aw logs adapter', () => {
         engineId: 'copilot',
         engineVersion: '1.0.83',
         requestedModel: 'gpt-5.4',
+        resolvedModel: 'gpt-5.4',
         firewallVersion: 'v0.28.15'
       })
     ]);

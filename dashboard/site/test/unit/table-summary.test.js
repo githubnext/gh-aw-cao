@@ -25,6 +25,33 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.textContent).toContain('closed25%');
   });
 
+  it('collapses summaries to one significant chart or value per column and expands them again', () => {
+    const rendered = renderSummaries([
+      { label: 'Status', type: 'nominal', values: ['open', 'open', 'closed'] },
+      { label: 'Score', type: 'quantitative', values: [1, 2, 3] },
+      { label: 'Ready', type: 'boolean', values: [true, false, true] },
+      { field: 'run', label: 'Run', type: 'nominal', values: ['1', '2'] }
+    ]);
+    const toggle = /** @type {HTMLButtonElement} */ (rendered.querySelector('.table-summary-toggle'));
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    toggle.click();
+
+    expect(rendered.classList.contains('table-summary-collapsed')).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toBe('Expand column summaries');
+    expect([...rendered.querySelectorAll('.table-summary-compact')].every((node) => !node.hasAttribute('hidden'))).toBe(true);
+    expect(rendered.querySelector('.table-summary-compact-value')?.textContent).toBe('open66.7%');
+    expect(rendered.querySelector('.table-summary-compact .table-summary-histogram')).not.toBeNull();
+    expect(rendered.querySelector('.table-summary-compact [data-chart-widget="pie"]')).not.toBeNull();
+    expect([...rendered.querySelectorAll('.table-summary-compact')].at(-1)?.textContent).toBe('2 items');
+
+    toggle.click();
+    expect(rendered.classList.contains('table-summary-collapsed')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect([...rendered.querySelectorAll('.table-summary-expanded')].every((node) => !node.hasAttribute('hidden'))).toBe(true);
+  });
+
   it('summarizes quantitative values and includes a histogram', () => {
     const rendered = renderSummaries([{
       label: 'Score',

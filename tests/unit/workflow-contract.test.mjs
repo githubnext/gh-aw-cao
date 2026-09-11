@@ -73,6 +73,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
   assert.match(control, /dispatch_max:\n\s+type: number/);
   assert.match(control, /orchestrator_credits:\n\s+type: number/);
   assert.match(control, /worker_credits_per_target:\n\s+type: number/);
+  assert.match(control, /footer-install: "<!-- -->"/);
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
@@ -183,7 +184,7 @@ test("CAO Evolution is review-first, control-plane scoped, and deduplicated", ()
   assert.match(efficiency, /Select one package and one change to cadence, target selection, worker boundaries, evidence reuse, budget allocation, or review-output quality/);
   assert.match(efficiency, /Do not duplicate `AW Optimization`/);
 
-  const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
   assert.match(packageSkill, /When a worker optimizes a package or package portfolio/);
   assert.match(packageSkill, /A package workflow has no dashboard browser session/);
   assert.match(packageSkill, /never add browser automation or Pages access merely to query IndexedDB/);
@@ -705,7 +706,7 @@ test("worker workflows allow service-account dispatches", () => {
 });
 
 test("operations creation guidance scopes detection and omits worker evals", () => {
-  const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
 
   assert.match(packageSkill, /safe-outputs\.threat-detection: false/);
   assert.match(packageSkill, /default new dispatchers to `hourly`/);
@@ -780,7 +781,7 @@ test("workers with title prefixes provide unprefixed safe-output titles", () => 
 });
 
 test("workers inherit human-first progressive report disclosure", () => {
-  const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
   const sharedControl = workflow("shared/control.md");
   const workers = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md"))
@@ -1389,7 +1390,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
   const control = workflow("shared/control.md");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
-  const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
 
   assert.match(control, /post-steps:[\s\S]*?Emit control-plane dispatcher telemetry/);
   assert.match(control, /if: \$\{\{ always\(\) \}\}/);
@@ -1542,7 +1543,7 @@ test("orchestrators use checked-in policy with independent manual narrowing", ()
 });
 
 test("operation workflows optionally load per-operation markdown steering", () => {
-  const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
 
   assert.match(packageSkill, /Every orchestrator and worker prompt must include/);
   assert.match(packageSkill, /\{\{#runtime-import\? \.github\/cao\/<package-slug>\.md\}\}/);
@@ -2890,7 +2891,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
 test("Agent customizations preserve deterministic core package boundaries", () => {
   const agent = readFileSync(join(root, ".github", "agents", "agentic-workflows.md"), "utf8");
   const agenticWorkflowsSkill = readFileSync(join(root, ".github", "skills", "agentic-workflows", "SKILL.md"), "utf8");
-  const packageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const packageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
   const repositoryInstructions = readFileSync(join(root, ".github", "aw", "instructions.md"), "utf8");
 
   assert.match(agent, /\.github\/aw\/instructions\.md/);
@@ -2910,7 +2911,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   const readme = readFileSync(join(root, "README.md"), "utf8");
   const setupSkillPath = join(root, ".github", "skills", "setup-central-agentic-ops", "SKILL.md");
   const setupSkill = readFileSync(setupSkillPath, "utf8");
-  const createPackageSkill = readFileSync(join(root, ".github", "skills", "create-ops-package", "SKILL.md"), "utf8");
+  const createPackageSkill = readFileSync(join(root, "skills", "create-ops-package", "SKILL.md"), "utf8");
   const readmeEntry = ".github/skills/setup-central-agentic-ops/SKILL.md";
 
   assert.ok(readme.split("\n").slice(0, 20).some((line) => line.includes(readmeEntry)));

@@ -399,7 +399,17 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect(view).toHaveCount(1);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
-  await expect(view.locator('.table-summary-row')).toBeVisible();
+  const summaryRow = view.locator('.table-summary-row');
+  const summaryToggle = summaryRow.getByRole('button', { name: 'Collapse column summaries' });
+  await expect(summaryRow).toBeVisible();
+  const expandedHeight = await summaryRow.evaluate((element) => element.getBoundingClientRect().height);
+  await summaryToggle.click();
+  await expect(summaryRow).toHaveClass(/table-summary-collapsed/);
+  await expect(summaryRow.locator('.table-summary-expanded').first()).toBeHidden();
+  await expect(summaryRow.locator('.table-summary-compact:visible').first()).toBeVisible();
+  expect(await summaryRow.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(expandedHeight);
+  await summaryRow.getByRole('button', { name: 'Expand column summaries' }).click();
+  await expect(summaryRow).not.toHaveClass(/table-summary-collapsed/);
   await expect(view.locator('.custom-table tbody tr')).toHaveCount(2);
   await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
 
@@ -1164,9 +1174,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     expect(Math.max(...numericTops) - Math.min(...numericTops)).toBeLessThan(1);
   }
   await expect(overviewPage.locator('[href="#page-overview-failed-runs"] strong')).toHaveText('80');
-  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('—');
-  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('—');
-  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('—');
+  await expect(overviewPage.locator('[href="#page-overview-blocked-work"] strong')).toHaveText('');
+  await expect(overviewPage.locator('[href="#page-overview-awaiting-review"] strong')).toHaveText('');
+  await expect(overviewPage.locator('[href="#page-overview-security-findings"] strong')).toHaveText('');
   const overviewElement = await overviewPage.elementHandle();
   expect(overviewElement).not.toBeNull();
   const attentionColors = await overviewElement?.evaluate((element) => {
@@ -2399,7 +2409,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   ]);
   await expect(packageWorkflowRows.first()).toContainText('OrchestratorAmbient Context');
   await expect(packageWorkflowRows.first().locator('td').nth(5)).toHaveText('0');
-  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('—');
+  await expect(packageWorkflowRows.first().locator('td').nth(6)).toHaveText('');
   await expect(packageWorkflowRows.nth(1)).toContainText('WorkerAmbient Context Worker');
 
   await page.getByRole('navigation', { name: 'Ambient Context views' }).getByRole('link', { name: 'Dispatches' }).click();
@@ -3674,7 +3684,7 @@ test('workflow runtime route renders JSON-declared workflow insights', async ({ 
     'https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/multi-device-docs-tester.md'
   );
   await expect(page.locator('.workflow-runtime-metrics')).toContainText('1');
-  await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7 AIC');
+  await expect(page.locator('.workflow-runtime-metrics')).toContainText('962.7');
   await expect(page.getByRole('heading', { name: 'No workflow observations yet' })).toBeVisible();
 });
 
