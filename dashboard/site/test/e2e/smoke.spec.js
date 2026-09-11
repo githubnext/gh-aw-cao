@@ -3599,7 +3599,11 @@ test('workflow page template follows its JSON-declared route and renders attribu
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
-  await page.locator('#page-workflow-detail .custom-table tbody a').first().click();
+  const reportLink = page.locator('#page-workflow-detail .custom-table tbody a').first();
+  await expect(reportLink).toHaveAttribute('href', '#page-outcome-detail?outcome=report-1');
+  await reportLink.evaluate((link) => {
+    if (link instanceof HTMLElement) link.click();
+  });
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Debug ambient context workflow failure');
   await expect(page.locator('.outcome-meta a', { hasText: 'Ambient Context' })).toHaveAttribute(
     'href',
@@ -4002,7 +4006,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
 });
 
-test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {
+test('phone navigation uses overview actions and a full-label view menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -4040,7 +4044,9 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   const historyBack = page.getByRole('button', { name: 'Go back' });
   await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
-  await expect(activeItem.locator('.nav-label')).toBeHidden();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(activeItem.locator('.nav-label')).toBeVisible();
+  await expect(activeItem).toHaveCSS('min-height', '52px');
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
   await expect(shortcuts).toHaveCount(6);
   await expect(shortcuts.nth(4)).toBeVisible();
@@ -4048,7 +4054,7 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(shortcuts.nth(5)).toBeHidden();
   await expect(page.locator('.nav-section').first()).toHaveCSS('flex-direction', 'row');
   await expect(page.locator('.nav-section-items').first()).toHaveCSS('flex-direction', 'row');
-  await expect(page.locator('.primary-nav')).not.toHaveCSS('overflow-x', 'auto');
+  await expect(page.locator('.primary-nav')).toHaveCSS('overflow-x', 'auto');
 
   const viewMenuButton = page.getByRole('button', { name: 'Select view' });
   await expect(viewMenuButton).toHaveCSS('border-radius', '50%');
@@ -4061,6 +4067,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(page.locator('.primary-nav')).toHaveCSS('display', 'none');
   await expect(historyBack).toBeVisible();
   await expect(historyBack).toHaveCSS('border-radius', '50%');
   await expect(historyBack).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
