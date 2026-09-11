@@ -104,6 +104,7 @@ tools:
 safe-outputs:
   create-issue:
     expires: 7d
+    deduplicate-by-title: true
     title-prefix: "[optimization:ai-credit-optimizer] "
     labels: [optimization, optimization:ai-credit-optimizer]
     close-older-issues: true

@@ -126,7 +126,6 @@ safe-outputs:
       - "self-care-pages-health-evidence/**"
     defaults:
       if-no-files: ignore
-  noop:
 
 pre-agent-steps:
   - name: Install dashboard dependencies

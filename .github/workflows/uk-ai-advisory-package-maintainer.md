@@ -74,6 +74,7 @@ safe-outputs:
     deduplicate-by-title: true
     max: 1
   noop:
+    report-as-issue: false
 ---
 
 <!-- UK AI Advisory outputs are advisory and non-binding. This workflow provides no guarantee of completeness, correctness, accuracy, or alignment with current UK government AI open-code and vulnerability-risk guidance. -->

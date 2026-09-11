@@ -125,7 +125,6 @@ safe-outputs:
       - "dashboard/site/src/**/*.js"
       - "dashboard/site/test/unit/**/*.js"
       - "dashboard/site/test/e2e/**/*.js"
-  noop:
 
 pre-agent-steps:
   - name: Install dashboard dependencies

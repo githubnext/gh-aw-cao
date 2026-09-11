@@ -32,6 +32,8 @@ safe-outputs:
     client-id: ${{ vars.GH_AW_GITHUB_WRITE_APP_ID }}
     private-key: ${{ secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY }}
     ignore-if-missing: true
+  noop:
+    report-as-issue: false
   messages:
     footer-install: "<!-- -->"
 
@@ -358,6 +360,8 @@ Read `/tmp/gh-aw/agent/control-precompute.json` before making control decisions.
 If `control_role` is `worker`, this workflow is a dispatched worker. Do not select repositories and do not dispatch workflows. Use the importing workflow's mission instructions, and treat `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url` as the standard control-plane envelope. When `correlation_id` is present, include a short `### Control Plane` section in safe-output issues, pull requests, or comments with the correlation ID, central repository, and control plane run URL. Safe outputs are created in `SAFE_OUTPUT_REPO`.
 
 Every human-facing durable worker output must be concise, easy to scan, and use progressive disclosure. Begin directly with a short, plain-language executive summary of the decision-relevant result, critical findings, key metrics, and recommended next action; do not add a heading for this opening summary. Immediately follow it with one visible `**Action:**` sentence that says who should do what next and the acceptance check. When a repository change can be delegated safely, tell the maintainer to assign the issue to Copilot and provide the exact prompt inside `<details><summary><b>Agent prompt</b></summary>...</details>`. When human judgment or authority is required, name the reviewer and decision instead; when no action is required, say `**Action:** None.` Keep only the summary, action, and critical findings visible. Put non-essential background, verbose supporting evidence, logs, secondary metrics, and per-item breakdowns inside clearly named `<details><summary>...</summary>...</details>` sections. Do not repeat the summary or add a table of contents. Metadata markers may precede the opening summary when another contract requires them.
+
+Before creating an issue, search all open issues in `SAFE_OUTPUT_REPO` owned by the same package and worker. Use a canonical unprefixed subject derived only from stable target work; keep dates, versions, run and correlation IDs, counts, severity, and status wording in the body. When an open issue already represents the same underlying work, reuse or update that issue when a configured safe output permits it, otherwise call `noop`. Never create an equivalent issue merely because its measurements or wording changed.
 
 When `target_repo` is present, prefer a dedicated `target/` checkout when the importing workflow provides one. Treat that checkout as the authoritative target-repository snapshot for analysis, and treat the workspace root as the repository where safe outputs land. In `review` mode, do not treat `SAFE_OUTPUT_REPO` as a live substitute for the target repository. Instead, prefer an artifact-backed review bundle in `SAFE_OUTPUT_REPO` for target-bound outputs that would otherwise mutate target git state. Use the same safe-output primitive only when gh-aw natively supports that primitive against the review repository; otherwise publish a clearly labeled review bundle that identifies the target repository, intended safe-output primitive, base branch when known, and the key evidence needed for human review.
 

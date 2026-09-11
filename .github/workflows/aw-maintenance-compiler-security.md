@@ -98,6 +98,7 @@ tracker-id: aw-maintenance-compiler-security
 safe-outputs:
   create-issue:
     expires: 14d
+    deduplicate-by-title: true
     title-prefix: "[aw-doctor:compiler-security] "
     labels: [aw-doctor, aw-doctor:compiler-security]
     max: 1

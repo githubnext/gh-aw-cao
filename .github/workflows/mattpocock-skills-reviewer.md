@@ -21,7 +21,8 @@ private: true
 safe-outputs:
   create-pull-request-review-comment:
     max: 10
-  noop: null
+  noop:
+    report-as-issue: false
   submit-pull-request-review:
     max: 1
 skills:

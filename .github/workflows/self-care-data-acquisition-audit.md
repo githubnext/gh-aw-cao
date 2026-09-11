@@ -87,7 +87,6 @@ safe-outputs:
     if-no-changes: ignore
     allowed-files:
       - "specs/data-acquisition-audit.md"
-  noop:
 ---
 
 {{#runtime-import? .github/cao/self-care.md}}

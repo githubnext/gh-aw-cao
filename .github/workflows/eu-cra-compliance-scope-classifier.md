@@ -112,12 +112,12 @@ graders:
 safe-outputs:
   create-issue:
     expires: 30d
+    deduplicate-by-title: true
     title-prefix: "[eu-cra-compliance:scope-classifier] "
     labels: [eu-cra-compliance, eu-cra-compliance:scope-classifier]
     close-older-issues: true
     max: 1
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-  noop:
 
 timeout-minutes: 25
 ---

@@ -109,6 +109,7 @@ graders:
 safe-outputs:
   create-issue:
     expires: 14d
+    deduplicate-by-title: true
     title-prefix: "[aw-doctor:failures-investigator] "
     labels: [aw-doctor, aw-doctor:failures-investigator]
     max: 3
