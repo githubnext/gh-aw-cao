@@ -37,6 +37,15 @@ function buildPresenterModuleUrl() {
 }
 
 /**
+ * @param {number} actual
+ * @param {number} expected
+ * @param {number} tolerance
+ */
+function expectLayoutWithin(actual, expected, tolerance) {
+  expect(Math.abs(actual - expected)).toBeLessThan(tolerance);
+}
+
+/**
  * Full-view table filters live inside the table scroller but remain contained
  * within the visible viewport instead of owning a separate horizontal scrollbar;
  * wrapping is allowed on narrow screens so controls stay reachable.
@@ -214,10 +223,28 @@ test('mobile shell shows large overview actions and moves other views into the h
   const root = page.locator('.dashboard-root');
   const primaryNav = page.locator('.primary-nav');
   const overviewAction = page.locator('[data-nav-page-id="overview"]');
+  const dashboardMain = page.locator('main.dashboard-prototype');
+  const factoryOverview = page.locator('[data-page-id="overview"] .agent-factory');
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
+  const viewportSize = page.viewportSize();
+  expect(viewportSize).not.toBeNull();
+  if (viewportSize === null) throw new Error('Expected Playwright to provide a viewport size');
+  const viewportWidth = viewportSize.width;
+  await expect(factoryOverview).toBeVisible();
+  const layoutPixelTolerance = 1;
+  const [mainBox, factoryBox] = await Promise.all([
+    dashboardMain.boundingBox(),
+    factoryOverview.boundingBox()
+  ]);
+  expect(mainBox).not.toBeNull();
+  expect(factoryBox).not.toBeNull();
+  if (mainBox === null || factoryBox === null) throw new Error('Expected overview layout boxes to be available');
+  expectLayoutWithin(factoryBox.x, 0, layoutPixelTolerance);
+  expectLayoutWithin(factoryBox.y, mainBox.y, layoutPixelTolerance);
+  expectLayoutWithin(factoryBox.width, viewportWidth, layoutPixelTolerance);
 
   await page.locator('.mobile-nav-menu > summary').click();
   await page.locator('[data-mobile-nav-page-id="cost"]').click();
