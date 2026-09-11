@@ -97,7 +97,6 @@ safe-outputs:
     deduplicate-by-title: true
     expires: 14d
     max: 3
-  noop:
 
 steps:
   - name: Prepare bounded public failure evidence

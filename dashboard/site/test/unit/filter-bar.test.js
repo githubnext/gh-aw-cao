@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   HORIZON_FILTER_STORAGE_KEY,
   clearTimeWindowFilter,
+  enableHorizonOutsideClickDismissal,
   isTimeWindowFilterActive,
   relativeTimeWindow,
   renderFilterBar
@@ -130,6 +131,28 @@ describe('time-window filter bar', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(filterBar.classList.contains('filter-bar-expanded')).toBe(false);
     expect(document.activeElement).toBe(toggle);
+  });
+
+  it('closes the horizon controls when clicking outside the filter bar', () => {
+    const filterBar = renderFilterBar(vi.fn(), { defaultRange: '24h' });
+    const toggle = document.createElement('button');
+    toggle.className = 'horizon-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    filterBar.prepend(toggle);
+    const dashboard = document.createElement('main');
+    dashboard.append(filterBar, document.createElement('button'));
+    document.body.append(dashboard);
+    enableHorizonOutsideClickDismissal(dashboard);
+
+    toggle.click();
+    filterBar.querySelector('[aria-label="Current filters"]')?.dispatchEvent(
+      new MouseEvent('click', { bubbles: true })
+    );
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    dashboard.lastElementChild?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(filterBar.classList.contains('filter-bar-expanded')).toBe(false);
   });
 
   it('reports no active time filter by default', () => {

@@ -123,6 +123,20 @@ export function renderFilterBar(onChange, options = {}) {
 }
 
 /**
+ * Closes an expanded horizon control when a click occurs outside its filter bar.
+ * @param {HTMLElement} root
+ */
+export function enableHorizonOutsideClickDismissal(root) {
+  root.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    const filterBar = root.querySelector('.filter-bar-expanded');
+    if (!(filterBar instanceof HTMLElement) || filterBar.contains(event.target)) return;
+    filterBar.querySelector('.horizon-toggle')?.setAttribute('aria-expanded', 'false');
+    filterBar.classList.remove('filter-bar-expanded');
+  });
+}
+
+/**
  * @param {string} defaultRange
  * @param {string | undefined} referenceEnd
  * @param {() => void} onChange

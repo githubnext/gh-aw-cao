@@ -111,7 +111,6 @@ safe-outputs:
     required-title-prefix: "[cao-evolution:efficiency] "
     hide-older-comments: true
     max: 1
-  noop:
 
 timeout-minutes: 40
 ---

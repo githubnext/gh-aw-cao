@@ -16,6 +16,17 @@ permissions:
   contents: read
 
 jobs:
+  agent-plugin:
+    name: Install agent plugin with Copilot CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Install Copilot CLI
+        run: npm_config_before="$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)" npm install -g @github/copilot
+      - name: Install agent plugin
+        run: copilot plugin install "$(pwd)"
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -28,9 +39,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install gh-aw
-        uses: github/gh-aw-actions/setup-cli@690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42 # v0.89.4
+        uses: github/gh-aw-actions/setup-cli@5bfd3f7b3722d8bf263ce9cb2a6b811c0c11f478 # v0.89.5
         with:
-          version: v0.89.4
+          version: v0.89.5
       - name: Run contract suite
         run: npm run check
       - name: Check patch formatting
@@ -100,9 +111,9 @@ jobs:
           fi
       - name: Install gh-aw
         if: steps.package-api.outputs.ready == 'true'
-        uses: github/gh-aw-actions/setup-cli@690dd9f82e459785bc3cbf9c2fb9a6a54b4f2a42 # v0.89.4
+        uses: github/gh-aw-actions/setup-cli@5bfd3f7b3722d8bf263ce9cb2a6b811c0c11f478 # v0.89.5
         with:
-          version: v0.89.4
+          version: v0.89.5
       - name: Run package lifecycle integration
         if: steps.package-api.outputs.ready == 'true'
         env:

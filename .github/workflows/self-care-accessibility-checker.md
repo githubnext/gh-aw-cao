@@ -109,6 +109,7 @@ safe-outputs:
     - githubnext.github.io
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
+    deduplicate-by-title: true
     title-prefix: "[self-care:accessibility-checker] "
     labels: [self-care, self-care:accessibility-checker]
     close-older-issues: true

@@ -1,6 +1,6 @@
 name: CAO Dashboard
 description: Deploy an access-controlled, read-only Central Agentic Ops report with GitHub Pages. Requires the activity package.
-min-version: v0.89.4
+min-version: v0.89.5
 experimental: true
 includes:
   - source: dashboard.yml
@@ -82,8 +82,6 @@ resources:
     destination: .github/aw/dashboard/site/src/data/storage/quota.js
   - source: site/src/data/storage/retention.js
     destination: .github/aw/dashboard/site/src/data/storage/retention.js
-  - source: site/scripts/ingest-gh-aw-logs.mjs
-    destination: .github/aw/dashboard/site/scripts/ingest-gh-aw-logs.mjs
   - source: site/src/copilot-prompt.js
     destination: .github/aw/dashboard/site/src/copilot-prompt.js
   - source: site/src/compliance.js

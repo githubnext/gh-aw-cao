@@ -112,13 +112,13 @@ tools:
 safe-outputs:
   create-issue:
     expires: 30d
+    deduplicate-by-title: true
     title-prefix: "[software-development-practices:nist-ssdf] "
     labels: [software-development-practices, software-development-practices:nist-ssdf]
     close-older-issues: true
     close-older-key: ${{ format('software-development-practices-nist-ssdf-{0}', inputs.target_repo) }}
     max: 1
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-  noop:
 
 timeout-minutes: 30
 ---

@@ -82,6 +82,7 @@ safe-outputs:
     deduplicate-by-title: true
     max: 1
   noop:
+    report-as-issue: false
 ---
 
 # EU CRA / Maintenance

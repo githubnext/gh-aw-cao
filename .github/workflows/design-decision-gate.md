@@ -36,6 +36,7 @@ safe-outputs:
     if-no-changes: ignore
     commit-title-suffix: " [design-decision-gate]"
   noop:
+    report-as-issue: false
 steps:
   - name: Prefetch decision gate context
     env:

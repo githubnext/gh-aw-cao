@@ -94,13 +94,13 @@ tools:
 safe-outputs:
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
+    deduplicate-by-title: true
     title-prefix: "[self-care:dashboard-review] "
     labels: [self-care, self-care:dashboard-review]
     close-older-issues: true
     close-older-key: self-care-dashboard-review
     max: 1
     expires: 14d
-  noop:
 pre-agent-steps:
   - name: Configure Playwright CLI launch options
     if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}

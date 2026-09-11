@@ -14,7 +14,7 @@ import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
-import { renderFilterBar } from './components/filter-bar.js';
+import { enableHorizonOutsideClickDismissal, renderFilterBar } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
@@ -242,6 +242,7 @@ export function renderDashboard(input) {
   enableSidebarToggle(root);
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
+  enableHorizonOutsideClickDismissal(root);
   enableResponsiveReportActions(root);
   enableDashboardPageNavigation(
     root,
@@ -404,7 +405,28 @@ function renderSidebar(pages, title, navigation) {
         h('span', null, title)
       ),
       h('div', { className: 'mobile-page-header' }),
-      h('div', { className: 'mobile-report-actions', 'aria-label': 'Dashboard controls' }),
+      h(
+        'details',
+        { className: 'mobile-nav-menu' },
+        h(
+          'summary',
+          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
+          octicon('three-bars')
+        ),
+        h(
+          'div',
+          { className: 'mobile-nav-menu-list' },
+          h('div', { className: 'mobile-nav-menu-actions', 'aria-label': 'Dashboard controls' }),
+          ...navigationSections.flatMap((section) => [
+            ...(typeof section.label === 'string' && section.label.length > 0
+              ? [h('span', {
+                  className: 'mobile-nav-section-label'
+                }, section.label)]
+              : []),
+            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
+          ])
+        )
+      ),
       h(
         'button',
         {
@@ -446,28 +468,7 @@ function renderSidebar(pages, title, navigation) {
               h('div', { className: 'nav-section-items' }, ...items)
             )]
           : items;
-      }),
-      h(
-        'details',
-        { className: 'mobile-nav-menu' },
-        h(
-          'summary',
-          { role: 'button', 'aria-label': 'Select view', title: 'Select view' },
-          octicon('three-bars')
-        ),
-        h(
-          'div',
-          { className: 'mobile-nav-menu-list' },
-          navigationSections.flatMap((section) => [
-            ...(typeof section.label === 'string' && section.label.length > 0
-              ? [h('span', {
-                  className: 'mobile-nav-section-label'
-                }, section.label)]
-              : []),
-            ...section.pages.map((page) => renderMobileNavItem(page, page.id === firstPageId))
-          ])
-        )
-      )
+      })
     )
   );
 }
@@ -627,17 +628,17 @@ function enableMobileNavigationMenu(root) {
 }
 
 /**
- * Keeps global dashboard controls in the mobile navbar while preserving the
- * single control instances and their filter-bar event relationships. On
- * narrow viewports the page title also moves into the compact mobile header
- * row (replacing the app brand) so the page no longer shows a full-width
- * secondary header that repeats the current page title, matching the
- * single-row title bar used by the GitHub mobile app.
+ * Keeps global dashboard controls inside the mobile hamburger menu while
+ * preserving the single control instances and their filter-bar event
+ * relationships. On narrow viewports the page title also moves into the
+ * compact mobile header row (replacing the app brand) so the page no longer
+ * shows a full-width secondary header that repeats the current page title,
+ * matching the single-row title bar used by the GitHub mobile app.
  * @param {HTMLElement} root
  */
 function enableResponsiveReportActions(root) {
   const actions = root.querySelector('.report-actions');
-  const mobileSlot = root.querySelector('.mobile-report-actions');
+  const mobileSlot = root.querySelector('.mobile-nav-menu-actions');
   const desktopSlot = actions?.parentElement;
   const overviewHeader = root.querySelector('.overview-header');
   const mobileHeaderSlot = root.querySelector('.mobile-page-header');
@@ -1539,6 +1540,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
       }
     }
     activePageId = pageId;
+    root.classList.toggle('dashboard-mobile-overview-actions', pageId === overviewPage?.dataset.pageId);
     const pageIndex = pages.findIndex((candidate) => candidate.dataset.pageId === pageId);
     const pendingPage = pages[pageIndex];
     if (pendingPage?.hasAttribute('data-page-pending')) {
@@ -1691,6 +1693,14 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   });
 
+  // Hiding the app chrome (sidebar/top nav) while a full-view table scrolls resizes the
+  // scroll container, which can shrink its scrollable range enough to clamp scrollTop back
+  // toward 0. That reflow re-fires the scroll handler and toggles the chrome back on, which
+  // then re-triggers the same reflow: a hide/show feedback loop ("menu jitter"). A minimum
+  // scrollable-range guard plus enter/exit hysteresis around scrollTop breaks that loop.
+  const FULL_VIEW_SCROLL_MIN_RANGE = 48;
+  const FULL_VIEW_SCROLL_ENTER = 24;
+  const FULL_VIEW_SCROLL_EXIT = 4;
   let fullViewScrollFrame = 0;
   root.addEventListener('scroll', (event) => {
     if (!root.classList.contains('dashboard-full-view') || !(event.target instanceof Element)) return;
@@ -1698,9 +1708,15 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (scroll === event.target) {
       const syncScrolledState = () => {
         fullViewScrollFrame = 0;
-        if (scroll.isConnected && root.classList.contains('dashboard-full-view')) {
-          root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > 0);
+        if (!scroll.isConnected || !root.classList.contains('dashboard-full-view')) return;
+        const scrollableRange = scroll.scrollHeight - scroll.clientHeight;
+        if (scrollableRange < FULL_VIEW_SCROLL_MIN_RANGE) {
+          root.classList.remove('dashboard-full-view-scrolled');
+          return;
         }
+        const wasScrolled = root.classList.contains('dashboard-full-view-scrolled');
+        const threshold = wasScrolled ? FULL_VIEW_SCROLL_EXIT : FULL_VIEW_SCROLL_ENTER;
+        root.classList.toggle('dashboard-full-view-scrolled', scroll.scrollTop > threshold);
       };
       if (defaultView?.requestAnimationFrame) {
         if (fullViewScrollFrame) defaultView.cancelAnimationFrame(fullViewScrollFrame);

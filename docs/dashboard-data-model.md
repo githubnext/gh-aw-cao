@@ -67,8 +67,7 @@ with the newest observation winning.
 Audit a JSONL source without changing a database:
 
 ```bash
-npm run dashboard:data -- audit-jsonl \
-  --input _activity/gh-aw-logs.jsonl
+cao audit-jsonl
 ```
 
 The report separates raw observations, unique raw runs, enriched observations,
@@ -84,15 +83,15 @@ retention:
 Audit and ingest the completed source into an archive database:
 
 ```bash
-npm run dashboard:data -- audit-jsonl \
+cao audit-jsonl \
   --input _activity/gh-aw-history.jsonl
 
-npm run dashboard:data -- ingest-jsonl \
+cao ingest-jsonl \
   --database _activity/gh-aw-history.sqlite \
   --input _activity/gh-aw-history.jsonl \
   --retention-days all
 
-npm run dashboard:data -- doctor \
+cao doctor \
   --database _activity/gh-aw-history.sqlite \
   --ttl-days all
 ```
@@ -195,7 +194,7 @@ Node.js 24 can run the same ingestion and query layer against a persistent SQLit
 Ingest an extracted gh-aw log directory with its run context:
 
 ```bash
-npm run dashboard:data -- ingest \
+cao ingest \
   --database /tmp/cao-dashboard.sqlite \
   --context dashboard/site/test/fixtures/gh-aw-logs/context.json \
   --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
@@ -204,9 +203,9 @@ npm run dashboard:data -- ingest \
 Alternatively, ingest the schema-v2 JSONL produced by `gh aw logs`:
 
 ```bash
-npm run dashboard:data -- ingest-jsonl \
+cao ingest-jsonl \
   --database /tmp/cao-dashboard.sqlite \
-  --input _activity/gh-aw-logs.jsonl
+  --input .cao/gh-aw-logs.jsonl
 ```
 
 Pass `--context CONTEXT_JSON` when the JSONL's `github_api_rate_limit`
@@ -218,21 +217,19 @@ Download the JSONL and SQLite projection currently published by the deployed
 CAO Pages site:
 
 ```bash
-npm run dashboard:data -- download
+cao download
 ```
 
-This writes `_activity/gh-aw-logs.jsonl` and
-`_activity/gh-aw-logs.sqlite`. Set `DASHBOARD_DATA_URL` or pass `--url URL`
+This writes `.cao/gh-aw-logs.jsonl` and
+`.cao/gh-aw-logs.sqlite` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL`
 to use another deployment, and pass `--output DIRECTORY` to select another
 destination. Both files are downloaded unchanged; this command does not run
-ingestion locally. `npm run dashboard:data:download` remains available as a
-shortcut.
+ingestion locally.
 
 Query a canonical collection, optionally selecting an ID, filtering fields, or limiting output:
 
 ```bash
-npm run dashboard:data -- query \
-  --database /tmp/cao-dashboard.sqlite \
+cao query \
   --collection runs \
   --where conclusion=failure \
   --limit 20
@@ -241,7 +238,7 @@ npm run dashboard:data -- query \
 Diagnose and repair the local database:
 
 ```bash
-npm run dashboard:data -- doctor \
+cao doctor \
   --database /tmp/cao-dashboard.sqlite
 ```
 
@@ -254,6 +251,6 @@ changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next
 to the database. Use `--ttl-days DAYS` to select a different positive retention
 window.
 
-Run `npm run dashboard:data -- help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
+Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
 
 For normative requirements, failure behavior, and implementation phases, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-aw-cao/blob/main/specs/dashboard-data.md).

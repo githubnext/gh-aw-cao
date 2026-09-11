@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.4";
+const ghAwVersion = "v0.89.5";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -715,7 +715,14 @@ test("operations creation guidance scopes detection and omits worker evals", () 
   assert.match(packageSkill, /when `safe-outputs\.create-issue` is enabled, configure `deduplicate-by-title: true`/);
   assert.match(packageSkill, /canonical unprefixed subject that remains identical for the same unresolved repository work across reruns/);
   assert.match(packageSkill, /search all open package-worker issues in the safe-output repository and reuse or comment on matching work, or call `noop`/);
-  assert.match(packageSkill, /every issue-creating worker configures `deduplicate-by-title: true` plus stable subject and existing-item reuse instructions/);
+  assert.match(packageSkill, /every issue-creating worker configures `deduplicate-by-title: true`, explicit expiry, bounded `max`, stable subject, and existing-item reuse instructions/);
+  assert.match(packageSkill, /Use `3d` for high-frequency telemetry, `7d` for fast-changing operational findings, `14d` for dependency and routine maintenance work, and `30d` only for compliance/);
+  assert.match(packageSkill, /Dependabot worker issues expire after `14d`/);
+  assert.match(packageSkill, /control-plane workflows inherit `noop\.report-as-issue: false` from `shared\/control\.md`/);
+  assert.match(packageSkill, /must not redeclare an empty local `noop:` block because it overrides imported handler settings/);
+  assert.match(packageSkill, /Standalone workflows that do not import shared control must configure `safe-outputs\.noop\.report-as-issue: false` explicitly/);
+  assert.match(packageSkill, /Do not use sub-issue grouping as backlog control/);
+  assert.match(packageSkill, /Expiration is lifecycle cleanup, not duplicate prevention/);
   assert.match(packageSkill, /A model instruction alone is not sufficient when a handler-level safeguard exists/);
   assert.match(packageSkill, /Pull requests:[\s\S]*stable branch or machine-readable body marker[\s\S]*search open pull requests/);
   assert.match(packageSkill, /Comments and reviews:[\s\S]*do not post the same finding or status again/);
@@ -757,6 +764,39 @@ test("issue-creating workers use package and worker title prefixes and labels", 
       name,
     );
   }
+});
+
+test("workflow issue outputs are bounded, deduplicated, and centrally quiet on no-op", () => {
+  const sharedSource = workflow("shared/control.md");
+  const sharedFrontmatter = /^---\n([\s\S]*?)\n---/.exec(sharedSource)?.[1];
+  assert.ok(sharedFrontmatter, "shared control must have frontmatter");
+  assert.equal(parse(sharedFrontmatter)["safe-outputs"].noop["report-as-issue"], false);
+
+  for (const name of readdirSync(workflowsDirectory).filter((entry) => entry.endsWith(".md"))) {
+    const source = workflow(name);
+    const frontmatter = /^---\n([\s\S]*?)\n---/.exec(source)?.[1];
+    assert.ok(frontmatter, `${name} must have frontmatter`);
+    const config = parse(frontmatter);
+    const safeOutputs = config["safe-outputs"] ?? {};
+    const issue = safeOutputs["create-issue"];
+    if (issue) {
+      assert.equal(issue["deduplicate-by-title"], true, name);
+      assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
+      assert.ok(Number.isInteger(issue.max) && issue.max > 0, `${name} must bound create-issue max`);
+      assert.ok(typeof issue["title-prefix"] === "string" && issue["title-prefix"].length > 0, `${name} must prefix issue titles`);
+    }
+
+    const importsControl = config.imports?.some((entry) => entry.uses === "shared/control.md");
+    if (importsControl) {
+      assert.equal(safeOutputs.noop, undefined, `${name} must inherit shared noop policy without overriding it`);
+    } else if (safeOutputs.noop) {
+      assert.equal(safeOutputs.noop["report-as-issue"], false, name);
+    }
+  }
+
+  const project = JSON.parse(workflow("aw.json"));
+  assert.equal(project.maintenance.action_failure_issue_expires, 24);
+  assert.equal(parse(/^---\n([\s\S]*?)\n---/.exec(workflow("docs-explanatory-diagrams.md"))[1])["safe-outputs"].noop["report-as-issue"], false);
 });
 
 test("self-care pages health worker creates a fix PR instead of a report issue", () => {
@@ -1017,6 +1057,38 @@ test("package manifests exclude repository-only tests", () => {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }
+});
+
+test("focused package manifests do not cross-own package files", () => {
+  const manifestPaths = readdirSync(root)
+    .map((name) => join(name, "aw.yml"))
+    .filter((relativePath) => relativePath !== "aw.yml" && existsSync(join(root, relativePath)))
+    .sort();
+  const destinations = new Map();
+
+  for (const relativePath of manifestPaths) {
+    const packageName = relativePath.split("/")[0];
+    const manifest = parse(readFileSync(join(root, relativePath), "utf8"));
+    const files = [
+      ...(manifest.includes ?? []).map((entry) => typeof entry === "string" ? {
+        source: entry,
+        destination: entry,
+      } : entry),
+      ...(manifest.resources ?? []),
+    ];
+
+    for (const file of files) {
+      const owners = destinations.get(file.destination) ?? [];
+      owners.push(`${packageName}:${file.source}`);
+      destinations.set(file.destination, owners);
+    }
+  }
+
+  const duplicateOwners = [...destinations.entries()]
+    .filter(([, owners]) => owners.length > 1)
+    .map(([destination, owners]) => `${destination} <= ${owners.join(", ")}`)
+    .sort();
+  assert.deepEqual(duplicateOwners, [], "package manifests must not declare the same destination from multiple packages");
 });
 
 test("root package keeps GitHub App setup opt-in", () => {
@@ -2226,7 +2298,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /colorScheme: "dark"/);
   assert.match(source, /prefers-reduced-motion/);
   assert.match(source, /safe-outputs:\n\s+allowed-domains:\n\s+- githubnext\.github\.io\n\s+create-issue:/);
-  assert.match(source, /create-issue:\n\s+target-repo:.*\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
+  assert.match(source, /create-issue:\n\s+target-repo:.*\n\s+deduplicate-by-title: true\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
   assert.match(source, /labels: \[self-care, self-care:accessibility-checker\]/);
   assert.match(source, /close-older-key: self-care-accessibility-checker/);
   assert.match(source, /Begin the issue body directly with a concise, unheaded executive summary/);
@@ -2656,7 +2728,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     }
     for (const manifest of ["aw.yml", "activity/aw.yml", "aw-doctor/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
-      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll("v0.89.4", "v0.89.3"));
+      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll(ghAwVersion, "v0.89.4"));
     }
     execFileSync("git", ["init", "--quiet"], { cwd: temporaryRoot });
 
@@ -3007,6 +3079,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
 
 test("Dashboard package supports embedded and explicit standalone deployment", () => {
   const rootManifest = readFileSync(join(root, "aw.yml"), "utf8");
+  const activityManifest = readFileSync(join(root, "activity", "aw.yml"), "utf8");
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
@@ -3111,7 +3184,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
   assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 2);
   assert.doesNotMatch(activityWorkflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
-  assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
+  assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);
   assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
   assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
@@ -3168,6 +3241,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
     ".github/workflows/cao-maintenance.yml",
   ]);
   assert.deepEqual(activityManifest.resources, [
+    { source: "cao.mjs", destination: ".github/aw/activity/cao.mjs" },
     { source: "actions-context.mjs", destination: ".github/aw/activity/actions-context.mjs" },
     { source: "actions-log.mjs", destination: ".github/aw/activity/actions-log.mjs" },
     { source: "control-settings.mjs", destination: ".github/aw/activity/control-settings.mjs" },

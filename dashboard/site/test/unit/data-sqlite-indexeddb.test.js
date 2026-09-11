@@ -142,7 +142,7 @@ describe('SQLite IndexedDB compatibility layer', () => {
 
   it('ingests and queries gh-aw logs across separate Node.js processes', () => {
     const filename = temporaryDatabase();
-    const script = resolve('scripts/ingest-gh-aw-logs.mjs');
+    const script = resolve('../../activity/cao.mjs');
     const context = resolve('test/fixtures/gh-aw-logs/context.json');
     const logs = resolve('test/fixtures/gh-aw-logs/run-303');
 
@@ -181,7 +181,7 @@ describe('SQLite IndexedDB compatibility layer', () => {
 
   it('ingests cached JSONL with collection context across separate Node.js processes', () => {
     const filename = temporaryDatabase();
-    const script = resolve('scripts/ingest-gh-aw-logs.mjs');
+    const script = resolve('../../activity/cao.mjs');
     const input = resolve('test/fixtures/gh-aw-logs/cached-v2.jsonl');
     const context = resolve('test/fixtures/gh-aw-logs/cached-v2-context.json');
 
@@ -248,7 +248,7 @@ describe('SQLite IndexedDB compatibility layer', () => {
   it('preserves backfilled history when retention is all', () => {
     const filename = temporaryDatabase();
     const directory = join(filename, '..');
-    const script = resolve('scripts/ingest-gh-aw-logs.mjs');
+    const script = resolve('../../activity/cao.mjs');
     /** @param {number} databaseId @param {string} timestamp */
     const input = (databaseId, timestamp) => JSON.stringify({
       schema_version: 2,

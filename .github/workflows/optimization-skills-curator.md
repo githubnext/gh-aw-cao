@@ -112,6 +112,7 @@ tools:
 safe-outputs:
   create-issue:
     expires: 30d
+    deduplicate-by-title: true
     title-prefix: "[optimization:skills-curator] "
     labels: [optimization, optimization:skills-curator]
     close-older-issues: true

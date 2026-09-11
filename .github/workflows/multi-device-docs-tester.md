@@ -38,11 +38,13 @@ safe-outputs:
       if-no-files: ignore
   create-issue:
     title-prefix: "[multi-device-docs] "
+    deduplicate-by-title: true
     close-older-issues: true
     close-older-key: multi-device-docs-tester
     max: 1
     expires: 3d
   noop:
+    report-as-issue: false
 
 network:
   allowed:
@@ -263,6 +265,8 @@ No manual server cleanup is required. The server process will be cleaned up auto
 ## Summary
 
 Always finish with exactly one result safe output: one `create_issue` or `noop`. An `upload_artifact` request containing captured screenshots may precede that final result output.
+
+Before creating an issue, search all open `[multi-device-docs]` issues. Use the canonical unprefixed subject `Documentation device compatibility requires attention`; keep devices, dates, counts, severity, and run-specific measurements in the body. If an open issue already represents the findings, call `noop` instead of creating another issue.
 
 ### Output Format
 

@@ -108,7 +108,6 @@ safe-outputs:
     max-patch-size: 10240
     allowed-files:
       - "specs/dashboard-data.md"
-  noop:
 
 pre-agent-steps:
   - name: Download deployed dashboard data

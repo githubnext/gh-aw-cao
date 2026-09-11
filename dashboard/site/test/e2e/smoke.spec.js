@@ -198,6 +198,35 @@ test('mobile Catch Up completes with persistent Done, Later, Open, and Notificat
     .toHaveAttribute('href', 'https://github.com/githubnext/mobile/actions/runs/42');
 });
 
+test('mobile shell shows large overview actions and moves other views into the hamburger', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+      const documentModel = ${JSON.stringify(documentModel)};
+      document.querySelector('#root').append(renderDashboard({ document: documentModel, sources: {} }));
+    </script>
+  `);
+
+  const root = page.locator('.dashboard-root');
+  const primaryNav = page.locator('.primary-nav');
+  const overviewAction = page.locator('[data-nav-page-id="overview"]');
+  await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(primaryNav).toHaveCSS('display', 'flex');
+  await expect(overviewAction).toHaveCSS('min-height', '52px');
+  await expect(overviewAction.locator('.nav-label')).toBeHidden();
+
+  await page.locator('.mobile-nav-menu > summary').click();
+  await page.locator('[data-mobile-nav-page-id="cost"]').click();
+
+  await expect(root).not.toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(primaryNav).toHaveCSS('display', 'none');
+  await expect(page.locator('[data-mobile-nav-page-id="overview"]')).toHaveAttribute('href', '#page-overview');
+});
+
 test('production pages expose a responsive executive chart', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
@@ -393,6 +422,11 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
+  const columnHeaders = view.locator('thead > tr:first-child > th');
+  const expectAlignedColumnHeaders = async () => {
+    const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
+    expect(Math.max(...headerTops) - Math.min(...headerTops)).toBeLessThanOrEqual(1);
+  };
   await expect(page.getByRole('heading', { name: 'Runs', level: 1 })).toBeVisible();
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
@@ -412,9 +446,11 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect(summaryRow).not.toHaveClass(/table-summary-collapsed/);
   await expect(view.locator('.custom-table tbody tr')).toHaveCount(2);
   await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
+  await expectAlignedColumnHeaders();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(table).toBeVisible();
+  await expectAlignedColumnHeaders();
   await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
@@ -702,6 +738,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   await horizonFilter.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.mobile-nav-menu > summary').click();
   await expect(horizonFilter.locator('.time-window-control')).toBeHidden();
   await horizonFilter.locator('.horizon-toggle').click();
   await expect(horizonFilter.locator('.time-window-control')).toBeVisible();
@@ -1493,6 +1530,9 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
   await expect(details).toContainText('Duration1 week');
 
   await page.setViewportSize({ width: 393, height: 852 });
+  await page.locator('.mobile-nav-menu > summary').click();
+  await expect(details).toBeHidden();
+  await trigger.click();
   await expect(details).toBeVisible();
   await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
@@ -1932,8 +1972,8 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
     const expandedScrollBox = await scroll.boundingBox();
     assert(expandedScrollBox);
-    expect(expandedScrollBox.x).toBeLessThanOrEqual(1);
-    expect(expandedScrollBox.width).toBeGreaterThanOrEqual(998);
+    expect(expandedScrollBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width);
+    expect(expandedScrollBox.width).toBeCloseTo(initialScrollBox.width, 0);
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     await scroll.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
@@ -1974,8 +2014,92 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
   });
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
   await expect(page.locator('.top-nav')).toBeHidden();
-  await expect(page.locator('.org-sidebar')).toBeHidden();
+  await expect(page.locator('.org-sidebar')).toBeVisible();
   expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(890);
+});
+
+test('full-view scrolling with a small overscroll range does not jitter the app chrome', async ({ page }) => {
+  const presenterModuleUrl = buildPresenterModuleUrl();
+  await page.setViewportSize({ width: 1000, height: 900 });
+
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
+
+      const metadata = {
+        'source-id': 'small-overscroll-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-01T03:00:00Z',
+        'retrieved-at': '2026-09-01T03:01:00Z',
+        'coverage-start': '2026-08-31T03:00:00Z',
+        'coverage-end': '2026-09-01T03:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = {
+        inventory: {
+          source: 'inventory',
+          rows: Array.from({ length: 20 }, (_, index) => ({
+            organization: 'githubnext',
+            repository: \`repository-\${index + 1}\`
+          })),
+          metadata
+        }
+      };
+      const dashboardDocument = {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'small-overscroll-layout',
+          title: 'Small Overscroll Layout',
+          pages: [{
+            id: 'inventory',
+            kind: 'custom',
+            title: 'Inventory',
+            views: [{
+              id: 'inventory-list',
+              title: 'Inventory list',
+              data: { source: 'inventory' },
+              mark: 'table',
+              controls: 'interactive',
+              layout: 'full-view',
+              encoding: {
+                columns: [
+                  { field: 'organization', type: 'nominal' },
+                  { field: 'repository', type: 'nominal' }
+                ]
+              }
+            }]
+          }],
+          navigation: [{ label: 'Explore', pages: ['inventory'] }]
+        }
+      };
+
+      document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
+    </script>
+  `);
+
+  const view = page.locator('[data-view-layout="full-view"]');
+  const dashboardRoot = page.locator('.dashboard-root');
+  const scroll = view.locator('.table-scroll');
+  await expect(view).toHaveCount(1);
+
+  // Force a small scrollable range (below the minimum jitter-guard threshold) regardless of
+  // the exact table height rendered by the browser, so the test is deterministic.
+  await scroll.evaluate((element) => {
+    Object.defineProperty(element, 'scrollHeight', { value: element.clientHeight + 20, configurable: true });
+  });
+
+  for (const scrollTop of [10, 30, 10, 30, 0]) {
+    await scroll.evaluate((element, top) => {
+      element.scrollTop = top;
+      element.dispatchEvent(new Event('scroll'));
+    }, scrollTop);
+    await expect(dashboardRoot).not.toHaveClass(/dashboard-full-view-scrolled/);
+    await expect(page.locator('.top-nav')).toBeVisible();
+    await expect(page.locator('.org-sidebar')).toBeVisible();
+  }
 });
 
 test('pie charts match the report layout at medium viewport widths', async ({ page }) => {
@@ -2536,6 +2660,10 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await expect(filterBar.getByRole('link', { name: 'Export JSON' })).toHaveCount(0);
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('2');
 
+  await page.getByRole('heading', { name: 'Cost' }).click();
+  await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
+  await filterBar.locator('.horizon-toggle').click();
+
   await filterBar.getByRole('checkbox', { name: 'review' }).uncheck();
   await expect(filterBar.locator('.count-badge')).toHaveText('2');
   await expect(page.locator('[data-page-id="cost"] [data-metric-value="invocation"]')).toHaveText('1');
@@ -2547,6 +2675,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await page.setViewportSize({ width: 400, height: 900 });
   expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
+  await page.locator('.mobile-nav-menu > summary').click();
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
   expect(horizonBox).not.toBeNull();
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
@@ -3568,7 +3697,9 @@ test('workflow page template follows its JSON-declared route and renders attribu
       document.querySelector('#root').append(renderDashboard({ document: dashboardDocument, sources }));
     </script>
   `);
-  await page.locator('#page-workflow-detail .custom-table tbody a').first().click();
+  const reportLink = page.locator('#page-workflow-detail .custom-table tbody a').first();
+  await expect(reportLink).toHaveAttribute('href', '#page-outcome-detail?outcome=report-1');
+  await reportLink.press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Debug ambient context workflow failure');
   await expect(page.locator('.outcome-meta a', { hasText: 'Ambient Context' })).toHaveAttribute(
     'href',
@@ -3971,7 +4102,7 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
 });
 
-test('phone navigation uses icon shortcuts and a full-label view menu without horizontal scrolling', async ({ page }) => {
+test('phone navigation uses overview actions and a full-label view menu without horizontal scrolling', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -4009,7 +4140,9 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   const historyBack = page.getByRole('button', { name: 'Go back' });
   await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
+  await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(activeItem.locator('.nav-label')).toBeHidden();
+  await expect(activeItem).toHaveCSS('min-height', '52px');
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
   await expect(shortcuts).toHaveCount(6);
   await expect(shortcuts.nth(4)).toBeVisible();
@@ -4017,7 +4150,7 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await expect(shortcuts.nth(5)).toBeHidden();
   await expect(page.locator('.nav-section').first()).toHaveCSS('flex-direction', 'row');
   await expect(page.locator('.nav-section-items').first()).toHaveCSS('flex-direction', 'row');
-  await expect(page.locator('.primary-nav')).not.toHaveCSS('overflow-x', 'auto');
+  await expect(page.locator('.primary-nav')).toHaveCSS('overflow-x', 'auto');
 
   const viewMenuButton = page.getByRole('button', { name: 'Select view' });
   await expect(viewMenuButton).toHaveCSS('border-radius', '50%');
@@ -4030,6 +4163,8 @@ test('phone navigation uses icon shortcuts and a full-label view menu without ho
   await menu.getByText('Cost & efficiency', { exact: true }).click();
   await expect(menu).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Cost & efficiency', level: 1 })).toBeVisible();
+  await expect(page.locator('.dashboard-root')).not.toHaveClass(/dashboard-mobile-overview-actions/);
+  await expect(page.locator('.primary-nav')).toHaveCSS('display', 'none');
   await expect(historyBack).toBeVisible();
   await expect(historyBack).toHaveCSS('border-radius', '50%');
   await expect(historyBack).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');

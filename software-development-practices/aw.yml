@@ -1,9 +1,8 @@
 name: Dev Practices
 description: Evidence-led repository guidance based on GitHub Well-Architected and the NIST Secure Software Development Framework.
-min-version: v0.89.4
+min-version: v0.89.5
 experimental: true
 includes:
-  - .github/workflows/shared/control.md
   - .github/workflows/software-development-practices.md
   - .github/workflows/software-development-practices-github-well-architected.md
   - .github/workflows/software-development-practices-nist-ssdf.md

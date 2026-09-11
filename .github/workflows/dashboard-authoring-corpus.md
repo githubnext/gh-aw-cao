@@ -54,6 +54,7 @@ safe-outputs:
       - ".github/skills/generate-dashboard-ir/corpus/examples/*.json"
       - ".github/skills/generate-dashboard-ir/corpus/examples/*.dashboard.yml"
   noop:
+    report-as-issue: false
 features:
   gh-aw-detection: true
 pre-agent-steps:

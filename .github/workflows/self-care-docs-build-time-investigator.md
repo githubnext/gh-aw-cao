@@ -104,7 +104,6 @@ safe-outputs:
     deduplicate-by-title: true
     max: 1
     expires: 14d
-  noop:
 ---
 
 {{#runtime-import? .github/cao/self-care.md}}

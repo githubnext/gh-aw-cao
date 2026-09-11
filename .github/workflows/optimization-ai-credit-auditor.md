@@ -114,6 +114,7 @@ tools:
 safe-outputs:
   create-issue:
     expires: 3d
+    deduplicate-by-title: true
     title-prefix: "[optimization:ai-credit-auditor] "
     labels: [optimization, optimization:ai-credit-auditor]
     max: 1

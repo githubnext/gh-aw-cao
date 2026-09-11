@@ -117,6 +117,7 @@ tools:
 safe-outputs:
   create-issue:
     expires: 30d
+    deduplicate-by-title: true
     title-prefix: "[optimization:agents-md-curator] "
     labels: [optimization, optimization:agents-md-curator]
     close-older-issues: true
