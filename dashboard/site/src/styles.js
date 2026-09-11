@@ -1944,8 +1944,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-nav-menu > summary::-webkit-details-marker { display: none; }
   .mobile-nav-menu > summary:hover, .mobile-nav-menu[open] > summary { background: var(--neutral-muted); }
   .mobile-nav-menu-list { width: min(280px, calc(100vw - 24px)); max-height: min(520px, calc(100vh - 140px)); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset) 45%, transparent); }
-  .mobile-nav-menu-list a { width: 100%; min-height: 40px; flex: none; justify-content: flex-start; gap: 10px; padding: 8px; }
-  .mobile-nav-menu-list a[aria-current="page"] { background: var(--neutral-muted); }
+  .mobile-nav-menu-list a { width: 100%; min-height: 40px; display: flex; flex: none; align-items: center; justify-content: flex-start; gap: 10px; padding: 8px; border-radius: 6px; color: var(--fg); font-weight: 500; text-decoration: none; }
+  .mobile-nav-menu-list a > .octicon { flex: none; color: var(--muted); }
+  .mobile-nav-menu-list a:hover { background: var(--neutral-muted); }
+  .mobile-nav-menu-list a[aria-current="page"] { background: var(--neutral-muted); font-weight: 600; }
   .mobile-nav-section-label { margin: 8px 8px 2px; color: var(--muted); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .mobile-nav-section-label:first-child { margin-top: 2px; }
   .app-main > .top-nav { display: none; }
