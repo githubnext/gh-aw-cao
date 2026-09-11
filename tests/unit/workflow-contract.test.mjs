@@ -787,10 +787,15 @@ test("workers inherit human-first progressive report disclosure", () => {
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+role: worker$/m.test(source));
 
-  assert.match(packageSkill, /begin every durable output directly with a concise, unheaded executive summary/);
+  assert.match(packageSkill, /Start directly with a concise, unheaded executive summary/);
   assert.doesNotMatch(packageSkill, /### Executive Summary/);
-  assert.match(packageSkill, /immediately expose one clear `\*\*Action:\*\*` with an owner and acceptance check/);
-  assert.match(packageSkill, /non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details>` sections/);
+  assert.match(packageSkill, /states what happened, the decision-relevant result, critical findings, and key metrics/);
+  assert.match(packageSkill, /Immediately follow the summary with one clear `\*\*Action:\*\*` sentence naming who should do what next and the acceptance check/);
+  assert.match(packageSkill, /non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details>/);
+  assert.match(packageSkill, /`\> \[!NOTE\]` for neutral status/);
+  assert.match(packageSkill, /`\> \[!WARNING\]` for warnings/);
+  assert.match(packageSkill, /`\> \[!CAUTION\]` for high-risk or blocking findings/);
+  assert.match(packageSkill, /Do not use emoji severity markers/);
   assert.match(sharedControl, /Begin directly with a short, plain-language executive summary/);
   assert.match(sharedControl, /do not add a heading for this opening summary/);
   assert.match(sharedControl, /Immediately follow it with one visible `\*\*Action:\*\*` sentence that says who should do what next and the acceptance check/);

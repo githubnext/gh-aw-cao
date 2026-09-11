@@ -141,9 +141,18 @@ Create at least one `.github/workflows/<package>-<worker>.md`. Every worker must
 - when a worker creates an issue, require it to evaluate the potential follow-up actions, select the single most important action with the highest expected return on investment, and expose one `**Action:**` sentence naming who should do what next and the acceptance check. When the action can be delegated safely, tell the maintainer to assign the issue to Copilot and place the clear, imperative prompt in the exact progressive-disclosure landmark `<details><summary><b>Agent prompt</b></summary> ... </details>` so a human can review the issue before using the prompt for an agentic run; otherwise name the required human reviewer and decision, or say `**Action:** None.` when no action remains
 - no `evals` configuration; use deterministic graders for worker measurement
 - instructions that treat repository content as untrusted, consume `/tmp/gh-aw/agent/control-precompute.json`, define success/no-op behavior, and preserve control-plane correlation data in durable outputs
-- the human-facing report contract inherited from `shared/control.md`: begin every durable output directly with a concise, unheaded executive summary, immediately expose one clear `**Action:**` with an owner and acceptance check, keep only critical findings visible, and put non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details>` sections
+- the human-facing report contract inherited from `shared/control.md` and the formatting rules below
 
 Use a dedicated `target/` checkout when the worker must inspect a target repository while safe outputs land elsewhere. Add package-specific inputs only after the standard envelope.
+
+### Worker Report Formatting
+
+Follow the GitHub/gh-aw report conventions for every human-facing durable worker output:
+
+1. Start directly with a concise, unheaded executive summary that states what happened, the decision-relevant result, critical findings, and key metrics.
+2. Immediately follow the summary with one clear `**Action:**` sentence naming who should do what next and the acceptance check. Use `**Action:** None.` when no action remains.
+3. Keep only the summary, action, and critical findings visible. Put non-essential background, verbose evidence, logs, secondary metrics, and per-item breakdowns in clearly named `<details><summary>...</summary>...</details>` sections.
+4. Use GitHub alerts for callouts: `> [!NOTE]` for neutral status, `> [!WARNING]` for warnings, and `> [!CAUTION]` for high-risk or blocking findings. Do not use emoji severity markers.
 
 ### Worker Value
 
@@ -198,7 +207,7 @@ Before finishing:
 12. Run `gh aw compile <workflow.md>` for every new orchestrator and worker. Then run the repository's narrowest relevant tests or validation command if one exists.
 13. Review the generated diff for accidental lockfile churn, secret exposure, unsafe live defaults, fabricated value evidence, and deviations from the nearest package that are not justified by the strategy.
 14. Confirm every orchestrator and worker uses the same optional `.github/cao/<package-slug>.md` runtime import and that no package-owned steering file was added.
-15. Confirm every worker preserves the inherited report contract: the output begins directly with a concise executive summary without a heading, critical information stays visible, and non-essential background and supporting detail use `<details>` sections.
+15. Confirm every worker preserves the inherited report contract: the output begins directly with a concise executive summary of what happened without a heading; one clear `**Action:**` follows it; critical information stays visible; non-essential background and supporting detail use `<details>` sections; and callouts use `> [!NOTE]`, `> [!WARNING]`, or `> [!CAUTION]` instead of emoji severity markers.
 16. For workflows that consume recent run history, confirm they prefer a valid activity cache, preserve a bounded API fallback for cache misses or incomplete coverage, and do not publish or mutate the shared cache themselves.
 17. Confirm orchestrator concurrency is package-singleton, dispatch tuples are unique per run, worker concurrency is repository-scoped, and output-specific idempotency prevents retries or later runs from creating equivalent repository items.
 
