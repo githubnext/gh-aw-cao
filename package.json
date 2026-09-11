@@ -1,7 +1,6 @@
 {
   "name": "central-agentic-ops",
   "private": true,
-  "main": "com.github.copilot/extensions/cao-dashboard/extension.mjs",
   "scripts": {
     "install:gh-aw": "curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- v0.89.4",
     "setup:github-apps": "node .github/cao/setup-github-apps.mjs",

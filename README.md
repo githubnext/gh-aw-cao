@@ -20,22 +20,9 @@ Ready to explore? [See the docs](https://githubnext.github.io/gh-aw-cao/).
 
 ## Agent plugin
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the `create-ops-package` skill to compatible clients and adds a Central Agentic Ops dashboard canvas to GitHub Copilot.
+This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `create-ops-package` skill.
 
-Install it in GitHub Copilot CLI:
-
-```shell
-copilot plugin install githubnext/gh-aw-cao
-```
-
-For Claude Code, add this repository as a marketplace and install the plugin:
-
-```text
-/plugin marketplace add githubnext/gh-aw-cao
-/plugin install central-agentic-ops@central-agentic-ops
-```
-
-Invoke `create-ops-package` with an operational strategy and target-repository description. In the GitHub Copilot app, open the **Central Agentic Ops** canvas to load the current repository's deployed Pages site. Pass `repository` as `OWNER/REPOSITORY`, or pass an HTTPS `url`, to open another CAO deployment.
+Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `create-ops-package` with an operational strategy and target-repository description.
 
 ## GitHub Pages setup
 
