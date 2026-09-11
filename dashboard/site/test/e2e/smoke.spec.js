@@ -1532,11 +1532,16 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
   await page.locator('.mobile-nav-menu > summary').click();
   await expect(details).toBeVisible();
   await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
-  const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
+  const actionBoxes = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
     const bounds = item.getBoundingClientRect();
-    return Math.round(bounds.top + bounds.height / 2);
+    return { top: Math.round(bounds.top), left: bounds.left, right: bounds.right };
   }));
-  expect(new Set(actionCenters).size).toBe(1);
+  const actionTops = new Set(actionBoxes.map((box) => box.top));
+  expect(actionTops.size).toBe(actionBoxes.length);
+  for (const box of actionBoxes) {
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(393);
+  }
   const detailsBox = await details.boundingBox();
   expect(detailsBox).not.toBeNull();
   expect(detailsBox?.x).toBeGreaterThanOrEqual(0);
@@ -4109,6 +4114,7 @@ test('phone navigation uses overview actions and a full-label view menu without 
           dashboard: {
             id: 'phone-navigation-dashboard',
             title: 'Phone Navigation',
+            repository: 'githubnext/gh-aw-cao',
             pages: [
               { id: 'overview', kind: 'custom', title: 'Overview', icon: 'home', views: [] },
               { id: 'runs', kind: 'custom', title: 'Runs', icon: 'play', views: [] },
@@ -4151,6 +4157,10 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await viewMenuButton.click();
   const menu = page.locator('.mobile-nav-menu-list');
   await expect(menu).toBeVisible();
+  const menuActions = page.locator('.mobile-nav-menu-actions');
+  await expect(menuActions.locator('.repository-link .action-label')).toBeVisible();
+  await expect(menuActions.locator('.repository-link .action-label')).toHaveText('githubnext/gh-aw-cao');
+  await expect(menuActions.locator('.account-menu-avatar .action-label')).toBeVisible();
   await expect(menu.locator('.octicon-package')).toBeVisible();
   await expect(menu.getByText('Cost & efficiency', { exact: true })).toBeVisible();
   await menu.getByText('Cost & efficiency', { exact: true }).click();

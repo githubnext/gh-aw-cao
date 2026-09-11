@@ -1818,10 +1818,16 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .mobile-page-header .overview-header h1 { margin: 0; overflow: hidden; color: var(--fg); font-size: 1rem; font-weight: 600; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-nav-menu-actions { min-width: 0; display: flex; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--border-muted); }
-  .mobile-nav-menu-actions .report-actions { width: 100%; flex-wrap: wrap; position: static; margin-left: 0; gap: 6px; }
-  .mobile-nav-menu-actions .dashboard-horizon { max-width: 100%; }
-  .mobile-nav-menu-actions .horizon-summary { position: static; }
+  .mobile-nav-menu-actions .report-actions { width: 100%; flex-direction: column; flex-wrap: nowrap; position: static; margin-left: 0; gap: 2px; }
+  .mobile-nav-menu-actions .dashboard-horizon { width: 100%; max-width: 100%; }
+  .mobile-nav-menu-actions .horizon-summary { width: 100%; position: static; }
   .mobile-nav-menu-actions .horizon-tooltip { top: calc(100% + 4px); right: 0; left: auto; }
+  .mobile-nav-menu-actions .account-menu { width: 100%; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) { width: 100%; height: auto; min-height: 40px; flex: none; justify-content: flex-start; gap: 10px; padding: 8px; border-radius: 6px; }
+  .mobile-nav-menu-actions .account-menu-avatar { border-radius: 6px; }
+  .mobile-nav-menu-actions .account-menu-avatar-image { width: 20px; height: 20px; border-radius: 50%; }
+  .mobile-nav-menu-actions :is(.horizon-toggle, .repository-link, .account-menu-avatar) .action-label { position: static; width: auto; height: auto; overflow: visible; margin: 0; padding: 0; clip: auto; color: var(--fg); font-size: .8125rem; font-weight: 500; white-space: normal; }
+  .mobile-nav-menu-actions .account-menu-popover { width: 100%; position: static; margin-top: 4px; box-shadow: none; }
   .sidebar-toggle { display: none; }
   .sidebar-collapsed .org-sidebar { padding: 14px 12px 10px; }
   .sidebar-collapsed .sidebar-brand > span, .sidebar-collapsed .nav-label { display: initial; }
