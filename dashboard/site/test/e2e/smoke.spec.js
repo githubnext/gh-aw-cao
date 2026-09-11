@@ -692,6 +692,7 @@ test('control-plane readiness presents operational evidence in one lazy table', 
   await horizonFilter.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.mobile-nav-menu > summary').click();
   await expect(horizonFilter.locator('.time-window-control')).toBeHidden();
   await horizonFilter.locator('.horizon-toggle').click();
   await expect(horizonFilter.locator('.time-window-control')).toBeVisible();
@@ -1482,6 +1483,7 @@ test('DLS-DOC-014 horizon details are available in the expanded window picker', 
   await expect(details).toContainText('Duration1 week');
 
   await page.setViewportSize({ width: 393, height: 852 });
+  await page.locator('.mobile-nav-menu > summary').click();
   await expect(details).toBeVisible();
   await expect(page.locator('.report-footer .refresh-button')).toHaveCount(0);
   const actionCenters = await page.locator('.report-actions > *').evaluateAll((items) => items.map((item) => {
@@ -2536,6 +2538,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await page.setViewportSize({ width: 400, height: 900 });
   expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
+  await page.locator('.mobile-nav-menu > summary').click();
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
   expect(horizonBox).not.toBeNull();
   await expect(filterBar.locator('.filter-tuning-controls')).toBeHidden();
