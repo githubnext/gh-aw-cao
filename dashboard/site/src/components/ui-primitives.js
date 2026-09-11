@@ -387,6 +387,23 @@ export function renderDisclosure(className, summaryLabel, ...body) {
 }
 
 /**
+ * Renders the shared `<summary>` label plus "Show details" hint span pair
+ * used by disclosure summaries whose hint text swaps to "Hide details" via
+ * the `[open] .*-hint::after` CSS rule in `styles.js`. Shared by the package
+ * README resources panel and the supplemental custom-view disclosure toggle,
+ * both of which pair a title/label with a differently-classed hint span.
+ * @param {string | Node} label
+ * @param {string} hintClassName
+ * @returns {Node[]}
+ */
+export function renderDisclosureSummaryLabel(label, hintClassName) {
+  return [
+    typeof label === 'string' ? h('span', null, label) : label,
+    h('span', { className: hintClassName }, 'Show details')
+  ];
+}
+
+/**
  * Renders a `<details>` disclosure whose body is deferred until the panel is
  * first expanded, then cached for the life of the element. Shared by the
  * configuration policy tree (nested setting groups) and the notifications
