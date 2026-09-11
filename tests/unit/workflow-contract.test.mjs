@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.4";
+const ghAwVersion = "v0.89.5";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -2696,7 +2696,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     }
     for (const manifest of ["aw.yml", "activity/aw.yml", "aw-doctor/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
-      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll("v0.89.4", "v0.89.3"));
+      writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll(ghAwVersion, "v0.89.4"));
     }
     execFileSync("git", ["init", "--quiet"], { cwd: temporaryRoot });
 
