@@ -423,7 +423,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .metric-card-widget-review { --metric-card-color: var(--purple); }
 .metric-card-widget[href]:hover { background: color-mix(in srgb, var(--metric-card-color, var(--accent)) 12%, var(--canvas-subtle)); }
 .metric-card-widget:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.metric-card-widget-value { align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.metric-card-widget-value { min-height: 1em; align-self: center; color: var(--muted); font-size: 2.5rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
 .metric-card-widget-active .metric-card-widget-value { color: var(--metric-card-color); }
 .metric-card-widget-label { min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 600; line-height: 1.35; text-transform: uppercase; }
 .metric-card-widget-active .metric-card-widget-label { color: var(--fg); }
