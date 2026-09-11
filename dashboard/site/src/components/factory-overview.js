@@ -188,13 +188,26 @@ function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
   const baselinePoints = hasBaseline
     ? baselineAverages.map((value, index) => `${(index + 0.5) * (100 / 7)},${100 - (value / maximum * 100)}`).join(' ')
     : '';
-  return h(
+  const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, 'Select a day to view its summary.');
+  /** @type {HTMLButtonElement[]} */
+  const dayButtons = [];
+  /** @param {number} index */
+  const selectDay = (index) => {
+    const day = days[index];
+    if (!day) return;
+    for (const [buttonIndex, button] of dayButtons.entries()) {
+      button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
+    }
+    summary.textContent = `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}.`;
+  };
+  const section = h(
     'section',
     { className: 'factory-rhythm', 'aria-label': 'Successful Actions runs over the last seven observed days' },
     h(
       'div',
       { className: 'factory-rhythm-heading' },
-      h('span', {}, 'Factory rhythm')
+      h('span', {}, 'Factory rhythm'),
+      summary
     ),
     h('div', { className: 'factory-rhythm-bars' },
       ...(hasBaseline ? [h(
@@ -208,16 +221,50 @@ function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
           vectorEffect: 'non-scaling-stroke'
         }))
       )] : []),
-      ...days.map((day) => h(
-        'span',
-        { tabindex: '0', 'aria-label': `${day.label}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}` },
-        h('strong', { className: 'factory-rhythm-tooltip', role: 'tooltip', 'aria-hidden': 'true' }, formatCount(day.count)),
-        h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
-          h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
-        ),
-        h('small', {}, day.label)
-      )))
+      ...days.map((day, index) => {
+        const button = /** @type {HTMLButtonElement} */ (h(
+          'button',
+          {
+            className: 'factory-rhythm-day',
+            type: 'button',
+            'aria-label': `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`,
+            'aria-pressed': 'false',
+            onClick: () => selectDay(index)
+          },
+          h('strong', { className: 'factory-rhythm-tooltip', role: 'tooltip', 'aria-hidden': 'true' }, formatCount(day.count)),
+          h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
+            h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
+          ),
+          h('small', {}, day.label)
+        ));
+        dayButtons.push(button);
+        return button;
+      }))
   );
+  const selectedIndex = seedSelectedRhythmDay(days);
+  if (selectedIndex >= 0) selectDay(selectedIndex);
+  return section;
+}
+
+/** @param {{ label: string, date: string, count: number }[]} days */
+function seedSelectedRhythmDay(days) {
+  for (let index = days.length - 1; index >= 0; index -= 1) {
+    if (days[index].count > 0) return index;
+  }
+  return days.length - 1;
+}
+
+/** @param {Row[]} successfulRuns @param {number} referenceTime */
+function activityDays(successfulRuns, referenceTime) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const start = startOfDay(referenceTime) - (6 - index) * DAY_MS;
+    const end = start + DAY_MS;
+    return {
+      label: new Date(start).toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' }),
+      date: new Date(start).toISOString().slice(0, 10),
+      count: successfulRuns.filter((row) => rowTimestamp(row) >= start && rowTimestamp(row) < end).length
+    };
+  });
 }
 
 /** @param {Row[]} rows */
@@ -229,18 +276,6 @@ function latestOutcomes(rows) {
     if (!existing || rowTimestamp(row) >= rowTimestamp(existing)) latest.set(key, row);
   }
   return [...latest.values()].sort((left, right) => rowTimestamp(right) - rowTimestamp(left));
-}
-
-/** @param {Row[]} rows @param {number} referenceTime */
-function activityDays(rows, referenceTime) {
-  return Array.from({ length: 7 }, (_, index) => {
-    const start = startOfDay(referenceTime) - (6 - index) * DAY_MS;
-    const end = start + DAY_MS;
-    return {
-      label: new Date(start).toLocaleDateString('en', { weekday: 'short' }),
-      count: rows.filter((row) => rowTimestamp(row) >= start && rowTimestamp(row) < end).length
-    };
-  });
 }
 
 /** @param {number} timestamp */

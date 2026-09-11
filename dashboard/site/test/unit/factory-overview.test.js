@@ -74,13 +74,14 @@ it('summarizes retained Actions activity and useful outputs while routing failur
     'Value gain1Coming soon'
   ]);
   expect(rendered.querySelector('.factory-station-final .octicon-trophy')).not.toBeNull();
-  expect(rendered.querySelector('.factory-rhythm-heading')?.textContent).toBe('Factory rhythm');
+  expect(rendered.querySelector('.factory-rhythm-heading span')?.textContent).toBe('Factory rhythm');
   expect(rendered.querySelector('.factory-intro .factory-rhythm')).not.toBeNull();
-  expect(rendered.querySelectorAll('.factory-rhythm-bars > span')).toHaveLength(7);
-  expect(rendered.querySelectorAll('.factory-rhythm-bars > span[tabindex="0"]')).toHaveLength(7);
+  expect(rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')).toHaveLength(7);
+  expect(rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day[type="button"]')).toHaveLength(7);
   expect(rendered.querySelectorAll('.factory-rhythm-tooltip')).toHaveLength(7);
   expect(rendered.querySelectorAll('.factory-rhythm-comparison')).toHaveLength(1);
   expect(rendered.querySelectorAll('.factory-rhythm-comparison circle')).toHaveLength(7);
+  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toContain('Fri 2026-09-11: 2 successful runs.');
   expect(rendered.querySelector('.factory-status')).toBeNull();
   expect(rendered.querySelector('.factory-station:nth-child(2) strong a')?.getAttribute('href')).toBe('#page-runs?runs-runs-source.run-conclusion=success');
   expect(rendered.querySelector('.factory-station:nth-child(2) small a')?.getAttribute('href')).toBe('#page-runs?runs-runs-source.run-conclusion=failure');
@@ -135,6 +136,29 @@ it('counts canonical dispatch runs when the derived dispatch source is empty', (
   expect(rendered.querySelector('.factory-station:first-child')?.textContent).toBe('Repository1connected');
   expect(rendered.querySelector('.factory-rhythm-comparison')).toBeNull();
 });
+
+it('updates the factory rhythm day summary when selecting a bar', () => {
+  const rendered = renderFactoryOverview({
+    sources: {
+      outcomes: { source: 'outcomes', rows: [], metadata },
+      runs: {
+        source: 'runs',
+        rows: [
+          { run: '1', 'run-conclusion': 'success', 'started-at': '2026-09-09T09:00:00Z' },
+          { run: '2', 'run-conclusion': 'success', 'started-at': '2026-09-09T12:00:00Z' },
+          { run: '3', 'run-conclusion': 'success', 'started-at': '2026-09-11T10:00:00Z' }
+        ],
+        metadata
+      }
+    }
+  });
+  const dayButtons = [...rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
+  dayButtons[4]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 2 successful runs.');
+  expect(dayButtons[4]?.getAttribute('aria-pressed')).toBe('true');
+});
+
 it('reflects arity with declared plural text variables and falls back to built-in labels', () => {
   const singularSources = {
     outcomes: { source: 'outcomes', rows: [], metadata },

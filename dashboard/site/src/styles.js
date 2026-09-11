@@ -1443,10 +1443,12 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-intro .factory-rhythm { grid-template-columns: minmax(0, 1fr); align-self: stretch; gap: 16px; padding: 0; border: 0; background: transparent; }
 .factory-rhythm-heading { display: grid; gap: 5px; }
 .factory-rhythm-heading span { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
+.factory-rhythm-summary { margin: 0; color: var(--fg-muted); font-size: .75rem; }
 .factory-rhythm-heading strong { font-size: .875rem; }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
-.factory-rhythm-bars > span { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border-radius: 3px; outline: none; text-align: center; }
-.factory-rhythm-bars > span:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
+.factory-rhythm-bars > .factory-rhythm-day { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border: 0; border-radius: 3px; background: transparent; outline: none; text-align: center; cursor: pointer; }
+.factory-rhythm-bars > .factory-rhythm-day:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
+.factory-rhythm-bars > .factory-rhythm-day[aria-pressed='true'] .factory-rhythm-current { background: color-mix(in srgb, var(--accent) 72%, var(--purple)); }
 .factory-rhythm-bar-pair { height: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
 .factory-rhythm-bar-pair i { min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; }
 .factory-rhythm-current { width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
@@ -1455,8 +1457,8 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-comparison circle { fill: var(--canvas); stroke: var(--purple); stroke-width: 1.5; }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
 .factory-rhythm-tooltip { min-width: 30px; position: absolute; z-index: 2; top: -28px; left: 50%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 4px 12px color-mix(in srgb, var(--canvas-inset) 35%, transparent); color: var(--fg); font-size: .6875rem; line-height: 1; opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity 80ms linear, transform 80ms ease-out; }
-.factory-rhythm-bars > span:hover > .factory-rhythm-tooltip,
-.factory-rhythm-bars > span:focus > .factory-rhythm-tooltip { opacity: 1; transform: translate(-50%, 0); }
+.factory-rhythm-bars > .factory-rhythm-day:hover > .factory-rhythm-tooltip,
+.factory-rhythm-bars > .factory-rhythm-day:focus > .factory-rhythm-tooltip { opacity: 1; transform: translate(-50%, 0); }
 .factory-status { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 40px; border-top: 1px solid var(--border); background: var(--canvas-subtle); }
 .factory-status > div { display: flex; align-items: center; gap: 10px; }
 .factory-status > div > span { color: var(--success); }
