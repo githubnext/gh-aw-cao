@@ -69,6 +69,7 @@ export function renderTableRegion(options) {
   const sortable = options.sortable ?? Boolean(filterLabel);
   const interactive = hasRows && Boolean(filterLabel);
 
+  /** @param {TableFilterField & { values: string[] }} facet */
   const renderFacet = (facet) => h(
     'select',
     {

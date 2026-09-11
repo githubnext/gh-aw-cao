@@ -3816,6 +3816,8 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await expect(tableRows).toHaveCount(30);
   await expect(visibleRows).toHaveCount(25);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 25 of 30 results');
+  await expect(page.locator('thead th').filter({ has: page.locator('[data-table-facet="rollout-mode"]') })).toHaveCount(1);
+  await expect(page.getByRole('combobox', { name: 'Filter by Mode' })).toHaveValue('');
 
   await page.getByRole('button', { name: 'Show all rows' }).click();
   await expect(visibleRows).toHaveCount(30);
@@ -3826,11 +3828,13 @@ test('declarative tables expose report-style facets and progressive catalog disc
   await page.locator('[data-table-facet="rollout-mode"]').selectOption('review');
   await expect(visibleRows).toHaveCount(15);
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 15 of 15 results');
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain('workflow-catalog.rollout-mode=review');
 
   await page.getByRole('searchbox', { name: 'Filter Workflow catalog' }).fill('workflow-29');
   await expect(visibleRows).toHaveCount(1);
   await expect(visibleRows).toContainText('workflow-29');
   await expect(page.locator('.table-filter-result')).toHaveText('Showing 1 of 1 result');
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain('workflow-catalog.q=workflow-29');
 });
 
 test('DLS-SAFE-004 runtime links with embedded credentials, ftp schemes, and blank labels are not exposed in browser output', async ({ page }) => {
