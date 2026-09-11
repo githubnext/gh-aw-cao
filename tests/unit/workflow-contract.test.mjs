@@ -47,6 +47,28 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
   }
 });
 
+test("root package installs the agentic operations analysis skill and specification", () => {
+  const manifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
+  const resources = new Map(manifest.resources.map(({ source, destination }) => [source, destination]));
+  const skill = readFileSync(
+    join(root, ".github", "skills", "analyze-agentic-ops", "SKILL.md"),
+    "utf8",
+  );
+
+  assert.equal(
+    resources.get(".github/skills/analyze-agentic-ops/SKILL.md"),
+    ".github/skills/analyze-agentic-ops/SKILL.md",
+  );
+  assert.equal(
+    resources.get("docs/dashboard-language-specification.md"),
+    ".github/aw/specs/dashboard-language-specification.md",
+  );
+  assert.match(skill, /^---\nname: analyze-agentic-ops\n/);
+  assert.match(skill, /Sallie dashboard CLI/);
+  assert.match(skill, /dashboard\.queries/);
+  assert.match(skill, /built-in dashboard examples/);
+});
+
 test("catalog packages declare their current experimental maturity", () => {
   const manifests = [
     "aw.yml",

@@ -15,3 +15,7 @@ resources:
     destination: .github/aw/default-AGENTS.md
   - source: .github/aw/instructions.md
     destination: .github/aw/instructions.md
+  - source: .github/skills/analyze-agentic-ops/SKILL.md
+    destination: .github/skills/analyze-agentic-ops/SKILL.md
+  - source: docs/dashboard-language-specification.md
+    destination: .github/aw/specs/dashboard-language-specification.md
