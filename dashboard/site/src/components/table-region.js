@@ -71,15 +71,19 @@ export function renderTableRegion(options) {
 
   /** @param {TableFilterField & { values: string[] }} facet */
   const renderFacet = (facet) => h(
-    'select',
-    {
-      className: 'table-header-filter',
-      'aria-label': `Filter by ${facet.label}`,
-      'data-table-facet': facet.key,
-      'data-table-column-index': String(facet.columnIndex)
-    },
-    h('option', { value: '' }, facet.label),
-    ...facet.values.map((value) => h('option', { value }, value))
+    'span',
+    { className: 'table-header-filter-control' },
+    h(
+      'select',
+      {
+        className: 'table-header-filter',
+        'aria-label': `Filter by ${facet.label}`,
+        'data-table-facet': facet.key,
+        'data-table-column-index': String(facet.columnIndex)
+      },
+      h('option', { value: '' }, facet.label),
+      ...facet.values.map((value) => h('option', { value }, value))
+    )
   );
   const filterControls = interactive
     ? h(
