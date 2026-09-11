@@ -72,10 +72,14 @@ jobs:
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
+          REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
         run: |
           echo "Validating restored activity data"
           test -s "$REPORT_GH_AW_LOGS"
           test -s "$ACTIVITY_DATABASE"
+          test -s "$REPORT_CONTROL_SETTINGS"
+          test -s "$REPORT_INVENTORY_SOURCES"
 
       - name: Assess activity database health
         env:
@@ -93,14 +97,6 @@ jobs:
           echo "Assessing activity database health"
           node "$doctor_script" doctor --database "$ACTIVITY_DATABASE"
 
-      - name: Refresh authoritative control policy
-        run: |
-          echo "Refreshing authoritative control policy"
-          node "$DASHBOARD_REPORT_ROOT/control-settings.mjs" \
-            .github/cao/src/control.mjs \
-            .github/workflows/cao.json \
-            "$RUNNER_TEMP/cao-dashboard-control-settings.json"
-
       - name: Assemble Dashboard Language site
         env:
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}
@@ -109,7 +105,7 @@ jobs:
             echo "Building dashboard site from source layout"
             node dashboard/site/scripts/build.mjs \
               "$REPORT_OUTPUT" \
-              "$RUNNER_TEMP/cao-dashboard-control-settings.json"
+              "$RUNNER_TEMP/cao-activity/control-settings.json"
           else
             echo "Copying installed dashboard site"
             mkdir -p "$REPORT_OUTPUT"
@@ -117,13 +113,14 @@ jobs:
             echo "Configuring installed dashboard site"
             node "$DASHBOARD_REPORT_ROOT/configure-site.mjs" \
               "$REPORT_OUTPUT/index.html" \
-              "$RUNNER_TEMP/cao-dashboard-control-settings.json"
+              "$RUNNER_TEMP/cao-activity/control-settings.json"
             echo "Bundling installed dashboard definitions"
             node "$DASHBOARD_REPORT_ROOT/bundle-dashboards.mjs" \
               "$REPORT_OUTPUT/dashboard.json" \
               .github/aw/dashboards
           fi
           echo "Copying collected activity data"
+          cp "$RUNNER_TEMP/cao-activity/inventory-sources.json" "$REPORT_OUTPUT/inventory-sources.json"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" "$REPORT_OUTPUT/gh-aw-logs.sqlite"
 

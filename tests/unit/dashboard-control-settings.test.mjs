@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveDashboardControlSettings } from "../../dashboard/report/control-settings.mjs";
+import { resolveDashboardControlSettings } from "../../activity/control-settings.mjs";
 
 const options = {
   repository: "acme/control",

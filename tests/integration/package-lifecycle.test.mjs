@@ -29,7 +29,12 @@ const dependabotUpdateSource = focusedPackageSource("dependabot");
 const selfCarePackageSource = focusedPackageSource("self-care");
 const softwareDevelopmentPracticesPackageSource = focusedPackageSource("software-development-practices");
 const activityExpectedFiles = [
+  ".github/aw/activity/actions-context.mjs",
+  ".github/aw/activity/actions-log.mjs",
+  ".github/aw/activity/control-settings.mjs",
   ".github/aw/activity/gh-aw-logs.mjs",
+  ".github/aw/activity/inventory.mjs",
+  ".github/aw/activity/inventory-sources.mjs",
   ".github/workflows/activity.yml",
   ".github/workflows/cao-maintenance.yml",
 ];

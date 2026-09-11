@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { setActionsGlobals } from "../../activity/actions-context.mjs";
-import { actionsLog as log } from "../../activity/actions-log.mjs";
+import { setActionsGlobals } from "./actions-context.mjs";
+import { actionsLog as log } from "./actions-log.mjs";
 
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 

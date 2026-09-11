@@ -227,7 +227,7 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       const jsonl = sourceUrl.pathname.endsWith('.jsonl');
-      const sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
+      let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
       if (jsonl) {
         const response = await fetch(sourceUrl.href);
         if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
@@ -237,6 +237,16 @@ export function processDataRequest(request, signal) {
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined
         });
+        const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
+        const inventoryResponse = await fetch(inventoryUrl);
+        if (inventoryResponse.ok) {
+          sources = await inventoryResponse.json();
+          await ingestDashboardSources(indexedDB, sources, {
+            storage: globalThis.navigator?.storage
+          });
+        } else if (inventoryResponse.status !== 404) {
+          throw new Error(`Unable to load dashboard inventory sources: ${inventoryResponse.status}`);
+        }
       } else {
         await ingestDashboardSources(indexedDB, sources, {
           storage: globalThis.navigator?.storage

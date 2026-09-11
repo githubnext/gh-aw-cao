@@ -76,6 +76,29 @@ jobs:
           restore-keys: |
             cao-activity-v3-
 
+      - name: Collect dashboard inventory
+        env:
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
+          REPORT_INVENTORY: ${{ runner.temp }}/cao-activity/control-plane-inventory.json
+          REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
+        run: |
+          rm -f "$REPORT_CONTROL_SETTINGS" "$REPORT_INVENTORY" "$REPORT_INVENTORY_SOURCES"
+          if [[ -f activity/inventory-sources.mjs ]]; then
+            activity_root=activity
+          elif [[ -f .github/aw/activity/inventory-sources.mjs ]]; then
+            activity_root=.github/aw/activity
+          else
+            echo "Activity inventory collector is unavailable" >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/cao-activity"
+          node "$activity_root/control-settings.mjs" \
+            .github/cao/src/control.mjs \
+            .github/workflows/cao.json \
+            "$REPORT_CONTROL_SETTINGS"
+          node "$activity_root/inventory.mjs"
+          node "$activity_root/inventory-sources.mjs"
+
       - name: Download agentic workflow logs
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}

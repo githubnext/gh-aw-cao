@@ -18,10 +18,6 @@ resources:
     destination: .github/aw/dashboard/report/activity-collectors.mjs
   - source: report/text-utils.mjs
     destination: .github/aw/dashboard/report/text-utils.mjs
-  - source: report/control-settings.mjs
-    destination: .github/aw/dashboard/report/control-settings.mjs
-  - source: report/inventory.mjs
-    destination: .github/aw/dashboard/report/inventory.mjs
   - source: report/operational-values.mjs
     destination: .github/aw/dashboard/report/operational-values.mjs
   - source: report/operational-value-history.mjs

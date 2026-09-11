@@ -110,6 +110,7 @@ test("runActivity runs dashboard collection steps in order when enabled", async 
     ACTIVITY_LOGS: item.logsPath,
     GITHUB_TELEMETRY: item.telemetryPath,
     ACTIVITY_INDEXER: item.indexerPath,
+    ACTIVITY_ROOT: item.reportRoot,
     DASHBOARD_REPORT_ROOT: item.reportRoot,
     DASHBOARD_COLLECTION: "true",
     RUNNER_TEMP: item.root,

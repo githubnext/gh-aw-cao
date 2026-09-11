@@ -5,6 +5,7 @@ import {
   detectionObservationRows,
   transactionLogRows,
 } from "../../dashboard/report/dashboard-language-sources.mjs";
+import { buildInventoryDashboardSources } from "../../activity/inventory-sources.mjs";
 
 function detectionRun(runId, verdict, overrides = {}) {
   return {
@@ -41,6 +42,129 @@ function detectionJob(run, conclusion = "success") {
     },
   };
 }
+
+test("builds deployable package and workflow inventory sources", () => {
+  const generatedAt = "2026-09-11T00:00:00Z";
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt,
+    inventory: {
+      generatedAt,
+      workflows: [
+        {
+          id: "daily-ops",
+          name: "Daily Ops",
+          role: "orchestrator",
+          sourcePath: ".github/workflows/daily-ops.md",
+          compiled: true,
+          controlPackage: "daily-ops",
+          maxAiCredits: 100,
+        },
+        {
+          id: "daily-worker",
+          name: "Daily Worker",
+          role: "worker",
+          sourcePath: ".github/workflows/daily-worker.md",
+          compiled: true,
+          controlPackage: "daily-ops",
+          maxAiCredits: 200,
+        },
+      ],
+      bundles: [{
+        id: "daily-ops",
+        controlPackage: "daily-ops",
+        name: "Daily Operations",
+        description: "Daily operational checks.",
+        workflow: ".github/workflows/daily-ops.md",
+        compiled: true,
+        maxAiCredits: 100,
+        missingWorkers: [],
+        workers: [{
+          id: "daily-worker",
+          sourcePath: ".github/workflows/daily-worker.md",
+          compiled: true,
+          maxAiCredits: 200,
+        }],
+      }],
+    },
+    controlSettings: {
+      allowed_repositories: ["githubnext/control"],
+      packages: {
+        "daily-ops": {
+          icon: "clock",
+          mode: "review",
+          "rollout-percent": 25,
+          worker_policies: {
+            "daily-worker": { worker: "daily-worker", enabled: true },
+          },
+          target_policies: {
+            "githubnext/control": { mode: "live" },
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(sources.packages.rows.length, 1);
+  assert.deepEqual(sources.packages.rows[0], {
+    package: "daily-ops",
+    "package-name": "Daily Operations",
+    "package-description": "Daily operational checks.",
+    "package-icon": "clock",
+    "package-mode": "review",
+    "package-enabled": true,
+    "package-max-repositories": null,
+    "package-rollout-percent": 25,
+    "package-monthly-ai-credit-budget": null,
+    "package-aic-allowance": 300,
+    "package-worker-count": 1,
+    "package-inventory-warnings": 0,
+    "package-workers": [{ id: "daily-worker", workflow: "daily-worker", enabled: true, "max-mode": null }],
+    "package-targets": [{ repository: "githubnext/control", mode: "live" }],
+    "package-min-version": "",
+    "package-experimental": false,
+    "package-readme-path": "",
+    "package-readme": "",
+    "observed-at": generatedAt,
+  });
+  assert.deepEqual(
+    sources.workflows.rows.map((workflow) => ({
+      workflow: workflow.workflow,
+      package: workflow.package,
+      role: workflow["workflow-role"],
+    })),
+    [
+      { workflow: ".github/workflows/daily-ops.md", package: "daily-ops", role: "orchestrator" },
+      { workflow: ".github/workflows/daily-worker.md", package: "daily-ops", role: "worker" },
+    ],
+  );
+  assert.deepEqual(
+    sources.workflows.rows.find((workflow) => workflow.workflow === ".github/workflows/daily-worker.md"),
+    {
+      organization: "githubnext",
+      repository: "control",
+      package: "daily-ops",
+      "package-name": "Daily Operations",
+      "package-icon": "clock",
+      "package-aic-allowance": 300,
+      "package-worker-count": 1,
+      "package-inventory-warnings": 0,
+      "max-ai-credits": 200,
+      "package-description": "Daily operational checks.",
+      "package-rollout-percent": 25,
+      "package-targets": [{ repository: "githubnext/control", mode: "live" }],
+      "inventory-ready": true,
+      "admission-status": "authorized",
+      "admission-reason": "authorized",
+      workflow: ".github/workflows/daily-worker.md",
+      "workflow-name": "Daily Worker",
+      "workflow-role": "worker",
+      "workflow-active": "true",
+      "rollout-mode": "live",
+      "observed-at": generatedAt,
+    },
+  );
+});
 
 test("transaction logs retain a session when artifacts contain no timeline", () => {
   const rows = transactionLogRows({
