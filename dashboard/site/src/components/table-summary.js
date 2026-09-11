@@ -125,7 +125,7 @@ function addTableSummaryToggle(row) {
     for (const content of row.querySelectorAll('.table-summary-expanded')) content.toggleAttribute('hidden', !expanded);
     for (const content of row.querySelectorAll('.table-summary-compact')) content.toggleAttribute('hidden', expanded);
   });
-  firstCell.prepend(toggle);
+  firstCell.append(toggle);
 }
 
 /**
@@ -182,20 +182,26 @@ function renderColumnSummary(column) {
 
 /**
  * @param {RenderableTableColumnSummary} column
- * @returns {HTMLElement | null}
+ * @returns {Element | null}
  */
 function renderCompactColumnSummary(column) {
   if (column.kind === 'none') return null;
-  if (column.kind === 'empty') return renderTableSummaryEmpty(column.message);
+  if (column.kind === 'empty') return null;
   if (column.kind === 'boolean') {
     const observedCount = Math.max(0, column.count - column.missingCount);
     if (observedCount === 0) return null;
     const yesCount = Math.min(observedCount, Math.max(0, column.trueCount));
-    const entries = [
+    /** @type {Array<[string, number]>} */
+    const entries = [];
+    /** @type {Array<[string, number]>} */
+    const candidates = [
       ['yes', yesCount],
       ['no', Math.max(0, observedCount - yesCount)],
       ['skipped', Math.max(0, column.missingCount)]
-    ].filter(([, value]) => value > 0);
+    ];
+    for (const entry of candidates) {
+      if (entry[1] > 0) entries.push(entry);
+    }
     return h(
       'div',
       { className: 'table-summary-compact-chart' },
@@ -209,7 +215,7 @@ function renderCompactColumnSummary(column) {
     });
   }
   if (column.kind === 'temporal') return h('span', null, formatDuration(column.stop - column.start));
-  if (column.kind === 'count') return renderCountSummary(column.count);
+  if (column.kind === 'count') return h('span', null, formatCountNoun(column.count, 'item', 'items'));
   const leading = column.values[0];
   return leading
     ? h('span', { className: 'table-summary-compact-value', title: leading.label }, leading.label, h('strong', null, formatPercent(leading.ratio)))
