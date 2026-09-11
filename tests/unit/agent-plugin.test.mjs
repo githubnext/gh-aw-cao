@@ -11,7 +11,7 @@ import {
 
 const root = new URL("../../", import.meta.url);
 
-test("Agent Plugins manifest exposes the portable skill and Copilot namespace", async () => {
+test("Agent Plugins manifest exposes portable skills and Copilot namespace", async () => {
   const manifest = JSON.parse(await readFile(new URL("plugin.json", root), "utf8"));
 
   assert.equal(
@@ -19,8 +19,10 @@ test("Agent Plugins manifest exposes the portable skill and Copilot namespace", 
     "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   );
   assert.equal(manifest.name, "central-agentic-ops");
+  assert.match(manifest.description, /analyze activity data/);
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
   await readFile(new URL("skills/create-ops-package/SKILL.md", root), "utf8");
+  await readFile(new URL("skills/analyze-agentic-ops/SKILL.md", root), "utf8");
 });
 
 test("Copilot extension uses the current Canvas provider contract", async () => {
