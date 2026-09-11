@@ -29,7 +29,8 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
     const address = server.address();
     assert.ok(address && typeof address === "object");
     const { stdout } = await executeFile(process.execPath, [
-      path.resolve("scripts/download-deployed-dashboard-data.mjs"),
+      path.resolve("dashboard/site/scripts/ingest-gh-aw-logs.mjs"),
+      "download",
       "--url",
       `http://127.0.0.1:${address.port}/cao/gh-aw-logs.jsonl`,
       "--output",
