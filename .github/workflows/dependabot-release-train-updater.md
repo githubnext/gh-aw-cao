@@ -586,30 +586,52 @@ Every PR you create must include:
 ```markdown
 ## Dependency Release Train Summary
 
-### What changed
+Format every section below as a collapsed `<details>` block so the PR body favors progressive disclosure; keep only "What changed" expanded by default.
+
+<details open>
+<summary>What changed</summary>
+
 - Package/ecosystem:
 - Manifest(s):
 - Old version:
 - New version:
 - Update type: patch/minor/major/security/other
 
-### Why now
+</details>
+
+<details>
+<summary>Why now</summary>
+
 - Advisory, freshness, failing CI, requested command, or repository drift.
 
-### Risk assessment
+</details>
+
+<details>
+<summary>Risk assessment</summary>
+
 - Runtime/dev/build/CI scope:
 - Direct/transitive:
 - Reachability:
 
-### Validation
+</details>
+
+<details>
+<summary>Validation</summary>
+
 - Commands run:
 - Result:
 - Remaining gaps:
 
-### Control Plane
+</details>
+
+<details>
+<summary>Control Plane</summary>
+
 - Correlation ID:
 - Central repo:
 - Run URL:
+
+</details>
 
 When `bundle_id` is present, begin the PR body with:
 
@@ -631,25 +653,41 @@ Set merge candidate to `yes` only for a non-major update with no unresolved secu
 - Sensitive surface area:
 - Breaking-change notes:
 
-### Validation
+<details>
+<summary>Validation</summary>
+
 - Commands run:
 - Results:
 - Limitations:
 
-### Observability notes
+</details>
+
+<details>
+<summary>Observability notes</summary>
+
 - OpenTelemetry evidence:
 - Runtime confidence:
 - Follow-up needed:
 
-### Reviewer checklist
+</details>
+
+<details>
+<summary>Reviewer checklist</summary>
+
 - [ ] CI passes
 - [ ] CODEOWNERS or service owners reviewed
 - [ ] Security-sensitive areas approved, if applicable
 - [ ] Deployment/canary owner confirms runtime health, if needed
 
-### Rollback guidance
+</details>
+
+<details>
+<summary>Rollback guidance</summary>
+
 - Revert this PR or pin the previous package/container version.
 - Note any lockfile or manifest files that must be reverted together.
+
+</details>
 ```
 
 ## Comment content requirements
