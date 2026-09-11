@@ -759,7 +759,8 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                 'aria-label': 'Open settings menu',
                 title: 'Settings'
               },
-              octicon('gear')
+              octicon('gear'),
+              h('span', { className: 'sr-only action-label' }, 'Settings')
             ),
             h(
               'div',
