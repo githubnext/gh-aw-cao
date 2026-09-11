@@ -2422,7 +2422,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await filterBar.locator('.horizon-toggle').click();
   const filterInput = filterBar.getByRole('searchbox', { name: 'Current filters' });
   await expect(filterInput).toHaveValue('');
-  await expect(filterBar.getByRole('combobox', { name: 'Time window' })).toHaveValue('1w');
+  await expect(filterBar.getByRole('combobox', { name: 'Time window' })).toHaveValue('all');
   await expect(filterBar.getByRole('checkbox')).toHaveCount(3);
   expect(await filterBar.getByRole('checkbox').evaluateAll(
     (inputs) => inputs.every((input) => /** @type {HTMLInputElement} */ (input).checked)

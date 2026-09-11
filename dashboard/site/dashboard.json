@@ -27,11 +27,6 @@
         "icon": "question"
       }
     },
-    "defaults": {
-      "time": {
-        "range": "1w"
-      }
-    },
     "units": {
       "aic": {
         "name": "AI Credits",
