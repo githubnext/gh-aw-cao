@@ -48,7 +48,6 @@ export function renderFactoryOverview(context) {
     ? dispatches
     : runs.filter((row) => String(row.event) === 'workflow_dispatch');
   const graderObservations = rowsFor(context.sources, 'grader-observations');
-  const rhythmBaseline = rowsFor(context.sources, 'factory-rhythm-baseline')[0];
   const repositories = rowsFor(context.sources, 'repositories');
   const workflows = rowsFor(context.sources, 'workflows');
   const repositoryCoverage = connectedRepositoryCoverage(workflows, repositories, runs);
@@ -70,7 +69,7 @@ export function renderFactoryOverview(context) {
   return h(
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
-    renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, activeRuns, successfulRunRows, latestTimestamp(runs), rhythmBaseline),
+    renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, activeRuns, successfulRunRows, latestTimestamp(runs)),
     renderFactoryFloor(repositoryCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns, pluralLabelResolver(context.elementConfig))
   );
 }
@@ -84,9 +83,8 @@ export function renderFactoryOverview(context) {
  * @param {number} activeRuns
  * @param {Row[]} successfulRunRows
  * @param {number} referenceTime
- * @param {Row | undefined} rhythmBaseline
  */
-function renderIntroduction(heading, usefulOutputs, deliveredRepositories, successfulRuns, dispatches, activeRuns, successfulRunRows, referenceTime, rhythmBaseline) {
+function renderIntroduction(heading, usefulOutputs, deliveredRepositories, successfulRuns, dispatches, activeRuns, successfulRunRows, referenceTime) {
   const summary = usefulOutputs > 0
     ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
     : `${formatCount(successfulRuns)} successful ${successfulRuns === 1 ? 'run' : 'runs'} and ${formatCount(dispatches)} workflow ${dispatches === 1 ? 'dispatch' : 'dispatches'} are retained in this period.`;
@@ -106,7 +104,7 @@ function renderIntroduction(heading, usefulOutputs, deliveredRepositories, succe
       h('h2', { id: 'agent-factory-heading' }, heading),
       h('p', {}, summary)
     ),
-    renderFactoryRhythm(successfulRunRows, referenceTime, rhythmBaseline)
+    renderFactoryRhythm(successfulRunRows, referenceTime)
   );
 }
 
@@ -177,47 +175,76 @@ function renderStation(icon, label, value, detail, final = false, href) {
   );
 }
 
-/** @param {Row[]} successfulRuns @param {number} referenceTime @param {Row | undefined} baseline */
-function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
+/** @param {Row[]} successfulRuns @param {number} referenceTime */
+function renderFactoryRhythm(successfulRuns, referenceTime) {
   const days = activityDays(successfulRuns, referenceTime);
-  const baselineAverages = Array.isArray(baseline?.['daily-averages'])
-    ? baseline['daily-averages'].map(Number)
-    : [];
-  const hasBaseline = baselineAverages.length === 7 && baselineAverages.every((value) => Number.isFinite(value) && value >= 0);
-  const maximum = Math.max(...days.map((day) => day.count), ...(hasBaseline ? baselineAverages : []), 1);
-  const baselinePoints = hasBaseline
-    ? baselineAverages.map((value, index) => `${(index + 0.5) * (100 / 7)},${100 - (value / maximum * 100)}`).join(' ')
-    : '';
-  return h(
+  const maximum = Math.max(...days.map((day) => day.count), 1);
+  const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
+  /** @type {HTMLButtonElement[]} */
+  const dayButtons = [];
+  /** @param {number} index */
+  const selectDay = (index) => {
+    const day = days[index];
+    if (!day) return;
+    for (const [buttonIndex, button] of dayButtons.entries()) {
+      button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
+    }
+    summary.textContent = `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}.`;
+  };
+  const section = h(
     'section',
     { className: 'factory-rhythm', 'aria-label': 'Successful Actions runs over the last seven observed days' },
     h(
       'div',
       { className: 'factory-rhythm-heading' },
-      h('span', {}, 'Factory rhythm')
+      h('span', {}, 'Factory rhythm'),
+      summary
     ),
     h('div', { className: 'factory-rhythm-bars' },
-      ...(hasBaseline ? [h(
-        'svg',
-        { className: 'factory-rhythm-comparison', viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': 'true' },
-        h('polyline', { points: baselinePoints }),
-        ...baselineAverages.map((value, index) => h('circle', {
-          cx: (index + 0.5) * (100 / 7),
-          cy: 100 - (value / maximum * 100),
-          r: '1.5',
-          vectorEffect: 'non-scaling-stroke'
-        }))
-      )] : []),
-      ...days.map((day) => h(
-        'span',
-        { tabindex: '0', 'aria-label': `${day.label}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}` },
-        h('strong', { className: 'factory-rhythm-tooltip', role: 'tooltip', 'aria-hidden': 'true' }, formatCount(day.count)),
-        h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
-          h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
-        ),
-        h('small', {}, day.label)
-      )))
+      ...days.map((day, index) => {
+        const button = /** @type {HTMLButtonElement} */ (h(
+          'button',
+          {
+            className: 'factory-rhythm-day',
+            type: 'button',
+            'aria-label': `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}`,
+            'aria-pressed': 'false',
+            onClick: () => selectDay(index)
+          },
+          h('strong', { className: 'factory-rhythm-tooltip', role: 'tooltip', 'aria-hidden': 'true' }, formatCount(day.count)),
+          h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
+            h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
+          ),
+          h('small', {}, day.label)
+        ));
+        dayButtons.push(button);
+        return button;
+      }))
   );
+  const selectedIndex = defaultSelectedDayIndex(days);
+  if (selectedIndex >= 0) selectDay(selectedIndex);
+  return section;
+}
+
+/** @param {{ label: string, date: string, count: number }[]} days */
+function defaultSelectedDayIndex(days) {
+  for (let index = days.length - 1; index >= 0; index -= 1) {
+    if (days[index].count > 0) return index;
+  }
+  return days.length - 1;
+}
+
+/** @param {Row[]} successfulRuns @param {number} referenceTime */
+function activityDays(successfulRuns, referenceTime) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const start = startOfDay(referenceTime) - (6 - index) * DAY_MS;
+    const end = start + DAY_MS;
+    return {
+      label: new Date(start).toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' }),
+      date: new Date(start).toISOString().slice(0, 10),
+      count: successfulRuns.filter((row) => rowTimestamp(row) >= start && rowTimestamp(row) < end).length
+    };
+  });
 }
 
 /** @param {Row[]} rows */
@@ -229,18 +256,6 @@ function latestOutcomes(rows) {
     if (!existing || rowTimestamp(row) >= rowTimestamp(existing)) latest.set(key, row);
   }
   return [...latest.values()].sort((left, right) => rowTimestamp(right) - rowTimestamp(left));
-}
-
-/** @param {Row[]} rows @param {number} referenceTime */
-function activityDays(rows, referenceTime) {
-  return Array.from({ length: 7 }, (_, index) => {
-    const start = startOfDay(referenceTime) - (6 - index) * DAY_MS;
-    const end = start + DAY_MS;
-    return {
-      label: new Date(start).toLocaleDateString('en', { weekday: 'short' }),
-      count: rows.filter((row) => rowTimestamp(row) >= start && rowTimestamp(row) < end).length
-    };
-  });
 }
 
 /** @param {number} timestamp */
