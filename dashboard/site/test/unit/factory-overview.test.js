@@ -71,7 +71,7 @@ it('summarizes retained Actions activity and useful outputs while routing failur
     'Repositories21 review · 1 live',
     'Successful runs22 failed',
     'Dispatches42 workflows observed',
-    'Value gains1Coming soon'
+    'Value gain1Coming soon'
   ]);
   expect(rendered.querySelector('.factory-station-final .octicon-trophy')).not.toBeNull();
   expect(rendered.querySelector('.factory-rhythm-heading')?.textContent).toBe('Factory rhythm');
@@ -132,6 +132,42 @@ it('counts canonical dispatch runs when the derived dispatch source is empty', (
   });
 
   expect(rendered.querySelector('.factory-station:nth-child(3)')?.textContent).toBe('Dispatches22 workflows observed');
-  expect(rendered.querySelector('.factory-station:first-child')?.textContent).toBe('Repositories1connected');
+  expect(rendered.querySelector('.factory-station:first-child')?.textContent).toBe('Repository1connected');
   expect(rendered.querySelector('.factory-rhythm-comparison')).toBeNull();
+});
+it('reflects arity with declared plural text variables and falls back to built-in labels', () => {
+  const singularSources = {
+    outcomes: { source: 'outcomes', rows: [], metadata },
+    runs: {
+      source: 'runs',
+      rows: [{ run: '1', 'run-conclusion': 'success', 'run-status': 'completed', 'started-at': '2026-09-11T11:00:00Z' }],
+      metadata
+    },
+    dispatches: { source: 'dispatches', rows: [{ run: '1' }], metadata },
+    'grader-observations': { source: 'grader-observations', rows: [{ grader: 'quality', run: '1', value: 0.9, threshold: 0.8 }], metadata },
+    repositories: { source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao', 'rollout-mode': 'live' }], metadata },
+    workflows: { source: 'workflows', rows: [{ workflow: 'review', 'workflow-role': 'worker' }], metadata }
+  };
+  const labels = {
+    repositories: { singular: 'Repository', plural: 'Repositories' },
+    'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
+    dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
+    'value-gains': { singular: 'Value gain', plural: 'Value gains' }
+  };
+
+  const declared = renderFactoryOverview({ sources: singularSources, elementConfig: { labels } });
+
+  expect([...declared.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
+    'Repository10 review · 1 live',
+    'Successful run10 failed',
+    'Dispatch11 workflow observed',
+    'Value gain1Coming soon'
+  ]);
+  expect(declared.querySelector('.factory-floor')?.getAttribute('aria-label')).toContain('1 repository in scope');
+
+  const fallback = renderFactoryOverview({ sources: singularSources });
+
+  expect([...fallback.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual(
+    [...declared.querySelectorAll('.factory-station')].map((station) => station.textContent)
+  );
 });

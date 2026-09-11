@@ -9,8 +9,37 @@ const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-ou
 
 /** @typedef {Record<string, unknown>} Row */
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
+/** @typedef {{ singular: string, plural: string }} PluralText */
 
-/** @param {{ sources: Record<string, LogicalSourceInput> }} context */
+/** @type {Record<string, PluralText>} */
+const DEFAULT_STATION_LABELS = {
+  repositories: { singular: 'Repository', plural: 'Repositories' },
+  'successful-runs': { singular: 'Successful run', plural: 'Successful runs' },
+  dispatches: { singular: 'Dispatch', plural: 'Dispatches' },
+  'value-gains': { singular: 'Value gain', plural: 'Value gains' }
+};
+
+/**
+ * @param {Record<string, unknown> | undefined} elementConfig
+ * @returns {(labelId: string, count: number) => string}
+ */
+function pluralLabelResolver(elementConfig) {
+  const declared = elementConfig && typeof elementConfig === 'object' && elementConfig.labels && typeof elementConfig.labels === 'object'
+    ? /** @type {Record<string, unknown>} */ (elementConfig.labels)
+    : {};
+  return (labelId, count) => {
+    const candidate = declared[labelId];
+    const text = candidate && typeof candidate === 'object'
+      && typeof (/** @type {PluralText} */ (candidate).singular) === 'string'
+      && typeof (/** @type {PluralText} */ (candidate).plural) === 'string'
+      ? /** @type {PluralText} */ (candidate)
+      : DEFAULT_STATION_LABELS[labelId];
+    if (!text) return labelId;
+    return Math.abs(count) === 1 ? text.singular : text.plural;
+  };
+}
+
+/** @param {{ sources: Record<string, LogicalSourceInput>, elementConfig?: Record<string, unknown> }} context */
 export function renderFactoryOverview(context) {
   const outcomes = latestOutcomes(rowsFor(context.sources, 'outcomes'));
   const runs = rowsFor(context.sources, 'runs');
@@ -42,7 +71,7 @@ export function renderFactoryOverview(context) {
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
     renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, activeRuns, successfulRunRows, latestTimestamp(runs), rhythmBaseline),
-    renderFactoryFloor(repositoryCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns)
+    renderFactoryFloor(repositoryCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns, pluralLabelResolver(context.elementConfig))
   );
 }
 
@@ -108,22 +137,23 @@ function factoryHeading(sources, valueGains, activeRuns, successfulRuns, failedR
  * @param {number} issues
  * @param {number} pullRequests
  * @param {number} activeRuns
+ * @param {(labelId: string, count: number) => string} label
  */
-function renderFactoryFloor(repositories, successfulRuns, failedRuns, dispatches, workers, valueGains, issues, pullRequests, activeRuns) {
+function renderFactoryFloor(repositories, successfulRuns, failedRuns, dispatches, workers, valueGains, issues, pullRequests, activeRuns, label) {
   const usefulOutputs = issues + pullRequests;
   return h(
     'section',
     {
       className: `factory-floor${activeRuns > 0 ? ' factory-floor-active' : ''}`,
-      'aria-label': `${formatCount(repositories.total)} repositories in scope, ${formatCount(repositories.review)} in review and ${formatCount(repositories.live)} live, ${formatCount(successfulRuns)} successful runs, ${formatCount(dispatches)} workflow dispatches across ${formatCount(workers)} workers, ${formatCount(valueGains)} grader values above threshold, and ${formatCount(usefulOutputs)} issue or pull request outputs.`
+      'aria-label': `${formatCount(repositories.total)} ${label('repositories', repositories.total).toLowerCase()} in scope, ${formatCount(repositories.review)} in review and ${formatCount(repositories.live)} live, ${formatCount(successfulRuns)} ${label('successful-runs', successfulRuns).toLowerCase()}, ${formatCount(dispatches)} workflow ${label('dispatches', dispatches).toLowerCase()} across ${formatCount(workers)} ${workers === 1 ? 'worker' : 'workers'}, ${formatCount(valueGains)} grader ${valueGains === 1 ? 'value' : 'values'} above threshold, and ${formatCount(usefulOutputs)} issue or pull request ${usefulOutputs === 1 ? 'output' : 'outputs'}.`
     },
     h(
       'ol',
       { className: 'factory-stations' },
-      renderStation('repo', 'Repositories', repositories.total, repositoryModeDetail(repositories), false, '#page-repositories'),
-      renderStation('check-circle', 'Successful runs', successfulRuns, h('a', { href: '#page-runs?runs-runs-source.run-conclusion=failure' }, `${formatCount(failedRuns)} failed`), false, '#page-runs?runs-runs-source.run-conclusion=success'),
-      renderStation('workflow', 'Dispatches', dispatches, `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`, false, '#page-runs'),
-      renderStation('trophy', 'Value gains', valueGains, 'Coming soon', true)
+      renderStation('repo', label('repositories', repositories.total), repositories.total, repositoryModeDetail(repositories), false, '#page-repositories'),
+      renderStation('check-circle', label('successful-runs', successfulRuns), successfulRuns, h('a', { href: '#page-runs?runs-runs-source.run-conclusion=failure' }, `${formatCount(failedRuns)} failed`), false, '#page-runs?runs-runs-source.run-conclusion=success'),
+      renderStation('workflow', label('dispatches', dispatches), dispatches, `${formatCount(workers)} ${workers === 1 ? 'workflow' : 'workflows'} observed`, false, '#page-runs'),
+      renderStation('trophy', label('value-gains', valueGains), valueGains, 'Coming soon', true)
     )
   );
 }

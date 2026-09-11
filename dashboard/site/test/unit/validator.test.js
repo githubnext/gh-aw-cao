@@ -848,6 +848,89 @@ dashboard:
     }
   });
 
+  it('accepts plural text variables for overview labels and rejects malformed ones', () => {
+    const accepted = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-labels
+  title: Overview labels
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-boxes
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            labels:
+              repositories:
+                singular: Repository
+                plural: Repositories
+`);
+    expect(accepted.ok).toBe(true);
+
+    const wrongElement = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-labels
+  title: Overview labels
+  pages:
+    - id: work-page
+      kind: custom
+      title: Work page
+      views:
+        - id: work-layouts
+          data:
+            sources: [work-items]
+          mark: element
+          element: work-project-view
+          config:
+            labels:
+              repositories:
+                singular: Repository
+                plural: Repositories
+`);
+    expect(wrongElement.ok).toBe(false);
+    if (!wrongElement.ok) {
+      expect(wrongElement.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.pages[0].views[0].config.labels'
+      }));
+    }
+
+    const incompleteText = validateDashboardDocument(`language-version: "0.1.0"
+dashboard:
+  id: overview-labels
+  title: Overview labels
+  pages:
+    - id: overview-page
+      kind: custom
+      title: Overview page
+      views:
+        - id: overview-boxes
+          data:
+            sources: [runs]
+          mark: element
+          element: outcomes-overview
+          config:
+            labels:
+              Repositories:
+                singular: Repository
+`);
+    expect(incompleteText.ok).toBe(false);
+    if (!incompleteText.ok) {
+      expect(incompleteText.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E003',
+        path: '$.dashboard.pages[0].views[0].config.labels.Repositories.plural'
+      }));
+      expect(incompleteText.errors).toContainEqual(expect.objectContaining({
+        code: 'DLS-E005',
+        path: '$.dashboard.pages[0].views[0].config.labels.Repositories'
+      }));
+    }
+  });
+
   it('defines work-project-view composition through canonical body values', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const pages = new Map(document.dashboard.pages.map((/** @type {{ id: string }} */ page) => [page.id, page]));
