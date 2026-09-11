@@ -1,0 +1,12 @@
+name: CAO Evolution
+description: Control-plane integrity, reliability, and efficiency maintenance for Central Agentic Ops repositories.
+min-version: v0.89.3
+experimental: true
+includes:
+  - .github/workflows/cao-evolution-efficiency.md
+  - .github/workflows/cao-evolution-integrity.md
+  - .github/workflows/cao-evolution-reliability.md
+  - .github/workflows/cao-evolution.md
+resources:
+  - source: dashboard.json
+    destination: .github/aw/dashboards/cao-evolution.json

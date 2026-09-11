@@ -60,7 +60,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-maintenance
+      package: cao-evolution
       role: worker
       worker: efficiency
   - uses: shared/activity-cache.md
@@ -86,7 +86,7 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-tracker-id: cao-maintenance-efficiency
+tracker-id: cao-evolution-efficiency
 
 tools:
   github:
@@ -99,16 +99,16 @@ safe-outputs:
   allowed-github-references: []
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-    title-prefix: "[cao-maintenance:efficiency] "
-    labels: [cao-maintenance, cao-maintenance:efficiency]
+    title-prefix: "[cao-evolution:efficiency] "
+    labels: [cao-evolution, cao-evolution:efficiency]
     deduplicate-by-title: true
     expires: 14d
     max: 1
   add-comment:
     target: "*"
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-    required-labels: [cao-maintenance, cao-maintenance:efficiency]
-    required-title-prefix: "[cao-maintenance:efficiency] "
+    required-labels: [cao-evolution, cao-evolution:efficiency]
+    required-title-prefix: "[cao-evolution:efficiency] "
     hide-older-comments: true
     max: 1
   noop:
@@ -116,7 +116,7 @@ safe-outputs:
 timeout-minutes: 40
 ---
 
-{{#runtime-import? .github/cao/cao-maintenance.md}}
+{{#runtime-import? .github/cao/cao-evolution.md}}
 
 You assess portfolio-level efficiency for one verified CAO control repository. Read target configuration from `target/`, use valid shared activity evidence before fetching more, and keep fallback queries bounded to `TARGET_REPO`. Never change policy, dispatch work, or operate on target repositories.
 

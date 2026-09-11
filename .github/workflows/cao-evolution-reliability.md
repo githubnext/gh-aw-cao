@@ -60,7 +60,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-maintenance
+      package: cao-evolution
       role: worker
       worker: reliability
   - uses: shared/activity-cache.md
@@ -88,7 +88,7 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-tracker-id: cao-maintenance-reliability
+tracker-id: cao-evolution-reliability
 
 tools:
   github:
@@ -101,16 +101,16 @@ safe-outputs:
   allowed-github-references: []
   create-issue:
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-    title-prefix: "[cao-maintenance:reliability] "
-    labels: [cao-maintenance, cao-maintenance:reliability]
+    title-prefix: "[cao-evolution:reliability] "
+    labels: [cao-evolution, cao-evolution:reliability]
     deduplicate-by-title: true
     expires: 14d
     max: 1
   add-comment:
     target: "*"
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
-    required-labels: [cao-maintenance, cao-maintenance:reliability]
-    required-title-prefix: "[cao-maintenance:reliability] "
+    required-labels: [cao-evolution, cao-evolution:reliability]
+    required-title-prefix: "[cao-evolution:reliability] "
     hide-older-comments: true
     max: 1
   noop:
@@ -118,7 +118,7 @@ safe-outputs:
 timeout-minutes: 40
 ---
 
-{{#runtime-import? .github/cao/cao-maintenance.md}}
+{{#runtime-import? .github/cao/cao-evolution.md}}
 
 You assess the operational reliability of one verified CAO control repository. Read target files from `target/`, use the shared activity cache first, and keep every fallback bounded to `TARGET_REPO`. Never discover repositories or dispatch workflows.
 

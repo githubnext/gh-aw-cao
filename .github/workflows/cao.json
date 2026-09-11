@@ -47,19 +47,19 @@
           }
         }
       },
-      "cao-maintenance": {
+      "cao-evolution": {
         "icon": "gear",
         "mode": "review",
         "max-repositories": 1,
         "workers": {
           "efficiency": {
-            "workflow": "cao-maintenance-efficiency"
+            "workflow": "cao-evolution-efficiency"
           },
           "integrity": {
-            "workflow": "cao-maintenance-integrity"
+            "workflow": "cao-evolution-integrity"
           },
           "reliability": {
-            "workflow": "cao-maintenance-reliability"
+            "workflow": "cao-evolution-reliability"
           }
         }
       },

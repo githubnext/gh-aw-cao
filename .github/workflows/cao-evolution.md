@@ -64,7 +64,7 @@ if: needs.pre_activation.outputs.cao_authorized == 'true'
 imports:
   - uses: shared/control.md
     with:
-      package: cao-maintenance
+      package: cao-evolution
       role: orchestrator
       dispatch_max: 3
       orchestrator_credits: 250
@@ -90,12 +90,12 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [cao-maintenance-integrity, cao-maintenance-reliability, cao-maintenance-efficiency]
+    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency]
     max: 3
   threat-detection: false
 ---
 
-{{#runtime-import? .github/cao/cao-maintenance.md}}
+{{#runtime-import? .github/cao/cao-evolution.md}}
 
 # CAO Evolution
 
@@ -118,9 +118,9 @@ Skip archived repositories, repositories without a readable default branch, ordi
 
 ## Workers
 
-- `cao-maintenance-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
-- `cao-maintenance-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
-- `cao-maintenance-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
+- `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
+- `cao-evolution-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
+- `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
 
 Dispatch each eligible worker at most once for each selected repository and effective mode. Do not retry a failed dispatch in the same run. Workers own repository analysis and all durable outputs.
 

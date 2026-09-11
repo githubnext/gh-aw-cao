@@ -4,15 +4,15 @@ CAO Evolution operates on verified Central Agentic Ops control repositories. It 
 
 | Workflow | Responsibility |
 | --- | --- |
-| `cao-maintenance` | Select verified CAO control repositories and dispatch eligible workers. |
-| `cao-maintenance-integrity` | Check policy, authority, package ownership, installed workflows, and dashboard configuration for drift. |
-| `cao-maintenance-reliability` | Cluster actionable CAO admission, dispatch, worker, cache, review-bundle, and dashboard failures. |
-| `cao-maintenance-efficiency` | Rank package health from run, review-item, cost, and operational-value evidence, then suggest one measurable portfolio-level improvement. |
+| `cao-evolution` | Select verified CAO control repositories and dispatch eligible workers. |
+| `cao-evolution-integrity` | Check policy, authority, package ownership, installed workflows, and dashboard configuration for drift. |
+| `cao-evolution-reliability` | Cluster actionable CAO admission, dispatch, worker, cache, review-bundle, and dashboard failures. |
+| `cao-evolution-efficiency` | Rank package health from run, review-item, cost, and operational-value evidence, then suggest one measurable portfolio-level improvement. |
 
 ## Install
 
 ```bash
-gh aw add githubnext/gh-aw-cao/cao-maintenance@main
+gh aw add githubnext/gh-aw-cao/cao-evolution@main
 ```
 
 Declare the package and its workers in `.github/workflows/cao.json`. Begin in `review` mode with one control repository per run. Promote only through a reviewed policy change after validating the rolling reports.

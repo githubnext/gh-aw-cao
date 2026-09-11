@@ -1,13 +1,13 @@
 {
   "language-version": "0.1.0",
   "dashboard": {
-    "id": "cao-maintenance-dashboard",
+    "id": "cao-evolution-dashboard",
     "title": "CAO Evolution",
     "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
-        "name": "cao-maintenance-runs",
+        "name": "cao-evolution-runs",
         "intent": "List CAO Evolution runs so operators can verify activation and investigate failed control-plane checks.",
         "from": "runs",
         "filter": {
@@ -15,10 +15,10 @@
             {
               "field": "workflow",
               "in": [
-                ".github/workflows/cao-maintenance.md",
-                ".github/workflows/cao-maintenance-efficiency.md",
-                ".github/workflows/cao-maintenance-integrity.md",
-                ".github/workflows/cao-maintenance-reliability.md"
+                ".github/workflows/cao-evolution.md",
+                ".github/workflows/cao-evolution-efficiency.md",
+                ".github/workflows/cao-evolution-integrity.md",
+                ".github/workflows/cao-evolution-reliability.md"
               ]
             }
           ]
@@ -31,14 +31,14 @@
         ]
       },
       {
-        "name": "cao-maintenance-outcomes",
+        "name": "cao-evolution-outcomes",
         "intent": "List retained CAO Evolution outcomes so operators can act on current control-plane integrity, reliability, and efficiency work.",
         "from": "outcomes",
         "filter": {
           "predicates": [
             {
               "field": "package",
-              "equals": "cao-maintenance"
+              "equals": "cao-evolution"
             }
           ]
         },
@@ -52,18 +52,18 @@
     ],
     "pages": [
       {
-        "id": "cao-maintenance-dashboard",
+        "id": "cao-evolution-dashboard",
         "kind": "custom",
         "title": "CAO Evolution",
         "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
         "icon": "gear",
         "views": [
           {
-            "id": "cao-maintenance-outcome-health",
+            "id": "cao-evolution-outcome-health",
             "title": "Maintenance outcome health",
             "description": "The disposition of retained maintenance outcomes shows whether control-plane recommendations are progressing through review.",
             "data": {
-              "source": "cao-maintenance-outcomes"
+              "source": "cao-evolution-outcomes"
             },
             "mark": "chart",
             "chart": "pie",
@@ -83,21 +83,21 @@
             }
           },
           {
-            "id": "cao-maintenance-runs",
+            "id": "cao-evolution-runs",
             "title": "Control-plane maintenance runs",
             "description": "Shows which maintenance checks ran and which failures need investigation.",
             "disclosure": "essential",
             "data": {
-              "source": "cao-maintenance-runs",
+              "source": "cao-evolution-runs",
               "time": {
                 "range": "30d"
               },
               "filters": {
                 "workflow": [
-                  ".github/workflows/cao-maintenance.md",
-                  ".github/workflows/cao-maintenance-efficiency.md",
-                  ".github/workflows/cao-maintenance-integrity.md",
-                  ".github/workflows/cao-maintenance-reliability.md"
+                  ".github/workflows/cao-evolution.md",
+                  ".github/workflows/cao-evolution-efficiency.md",
+                  ".github/workflows/cao-evolution-integrity.md",
+                  ".github/workflows/cao-evolution-reliability.md"
                 ]
               }
             },
@@ -171,14 +171,14 @@
             }
           },
           {
-            "id": "cao-maintenance-outcomes",
+            "id": "cao-evolution-outcomes",
             "description": "Retained integrity, reliability, and efficiency items remain advisory until a maintainer accepts the action.",
             "disclosure": "supplemental",
             "data": {
-              "source": "cao-maintenance-outcomes",
+              "source": "cao-evolution-outcomes",
               "filters": {
                 "package": [
-                  "cao-maintenance"
+                  "cao-evolution"
                 ]
               },
               "limit": 50
