@@ -2266,7 +2266,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /colorScheme: "dark"/);
   assert.match(source, /prefers-reduced-motion/);
   assert.match(source, /safe-outputs:\n\s+allowed-domains:\n\s+- githubnext\.github\.io\n\s+create-issue:/);
-  assert.match(source, /create-issue:\n\s+target-repo:.*\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
+  assert.match(source, /create-issue:\n\s+target-repo:.*\n\s+deduplicate-by-title: true\n\s+title-prefix: "\[self-care:accessibility-checker\] "/);
   assert.match(source, /labels: \[self-care, self-care:accessibility-checker\]/);
   assert.match(source, /close-older-key: self-care-accessibility-checker/);
   assert.match(source, /Begin the issue body directly with a concise, unheaded executive summary/);
