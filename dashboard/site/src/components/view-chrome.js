@@ -4,7 +4,7 @@
 
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
-import { renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
+import { renderDisclosureSummaryLabel, renderDlRow, renderListWithFallback, renderSectionHeading, renderTooltip } from './ui-primitives.js';
 import { formatCount, slugify, titleCase } from './count-formatters.js';
 
 /**
@@ -142,8 +142,7 @@ export function renderViewDisclosure(rendered, layout, disclosure, title) {
     h(
       'summary',
       { className: 'view-disclosure-summary' },
-      h('span', null, title),
-      h('span', { className: 'view-disclosure-hint' }, 'Show details')
+      ...renderDisclosureSummaryLabel(title, 'view-disclosure-hint')
     ),
     rendered
   );

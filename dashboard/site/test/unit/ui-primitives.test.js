@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
+import { coverageWindowHours, copyTextToClipboard, createCopyControl, formatMediumUtcDate, formatMediumUtcDateTime, formatShortDate, formatUtcDateTime, isPlainObject, isSafeHttpsUrl, renderCloseButton, renderDigest, renderDisclosureSummaryLabel, renderDlRow, renderEmptyTableRow, renderFilterSelect, renderIconSpan, renderIdentityLink, renderLabeledControl, renderLabeledSpan, renderLegendList, renderLegendSwatch, renderListOrEmptyMessage, renderListWithFallback, renderLoadingPlaceholderBlocks, renderSearchInput, renderSectionHeading, renderSkeletonBars, renderTableHeadRow, renderTableSummaryEmpty, renderTooltip, renderVitalStat } from '../../src/components/ui-primitives.js';
 import { h } from '../../src/dom.js';
 
 describe('ui primitives', () => {
@@ -429,5 +429,24 @@ describe('ui primitives', () => {
     const input = renderSearchInput('Filter notifications', 'is:unread');
 
     expect(input.value).toBe('is:unread');
+  });
+
+  it('renders a shared disclosure summary label with a caller-classed "Show details" hint', () => {
+    const nodes = /** @type {HTMLElement[]} */ (renderDisclosureSummaryLabel('Resources', 'package-readme-resources-hint'));
+
+    expect(nodes).toHaveLength(2);
+    expect(nodes[0].tagName).toBe('SPAN');
+    expect(nodes[0].textContent).toBe('Resources');
+    expect(nodes[1].tagName).toBe('SPAN');
+    expect(nodes[1].className).toBe('package-readme-resources-hint');
+    expect(nodes[1].textContent).toBe('Show details');
+  });
+
+  it('renders a disclosure summary label accepting a pre-built label node', () => {
+    const label = h('span', null, 'View title');
+    const nodes = /** @type {HTMLElement[]} */ (renderDisclosureSummaryLabel(label, 'view-disclosure-hint'));
+
+    expect(nodes[0]).toBe(label);
+    expect(nodes[1].className).toBe('view-disclosure-hint');
   });
 });

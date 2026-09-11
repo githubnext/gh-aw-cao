@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
 import { externalAnchorAttrs, findLink } from './link-content.js';
-import { renderDlRow } from './ui-primitives.js';
+import { renderDisclosureSummaryLabel, renderDlRow } from './ui-primitives.js';
 
 /** @param {{ packageId: string, packageName: string, workflows: Array<Record<string, unknown>> }} args */
 export function renderPackageReadme({ packageId, packageName, workflows }) {
@@ -39,9 +39,7 @@ export function renderPackageReadme({ packageId, packageName, workflows }) {
             renderDlRow('Owner', owner(primary)),
             mode ? renderDlRow('Rollout', h('span', { className: `package-rollout package-rollout-${mode}` }, mode)) : null)),
         h('details', { className: 'package-readme-resources' },
-          h('summary', null,
-            h('span', null, 'Resources'),
-            h('span', { className: 'package-readme-resources-hint' }, 'Show details')),
+          h('summary', null, ...renderDisclosureSummaryLabel('Resources', 'package-readme-resources-hint')),
           h('ul', null,
             readmeUrl ? h('li', null, resourceLink(readmeUrl, 'README', 'book')) : null,
             repositoryUrl ? h('li', null, resourceLink(repositoryUrl, 'Source repository', 'repo')) : null))))
