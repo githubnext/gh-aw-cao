@@ -99,7 +99,7 @@ describe('current dashboard source adapter', () => {
     const batch = normalize(adapted.observations);
 
     expect(batch.repositories[0]).toMatchObject({
-      id: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao',
+      id: 'repository:githubnext%2Fgh-aw-cao',
       fullName: 'githubnext/gh-aw-cao',
       repositoryLink: { relation: 'repository', href: 'https://github.com/githubnext/gh-aw-cao' }
     });
@@ -111,8 +111,8 @@ describe('current dashboard source adapter', () => {
       experimental: true
     });
     expect(batch.workflows[0]).toMatchObject({
-      id: 'workflow:dashboard-sources:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
-      repositoryId: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao',
+      id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
+      repositoryId: 'repository:githubnext%2Fgh-aw-cao',
       state: 'active',
       ghAwVersion: '0.88.8',
       ghAwUpdateState: 'update-available',

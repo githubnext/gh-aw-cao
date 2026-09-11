@@ -14,9 +14,32 @@ export function repositoryId(githubRepositoryId) {
   return githubId('repository', githubRepositoryId);
 }
 
+/** @param {string} owner @param {string} name */
+export function repositoryCoordinateId(owner, name) {
+  const coordinate = `${owner.trim()}/${name.trim()}`.toLowerCase();
+  if (coordinate === '/') throw new TypeError('Repository owner and name are required');
+  return `repository:${encodeURIComponent(coordinate)}`;
+}
+
 /** @param {string | number} githubWorkflowId */
 export function workflowId(githubWorkflowId) {
   return githubId('workflow', githubWorkflowId);
+}
+
+/** @param {string} path */
+export function workflowSourcePath(path) {
+  const normalized = path.trim().toLowerCase();
+  if (!normalized) throw new TypeError('Workflow path is required');
+  return normalized.endsWith('.lock.yml')
+    ? `${normalized.slice(0, -'.lock.yml'.length)}.md`
+    : normalized;
+}
+
+/** @param {string} owner @param {string} repository @param {string} path */
+export function workflowCoordinateId(owner, repository, path) {
+  const repositoryCoordinate = `${owner.trim()}/${repository.trim()}`.toLowerCase();
+  if (repositoryCoordinate === '/') throw new TypeError('Workflow repository is required');
+  return `workflow:${encodeURIComponent(`${repositoryCoordinate}:${workflowSourcePath(path)}`)}`;
 }
 
 /**

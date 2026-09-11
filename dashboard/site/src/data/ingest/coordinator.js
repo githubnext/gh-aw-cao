@@ -96,12 +96,15 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, context?: unknown }} [options]
+ * @param {{ storage?: StorageManager, now?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
  */
 export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   try {
-    const adapted = adaptCachedGhAwJsonl(content, { context: options.context });
+    const adapted = adaptCachedGhAwJsonl(content, {
+      context: options.context,
+      workflowHints: options.workflowHints
+    });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
     await recordTransaction(indexedDB, {
       id: `ingest-jsonl:${createdAt}:${adapted.records}`,

@@ -220,7 +220,7 @@ describe('gh-aw logs adapter', () => {
         engine: 'GitHub Copilot CLI',
         engineId: 'copilot',
         engineVersion: '1.0.83',
-        resolvedModel: 'gpt-5.4',
+        requestedModel: 'gpt-5.4',
         firewallVersion: 'v0.28.15'
       })
     ]);
@@ -266,6 +266,46 @@ describe('gh-aw logs adapter', () => {
         correlationId: 'https://github.com/githubnext/gh-aw-cao/issues/42'
       })
     ]));
+  });
+
+  it('resolves pathless raw runs from declared workflow name hints', () => {
+    const content = JSON.stringify({
+      schema_version: 2,
+      kind: 'workflow_runs',
+      request: { repository: 'githubnext/gh-aw-cao' },
+      payload: [{
+        databaseId: 303,
+        attempt: 1,
+        workflowName: 'Dashboard',
+        displayTitle: 'Build dashboard',
+        status: 'completed',
+        conclusion: 'success',
+        createdAt: '2026-09-09T03:59:00Z',
+        updatedAt: '2026-09-09T04:01:00Z'
+      }]
+    });
+
+    const batch = normalize(adaptCachedGhAwJsonl(content, {
+      workflowHints: [{
+        owner: 'githubnext',
+        repository: 'gh-aw-cao',
+        name: 'Dashboard',
+        path: '.github/workflows/dashboard.md'
+      }]
+    }).observations);
+
+    expect(batch.workflows).toEqual([
+      expect.objectContaining({
+        id: 'workflow:githubnext%2Fgh-aw-cao%3A.github%2Fworkflows%2Fdashboard.md',
+        path: '.github/workflows/dashboard.md'
+      })
+    ]);
+    expect(batch.runs).toEqual([
+      expect.objectContaining({
+        workflowId: batch.workflows[0].id,
+        workflowPath: '.github/workflows/dashboard.md'
+      })
+    ]);
   });
 
   it('rejects unsupported cached JSONL schema versions and kinds', () => {

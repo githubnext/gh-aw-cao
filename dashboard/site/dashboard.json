@@ -397,7 +397,7 @@
         "name": "workflow-aic-totals",
         "intent": "Summarize observed AI Credit usage by declared workflow.",
         "description": "Observed AI Credit totals for each declared workflow.",
-        "from": "usage",
+        "from": "runs",
         "aggregate": {
           "by": [
             "organization",
@@ -406,7 +406,7 @@
           ],
           "values": [
             {
-              "field": "aic",
+              "field": "aic-total",
               "as": "aic",
               "reducer": "sum"
             }
@@ -993,11 +993,11 @@
         "name": "repository-aic-totals",
         "intent": "Summarize observed AI Credit usage by repository.",
         "description": "Observed AI Credit totals for each repository.",
-        "from": "usage",
+        "from": "runs",
         "aggregate": {
           "by": ["organization", "repository"],
           "values": [
-            { "field": "aic", "as": "aic", "reducer": "sum" }
+            { "field": "aic-total", "as": "aic", "reducer": "sum" }
           ]
         }
       },
@@ -1078,8 +1078,6 @@
           { "as": "repository-slug", "function": "concat", "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }] },
           { "as": "workflows", "function": "coalesce", "args": [{ "field": "observed-workflows" }, { "value": 0 }] },
           { "as": "disabled", "function": "coalesce", "args": [{ "field": "observed-disabled" }, { "value": 0 }] },
-          { "as": "reports", "function": "coalesce", "args": [{ "field": "observed-reports" }, { "value": 0 }] },
-          { "as": "evaluated-workflows", "function": "coalesce", "args": [{ "field": "observed-evaluated-workflows" }, { "value": 0 }] },
           { "as": "runs", "function": "coalesce", "args": [{ "field": "observed-runs" }, { "value": 0 }] },
           { "as": "failed", "function": "coalesce", "args": [{ "field": "observed-failed" }, { "value": 0 }] },
           { "as": "action-required", "function": "coalesce", "args": [{ "field": "observed-action-required" }, { "value": 0 }] },
@@ -1088,7 +1086,7 @@
           { "as": "has-action-required", "function": "greater-than", "args": [{ "field": "action-required" }, { "value": 0 }] },
           { "as": "has-runs", "function": "greater-than", "args": [{ "field": "runs" }, { "value": 0 }] },
           { "as": "has-disabled", "function": "greater-than", "args": [{ "field": "disabled" }, { "value": 0 }] },
-          { "as": "outcomes-observed", "function": "sum", "args": [{ "field": "reports" }, { "field": "evaluated-workflows" }] },
+          { "as": "outcomes-observed", "function": "sum", "args": [{ "field": "observed-reports" }, { "field": "observed-evaluated-workflows" }] },
           { "as": "has-outcomes", "function": "greater-than", "args": [{ "field": "outcomes-observed" }, { "value": 0 }] },
           { "as": "failure-rate", "function": "quotient", "args": [{ "field": "failed" }, { "field": "runs" }] },
           { "as": "failure-percent", "function": "format-percent", "args": [{ "field": "failure-rate" }] },
@@ -1104,8 +1102,8 @@
         "select": [
           { "field": "repository-slug", "as": "repository" },
           { "field": "workflows" },
-          { "field": "reports" },
-          { "field": "evaluated-workflows" },
+          { "field": "observed-reports", "as": "reports" },
+          { "field": "observed-evaluated-workflows", "as": "evaluated-workflows" },
           { "field": "runs" },
           { "field": "failure-summary" },
           { "field": "aic" },

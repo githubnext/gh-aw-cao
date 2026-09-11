@@ -55,7 +55,7 @@ From the root of an installed control repository, start the dashboard with Node.
 npm run dashboard:local
 ```
 
-The server requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard-data` artifact, which the dashboard action creates from the same `sources.json` rendered by the Pages site. Run the dashboard action first; the server fails rather than opening a dashboard without data when the artifact cannot be downloaded. Use `--repo OWNER/REPOSITORY` to download from another control repository.
+The server requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard` artifact and serves its `gh-aw-logs.jsonl` and `inventory-sources.json` through the same canonical browser-ingestion path as the Pages site. Run the dashboard action first; the server fails rather than opening a dashboard without data when the artifact cannot be downloaded. Use `--repo OWNER/REPOSITORY` to download from another control repository.
 
 Open only the unguessable URL printed by the server. The server uses only Node.js built-ins plus GitHub CLI, binds to the loopback interface by default, rejects unexpected request hosts, and serves the packaged site without a build step. Use `--port` or `--host` to override its address.
 

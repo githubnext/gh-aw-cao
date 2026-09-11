@@ -581,8 +581,8 @@ describe('declarative dashboard queries', () => {
     const runs = {
       source: 'runs',
       rows: [
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-conclusion': 'failure' },
-        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-conclusion': 'success' }
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1', 'run-conclusion': 'failure', 'aic-total': 4 },
+        { organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2', 'run-conclusion': 'success', 'aic-total': 6 }
       ],
       metadata: metadata('runs')
     };
@@ -623,6 +623,44 @@ describe('declarative dashboard queries', () => {
       runs: 2,
       aic: 10
     }]);
+  });
+
+  it('keeps unavailable repository report and evaluation metrics unknown', () => {
+    const repositories = {
+      source: 'repositories',
+      rows: [{ organization: 'githubnext', repository: 'gh-aw-cao' }],
+      metadata: metadata('repositories')
+    };
+    const queryWorkflows = {
+      source: 'workflows',
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
+        'workflow-active': 'true'
+      }],
+      metadata: metadata('workflows')
+    };
+    const runs = {
+      source: 'runs',
+      rows: [{
+        organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md',
+        run: '1', 'run-conclusion': 'success', 'aic-total': 4
+      }],
+      metadata: metadata('runs')
+    };
+
+    const derived = executeDashboardQueries(
+      dashboardQueries,
+      { repositories, workflows: queryWorkflows, runs },
+      ['repository-activity']
+    );
+
+    expect(derived['repository-activity'].rows).toEqual([expect.objectContaining({
+      repository: 'githubnext/gh-aw-cao',
+      reports: null,
+      'evaluated-workflows': null,
+      runs: 1,
+      aic: 4
+    })]);
   });
 
   it('drops unmatched rows for inner joins and keeps them for left joins', () => {

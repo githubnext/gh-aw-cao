@@ -45,6 +45,7 @@ describe('table cell display helper', () => {
     expect(renderCellDisplay(undefined, 'https://example.com/actions/runs/12345', toText, null, 'nominal', 'workflow-run-url'))
       .toBe('https://example.com/actions/runs/12345');
     expect(renderCellDisplay('unsupported', null, toText)).toBe('unknown');
+    expect(renderCellDisplay(undefined, null, toText, null, 'temporal', 'human-friendly-timestamp')).toBe('—');
     const temporal = /** @type {HTMLElement} */ (renderCellDisplay(undefined, '2026-08-30T07:00:00Z', toText, null, 'temporal'));
     expect(temporal.tagName).toBe('TIME');
     expect(temporal.getAttribute('datetime')).toBe('2026-08-30T07:00:00Z');

@@ -47,12 +47,15 @@ describe('canonical IndexedDB', () => {
     database.close();
   });
 
-  it('removes obsolete work item and finding stores during upgrade', async () => {
+  it('rebuilds disposable canonical stores during upgrade', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, 7);
+      const request = indexedDB.open(DATABASE_NAME, 9);
       request.onupgradeneeded = () => {
-        request.result.createObjectStore('workItems', { keyPath: 'id' });
-        request.result.createObjectStore('findings', { keyPath: 'id' });
+        const repositories = request.result.createObjectStore('repositories', { keyPath: 'id' });
+        repositories.put({
+          id: 'repository:dashboard-sources:githubnext%2Fgh-aw-cao',
+          fullName: 'githubnext/gh-aw-cao'
+        });
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -61,8 +64,17 @@ describe('canonical IndexedDB', () => {
 
     const database = await openCanonicalDatabase(indexedDB);
 
-    expect(database.objectStoreNames.contains('workItems')).toBe(false);
-    expect(database.objectStoreNames.contains('findings')).toBe(false);
+    expect([...database.objectStoreNames]).toEqual([
+      'events',
+      'jobs',
+      'packages',
+      'repositories',
+      'runs',
+      'sessions',
+      'transactions',
+      'workflows'
+    ]);
+    expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
     database.close();
   });
 

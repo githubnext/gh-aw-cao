@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
@@ -1893,6 +1894,11 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
 
   const scroll = view.locator('.table-scroll');
   const more = view.locator('[data-table-more]');
+  const sidebarBox = await page.locator('.org-sidebar').boundingBox();
+  const initialScrollBox = await scroll.boundingBox();
+  assert(sidebarBox);
+  assert(initialScrollBox);
+  expect(initialScrollBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width);
   await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
   await expect(view.locator('tbody > tr')).toHaveCount(50);
   await more.evaluate((button) => /** @type {HTMLButtonElement} */ (button).click());
@@ -1913,6 +1919,10 @@ test('JSON full-view mode fills the viewport and supports repeated lazy-list scr
     await expect(fieldName).toHaveCSS('opacity', '0.8');
     await expect(summaryCell).toHaveCSS('opacity', '0');
     await expect(summaryCell).toHaveCSS('transition-property', 'opacity');
+    const expandedScrollBox = await scroll.boundingBox();
+    assert(expandedScrollBox);
+    expect(expandedScrollBox.x).toBeLessThanOrEqual(1);
+    expect(expandedScrollBox.width).toBeGreaterThanOrEqual(998);
     expect((await lazyList.boundingBox())?.height).toBeGreaterThanOrEqual(850);
     await scroll.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
