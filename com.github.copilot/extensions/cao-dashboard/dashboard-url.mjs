@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const CATALOG_REPOSITORY = "githubnext/gh-aw-cao";
+const DASHBOARD_INPUT_FIELDS = new Set(["repository", "sitePath", "url"]);
 
 export function normalizeRepository(value) {
   if (typeof value !== "string") return undefined;
@@ -56,9 +57,12 @@ export async function resolveDashboardUrl(
     },
   } = {},
 ) {
-  if (input.url) return normalizeDashboardUrl(input.url);
+  const dashboardInput = validateDashboardInput(input);
+  if (dashboardInput.url !== undefined) {
+    return normalizeDashboardUrl(dashboardInput.url);
+  }
 
-  let repository = normalizeRepository(input.repository);
+  let repository = normalizeRepository(dashboardInput.repository);
   if (!repository) repository = normalizeRepository(environment.GITHUB_REPOSITORY);
   if (!repository) {
     try {
@@ -73,7 +77,44 @@ export async function resolveDashboardUrl(
     );
   }
 
-  return pagesUrlForRepository(repository, input.sitePath);
+  return pagesUrlForRepository(repository, dashboardInput.sitePath);
+}
+
+function validateDashboardInput(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Dashboard input must be an object.");
+  }
+
+  for (const field of Object.keys(input)) {
+    if (!DASHBOARD_INPUT_FIELDS.has(field)) {
+      throw new Error(`Unsupported dashboard input field: ${field}.`);
+    }
+  }
+
+  if (
+    input.url !== undefined &&
+    (input.repository !== undefined || input.sitePath !== undefined)
+  ) {
+    throw new Error(
+      "Specify either an HTTPS dashboard URL or repository-derived options, not both.",
+    );
+  }
+
+  for (const field of DASHBOARD_INPUT_FIELDS) {
+    if (input[field] !== undefined && typeof input[field] !== "string") {
+      throw new Error(`Dashboard ${field} must be a string.`);
+    }
+  }
+  if (
+    input.repository !== undefined &&
+    !normalizeRepository(input.repository)
+  ) {
+    throw new Error("Repository must use the OWNER/REPOSITORY format.");
+  }
+  if (input.sitePath !== undefined) {
+    normalizeSitePath(input.sitePath);
+  }
+  return input;
 }
 
 function normalizeDashboardUrl(value) {
@@ -85,6 +126,9 @@ function normalizeDashboardUrl(value) {
   }
   if (url.protocol !== "https:") {
     throw new Error("Dashboard URL must use HTTPS.");
+  }
+  if (url.username || url.password) {
+    throw new Error("Dashboard URL must not include credentials.");
   }
   return url.href;
 }
