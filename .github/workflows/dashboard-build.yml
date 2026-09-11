@@ -104,6 +104,9 @@ jobs:
       - name: Assemble Dashboard Language site
         env:
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}
+          REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-dashboard-control-settings.json
+          REPORT_INVENTORY: ${{ runner.temp }}/cao-dashboard-inventory.json
+          REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/central-agentic-ops-dashboard/${{ inputs.site-path }}/inventory-sources.json
         run: |
           if [[ "$DASHBOARD_LAYOUT" == "source" ]]; then
             echo "Building dashboard site from source layout"
@@ -123,6 +126,9 @@ jobs:
               "$REPORT_OUTPUT/dashboard.json" \
               .github/aw/dashboards
           fi
+          echo "Publishing control-plane package inventory"
+          node "$DASHBOARD_REPORT_ROOT/inventory.mjs"
+          node "$DASHBOARD_REPORT_ROOT/inventory-sources.mjs"
           echo "Copying collected activity data"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
           cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" "$REPORT_OUTPUT/gh-aw-logs.sqlite"

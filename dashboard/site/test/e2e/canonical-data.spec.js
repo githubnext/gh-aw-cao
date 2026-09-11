@@ -208,6 +208,36 @@ test.beforeEach(async ({ context, page }) => {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(canonicalSources()) });
       return;
     }
+    if (pathname === '/inventory-sources.json') {
+      const sources = canonicalSources();
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          packages: sources.packages,
+          repositories: sources.repositories,
+          workflows: sources.workflows
+        })
+      });
+      return;
+    }
+    if (pathname === '/gh-aw-logs.jsonl') {
+      await route.fulfill({
+        contentType: 'application/x-ndjson',
+        body: `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+          run_id: 12345,
+          run_attempt: 1,
+          organization: 'githubnext',
+          repository: 'gh-aw-cao',
+          workflow_name: 'Dashboard',
+          workflow_path: '.github/workflows/dashboard.md',
+          status: 'completed',
+          conclusion: 'success',
+          created_at: '2026-09-09T04:00:00Z',
+          updated_at: '2026-09-09T04:05:00Z'
+        } })}\n`
+      });
+      return;
+    }
     const filePath = join(siteRoot, pathname);
     if (existsSync(filePath)) {
       await route.fulfill({
@@ -643,6 +673,33 @@ test('data worker computes repository and package pages with request-scoped dash
       aic: 17
     }],
     metadata: { 'source-kind': 'derived', 'query-name': 'package-inventory' }
+  });
+});
+
+test('deployed JSONL ingestion includes the published package inventory', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
+    const dashboard = await fetch(`${location.origin}/dashboard.json`).then((response) => response.json());
+    return loadCanonicalDashboardSources(
+      `${location.origin}/gh-aw-logs.jsonl`,
+      ['packages', 'workflows', 'package-inventory'],
+      {
+        githubUrlBase: 'https://github.com',
+        pages: dashboard.dashboard.pages,
+        queries: dashboard.dashboard.queries
+      }
+    );
+  });
+
+  expect(result.packages.rows).toHaveLength(1);
+  expect(result.workflows.rows).toHaveLength(2);
+  expect(result['package-inventory']).toMatchObject({
+    rows: [{
+      package: 'dashboard',
+      'package-name': 'CAO Dashboard',
+      workflows: 1,
+      runs: 1
+    }]
   });
 });
 

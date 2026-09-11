@@ -30,6 +30,8 @@ resources:
     destination: .github/aw/dashboard/report/records.mjs
   - source: report/dashboard-language-sources.mjs
     destination: .github/aw/dashboard/report/dashboard-language-sources.mjs
+  - source: report/inventory-sources.mjs
+    destination: .github/aw/dashboard/report/inventory-sources.mjs
   - source: report/bundle-dashboards.mjs
     destination: .github/aw/dashboard/report/bundle-dashboards.mjs
   - source: report/compose-dashboard-documents.mjs
