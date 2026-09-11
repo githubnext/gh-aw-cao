@@ -9,7 +9,7 @@ const sources = {
     rows: [{
       package: 'dashboard', 'package-name': 'CAO Dashboard', 'package-description': 'Deploy the dashboard.',
       'package-icon': 'graph', 'package-mode': 'review', 'package-enabled': true,
-      'package-worker-count': 1, 'package-min-version': 'v0.89.2', 'package-experimental': true
+      'package-worker-count': 1, 'package-min-version': 'v0.89.3', 'package-experimental': true
     }],
     metadata
   },
