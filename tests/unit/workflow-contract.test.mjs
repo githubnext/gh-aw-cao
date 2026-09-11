@@ -3092,7 +3092,8 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(activityWorkflow, /Set up Node\.js[\s\S]*?node-version: 24/);
   assert.doesNotMatch(activityWorkflow, /Install SQLite|apt-get install.*sqlite3/);
   assert.match(activityWorkflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
-  assert.match(activityWorkflow, /Save activity cache[\s\S]*?path: \$\{\{ runner\.temp \}\}\/cao-activity/);
+  assert.equal((activityWorkflow.match(/path: \|[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.jsonl[\s\S]*?\$\{\{ runner\.temp \}\}\/cao-activity\/gh-aw-logs\.sqlite/g) || []).length, 2);
+  assert.doesNotMatch(activityWorkflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.match(dashboardManifest, /source: site\/scripts\/ingest-gh-aw-logs\.mjs[\s\S]*?destination: \.github\/aw\/dashboard\/site\/scripts\/ingest-gh-aw-logs\.mjs/);
   assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
   assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);

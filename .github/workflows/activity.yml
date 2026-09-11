@@ -69,7 +69,9 @@ jobs:
         id: activity-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           key: ${{ steps.activity-cache-key.outputs.value }}
           restore-keys: |
             cao-activity-v3-
@@ -124,5 +126,7 @@ jobs:
       - name: Save activity cache
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ runner.temp }}/cao-activity
+          path: |
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
+            ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
           key: ${{ steps.activity-cache-key.outputs.value }}
