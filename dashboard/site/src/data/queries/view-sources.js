@@ -323,6 +323,48 @@ function eventsSource(events, sessionsById, runsById, sources) {
   };
 }
 
+/**
+ * @param {Record<string, unknown>[]} events
+ * @param {Map<unknown, Record<string, unknown>>} sessionsById
+ * @param {Map<unknown, Record<string, unknown>>} runsById
+ * @param {Record<string, unknown>} sources
+ */
+function firewallObservationsSource(events, sessionsById, runsById, sources) {
+  const published = sourceRows(sources['firewall-observations']);
+  if (published.length > 0) {
+    return {
+      source: 'firewall-observations',
+      rows: published,
+      metadata: projectionMetadata(sources, 'firewall-observations', 'firewall-observations', true)
+    };
+  }
+  const rows = events.flatMap((event) => {
+    if (event.source !== 'firewall'
+        || !['net_allowed', 'net_blocked'].includes(String(event.type))
+        || typeof event.domain !== 'string'
+        || !event.domain) return [];
+    const session = sessionsById.get(event.sessionId) ?? {};
+    const run = runsById.get(session.runId) ?? {};
+    return [{
+      organization: run.owner,
+      repository: run.repository,
+      workflow: run.workflowPath,
+      run: String(run.githubRunId ?? ''),
+      'run-attempt': run.attempt,
+      'firewall-observation': event.id,
+      'observed-at': event.timestamp,
+      domain: event.domain,
+      decision: event.decision ?? (event.type === 'net_blocked' ? 'denied' : 'allowed'),
+      'request-count': event.requestCount ?? 1
+    }];
+  });
+  return {
+    source: 'firewall-observations',
+    rows,
+    metadata: projectionMetadata(sources, 'firewall-observations', 'firewall-observations', rows.length > 0)
+  };
+}
+
 /** @param {unknown} source */
 function sourceRows(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
@@ -372,7 +414,8 @@ export async function projectCanonicalViewSources(indexedDB, logicalSources) {
       'runs',
       'job-performance',
       'failed-runs',
-      'events'
+      'events',
+      'firewall-observations'
     ])
   };
 }
@@ -390,16 +433,18 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   }
   const requested = new Set(sourceNames);
   const queries = createCanonicalQueries(indexedDB);
+  const needsFirewall = requested.has('firewall-observations');
+  const needsEvents = requested.has('events') || needsFirewall;
   const [packages, repositories, workflows, runs, jobs, failedRuns, sessions, events] = await Promise.all([
     requested.has('packages') ? queries.packages.list() : [],
     requested.has('repositories') || requested.has('workflows') ? queries.repositories.list() : [],
     requested.has('workflows') || requested.has('runs') ? queries.workflows.list() : [],
-    requested.has('runs') || requested.has('job-performance') || requested.has('events')
+    requested.has('runs') || requested.has('job-performance') || needsEvents
       ? queries.runs.list() : [],
     requested.has('job-performance') ? queries.jobs.list() : [],
     requested.has('failed-runs') ? queries.runs.recentFailures() : [],
-    requested.has('events') ? queries.sessions.list() : [],
-    requested.has('events') ? queries.events.list() : []
+    needsEvents ? queries.sessions.list() : [],
+    needsEvents ? queries.events.list() : []
   ]);
   const repositoriesById = new Map(repositories.map((repository) => [repository.id, repository]));
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
@@ -415,5 +460,8 @@ export async function queryCanonicalViewSources(indexedDB, logicalSources, sourc
   if (requested.has('runs')) projected.runs = runsSource(runs, workflowsById, sources);
   if (requested.has('failed-runs')) projected['failed-runs'] = failedRunsSource(failedRuns, sources);
   if (requested.has('events')) projected.events = eventsSource(events, sessionsById, runsById, sources);
+  if (needsFirewall) {
+    projected['firewall-observations'] = firewallObservationsSource(events, sessionsById, runsById, sources);
+  }
   return projected;
 }
