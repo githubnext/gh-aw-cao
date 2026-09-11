@@ -475,7 +475,7 @@ export const SOURCE_FIELDS = {
   'runtime-anomaly-readiness': ['icon', 'title', 'detail'],
   'runtime-signals': ['priority', 'count', 'tone', 'icon', 'kind', 'title', 'detail', 'evidence', 'action', 'navigation-href'],
   dispatches: ['started-at', 'dispatch-type', 'package', 'package-name', 'workflow-name', 'run-title', 'runtime-repository', 'status', 'status-detail', 'status-detail-at', 'run-link'],
-  'factory-rhythm-baseline': ['daily-average', 'weeks'],
+  'factory-rhythm-baseline': ['daily-averages', 'weeks'],
   'dispatch-activation-summary': ['label', 'value'],
   'package-dispatch-state': ['package', 'package-name', 'dispatch-runs', 'skipped', 'failed', 'succeeded', 'worker-dispatches', 'aic', 'agent', 'model'],
   'repository-summary': ['label', 'value', 'items'],

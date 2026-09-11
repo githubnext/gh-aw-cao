@@ -200,7 +200,7 @@ describe('runtime data', () => {
       runs: { source: 'runs', rows, metadata }
     });
 
-    expect(sources['factory-rhythm-baseline'].rows).toEqual([{ 'daily-average': 1, weeks: 4 }]);
+    expect(sources['factory-rhythm-baseline'].rows).toEqual([{ 'daily-averages': [1, 1, 1, 1, 1, 1, 1], weeks: 4 }]);
   });
 
   it('uses retained Actions job and step evidence for failed dispatch details', () => {

@@ -181,8 +181,16 @@ function deriveFactoryRhythmBaseline(runs) {
   const weeks = Math.min(4, availableWeeks);
   if (weeks < 1) return null;
   const baselineStart = currentWindowStart - (weeks * 7 * dayMs);
-  const successes = successfulTimestamps.filter((timestamp) => timestamp >= baselineStart && timestamp < currentWindowStart).length;
-  return { 'daily-average': successes / (weeks * 7), weeks };
+  const dailyAverages = Array.from({ length: 7 }, (_, dayIndex) => {
+    const dayStart = baselineStart + (dayIndex * dayMs);
+    let successes = 0;
+    for (let weekIndex = 0; weekIndex < weeks; weekIndex += 1) {
+      const start = dayStart + (weekIndex * 7 * dayMs);
+      successes += successfulTimestamps.filter((timestamp) => timestamp >= start && timestamp < start + dayMs).length;
+    }
+    return successes / weeks;
+  });
+  return { 'daily-averages': dailyAverages, weeks };
 }
 
 /** @param {Row} run */

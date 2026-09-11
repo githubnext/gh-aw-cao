@@ -150,10 +150,14 @@ function renderStation(icon, label, value, detail, final = false, href) {
 /** @param {Row[]} successfulRuns @param {number} referenceTime @param {Row | undefined} baseline */
 function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
   const days = activityDays(successfulRuns, referenceTime);
-  const baselineAverage = Number(baseline?.['daily-average']);
-  const hasBaseline = Number.isFinite(baselineAverage) && baselineAverage >= 0;
-  const maximum = Math.max(...days.map((day) => day.count), hasBaseline ? baselineAverage : 0, 1);
-  const baselinePosition = hasBaseline ? Math.min(100, baselineAverage / maximum * 100) : 0;
+  const baselineAverages = Array.isArray(baseline?.['daily-averages'])
+    ? baseline['daily-averages'].map(Number)
+    : [];
+  const hasBaseline = baselineAverages.length === 7 && baselineAverages.every((value) => Number.isFinite(value) && value >= 0);
+  const maximum = Math.max(...days.map((day) => day.count), ...(hasBaseline ? baselineAverages : []), 1);
+  const baselinePoints = hasBaseline
+    ? baselineAverages.map((value, index) => `${(index + 0.5) * (100 / 7)},${100 - (value / maximum * 100)}`).join(' ')
+    : '';
   return h(
     'section',
     { className: 'factory-rhythm', 'aria-label': 'Successful Actions runs over the last seven observed days' },
@@ -164,21 +168,24 @@ function renderFactoryRhythm(successfulRuns, referenceTime, baseline) {
     ),
     h('div', { className: 'factory-rhythm-bars' },
       ...(hasBaseline ? [h(
-        'div',
-        {
-          className: 'factory-rhythm-baseline',
-          style: `--factory-baseline-position: ${17 + (baselinePosition * 0.55)}px`,
-          'aria-label': `Prior ${formatCount(Number(baseline?.weeks))} week daily average: ${formatCount(Math.round(baselineAverage))} successful runs`
-        },
-        h('i', {}),
-        h('small', {}, `${formatCount(Math.round(baselineAverage))} avg`)
+        'svg',
+        { className: 'factory-rhythm-comparison', viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': 'true' },
+        h('polyline', { points: baselinePoints }),
+        ...baselineAverages.map((value, index) => h('circle', {
+          cx: (index + 0.5) * (100 / 7),
+          cy: 100 - (value / maximum * 100),
+          r: '1.5',
+          vectorEffect: 'non-scaling-stroke'
+        }))
       )] : []),
       ...days.map((day) => h(
-      'span',
-      { tabindex: '0', 'aria-label': `${day.label}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}` },
-      h('strong', { className: 'factory-rhythm-tooltip', role: 'tooltip', 'aria-hidden': 'true' }, formatCount(day.count)),
-      h('i', { style: `height: ${Math.max(5, day.count / maximum * 100)}%` }),
-      h('small', {}, day.label)
+        'span',
+        { tabindex: '0', 'aria-label': `${day.label}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}` },
+        h('strong', { className: 'factory-rhythm-tooltip', role: 'tooltip', 'aria-hidden': 'true' }, formatCount(day.count)),
+        h('span', { className: 'factory-rhythm-bar-pair', 'aria-hidden': 'true' },
+          h('i', { className: 'factory-rhythm-current', style: `height: ${Math.max(5, day.count / maximum * 100)}%` })
+        ),
+        h('small', {}, day.label)
       )))
   );
 }

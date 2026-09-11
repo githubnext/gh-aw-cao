@@ -46,7 +46,7 @@ it('summarizes retained Actions activity and useful outputs while routing failur
         ],
         metadata
       },
-      'factory-rhythm-baseline': { source: 'factory-rhythm-baseline', rows: [{ 'daily-average': 1.5, weeks: 4 }], metadata },
+      'factory-rhythm-baseline': { source: 'factory-rhythm-baseline', rows: [{ 'daily-averages': [1, 2, 3, 4, 5, 6, 7], weeks: 4 }], metadata },
       repositories: { source: 'repositories', rows: [{ repository: 'githubnext/gh-aw-cao', 'rollout-mode': 'review' }], metadata },
       workflows: {
         source: 'workflows',
@@ -79,7 +79,8 @@ it('summarizes retained Actions activity and useful outputs while routing failur
   expect(rendered.querySelectorAll('.factory-rhythm-bars > span')).toHaveLength(7);
   expect(rendered.querySelectorAll('.factory-rhythm-bars > span[tabindex="0"]')).toHaveLength(7);
   expect(rendered.querySelectorAll('.factory-rhythm-tooltip')).toHaveLength(7);
-  expect(rendered.querySelector('.factory-rhythm-baseline')?.getAttribute('aria-label')).toBe('Prior 4 week daily average: 2 successful runs');
+  expect(rendered.querySelectorAll('.factory-rhythm-comparison')).toHaveLength(1);
+  expect(rendered.querySelectorAll('.factory-rhythm-comparison circle')).toHaveLength(7);
   expect(rendered.querySelector('.factory-status')).toBeNull();
   expect(rendered.querySelector('.factory-station:nth-child(2) strong a')?.getAttribute('href')).toBe('#page-runs?runs-runs-source.run-conclusion=success');
   expect(rendered.querySelector('.factory-station:nth-child(2) small a')?.getAttribute('href')).toBe('#page-runs?runs-runs-source.run-conclusion=failure');
@@ -132,4 +133,5 @@ it('counts canonical dispatch runs when the derived dispatch source is empty', (
 
   expect(rendered.querySelector('.factory-station:nth-child(3)')?.textContent).toBe('Dispatches22 workflows observed');
   expect(rendered.querySelector('.factory-station:first-child')?.textContent).toBe('Repositories1connected');
+  expect(rendered.querySelector('.factory-rhythm-comparison')).toBeNull();
 });

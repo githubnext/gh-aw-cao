@@ -1447,12 +1447,14 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-rhythm-heading span { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
 .factory-rhythm-heading strong { font-size: .875rem; }
 .factory-rhythm-bars { height: 74px; position: relative; display: grid; grid-template-columns: repeat(7, minmax(18px, 1fr)); align-items: end; gap: 9px; }
-.factory-rhythm-baseline { height: auto !important; position: absolute !important; z-index: 2; right: 0; bottom: var(--factory-baseline-position); left: 0; display: block !important; border-top: 1px dashed var(--attention); pointer-events: none; }
-.factory-rhythm-baseline > i { display: none; }
-.factory-rhythm-baseline > small { position: absolute; right: 0; bottom: 3px; padding: 1px 4px; border-radius: 3px; background: var(--canvas); color: var(--attention); font-size: .5625rem; font-weight: 600; }
 .factory-rhythm-bars > span { height: 100%; position: relative; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 5px; border-radius: 3px; outline: none; text-align: center; }
 .factory-rhythm-bars > span:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
-.factory-rhythm-bars i { width: 100%; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
+.factory-rhythm-bar-pair { height: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
+.factory-rhythm-bar-pair i { min-width: 4px; min-height: 5px; display: block; border-radius: 3px 3px 1px 1px; }
+.factory-rhythm-current { width: 58%; background: color-mix(in srgb, var(--success) 72%, var(--accent)); }
+.factory-rhythm-comparison { width: 100%; height: calc(100% - 17px); position: absolute; z-index: 2; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.factory-rhythm-comparison polyline { fill: none; stroke: var(--purple); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.factory-rhythm-comparison circle { fill: var(--canvas); stroke: var(--purple); stroke-width: 1.5; }
 .factory-rhythm-bars small { color: var(--muted); font-size: .625rem; font-style: normal; }
 .factory-rhythm-tooltip { min-width: 30px; position: absolute; z-index: 2; top: -28px; left: 50%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); box-shadow: 0 4px 12px color-mix(in srgb, var(--canvas-inset) 35%, transparent); color: var(--fg); font-size: .6875rem; line-height: 1; opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity 80ms linear, transform 80ms ease-out; }
 .factory-rhythm-bars > span:hover > .factory-rhythm-tooltip,
