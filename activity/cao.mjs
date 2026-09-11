@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, realpathSync } from 'node:fs';
 import { readFile, readdir, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
-import { adaptCachedGhAwJsonl } from '../src/data/adapters/gh-aw-logs.js';
-import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../src/data/ingest/coordinator.js';
-import { normalize } from '../src/data/normalize/index.js';
-import { createCanonicalQueries } from '../src/data/queries/index.js';
-import { readCollection, readRecord, readTransactions } from '../src/data/storage/indexeddb.js';
-import { doctorSqliteDatabase } from '../src/data/storage/sqlite-doctor.js';
-import { installSqliteIndexedDB } from '../src/data/storage/sqlite-indexeddb.js';
+import { adaptCachedGhAwJsonl } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
+import { ingestCachedGhAwJsonl, ingestGhAwLogs } from '../dashboard/site/src/data/ingest/coordinator.js';
+import { normalize } from '../dashboard/site/src/data/normalize/index.js';
+import { createCanonicalQueries } from '../dashboard/site/src/data/queries/index.js';
+import { readCollection, readRecord, readTransactions } from '../dashboard/site/src/data/storage/indexeddb.js';
+import { doctorSqliteDatabase } from '../dashboard/site/src/data/storage/sqlite-doctor.js';
+import { installSqliteIndexedDB } from '../dashboard/site/src/data/storage/sqlite-indexeddb.js';
 
 const ENTITY_COLLECTIONS = [
   'repositories',
@@ -29,12 +29,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const COMMANDS = new Set(['ingest', 'ingest-jsonl', 'audit-jsonl', 'query', 'doctor', 'download']);
 
 const USAGE = `Usage:
-  npm run dashboard:data -- ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  npm run dashboard:data -- ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
-  npm run dashboard:data -- audit-jsonl --input GH_AW_LOGS_JSONL
-  npm run dashboard:data -- query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
-  npm run dashboard:data -- doctor --database FILE [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
-  npm run dashboard:data -- download [--url URL] [--output DIRECTORY]
+  cao ingest --database FILE --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao ingest-jsonl --database FILE --input GH_AW_LOGS_JSONL [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  cao audit-jsonl --input GH_AW_LOGS_JSONL
+  cao query --database FILE --collection NAME [--id ID] [--where FIELD=VALUE] [--limit COUNT]
+  cao doctor --database FILE [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+  cao download [--url URL] [--output DIRECTORY]
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 
@@ -404,7 +404,7 @@ async function main() {
   if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n\n${USAGE}\n`);
     process.exitCode = 1;

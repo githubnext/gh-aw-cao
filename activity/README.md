@@ -33,7 +33,7 @@ separate source and SQLite database when a complete historical archive is
 required.
 
 The `gh-aw-logs.mjs` resource provides the shared parser for consumers of the
-JSONL format. Agent jobs restore the same cache and install the SQLite CLI so
-they can query the normalized projection without repeating log acquisition.
-Consumers must still determine their own completeness, freshness, and scope
-requirements.
+JSONL format. The `cao.mjs` resource provides the `cao` SQLite CLI entry point.
+Agent jobs can query the normalized projection without repeating log
+acquisition. Consumers must still determine their own completeness, freshness,
+and scope requirements.

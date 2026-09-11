@@ -1,13 +1,31 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
 const executeFile = promisify(execFile);
+const packageJson = JSON.parse(
+  await readFile(new URL("../../package.json", import.meta.url), "utf8"),
+);
+const cao = path.resolve(packageJson.bin.cao);
+
+test("exposes the dashboard data CLI as cao", async () => {
+  assert.equal(packageJson.bin.cao, "activity/cao.mjs");
+  const root = await mkdtemp(path.join(os.tmpdir(), "cao-cli-"));
+  const installedCommand = path.join(root, "cao");
+  try {
+    await symlink(cao, installedCommand);
+    const { stdout } = await executeFile(installedCommand, ["help"]);
+    assert.match(stdout, /^Usage:\n  cao ingest /);
+    assert.match(stdout, /\n  cao download /);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("downloads the deployed JSONL and SQLite files without rebuilding", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "deployed-dashboard-data-"));
@@ -28,8 +46,7 @@ test("downloads the deployed JSONL and SQLite files without rebuilding", async (
   try {
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const { stdout } = await executeFile(process.execPath, [
-      path.resolve("dashboard/site/scripts/ingest-gh-aw-logs.mjs"),
+    const { stdout } = await executeFile(cao, [
       "download",
       "--url",
       `http://127.0.0.1:${address.port}/cao/gh-aw-logs.jsonl`,

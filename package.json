@@ -1,13 +1,17 @@
 {
   "name": "central-agentic-ops",
+  "version": "0.0.0",
   "private": true,
+  "bin": {
+    "cao": "activity/cao.mjs"
+  },
   "scripts": {
     "install:gh-aw": "curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- v0.89.5",
     "setup:github-apps": "node .github/cao/setup-github-apps.mjs",
     "dashboard:local": "node dashboard/local-server.mjs",
     "dashboard:local:copilot": "node dashboard/local-server.mjs --copilot",
     "dashboard:local:mobile": "DASHBOARD_DATA_URL=https://githubnext.github.io/gh-aw-cao/cao/gh-aw-logs.jsonl MOBILE_BROWSER=chromium MOBILE_DEVICE='Pixel 7' MOBILE_PROFILE=low-memory MOBILE_MEMORY_MB=256 playwright test --config=playwright.mobile.config.mjs",
-    "dashboard:data": "node dashboard/site/scripts/ingest-gh-aw-logs.mjs",
+    "dashboard:data": "node activity/cao.mjs",
     "dashboard:data:download": "npm run dashboard:data -- download",
     "dev": "node dashboard/local-server.mjs --copilot --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
     "docs:dev": "astro dev",
