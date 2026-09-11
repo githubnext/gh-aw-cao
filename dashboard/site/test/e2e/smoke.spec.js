@@ -214,15 +214,24 @@ test('mobile shell shows large overview actions and moves other views into the h
   const root = page.locator('.dashboard-root');
   const primaryNav = page.locator('.primary-nav');
   const overviewAction = page.locator('[data-nav-page-id="overview"]');
+  const dashboardMain = page.locator('main.dashboard-prototype');
   const factoryOverview = page.locator('[data-page-id="overview"] .agent-factory');
   await expect(root).toHaveClass(/dashboard-mobile-overview-actions/);
   await expect(primaryNav).toHaveCSS('display', 'flex');
   await expect(overviewAction).toHaveCSS('min-height', '52px');
   await expect(overviewAction.locator('.nav-label')).toBeHidden();
-  const viewportWidth = page.viewportSize()?.width ?? 390;
+  const viewportWidth = page.viewportSize()?.width;
+  expect(viewportWidth).toBeDefined();
   await expect.poll(async () => {
-    const box = await factoryOverview.boundingBox();
-    return box !== null && box.x === 0 && box.width === viewportWidth;
+    const [mainBox, factoryBox] = await Promise.all([
+      dashboardMain.boundingBox(),
+      factoryOverview.boundingBox()
+    ]);
+    return mainBox !== null
+      && factoryBox !== null
+      && factoryBox.x === 0
+      && factoryBox.y === mainBox.y
+      && factoryBox.width === viewportWidth;
   }).toBe(true);
 
   await page.locator('.mobile-nav-menu > summary').click();
