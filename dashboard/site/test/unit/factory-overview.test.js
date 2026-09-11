@@ -66,7 +66,7 @@ it('summarizes retained Actions activity and useful outputs while routing failur
   expect(rendered.querySelector('.factory-capacity')).toBeNull();
   expect(rendered.querySelector('.factory-running')?.textContent).toContain('1 run in motion');
   expect(rendered.querySelector('.factory-running .octicon')).toBeNull();
-  expect(rendered.querySelector('h2')?.textContent).toBe('The factory is delivering value.');
+  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory is delivering value.');
   expect([...rendered.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual([
     'Repositories21 review · 1 live',
     'Successful runs22 failed',
@@ -87,11 +87,11 @@ it('summarizes retained Actions activity and useful outputs while routing failur
 });
 
 it.each([
-  ['humming', [{ 'run-status': 'in-progress' }], 'The factory is humming.'],
-  ['under strain', [{ 'run-conclusion': 'failure' }], 'The factory is under strain.'],
-  ['needs attention', [{ 'run-conclusion': 'success' }, { 'run-conclusion': 'failure' }], 'The factory needs attention.'],
-  ['completed its shift', [{ 'run-conclusion': 'success' }], 'The factory completed its shift.'],
-  ['idle', [], 'The factory is idle.']
+  ['humming', [{ 'run-status': 'in-progress' }], 'Your factory is humming.'],
+  ['under strain', [{ 'run-conclusion': 'failure' }], 'Your factory is under strain.'],
+  ['needs attention', [{ 'run-conclusion': 'success' }, { 'run-conclusion': 'failure' }], 'Your factory needs attention.'],
+  ['completed its shift', [{ 'run-conclusion': 'success' }], 'Your factory completed its shift.'],
+  ['idle', [], 'Your factory is idle.']
 ])('describes a factory that is %s', (_state, rows, expected) => {
   const rendered = renderFactoryOverview({
     sources: {
@@ -111,7 +111,7 @@ it('reports unavailable factory evidence before inferring an operating state', (
     }
   });
 
-  expect(rendered.querySelector('h2')?.textContent).toBe('Factory status is unavailable.');
+  expect(rendered.querySelector('h2')?.textContent).toBe('Your factory status is unavailable.');
 });
 
 it('counts canonical dispatch runs when the derived dispatch source is empty', () => {

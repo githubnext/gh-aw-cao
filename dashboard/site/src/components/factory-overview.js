@@ -89,13 +89,13 @@ function renderIntroduction(heading, usefulOutputs, deliveredRepositories, succe
  * @param {number} failedRuns
  */
 function factoryHeading(sources, valueGains, activeRuns, successfulRuns, failedRuns) {
-  if (['runs', 'outcomes'].some((name) => sources[name]?.metadata?.availability === 'unavailable')) return 'Factory status is unavailable.';
-  if (valueGains > 0) return 'The factory is delivering value.';
-  if (activeRuns > 0) return 'The factory is humming.';
-  if (failedRuns > successfulRuns && failedRuns > 0) return 'The factory is under strain.';
-  if (failedRuns > 0) return 'The factory needs attention.';
-  if (successfulRuns > 0) return 'The factory completed its shift.';
-  return 'The factory is idle.';
+  if (['runs', 'outcomes'].some((name) => sources[name]?.metadata?.availability === 'unavailable')) return 'Your factory status is unavailable.';
+  if (valueGains > 0) return 'Your factory is delivering value.';
+  if (activeRuns > 0) return 'Your factory is humming.';
+  if (failedRuns > successfulRuns && failedRuns > 0) return 'Your factory is under strain.';
+  if (failedRuns > 0) return 'Your factory needs attention.';
+  if (successfulRuns > 0) return 'Your factory completed its shift.';
+  return 'Your factory is idle.';
 }
 
 /**
