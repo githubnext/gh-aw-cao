@@ -9,6 +9,8 @@ import { parseGhAwLogsJsonl, serializeGhAwLogsJsonl } from "./gh-aw-logs.mjs";
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RUN_LIMIT = 10;
+const COLLECTION_STATS_PATTERN =
+  /Runs:\s*(\d+)\s*discovered;\s*reports:\s*(\d+)\s*downloaded,\s*(\d+)\s*skipped because cached analyses were reused/;
 
 async function existingSnapshot(file) {
   try {
@@ -18,6 +20,22 @@ async function existingSnapshot(file) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
     return { runs: [] };
   }
+}
+
+async function readCollectionStats(file) {
+  let contents;
+  try {
+    contents = await readFile(file, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return null;
+  }
+  const match = COLLECTION_STATS_PATTERN.exec(contents);
+  if (!match) return null;
+  const discovered = Number(match[1]);
+  const downloaded = Number(match[2]);
+  const cached = Number(match[3]);
+  return { discovered, downloaded, cached, pending: Math.max(0, discovered - downloaded - cached) };
 }
 
 async function writeOutcome(outcome) {
@@ -32,6 +50,7 @@ export async function collectActivityLogs() {
   const logsPath = path.resolve(process.env.REPORT_GH_AW_LOGS || "_activity/gh-aw-logs.jsonl");
   const statePath = path.resolve(process.env.REPORT_GH_AW_LOGS_STATE || "_activity/gh-aw-logs-state.json");
   const exitCodePath = path.resolve(process.env.REPORT_GH_AW_LOGS_EXIT_CODE || "_activity/gh-aw-logs-exit-code");
+  const stderrPath = path.resolve(process.env.REPORT_GH_AW_LOGS_STDERR || "_activity/gh-aw-logs-stderr.log");
   const windowDays = Number(process.env.REPORT_RUN_WINDOW_DAYS || DEFAULT_WINDOW_DAYS);
   const runLimit = Number(process.env.REPORT_RUN_LIMIT || DEFAULT_RUN_LIMIT);
   if (!repository) throw new Error("GITHUB_REPOSITORY is required");
@@ -63,6 +82,7 @@ export async function collectActivityLogs() {
     }
     const snapshot = { runs: parseGhAwLogsJsonl(await readFile(logsPath, "utf8")) };
     await writeFile(logsPath, serializeGhAwLogsJsonl(snapshot.runs));
+    const collectionStats = await readCollectionStats(stderrPath);
     await writeFile(statePath, `${JSON.stringify({
       schemaVersion: 1,
       observedAt,
@@ -73,13 +93,21 @@ export async function collectActivityLogs() {
       windowDays,
       runLimit,
       fallback: false,
+      ...(collectionStats ? { collectionStats } : {}),
     }, null, 2)}\n`);
     await writeOutcome("success");
     const workflowCount = new Set(snapshot.runs.map((run) => run.workflow_path || run.workflow_name || "unknown")).size;
     const runLabel = snapshot.runs.length === 1 ? "run" : "runs";
     const snapshotWorkflowLabel = workflowCount === 1 ? "workflow" : "workflows";
     log.info`Collected snapshot with ${snapshot.runs.length} ${runLabel} across ${workflowCount} ${snapshotWorkflowLabel}`;
-    log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} with one gh aw logs invocation`;
+    if (collectionStats) {
+      const cachedLabel = collectionStats.cached === 1 ? "run" : "runs";
+      const downloadedLabel = collectionStats.downloaded === 1 ? "run" : "runs";
+      const pendingLabel = collectionStats.pending === 1 ? "run" : "runs";
+      log.info`Loaded ${collectionStats.cached} cached ${cachedLabel} from the --cached-jsonl cache, downloaded ${collectionStats.downloaded} new ${downloadedLabel}, and left ${collectionStats.pending} discovered ${pendingLabel} pending download for ${targets.length} control-repository ${workflowLabel}`;
+    } else {
+      log.info`Downloaded ${snapshot.runs.length} ${runLabel} for ${targets.length} control-repository ${workflowLabel} with one gh aw logs invocation`;
+    }
     return "success";
   } catch (error) {
     await writeFile(logsPath, serializeGhAwLogsJsonl(cachedRuns));
