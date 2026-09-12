@@ -269,28 +269,24 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
   const summary = h('p', { className: 'factory-rhythm-summary', role: 'status' }, '');
   /** @type {HTMLButtonElement[]} */
   const dayButtons = [];
+  const showFullWeek = () => {
+    section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
+      bubbles: true,
+      detail: { range: '1w' }
+    }));
+  };
   /** @param {number} index */
   const selectDay = (index) => {
     const day = days[index];
     if (!day) return;
     rhythmSelection.set(day);
-    section.dispatchEvent(new CustomEvent('dashboard-time-window-change', {
-      bubbles: true,
-      detail: {
-        start: new Date(day.start).toISOString(),
-        end: new Date(day.end).toISOString()
-      }
-    }));
+    showFullWeek();
   };
   /** @param {MouseEvent} event */
   const resetDay = (event) => {
     if (event.target instanceof Element && event.target.closest('.factory-rhythm-day')) return;
-    if (rhythmSelection.get() === null) return;
     rhythmSelection.set(null);
-    section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
-      bubbles: true,
-      detail: { range: '1w' }
-    }));
+    showFullWeek();
   };
   const section = h(
     'section',

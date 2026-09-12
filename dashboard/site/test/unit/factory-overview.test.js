@@ -186,31 +186,28 @@ it('updates the factory rhythm day summary when selecting a bar', () => {
       }
     }
   });
-  /** @type {CustomEvent | undefined} */
-  let horizonChange;
+  let horizonChangeCount = 0;
   rendered.addEventListener('dashboard-time-window-change', (event) => {
-    if (event instanceof CustomEvent) horizonChange = event;
+    if (event instanceof CustomEvent) horizonChangeCount += 1;
+  });
+  /** @type {CustomEvent[]} */
+  const horizonResets = [];
+  rendered.addEventListener('dashboard-time-window-range-change', (event) => {
+    if (event instanceof CustomEvent) horizonResets.push(event);
   });
   const dayButtons = [...rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
   dayButtons[4]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
   expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 2 successful runs.');
   expect(dayButtons[4]?.getAttribute('aria-pressed')).toBe('true');
-  expect(horizonChange?.detail).toEqual({
-    start: '2026-09-09T00:00:00.000Z',
-    end: '2026-09-10T00:00:00.000Z'
-  });
+  expect(horizonChangeCount).toBe(0);
+  expect(horizonResets.at(-1)?.detail).toEqual({ range: '1w' });
 
-  /** @type {CustomEvent | undefined} */
-  let horizonReset;
-  rendered.addEventListener('dashboard-time-window-range-change', (event) => {
-    if (event instanceof CustomEvent) horizonReset = event;
-  });
-  rendered.querySelector('.factory-rhythm-heading')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  rendered.querySelector('.factory-rhythm-bars')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
   expect(dayButtons.every((button) => button.getAttribute('aria-pressed') === 'false')).toBe(true);
   expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('');
-  expect(horizonReset?.detail).toEqual({ range: '1w' });
+  expect(horizonResets.at(-1)?.detail).toEqual({ range: '1w' });
 });
 
 it('does not select a factory rhythm day by default', () => {
