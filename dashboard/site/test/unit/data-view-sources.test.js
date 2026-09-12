@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, recordTransaction } from '../../src/data/storage/indexeddb.js';
 import { loadCanonicalViewSources, queryCanonicalViewSources } from '../../src/data/queries/view-sources.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -138,6 +138,29 @@ describe('canonical view sources', () => {
       source: 'failed-runs',
       rows: [{ repository: 'gh-aw-cao', run: '42', 'run-conclusion': 'failure' }],
       metadata: { 'source-kind': 'canonical-query' }
+    });
+  });
+
+  it('projects retained ingestion transactions for dashboard views', async () => {
+    await recordTransaction(indexedDB, {
+      id: 'ingest-jsonl:2026-09-09T05:00:00Z:3',
+      kind: 'ingest-jsonl',
+      createdAt: '2026-09-09T05:00:00Z',
+      records: 3,
+      committedRecords: 2
+    });
+
+    const projected = await queryCanonicalViewSources(indexedDB, sources, ['transactions']);
+
+    expect(projected.transactions).toMatchObject({
+      source: 'transactions',
+      rows: [{
+        id: 'ingest-jsonl:2026-09-09T05:00:00Z:3',
+        kind: 'ingest-jsonl',
+        records: 3,
+        committedRecords: 2
+      }],
+      metadata: { 'source-kind': 'canonical-query', availability: 'available' }
     });
   });
 

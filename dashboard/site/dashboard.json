@@ -4637,6 +4637,84 @@
         ]
       },
       {
+        "id": "transactions",
+        "kind": "custom",
+        "title": "Transactions",
+        "icon": "list-unordered",
+        "description": "Inspect dashboard database ingestion transactions.",
+        "views": [
+          {
+            "id": "transactions-table",
+            "title": "Transactions",
+            "description": "Recent dashboard data ingestion attempts ordered from newest to oldest.",
+            "data": {
+              "source": "transactions",
+              "order-by": [
+                {
+                  "field": "createdAt",
+                  "direction": "desc"
+                }
+              ]
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "empty-message": "No dashboard data ingestion transactions have been recorded.",
+            "layout": "full-view",
+            "encoding": {
+              "columns": [
+                {
+                  "field": "createdAt",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Created"
+                },
+                {
+                  "field": "kind",
+                  "type": "nominal",
+                  "title": "Kind"
+                },
+                {
+                  "field": "records",
+                  "type": "quantitative",
+                  "title": "Records"
+                },
+                {
+                  "field": "committedRecords",
+                  "type": "quantitative",
+                  "title": "Committed"
+                },
+                {
+                  "field": "rawRuns",
+                  "type": "quantitative",
+                  "title": "Raw runs"
+                },
+                {
+                  "field": "agenticRuns",
+                  "type": "quantitative",
+                  "title": "Agentic runs"
+                },
+                {
+                  "field": "unenrichedRuns",
+                  "type": "quantitative",
+                  "title": "Unenriched runs"
+                },
+                {
+                  "field": "error",
+                  "type": "nominal",
+                  "title": "Error"
+                },
+                {
+                  "field": "id",
+                  "type": "nominal",
+                  "title": "Transaction"
+                }
+              ]
+            },
+            "lazy-list": true
+          }
+        ]
+      },
+      {
         "id": "configuration",
         "kind": "custom",
         "title": "Settings",

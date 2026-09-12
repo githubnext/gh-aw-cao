@@ -894,6 +894,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
+    expect(rendered.querySelector('.account-menu-transactions')?.getAttribute('href')).toBe('#page-transactions');
     expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open settings menu');
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
     expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();

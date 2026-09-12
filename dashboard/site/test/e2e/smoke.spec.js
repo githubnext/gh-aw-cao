@@ -77,6 +77,72 @@ test('Settings keeps hourly dashboard downloads off until the user opts in', asy
   )).toBe('true');
 });
 
+test('Transactions opens from Settings as a full-view table', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const dashboardDocument = await fetch('http://dashboard.test/dashboard.json').then((response) => response.json());
+      const metadata = {
+        'source-id': 'transactions-fixture',
+        'source-kind': 'canonical-query',
+        'as-of': '2026-09-12T04:00:00Z',
+        'retrieved-at': '2026-09-12T04:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const transactions = {
+        source: 'transactions',
+        rows: Array.from({ length: 50 }, (_, index) => ({
+          id: \`transaction-\${index + 1}\`,
+          kind: index % 5 === 0 ? 'ingest-jsonl-failed' : 'ingest-jsonl',
+          createdAt: new Date(Date.parse('2026-09-12T04:00:00Z') - index * 60000).toISOString(),
+          records: index + 1,
+          committedRecords: index,
+          rawRuns: index,
+          agenticRuns: index,
+          unenrichedRuns: 0,
+          error: index % 5 === 0 ? 'TypeError' : ''
+        })),
+        metadata
+      };
+      document.querySelector('#root').append(renderDashboard({
+        document: dashboardDocument,
+        sources: { transactions }
+      }));
+    </script>
+  `);
+
+  await page.locator('.account-menu-avatar').click();
+  const menuItem = page.locator('.account-menu-transactions');
+  await expect(menuItem).toHaveText('Transactions');
+  await menuItem.click();
+
+  const root = page.locator('.dashboard-root');
+  const view = page.locator('[data-view-id="transactions-table"]');
+  const scroll = view.locator('.table-scroll');
+  await expect(page).toHaveURL(/#page-transactions$/);
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(view).toBeVisible();
+  await expect(view.getByRole('searchbox', { name: 'Filter Transactions' })).toBeVisible();
+  await expect(view.getByRole('heading', { name: 'Transactions' })).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+  expect(await scroll.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectTableFilterIsContained(view.locator('.table-scroll > .table-filter'));
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.top-nav')).toBeHidden();
+});
+
 /**
  * @param {number} actual
  * @param {number} expected

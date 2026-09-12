@@ -1,4 +1,4 @@
-import { readCollection, readIndex, readRecord } from '../storage/indexeddb.js';
+import { readCollection, readIndex, readRecord, readTransactions } from '../storage/indexeddb.js';
 
 /** @param {IDBFactory} indexedDB */
 export function createCanonicalQueries(indexedDB) {
@@ -50,6 +50,9 @@ export function createCanonicalQueries(indexedDB) {
         const events = await readIndex(indexedDB, 'events', 'bySessionSequence', [sessionId]);
         return events.filter((event) => event.type === type);
       }
+    },
+    transactions: {
+      list: () => readTransactions(indexedDB)
     }
   };
 }
