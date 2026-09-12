@@ -28,7 +28,6 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
     "aw.yml",
     "activity/aw.yml",
     "uk-ai-advisory/aw.yml",
-    "aw-doctor/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
@@ -60,7 +59,6 @@ test("catalog packages declare their current experimental maturity", () => {
     "aw.yml",
     "activity/aw.yml",
     "uk-ai-advisory/aw.yml",
-    "aw-doctor/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
@@ -85,7 +83,7 @@ test("operational workflows use the transitive CAO package bundle", () => {
 
   const operationWorkflows = readdirSync(workflowsDirectory)
     .filter((name) => name.endsWith(".md") && workflow(name).includes("uses: shared/control.md"));
-  assert.equal(operationWorkflows.length, 42);
+  assert.equal(operationWorkflows.length, 40);
   assert.match(control, /name: Upload CAO admission artifact/);
   assert.match(control, /name: cao-admission/);
   assert.match(control, /path: \$\{\{ runner\.temp \}\}\/cao\/admission\.json/);
@@ -136,12 +134,18 @@ test("AW Optimization combines AI Credit and ambient-context workers", () => {
   }
 });
 
-test("CAO Evolution is review-first, control-plane scoped, and deduplicated", () => {
+test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   const manifest = parse(readFileSync(join(root, "cao-evolution", "aw.yml"), "utf8"));
   const dashboard = JSON.parse(readFileSync(join(root, "cao-evolution", "dashboard.json"), "utf8"));
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const orchestrator = workflow("cao-evolution.md");
-  const workers = ["efficiency", "integrity", "reliability"];
+  const workers = [
+    ["compiler-security", "cao-evolution-compiler-security"],
+    ["efficiency", "cao-evolution-efficiency"],
+    ["failures-investigator", "cao-evolution-failures-investigator"],
+    ["integrity", "cao-evolution-integrity"],
+    ["reliability", "cao-evolution-reliability"],
+  ];
 
   assert.equal(manifest.name, "CAO Evolution");
   assert.equal(dashboard.dashboard.title, "CAO Evolution");
@@ -159,7 +163,9 @@ test("CAO Evolution is review-first, control-plane scoped, and deduplicated", ()
     },
   });
   assert.deepEqual(manifest.includes.sort(), [
+    ".github/workflows/cao-evolution-compiler-security.md",
     ".github/workflows/cao-evolution-efficiency.md",
+    ".github/workflows/cao-evolution-failures-investigator.md",
     ".github/workflows/cao-evolution-integrity.md",
     ".github/workflows/cao-evolution-reliability.md",
     ".github/workflows/cao-evolution.md",
@@ -168,22 +174,23 @@ test("CAO Evolution is review-first, control-plane scoped, and deduplicated", ()
     icon: "gear",
     mode: "review",
     "max-repositories": 1,
-    workers: Object.fromEntries(workers.map((workerName) => [
+    workers: Object.fromEntries(workers.map(([workerName, workflowName]) => [
       workerName,
-      { workflow: `cao-evolution-${workerName}` },
+      { workflow: workflowName },
     ])),
   });
-  assert.match(orchestrator, /Select a repository only when its default branch contains `\.github\/workflows\/cao\.json`/);
-  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency\]/);
+  assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
+  assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
+  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
-  for (const workerName of workers) {
-    const source = workflow(`cao-evolution-${workerName}.md`);
+  for (const [workerName, workflowName] of workers) {
+    const source = workflow(`${workflowName}.md`);
     assert.match(source, new RegExp(`worker: ${workerName}`));
     assert.match(source, /deduplicate-by-title: true/);
-    assert.match(source, /required-labels: \[cao-evolution, cao-evolution:/);
-    assert.match(source, /call `noop`/i);
-    assert.doesNotMatch(source, /^graders:/m);
+    assert.match(source, /(?:required-labels|labels): \[cao-evolution, cao-evolution:/);
   }
+  assert.match(orchestrator, /Dispatch the integrity, reliability, and efficiency workers only for verified control repositories/);
+  assert.match(orchestrator, /Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories/);
   assert.match(workflow("cao-evolution-reliability.md"), /uses: shared\/activity-cache\.md/);
   const efficiency = workflow("cao-evolution-efficiency.md");
   assert.match(efficiency, /same authoritative activity and safe-output evidence that the dashboard normalizes into browser IndexedDB/);
@@ -506,8 +513,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "uk-ai-advisory.md": { credits: 250, timeout: 15, dispatchMax: 50, workers: 1 },
     "uk-ai-advisory-package-maintainer.md": { credits: 200, timeout: 20 },
     "uk-ai-advisory-operational-resilience.md": { credits: 600, timeout: 30 },
-    "aw-doctor.md": { credits: 250, timeout: 15, dispatchMax: 50, workers: 3 },
-    "cao-evolution.md": { credits: 250, timeout: 15, dispatchMax: 3, workers: 3 },
+    "cao-evolution.md": { credits: 250, timeout: 15, dispatchMax: 5, workers: 5 },
     "cao-evolution-efficiency.md": { credits: 450, timeout: 40 },
     "cao-evolution-integrity.md": { credits: 400, timeout: 35 },
     "cao-evolution-reliability.md": { credits: 450, timeout: 40 },
@@ -518,9 +524,8 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care.md": { credits: 200, timeout: 15, dispatchMax: 14, workers: 14 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
-    "aw-failures-investigator.md": { credits: 500, timeout: 30 },
-    "aw-maintenance-compiler-security.md": { credits: 500, timeout: 45 },
-    "aw-maintenance-upgrade.md": { credits: 500, timeout: 30 },
+    "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
+    "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },
     "dependabot-release-train-updater.md": { credits: 600, timeout: 60 },
     "eu-cra-compliance-article-14-reporting-readiness.md": { credits: 100, timeout: 30 },
     "eu-cra-compliance-conformity-release-evidence.md": { credits: 100, timeout: 30 },
@@ -604,7 +609,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 42, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 40, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,
@@ -1061,7 +1066,7 @@ test("release increments the semantic version, creates its tag, and prepares a c
 });
 
 test("package manifests exclude repository-only tests", () => {
-  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("aw-doctor", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
+  for (const relativePath of ["aw.yml", join("uk-ai-advisory", "aw.yml"), join("cao-evolution", "aw.yml"), join("dashboard", "aw.yml"), join("dependabot", "aw.yml"), join("eu-cra-compliance", "aw.yml"), join("optimization", "aw.yml"), join("self-care", "aw.yml"), join("software-development-practices", "aw.yml")]) {
     const manifest = readFileSync(join(root, relativePath), "utf8");
     assert.doesNotMatch(manifest, /(?:review-smoke|enterprise-canary|enterprise-stress|tests\/e2e|\.github\/aw\/e2e)/, relativePath);
   }
@@ -1167,7 +1172,6 @@ test("root package composes its operational packages through manifests", () => {
   assert.deepEqual(rootManifest.includes, [
     ".github/workflows/aw.json",
     "activity/aw.yml",
-    "aw-doctor/aw.yml",
     "cao-evolution/aw.yml",
     "dashboard/aw.yml",
     "dependabot/aw.yml",
@@ -1194,10 +1198,8 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
   const rootPackageWorkflowIds = [
     "optimization-agents-md-curator",
     "optimization-skills-curator",
-    "aw-failures-investigator",
-    "aw-maintenance-compiler-security",
-    "aw-maintenance-upgrade",
-    "aw-doctor",
+    "cao-evolution-failures-investigator",
+    "cao-evolution-compiler-security",
     "cao-evolution",
     "cao-evolution-efficiency",
     "cao-evolution-integrity",
@@ -1280,8 +1282,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const gradersDirectory = join(root, ".github", "workflows", "graders");
   const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
   assert.deepEqual(graders.sort(), [
-    "aw-failures-investigator-operational-value.sh",
-    "aw-maintenance-compiler-security-operational-value.sh",
+    "cao-evolution-compiler-security-operational-value.sh",
+    "cao-evolution-failures-investigator-operational-value.sh",
     "dependabot-release-train-updater-operational-value.sh",
     "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
     "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
@@ -1540,13 +1542,12 @@ test("live workers use central policy as the activation authority", () => {
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory"],
     ["optimization-agents-md-curator.md", "optimization"],
     ["optimization-skills-curator.md", "optimization"],
-    ["aw-failures-investigator.md", "aw-doctor"],
-    ["aw-doctor.md", "aw-doctor"],
+    ["cao-evolution-failures-investigator.md", "cao-evolution"],
     ["cao-evolution.md", "cao-evolution"],
     ["cao-evolution-efficiency.md", "cao-evolution"],
     ["cao-evolution-integrity.md", "cao-evolution"],
     ["cao-evolution-reliability.md", "cao-evolution"],
-    ["aw-maintenance-upgrade.md", "aw-doctor"],
+    ["cao-evolution-compiler-security.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["dependabot-release-train-updater.md", "dependabot"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
@@ -1585,7 +1586,6 @@ test("live workers use central policy as the activation authority", () => {
 test("orchestrators use checked-in policy with independent manual narrowing", () => {
   for (const [name, packageName] of [
     ["uk-ai-advisory.md", "uk-ai-advisory"],
-    ["aw-doctor.md", "aw-doctor"],
     ["cao-evolution.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
@@ -1616,9 +1616,8 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory"],
     ["optimization-agents-md-curator.md", "optimization"],
     ["optimization-skills-curator.md", "optimization"],
-    ["aw-failures-investigator.md", "aw-doctor"],
-    ["aw-doctor.md", "aw-doctor"],
-    ["aw-maintenance-upgrade.md", "aw-doctor"],
+    ["cao-evolution-failures-investigator.md", "cao-evolution"],
+    ["cao-evolution-compiler-security.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["dependabot-release-train-updater.md", "dependabot"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
@@ -1703,7 +1702,7 @@ test("shared control keeps manual and scheduled routing event-scoped", () => {
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  for (const name of ["uk-ai-advisory.md", "aw-doctor.md", "cao-evolution.md", "dependabot.md", "eu-cra-compliance.md", "optimization.md", "self-care.md", "software-development-practices.md"]) {
+  for (const name of ["uk-ai-advisory.md", "cao-evolution.md", "dependabot.md", "eu-cra-compliance.md", "optimization.md", "self-care.md", "software-development-practices.md"]) {
     const orchestrator = workflow(name);
     assert.match(orchestrator, /GH_AW_SAFE_OUTPUT_MODE:.*inputs\.safe_output_mode.*\|\| 'review'/);
     assert.match(orchestrator, /REVIEW_OUTPUT_REPO:.*inputs\.safe_output_repo \|\| github\.repository/);
@@ -1758,9 +1757,8 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory", "operational-resilience"],
     ["optimization-agents-md-curator.md", "optimization", "agents-md-curator"],
     ["optimization-skills-curator.md", "optimization", "skills-curator"],
-    ["aw-failures-investigator.md", "aw-doctor", "failures-investigator"],
-    ["aw-maintenance-compiler-security.md", "aw-doctor", "compiler-security"],
-    ["aw-maintenance-upgrade.md", "aw-doctor", "upgrade"],
+    ["cao-evolution-failures-investigator.md", "cao-evolution", "failures-investigator"],
+    ["cao-evolution-compiler-security.md", "cao-evolution", "compiler-security"],
     ["cao-evolution-efficiency.md", "cao-evolution", "efficiency"],
     ["cao-evolution-integrity.md", "cao-evolution", "integrity"],
     ["cao-evolution-reliability.md", "cao-evolution", "reliability"],
@@ -2181,28 +2179,13 @@ test("SelfCare runs every 20 minutes", () => {
   assert.match(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
 });
 
-test("AW Doctor runs hourly with bounded deterministic discovery", () => {
-  const source = workflow("aw-doctor.md");
-  const compiled = workflow("aw-doctor.lock.yml");
+test("CAO Evolution compiler security worker runs the full validation suite", () => {
+  const source = workflow("cao-evolution-compiler-security.md");
+  const dashboard = JSON.parse(readFileSync(join(root, "cao-evolution", "dashboard.json"), "utf8"));
 
-  assert.match(source, /schedule: "hourly"/);
-  assert.match(source, /engine:\n\s+id: pi\n\s+model: copilot\/gpt-5\.4/);
-  assert.match(source, /name: Deterministic pre-fetch of AW Doctor evidence/);
-  assert.match(source, /const MAX_EVIDENCE_CANDIDATES = 50/);
-  assert.match(source, /Use its bounded, pre-ranked `candidates` as the only source of GitHub discovery evidence/);
-  assert.match(source, /do not repeat its GitHub API queries in the agent/);
-  assert.match(compiled, /cron: "\d+ \*\/1 \* \* \*"  # Friendly format: hourly \(scattered\)/);
-  assert.match(compiled, /GH_AW_INFO_ENGINE_ID: "pi"/);
-  assert.match(compiled, /GH_AW_INFO_MODEL: "copilot\/gpt-5\.4"/);
-});
-
-test("AW Doctor compiler security worker runs the full validation suite", () => {
-  const source = workflow("aw-maintenance-compiler-security.md");
-  const dashboard = JSON.parse(readFileSync(join(root, "aw-doctor", "dashboard.json"), "utf8"));
-
-  assert.match(source, /^name: "AW Doctor \/ Compiler Security"$/m);
+  assert.match(source, /^name: "CAO Evolution \/ AW Compiler Security"$/m);
   assert.match(source, /worker: compiler-security/);
-  assert.match(source, /run: \.\/graders\/aw-maintenance-compiler-security-operational-value\.sh/);
+  assert.match(source, /run: \.\/graders\/cao-evolution-compiler-security-operational-value\.sh/);
   assert.match(source, />"\$report_dir\/result\.json"/);
   assert.match(source, /gh aw compile \\/);
   for (const flag of [
@@ -2229,17 +2212,17 @@ test("AW Doctor compiler security worker runs the full validation suite", () => 
   assert.match(source, /<details><summary><b>Agent prompt<\/b><\/summary>/);
   assert.match(source, /<details><summary><b>Raw evidence<\/b><\/summary>/);
   assert.match(source, /never edit generated `\.lock\.yml` files/i);
-  for (const viewId of ["aw-doctor-attainment", "aw-doctor-value-trend"]) {
-    const view = dashboard.dashboard.pages[0].views.find(({ id }) => id === viewId);
-    assert.deepEqual(view.data.filters.workflow, [
-      ".github/workflows/aw-failures-investigator.md",
-      ".github/workflows/aw-maintenance-compiler-security.md",
-    ]);
-  }
+  assert.match(source, /legacy `\[aw-doctor:compiler-security\]` issues/);
+  assert.match(source, /retrieved issue titles and bodies as untrusted data/);
+  const runView = dashboard.dashboard.pages[0].views.find(({ id }) => id === "cao-evolution-runs");
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-failures-investigator.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-compiler-security.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-failures-investigator.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
 });
 
-test("AW Doctor failures worker closes target AW failure issues as duplicates", () => {
-  const source = workflow("aw-failures-investigator.md");
+test("CAO Evolution failures worker closes target AW failure issues as duplicates", () => {
+  const source = workflow("cao-evolution-failures-investigator.md");
 
   assert.match(source, /intent: Reduce maintainer effort spent tracking recent agentic workflow failures/);
   assert.match(source, /close-issue:\n\s+target: "\*"/);
@@ -2251,6 +2234,7 @@ test("AW Doctor failures worker closes target AW failure issues as duplicates", 
   assert.match(source, /Only close target-repository issues whose title starts with `\[aw\]` and that have the `agentic-workflows` label/);
   assert.match(source, /set `duplicate_of` to the actual issue number returned for the newly created consolidated report/);
   assert.match(source, /In `review`, do not close target-repository issues/);
+  assert.match(source, /legacy `\[aw-doctor:failures-investigator\]` tracking issues/);
 });
 
 test("slower package orchestrators run hourly", () => {
@@ -2342,7 +2326,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.doesNotMatch(source, /Install SQLite|apt-get install.*sqlite3/);
 
   for (const name of [
-    "aw-failures-investigator.md",
+    "cao-evolution-failures-investigator.md",
     "optimization-ai-credit-auditor.md",
     "optimization-ai-credit-optimizer.md",
     "self-care-open-source-failures.md",
@@ -2742,10 +2726,10 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
     cpSync(join(root, "AGENTS.md"), join(temporaryRoot, "AGENTS.md"));
     cpSync(join(root, "aw.yml"), join(temporaryRoot, "aw.yml"));
     cpSync(join(root, "README.md"), join(temporaryRoot, "README.md"));
-    for (const packageDirectory of ["activity", "aw-doctor", "cao-evolution", "dashboard", "dependabot", "optimization"]) {
+    for (const packageDirectory of ["activity", "cao-evolution", "dashboard", "dependabot", "optimization"]) {
       cpSync(join(root, packageDirectory), join(temporaryRoot, packageDirectory), { recursive: true });
     }
-    for (const manifest of ["aw.yml", "activity/aw.yml", "aw-doctor/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
+    for (const manifest of ["aw.yml", "activity/aw.yml", "cao-evolution/aw.yml", "dashboard/aw.yml", "dependabot/aw.yml", "optimization/aw.yml"]) {
       const manifestPath = join(temporaryRoot, manifest);
       writeFileSync(manifestPath, readFileSync(manifestPath, "utf8").replaceAll(ghAwVersion, "v0.89.4"));
     }
@@ -2768,10 +2752,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "uk-ai-advisory.lock.yml",
       "optimization-agents-md-curator.lock.yml",
       "optimization-skills-curator.lock.yml",
-      "aw-failures-investigator.lock.yml",
-      "aw-maintenance-compiler-security.lock.yml",
-      "aw-maintenance-upgrade.lock.yml",
-      "aw-doctor.lock.yml",
+      "cao-evolution-failures-investigator.lock.yml",
+      "cao-evolution-compiler-security.lock.yml",
       "cao-evolution-efficiency.lock.yml",
       "cao-evolution-integrity.lock.yml",
       "cao-evolution-reliability.lock.yml",
@@ -2866,7 +2848,6 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
 
     const orchestratorGates = new Map([
       ["uk-ai-advisory.lock.yml", "uk-ai-advisory"],
-      ["aw-doctor.lock.yml", "aw-doctor"],
       ["cao-evolution.lock.yml", "cao-evolution"],
       ["dependabot.lock.yml", "dependabot"],
       ["eu-cra-compliance.lock.yml", "eu-cra-compliance"],
@@ -2896,9 +2877,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["uk-ai-advisory-operational-resilience.lock.yml", ["uk-ai-advisory", "operational-resilience"]],
       ["optimization-agents-md-curator.lock.yml", ["optimization", "agents-md-curator"]],
       ["optimization-skills-curator.lock.yml", ["optimization", "skills-curator"]],
-      ["aw-failures-investigator.lock.yml", ["aw-doctor", "failures-investigator"]],
-      ["aw-maintenance-compiler-security.lock.yml", ["aw-doctor", "compiler-security"]],
-      ["aw-maintenance-upgrade.lock.yml", ["aw-doctor", "upgrade"]],
+      ["cao-evolution-failures-investigator.lock.yml", ["cao-evolution", "failures-investigator"]],
+      ["cao-evolution-compiler-security.lock.yml", ["cao-evolution", "compiler-security"]],
       ["cao-evolution-efficiency.lock.yml", ["cao-evolution", "efficiency"]],
       ["cao-evolution-integrity.lock.yml", ["cao-evolution", "integrity"]],
       ["cao-evolution-reliability.lock.yml", ["cao-evolution", "reliability"]],
@@ -3421,8 +3401,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
       id: bundle.id,
       workers: bundle.workers.map((worker) => worker.id),
     })), [
-      { id: "aw-doctor", workers: ["aw-maintenance-upgrade", "aw-failures-investigator", "aw-maintenance-compiler-security"] },
-      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency"] },
+      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
       { id: "dependabot", workers: ["dependabot-release-train-updater"] },
       {
         id: "eu-cra-compliance",

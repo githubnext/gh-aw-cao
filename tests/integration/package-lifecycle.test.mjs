@@ -22,7 +22,7 @@ function focusedPackageSource(slug, source = packageSource) {
 }
 const ukAiAdvisoryPackageSource = focusedPackageSource("uk-ai-advisory");
 const activityPackageSource = focusedPackageSource("activity");
-const awDoctorPackageSource = focusedPackageSource("aw-doctor");
+const caoEvolutionPackageSource = focusedPackageSource("cao-evolution");
 const craPackageSource = focusedPackageSource("eu-cra-compliance");
 const dashboardPackageSource = focusedPackageSource("dashboard");
 const dependabotUpdateSource = focusedPackageSource("dependabot");
@@ -39,16 +39,18 @@ const activityExpectedFiles = [
   ".github/workflows/activity.yml",
   ".github/workflows/cao-maintenance.yml",
 ];
-const awDoctorExpectedFiles = [
-  ".github/aw/aw-doctor/graders/aw-failures-investigator-operational-value.sh",
-  ".github/aw/aw-doctor/graders/aw-maintenance-compiler-security-operational-value.sh",
-  ".github/aw/dashboards/aw-doctor.json",
-  ".github/workflows/graders/aw-failures-investigator-operational-value.sh",
-  ".github/workflows/graders/aw-maintenance-compiler-security-operational-value.sh",
-  ".github/workflows/aw-failures-investigator.md",
-  ".github/workflows/aw-maintenance-compiler-security.md",
-  ".github/workflows/aw-maintenance-upgrade.md",
-  ".github/workflows/aw-doctor.md",
+const caoEvolutionExpectedFiles = [
+  ".github/aw/cao-evolution/graders/cao-evolution-failures-investigator-operational-value.sh",
+  ".github/aw/cao-evolution/graders/cao-evolution-compiler-security-operational-value.sh",
+  ".github/aw/dashboards/cao-evolution.json",
+  ".github/workflows/graders/cao-evolution-failures-investigator-operational-value.sh",
+  ".github/workflows/graders/cao-evolution-compiler-security-operational-value.sh",
+  ".github/workflows/cao-evolution-failures-investigator.md",
+  ".github/workflows/cao-evolution-compiler-security.md",
+  ".github/workflows/cao-evolution-efficiency.md",
+  ".github/workflows/cao-evolution-integrity.md",
+  ".github/workflows/cao-evolution-reliability.md",
+  ".github/workflows/cao-evolution.md",
   ".github/workflows/shared/activity-cache.md",
   ".github/workflows/shared/control.md",
 ];
@@ -189,7 +191,7 @@ test("gh aw add installs the root package without rewriting Copilot authenticati
       assert.ok(existsSync(join(consumer, relativePath)), `root package omitted dashboard file ${relativePath}`);
     }
     for (const workflowId of [
-      "aw-doctor",
+      "cao-evolution",
       "dependabot",
       "optimization",
     ]) {
@@ -325,11 +327,11 @@ test("gh aw add installs the focused SelfCare package contract", { timeout: 180_
   }
 });
 
-test("gh aw add installs the focused AW Doctor package contract", { timeout: 180_000 }, async () => {
-  const consumer = await installPackage(awDoctorPackageSource);
+test("gh aw add installs the focused CAO Evolution package contract", { timeout: 180_000 }, async () => {
+  const consumer = await installPackage(caoEvolutionPackageSource);
   try {
-    for (const relativePath of awDoctorExpectedFiles) {
-      assert.ok(existsSync(join(consumer, relativePath)), `focused AW Doctor package omitted ${relativePath}`);
+    for (const relativePath of caoEvolutionExpectedFiles) {
+      assert.ok(existsSync(join(consumer, relativePath)), `focused CAO Evolution package omitted ${relativePath}`);
     }
   } finally {
     rmSync(consumer, { recursive: true, force: true });

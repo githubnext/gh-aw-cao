@@ -3,7 +3,7 @@
   "dashboard": {
     "id": "cao-evolution-dashboard",
     "title": "CAO Evolution",
-    "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
+    "description": "Track control-plane evolution and agentic-workflow failure and security maintenance.",
     "repository": "githubnext/gh-aw-cao",
     "queries": [
       {
@@ -18,7 +18,11 @@
                 ".github/workflows/cao-evolution.md",
                 ".github/workflows/cao-evolution-efficiency.md",
                 ".github/workflows/cao-evolution-integrity.md",
-                ".github/workflows/cao-evolution-reliability.md"
+                ".github/workflows/cao-evolution-reliability.md",
+                ".github/workflows/cao-evolution-failures-investigator.md",
+                ".github/workflows/cao-evolution-compiler-security.md",
+                ".github/workflows/aw-failures-investigator.md",
+                ".github/workflows/aw-maintenance-compiler-security.md"
               ]
             }
           ]
@@ -48,6 +52,30 @@
             "direction": "desc"
           }
         ]
+      },
+      {
+        "name": "cao-evolution-aw-maintenance-attainment",
+        "intent": "Show agentic-workflow failure-recovery and clean full-scan attainment while preserving maturity and unavailable evidence.",
+        "from": "operational-values",
+        "filter": {
+          "predicates": [
+            {
+              "field": "workflow",
+              "in": [
+                ".github/workflows/cao-evolution-failures-investigator.md",
+                ".github/workflows/cao-evolution-compiler-security.md",
+                ".github/workflows/aw-failures-investigator.md",
+                ".github/workflows/aw-maintenance-compiler-security.md"
+              ]
+            }
+          ]
+        },
+        "order-by": [
+          {
+            "field": "observed-at",
+            "direction": "desc"
+          }
+        ]
       }
     ],
     "pages": [
@@ -55,7 +83,7 @@
         "id": "cao-evolution-dashboard",
         "kind": "custom",
         "title": "CAO Evolution",
-        "description": "Track control-plane integrity, reliability, and efficiency runs and their retained maintenance outcomes.",
+        "description": "Track control-plane evolution and agentic-workflow failure and security maintenance.",
         "icon": "gear",
         "views": [
           {
@@ -83,6 +111,46 @@
             }
           },
           {
+            "id": "cao-evolution-aw-value-trend",
+            "title": "Agentic-workflow health trend",
+            "description": "Mean failure-recovery and clean-scan attainment is diagnostic and does not infer that a worker caused the observed state.",
+            "disclosure": "essential",
+            "data": {
+              "source": "cao-evolution-aw-maintenance-attainment",
+              "time": {
+                "range": "90d"
+              },
+              "filters": {
+                "workflow": [
+                  ".github/workflows/cao-evolution-failures-investigator.md",
+                  ".github/workflows/cao-evolution-compiler-security.md",
+                  ".github/workflows/aw-failures-investigator.md",
+                  ".github/workflows/aw-maintenance-compiler-security.md"
+                ]
+              }
+            },
+            "mark": "chart",
+            "chart": "line",
+            "layout": "full",
+            "encoding": {
+              "x": {
+                "field": "observed-at",
+                "type": "temporal",
+                "format": "human-friendly-timestamp",
+                "time-unit": "day"
+              },
+              "y": {
+                "field": "operational-value",
+                "type": "quantitative",
+                "aggregate": "mean"
+              },
+              "color": {
+                "field": "operational-value-definition",
+                "type": "nominal"
+              }
+            }
+          },
+          {
             "id": "cao-evolution-runs",
             "title": "Control-plane maintenance runs",
             "description": "Shows which maintenance checks ran and which failures need investigation.",
@@ -97,7 +165,11 @@
                   ".github/workflows/cao-evolution.md",
                   ".github/workflows/cao-evolution-efficiency.md",
                   ".github/workflows/cao-evolution-integrity.md",
-                  ".github/workflows/cao-evolution-reliability.md"
+                  ".github/workflows/cao-evolution-reliability.md",
+                  ".github/workflows/cao-evolution-failures-investigator.md",
+                  ".github/workflows/cao-evolution-compiler-security.md",
+                  ".github/workflows/aw-failures-investigator.md",
+                  ".github/workflows/aw-maintenance-compiler-security.md"
                 ]
               }
             },
@@ -241,7 +313,73 @@
                 }
               ]
             }
+          },
+          {
+            "id": "cao-evolution-aw-attainment",
+            "disclosure-label": "Agentic-workflow maintenance attainment",
+            "description": "Failure-recovery and compiler-security observations preserve maturity and evidence cutoffs; unavailable or incomplete evidence is not scored as zero.",
+            "disclosure": "supplemental",
+            "data": {
+              "source": "cao-evolution-aw-maintenance-attainment",
+              "filters": {
+                "workflow": [
+                  ".github/workflows/cao-evolution-failures-investigator.md",
+                  ".github/workflows/cao-evolution-compiler-security.md",
+                  ".github/workflows/aw-failures-investigator.md",
+                  ".github/workflows/aw-maintenance-compiler-security.md"
+                ]
+              },
+              "limit": 50
+            },
+            "mark": "table",
+            "controls": "interactive",
+            "lazy-list": true,
+            "layout": "full-view",
+            "empty-message": "No agentic-workflow maintenance attainment evidence is available.",
+            "encoding": {
+              "href": {
+                "field": "evidence-link",
+                "type": "nominal"
+              },
+              "columns": [
+                {
+                  "field": "repository",
+                  "type": "nominal"
+                },
+                {
+                  "field": "operational-case",
+                  "type": "nominal",
+                  "title": "Opportunity"
+                },
+                {
+                  "field": "operational-value",
+                  "type": "quantitative",
+                  "title": "Attainment"
+                },
+                {
+                  "field": "maturity-status",
+                  "type": "nominal",
+                  "title": "Maturity",
+                  "display": "status"
+                },
+                {
+                  "field": "evidence-cutoff",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Evidence cutoff"
+                }
+              ]
+            }
           }
+        ]
+      }
+    ],
+    "navigation": [
+      {
+        "label": "Package operations",
+        "experimental": true,
+        "pages": [
+          "cao-evolution-dashboard"
         ]
       }
     ]

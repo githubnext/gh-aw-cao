@@ -5,7 +5,6 @@ experimental: true
 includes:
   - .github/workflows/aw.json
   - activity/aw.yml
-  - aw-doctor/aw.yml
   - cao-evolution/aw.yml
   - dashboard/aw.yml
   - dependabot/aw.yml

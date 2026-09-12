@@ -64,17 +64,17 @@
         {
           "organization": "githubnext",
           "repository": "gh-aw-cao",
-          "workflow": ".github/workflows/aw-doctor.md",
-          "workflow-name": "AW Doctor",
+          "workflow": ".github/workflows/cao-evolution.md",
+          "workflow-name": "CAO Evolution",
           "workflow-role": "orchestrator",
           "workflow-active": "true",
           "rollout-mode": "review",
-          "package": "aw-doctor",
+          "package": "cao-evolution",
           "observed-at": "2026-09-01T00:00:00Z",
           "workflow-link": {
             "relation": "workflow",
-            "href": "https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/aw-doctor.md",
-            "label": "AW Doctor"
+            "href": "https://github.com/githubnext/gh-aw-cao/blob/HEAD/.github/workflows/cao-evolution.md",
+            "label": "CAO Evolution"
           }
         },
         {
@@ -99,7 +99,7 @@
         {
           "organization": "githubnext",
           "repository": "gh-aw-cao",
-          "workflow": ".github/workflows/aw-doctor.md",
+          "workflow": ".github/workflows/cao-evolution.md",
           "run": "9001",
           "invocation": "9001-1",
           "engine": "copilot",
@@ -109,7 +109,7 @@
         {
           "organization": "githubnext",
           "repository": "gh-aw-cao",
-          "workflow": ".github/workflows/aw-doctor.md",
+          "workflow": ".github/workflows/cao-evolution.md",
           "run": "9002",
           "invocation": "9002-1",
           "engine": "copilot",

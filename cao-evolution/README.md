@@ -23,7 +23,7 @@ Declare the package and its workers in `.github/workflows/cao.json`. Begin in `r
 - The orchestrator only selects and dispatches. Each worker handles one authorized control repository and cannot discover or dispatch more work.
 - GitHub tools are read-only. Workers emit one stable, deduplicated attention issue, a materially changed update comment, or `noop`.
 - Package health uses the authoritative activity and safe-output evidence that feeds the dashboard. Browser IndexedDB remains disposable per-browser derived state and is never queried as workflow authority.
-- General gh-aw upgrades and workflow failures remain with AW Doctor. Per-workflow prompt, model, AI Credit, `AGENTS.md`, and skill optimization remain with AW Optimization.
+- Agentic-workflow failure investigation and compiler-security maintenance are part of CAO Evolution. General gh-aw upgrades remain outside this package. Per-workflow prompt, model, AI Credit, `AGENTS.md`, and skill optimization remain with AW Optimization.
 - The existing conventional `cao-maintenance.yml` workflow owns cache cleanup; this package does not delete caches or artifacts.
 
 Operational-value design is intentionally deferred until each worker has adoption-time evidence.
