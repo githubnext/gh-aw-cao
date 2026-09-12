@@ -33,7 +33,6 @@ export async function buildDashboardSite({
 
   const indexPath = join(destinationPath, "index.html");
   await writeFile(indexPath, configureSite(await readFile(indexPath, "utf8"), controlSettings));
-  await cacheBustSiteImports(destinationPath);
 
   const packageDashboards = [];
   for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
@@ -45,6 +44,7 @@ export async function buildDashboardSite({
 
   const dashboardPath = join(destinationPath, "dashboard.json");
   await bundleDashboardFiles(dashboardPath, packageDashboards);
+  await cacheBustSiteImports(destinationPath);
   const dashboard = JSON.parse(await readFile(dashboardPath, "utf8"));
 
   for (const page of dashboard.dashboard?.pages ?? []) {
@@ -56,19 +56,20 @@ export async function buildDashboardSite({
 }
 
 async function cacheBustSiteImports(destinationPath) {
-  const sourceRoot = join(destinationPath, "src");
-  const sourceFiles = await listFiles(sourceRoot);
-  const hashes = new Map();
+  const siteFiles = await listFiles(destinationPath);
+  const siteHash = createHash("sha256");
 
-  for (const sourceFile of sourceFiles) {
-    const contents = await readFile(join(sourceRoot, sourceFile));
-    hashes.set(sourceFile, createHash("sha256").update(contents).digest("hex"));
+  for (const siteFile of siteFiles.toSorted()) {
+    siteHash.update(siteFile).update("\0");
+    siteHash.update(await readFile(join(destinationPath, siteFile))).update("\0");
   }
+  const sha = siteHash.digest("hex");
+  const fileSet = new Set(siteFiles);
 
-  for (const sourceFile of sourceFiles.filter((file) => file.endsWith(".js"))) {
-    const sourcePath = join(sourceRoot, sourceFile);
+  for (const sourceFile of siteFiles.filter((file) => file.startsWith("src/") && file.endsWith(".js"))) {
+    const sourcePath = join(destinationPath, sourceFile);
     const contents = await readFile(sourcePath, "utf8");
-    await writeFile(sourcePath, rewriteLocalReferences(contents, sourcePath, sourceRoot, hashes));
+    await writeFile(sourcePath, rewriteLocalReferences(contents, sourcePath, destinationPath, fileSet, sha));
   }
 
   const indexPath = join(destinationPath, "index.html");
@@ -77,7 +78,7 @@ async function cacheBustSiteImports(destinationPath) {
     indexPath,
     index.replace(
       /(<script\b[^>]*\bsrc=["'])(\.\/src\/main\.js)(["'][^>]*>)/,
-      `$1$2?sha=${hashes.get("main.js")}$3`,
+      `$1$2?sha=${sha}$3`,
     ),
   );
 }
@@ -92,11 +93,10 @@ async function listFiles(directory, root = directory) {
   return files;
 }
 
-function rewriteLocalReferences(source, sourcePath, sourceRoot, hashes) {
+function rewriteLocalReferences(source, sourcePath, siteRoot, siteFiles, sha) {
   const rewrite = (match, prefix, quote, specifier, suffix = "") => {
-    const target = relative(sourceRoot, resolve(dirname(sourcePath), specifier));
-    const hash = hashes.get(target);
-    return hash ? `${prefix}${quote}${specifier}?sha=${hash}${quote}${suffix}` : match;
+    const target = relative(siteRoot, resolve(dirname(sourcePath), specifier));
+    return siteFiles.has(target) ? `${prefix}${quote}${specifier}?sha=${sha}${quote}${suffix}` : match;
   };
 
   return source

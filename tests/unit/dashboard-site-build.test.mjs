@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -34,29 +33,28 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       await readFile(new URL("index.html", destination), "utf8"),
       /<link rel="icon" href="https:\/\/example\.com\/dashboard\.svg">/,
     );
-    const mainSource = await readFile(new URL("../../dashboard/site/src/main.js", import.meta.url));
-    const mainHash = createHash("sha256").update(mainSource).digest("hex");
+    const builtIndex = await readFile(new URL("index.html", destination), "utf8");
+    const mainHash = builtIndex.match(/<script type="module" src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"><\/script>/)?.[1];
+    assert.ok(mainHash, "entry module includes the site content SHA");
     assert.match(
-      await readFile(new URL("index.html", destination), "utf8"),
+      builtIndex,
       new RegExp(`<script type="module" src="./src/main\\.js\\?sha=${mainHash}"></script>`),
     );
-    const presenterSource = await readFile(new URL("../../dashboard/site/src/presenter.js", import.meta.url));
-    const presenterHash = createHash("sha256").update(presenterSource).digest("hex");
     assert.match(
       await readFile(new URL("src/main.js", destination), "utf8"),
-      new RegExp(`from "./presenter\\.js\\?sha=${presenterHash}";`),
+      new RegExp(`from "./presenter\\.js\\?sha=${mainHash}";`),
     );
-    const workerSource = await readFile(new URL("../../dashboard/site/src/data-worker.js", import.meta.url));
-    const workerHash = createHash("sha256").update(workerSource).digest("hex");
     assert.match(
       await readFile(new URL("src/data-processor.js", destination), "utf8"),
-      new RegExp(`new URL\\('./data-worker\\.js\\?sha=${workerHash}', import\\.meta\\.url\\)`),
+      new RegExp(`new URL\\('./data-worker\\.js\\?sha=${mainHash}', import\\.meta\\.url\\)`),
     );
-    const specificationSource = await readFile(new URL("../../dashboard/site/src/specification.js", import.meta.url));
-    const specificationHash = createHash("sha256").update(specificationSource).digest("hex");
     assert.match(
       await readFile(new URL("src/validator.js", destination), "utf8"),
-      new RegExp(`} from './specification\\.js\\?sha=${specificationHash}';`),
+      new RegExp(`} from './specification\\.js\\?sha=${mainHash}';`),
+    );
+    assert.match(
+      await readFile(new URL("src/presenter.js", destination), "utf8"),
+      new RegExp(`from '../dashboard\\.json\\?sha=${mainHash}' with`),
     );
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
