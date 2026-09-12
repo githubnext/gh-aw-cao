@@ -406,6 +406,8 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(dashboardWorkflow, /enablement: false/);
     assert.doesNotMatch(dashboardWorkflow, /schedule:/);
     assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
+    assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+    assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
     assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
   } finally {
     rmSync(consumer, { recursive: true, force: true });

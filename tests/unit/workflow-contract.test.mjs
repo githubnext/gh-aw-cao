@@ -3159,6 +3159,8 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
   assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
+  assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
+  assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
   assert.match(dashboardWorkflow, /if: github\.event_name == 'workflow_dispatch' \|\| github\.ref_name == github\.event\.repository\.default_branch/);
   assert.match(dashboardWorkflow, /enablement: false/);
   assert.match(dashboardWorkflow, /pages: write/);
@@ -3192,6 +3194,8 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(activityWorkflow, /path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/m);
   assert.match(activityManifest, /source: cao\.mjs[\s\S]*?destination: \.github\/aw\/activity\/cao\.mjs/);
   assert.match(dashboardManifest, /source: site\/src\/data\/package\.json[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/package\.json/);
+  assert.match(dashboardManifest, /source: site\/src\/main\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/main\.js/);
+  assert.match(dashboardManifest, /source: site\/src\/components\/refresh-error\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/components\/refresh-error\.js/);
   assert.match(dashboardManifest, /source: site\/src\/data\/storage\/sqlite-indexeddb\.js[\s\S]*?destination: \.github\/aw\/dashboard\/site\/src\/data\/storage\/sqlite-indexeddb\.js/);
   assert.match(aicUsage, /Processing \$\{logs\.length\} cached gh-aw log records/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);

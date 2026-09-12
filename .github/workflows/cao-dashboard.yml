@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - .github/aw/dashboards/**
       - .github/aw/dashboard/**
       - .github/workflows/cao.json
       - .github/workflows/cao-dashboard.yml
+      - "*/dashboard.json"
       - dashboard/**
 
 permissions:
