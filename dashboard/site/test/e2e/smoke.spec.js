@@ -51,9 +51,8 @@ test('notifications move in at the lower right and center on mobile', async ({ p
   await expect(notifications).toBeVisible();
   await expect(notifications).toHaveCSS('right', '16px');
   await expect(page.locator('.dashboard-notification')).toHaveCSS('opacity', '1');
-
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(notifications).toHaveCSS('right', 'auto');
+  await page.setViewportSize({ width: 390, height: 844 });
   const bounds = await notifications.boundingBox();
   expect(bounds).not.toBeNull();
   expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);

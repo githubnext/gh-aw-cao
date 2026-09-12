@@ -30,8 +30,10 @@ describe('dashboard notification service', () => {
       action: { label: 'Cancel', run: action }
     });
     const notification = document.querySelector('.dashboard-notification');
+    expect(notification).not.toBeNull();
+    if (!notification) throw new Error('Notification was not rendered.');
 
-    /** @type {HTMLButtonElement} */ (notification?.querySelector('button')).click();
+    /** @type {HTMLButtonElement} */ (notification.querySelector('button')).click();
     expect(action).toHaveBeenCalledTimes(1);
 
     handle.update({ message: 'Cancelling…', tone: 'warning', duration: 0 });

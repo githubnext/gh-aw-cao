@@ -292,4 +292,23 @@ describe('canonical dashboard view subscriptions', () => {
       .rejects.toMatchObject({ name: 'DataProcessingCancelledError' });
     expect(worker?.messages.length ?? 0).toBe(messageCount);
   });
+
+  it('renders notifications published by the data worker', () => {
+    document.body.replaceChildren();
+    vi.stubGlobal('Worker', SubscriptionWorker);
+    const unsubscribe = subscribeCanonicalDashboardView('notifications', ['runs'], { pages: [] }, () => {});
+    const worker = SubscriptionWorker.current;
+    expect(worker).toBeDefined();
+    if (!worker) throw new Error('Subscription worker was not created.');
+
+    worker.emit({
+      type: 'notification',
+      notification: { message: 'Dashboard data refreshed.', tone: 'success', duration: 0 }
+    });
+
+    const notification = document.querySelector('.dashboard-notification');
+    expect(notification?.textContent).toBe('Dashboard data refreshed.');
+    expect(notification?.classList.contains('dashboard-notification-success')).toBe(true);
+    unsubscribe();
+  });
 });
