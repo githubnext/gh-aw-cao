@@ -689,11 +689,13 @@ dashboard:
     const document = JSON.parse(authoritativeDashboardSource);
     const packagesPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'packages');
     const workflowsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'workflows');
+    const packageDetailPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'package-detail');
     const runsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'runs');
     const transactionsPage = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'transactions');
 
     const packagesView = packagesPage.definition.views[0];
     const workflowsView = workflowsPage.definition.views[0];
+    const packageWorkflowsView = packageDetailPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'package-workflow-table');
     const runsView = runsPage.definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
     const transactionsView = transactionsPage.views.find((/** @type {{ id: string }} */ view) => view.id === 'transaction-entries');
     for (const view of [packagesView, workflowsView, runsView]) {
@@ -712,12 +714,15 @@ dashboard:
       'Workflows',
       'Roles',
       'Modes',
-      'Registration',
       'Runs',
-      'AIC'
+      'AIC',
+      'Registration'
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');
+    for (const view of [packagesView, packageWorkflowsView, workflowsView]) {
+      expect(view.encoding.columns.at(-1)?.title).toBe('Registration');
+    }
     expect(workflowsView.data.source).toBe('workflow-inventory');
     expect(runsView.data.source).toBe('runs-table');
     expect(transactionsView).toMatchObject({

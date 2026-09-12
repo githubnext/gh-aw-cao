@@ -4,7 +4,13 @@ import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
-import { DATABASE_NAME, readCanonicalBatch, readTransactions } from '../../src/data/storage/indexeddb.js';
+import {
+  DATABASE_NAME,
+  readCanonicalBatch,
+  readTransactions,
+  recordTransaction,
+  replaceCanonicalBatch
+} from '../../src/data/storage/indexeddb.js';
 import { estimateCanonicalBatchBytes } from '../../src/data/storage/retention.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -98,6 +104,38 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
+  it('reimports inventory cached before package mapping preservation', async () => {
+    const packagedSources = {
+      ...sources,
+      packages: {
+        rows: [{ package: 'dashboard', 'observed-at': metadata['as-of'] }],
+        metadata
+      },
+      workflows: {
+        rows: [{ ...sources.workflows.rows[0], package: 'dashboard' }],
+        metadata
+      }
+    };
+    await ingestDashboardSources(indexedDB, packagedSources);
+    const stored = await readCanonicalBatch(indexedDB);
+    delete stored.workflows[0].packageId;
+    delete stored.workflows[0].package;
+    await replaceCanonicalBatch(indexedDB, stored);
+    const [transaction] = await readTransactions(indexedDB);
+    delete transaction.ingestionVersion;
+    await recordTransaction(indexedDB, transaction);
+
+    await expect(ingestDashboardSources(indexedDB, packagedSources)).resolves.toMatchObject({
+      updated: true
+    });
+    await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
+      expect.objectContaining({
+        packageId: 'package:dashboard-sources:dashboard',
+        package: 'dashboard'
+      })
+    ]);
+  });
+
   it('evicts the oldest run subtree before exceeding the configured database cap', async () => {
     await ingestDashboardSources(indexedDB, sources);
     const stored = await readCanonicalBatch(indexedDB);
@@ -165,7 +203,27 @@ describe('canonical source ingestion and queries', () => {
   });
 
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
-    await ingestDashboardSources(indexedDB, sources);
+    await ingestDashboardSources(indexedDB, {
+      ...sources,
+      packages: {
+        rows: [{
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'observed-at': metadata['as-of']
+        }],
+        metadata
+      },
+      workflows: {
+        ...sources.workflows,
+        rows: sources.workflows.rows.map((workflow) => ({
+          ...workflow,
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'package-icon': 'dashboard'
+        }))
+      }
+    });
+    const [packagedWorkflow] = await createCanonicalQueries(indexedDB).workflows.list();
     const input = {
       generation: 'gh-aw-generation-b',
       observedAt: '2026-09-09T05:00:00Z',
@@ -186,6 +244,14 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     const activeRuns = await queries.runs.list();
     const activeSessions = await queries.sessions.forRun('github:run:303:attempt:1');
+    expect(await queries.workflows.list()).toEqual([
+      expect.objectContaining({
+        packageId: packagedWorkflow.packageId,
+        package: 'dashboard',
+        packageName: 'CAO Dashboard',
+        packageIcon: 'dashboard'
+      })
+    ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
       'github:run:12345:attempt:2',
       'github:run:303:attempt:1'
@@ -341,6 +407,45 @@ describe('canonical source ingestion and queries', () => {
     });
     expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
       'github:run:1:attempt:1', 'github:run:2:attempt:1'
+    ]);
+  });
+
+  it('preserves package mappings when cached workflow runs are imported', async () => {
+    await ingestDashboardSources(indexedDB, {
+      packages: {
+        rows: [{
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'observed-at': metadata['as-of']
+        }],
+        metadata
+      },
+      repositories: sources.repositories,
+      workflows: {
+        rows: [{
+          ...sources.workflows.rows[0],
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard'
+        }],
+        metadata
+      }
+    });
+    const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', classification: 'success', created_at: '2026-09-09T05:00:00Z'
+    } })}\n`;
+
+    await ingestCachedGhAwJsonl(indexedDB, content, {
+      now: Date.parse(metadata['as-of'])
+    });
+
+    await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
+      expect.objectContaining({
+        packageId: 'package:dashboard-sources:dashboard',
+        package: 'dashboard',
+        packageName: 'CAO Dashboard'
+      })
     ]);
   });
 

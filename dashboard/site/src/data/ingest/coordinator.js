@@ -18,6 +18,8 @@ import {
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
+const DASHBOARD_SOURCE_INGESTION_VERSION = 2;
+
 /**
  * @param {unknown} payload
  * @param {string | undefined} identity
@@ -52,10 +54,12 @@ export async function readCurrentIngestion(indexedDB, kind, scope) {
  * @param {string} kind
  * @param {string} scope
  * @param {string} hash
+ * @param {number} ingestionVersion
  */
-async function previouslyIngested(indexedDB, kind, scope, hash) {
+async function previouslyIngested(indexedDB, kind, scope, hash, ingestionVersion) {
   const transaction = await readCurrentIngestion(indexedDB, kind, scope);
-  return transaction?.payloadHash === hash;
+  return transaction?.payloadHash === hash
+    && transaction.ingestionVersion === ingestionVersion;
 }
 
 let ingestionQueue = Promise.resolve();
@@ -71,7 +75,7 @@ function serializeIngestion(indexedDB, task) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
@@ -90,7 +94,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   let batch = capCanonicalBatchSize(mergeRetainedRecords(retained, incoming, {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
-    retentionWindowMsByStore: options.retentionWindowMsByStore
+    retentionWindowMsByStore: options.retentionWindowMsByStore,
+    preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings
   }), targetDatabaseBytes);
   for (;;) {
     try {
@@ -142,7 +147,13 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
   try {
     const hash = await payloadHash(sources, options.payloadIdentity);
     const scope = options.payloadScope ?? 'dashboard-sources';
-    if (await previouslyIngested(indexedDB, 'ingest-dashboard-sources', scope, hash)) {
+    if (await previouslyIngested(
+      indexedDB,
+      'ingest-dashboard-sources',
+      scope,
+      hash,
+      DASHBOARD_SOURCE_INGESTION_VERSION
+    )) {
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = adaptDashboardSources(sources);
@@ -156,6 +167,7 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       createdAt: new Date(options.now ?? Date.now()).toISOString(),
       payloadScope: scope,
       payloadHash: hash,
+      ingestionVersion: DASHBOARD_SOURCE_INGESTION_VERSION,
       committedRecords: result.committedRecords
     });
     return result;
@@ -200,7 +212,10 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, batch, options);
+    return await ingestCanonicalBatch(indexedDB, batch, {
+      ...options,
+      preserveWorkflowPackageMappings: true
+    });
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -247,7 +262,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       context: options.context,
       workflowHints: options.workflowHints
     });
-    const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
+    const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), {
+      ...options,
+      preserveWorkflowPackageMappings: true
+    });
     await recordTransaction(indexedDB, {
       id: await transactionId('ingest-jsonl', scope),
       kind: 'ingest-jsonl',
