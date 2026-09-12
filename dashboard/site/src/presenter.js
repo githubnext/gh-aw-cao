@@ -844,19 +844,30 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
 }
 
 function renderBackgroundServiceWorkerSetting() {
+  const enabled = () => {
+    try {
+      return automaticDashboardDataUpdatesEnabled();
+    } catch {
+      return false;
+    }
+  };
   /** @type {HTMLInputElement} */
   let checkbox;
   const update = () => {
-    checkbox.checked = automaticDashboardDataUpdatesEnabled();
+    checkbox.checked = enabled();
   };
   checkbox = /** @type {HTMLInputElement} */ (h('input', {
     type: 'checkbox',
-    checked: automaticDashboardDataUpdatesEnabled(),
+    checked: enabled(),
     'aria-label': 'Background service worker',
     onChange: /** @param {Event} event */ (event) => {
-      setAutomaticDashboardDataUpdatesEnabled(
-        /** @type {HTMLInputElement} */ (event.currentTarget).checked
-      );
+      try {
+        setAutomaticDashboardDataUpdatesEnabled(
+          /** @type {HTMLInputElement} */ (event.currentTarget).checked
+        );
+      } catch {
+        update();
+      }
     }
   }));
   const control = h(
