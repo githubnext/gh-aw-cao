@@ -399,8 +399,21 @@ safe-outputs:
     title-prefix: "[dependabot:release-train-updater] "
     labels: [dependabot, dependabot:release-train-updater]
     deduplicate-by-title: true
-    expires: 14d
+    expires: false
     max: 2
+  close-issue:
+    target: "*"
+    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
+    required-labels: [dependabot, dependabot:release-train-updater]
+    required-title-prefix: "[dependabot:release-train-updater] "
+    state-reason: not_planned
+    max: 2
+  close-pull-request:
+    target: "*"
+    target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
+    required-labels: [dependabot, dependabot:release-train-updater]
+    required-title-prefix: "[dependabot-agent] "
+    max: 1
 
 timeout-minutes: 60
 
@@ -443,6 +456,21 @@ In `review` mode, do not try to make the control-plane repository look like the 
 
 Treat `target_repo`, `safe_output_mode`, `safe_output_repo`, `correlation_id`, `central_repo`, and `control_plane_run_url` as the control-plane envelope.
 
+## Idempotency preflight
+
+Before inspecting available versions or editing files:
+
+1. Search all open `[dependabot-agent]` pull requests and `[dependabot:release-train-updater]` issues in the safe-output repository. Compare target repository, ecosystem, dependency set, manifest closure, and target version; titles alone are insufficient.
+2. Search recent `dependabot-release-train-updater` runs for this target repository. For routine work, stop with `noop` if another run was dispatched for the repository during the preceding seven days. Security work with a known fix and repair work on an existing dependency pull request may bypass this cooldown.
+3. If matching open work exists, treat it as authoritative. Analyze, update, or comment on that item when useful; otherwise call `noop`. Never create a parallel pull request or issue.
+4. Recheck open matching work immediately before emitting `create-pull-request` or `create-issue`. If a concurrent run created it, discard local changes and reuse the existing item or call `noop`.
+
+Give every proposed bundle a canonical identity derived from the target repository, ecosystem, sorted dependency set, normalized manifest closure, and target version. Put `<!-- smart-dependabot:identity=... -->` in the pull request body and use a deterministic branch slug derived from the same identity without dates, run IDs, or random values.
+
+When multiple workflow-owned pull requests have the same canonical identity, preserve the newest viable pull request and close an older duplicate only after verifying that no developer has commented, reviewed, reacted, committed to its branch, been assigned, or otherwise interacted with it. Link the surviving pull request in the closure comment. If human interaction is present or cannot be determined, do not close it.
+
+For workflow-owned issues, consider cleanup only after 14 days. Close an older issue only when its work is resolved, superseded, or duplicated and no developer has commented, reacted, edited, been assigned, linked work, or otherwise interacted with it. Link the replacement when applicable. Bot-only activity does not count as developer interaction. If interaction history is unavailable or ambiguous, preserve the issue.
+
 ## Validate and refine the work item
 
 When `bundle_spec` is present, parse it as data and verify that repository identifiers, branch hints, dependency lanes, bundle IDs, and paths match the checked-out repository and the control-plane envelope. Reject path traversal, absolute paths, malformed identifiers, and any path that escapes the checkout.
@@ -455,7 +483,7 @@ Reconstruct the manifest graph before editing:
 
 Refine the request to the smallest independently resolvable and testable closure. You may add a missing manifest or lockfile only when a hard edge proves it is required. Never expand into unrelated applications or combine unrelated major upgrades. If the requested bundle is unsafe, incorrectly scoped, or would require a broad manual migration, create a precise issue and stop.
 
-Look for an active PR containing `<!-- smart-dependabot:bundle=... -->`, a matching bundle ID in its branch or body, or an existing `[dependabot-agent] ` PR clearly covering the same dependency work. Treat that PR as the only repair target. Never push to a PR that lacks the configured title prefix, never mutate a fork PR, and never alter a human-authored dependency PR.
+Look for an active PR containing `<!-- smart-dependabot:identity=... -->` or the legacy `<!-- smart-dependabot:bundle=... -->`, a matching bundle ID in its branch or body, or an existing `[dependabot-agent] ` PR clearly covering the same dependency work. Treat that PR as the only repair target. Never push to a PR that lacks the configured title prefix, never mutate a fork PR, and never alter a human-authored dependency PR.
 
 ## Repository discovery
 
@@ -647,8 +675,10 @@ Set merge candidate to `yes` only for a non-major update with no unresolved secu
 ## Outcome rules
 
 - Repair an existing PR when it is clearly the same dependency work item and safe-output tools can update it without crossing repository or authorship boundaries.
+- Close an older duplicate workflow-owned PR only when a newer viable PR has the same canonical identity and the older PR has no developer interaction.
 - Create one new draft PR when the update is safe, coherent, and reviewable.
 - Create an issue when credentials, network policy, exact toolchain availability, source migration, unsafe scripts, unresolvable constraints, or repository governance prevent a trustworthy PR.
+- Close a workflow-owned issue older than 14 days only when it is resolved, superseded, or duplicated and has no developer interaction.
 - Call `noop` with a short explanation when the repository is already current, the bundle is superseded or duplicated, the request is invalid without actionable remediation, or no safe file change is warranted.
 - Sensitive surface area:
 - Breaking-change notes:
@@ -709,7 +739,7 @@ Create an issue only when:
 - The dependency update needs a human migration plan.
 - A repeated class of failures should be tracked.
 
-Do not create duplicate issues or PRs. Before creating one, search all open `[dependabot:release-train-updater]` issues or `[dependabot-agent]` PRs in the safe-output repository and reuse the existing thread when it already covers the same target repository and dependency work.
+Do not create duplicate issues or PRs. Before creating one, search all open `[dependabot:release-train-updater]` issues or `[dependabot-agent]` PRs in the safe-output repository and reuse the existing thread when it already covers the same target repository and canonical work identity.
 
 For an issue, use a canonical unprefixed subject derived only from the target repository, blocking condition, dependency or ecosystem, and affected manifest path. Use the same subject for the same unresolved work across reruns. Do not include versions, dates, run IDs, correlation IDs, counts, severity, status wording, or other volatile details in the subject; put those details in the body. If matching work already exists under a different title, comment on that item or call `noop` instead of creating another issue.
 

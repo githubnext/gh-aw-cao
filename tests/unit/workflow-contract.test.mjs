@@ -715,9 +715,9 @@ test("operations creation guidance scopes detection and omits worker evals", () 
   assert.match(packageSkill, /when `safe-outputs\.create-issue` is enabled, configure `deduplicate-by-title: true`/);
   assert.match(packageSkill, /canonical unprefixed subject that remains identical for the same unresolved repository work across reruns/);
   assert.match(packageSkill, /search all open package-worker issues in the safe-output repository and reuse or comment on matching work, or call `noop`/);
-  assert.match(packageSkill, /every issue-creating worker configures `deduplicate-by-title: true`, explicit expiry, bounded `max`, stable subject, and existing-item reuse instructions/);
+  assert.match(packageSkill, /every issue-creating worker configures `deduplicate-by-title: true`, explicit expiry or constrained interaction-aware cleanup, bounded `max`, stable subject, and existing-item reuse instructions/);
   assert.match(packageSkill, /Use `3d` for high-frequency telemetry, `7d` for fast-changing operational findings, `14d` for dependency and routine maintenance work, and `30d` only for compliance/);
-  assert.match(packageSkill, /Dependabot worker issues expire after `14d`/);
+  assert.match(packageSkill, /Dependabot worker reviews unattended issues after `14d` and preserves any issue with developer interaction/);
   assert.match(packageSkill, /control-plane workflows inherit `noop\.report-as-issue: false` from `shared\/control\.md`/);
   assert.match(packageSkill, /must not redeclare an empty local `noop:` block because it overrides imported handler settings/);
   assert.match(packageSkill, /Standalone workflows that do not import shared control must configure `safe-outputs\.noop\.report-as-issue: false` explicitly/);
@@ -781,7 +781,15 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     const issue = safeOutputs["create-issue"];
     if (issue) {
       assert.equal(issue["deduplicate-by-title"], true, name);
-      assert.match(String(issue.expires), /^[1-9][0-9]*d$/, name);
+      const closeIssue = safeOutputs["close-issue"];
+      const hasExpiry = /^[1-9][0-9]*d$/.test(String(issue.expires));
+      const hasGuardedCleanup = issue.expires === false
+        && closeIssue?.target === "*"
+        && closeIssue?.["required-title-prefix"] === issue["title-prefix"]
+        && issue.labels.every((label) => closeIssue?.["required-labels"]?.includes(label))
+        && Number.isInteger(closeIssue?.max)
+        && closeIssue.max > 0;
+      assert.ok(hasExpiry || hasGuardedCleanup, `${name} must expire issues or constrain guarded cleanup`);
       assert.ok(Number.isInteger(issue.max) && issue.max > 0, `${name} must bound create-issue max`);
       assert.ok(typeof issue["title-prefix"] === "string" && issue["title-prefix"].length > 0, `${name} must prefix issue titles`);
     }

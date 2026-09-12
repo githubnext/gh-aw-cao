@@ -122,6 +122,8 @@ Prefer repositories with evidence of security risk or dependency repair need:
 
 Deprioritize repositories with no recognized dependency ecosystem, unreadable manifests, only vendored or generated dependency files, saturated dependency PR queues without a clear repair or security need, or too little evidence to plan a safe, testable dependency change.
 
+Before ranking a repository, search its open issues and pull requests plus recent `dependabot-release-train-updater` runs. For routine work, enforce a seven-day repository cooldown: do not select a repository if that worker was dispatched for it during the preceding seven days. An open workflow-owned issue or pull request for the same repository also blocks routine dispatch until the existing item is resolved. Security work with a known fix and repair work on an existing dependency pull request may bypass the cooldown, but must reuse the existing thread or pull request rather than create parallel work. If run history or existing-work checks are unavailable, fail closed and skip routine dispatch.
+
 Prioritize work in this order:
 
 1. **P0 security** — reachable or plausibly reachable critical/high alerts with a known patched version.
@@ -137,6 +139,7 @@ Use age, exploitability evidence, dependency directness, runtime use, deployment
 - This package uses the shared control plane, so dispatch stays repository-scoped: select the best candidate repositories first, then dispatch one `dependabot-release-train-updater` run per selected repository.
 - Do not try to fan out one dispatch per dependency or per bundle from the orchestrator. Instead, select repositories where the updater can produce the highest-value manifest-aware dependency work.
 - If a repository already has a saturated dependency PR queue with no higher-priority repair or security need, prefer another candidate.
+- Deduplicate selected repositories and recheck the seven-day cooldown and open workflow-owned issues and pull requests immediately before dispatch. Emit at most one dispatch for each repository, and record cooldown or existing-work skips in the completion summary.
 
 ## Updater
 

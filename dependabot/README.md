@@ -12,6 +12,8 @@ The Agentic Workflow definitions remain in the control repository. Target reposi
 - Prioritizes repositories with dependency alerts, stale or conflicted update pull requests, lockfile drift, and actionable Dependabot configuration failures.
 - Understands relationships among manifests, lockfiles, workspaces, solutions, source code, tests, and CI instead of grouping updates only by package name.
 - Builds the smallest independently testable dependency bundle supported by repository evidence.
+- Applies a seven-day per-repository cooldown to routine work and reuses matching open issues or pull requests.
+- Closes superseded workflow-owned issues and duplicate pull requests only when no developer has interacted with them.
 - Produces at most one primary dependency-maintenance outcome per worker workflow run.
 - Never auto-merges a pull request.
 
@@ -104,7 +106,7 @@ Repositories without a recognized dependency ecosystem, readable manifests, or e
 - The orchestrator workflow selects repositories but does not mutate them directly.
 - A worker workflow receives one target and cannot discover more repositories, dispatch another workflow, or promote its mode.
 - Pull request safe outputs are draft, branch- and file-constrained, and limited to one per worker workflow run.
-- The worker workflow can update an eligible dependency pull request, add bounded comments, create bounded follow-up issues, or emit `noop`.
+- The worker workflow can update an eligible dependency pull request, add bounded comments, create bounded follow-up issues, clean up unattended stale workflow-owned items, or emit `noop`.
 - Credentials remain in the private control repository and are never included in dispatch inputs.
 
 ## Pause or Stop
