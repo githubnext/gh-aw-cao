@@ -7,6 +7,7 @@ import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPage
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
+import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -898,6 +899,14 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
     expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
+    const backgroundServiceWorker = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('.background-service-worker-setting input')
+    );
+    expect(backgroundServiceWorker?.checked).toBe(false);
+    backgroundServiceWorker?.click();
+    expect(window.localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
+    setAutomaticDashboardDataUpdatesEnabled(false);
+    expect(backgroundServiceWorker?.checked).toBe(false);
     expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
     expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
     const systemTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="system"]'));

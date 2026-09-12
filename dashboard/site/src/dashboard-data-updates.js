@@ -34,6 +34,17 @@ export function onAutomaticDashboardBackgroundUpdateStatus(listener) {
   };
 }
 
+/** @param {EventListener} listener */
+export function onAutomaticDashboardDataUpdatesSettingChange(listener) {
+  const eventTarget = window;
+  eventTarget.addEventListener(SETTING_EVENT, listener);
+  return () => {
+    if (typeof eventTarget.removeEventListener === 'function') {
+      eventTarget.removeEventListener(SETTING_EVENT, listener);
+    }
+  };
+}
+
 /** @param {boolean} enabled @param {Storage} [storage] */
 export function setAutomaticDashboardDataUpdatesEnabled(enabled, storage = localStorage) {
   if (enabled) {
