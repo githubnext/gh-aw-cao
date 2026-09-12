@@ -55,12 +55,6 @@ jobs:
           permission-actions: read
           permission-contents: read
 
-      - name: Install gh-aw CLI
-        continue-on-error: true
-        uses: ./.github/actions/setup-gh-aw
-        env:
-          GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
-
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -107,6 +101,18 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
           token: ${{ github.token }}
+
+      - name: Resolve gh-aw compiler version
+        id: compiler
+        run: |
+          version="$(node "${{ steps.cao-control-source.outputs.runtime }}" compiler-version .github/workflows/cao.json)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install gh-aw CLI
+        continue-on-error: true
+        uses: github/gh-aw-actions/setup-cli@74929b772fd7d9dddf663dc49e01f470d8458310 # v0.89.9
+        with:
+          version: ${{ steps.compiler.outputs.version }}
 
       - name: Restore activity cache
         id: activity-cache
