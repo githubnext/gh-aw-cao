@@ -156,6 +156,50 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('validates declarative card lists and their view actions', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const maintenancePage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
+    );
+    const starterList = maintenancePage.views[0];
+    const viewAction = document.dashboard['cli-actions'].find(
+      (/** @type {{ id: string }} */ action) => action.id === starterList.list.action
+    );
+
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+
+    starterList.list.style = 'rows';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({ message: 'list.style must be "cards".' })
+      ])
+    });
+    starterList.list.style = 'cards';
+
+    const columns = starterList.encoding.columns;
+    starterList.encoding.columns = [];
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'list views must encode a non-empty columns sequence.'
+        })
+      ])
+    });
+    starterList.encoding.columns = columns;
+
+    viewAction.placement = 'row';
+    expect(validateDashboardDocument(JSON.stringify(document))).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining([
+        expect.objectContaining({
+          message: 'list.action must reference a settings-placed dashboard CLI action.'
+        })
+      ])
+    });
+  });
+
   it('applies human-friendly formatting to every declarative temporal encoding', () => {
     const documents = [authoritativeDashboardSource, ...packageDashboardSources].map((source) => JSON.parse(source));
     /** @type {Array<Record<string, unknown>>} */
@@ -288,9 +332,23 @@ describe('dashboard document validation', () => {
       (/** @type {{ id: string }} */ page) => page.id === 'maintenance'
     )?.views).toEqual([
       expect.objectContaining({
-        id: 'maintenance-actions',
-        mark: 'element',
-        element: 'maintenance-view',
+        id: 'starter-updates',
+        mark: 'list',
+        list: {
+          style: 'cards',
+          icon: 'package',
+          action: 'update-repository'
+        },
+        layout: 'full'
+      }),
+      expect.objectContaining({
+        id: 'compiler-upgrades',
+        mark: 'list',
+        list: {
+          style: 'cards',
+          icon: 'repo',
+          action: 'upgrade-repository'
+        },
         layout: 'full'
       })
     ]);

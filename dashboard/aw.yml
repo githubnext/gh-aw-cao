@@ -201,8 +201,6 @@ resources:
     destination: .github/aw/dashboard/site/src/components/insights-overview.js
   - source: site/src/components/linked-text.js
     destination: .github/aw/dashboard/site/src/components/linked-text.js
-  - source: site/src/components/maintenance-view.js
-    destination: .github/aw/dashboard/site/src/components/maintenance-view.js
   - source: site/src/components/outcome-detail.js
     destination: .github/aw/dashboard/site/src/components/outcome-detail.js
   - source: site/src/components/notifications-inbox.js

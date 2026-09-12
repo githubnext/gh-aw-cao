@@ -308,29 +308,24 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .configuration-cli-action-list { display: grid; gap: 8px; }
 .configuration-cli-action { align-items: center; border: 1px solid var(--border); background: var(--canvas); }
 .configuration-cli-action:hover { background: var(--neutral-muted); }
-.maintenance-view { display: grid; gap: 20px; }
-.maintenance-group { overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); }
-.maintenance-group-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border-bottom: 1px solid var(--border); }
-.maintenance-group-header > div { min-width: 0; }
-.maintenance-group-header h3 { margin: 0; font-size: .9375rem; }
-.maintenance-group-header p { margin: 4px 0 0; color: var(--muted); font-size: .75rem; }
-.maintenance-group-header .declared-cli-action { flex: none; }
-.maintenance-group-header .cli-action-trigger { min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--border); background: var(--canvas); }
-.maintenance-group-header .cli-action-trigger-copy small { display: none; }
-.maintenance-card-list { display: grid; margin: 0; padding: 0; list-style: none; }
-.maintenance-card { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--border); }
-.maintenance-card:first-child { border-top: 0; }
-.maintenance-card-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 6px; background: var(--neutral-muted); color: var(--muted); }
-.maintenance-card-icon .octicon { width: 16px; height: 16px; }
-.maintenance-card-content { min-width: 0; display: grid; gap: 6px; }
-.maintenance-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8125rem; }
-.maintenance-card-details { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.maintenance-card-detail { display: inline-flex; gap: 5px; color: var(--muted); font-size: .6875rem; }
-.maintenance-card-detail strong { color: var(--fg); font-variant-numeric: tabular-nums; }
-.maintenance-card-state { color: var(--muted); font-size: .6875rem; font-weight: 600; }
-.maintenance-card-state-attention { color: var(--attention); }
-.maintenance-card .table-cli-action-button { width: auto; min-height: 32px; padding: 7px; border: 1px solid var(--border); }
-.maintenance-empty { margin: 0; padding: 16px; color: var(--muted); font-size: .75rem; }
+.document-list-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.document-list-header > p { margin: 0; color: var(--muted); font-size: .75rem; }
+.document-list-header .declared-cli-action { flex: none; }
+.document-list-header .cli-action-trigger { min-height: 32px; align-items: center; padding: 6px 10px; border: 1px solid var(--border); background: var(--canvas); }
+.document-list-header .cli-action-trigger-copy small { display: none; }
+.document-list { overflow: hidden; display: grid; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); list-style: none; }
+.document-list-card { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--border); }
+.document-list-card:first-child { border-top: 0; }
+.document-list-card-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 6px; background: var(--neutral-muted); color: var(--muted); }
+.document-list-card-icon .octicon { width: 16px; height: 16px; }
+.document-list-card-content { min-width: 0; display: grid; gap: 6px; }
+.document-list-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8125rem; }
+.document-list-card-details { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; }
+.document-list-card-details > div { display: contents; }
+.document-list-card-details dt { color: var(--muted); font-size: .6875rem; }
+.document-list-card-details dd { margin: 0 8px 0 -11px; font-size: .6875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.document-list-card .table-cli-action-button { width: auto; min-height: 32px; padding: 7px; border: 1px solid var(--border); }
+.document-list-empty { margin: 0; padding: 16px; color: var(--muted); font-size: .75rem; }
 .cli-action-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); text-align: left; white-space: normal; }
 .cli-action-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .cli-action-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
@@ -2310,10 +2305,10 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .attention-domain-grid { grid-template-columns: minmax(0, 1fr); }
   .attention-domain-card { min-height: 164px; }
   .package-status-grid { grid-template-columns: minmax(0, 1fr); }
-  .maintenance-group-header { align-items: stretch; flex-direction: column; }
-  .maintenance-group-header .declared-cli-action, .maintenance-group-header .cli-action-trigger { width: 100%; }
-  .maintenance-card { grid-template-columns: auto minmax(0, 1fr); }
-  .maintenance-card > .table-cli-action-control { grid-column: 2; justify-self: start; }
+  .document-list-header { align-items: stretch; flex-direction: column; }
+  .document-list-header .declared-cli-action, .document-list-header .cli-action-trigger { width: 100%; }
+  .document-list-card { grid-template-columns: auto minmax(0, 1fr); }
+  .document-list-card > .table-cli-action-control { grid-column: 2; justify-self: start; }
   .outcome-meta { grid-template-columns: 1fr; }
   .configuration-editor-toolbar { align-items: stretch; flex-direction: column; }
   .configuration-editor-toolbar > div { justify-content: space-between; }

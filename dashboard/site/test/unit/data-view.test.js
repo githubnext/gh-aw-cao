@@ -82,6 +82,79 @@ describe('data view renderer', () => {
     expect(rendered?.querySelector('.octicon-x-circle')).not.toBeNull();
   });
 
+  it('renders a declarative card list with view and conditional row actions', () => {
+    setDeclaredCliActions([
+      {
+        id: 'update-repository',
+        label: 'Update all',
+        icon: 'sync',
+        command: 'gh aw update',
+        placement: 'settings'
+      },
+      {
+        id: 'update-package',
+        label: 'Update',
+        icon: 'sync',
+        command: 'gh aw update {{package}}',
+        placement: 'row'
+      }
+    ], { canExecute: false });
+
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Starter updates',
+      view: {
+        mark: 'list',
+        description: 'Update installed starter packages.',
+        list: { style: 'cards', icon: 'package', action: 'update-repository' },
+        encoding: {
+          columns: [
+            { field: 'package-name', title: 'Package' },
+            { field: 'package-version', title: 'Installed' },
+            { field: 'package-current-version', title: 'Latest' }
+          ],
+          actions: [{
+            action: 'update-package',
+            presentation: 'cli-action',
+            icon: 'sync',
+            label: 'Update',
+            context: ['package'],
+            when: { field: 'package-update-state', equals: 'update-available' }
+          }]
+        }
+      },
+      sourceName: 'packages',
+      rows: [
+        {
+          package: 'remote-agent',
+          'package-name': 'Remote agent',
+          'package-version': 'v1',
+          'package-current-version': 'v2',
+          'package-update-state': 'update-available'
+        },
+        {
+          package: 'ci-doctor',
+          'package-name': 'CI doctor',
+          'package-version': 'v2',
+          'package-current-version': 'v2',
+          'package-update-state': 'current'
+        }
+      ],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.querySelectorAll('.document-list-card')).toHaveLength(2);
+    expect(rendered?.querySelector('.document-list-header .declared-cli-action')?.textContent).toContain('Update all');
+    expect(rendered?.querySelectorAll('.document-list-card .table-cli-action-control')).toHaveLength(1);
+    expect(rendered?.textContent).not.toContain('update-available');
+  });
+
   it('presents an unavailable metric card as empty', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',

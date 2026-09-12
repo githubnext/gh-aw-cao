@@ -340,7 +340,8 @@ describe('presenter built-in and custom pages', () => {
             repository: 'acme/service',
             'gh-aw-version': 'v0.88.7',
             'gh-aw-current-version': 'v0.89.0',
-            'gh-aw-update-state': 'update-available'
+            'upgrade-required': 1,
+            'upgrade-state': 'Upgrade recommended'
           }],
           metadata: {
             'source-id': 'maintenance-repositories-fixture',
@@ -356,15 +357,17 @@ describe('presenter built-in and custom pages', () => {
     });
 
     const page = await activatePage(rendered, 'maintenance');
-    const inventory = page?.querySelector('[data-view-id="maintenance-actions"]');
+    const starterUpdates = page?.querySelector('[data-view-id="starter-updates"]');
+    const compilerUpgrades = page?.querySelector('[data-view-id="compiler-upgrades"]');
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
-    expect(page?.querySelectorAll('[data-view-layout="full"]')).toHaveLength(1);
-    expect(inventory?.querySelectorAll('.maintenance-card')).toHaveLength(2);
-    expect(inventory?.textContent).toContain('Remote agent');
-    expect(inventory?.textContent).toContain('acme/service');
-    expect(inventory?.textContent).toContain('v0.88.7');
-    expect(inventory?.textContent).toContain('v0.89.0');
-    expect(inventory?.textContent).not.toContain('update-available');
+    expect(page?.querySelectorAll('[data-view-layout="full"]')).toHaveLength(2);
+    expect(starterUpdates?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(compilerUpgrades?.querySelectorAll('.document-list-card')).toHaveLength(1);
+    expect(starterUpdates?.textContent).toContain('Remote agent');
+    expect(compilerUpgrades?.textContent).toContain('acme/service');
+    expect(compilerUpgrades?.textContent).toContain('v0.88.7');
+    expect(compilerUpgrades?.textContent).toContain('v0.89.0');
+    expect(page?.textContent).not.toContain('update-available');
     rendered.remove();
   });
 
