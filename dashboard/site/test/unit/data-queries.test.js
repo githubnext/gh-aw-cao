@@ -94,6 +94,48 @@ describe('declarative dashboard queries', () => {
     expect(result['database-event-count'].rows).toEqual([{ events: 3 }]);
   });
 
+  it('shapes and orders transaction entries through the declared dashboard query', () => {
+    const transactions = {
+      source: 'transactions',
+      rows: [
+        {
+          id: 'ingest-jsonl:current:older',
+          kind: 'ingest-jsonl',
+          createdAt: '2026-09-01T00:00:00Z',
+          payloadScope: 'gh-aw-jsonl',
+          committedRecords: 10
+        },
+        {
+          id: 'ingest-jsonl:current:newer',
+          kind: 'ingest-jsonl',
+          createdAt: '2026-09-02T00:00:00Z',
+          payloadScope: 'gh-aw-jsonl',
+          committedRecords: 12
+        }
+      ],
+      metadata: metadata('transactions')
+    };
+
+    const result = executeDashboardQueries(dashboardQueries, { transactions }, ['transactions-table']);
+
+    expect(result['transactions-table'].rows).toEqual([
+      {
+        transaction: 'ingest-jsonl:current:newer',
+        kind: 'ingest-jsonl',
+        'created-at': '2026-09-02T00:00:00Z',
+        'payload-scope': 'gh-aw-jsonl',
+        'committed-records': 12
+      },
+      {
+        transaction: 'ingest-jsonl:current:older',
+        kind: 'ingest-jsonl',
+        'created-at': '2026-09-01T00:00:00Z',
+        'payload-scope': 'gh-aw-jsonl',
+        'committed-records': 10
+      }
+    ]);
+  });
+
   it('continues query results without exposing cursors in query definitions', () => {
     const sources = {
       runs: {

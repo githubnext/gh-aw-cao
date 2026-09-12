@@ -425,6 +425,74 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
+test('Transactions is a responsive full-view interactive lazy table under Data', async ({ page }) => {
+  const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+      const rows = Array.from({ length: 100 }, (_, index) => ({
+        transaction: \`ingest-jsonl:current:\${index}\`,
+        kind: index % 2 === 0 ? 'ingest-jsonl' : 'ingest-dashboard-sources',
+        'created-at': new Date(Date.UTC(2026, 8, 12, 12, index)).toISOString(),
+        'payload-scope': 'gh-aw-jsonl',
+        records: 100 + index,
+        'committed-records': 90 + index,
+        'raw-payload-records': 110 + index,
+        'raw-runs': 20 + index,
+        'agentic-run-records': 10 + index,
+        'agentic-runs': 8 + index,
+        'duplicate-raw-run-observations': index,
+        'duplicate-agentic-run-observations': index,
+        'unenriched-runs': index,
+        'payload-hash': \`payload-hash-\${index}\`
+      }));
+      const metadata = {
+        'source-id': 'transactions-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-12T12:00:00Z',
+        'retrieved-at': '2026-09-12T12:01:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      const sources = { 'transactions-table': { source: 'transactions-table', rows, metadata } };
+      window.location.hash = '#page-overview';
+      document.querySelector('#root').append(renderDashboard({ document: ${JSON.stringify(documentModel)}, sources }));
+    </script>
+  `);
+
+  const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
+  await dataNavigation.locator('summary').click();
+  await dataNavigation.getByRole('link', { name: 'Transactions' }).click();
+
+  const root = page.locator('.dashboard-root');
+  const transactionsPage = page.locator('[data-page-id="transactions"]');
+  const view = transactionsPage.locator('[data-view-layout="full-view"]');
+  const scroll = view.locator('.table-scroll');
+  await expect(root).toHaveClass(/dashboard-full-view/);
+  await expect(view).toBeVisible();
+  await expect(view.locator('[data-lazy-list]')).toHaveCount(1);
+  await expect(view.getByRole('searchbox', { name: 'Filter Transaction entries' })).toBeVisible();
+  await expect(view.getByRole('cell', { name: 'ingest-jsonl' }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(844);
+  await expect.poll(async () => scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect.poll(async () => scroll.locator(':scope > .table-filter').evaluate(
+    (element) => element.scrollWidth <= element.clientWidth
+  )).toBe(true);
+
+  await scroll.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(root).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(page.locator('.top-nav')).toBeHidden();
+});
+
 test('Runs renders a last-week swimlane above its responsive table and scrolls it away with the page chrome', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
@@ -1223,7 +1291,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Firewall']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Transactions', 'Firewall']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');

@@ -440,6 +440,43 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('tbody tr td:first-child a')?.getAttribute('href')).toBe('https://github.com/githubnext/gh-aw-cao/actions/runs/1002');
   });
 
+  it('renders transaction entries as one full-view interactive lazy table', async () => {
+    const metadata = {
+      'source-id': 'transactions-fixture',
+      'source-kind': 'fixture',
+      'as-of': '2026-09-02T12:00:00Z',
+      'retrieved-at': '2026-09-02T12:01:00Z',
+      completeness: /** @type {'complete'} */ ('complete'),
+      freshness: /** @type {'fresh'} */ ('fresh'),
+      availability: /** @type {'available'} */ ('available')
+    };
+    const rendered = renderDashboard({
+      document: authoritativeDashboardDocument,
+      sources: {
+        'transactions-table': {
+          source: 'transactions-table',
+          rows: [{
+            transaction: 'ingest-jsonl:current:test',
+            kind: 'ingest-jsonl',
+            'created-at': '2026-09-02T12:00:00Z',
+            'payload-scope': 'gh-aw-jsonl',
+            records: 12,
+            'committed-records': 10
+          }],
+          metadata
+        }
+      }
+    });
+
+    const page = await activatePage(rendered, 'transactions');
+    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
+    expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
+    expect(page?.querySelector('input[type="search"]')).not.toBeNull();
+    expect(page?.textContent).toContain('ingest-jsonl');
+    expect(page?.textContent).toContain('gh-aw-jsonl');
+    expect(page?.querySelector('thead')?.textContent).toContain('Committed records');
+  });
+
   it('explains when engine and model usage data is missing', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
@@ -955,6 +992,7 @@ describe('presenter built-in and custom pages', () => {
       'Workflows',
       'Runs',
       'Events',
+      'Transactions',
       'Firewall',
       'Work',
       'Operations',
@@ -1300,6 +1338,7 @@ describe('presenter built-in and custom pages', () => {
       'Workflows',
       'Runs',
       'Events',
+      'Transactions',
       'Firewall',
       'Work',
       'Operations',
