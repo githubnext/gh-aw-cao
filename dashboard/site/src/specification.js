@@ -279,7 +279,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     usage: ['aic']
   },
   repositories: {
-    'repository-activity': ['repository', 'workflows', 'reports', 'evaluated-workflows', 'runs', 'failure-summary', 'aic', 'status']
+    'repository-activity': ['repository', 'runs', 'failure-summary', 'aic', 'workflows', 'status']
   },
   packages: {
     'package-inventory': ['package-name', 'workflows', 'roles', 'modes', 'registration', 'runs', 'aic']
