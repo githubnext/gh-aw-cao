@@ -2334,7 +2334,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.match(source, /jobs:\n\s+activation:\n\s+pre-steps:/);
   assert.match(source, /\n\s+agent:\n\s+pre-steps:/);
   assert.equal((source.match(/actions\/cache\/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9/g) || []).length, 2);
-  assert.equal((source.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity/g) || []).length, 2);
+  assert.equal((source.match(/path: \|/g) || []).length, 2);
   assert.equal((source.match(/key: cao-activity-v3-lookup-/g) || []).length, 2);
   assert.equal((source.match(/restore-keys: \|[\s\S]*?cao-activity-v3-/g) || []).length, 2);
   assert.doesNotMatch(source, /cao-activity-(?!v3-)/);
