@@ -166,10 +166,10 @@ Installed Central Agentic Ops packages do not include these optional provider fi
 
 ## Sources of Truth
 
-- Machine-readable policy schema: `.github/cao/cao.schema.json`
-- Runtime policy resolution: `.github/cao/src/policy.mjs` and [Control Policy Specification](control-policy-specification.md)
+- Machine-readable policy schema: installed at `.github/aw/cao/cao.schema.json`, with `.github/cao/cao.schema.json` as the source-managed location
+- Runtime policy resolution: installed at `.github/aw/cao/src/policy.mjs`, with `.github/cao/src/policy.mjs` as the source-managed location, and [Control Policy Specification](control-policy-specification.md)
 - Checked-in control policy: `.github/workflows/cao.json`
-- Deterministic control commands: `.github/cao/src/control.mjs`
+- Deterministic control commands: installed at `.github/aw/cao/src/control.mjs`, with `.github/cao/src/control.mjs` as the source-managed location
 - Shared runtime enforcement: `.github/workflows/shared/control.md`
 - Package inventory: the root and package `aw.yml` manifests
 - Credentials and permissions: [Configure Authentication](authentication.md)

@@ -90,10 +90,16 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
 
     A reviewed release tag may replace `main` when resolving `cao_ref`. Do not pass an unresolved branch or omit the ref: one immutable source identity keeps repeated package dependencies consistent and records a reproducible installation. In a source-managed control repository, do not install a package over workflows maintained directly in-tree. Its reviewed workflow sources, generated locks, runtime files, and policy form the runtime revision; verify them at the current commit instead.
 
-    When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper installed by the package. Target the control repository explicitly and complete both browser creation and installation prompts:
+    When the selected authentication profile requires GitHub Apps and the user wants automated creation, run the credential-only helper for the selected topology. Target the control repository explicitly and complete both browser creation and installation prompts. In a separate control repository, use the package-installed helper:
 
     ```bash
     node .github/aw/cao/setup-github-apps.mjs --repo <organization>/<control-repository>
+    ```
+
+    In a source-managed control repository, use the in-tree helper instead:
+
+    ```bash
+    node .github/cao/setup-github-apps.mjs --repo <organization>/<control-repository>
     ```
 
     The helper mirrors gh-aw's App manifest conversion flow without changing package delivery, keeps the root package manifest config-free, stores client IDs as repository variables, and sends private keys to repository secrets through standard input. Do not install the package over in-tree workflows in a source-managed control repository. After setup, verify these names exist in the control repository:
