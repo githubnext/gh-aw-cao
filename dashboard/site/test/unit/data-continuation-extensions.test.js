@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   bindSourceContinuations,
   continuationRequests,
+  drainSourceContinuation,
   sourceContinuation
 } from '../../src/data/continuation.js';
 import {
@@ -217,5 +218,36 @@ describe('client continuation extensions', () => {
     await expect(bound.loadContinuation?.('next'))
       .rejects.toThrow('Continuation token for "runs" is not current.');
     expect(loadPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('drains every remaining continuation page so a chart sees the complete result set', async () => {
+    const allRows = runs(5);
+    /** @param {Record<string, { limit: number, continuationToken?: string }>} pagination */
+    const loadPage = (pagination) => Promise.resolve(paginateDashboardSources(
+      { runs: source('runs', allRows) },
+      pagination,
+      'fixed-revision'
+    ));
+    const firstPage = (await loadPage({ runs: { limit: 2 } })).runs;
+    const bound = bindSourceContinuations(
+      { runs: firstPage },
+      ['runs'],
+      (_names, pagination) => loadPage(pagination)
+    ).runs;
+
+    // The first page alone (what a chart would see without draining) is
+    // truncated to the pagination limit -- exactly the bug this guards against.
+    expect(firstPage.rows).toEqual([{ run: '5' }, { run: '4' }]);
+
+    const drained = await drainSourceContinuation(bound);
+
+    expect(drained.rows.map((row) => row.run)).toEqual(['5', '4', '3', '2', '1']);
+    expect(drained.continuationToken).toBeUndefined();
+    expect(sourceContinuation(drained)).toBeUndefined();
+  });
+
+  it('returns the source unchanged when it has no continuation to drain', async () => {
+    const complete = source('runs', runs(2));
+    await expect(drainSourceContinuation(complete)).resolves.toBe(complete);
   });
 });

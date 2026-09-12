@@ -63,6 +63,30 @@ export function bindSourceContinuations(
   }));
 }
 
+/**
+ * Drains every remaining query continuation for a source so callers that
+ * cannot page rows in incrementally -- charts, which plot every row of
+ * their source rather than paging it on scroll -- always see the complete
+ * result set instead of only the first paginated chunk.
+ *
+ * @param {import('../presenter.js').LogicalSourceInput} source
+ * @returns {Promise<import('../presenter.js').LogicalSourceInput>}
+ */
+export async function drainSourceContinuation(source) {
+  let page = sourceContinuation(source);
+  if (!page) return source;
+  const rows = [...source.rows];
+  /** @type {string | undefined} */
+  let token = page.token;
+  const load = page.load;
+  while (token) {
+    const next = await load(token);
+    if (Array.isArray(next.rows)) rows.push(...next.rows);
+    token = next.continuationToken;
+  }
+  return { ...source, rows, continuationToken: undefined };
+}
+
 /** @param {import('../presenter.js').LogicalSourceInput} source */
 export function sourceContinuation(source) {
   if (source.continuationToken === undefined) return undefined;
