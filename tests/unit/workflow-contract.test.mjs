@@ -2384,6 +2384,7 @@ test("SelfCare reactive UI expert applies the local reactive framework skill", (
   assert.match(source, /stable keyed rendering/);
   assert.match(source, /state`, `derived`, `effect`, `batch`, `onCleanup`/);
   assert.match(source, /migrate one JavaScript-produced view source to a request-scoped Dashboard Language query/);
+  assert.match(source, /Consider the other task types only when no eligible migration exists/);
   assert.match(source, /Define the query in `dashboard\.queries`/);
   assert.match(source, /data-processor\.js` and `data-worker\.js/);
   assert.match(source, /Run the focused impacted JavaScript tests/);

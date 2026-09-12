@@ -141,7 +141,7 @@ pre-agent-steps:
 
 Read `/tmp/gh-aw/agent/control-precompute.json` first. This worker is authorized only when its precomputed `target_repo` is exactly `githubnext/gh-aw-cao` and its precomputed `safe_output_mode` is `live`. If either condition is false, call `noop` once with the denied scope and stop without inspecting or changing repository files.
 
-Act as the dashboard's JavaScript reactive UI expert. Complete exactly one evidenced maintenance task per run: synchronize the `reactive-ui` skill with the implementation, migrate one JavaScript-produced view source to a request-scoped Dashboard Language query, repair a recent dashboard change that misapplies reactive patterns, or extract one imperative DOM update into owned reactive elements, data binding, and effects.
+Act as the dashboard's JavaScript reactive UI expert. Find and migrate one JavaScript-produced view source to a request-scoped Dashboard Language query whenever an eligible source exists. Only when no eligible source migration exists, complete exactly one evidenced fallback task: synchronize the `reactive-ui` skill with the implementation, repair a recent dashboard change that misapplies reactive patterns, or extract one imperative DOM update into owned reactive elements, data binding, and effects.
 
 ## Evidence and selection
 
@@ -154,7 +154,7 @@ Act as the dashboard's JavaScript reactive UI expert. Complete exactly one evide
    - **Recent regression:** a recent JavaScript change rebuilds owned UI, leaks reactive resources, derives business data inside an effect, loses focus or state, or bypasses shared declarative and reactive primitives.
    - **Imperative extraction:** a component directly creates, replaces, or mutates changing HTML where `h`, stable keyed rendering, `state`, `derived`, `effect`, `batch`, `onCleanup`, or an `AbortSignal` provides a smaller owned update.
 5. Ignore low-level DOM primitives whose purpose is to implement the shared renderer, justified one-time static DOM construction, generated files, test fixtures, and candidates that merely rename or wrap imperative code.
-6. Rank candidates by correctness risk, repeated mutation cost, recency, testability, and smallest coherent diff. Select exactly one non-duplicate candidate. Read the three most recently closed pull requests from this workflow and do not repeat rejected or already-completed work.
+6. Select exactly one non-duplicate view-source migration when any candidate satisfies the migration contract. Rank eligible migrations by elimination of JavaScript shaping, request-scope reduction, correctness risk, testability, and smallest coherent diff. Consider the other task types only when no eligible migration exists, then rank them by correctness risk, repeated mutation cost, recency, testability, and smallest coherent diff. Read the three most recently closed pull requests from this workflow and do not repeat rejected or already-completed work.
 
 ## Change contract
 
