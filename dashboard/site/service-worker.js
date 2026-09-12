@@ -1,5 +1,9 @@
 const VERSION = '1';
 const DATA_CACHE = `central-agentic-ops-dashboard-data-${VERSION}`;
+const CONFIG_CACHE = 'central-agentic-ops-dashboard-config';
+const CONFIG_URL = new URL('./.dashboard-data-update-config', self.registration.scope).href;
+const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
+const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const DATA_FILES = new Set(['gh-aw-logs.jsonl', 'inventory-sources.json']);
 
 function isDashboardDataUrl(value) {
@@ -18,7 +22,11 @@ async function downloadData(urls) {
     throw new Error('Dashboard data URL is missing.');
   }
   const responses = await Promise.all(requested.map(async (url) => {
-    const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
+    const response = await fetch(url, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS)
+    });
     const optionalInventory = new URL(url).pathname.endsWith('/inventory-sources.json');
     if (!response.ok && !(optionalInventory && response.status === 404)) {
       throw new Error(`Dashboard data download returned ${response.status}.`);
@@ -31,6 +39,31 @@ async function downloadData(urls) {
       ? cache.delete(url)
       : cache.put(url, response.clone())
   )));
+}
+
+async function storeDataUrls(urls) {
+  const requested = [...new Set(urls)].filter(isDashboardDataUrl);
+  if (!requested.some((url) => new URL(url).pathname.endsWith('/gh-aw-logs.jsonl'))) {
+    throw new Error('Dashboard data URL is missing.');
+  }
+  const cache = await caches.open(CONFIG_CACHE);
+  await cache.put(CONFIG_URL, new Response(JSON.stringify(requested), {
+    headers: { 'content-type': 'application/json' }
+  }));
+}
+
+async function downloadConfiguredData() {
+  const connection = self.navigator?.connection;
+  if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return;
+  if (typeof self.navigator?.getBattery === 'function') {
+    const battery = await self.navigator.getBattery();
+    if (!battery.charging && battery.level <= 0.2) return;
+  }
+  const cache = await caches.open(CONFIG_CACHE);
+  const response = await cache.match(CONFIG_URL);
+  if (!response) return;
+  const urls = await response.json();
+  if (Array.isArray(urls)) await downloadData(urls);
 }
 
 self.addEventListener('install', () => {
@@ -65,6 +98,11 @@ self.addEventListener('fetch', (event) => {
   })());
 });
 
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag !== PERIODIC_SYNC_TAG) return;
+  event.waitUntil(downloadConfiguredData());
+});
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'CANARY') {
     event.ports[0]?.postMessage({ type: 'CANARY_OK', version: VERSION });
@@ -72,6 +110,17 @@ self.addEventListener('message', (event) => {
   }
   if (event.data?.type === 'ACTIVATE') {
     void self.skipWaiting();
+    return;
+  }
+  if (event.data?.type === 'CONFIGURE_BACKGROUND_DATA' && Array.isArray(event.data.urls)) {
+    const task = storeDataUrls(event.data.urls).then(
+      () => event.ports[0]?.postMessage({ type: 'BACKGROUND_DATA_CONFIGURED', version: VERSION }),
+      (error) => event.ports[0]?.postMessage({
+        type: 'BACKGROUND_DATA_CONFIGURATION_FAILED',
+        message: error instanceof Error ? error.message : String(error)
+      })
+    );
+    event.waitUntil(task);
     return;
   }
   if (event.data?.type !== 'DOWNLOAD_DATA' || !Array.isArray(event.data.urls)) return;

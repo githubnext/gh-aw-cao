@@ -51,7 +51,7 @@ describe('Configuration dashboard view', () => {
     checkbox.click();
     expect(localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
     expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
-      .toContain('pause automatically on low battery or metered connections');
+      .toContain('can download in the background');
   });
 
   it('exposes Control in the clean navigation without a chart', () => {

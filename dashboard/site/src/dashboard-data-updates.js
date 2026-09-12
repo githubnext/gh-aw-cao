@@ -6,6 +6,7 @@ const RETRY_INTERVAL_MS = 5 * 60 * 1000;
 const LOW_BATTERY_LEVEL = 0.2;
 const CANARY_TIMEOUT_MS = 3000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
+const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 
 /** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
@@ -54,6 +55,27 @@ function requestWorker(worker, message, timeoutMs) {
       resolve(event.data);
     };
     worker.postMessage(message, [channel.port2]);
+  });
+}
+
+/**
+ * @param {ServiceWorkerRegistration} registration
+ * @param {ServiceWorker} worker
+ * @param {string[]} dataUrls
+ */
+async function configureBackgroundDashboardDataUpdates(registration, worker, dataUrls) {
+  const response = await requestWorker(
+    worker,
+    { type: 'CONFIGURE_BACKGROUND_DATA', urls: dataUrls },
+    CANARY_TIMEOUT_MS
+  );
+  if (!response || typeof response !== 'object'
+      || /** @type {{ type?: unknown }} */ (response).type !== 'BACKGROUND_DATA_CONFIGURED') {
+    throw new Error('Service worker background data configuration failed.');
+  }
+  const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { register: (tag: string, options: { minInterval: number }) => Promise<void> } }} */ (registration).periodicSync;
+  await periodicSync?.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS }).catch(() => {
+    // The foreground timer remains the fallback when background sync is unavailable or denied.
   });
 }
 
@@ -194,15 +216,23 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   const performReconcile = async () => {
     if (stopped) return;
     if (!automaticDashboardDataUpdatesEnabled(storage)) {
-      const existing = registration ?? await serviceWorkers?.getRegistration(new URL('./', scriptUrl).href);
+      const existing = registration ?? await serviceWorkers?.getRegistration?.(new URL('./', scriptUrl).href);
+      const periodicSync = /** @type {(ServiceWorkerRegistration & { periodicSync?: { unregister: (tag: string) => Promise<void> } }) | undefined} */ (existing)?.periodicSync;
+      await periodicSync?.unregister(PERIODIC_SYNC_TAG);
       await existing?.unregister();
       registration = undefined;
       return;
     }
     if (!serviceWorkers) return;
-    if (!online()) {
-      schedule(RETRY_INTERVAL_MS);
-      return;
+    if (!online()) return schedule(RETRY_INTERVAL_MS);
+    let healthy;
+    try {
+      healthy = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
+      registration = healthy.registration;
+      await configureBackgroundDashboardDataUpdates(registration, healthy.worker, dataUrls);
+    } catch (error) {
+      console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
+      return schedule(RETRY_INTERVAL_MS);
     }
     if (!battery && getBattery) {
       battery = await getBattery().catch(() => undefined);
@@ -220,8 +250,6 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       return;
     }
     try {
-      const healthy = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
-      registration = healthy.registration;
       const response = await requestWorker(
         healthy.worker,
         { type: 'DOWNLOAD_DATA', urls: dataUrls },

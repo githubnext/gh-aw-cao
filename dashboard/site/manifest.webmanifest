@@ -1,0 +1,16 @@
+{
+  "name": "Central Agentic Ops Dashboard",
+  "short_name": "Agentic Ops",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

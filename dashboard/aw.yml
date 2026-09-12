@@ -36,6 +36,8 @@ resources:
     destination: .github/aw/dashboard/site/index.html
   - source: site/favicon.svg
     destination: .github/aw/dashboard/site/favicon.svg
+  - source: site/manifest.webmanifest
+    destination: .github/aw/dashboard/site/manifest.webmanifest
   - source: site/service-worker.js
     destination: .github/aw/dashboard/site/service-worker.js
   - source: site/dashboard.json

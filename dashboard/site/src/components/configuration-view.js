@@ -284,13 +284,13 @@ function renderAutomaticDataUpdatesSetting() {
         /** @type {HTMLInputElement} */ (event.currentTarget).checked
       );
       status.textContent = checkbox.checked
-        ? 'On. Downloads pause automatically on low battery or metered connections.'
+        ? 'On. Supported browsers can download in the background. Downloads pause on low battery or metered connections.'
         : 'Off. Dashboard data updates only while the dashboard is open.';
     }
   }));
   const status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
     checkbox.checked
-      ? 'On. Downloads pause automatically on low battery or metered connections.'
+      ? 'On. Supported browsers can download in the background. Downloads pause on low battery or metered connections.'
       : 'Off. Dashboard data updates only while the dashboard is open.'
   );
   return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },
@@ -303,7 +303,7 @@ function renderAutomaticDataUpdatesSetting() {
     h('div', { className: 'configuration-setting-row' },
       h('div', { className: 'configuration-setting-copy' },
         h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
-        h('p', null, 'While the dashboard is open, uses a service worker to download fresh data. It is off by default.')
+        h('p', null, 'Uses a service worker for foreground and supported background downloads. It is off by default.')
       ),
       checkbox
     ),
