@@ -542,10 +542,15 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
 
   for (const [name, limits] of Object.entries(expected)) {
     const source = workflow(name);
+    const config = parse(/^---\n([\s\S]*?)\n---/.exec(source)[1]);
     assert.match(source, new RegExp(`max-ai-credits: ${limits.credits}`), name);
     assert.match(source, new RegExp(`timeout-minutes: ${limits.timeout}`), name);
     assert.match(source, /concurrency:\n\s+group:.*\n\s+job-discriminator: \$\{\{ github\.run_id \}\}\n\s+cancel-in-progress: true/, name);
-    assert.doesNotMatch(source, /^\s+(contents|actions|issues|pull-requests): write$/m, name);
+    assert.ok(
+      ["contents", "actions", "issues", "pull-requests"]
+        .every((permission) => config.permissions?.[permission] !== "write"),
+      `${name} must keep the agent job read-only`,
+    );
     if (limits.dispatchMax) {
       assert.match(source, new RegExp(`dispatch_max: ${limits.dispatchMax}`), name);
       assert.match(source, new RegExp(`dispatch-workflow:[\\s\\S]*?max: ${limits.dispatchMax}`), name);
@@ -782,13 +787,22 @@ test("workflow issue outputs are bounded, deduplicated, and centrally quiet on n
     if (issue) {
       assert.equal(issue["deduplicate-by-title"], true, name);
       const closeIssue = safeOutputs["close-issue"];
+      const guardedCleanupJob = safeOutputs.jobs?.["close-unattended-dependabot-issue"];
       const hasExpiry = /^[1-9][0-9]*d$/.test(String(issue.expires));
       const hasGuardedCleanup = issue.expires === false
-        && closeIssue?.target === "*"
-        && closeIssue?.["required-title-prefix"] === issue["title-prefix"]
-        && issue.labels.every((label) => closeIssue?.["required-labels"]?.includes(label))
-        && Number.isInteger(closeIssue?.max)
-        && closeIssue.max > 0;
+        && (
+          (
+            closeIssue?.target === "*"
+            && closeIssue?.["required-title-prefix"] === issue["title-prefix"]
+            && issue.labels.every((label) => closeIssue?.["required-labels"]?.includes(label))
+            && Number.isInteger(closeIssue?.max)
+            && closeIssue.max > 0
+          )
+          || (
+            guardedCleanupJob?.permissions?.issues === "write"
+            && guardedCleanupJob?.inputs?.issue_number?.required === true
+          )
+        );
       assert.ok(hasExpiry || hasGuardedCleanup, `${name} must expire issues or constrain guarded cleanup`);
       assert.ok(Number.isInteger(issue.max) && issue.max > 0, `${name} must bound create-issue max`);
       assert.ok(typeof issue["title-prefix"] === "string" && issue["title-prefix"].length > 0, `${name} must prefix issue titles`);
@@ -828,10 +842,19 @@ test("Dependabot cooldown and duplicate prevention remain fail closed", () => {
   assert.deepEqual(worker.tools.github["trusted-users"], trustedUsers);
   assert.equal(worker["safe-outputs"]["create-pull-request"]["recreate-ref"], false);
   assert.equal(worker["safe-outputs"]["create-issue"].expires, false);
+  assert.equal(worker["safe-outputs"]["close-issue"], undefined);
   assert.equal(worker["safe-outputs"]["close-pull-request"], undefined);
+  const cleanup = worker["safe-outputs"].jobs["close-unattended-dependabot-issue"];
+  assert.equal(cleanup.permissions.issues, "write");
+  assert.equal(cleanup.inputs.issue_number.required, true);
+  assert.match(cleanup.steps[0].run, /created_epoch > cutoff/);
+  assert.match(cleanup.steps[0].run, /\.user\.type == "Bot"/);
+  assert.match(cleanup.steps[0].run, /developer comment found/);
+  assert.match(cleanup.steps[0].run, /developer reaction found/);
+  assert.match(cleanup.steps[0].run, /developer or linked-work interaction found/);
   assert.match(workerSource, /smart-dependabot:identity=<full-digest>/);
   assert.match(workerSource, /lowercase SHA-256 hex digest/);
-  assert.match(workerSource, /no developer has commented, reacted, edited, been assigned, linked work, or otherwise interacted/);
+  assert.match(workerSource, /replacing each run of non-ASCII-alphanumeric characters with `-`/);
 });
 
 test("self-care pages health worker creates a fix PR instead of a report issue", () => {
