@@ -425,7 +425,7 @@ test('GitHub API events table remains operable at desktop and narrow widths', as
   await expect(apiPage.locator('[data-lazy-list]')).toHaveCount(1);
 });
 
-test('Runs renders all observed runs as one responsive full-view interactive table', async ({ page }) => {
+test('Runs renders a last-week swimlane above its responsive table and scrolls it away with the page chrome', async ({ page }) => {
   const documentModel = JSON.parse(readFileSync(new URL('../../dashboard.json', import.meta.url), 'utf8'));
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.setContent(`
@@ -480,6 +480,18 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
           ]
         }
       };
+      for (let run = 3; run <= 50; run += 1) {
+        const template = sources['runs-table'].rows[run % 2];
+        sources['runs-table'].rows.push({
+          ...template,
+          run: String(run),
+          'run-link': {
+            relation: 'run',
+            href: 'https://github.com/githubnext/gh-aw-cao/actions/runs/' + run,
+            label: 'Run ' + run
+          }
+        });
+      }
       window.location.hash = '#page-runs';
       document.querySelector('#root').append(renderDashboard({ document: documentModel, sources }));
     </script>
@@ -490,6 +502,7 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   const view = runsPage.locator('[data-view-layout="full-view"]');
   const table = view.locator('[data-lazy-list]');
   const scroll = view.locator('.table-scroll');
+  const swimlane = runsPage.locator('[data-view-id="runs-last-week"]');
   const columnHeaders = view.locator('thead > tr:first-child > th');
   const expectAlignedColumnHeaders = async () => {
     const headerTops = await columnHeaders.evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().top));
@@ -499,6 +512,8 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   await expect(page.locator('[data-nav-page-id="runs"]')).toHaveAttribute('aria-current', 'page');
   await expect(dashboardRoot).toHaveClass(/dashboard-full-view/);
   await expect(view).toHaveCount(1);
+  await expect(swimlane.locator('[data-chart-widget="swimlane"]')).toBeVisible();
+  await expect(swimlane.locator('.swimlane-summary')).toContainText('50 runs');
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');
@@ -512,9 +527,15 @@ test('Runs renders all observed runs as one responsive full-view interactive tab
   expect(await summaryRow.evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(expandedHeight);
   await summaryRow.getByRole('button', { name: 'Expand column summaries' }).click();
   await expect(summaryRow).not.toHaveClass(/table-summary-collapsed/);
-  await expect(view.locator('.custom-table tbody tr')).toHaveCount(2);
+  await expect(view.locator('.custom-table tbody tr')).not.toHaveCount(0);
   await expect(view.locator('.custom-table tbody tr').first()).toContainText('2');
   await expectAlignedColumnHeaders();
+  await scroll.evaluate((element) => {
+    element.scrollTop = 100;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect(dashboardRoot).toHaveClass(/dashboard-full-view-scrolled/);
+  await expect(swimlane).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(table).toBeVisible();

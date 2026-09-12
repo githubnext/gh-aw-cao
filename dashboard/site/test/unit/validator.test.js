@@ -595,6 +595,17 @@ describe('dashboard document validation', () => {
       data: { source: 'runs-table' },
       mark: 'table'
     });
+    expect(page.definition.views.find((/** @type {{ id: string }} */ view) =>
+      view.id === 'runs-last-week'
+    )).toMatchObject({
+      data: { source: 'runs-table', time: { range: '7d' } },
+      mark: 'chart',
+      chart: 'swimlane',
+      encoding: {
+        x: { field: 'started-at', type: 'temporal' },
+        y: { field: 'run-conclusion', type: 'ordinal' }
+      }
+    });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
@@ -693,7 +704,7 @@ dashboard:
     expect(runsView.data.source).toBe('runs-table');
     expect(packagesPage.definition.views).toHaveLength(1);
     expect(workflowsPage.definition.views).toHaveLength(1);
-    expect(runsPage.definition.views).toHaveLength(1);
+    expect(runsPage.definition.views).toHaveLength(2);
     expect(document.dashboard.navigation.find((/** @type {{ label?: string }} */ section) => !section.label).pages).toEqual([
       'overview',
       'repositories',

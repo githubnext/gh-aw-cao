@@ -3319,6 +3319,41 @@
           },
           "views": [
             {
+              "id": "runs-last-week",
+              "title": "Runs in the last week",
+              "description": "Workflow run conclusions observed during the last seven days.",
+              "data": {
+                "source": "runs-table",
+                "time": {
+                  "range": "7d"
+                }
+              },
+              "mark": "chart",
+              "chart": "swimlane",
+              "layout": "full",
+              "encoding": {
+                "x": {
+                  "field": "started-at",
+                  "type": "temporal",
+                  "format": "human-friendly-timestamp",
+                  "title": "Started"
+                },
+                "y": {
+                  "field": "run-conclusion",
+                  "type": "ordinal",
+                  "title": "Conclusion"
+                },
+                "color": {
+                  "field": "run-conclusion",
+                  "type": "nominal"
+                },
+                "href": {
+                  "field": "run-link",
+                  "type": "nominal"
+                }
+              }
+            },
+            {
               "id": "runs-runs-source",
               "title": "Runs",
               "description": "Observed workflow runs across the configured repository scope.",
