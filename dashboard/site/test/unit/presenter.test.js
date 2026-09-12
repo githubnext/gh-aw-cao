@@ -977,7 +977,7 @@ describe('presenter built-in and custom pages', () => {
       'MCPs',
       'Models & agents',
       'UK AI advisory',
-      'AW Doctor',
+      'CAO Evolution',
       'Dependabot',
       'EU CRA',
       'AW Optimization'
@@ -1338,7 +1338,7 @@ describe('presenter built-in and custom pages', () => {
       'MCPs',
       'Models & agents',
       'UK AI advisory',
-      'AW Doctor',
+      'CAO Evolution',
       'Dependabot',
       'EU CRA',
       'AW Optimization'

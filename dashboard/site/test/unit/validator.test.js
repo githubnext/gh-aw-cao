@@ -1255,13 +1255,19 @@ dashboard:
     expect(runView).toMatchObject({
       mark: 'table',
       controls: 'interactive',
-      encoding: {
-        href: builtInRunView.encoding.href,
-        columns: builtInRunView.encoding.columns.filter(
-          (/** @type {{ field: string }} */ column) => column.field !== 'engine-version'
-        )
-      }
+      encoding: { href: builtInRunView.encoding.href }
     });
+    expect(runView.encoding.columns.map(
+      (/** @type {{ field: string }} */ column) => column.field
+    )).toEqual([
+      'run',
+      'run-status',
+      'run-conclusion',
+      'repository',
+      'workflow',
+      'rollout-mode',
+      'started-at'
+    ]);
     expect(runView.description).toContain('maintenance checks');
     expect(runView.encoding.columns.some(
       (/** @type {{ field: string }} */ column) => column.field === 'engine-version'

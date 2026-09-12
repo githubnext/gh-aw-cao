@@ -1,5 +1,5 @@
-# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"8f658b5064ac64b61ffb60937fd084024a16fd50e20b3314b9ad0c4a0f717fa5","body_hash":"57accede0b7e011cc019058684d7f1c54e944b576d421121e59c32906c309810","compiler_version":"v0.89.9","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.83"}}
-# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"74929b772fd7d9dddf663dc49e01f470d8458310","version":"v0.89.9"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15","digest":"sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15@sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15","digest":"sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15@sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15","digest":"sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15@sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.20","digest":"sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.20@sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23"}],"mcp_servers":[{"name":"github","tools":["actions_get","actions_list","get_commit","get_file_contents","get_job_logs","get_latest_release","get_release_by_tag","get_tag","issue_read","list_branches","list_commits","list_issue_types","list_issues","list_releases","list_starred_repositories","list_tags","search_code","search_issues","search_repositories"]},{"name":"safeoutputs","tools":["cao_evolution_efficiency","cao_evolution_integrity","cao_evolution_reliability","dispatch_workflow","missing_data","missing_tool","noop"]}]}
+# gh-aw-metadata: {"schema_version":"v4","frontmatter_hash":"e000fc328ca70b9f182822eebfa8a7996921973c0b5c57e1219b2d22d384e824","body_hash":"51724c32c762acea2e06b5f873373ee4595a5d59e0d985644f05531aef9b0e21","compiler_version":"v0.89.9","strict":true,"agent_id":"copilot","engine_versions":{"copilot":"1.0.83"}}
+# gh-aw-manifest: {"version":1,"secrets":["GH_AW_DEFAULT_OTLP_ENDPOINT","GH_AW_DEFAULT_OTLP_HEADERS","GH_AW_GITHUB_MCP_SERVER_TOKEN","GH_AW_GITHUB_READ_APP_PRIVATE_KEY","GH_AW_GITHUB_TOKEN","GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY","GITHUB_TOKEN"],"actions":[{"repo":"actions/checkout","sha":"3d3c42e5aac5ba805825da76410c181273ba90b1","version":"v7.0.1"},{"repo":"actions/create-github-app-token","sha":"bcd2ba49218906704ab6c1aa796996da409d3eb1","version":"v3.2.0"},{"repo":"actions/download-artifact","sha":"3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c","version":"v8.0.1"},{"repo":"actions/github-script","sha":"3a2844b7e9c422d3c10d287c895573f7108da1b3","version":"v9.0.0"},{"repo":"actions/upload-artifact","sha":"043fb46d1a93c77aae656e7c1c64a875d1fc6a0a","version":"v7.0.1"},{"repo":"github/gh-aw-actions/setup","sha":"74929b772fd7d9dddf663dc49e01f470d8458310","version":"v0.89.9"}],"containers":[{"image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15","digest":"sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d","pinned_image":"ghcr.io/github/gh-aw-firewall/agent:0.28.15@sha256:9f13ae19ceac89554ad7b2d07b68135f40664721f811cb4df05b0eb372af3a5d"},{"image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15","digest":"sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c","pinned_image":"ghcr.io/github/gh-aw-firewall/api-proxy:0.28.15@sha256:0410a07cd39dfd086ad2f4f1a22c36fff293696a4675c7e2e46a90754131122c"},{"image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15","digest":"sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161","pinned_image":"ghcr.io/github/gh-aw-firewall/squid:0.28.15@sha256:0006cecbfcc0363afb00a306e30e8991b02cc1a52b77be2f6616000c01cb9161"},{"image":"ghcr.io/github/gh-aw-mcpg:v0.4.20","digest":"sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684","pinned_image":"ghcr.io/github/gh-aw-mcpg:v0.4.20@sha256:980ea7aa4fb07e444f0e2c6e3af5aff8b45e4e415d617667b8ba064a1768b684"},{"image":"ghcr.io/github/gh-aw-node","digest":"sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23","pinned_image":"ghcr.io/github/gh-aw-node@sha256:0daa8971fa4732b647150cb6524a6b0804b68d5d24f6f58b5dd1af23bd63fb23"}],"mcp_servers":[{"name":"github","tools":["actions_get","actions_list","get_commit","get_file_contents","get_job_logs","get_latest_release","get_release_by_tag","get_tag","issue_read","list_branches","list_commits","list_issue_types","list_issues","list_releases","list_starred_repositories","list_tags","search_code","search_issues","search_repositories"]},{"name":"safeoutputs","tools":["aw_failures_investigator","aw_maintenance_compiler_security","cao_evolution_efficiency","cao_evolution_integrity","cao_evolution_reliability","dispatch_workflow","missing_data","missing_tool","noop"]}]}
 # This file was automatically generated by gh-aw (v0.89.9). DO NOT EDIT. To debug this workflow, load the skill at https://github.com/github/gh-aw/blob/main/debug.md
 #
 #    ___                   _   _
@@ -23,9 +23,9 @@
 #
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
-# Maintains the integrity, reliability, and efficiency of Central Agentic Ops control planes
+# Maintains the integrity, reliability, efficiency, and agentic-workflow health of Central Agentic Ops repositories
 #
-# Intent: Maintain trustworthy, reliable, and cost-efficient CAO control planes without duplicating target-repository operations or maintainer work.
+# Intent: Maintain trustworthy, reliable, safe, and cost-efficient CAO control planes and their enrolled agentic workflows without duplicating target-repository operations or maintainer work.
 #
 # Resolved workflow manifest:
 #   Imports:
@@ -283,7 +283,7 @@ jobs:
           GH_AW_GITHUB_SERVER_URL: ${{ github.server_url }}
           GH_AW_GITHUB_WORKSPACE: ${{ github.workspace }}
           GH_AW_PROMPT_CONTENT_0000: "<system>\n"
-          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: cao_evolution_integrity, cao_evolution_reliability, cao_evolution_efficiency, missing_tool, missing_data, noop\nShared budgets: dispatch-workflow [cao_evolution_integrity, cao_evolution_reliability, cao_evolution_efficiency](max:3 total)\n"
+          GH_AW_PROMPT_CONTENT_0001: "<safe-output-tools>\nTools: cao_evolution_integrity, cao_evolution_reliability, cao_evolution_efficiency, aw_failures_investigator, aw_maintenance_compiler_security, missing_tool, missing_data, noop\nShared budgets: dispatch-workflow [cao_evolution_integrity, cao_evolution_reliability, cao_evolution_efficiency, aw_failures_investigator, aw_maintenance_compiler_security](max:5 total)\n"
           GH_AW_PROMPT_CONTENT_0002: "</safe-output-tools>\n"
           GH_AW_PROMPT_CONTENT_0003: "<github-context>\nThe following GitHub context information is available for this workflow:\n{{#if github.actor}}\n- **actor**: __GH_AW_GITHUB_ACTOR__\n{{/if}}\n{{#if github.repository}}\n- **repository**: __GH_AW_GITHUB_REPOSITORY__\n{{/if}}\n{{#if github.workspace}}\n- **workspace**: __GH_AW_GITHUB_WORKSPACE__\n{{/if}}\n{{#if github.event.issue.number || (github.aw.context.item_type == 'issue' && github.aw.context.item_number)}}\n- **issue-number**: #__GH_AW_EXPR_802A9F6A__\n{{/if}}\n{{#if github.event.discussion.number || (github.aw.context.item_type == 'discussion' && github.aw.context.item_number)}}\n- **discussion-number**: #__GH_AW_EXPR_1A3A194A__\n{{/if}}\n{{#if github.event.pull_request.number || (github.aw.context.item_type == 'pull_request' && github.aw.context.item_number)}}\n- **pull-request-number**: #__GH_AW_EXPR_463A214A__\n{{/if}}\n{{#if github.event.comment.id || github.aw.context.comment_id}}\n- **comment-id**: __GH_AW_EXPR_FF1D34CE__\n{{/if}}\n{{#if github.run_id}}\n- **workflow-run-id**: __GH_AW_GITHUB_RUN_ID__\n{{/if}}\n</github-context>\n\n"
           GH_AW_PROMPT_CONTENT_0004: "</system>\n"
@@ -587,7 +587,7 @@ jobs:
         env:
           GH_AW_FILE_ROOT: "${{ runner.temp }}/gh-aw"
           GH_AW_FILE_CONFIG: "{\"files\":[{\"path\":\"safeoutputs/config.json\",\"content_env\":\"GH_AW_SAFE_OUTPUTS_CONFIG\"}]}"
-          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\"],\"max\":3,\"workflow_files\":{\"cao-evolution-efficiency\":\".lock.yml\",\"cao-evolution-integrity\":\".lock.yml\",\"cao-evolution-reliability\":\".lock.yml\"},\"workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"],\"max\":5,\"workflow_files\":{\"aw-failures-investigator\":\".lock.yml\",\"aw-maintenance-compiler-security\":\".lock.yml\",\"cao-evolution-efficiency\":\".lock.yml\",\"cao-evolution-integrity\":\".lock.yml\",\"cao-evolution-reliability\":\".lock.yml\"},\"workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
         with:
           script: |
             const path = require('path');
@@ -782,6 +782,126 @@ jobs:
                     "type": "object"
                   },
                   "name": "cao_evolution_efficiency"
+                },
+                {
+                  "_workflow_name": "aw-failures-investigator",
+                  "description": "Dispatch the 'aw-failures-investigator' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
+                  "inputSchema": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "aw_context": {
+                        "default": "",
+                        "description": "Agent caller context (used internally by Agentic Workflows).",
+                        "type": "string"
+                      },
+                      "batch_label": {
+                        "description": "Input parameter 'batch_label' for workflow aw-failures-investigator",
+                        "type": "string"
+                      },
+                      "central_repo": {
+                        "description": "Input parameter 'central_repo' for workflow aw-failures-investigator",
+                        "type": "string"
+                      },
+                      "control_plane_run_url": {
+                        "description": "Input parameter 'control_plane_run_url' for workflow aw-failures-investigator",
+                        "type": "string"
+                      },
+                      "correlation_id": {
+                        "description": "Input parameter 'correlation_id' for workflow aw-failures-investigator",
+                        "type": "string"
+                      },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow aw-failures-investigator",
+                        "type": "number"
+                      },
+                      "ref": {
+                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
+                        "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow aw-failures-investigator",
+                        "type": "number"
+                      },
+                      "safe_output_mode": {
+                        "description": "Input parameter 'safe_output_mode' for workflow aw-failures-investigator",
+                        "type": "string"
+                      },
+                      "safe_output_repo": {
+                        "description": "Input parameter 'safe_output_repo' for workflow aw-failures-investigator",
+                        "type": "string"
+                      },
+                      "target_repo": {
+                        "description": "Input parameter 'target_repo' for workflow aw-failures-investigator",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "safe_output_repo",
+                      "target_repo"
+                    ],
+                    "type": "object"
+                  },
+                  "name": "aw_failures_investigator"
+                },
+                {
+                  "_workflow_name": "aw-maintenance-compiler-security",
+                  "description": "Dispatch the 'aw-maintenance-compiler-security' workflow with workflow_dispatch trigger. This workflow must support workflow_dispatch and be in .github/workflows/ directory in the same repository. Use the 'ref' parameter to target a specific branch or tag (allowed patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}).",
+                  "inputSchema": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "aw_context": {
+                        "default": "",
+                        "description": "Agent caller context (used internally by Agentic Workflows).",
+                        "type": "string"
+                      },
+                      "batch_label": {
+                        "description": "Input parameter 'batch_label' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      },
+                      "central_repo": {
+                        "description": "Input parameter 'central_repo' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      },
+                      "control_plane_run_url": {
+                        "description": "Input parameter 'control_plane_run_url' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      },
+                      "correlation_id": {
+                        "description": "Input parameter 'correlation_id' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      },
+                      "max_repos": {
+                        "description": "Input parameter 'max_repos' for workflow aw-maintenance-compiler-security",
+                        "type": "number"
+                      },
+                      "ref": {
+                        "description": "The git ref (branch, tag, or SHA) to dispatch the workflow on. Must match one of the configured allowed ref patterns: refs/heads/${GH_AW_GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}. If omitted, the ref is resolved from the triggering context, including the pull request head for pull request comments.",
+                        "type": "string"
+                      },
+                      "rollout_percent": {
+                        "description": "Input parameter 'rollout_percent' for workflow aw-maintenance-compiler-security",
+                        "type": "number"
+                      },
+                      "safe_output_mode": {
+                        "description": "Input parameter 'safe_output_mode' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      },
+                      "safe_output_repo": {
+                        "description": "Input parameter 'safe_output_repo' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      },
+                      "target_repo": {
+                        "description": "Input parameter 'target_repo' for workflow aw-maintenance-compiler-security",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "safe_output_repo",
+                      "target_repo"
+                    ],
+                    "type": "object"
+                  },
+                  "name": "aw_maintenance_compiler_security"
                 }
               ]
             }
@@ -1755,14 +1875,14 @@ jobs:
           CAO_CENTRAL_REPOSITORY: ${{ inputs.central_repo || '' }}
           CAO_CONTROL_PLANE_RUN_URL: ${{ inputs.control_plane_run_url || '' }}
           CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
-          CAO_DISPATCH_MAX: "3"
+          CAO_DISPATCH_MAX: "5"
           CAO_ORCHESTRATOR_CREDITS: "250"
           CAO_PACKAGE: cao-evolution
           CAO_ROLE: orchestrator
           CAO_SAFE_OUTPUT_REPOSITORY: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
           CAO_WORKER: __none__
-          CAO_WORKER_CREDITS_PER_TARGET: "1300"
+          CAO_WORKER_CREDITS_PER_TARGET: "2300"
           GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || github.token }}
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
         with:
@@ -1935,7 +2055,7 @@ jobs:
           GH_AW_ALLOWED_DOMAINS: "*.githubusercontent.com,api.githubcopilot.com,api.snapcraft.io,archive.ubuntu.com,azure.archive.ubuntu.com,codeload.github.com,crl.geotrust.com,crl.globalsign.com,crl.identrust.com,crl.sectigo.com,crl.thawte.com,crl.usertrust.com,crl.verisign.com,crl3.digicert.com,crl4.digicert.com,crls.ssl.com,docs.github.com,github-cloud.githubusercontent.com,github-cloud.s3.amazonaws.com,github.blog,github.com,github.githubassets.com,json-schema.org,json.schemastore.org,keyserver.ubuntu.com,lfs.github.com,objects.githubusercontent.com,ocsp.digicert.com,ocsp.geotrust.com,ocsp.globalsign.com,ocsp.identrust.com,ocsp.sectigo.com,ocsp.ssl.com,ocsp.thawte.com,ocsp.usertrust.com,ocsp.verisign.com,packagecloud.io,packages.cloud.google.com,packages.microsoft.com,patch-diff.githubusercontent.com,patchdiff.githubusercontent.com,ppa.launchpad.net,raw.githubusercontent.com,s.symcb.com,s.symcd.com,security.ubuntu.com,ts-crl.ws.symantec.com,ts-ocsp.ws.symantec.com,www.googleapis.com"
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_API_URL: ${{ github.api_url }}
-          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\"],\"max\":3,\"workflow_files\":{\"cao-evolution-efficiency\":\".lock.yml\",\"cao-evolution-integrity\":\".lock.yml\",\"cao-evolution-reliability\":\".lock.yml\"},\"workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
+          GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG: "{\"create_report_incomplete_issue\":{},\"dispatch_workflow\":{\"allowed_refs\":[\"refs/heads/${{ github.event.repository.default_branch }}\"],\"aw_context_workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"],\"max\":5,\"workflow_files\":{\"aw-failures-investigator\":\".lock.yml\",\"aw-maintenance-compiler-security\":\".lock.yml\",\"cao-evolution-efficiency\":\".lock.yml\",\"cao-evolution-integrity\":\".lock.yml\",\"cao-evolution-reliability\":\".lock.yml\"},\"workflows\":[\"cao-evolution-integrity\",\"cao-evolution-reliability\",\"cao-evolution-efficiency\",\"aw-failures-investigator\",\"aw-maintenance-compiler-security\"]},\"missing_data\":{},\"missing_tool\":{},\"noop\":{\"max\":1,\"report-as-issue\":\"false\"},\"report_incomplete\":{}}"
         with:
           github-token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

@@ -180,7 +180,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     ])),
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
-  assert.match(orchestrator, /A \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
+  assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
   assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, aw-failures-investigator, aw-maintenance-compiler-security\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
   for (const [workerName, workflowName] of workers) {
@@ -609,7 +609,7 @@ test("control workflows deny before activation through one shared admission cont
     .map((name) => [name, workflow(name)])
     .filter(([, source]) => /^\s+- uses: shared\/control\.md$/m.test(source));
 
-  assert.equal(controlled.length, 42, "unexpected shared control workflow count");
+  assert.equal(controlled.length, 40, "unexpected shared control workflow count");
   assert.equal(
     [...sharedControl.matchAll(/^\s+- name: Evaluate Central Agentic Ops admission$/gm)].length,
     1,

@@ -99,8 +99,8 @@ safe-outputs:
   create-issue:
     expires: 14d
     deduplicate-by-title: true
-    title-prefix: "[cao-evolution:aw-compiler-security] "
-    labels: [cao-evolution, cao-evolution:aw-compiler-security]
+    title-prefix: "[cao-evolution:compiler-security] "
+    labels: [cao-evolution, cao-evolution:compiler-security]
     max: 1
     target-repo: ${{ (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo }}
 

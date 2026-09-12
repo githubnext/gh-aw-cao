@@ -32,7 +32,7 @@ const event = {
     title: "Investigate failing workflow",
     created_at: "2026-08-27T10:01:00Z",
     user: { login: "github-actions[bot]", type: "Bot" },
-    body: "Target repository: `acme/service`\n\nGenerated from [AW Doctor / Failures](https://github.com/acme/control/actions/runs/123)",
+    body: "Target repository: `acme/service`\n\nGenerated from [CAO Evolution / AW Failures](https://github.com/acme/control/actions/runs/123)",
   },
 };
 
@@ -76,7 +76,7 @@ test("ops publish derives routing from an allowlisted generated run", () => {
     },
   });
   assert.deepEqual(validated, {
-    packageName: "aw-doctor",
+    packageName: "cao-evolution",
     targetRepository: "acme/service",
     targetOwner: "acme",
     targetName: "service",

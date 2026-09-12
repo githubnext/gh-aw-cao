@@ -119,7 +119,6 @@ Administrative setup (`.github/cao/setup-github-apps.mjs`), release workflows, C
 | `deployed-workflows.json` local run index | `activity/index.mjs` | Activity collectors | Rebuilt from checked-out metadata and the shared logs snapshot without API fallback |
 | Shared gh-aw logs JSONL | `.github/workflows/activity.yml` | Consumers | Persistent activity cache |
 | `records.mjs` run map | `activity/index.mjs` via `deployed-workflows.json` | `dashboard/report/records.mjs` | In-memory join by runtime repository and run ID; no run-detail request |
-| gh-aw release list | `aw-maintenance-upgrade.md` | Later upgrade runs | 24-hour file cache restored by Actions cache |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |
 | GitHub API telemetry ledger (`cao-gh.jsonl`) | `activity/github-telemetry.mjs` | Next activity run's dashboard quota history and the `cao-gh` artifact | Rolling 24-hour window retained inside the `cao-activity` cache; trimmed on restore by `prepare`, not a fresh discard per run |
 | Dashboard source document | Dashboard data worker | Current browser session and later page queries | Canonical generations in IndexedDB store runs/jobs/sessions/events; `work-items`, `security-findings`, and other noncanonical source rows are retained only in worker memory and reconstructed after reload |
