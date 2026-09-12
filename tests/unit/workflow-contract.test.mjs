@@ -3114,6 +3114,8 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
+  const dashboardBuildJob = dashboardWorkflow.match(/\n  build:\n([\s\S]*?)\n  deploy:\n/)?.[1];
+  const dashboardDeployJob = dashboardWorkflow.match(/\n  deploy:\n([\s\S]*)/)?.[1];
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
   const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
   const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
@@ -3177,7 +3179,11 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
   assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.packages\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?const deploy = configuredDeploy \?\? true[\s\S]*?core\.setOutput\('deploy', String\(deploy\)\)/);
-  assert.match(dashboardWorkflow, /Configure Pages\n\s+if: steps\.deployment-policy\.outputs\.deploy == 'true'/);
+  assert.ok(dashboardBuildJob);
+  assert.ok(dashboardDeployJob);
+  assert.doesNotMatch(dashboardBuildJob, /pages: write|id-token: write|configure-pages|upload-pages-artifact|deploy-pages/);
+  assert.match(dashboardDeployJob, /actions: read[\s\S]*?id-token: write[\s\S]*?pages: write/);
+  assert.match(dashboardDeployJob, /Download dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?Configure Pages[\s\S]*?Upload Pages artifact[\s\S]*?Deploy Pages/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
   assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);

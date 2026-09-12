@@ -14,7 +14,7 @@ function policy() {
   return {
     $schema: schemaUri,
     version: 1,
-    "gh-aw-version": "v0.89.8",
+    "gh-aw-version": "v0.89.9",
     "control-plane": {
       scope: {
         "allowed-owners": ["acme"],
@@ -79,7 +79,7 @@ test("control.mjs reads the configured gh-aw compiler version", () => {
   try {
     const result = run(["compiler-version", policyPath]);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout, "v0.89.8\n");
+    assert.equal(result.stdout, "v0.89.9\n");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
