@@ -135,7 +135,7 @@ describe('dashboard document validation', () => {
     });
   });
 
-  it('targets each package manifest from the packages table update action', () => {
+  it('targets each package workflow from the packages table update action', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const action = document.dashboard['cli-actions'].find(
       (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-package'
@@ -146,7 +146,7 @@ describe('dashboard document validation', () => {
     const tableAction = packagesPage.definition.views[0].encoding.actions[0];
 
     expect(action).toMatchObject({
-      command: 'gh aw update {{package}}/aw.yml',
+      command: 'gh aw update {{package}}',
       placement: 'row'
     });
     expect(tableAction).toMatchObject({

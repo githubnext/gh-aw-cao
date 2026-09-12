@@ -2553,9 +2553,9 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
       setDeclaredCliActions([{
         id: 'update-package',
         label: 'Update package',
-        description: 'Update this package from its aw.yml manifest.',
+        description: "Update this package's agentic workflow.",
         icon: 'sync',
-        command: 'gh aw update {{package}}/aw.yml',
+        command: 'gh aw update {{package}}',
         placement: 'row'
       }], { canExecute: false });
 
@@ -2855,7 +2855,7 @@ test('DLS-PAGE-014 DLS-PAGE-015 built-in packages page renders report-style mode
   await expect(awDoctorSummary).toContainText('AW Doctor');
   await expect(awDoctorSummary).toContainText('23.9');
   await awDoctorSummary.getByRole('button', { name: 'Update package' }).click();
-  await expect(page.getByText('gh aw update aw-doctor/aw.yml', { exact: true })).toBeVisible();
+  await expect(page.getByText('gh aw update aw-doctor', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close action approval' }).click();
   await expect(awDoctorSummary.getByRole('link', { name: 'View AW Doctor package dashboard' })).toHaveAttribute('href', '#page-package-insights?package=aw-doctor');
   await expect(awDoctorSummary.locator('[data-field="modes"] .mode-badge')).toHaveText('review');
