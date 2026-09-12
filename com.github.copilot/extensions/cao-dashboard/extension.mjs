@@ -8,12 +8,14 @@ import {
   executeDashboardQueryRequest,
   readDashboardDataSpecification,
 } from "./dashboard-agent-tools.mjs";
+import { executeGhAwCommand } from "./cli-actions.mjs";
 import { startLocalDashboardPreview } from "./local-preview.mjs";
 
 const previews = new Map();
 let dashboardWorkingDirectory = process.cwd();
 
 await joinSession({
+  requestedEnvironmentVariables: ["GH_TOKEN", "GITHUB_TOKEN"],
   tools: [
     {
       name: "cao_dashboard_execute_query",
@@ -141,6 +143,14 @@ await joinSession({
             workingDirectory:
               context.session?.workingDirectory ?? process.cwd(),
             repository: input.repository,
+            executeCliAction: ({ command, onOutput }) =>
+              executeGhAwCommand({
+                command,
+                workingDirectory:
+                  context.session?.workingDirectory ?? dashboardWorkingDirectory,
+                githubToken: process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN,
+                onOutput,
+              }),
           });
           previews.set(context.instanceId, preview);
           return {

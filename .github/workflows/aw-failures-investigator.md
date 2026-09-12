@@ -126,7 +126,7 @@ timeout-minutes: 30
 
 steps:
   - name: Deterministic pre-fetch of agentic workflow failures
-    uses: actions/github-script@v9
+    uses: actions/github-script@v9.0.0
     env:
       GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       TARGET_REPOSITORY: ${{ inputs.target_repo }}

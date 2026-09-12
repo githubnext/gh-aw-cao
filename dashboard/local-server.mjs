@@ -138,6 +138,7 @@ function sendContent(request, response, contentType, content) {
     response.end();
     return;
   }
+
   if (acceptsGzip && compressibleContentTypes.has(contentType) && body.byteLength >= minimumCompressedBytes) {
     const compressed = compressPayload(body);
     response.writeHead(200, { ...headers, "Content-Encoding": "gzip", Vary: "Accept-Encoding" });
@@ -148,6 +149,25 @@ function sendContent(request, response, contentType, content) {
     ? { ...headers, Vary: "Accept-Encoding" }
     : headers);
   response.end(body);
+}
+
+function sendJson(response, statusCode, value) {
+  response.writeHead(statusCode, {
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8",
+  });
+  response.end(JSON.stringify(value));
+}
+
+async function readJsonRequest(request, maximumBytes = 8192) {
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of request) {
+    total += chunk.length;
+    if (total > maximumBytes) throw new Error("Request body is too large.");
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
 async function existingDirectories(paths) {
@@ -1326,6 +1346,8 @@ function readWebsocketFrames(buffer) {
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string) => Promise<void>,
  *   loadViewer?: (ghExecutable: string) => Promise<unknown>,
  *   copilot?: boolean,
+ *   canvas?: boolean,
+ *   executeCliAction?: (action: { id: string, command: string, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   copilotExecutable?: string,
  *   createCopilotRuntime?: typeof startCopilotRuntime,
  *   traceFile?: string,
@@ -1346,6 +1368,8 @@ export async function startDashboardServer({
   downloadData = downloadDashboardData,
   loadViewer = loadLocalViewer,
   copilot = false,
+  canvas = false,
+  executeCliAction,
   copilotExecutable,
   allowMissingOrigin = false,
   createCopilotRuntime = startCopilotRuntime,
@@ -1359,6 +1383,9 @@ export async function startDashboardServer({
 } = {}) {
   if (copilot && !validateDashboardDocument) {
     ({ validateDashboardDocument } = await import("./site/src/validator.js"));
+  }
+  if (canvas && typeof executeCliAction !== "function") {
+    throw new Error("Canvas mode requires a CLI action executor.");
   }
   if (copilot && !isLoopbackHost(host)) {
     output("Copilot mode configuration rejected.", {
@@ -1917,8 +1944,84 @@ export async function startDashboardServer({
       }
       if ((pathname === "/" || pathname === "/index.html")
           && !url.searchParams.has("local-preview")) {
-        url.searchParams.set("local-preview", copilotRuntime ? "copilot" : "enabled");
+        url.searchParams.set("local-preview", canvas ? "canvas" : copilotRuntime ? "copilot" : "enabled");
         response.writeHead(302, { Location: `${routePrefix}/${url.search}`, "Content-Type": "text/html; charset=utf-8" }).end();
+        return;
+      }
+      if (pathname === "/__cli_action") {
+        if (!canvas || typeof executeCliAction !== "function") {
+          response.writeHead(404).end("Not found\n");
+          return;
+        }
+        if (request.method !== "POST") {
+          response.writeHead(405, { Allow: "POST" }).end();
+          return;
+        }
+        if (!isAllowedOrigin(request.headers.origin)
+            || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+          response.writeHead(403).end("Forbidden\n");
+          return;
+        }
+        let payload;
+        try {
+          payload = await readJsonRequest(request);
+        } catch {
+          sendJson(response, 400, { error: "Invalid CLI action request." });
+          return;
+        }
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)
+            || Object.keys(payload).some((key) => !["id", "arguments"].includes(key))
+            || typeof payload.id !== "string" || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(payload.id)
+            || (payload.arguments !== undefined
+              && (!payload.arguments || typeof payload.arguments !== "object" || Array.isArray(payload.arguments)))) {
+          sendJson(response, 400, { error: "Invalid CLI action identifier." });
+          return;
+        }
+        const dashboard = JSON.parse(dashboardContent);
+        const action = dashboard.dashboard?.["cli-actions"]?.find((candidate) => candidate?.id === payload.id);
+        if (!action || typeof action.command !== "string") {
+          sendJson(response, 404, { error: "CLI action is not declared by this dashboard." });
+          return;
+        }
+        const declaredArguments = Array.isArray(action.arguments) ? action.arguments : [];
+        const suppliedArguments = payload.arguments ?? {};
+        if (Object.keys(suppliedArguments).some((id) =>
+          !declaredArguments.some((argument) => argument?.id === id)
+          || typeof suppliedArguments[id] !== "boolean")) {
+          sendJson(response, 400, { error: "Invalid CLI action arguments." });
+          return;
+        }
+        const command = [
+          action.command,
+          ...declaredArguments
+            .filter((argument) => (
+              suppliedArguments[argument.id] ?? argument.default === true
+            ))
+            .map((argument) => argument.flag),
+        ].join(" ");
+        response.writeHead(200, {
+          "Cache-Control": "no-store",
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+        });
+        const emit = (event) => {
+          if (!response.destroyed && !response.writableEnded) {
+            response.write(`${JSON.stringify(event)}\n`);
+          }
+        };
+        try {
+          const result = await executeCliAction({
+            id: action.id,
+            command,
+            onOutput: ({ stream, data }) => emit({ type: "output", stream, data }),
+          });
+          emit({ type: "complete", result });
+        } catch (error) {
+          emit({
+            type: "error",
+            error: error instanceof Error ? error.message : "CLI action could not be executed.",
+          });
+        }
+        response.end();
         return;
       }
       if (request.method !== "GET" && request.method !== "HEAD") {
