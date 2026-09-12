@@ -36,6 +36,50 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('back navigation follows every dashboard browser history entry', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async (presenterModuleUrl) => {
+    window.history.replaceState(null, '', '/#page-overview');
+    const { renderDashboard } = await import(presenterModuleUrl);
+    document.querySelector('#root')?.append(renderDashboard({
+      document: {
+        languageVersion: '0.1.0',
+        dashboard: {
+          id: 'navigation-dashboard',
+          title: 'Navigation dashboard',
+          pages: [
+            { id: 'overview', kind: 'custom', title: 'Overview', views: [], sections: [] },
+            { id: 'cost', kind: 'custom', title: 'Cost', views: [], sections: [] }
+          ]
+        }
+      },
+      sources: {}
+    }));
+  }, buildPresenterModuleUrl());
+
+  const back = page.getByRole('button', { name: 'Go back' });
+  await expect(back).toBeHidden();
+
+  await page.locator('[data-nav-page-id="cost"]').click();
+  await expect(back).toBeVisible();
+
+  await page.evaluate(() => {
+    const link = document.createElement('a');
+    link.href = '#page-overview';
+    document.body.append(link);
+    link.click();
+  });
+  await expect(page).toHaveURL(/#page-overview$/);
+  await expect(back).toBeVisible();
+
+  await back.click();
+  await expect(page).toHaveURL(/#page-cost$/);
+  await expect(back).toBeVisible();
+  await back.click();
+  await expect(page).toHaveURL(/#page-overview$/);
+  await expect(back).toBeHidden();
+});
+
 test('notifications move in at the lower right and center on mobile', async ({ page }) => {
   await page.setContent(`
     <style id="notification-styles"></style>

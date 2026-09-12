@@ -1619,12 +1619,34 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
   activate(initialRoute?.pageId ?? initialPageId, initialRoute?.parameters);
   const defaultView = root.ownerDocument.defaultView;
   const historyBack = root.querySelector('.mobile-history-back');
+  const browserNavigation = /** @type {(EventTarget & {
+   *   currentEntry?: { index: number } | null,
+   *   entries?: () => Array<{ index: number, url: string | null }>
+   * }) | undefined} */ (
+    /** @type {Window & { navigation?: unknown }} */ (defaultView)?.navigation
+  );
   const initialNavigationIndex = defaultView?.history.state?.[NAVIGATION_INDEX_STATE_KEY];
   let navigationIndex = Number.isSafeInteger(initialNavigationIndex) && initialNavigationIndex >= 0
     ? initialNavigationIndex
     : 0;
+  const previousEntryIsDashboard = () => {
+    const currentEntry = browserNavigation?.currentEntry;
+    const entries = browserNavigation?.entries?.();
+    if (!defaultView || !currentEntry || !entries) return navigationIndex > 0;
+    const previousEntry = entries.find((entry) => entry.index === currentEntry.index - 1);
+    if (!previousEntry?.url) return false;
+    try {
+      const previousUrl = new URL(previousEntry.url);
+      const currentUrl = defaultView.location;
+      return previousUrl.origin === currentUrl.origin
+        && previousUrl.pathname === currentUrl.pathname
+        && previousUrl.search === currentUrl.search;
+    } catch {
+      return false;
+    }
+  };
   const syncHistoryBack = () => {
-    if (historyBack instanceof HTMLButtonElement) historyBack.hidden = navigationIndex === 0;
+    if (historyBack instanceof HTMLButtonElement) historyBack.hidden = !previousEntryIsDashboard();
   };
   if (defaultView && initialNavigationIndex !== navigationIndex) {
     const state = defaultView.history.state && typeof defaultView.history.state === 'object'
@@ -1690,6 +1712,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!root.isConnected) {
       defaultView?.removeEventListener('hashchange', onHashChange);
       defaultView?.removeEventListener('popstate', onPopState);
+      browserNavigation?.removeEventListener('currententrychange', syncHistoryBack);
       return;
     }
     const index = event.state?.[NAVIGATION_INDEX_STATE_KEY];
@@ -1700,8 +1723,10 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     if (!root.isConnected) {
       defaultView?.removeEventListener('hashchange', onHashChange);
       defaultView?.removeEventListener('popstate', onPopState);
+      browserNavigation?.removeEventListener('currententrychange', syncHistoryBack);
       return;
     }
+    syncHistoryBack();
     const route = routeFromHash();
     updateWithViewTransition(root.ownerDocument, () => activate(
       route?.pageId ?? initialPageId,
@@ -1710,6 +1735,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
     ));
     if (pageTitle instanceof HTMLElement) pageTitle.focus();
   };
+  browserNavigation?.addEventListener('currententrychange', syncHistoryBack);
   defaultView?.addEventListener('popstate', onPopState);
   defaultView?.addEventListener('hashchange', onHashChange);
 }
