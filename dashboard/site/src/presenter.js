@@ -754,11 +754,11 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
               'summary',
               {
                 className: 'account-menu-avatar account-menu-icon',
-                'aria-label': 'Open settings menu',
-                title: 'Settings'
+                'aria-label': 'Open dashboard menu',
+                title: 'Menu'
               },
-              octicon('gear'),
-              h('span', { className: 'sr-only action-label' }, 'Settings')
+              octicon('kebab-horizontal'),
+              h('span', { className: 'sr-only action-label' }, 'Menu')
             ),
             h(
               'div',
