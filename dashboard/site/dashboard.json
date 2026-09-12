@@ -3113,26 +3113,6 @@
                     "display": "status"
                   }
                 ],
-                "actions": [
-                  {
-                    "action": "update-target-repository",
-                    "presentation": "cli-action",
-                    "icon": "sync",
-                    "label": "Update repository",
-                    "context": [
-                      "repository"
-                    ]
-                  },
-                  {
-                    "action": "upgrade-target-repository",
-                    "presentation": "cli-action",
-                    "icon": "download",
-                    "label": "Upgrade repository",
-                    "context": [
-                      "repository"
-                    ]
-                  }
-                ],
                 "href": {
                   "field": "repository-link",
                   "type": "nominal"
@@ -3703,17 +3683,6 @@
               "layout": "full-view",
               "empty-message": "No packages discovered.",
               "encoding": {
-                "actions": [
-                  {
-                    "action": "update-package",
-                    "presentation": "cli-action",
-                    "icon": "sync",
-                    "label": "Update package",
-                    "context": [
-                      "package"
-                    ]
-                  }
-                ],
                 "href": {
                   "field": "package-link",
                   "type": "nominal"
