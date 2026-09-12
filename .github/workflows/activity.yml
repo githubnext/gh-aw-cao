@@ -54,11 +54,11 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.6
+        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
-          version: v0.89.6
+          version: v0.89.7
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

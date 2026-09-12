@@ -103,7 +103,7 @@ safe-outputs:
     expires: 14d
 pre-agent-steps:
   - name: Configure Playwright CLI launch options
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       EXPR_GITHUB_WORKSPACE: ${{ github.workspace }}
     run: |
@@ -119,7 +119,7 @@ pre-agent-steps:
       }
       EOF
   - name: Playwright browser launch preflight
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       EXPR_GITHUB_WORKSPACE: ${{ github.workspace }}
       PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/gh-aw/playwright-browsers
@@ -136,13 +136,13 @@ pre-agent-steps:
         echo "Playwright preflight failed; agent will report the infrastructure blocker."
       fi
   - name: Build expected control-plane inventory
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     run: |
       mkdir -p /tmp/gh-aw/agent/self-care-dashboard-review
       REPORT_INVENTORY=/tmp/gh-aw/agent/self-care-dashboard-review/expected-inventory.json \
         node activity/inventory.mjs
   - name: Download and grade the live dashboard artifact
-    if: ${{ inputs.target_repo == 'githubnext/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
+    if: ${{ inputs.target_repo == 'github/gh-aw-cao' && (inputs.safe_output_mode || 'review') == 'live' }}
     env:
       GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
     run: |
