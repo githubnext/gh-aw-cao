@@ -89,6 +89,7 @@ const craExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
+  ".github/workflows/cao-dashboard.yml",
   ...[...readFileSync(
     new URL("../../dashboard/aw.yml", import.meta.url),
     "utf8",
