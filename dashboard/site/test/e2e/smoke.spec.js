@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
+// Mirrors `.swimlane-chart-widget svg` so the smoke test verifies the compact CSS cap.
+const SWIMLANE_COMPACT_MAX_HEIGHT = 220;
 
 test.beforeEach(async ({ page, context }) => {
   await context.route('http://dashboard.test/**', async (route) => {
@@ -697,7 +699,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
     throw new Error('Expected swimlane heading, summary, and chart boxes to be measurable.');
   }
   expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
-  expect(swimlaneChartBox.height).toBeLessThanOrEqual(220);
+  expect(swimlaneChartBox.height).toBeLessThanOrEqual(SWIMLANE_COMPACT_MAX_HEIGHT);
   await expect(table).toBeVisible();
   await expect(view.locator('[data-table-filter]')).toBeVisible();
   const summaryRow = view.locator('.table-summary-row');

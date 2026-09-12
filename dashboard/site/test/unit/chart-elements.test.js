@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieLegend } from '../../src/components/chart-elements.js';
+import { SWIMLANE_LAYOUT, chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieLegend } from '../../src/components/chart-elements.js';
 
 describe('chart element helpers', () => {
   it('DLS-SAFE-009 groups chart series deterministically and lists reusable class names', () => {
@@ -224,7 +224,7 @@ describe('chart element helpers', () => {
     );
 
     expect(chart.getAttribute('data-chart-widget')).toBe('swimlane');
-    expect(chart.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 120 48.75');
+    expect(chart.querySelector('svg')?.getAttribute('viewBox')).toBe(`0 0 ${SWIMLANE_LAYOUT.viewBoxWidth} ${SWIMLANE_LAYOUT.viewBoxHeight}`);
     expect(chart.querySelectorAll('.swimlane-label')).toHaveLength(5);
     expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.textContent)).toEqual([
       'Action required',
@@ -233,13 +233,13 @@ describe('chart element helpers', () => {
       'Skipped',
       'Success'
     ]);
-    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => label.getAttribute('x'))).toEqual(Array(5).fill('17.5'));
+    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => Number(label.getAttribute('x')))).toEqual(Array(5).fill(SWIMLANE_LAYOUT.labelX));
     const laneYs = [...chart.querySelectorAll('.swimlane-separator')].map((separator) => Number(separator.getAttribute('y1')));
-    expect(laneYs[0]).toBe(5);
+    expect(laneYs[0]).toBe(SWIMLANE_LAYOUT.topY);
     for (let index = 1; index < laneYs.length; index += 1) {
-      expect(laneYs[index] - laneYs[index - 1]).toBeCloseTo(7.25);
+      expect(laneYs[index] - laneYs[index - 1]).toBeCloseTo(SWIMLANE_LAYOUT.laneGap);
     }
-    expect(Number(chart.querySelector('.swimlane-axis')?.getAttribute('y1'))).toBeLessThan(42);
+    expect(Number(chart.querySelector('.swimlane-axis')?.getAttribute('y1'))).toBe(SWIMLANE_LAYOUT.axisY);
     expect(chart.querySelectorAll('.swimlane-mark')).toHaveLength(5);
     expect(chart.querySelector('polyline')).toBeNull();
     expect(chart.querySelector('.swimlane-summary')?.textContent).toContain('5 runs');

@@ -31,11 +31,6 @@ const PIE_CHART_CENTER = 21;
 const PIE_CHART_RADIUS = 15.9155;
 const PIE_CHART_STROKE_WIDTH = 6;
 const PIE_CHART_SEGMENT_GAP = 0.03;
-const SWIMLANE_START_X = 19;
-const SWIMLANE_END_X = 116;
-const SWIMLANE_LABEL_X = SWIMLANE_START_X - 1.5;
-const SWIMLANE_TOP_Y = 5;
-const SWIMLANE_LANE_GAP = 7.25;
 const MAX_SWIMLANE_SECTIONS_PER_LANE = 120;
 const SWIMLANE_DEFINITIONS = [
   ['action-required', 'Action required'],
@@ -44,10 +39,18 @@ const SWIMLANE_DEFINITIONS = [
   ['skipped', 'Skipped'],
   ['success', 'Success']
 ];
-const SWIMLANE_AXIS_Y = SWIMLANE_TOP_Y + (SWIMLANE_LANE_GAP * SWIMLANE_DEFINITIONS.length);
-const SWIMLANE_TICK_END_Y = SWIMLANE_AXIS_Y + 2;
-const SWIMLANE_AXIS_LABEL_Y = SWIMLANE_AXIS_Y + 6;
-const SWIMLANE_VIEWBOX_HEIGHT = SWIMLANE_AXIS_LABEL_Y + 1.5;
+export const SWIMLANE_LAYOUT = Object.freeze({
+  viewBoxWidth: 120,
+  startX: 19,
+  endX: 116,
+  labelX: 17.5,
+  topY: 5,
+  laneGap: 7.25,
+  axisY: 41.25,
+  tickEndY: 43.25,
+  axisLabelY: 47.25,
+  viewBoxHeight: 48.75
+});
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
 const SEMANTIC_SERIES_TERMS = {
@@ -917,8 +920,8 @@ function renderSwimlaneChart(points, timeRange) {
   ];
   const ticks = Array.from({ length: 4 }, (_, index) => start + ((span * index) / 3));
   /** @param {number} timestamp */
-  const xCoordinate = (timestamp) => SWIMLANE_START_X
-    + (Math.min(1, Math.max(0, (timestamp - start) / span)) * (SWIMLANE_END_X - SWIMLANE_START_X));
+  const xCoordinate = (timestamp) => SWIMLANE_LAYOUT.startX
+    + (Math.min(1, Math.max(0, (timestamp - start) / span)) * (SWIMLANE_LAYOUT.endX - SWIMLANE_LAYOUT.startX));
   const sectionsByLane = buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate);
 
   return renderChartWidgetShell(
@@ -932,27 +935,27 @@ function renderSwimlaneChart(points, timeRange) {
     h(
       'svg',
       {
-        viewBox: `0 0 120 ${SWIMLANE_VIEWBOX_HEIGHT}`,
+        viewBox: `0 0 ${SWIMLANE_LAYOUT.viewBoxWidth} ${SWIMLANE_LAYOUT.viewBoxHeight}`,
         role: 'img',
         'aria-label': `Categorical swimlane timeline with ${plottedCount} workflow runs`
       },
       ...SWIMLANE_DEFINITIONS.flatMap(([lane, label], laneIndex) => {
-        const y = SWIMLANE_TOP_Y + (laneIndex * SWIMLANE_LANE_GAP);
+        const y = SWIMLANE_LAYOUT.topY + (laneIndex * SWIMLANE_LAYOUT.laneGap);
         return [
-          h('text', { className: 'swimlane-label', x: SWIMLANE_LABEL_X, y: y + 1, 'text-anchor': 'end' }, label),
-          h('line', { className: 'swimlane-separator', x1: SWIMLANE_START_X, y1: y, x2: SWIMLANE_END_X, y2: y }),
+          h('text', { className: 'swimlane-label', x: SWIMLANE_LAYOUT.labelX, y: y + 1, 'text-anchor': 'end' }, label),
+          h('line', { className: 'swimlane-separator', x1: SWIMLANE_LAYOUT.startX, y1: y, x2: SWIMLANE_LAYOUT.endX, y2: y }),
           ...(sectionsByLane.get(lane) ?? []).map((section) => renderSwimlaneSection(section, y))
         ];
       }),
-      h('line', { className: 'swimlane-axis', x1: SWIMLANE_START_X, y1: SWIMLANE_AXIS_Y, x2: SWIMLANE_END_X, y2: SWIMLANE_AXIS_Y }),
+      h('line', { className: 'swimlane-axis', x1: SWIMLANE_LAYOUT.startX, y1: SWIMLANE_LAYOUT.axisY, x2: SWIMLANE_LAYOUT.endX, y2: SWIMLANE_LAYOUT.axisY }),
       ...ticks.map((instant, index) => {
         const x = xCoordinate(instant);
         return [
-          h('line', { className: 'swimlane-tick', x1: x, y1: SWIMLANE_AXIS_Y, x2: x, y2: SWIMLANE_TICK_END_Y }),
+          h('line', { className: 'swimlane-tick', x1: x, y1: SWIMLANE_LAYOUT.axisY, x2: x, y2: SWIMLANE_LAYOUT.tickEndY }),
           h('text', {
             className: 'swimlane-time-label',
             x,
-            y: SWIMLANE_AXIS_LABEL_Y,
+            y: SWIMLANE_LAYOUT.axisLabelY,
             'text-anchor': index === 0 ? 'start' : index === ticks.length - 1 ? 'end' : 'middle'
           }, formatSwimlaneAxisTime(instant, span))
         ];
@@ -971,7 +974,7 @@ function renderSwimlaneChart(points, timeRange) {
  */
 function buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate) {
   const binCount = MAX_SWIMLANE_SECTIONS_PER_LANE;
-  const sectionWidth = (SWIMLANE_END_X - SWIMLANE_START_X) / binCount;
+  const sectionWidth = (SWIMLANE_LAYOUT.endX - SWIMLANE_LAYOUT.startX) / binCount;
   /** @type {Map<string, Array<{ count: number, first: number, last: number, point: ChartPointLike & { lane: string, timestamp: number } } | null>>} */
   const binsByLane = new Map(SWIMLANE_DEFINITIONS.map(([lane]) => [lane, Array(binCount).fill(null)]));
   for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
@@ -980,7 +983,7 @@ function buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate) {
     const timestamp = timestamps[pointIndex];
     const lane = SWIMLANE_DEFINITIONS[laneIndex][0];
     const x = xCoordinate(timestamp);
-    const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_START_X) / sectionWidth)));
+    const index = Math.min(binCount - 1, Math.max(0, Math.floor((x - SWIMLANE_LAYOUT.startX) / sectionWidth)));
     const bins = /** @type {NonNullable<ReturnType<typeof binsByLane.get>>} */ (binsByLane.get(lane));
     const bin = bins[index];
     if (bin) {
@@ -1001,8 +1004,8 @@ function buildSwimlaneSections(points, timestamps, laneIndexes, xCoordinate) {
       const bin = bins[index];
       if (!bin) continue;
       const previous = sections.at(-1);
-      const x1 = SWIMLANE_START_X + (index * sectionWidth);
-      const x2 = Math.min(SWIMLANE_END_X, x1 + sectionWidth);
+      const x1 = SWIMLANE_LAYOUT.startX + (index * sectionWidth);
+      const x2 = Math.min(SWIMLANE_LAYOUT.endX, x1 + sectionWidth);
       if (previous && Math.abs(previous.x2 - x1) < 1e-9) {
         previous.x2 = x2;
         previous.count += bin.count;
