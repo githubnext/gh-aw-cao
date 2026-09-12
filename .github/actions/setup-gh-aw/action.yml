@@ -1,0 +1,16 @@
+name: Set up gh-aw
+description: Install the gh-aw compiler version declared by the CAO project
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve gh-aw compiler version
+      id: compiler
+      shell: bash
+      run: |
+        version="$(node .github/cao/src/control.mjs compiler-version .github/workflows/cao.json)"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+    - name: Install gh-aw
+      uses: github/gh-aw-actions/setup-cli@9c19e73c3bbf2c472bf97ff29a62cc47b62c7551 # v0.89.8 tag resolves to this commit
+      with:
+        version: ${{ steps.compiler.outputs.version }}

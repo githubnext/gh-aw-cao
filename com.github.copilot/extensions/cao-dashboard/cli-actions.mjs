@@ -1,5 +1,5 @@
 import { execFile, spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
@@ -7,9 +7,24 @@ import { promisify } from "node:util";
 const executeFile = promisify(execFile);
 const maximumOutputBytes = 1024 * 1024;
 const timeoutMilliseconds = 5 * 60 * 1000;
-const ghAwVersion = "v0.89.8";
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
+const ghAwVersionPattern = /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
+const caoConfigurationPath = join(".github", "workflows", "cao.json");
+
+export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd()) {
+  let configuration;
+  try {
+    configuration = JSON.parse(await readFile(join(workingDirectory, caoConfigurationPath), "utf8"));
+  } catch {
+    throw new Error("Could not read the gh-aw compiler version from .github/workflows/cao.json.");
+  }
+  const version = configuration["gh-aw-version"];
+  if (typeof version !== "string" || !ghAwVersionPattern.test(version)) {
+    throw new Error("The gh-aw compiler version in .github/workflows/cao.json is invalid.");
+  }
+  return version;
+}
 
 export function parseGhAwCommand(command) {
   if (typeof command !== "string" || command.length === 0) {
@@ -86,8 +101,10 @@ function ghAwUnavailable(error) {
 
 export async function installGhAwWithCurl({
   githubToken,
+  workingDirectory,
   execute = executeFile,
 }) {
+  const ghAwVersion = await resolveGhAwCompilerVersion(workingDirectory);
   const directory = await mkdtemp(join(tmpdir(), "cao-gh-aw-install-"));
   const installerPath = join(directory, "install-gh-aw.sh");
   const options = {
@@ -106,6 +123,7 @@ export async function installGhAwWithCurl({
 
 export async function ensureGhAwAvailable({
   githubToken,
+  workingDirectory,
   ghExecutable = "gh",
   execute = executeFile,
   installWithCurl = installGhAwWithCurl,
@@ -126,10 +144,11 @@ export async function ensureGhAwAvailable({
     if (!ghAwUnavailable(error)) throw error;
   }
 
+  const ghAwVersion = await resolveGhAwCompilerVersion(workingDirectory);
   try {
-    await execute(ghExecutable, ["extension", "install", "github/gh-aw"], options);
+    await execute(ghExecutable, ["extension", "install", "github/gh-aw", "--pin", ghAwVersion], options);
   } catch {
-    await installWithCurl({ githubToken, execute });
+    await installWithCurl({ githubToken, workingDirectory, execute });
   }
 
   try {
@@ -211,6 +230,7 @@ export async function executeGhAwCommand({
   });
   await ensureGhAwAvailable({
     githubToken: resolvedGithubToken,
+    workingDirectory,
     ghExecutable,
     execute,
   });
