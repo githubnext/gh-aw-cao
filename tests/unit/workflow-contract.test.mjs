@@ -42,7 +42,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
 
   for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
-    assert.match(source, new RegExp(`github/gh-aw-actions/setup-cli@[0-9a-f]{40}`));
+    assert.match(source, new RegExp(`github/gh-aw-actions/setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} peeled tag commit`));
     assert.match(source, new RegExp(`version: ${escapedGhAwVersion}`));
   }
 });

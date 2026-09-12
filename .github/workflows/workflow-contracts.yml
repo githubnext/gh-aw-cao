@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install gh-aw
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec
+        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 peeled tag commit
         with:
           version: v0.89.7
       - name: Run contract suite
@@ -111,7 +111,7 @@ jobs:
           fi
       - name: Install gh-aw
         if: steps.package-api.outputs.ready == 'true'
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec
+        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 peeled tag commit
         with:
           version: v0.89.7
       - name: Run package lifecycle integration

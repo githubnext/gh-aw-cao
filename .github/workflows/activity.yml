@@ -54,7 +54,7 @@ jobs:
 
       - name: Install gh-aw CLI
         continue-on-error: true
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec
+        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 peeled tag commit
         env:
           GH_TOKEN: ${{ steps.activity-app-token.outputs.token || github.token }}
         with:
