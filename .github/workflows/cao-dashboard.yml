@@ -42,34 +42,54 @@ jobs:
           persist-credentials: false
 
       - name: Resolve dashboard source layout
-        run: |
-          echo "Resolving dashboard source layout"
-          if [[ -f .github/aw/dashboard/report/dashboard-language-sources.mjs && -f .github/aw/dashboard/site/scripts/build.mjs ]]; then
-            echo "DASHBOARD_LAYOUT=installed" >> "$GITHUB_ENV"
-            echo "DASHBOARD_SITE_ROOT=.github/aw/dashboard/site" >> "$GITHUB_ENV"
-          elif [[ -f dashboard/report/records.mjs && -f dashboard/site/scripts/build.mjs ]]; then
-            echo "DASHBOARD_LAYOUT=source" >> "$GITHUB_ENV"
-            echo "DASHBOARD_SITE_ROOT=dashboard/site" >> "$GITHUB_ENV"
-          else
-            echo "Dashboard package sources are unavailable" >&2
-            exit 1
-          fi
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            core.info('Resolving dashboard source layout')
+            if (
+              fs.existsSync('.github/aw/dashboard/report/dashboard-language-sources.mjs')
+              && fs.existsSync('.github/aw/dashboard/site/scripts/build.mjs')
+            ) {
+              core.exportVariable('DASHBOARD_LAYOUT', 'installed')
+              core.exportVariable('DASHBOARD_SITE_ROOT', '.github/aw/dashboard/site')
+            } else if (
+              fs.existsSync('dashboard/report/records.mjs')
+              && fs.existsSync('dashboard/site/scripts/build.mjs')
+            ) {
+              core.exportVariable('DASHBOARD_LAYOUT', 'source')
+              core.exportVariable('DASHBOARD_SITE_ROOT', 'dashboard/site')
+            } else {
+              throw new Error('Dashboard package sources are unavailable')
+            }
 
       - name: Resolve dashboard deployment policy
         id: deployment-policy
-        run: |
-          deploy="$(jq -er '
-            .["control-plane"].packages.dashboard.deploy as $deploy
-            | if $deploy == null then true
-              elif ($deploy | type) == "boolean" then $deploy
-              else error("control-plane.packages.dashboard.deploy must be a boolean")
-              end
-            | tostring
-          ' .github/workflows/cao.json)"
-          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const policy = JSON.parse(fs.readFileSync('.github/workflows/cao.json', 'utf8'))
+            const configuredDeploy = policy['control-plane']?.packages?.dashboard?.deploy
+            if (
+              configuredDeploy !== undefined
+              && configuredDeploy !== null
+              && typeof configuredDeploy !== 'boolean'
+            ) {
+              throw new Error('control-plane.packages.dashboard.deploy must be a boolean')
+            }
+            core.setOutput('deploy', String(configuredDeploy ?? true))
 
       - name: Install dashboard build dependencies
-        run: npm ci --prefix "$DASHBOARD_SITE_ROOT" --ignore-scripts
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await exec.exec('npm', [
+              'ci',
+              '--prefix',
+              process.env.DASHBOARD_SITE_ROOT,
+              '--ignore-scripts',
+            ])
 
       - name: Restore collected activity data
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -90,58 +110,102 @@ jobs:
           REPORT_GH_AW_LOGS: ${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl
           REPORT_CONTROL_SETTINGS: ${{ runner.temp }}/cao-activity/control-settings.json
           REPORT_INVENTORY_SOURCES: ${{ runner.temp }}/cao-activity/inventory-sources.json
-        run: |
-          echo "Validating restored activity data"
-          validation_failed=0
-          for activity_file in \
-            "$REPORT_GH_AW_LOGS" \
-            "$ACTIVITY_DATABASE" \
-            "$REPORT_CONTROL_SETTINGS" \
-            "$REPORT_INVENTORY_SOURCES"; do
-            if [[ ! -e "$activity_file" ]]; then
-              echo "::error::Required activity data file is missing: $activity_file"
-              validation_failed=1
-            elif [[ ! -s "$activity_file" ]]; then
-              echo "::error::Required activity data file is empty: $activity_file"
-              validation_failed=1
-            else
-              echo "Validated $activity_file ($(stat -c %s -- "$activity_file") bytes)"
-            fi
-          done
-          if [[ "$validation_failed" -ne 0 ]]; then
-            echo "Restored activity cache directory contents:"
-            find "$RUNNER_TEMP/cao-activity" -maxdepth 1 -type f -printf "  %f (%s bytes)\n" | sort
-            exit 1
-          fi
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+            const activityFiles = [
+              process.env.REPORT_GH_AW_LOGS,
+              process.env.ACTIVITY_DATABASE,
+              process.env.REPORT_CONTROL_SETTINGS,
+              process.env.REPORT_INVENTORY_SOURCES,
+            ]
+            core.info('Validating restored activity data')
+            let validationFailed = false
+            for (const activityFile of activityFiles) {
+              if (!fs.existsSync(activityFile)) {
+                core.error(`Required activity data file is missing: ${activityFile}`)
+                validationFailed = true
+                continue
+              }
+              const { size } = fs.statSync(activityFile)
+              if (size === 0) {
+                core.error(`Required activity data file is empty: ${activityFile}`)
+                validationFailed = true
+              } else {
+                core.info(`Validated ${activityFile} (${size} bytes)`)
+              }
+            }
+            if (validationFailed) {
+              const activityRoot = path.join(process.env.RUNNER_TEMP, 'cao-activity')
+              core.info('Restored activity cache directory contents:')
+              if (fs.existsSync(activityRoot)) {
+                const restoredFiles = fs.readdirSync(activityRoot, { withFileTypes: true })
+                  .filter((entry) => entry.isFile())
+                  .toSorted((a, b) => a.name.localeCompare(b.name))
+                for (const entry of restoredFiles) {
+                  core.info(`  ${entry.name} (${fs.statSync(path.join(activityRoot, entry.name)).size} bytes)`)
+                }
+              }
+              throw new Error('Restored activity data validation failed')
+            }
 
       - name: Assess activity database health
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-        run: |
-          echo "Resolving activity SQLite doctor"
-          if [[ -f activity/cao.mjs ]]; then
-            doctor_script=activity/cao.mjs
-          elif [[ -f .github/aw/activity/cao.mjs ]]; then
-            doctor_script=.github/aw/activity/cao.mjs
-          else
-            echo "Activity SQLite doctor is unavailable" >&2
-            exit 1
-          fi
-          echo "Assessing activity database health"
-          node "$doctor_script" doctor --database "$ACTIVITY_DATABASE"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            core.info('Resolving activity SQLite doctor')
+            const doctorScript = fs.existsSync('activity/cao.mjs')
+              ? 'activity/cao.mjs'
+              : fs.existsSync('.github/aw/activity/cao.mjs')
+                ? '.github/aw/activity/cao.mjs'
+                : undefined
+            if (!doctorScript) {
+              throw new Error('Activity SQLite doctor is unavailable')
+            }
+            core.info('Assessing activity database health')
+            await exec.exec(process.execPath, [
+              doctorScript,
+              'doctor',
+              '--database',
+              process.env.ACTIVITY_DATABASE,
+            ])
 
       - name: Assemble Dashboard Language site
         env:
           REPORT_OUTPUT: ${{ runner.temp }}/central-agentic-ops-dashboard
-        run: |
-          echo "Building dashboard site from $DASHBOARD_LAYOUT layout"
-          npm --prefix "$DASHBOARD_SITE_ROOT" run build -- \
-            "$REPORT_OUTPUT" \
-            "$RUNNER_TEMP/cao-activity/control-settings.json"
-          echo "Copying collected activity data"
-          cp "$RUNNER_TEMP/cao-activity/inventory-sources.json" "$REPORT_OUTPUT/inventory-sources.json"
-          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.jsonl" "$REPORT_OUTPUT/gh-aw-logs.jsonl"
-          cp "$RUNNER_TEMP/cao-activity/gh-aw-logs.sqlite" "$REPORT_OUTPUT/gh-aw-logs.sqlite"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const path = require('path')
+            core.info(`Building dashboard site from ${process.env.DASHBOARD_LAYOUT} layout`)
+            const controlSettings = path.join(process.env.RUNNER_TEMP, 'cao-activity', 'control-settings.json')
+            await exec.exec('npm', [
+              '--prefix',
+              process.env.DASHBOARD_SITE_ROOT,
+              'run',
+              'build',
+              '--',
+              process.env.REPORT_OUTPUT,
+              controlSettings,
+            ])
+            core.info('Copying collected activity data')
+            const collectedFiles = [
+              'inventory-sources.json',
+              'gh-aw-logs.jsonl',
+              'gh-aw-logs.sqlite',
+            ]
+            for (const fileName of collectedFiles) {
+              fs.copyFileSync(
+                path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName),
+                path.join(process.env.REPORT_OUTPUT, fileName),
+              )
+            }
 
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
