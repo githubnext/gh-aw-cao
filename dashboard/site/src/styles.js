@@ -1967,11 +1967,11 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .dashboard-root.dashboard-full-view { height: 100dvh; min-height: 0; overflow: hidden; }
   .dashboard-full-view .app-shell { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
   .org-sidebar { height: auto; display: block; overflow: visible; padding: 14px 12px 10px; border-right: 0; border-bottom: 1px solid var(--border); background: var(--canvas); }
-  /* Full-view header height is bounded (a single title/back/menu row, see .sidebar-header) well
-     under this cap, so animating max-height here can never clip real content; it only exists to
-     give the collapse-on-scroll transition below a finite value to animate toward, since CSS
-     cannot transition to/from "none". */
-  .dashboard-full-view .org-sidebar { max-height: 480px; overflow: hidden; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 0s; }
+  /* --full-view-sidebar-max-height bounds the full-view mobile header (a single title/back/menu
+     row, see .sidebar-header), which stays well under this cap, so animating max-height here can
+     never clip real content; it only exists to give the collapse-on-scroll transition below a
+     finite value to animate toward, since CSS cannot transition to/from "none". */
+  .dashboard-full-view .org-sidebar { --full-view-sidebar-max-height: 480px; max-height: var(--full-view-sidebar-max-height); overflow: hidden; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 0s; }
   .dashboard-root.dashboard-full-view-scrolled .org-sidebar { max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; border-color: transparent; opacity: 0; visibility: hidden; pointer-events: none; transition: max-height 200ms ease, padding 200ms ease, opacity 160ms ease, border-color 200ms ease, visibility 0s linear 200ms; }
   .dashboard-mobile-overview-actions .org-sidebar { background: var(--canvas-subtle); }
   .sidebar-header { position: relative; margin: 0 0 8px; }
