@@ -6,7 +6,7 @@
     "cao": "activity/cao.mjs"
   },
   "scripts": {
-    "install:gh-aw": "curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- v0.89.7",
+    "install:gh-aw": "curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- v0.89.8",
     "setup:github-apps": "node .github/cao/setup-github-apps.mjs",
     "dashboard:local": "node dashboard/local-server.mjs",
     "dashboard:local:copilot": "node dashboard/local-server.mjs --copilot",

@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 const executeFile = promisify(execFile);
 const maximumOutputBytes = 1024 * 1024;
 const timeoutMilliseconds = 5 * 60 * 1000;
-const ghAwVersion = "v0.89.7";
+const ghAwVersion = "v0.89.8";
 const ghAwInstallerUrl =
   "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh";
 
