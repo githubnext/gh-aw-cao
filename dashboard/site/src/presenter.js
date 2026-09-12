@@ -8,7 +8,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderCheckbox, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -693,7 +693,10 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
   const settingsPage = pages.find((page) => page.id === 'configuration');
   const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
-  const settingsDatabaseCounts = renderSettingsDatabaseCounts(loadDatabaseCounts);
+  const settingsDatabaseCounts = renderSettingsDatabaseCounts(
+    loadDatabaseCounts,
+    [renderBackgroundServiceWorkerSetting()]
+  );
   return h(
     'div',
     { className: 'app-main' },
@@ -795,7 +798,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   octicon('sync'),
                   h('span', null, 'Refresh')
                 ),
-              renderBackgroundServiceWorkerSetting(),
               h(
                 'fieldset',
                 { className: 'appearance-settings' },
@@ -856,10 +858,10 @@ function renderBackgroundServiceWorkerSetting() {
   const update = () => {
     checkbox.checked = enabled();
   };
-  checkbox = /** @type {HTMLInputElement} */ (h('input', {
-    type: 'checkbox',
+  checkbox = renderCheckbox({
     checked: enabled(),
-    'aria-label': 'Background service worker',
+    ariaLabel: 'Background sync',
+    stopClickPropagation: true,
     onChange: /** @param {Event} event */ (event) => {
       try {
         setAutomaticDashboardDataUpdatesEnabled(
@@ -869,12 +871,12 @@ function renderBackgroundServiceWorkerSetting() {
         update();
       }
     }
-  }));
+  });
   const control = h(
     'label',
-    { className: 'background-service-worker-setting account-menu-action' },
+    { className: 'background-sync-setting account-menu-action' },
     octicon('sync'),
-    h('span', null, 'Background service worker'),
+    h('span', null, 'Background sync'),
     checkbox
   );
   const stopSettingUpdates = onAutomaticDashboardDataUpdatesSettingChange(update);

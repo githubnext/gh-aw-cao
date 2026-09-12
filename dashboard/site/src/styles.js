@@ -362,8 +362,8 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-action { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
 .account-menu-action:hover { background: var(--neutral-muted); }
 .account-menu-action .octicon { width: 15px; height: 15px; color: var(--muted); }
-.background-service-worker-setting > span { flex: 1; }
-.background-service-worker-setting > input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.background-sync-setting > span { flex: 1; }
+.background-sync-setting > input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .appearance-settings { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
 .appearance-settings legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
 .appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
