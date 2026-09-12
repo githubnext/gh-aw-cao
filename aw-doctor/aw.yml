@@ -1,6 +1,6 @@
 name: AW Doctor
 description: Organization-wide workflow for maintaining installed GitHub Agentic Workflows (gh-aw), triaging failures, and filing actionable issues assignable to Copilot.
-min-version: v0.89.6
+min-version: v0.89.7
 experimental: true
 includes:
   - .github/workflows/aw-doctor.md

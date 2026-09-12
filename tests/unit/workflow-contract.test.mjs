@@ -11,7 +11,7 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.6";
+const ghAwVersion = "v0.89.7";
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -42,7 +42,7 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
 
   for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
-    assert.match(source, new RegExp(`github/gh-aw-actions/setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion}`));
+    assert.match(source, new RegExp(`github/gh-aw-actions/setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} tag resolves to this commit`));
     assert.match(source, new RegExp(`version: ${escapedGhAwVersion}`));
   }
 });
