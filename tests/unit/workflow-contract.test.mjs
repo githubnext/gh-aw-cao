@@ -3132,6 +3132,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /Restore collected activity data[\s\S]*?path: \|[\s\S]*?gh-aw-logs\.jsonl[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?control-settings\.json[\s\S]*?inventory-sources\.json/);
   assert.doesNotMatch(activityWorkflow, /workflow_call:/);
   assert.match(activityWorkflow, /workflow_dispatch:[\s\S]*?request-id:/);
+  assert.match(activityWorkflow, /push:[\s\S]*?\.github\/workflows\/cao\.json/);
   assert.match(activityWorkflow, /run-name: CAO Activity \/ \$\{\{ inputs\.request-id \|\| github\.run_id \}\}/);
   assert.match(activityWorkflow, /Resolve activity cache key[\s\S]*?cao-activity-v3-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
   assert.match(dashboardWorkflow, /key: cao-activity-v3-lookup-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
@@ -3159,16 +3160,18 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
   assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
+  assert.match(dashboardWorkflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Activity[\s\S]*?types:[\s\S]*?- completed/);
+  assert.match(dashboardWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
   assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
-  assert.match(dashboardWorkflow, /if: github\.event_name == 'workflow_dispatch' \|\| github\.ref_name == github\.event\.repository\.default_branch/);
+  assert.match(dashboardWorkflow, /github\.event_name == 'push' && github\.ref_name == github\.event\.repository\.default_branch/);
   assert.match(dashboardWorkflow, /layout: \$\{\{ steps\.dashboard-layout\.outputs\.layout \}\}/);
   assert.match(dashboardWorkflow, /Configure Pages\n\s+if: steps\.dashboard-layout\.outputs\.layout == 'installed'/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.layout == 'installed'/);
   assert.match(dashboardWorkflow, /enablement: false/);
   assert.match(dashboardWorkflow, /pages: write/);
   assert.match(dashboardWorkflow, /id-token: write/);
-  assert.doesNotMatch(dashboardWorkflow, /schedule:|workflow_run/);
+  assert.doesNotMatch(dashboardWorkflow, /schedule:/);
   assert.equal((dashboardWorkflow.match(/actions\/upload-pages-artifact@/g) || []).length, 1);
   assert.equal((dashboardWorkflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /actions\/setup-go|go build|go clean|gh-aw-operational-value/);
