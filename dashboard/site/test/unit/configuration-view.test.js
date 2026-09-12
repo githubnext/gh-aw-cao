@@ -35,6 +35,24 @@ function context(row) {
 }
 
 describe('Configuration dashboard view', () => {
+  it('renders hourly data downloads off by default and persists opt-in', () => {
+    localStorage.clear();
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    const checkbox = rendered.querySelector('#configuration-automatic-dashboard-data-updates');
+    if (!(checkbox instanceof HTMLInputElement)) throw new Error('automatic update checkbox did not render');
+    expect(checkbox.checked).toBe(false);
+    checkbox.click();
+    expect(localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
+    expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
+      .toContain('pause automatically on low battery or metered connections');
+  });
+
   it('exposes Control in the clean navigation without a chart', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');

@@ -2,6 +2,10 @@ import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { copyTextToClipboard } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
+import {
+  automaticDashboardDataUpdatesEnabled,
+  setAutomaticDashboardDataUpdatesEnabled
+} from '../dashboard-data-updates.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -224,6 +228,44 @@ function renderSettingsEditor(policyDocument) {
       renderSettings();
       updateStatus();
     }
+
+    function renderAutomaticDataUpdatesSetting() {
+      const checkbox = /** @type {HTMLInputElement} */ (h('input', {
+        id: 'configuration-automatic-dashboard-data-updates',
+        className: 'configuration-setting-toggle',
+        type: 'checkbox',
+        checked: automaticDashboardDataUpdatesEnabled(),
+        onChange: /** @param {Event} event */ (event) => {
+          setAutomaticDashboardDataUpdatesEnabled(
+            /** @type {HTMLInputElement} */ (event.currentTarget).checked
+          );
+          status.textContent = checkbox.checked
+            ? 'On. Downloads pause automatically on low battery or metered connections.'
+            : 'Off. Dashboard data updates only while the dashboard is open.';
+        }
+      }));
+      const status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
+        checkbox.checked
+          ? 'On. Downloads pause automatically on low battery or metered connections.'
+          : 'Off. Dashboard data updates only while the dashboard is open.'
+      );
+      return h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },
+        h('div', { className: 'configuration-browser-settings-heading' },
+          h('div', null,
+            h('h3', { id: 'configuration-browser-settings-heading' }, 'Dashboard data'),
+            h('p', null, 'Browser preferences apply only to this device.')
+          )
+        ),
+        h('div', { className: 'configuration-setting-row' },
+          h('div', { className: 'configuration-setting-copy' },
+            h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
+            h('p', null, 'Uses a service worker while this setting is on. It is off by default.')
+          ),
+          checkbox
+        ),
+        status
+      );
+    }
   }, 'Discard changes');
   const diagnosticsStatus = /** @type {HTMLOutputElement} */ (h('output', {
     className: 'configuration-copy-status',
@@ -283,6 +325,7 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderAutomaticDataUpdatesSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.')

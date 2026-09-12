@@ -36,6 +36,10 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
     }
+    assert.match(
+      await readFile(new URL("service-worker.js", destination), "utf8"),
+      /DOWNLOAD_DATA/,
+    );
 
     const manifest = parse(await readFile(new URL("../../dashboard/aw.yml", import.meta.url), "utf8"));
     const installedSitePrefix = ".github/aw/dashboard/site/";

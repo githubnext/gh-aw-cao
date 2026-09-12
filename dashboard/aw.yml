@@ -36,6 +36,8 @@ resources:
     destination: .github/aw/dashboard/site/index.html
   - source: site/favicon.svg
     destination: .github/aw/dashboard/site/favicon.svg
+  - source: site/service-worker.js
+    destination: .github/aw/dashboard/site/service-worker.js
   - source: site/dashboard.json
     destination: .github/aw/dashboard/site/dashboard.json
   - source: site/src/data-operations.js
@@ -44,6 +46,8 @@ resources:
     destination: .github/aw/dashboard/site/src/data-processor.js
   - source: site/src/data-worker.js
     destination: .github/aw/dashboard/site/src/data-worker.js
+  - source: site/src/dashboard-data-updates.js
+    destination: .github/aw/dashboard/site/src/dashboard-data-updates.js
   - source: site/src/data/adapters/dashboard-sources.js
     destination: .github/aw/dashboard/site/src/data/adapters/dashboard-sources.js
   - source: site/src/data/adapters/gh-aw-logs.js
