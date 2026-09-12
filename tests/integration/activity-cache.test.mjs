@@ -11,12 +11,15 @@ const cachePaths = [
 ];
 
 function assertCachePathSets(workflow, expectedCount) {
-  for (const cachePath of cachePaths) {
-    assert.equal(
-      workflow.split(cachePath).length - 1,
-      expectedCount,
-      `${cachePath} must be present in every cache operation`,
-    );
+  const pathSets = [
+    ...workflow.matchAll(
+      /uses: actions\/cache\/(?:restore|save)@[^\n]+\n\s+with:\n\s+path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/g,
+    ),
+  ].map((match) => match[1].trim().split("\n").map((line) => line.trim()));
+
+  assert.equal(pathSets.length, expectedCount);
+  for (const pathSet of pathSets) {
+    assert.deepEqual(pathSet, cachePaths);
   }
 }
 
