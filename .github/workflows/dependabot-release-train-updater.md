@@ -497,7 +497,7 @@ safe-outputs:
             fi
             if ! jq -e '
               all(.[];
-                ((.actor == null) or (.actor.type == "Bot"))
+                (.actor != null and .actor.type == "Bot")
                 and (.event | IN("cross-referenced", "connected", "assigned") | not)
               )
             ' <<<"$timeline" >/dev/null; then

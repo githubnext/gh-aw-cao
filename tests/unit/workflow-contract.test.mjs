@@ -854,6 +854,7 @@ test("Dependabot cooldown and duplicate prevention remain fail closed", () => {
   assert.match(cleanup.steps[2].run, /\.user\.type == "Bot"/);
   assert.match(cleanup.steps[2].run, /developer comment found/);
   assert.match(cleanup.steps[2].run, /developer reaction found/);
+  assert.match(cleanup.steps[2].run, /\.actor != null and \.actor\.type == "Bot"/);
   assert.match(cleanup.steps[2].run, /developer or linked-work interaction found/);
   assert.match(workerSource, /smart-dependabot:identity=<full-digest>/);
   assert.match(workerSource, /lowercase SHA-256 hex digest/);
