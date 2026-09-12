@@ -32,6 +32,7 @@ function policySnapshot(policyPath, readPolicy) {
 
 function unavailableSettings(repository, reason, snapshot) {
   return {
+    experimental: false,
     allowed_owners: [repository.split("/", 1)[0]],
     allowed_repositories: [repository],
     web: { favicon: "./favicon.svg" },

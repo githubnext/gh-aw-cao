@@ -210,6 +210,7 @@ test("control policy applies schema defaults and package values", () => {
 
 test("control policy exposes scope and publishing defaults to deterministic add-ons", () => {
   assert.deepEqual(controlSettings(parsePolicy(minimalPolicy), "acme/control"), {
+    experimental: false,
     allowed_owners: ["acme"],
     allowed_repositories: ["acme/payments-api", "acme/storefront"],
     web: {
@@ -236,6 +237,19 @@ test("control policy exposes scope and publishing defaults to deterministic add-
     publishing_enabled: false,
     publishing_control_repositories: ["acme/control"],
     publishing_reviewers: [],
+  });
+
+  test("control policy validates and exposes experimental package visibility", () => {
+    const policy = JSON.parse(minimalPolicy);
+    policy.experimental = true;
+
+    assert.equal(validate(JSON.stringify(policy)).status, 0);
+    assert.equal(controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").experimental, true);
+
+    policy.experimental = "true";
+    const invalid = validate(JSON.stringify(policy));
+    assert.notEqual(invalid.status, 0);
+    assert.match(invalid.stderr, /experimental must be a Boolean/);
   });
 });
 

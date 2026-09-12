@@ -646,7 +646,11 @@ function packageRows(inventory = {}, controlSettings = {}, generatedAt) {
     bundle,
   ]).filter(([id]) => id));
   const ids = new Set([...bundles.keys(), ...Object.keys(controlSettings.packages || {})]);
-  return [...ids].sort().map((id) => {
+  return [...ids].sort().filter((id) => {
+    const bundle = bundles.get(id)
+      || [...bundles.values()].find((candidate) => candidate.id === id);
+    return bundle?.experimental !== true || controlSettings.experimental === true;
+  }).map((id) => {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};

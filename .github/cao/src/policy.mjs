@@ -1,7 +1,7 @@
 export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json";
-const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
+const ROOT_KEYS = ["$schema", "version", "experimental", "gh-aw-version", "control-plane", "target-authority"];
 const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "packages", "publishing"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
@@ -135,6 +135,7 @@ function validateDocument(document) {
     throw new PolicyError(`$schema must be ${SCHEMA_URI}`);
   }
   assertInteger(document.version, "version", 1, 1);
+  if ("experimental" in document) assertBoolean(document.experimental, "experimental");
   if (!("control-plane" in document) && !("target-authority" in document)) {
     throw new PolicyError("policy requires control-plane or target-authority");
   }
@@ -468,6 +469,7 @@ export function controlSettings(document, controlRepository) {
     } : {}),
   }]));
   return {
+    experimental: document.experimental ?? false,
     allowed_owners: scope["allowed-owners"] ?? [controlRepository.split("/", 1)[0]],
     allowed_repositories: scope["allowed-repositories"] ?? [],
     web: {

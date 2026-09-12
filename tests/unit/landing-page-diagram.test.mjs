@@ -93,6 +93,16 @@ test("configured wizard operations follow policy package order", () => {
   assert.deepEqual(selectConfiguredOperations(policy, [first, second]), [second, first]);
 });
 
+test("configured wizard operations hide experimental packages by default", () => {
+  const stable = { slug: "stable", experimental: false };
+  const experimental = { slug: "preview", experimental: true };
+  const disabledPolicy = { "control-plane": { packages: { stable: {}, preview: {} } } };
+  const enabledPolicy = { ...disabledPolicy, experimental: true };
+
+  assert.deepEqual(selectConfiguredOperations(disabledPolicy, [stable, experimental]), [stable]);
+  assert.deepEqual(selectConfiguredOperations(enabledPolicy, [stable, experimental]), [stable, experimental]);
+});
+
 test("configured wizard operations require a package map", () => {
   assert.throws(
     () => selectConfiguredOperations({}, []),
@@ -122,6 +132,7 @@ test("wizard policy keeps the checked-in package configuration", () => {
   const { icon, ...expectedPackage } = controlPolicy["control-plane"].packages.dependabot;
 
   assert.deepEqual(policy["control-plane"].scope["allowed-owners"], ["acme"]);
+  assert.equal(policy.experimental, true);
   assert.deepEqual(policy["control-plane"].packages.dependabot, expectedPackage);
   assert.equal(icon, "dependabot");
 });

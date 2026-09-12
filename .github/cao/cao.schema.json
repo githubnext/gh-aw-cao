@@ -21,6 +21,10 @@
       "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json"
     },
     "version": { "const": 1 },
+    "experimental": {
+      "type": "boolean",
+      "default": false
+    },
     "gh-aw-version": {
       "type": "string",
       "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"

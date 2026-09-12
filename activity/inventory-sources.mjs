@@ -34,7 +34,11 @@ function packageRows(inventory, controlSettings, generatedAt) {
     [...bundles.keys(), ...Object.keys(controlSettings.packages || {})]
       .filter((id) => !INTERNAL_PACKAGES.has(id)),
   );
-  return [...ids].sort().map((id) => {
+  return [...ids].sort().filter((id) => {
+    const bundle = bundles.get(id)
+      || [...bundles.values()].find((candidate) => candidate.id === id);
+    return bundle?.experimental !== true || controlSettings.experimental === true;
+  }).map((id) => {
     const bundle = bundles.get(id)
       || [...bundles.values()].find((candidate) => candidate.id === id)
       || {};

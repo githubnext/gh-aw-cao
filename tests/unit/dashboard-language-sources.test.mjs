@@ -183,6 +183,31 @@ test("excludes internal packages from user-facing package inventory", () => {
   assert.deepEqual(sources.packages.rows, []);
 });
 
+test("hides experimental packages from inventory unless enabled", () => {
+  const inventory = {
+    bundles: [
+      { id: "stable", controlPackage: "stable", name: "Stable" },
+      { id: "preview", controlPackage: "preview", name: "Preview", experimental: true },
+    ],
+    workflows: [],
+  };
+  const packages = { stable: {}, preview: {} };
+
+  const hidden = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    inventory,
+    controlSettings: { packages },
+  });
+  const visible = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    inventory,
+    controlSettings: { experimental: true, packages },
+  });
+
+  assert.deepEqual(hidden.packages.rows.map((row) => row.package), ["stable"]);
+  assert.deepEqual(visible.packages.rows.map((row) => row.package), ["preview", "stable"]);
+});
+
 test("transaction logs retain a session when artifacts contain no timeline", () => {
   const rows = transactionLogRows({
     generatedAt: "2026-09-09T05:00:00Z",

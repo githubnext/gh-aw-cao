@@ -90,6 +90,7 @@ export const catalogEntries: CatalogEntry[] = Object.entries(manifests)
     };
   })
   .filter((entry) => !entry.private)
+  .filter((entry) => !entry.experimental || controlPolicy.experimental === true)
   .sort((left, right) => {
     const advisoryRank = (entry: CatalogEntry) => /advisor(y|ies)?/i.test(entry.name) ? 1 : 0;
     return advisoryRank(left) - advisoryRank(right) || left.name.localeCompare(right.name);

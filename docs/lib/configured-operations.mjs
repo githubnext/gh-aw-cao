@@ -19,6 +19,7 @@ export function buildWizardPolicy(controlPolicy, owner, operationSlug) {
 
   return {
     version: 1,
+    experimental: controlPolicy.experimental === true,
     "control-plane": {
       scope: { "allowed-owners": [owner] },
       packages: {
@@ -43,5 +44,6 @@ export function selectConfiguredOperations(controlPolicy, catalogEntries) {
       const entry = catalogEntriesBySlug.get(slug);
       if (!entry) throw new Error(`Configured package ${slug} must have a catalog manifest`);
       return entry;
-    });
+    })
+    .filter((entry) => entry.experimental !== true || controlPolicy.experimental === true);
 }
