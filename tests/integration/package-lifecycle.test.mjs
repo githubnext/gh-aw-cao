@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { retryTransientPackageInstall } from "../helpers/package-install-retry.mjs";
 
 const packageSource = process.env.CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE
@@ -160,6 +161,14 @@ function workflowBody(content) {
   return content.slice(frontmatterEnd + 5).trimEnd();
 }
 
+function workflowFrontmatterWithoutSource(content) {
+  const frontmatterEnd = content.indexOf("\n---\n", 4);
+  assert.notEqual(frontmatterEnd, -1, "workflow is missing closing frontmatter");
+  const frontmatter = parse(content.slice(4, frontmatterEnd));
+  delete frontmatter.source;
+  return frontmatter;
+}
+
 async function installPackage(source) {
   return retryTransientPackageInstall(() => {
     const consumer = mkdtempSync(join(tmpdir(), "central-agentic-ops-package-"));
@@ -244,11 +253,16 @@ test("root package bootstraps an empty CAO and preserves resources during workfl
       "0",
     ], consumer);
 
-    assert.equal(
-      readFileSync(orchestratorPath, "utf8"),
-      orchestrator,
-      "gh aw update did not restore the package-owned workflow",
+    const updatedOrchestrator = readFileSync(orchestratorPath, "utf8");
+    assert.ok(
+      !updatedOrchestrator.includes("# local integration-test change"),
+      "gh aw update retained a local package workflow modification",
     );
+    assert.deepEqual(
+      workflowFrontmatterWithoutSource(updatedOrchestrator),
+      workflowFrontmatterWithoutSource(orchestrator),
+    );
+    assert.equal(workflowBody(updatedOrchestrator), workflowBody(orchestrator));
     for (const [relativePath, expected] of expectedBootstrap) {
       assert.equal(
         readFileSync(join(consumer, relativePath), "utf8"),
