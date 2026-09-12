@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
-import { copyTextToClipboard } from './ui-primitives.js';
+import { copyTextToClipboard, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
@@ -293,17 +293,16 @@ function renderAutomaticDataUpdatesSetting() {
     checkbox.checked = automaticDashboardDataUpdatesEnabled();
     status.textContent = statusText();
   };
-  checkbox = /** @type {HTMLInputElement} */ (h('input', {
+  checkbox = renderCheckbox({
     id: 'configuration-automatic-dashboard-data-updates',
     className: 'configuration-setting-toggle',
-    type: 'checkbox',
     checked: automaticDashboardDataUpdatesEnabled(),
     onChange: /** @param {Event} event */ (event) => {
       const enabled = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
       setAutomaticDashboardDataUpdatesEnabled(enabled);
       updateStatus();
     }
-  }));
+  });
   status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
     statusText()
   );

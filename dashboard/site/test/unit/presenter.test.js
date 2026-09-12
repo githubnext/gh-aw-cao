@@ -899,14 +899,15 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
     expect(rendered.querySelector('.account-menu-avatar .octicon-kebab-horizontal')).not.toBeNull();
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
-    const backgroundServiceWorker = /** @type {HTMLInputElement | null} */ (
-      rendered.querySelector('.background-service-worker-setting input')
+    const backgroundSync = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('.database-counts .background-sync-setting input')
     );
-    expect(backgroundServiceWorker?.checked).toBe(false);
-    backgroundServiceWorker?.click();
+    expect(backgroundSync?.getAttribute('aria-label')).toBe('Background sync');
+    expect(backgroundSync?.checked).toBe(false);
+    backgroundSync?.click();
     expect(window.localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
     setAutomaticDashboardDataUpdatesEnabled(false);
-    expect(backgroundServiceWorker?.checked).toBe(false);
+    expect(backgroundSync?.checked).toBe(false);
     expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
     expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
     const systemTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="system"]'));
