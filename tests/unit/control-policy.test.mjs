@@ -93,6 +93,8 @@ test("control policy schema accepts config-defined package and worker catalogs",
 
   assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.equal(policy.$schema, schema.$id);
+  assert.equal(policy.experimental, true);
+  assert.equal(schema.properties.experimental.default, false);
   assert.match(policy["gh-aw-version"], /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/);
   assert.equal(schema.properties["gh-aw-version"].type, "string");
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");

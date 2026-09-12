@@ -1888,6 +1888,7 @@ test("dashboard source bridge carries package memberships, allowance, and invent
       }],
     },
     controlSettings: {
+      experimental: true,
       packages: {
         "ambient-context": {
           enabled: true,
