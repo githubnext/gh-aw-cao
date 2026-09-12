@@ -12,7 +12,7 @@ const OCTICONS = [
   "shield", "meter", "graph", "codescan", "dependabot", "key", "beaker", "rocket",
   "workflow", "gear", "check-circle", "package", "external-link",
 ];
-const PACKAGE_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "targets", "workers"];
+const PACKAGE_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers"];
 const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
 const PUBLISHING_KEYS = ["enabled", "control-repositories", "reviewers"];
@@ -212,6 +212,7 @@ function validatePackages(packages) {
     assertKeys(packagePolicy, PACKAGE_KEYS, path);
     if ("enabled" in packagePolicy) assertBoolean(packagePolicy.enabled, `${path}.enabled`);
     if ("icon" in packagePolicy) assertOcticon(packagePolicy.icon, `${path}.icon`);
+    if ("deploy" in packagePolicy) assertBoolean(packagePolicy.deploy, `${path}.deploy`);
     validateDefaults(pick(packagePolicy, DEFAULT_KEYS), path);
     if ("targets" in packagePolicy) {
       const targets = packagePolicy.targets;
@@ -445,6 +446,7 @@ export function controlSettings(document, controlRepository) {
     ...defaults,
     ...pick(policy, DEFAULT_KEYS),
     icon: policy.icon ?? null,
+    deploy: policy.deploy ?? true,
     worker_policies: Object.fromEntries(
       Object.entries(policy.workers ?? {}).map(([worker, workerPolicy]) => [workerPolicy.workflow, {
         worker,

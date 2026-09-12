@@ -24,6 +24,9 @@
       "favicon": "./favicon.svg"
     },
     "packages": {
+      "dashboard": {
+        "deploy": false
+      },
       "uk-ai-advisory": {
         "icon": "eye",
         "workers": {

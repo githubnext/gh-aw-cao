@@ -404,6 +404,8 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(dashboardWorkflow, /actions\/(?:upload-pages-artifact|deploy-pages)@[0-9a-f]{40}/);
     assert.match(dashboardWorkflow, /name: CAO Dashboard/);
     assert.match(dashboardWorkflow, /enablement: false/);
+    assert.match(dashboardWorkflow, /deploy: \$\{\{ steps\.deployment-policy\.outputs\.deploy \}\}/);
+    assert.match(dashboardWorkflow, /if: needs\.build\.outputs\.deploy == 'true'/);
     assert.doesNotMatch(dashboardWorkflow, /schedule:/);
     assert.match(dashboardWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
     assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);

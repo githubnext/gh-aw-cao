@@ -13,7 +13,7 @@ The dashboard package publishes an access-controlled static view of Central Agen
 
 ## Contents
 
-- `.github/workflows/cao-dashboard.yml`: dashboard build, artifact publication, and standalone GitHub Pages deployment.
+- `.github/workflows/cao-dashboard.yml`: dashboard build, artifact publication, and optional standalone GitHub Pages deployment.
 - `.github/workflows/activity.yml`: shared data collector and cache publisher installed by the core activity package.
 - `.github/cao/src/policy.mjs`: dependency-free checked-in policy parser and resolver.
 - `.github/cao/src/control.mjs`: deterministic policy command adapter used by the build workflow.
@@ -159,5 +159,8 @@ The catalog contains only collector, adapter, and presenter code. Installed cont
 ## Configure
 
 1. Set `control-plane.scope.allowed-repositories` in `.github/workflows/cao.json` when report discovery should be limited to an explicit repository allowlist.
+2. Set `control-plane.packages.dashboard.deploy` to `false` when another workflow downloads the `central-agentic-ops-dashboard` artifact and includes it in a combined Pages deployment. The default is `true`.
+
+With standalone deployment disabled, the hosting workflow needs `actions: read`. It should list successful `cao-dashboard.yml` runs on the default branch, select the latest run, and download its `central-agentic-ops-dashboard` artifact into the hosting site's output directory before uploading the combined Pages artifact.
 
 Do not install this package when the report would be public or when the repository plan cannot enforce the required access boundary. See [Publishing Pages Reports](../docs/operations.md#publishing-pages-reports) for operating details.

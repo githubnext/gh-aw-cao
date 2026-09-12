@@ -2,6 +2,11 @@ name: Documentation Pages
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - CAO Dashboard
+    types:
+      - completed
   schedule:
     - cron: "*/15 * * * *"
   push:
@@ -21,6 +26,7 @@ on:
       - public/**
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -29,8 +35,10 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       pages: write
     steps:
@@ -68,6 +76,30 @@ jobs:
           # Commit that triggered this run (push or scheduled tip of default branch).
           PUBLIC_PAGES_BUILD_COMMIT: ${{ github.sha }}
         run: npm run docs:build
+
+      - name: Find latest CAO Dashboard run
+        id: dashboard-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          run_id="$(gh api \
+            "repos/$REPOSITORY/actions/workflows/cao-dashboard.yml/runs?branch=$DEFAULT_BRANCH&status=success&per_page=20" \
+            --jq '.workflow_runs[0].id // empty')"
+          if [[ ! "$run_id" =~ ^[0-9]+$ ]]; then
+            echo "No successful CAO Dashboard workflow run was found on $DEFAULT_BRANCH" >&2
+            exit 1
+          fi
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Mount latest CAO Dashboard artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: central-agentic-ops-dashboard
+          path: dist/cao
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.dashboard-run.outputs.run-id }}
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

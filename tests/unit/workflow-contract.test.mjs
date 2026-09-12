@@ -2987,7 +2987,7 @@ test("Agent customizations preserve deterministic core package boundaries", () =
   assert.match(packageSkill, /unified builder and publisher/);
   assert.match(packageSkill, /complete workflow `name` at 32 characters or fewer/);
   assert.match(packageSkill, /omitting redundant role words/);
-  assert.match(repositoryInstructions, /Keep `\.github\/workflows\/cao-dashboard\.yml` as the single dashboard builder and Pages publisher/);
+  assert.match(repositoryInstructions, /Keep `\.github\/workflows\/cao-dashboard\.yml` as the single dashboard builder and optional Pages publisher/);
   assert.match(repositoryInstructions, /upload the reusable dashboard artifact/);
   assert.match(repositoryInstructions, /must not add a schedule or another enable variable/);
   assert.match(repositoryInstructions, /Keep data collection and cache publication out of operational packages and dashboard build jobs/);
@@ -3158,6 +3158,9 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
+  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?\.packages\.dashboard\.deploy \/\/ true[\s\S]*?deploy=\$deploy/);
+  assert.match(dashboardWorkflow, /Configure Pages\n\s+if: steps\.deployment-policy\.outputs\.deploy == 'true'/);
+  assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
   assert.match(dashboardWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
   assert.match(dashboardWorkflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Activity[\s\S]*?types:[\s\S]*?- completed/);
@@ -3293,7 +3296,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.match(readme, /gh-aw-logs\.jsonl/);
 });
 
-test("Documentation Pages deploys docs independently from the dashboard", () => {
+test("Documentation Pages deploys docs with the latest dashboard artifact", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "docs.yml"), "utf8");
   const dashboardWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard.yml"), "utf8");
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");
@@ -3302,8 +3305,7 @@ test("Documentation Pages deploys docs independently from the dashboard", () => 
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 
-  assert.doesNotMatch(workflow, /dashboard-build|central-agentic-ops-dashboard|needs: dashboard/);
-  assert.doesNotMatch(workflow, /^\s+- dashboard\/\*\*$/m);
+  assert.doesNotMatch(workflow, /dashboard-build|needs: dashboard/);
   assert.match(workflow, /name: Restore node_modules[\s\S]*?id: node-modules-cache[\s\S]*?actions\/cache\/restore@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ runner\.os \}\}-node-24-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/);
   assert.match(workflow, /name: Install dependencies\n\s+if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'\n\s+run: npm ci/);
   assert.match(workflow, /name: Save node_modules[\s\S]*?if: steps\.node-modules-cache\.outputs\.cache-hit != 'true'[\s\S]*?actions\/cache\/save@[0-9a-f]{40}[\s\S]*?path: node_modules[\s\S]*?key: \$\{\{ steps\.node-modules-cache\.outputs\.cache-primary-key \}\}/);
@@ -3311,7 +3313,11 @@ test("Documentation Pages deploys docs independently from the dashboard", () => 
   assert.match(workflow, /schedule:\n\s+- cron: "\*\/15 \* \* \* \*"/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /inputs\.mode|"mode":/);
-  assert.doesNotMatch(workflow, /workflow_run|gh aw add|DASHBOARD_PACKAGE/);
+  assert.match(workflow, /workflow_run:[\s\S]*?workflows:[\s\S]*?- CAO Dashboard[\s\S]*?types:[\s\S]*?- completed/);
+  assert.match(workflow, /actions: read/);
+  assert.match(workflow, /Find latest CAO Dashboard run[\s\S]*?actions\/workflows\/cao-dashboard\.yml\/runs\?branch=\$DEFAULT_BRANCH&status=success&per_page=20[\s\S]*?\.workflow_runs\[0\]\.id/);
+  assert.match(workflow, /Mount latest CAO Dashboard artifact[\s\S]*?name: central-agentic-ops-dashboard[\s\S]*?path: dist\/cao[\s\S]*?run-id: \$\{\{ steps\.dashboard-run\.outputs\.run-id \}\}/);
+  assert.doesNotMatch(workflow, /gh aw add|DASHBOARD_PACKAGE/);
   assert.equal((workflow.match(/actions\/upload-pages-artifact@/g) || []).length, 1);
   assert.equal((workflow.match(/actions\/deploy-pages@/g) || []).length, 1);
   assert.doesNotMatch(dashboardWorkflow, /workflow_call:/);

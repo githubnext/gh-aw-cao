@@ -28,6 +28,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch) || (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    outputs:
+      deploy: ${{ steps.deployment-policy.outputs.deploy }}
     permissions:
       actions: read
       contents: read
@@ -52,6 +54,15 @@ jobs:
             echo "Dashboard package sources are unavailable" >&2
             exit 1
           fi
+
+      - name: Resolve dashboard deployment policy
+        id: deployment-policy
+        run: |
+          deploy="$(jq -er '
+            .["control-plane"].packages.dashboard.deploy // true
+            | if type == "boolean" then tostring else error("control-plane.packages.dashboard.deploy must be a boolean") end
+          ' .github/workflows/cao.json)"
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
 
       - name: Install dashboard build dependencies
         run: npm ci --prefix "$DASHBOARD_SITE_ROOT" --ignore-scripts
@@ -137,17 +148,20 @@ jobs:
           retention-days: 1
 
       - name: Configure Pages
+        if: steps.deployment-policy.outputs.deploy == 'true'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         with:
           enablement: false
 
       - name: Upload Pages artifact
+        if: steps.deployment-policy.outputs.deploy == 'true'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ${{ runner.temp }}/central-agentic-ops-dashboard
 
   deploy:
     needs: build
+    if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
