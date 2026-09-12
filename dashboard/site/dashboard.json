@@ -93,6 +93,14 @@
             "default": false
           }
         ]
+      },
+      {
+        "id": "update-package",
+        "label": "Update package",
+        "description": "Update this package from its aw.yml manifest.",
+        "icon": "sync",
+        "command": "gh aw update {{package}}/aw.yml",
+        "placement": "row"
       }
     ],
     "callouts": [
@@ -3526,6 +3534,17 @@
               "layout": "full-view",
               "empty-message": "No packages discovered.",
               "encoding": {
+                "actions": [
+                  {
+                    "action": "update-package",
+                    "presentation": "cli-action",
+                    "icon": "sync",
+                    "label": "Update package",
+                    "context": [
+                      "package"
+                    ]
+                  }
+                ],
                 "href": {
                   "field": "package-link",
                   "type": "nominal"

@@ -135,6 +135,27 @@ describe('dashboard document validation', () => {
     });
   });
 
+  it('targets each package manifest from the packages table update action', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const action = document.dashboard['cli-actions'].find(
+      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-package'
+    );
+    const packagesPage = document.dashboard.pages.find(
+      (/** @type {{ id: string }} */ page) => page.id === 'packages'
+    );
+    const tableAction = packagesPage.definition.views[0].encoding.actions[0];
+
+    expect(action).toMatchObject({
+      command: 'gh aw update {{package}}/aw.yml',
+      placement: 'row'
+    });
+    expect(tableAction).toMatchObject({
+      action: 'update-package',
+      presentation: 'cli-action',
+      context: ['package']
+    });
+  });
+
   it('applies human-friendly formatting to every declarative temporal encoding', () => {
     const documents = [authoritativeDashboardSource, ...packageDashboardSources].map((source) => JSON.parse(source));
     /** @type {Array<Record<string, unknown>>} */
