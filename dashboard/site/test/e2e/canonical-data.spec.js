@@ -382,7 +382,7 @@ test('data worker returns only the canonical payload requested by a view', async
   }
 });
 
-test('data worker reports every fresh database update', async ({ page }) => {
+test('data worker reports an already ingested payload as unchanged', async ({ page }) => {
   const refreshes = await page.evaluate(async () => {
     const processorUrl = `${location.origin}/src/data-processor.js`;
     const { refreshCanonicalDashboardSources } = await import(processorUrl);
@@ -401,7 +401,7 @@ test('data worker reports every fresh database update', async ({ page }) => {
     ];
   });
 
-  expect(refreshes.map((refresh) => refresh.changed)).toEqual([true, true]);
+  expect(refreshes.map((refresh) => refresh.changed)).toEqual([true, false]);
   expect(refreshes[0].sources['failed-runs'].rows).toMatchObject([
     { repository: 'gh-aw-cao', run: '12345' }
   ]);
@@ -452,7 +452,7 @@ test('data worker queries retained canonical data before downloading sources', a
     metadata: { 'source-kind': 'derived', 'query-name': 'cached-run-totals' }
   });
   expect(result.retained['overview-attention-domains']).toBeUndefined();
-  expect(result.refreshed.changed).toBe(true);
+  expect(result.refreshed.changed).toBe(false);
   expect(result.refreshed.sources['overview-attention-domains']).toBeDefined();
 });
 
