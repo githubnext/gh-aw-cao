@@ -4257,7 +4257,7 @@ test('DLS-SAFE-004 runtime links with embedded credentials, ftp schemes, and bla
 test('desktop navigation collapses to an icon rail and expands back to text', async ({ page }) => {
   const presenterModuleUrl = buildPresenterModuleUrl();
   await page.setViewportSize({ width: 1200, height: 800 });
-  await page.setContent(`
+  const dashboardContent = `
     <div id="root"></div>
     <script type="module">
       import { renderDashboard } from ${JSON.stringify(presenterModuleUrl)};
@@ -4276,7 +4276,8 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
         sources: {}
       }));
     </script>
-  `);
+  `;
+  await page.setContent(dashboardContent);
 
   const toggle = page.getByRole('button', { name: 'Collapse navigation' });
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
@@ -4288,10 +4289,18 @@ test('desktop navigation collapses to an icon rail and expands back to text', as
   await expect(page.locator('.nav-label').first()).toBeHidden();
   await expect(page.locator('.sidebar-brand')).toBeHidden();
 
+  await page.reload();
+  await page.setContent(dashboardContent);
+  await expect(page.locator('.app-shell')).toHaveClass(/sidebar-collapsed/);
+
   await page.getByRole('button', { name: 'Expand navigation' }).click();
   await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/);
   await expect(page.locator('.nav-label').first()).toBeVisible();
   await expect(page.locator('.sidebar-brand')).toBeVisible();
+
+  await page.reload();
+  await page.setContent(dashboardContent);
+  await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/);
 
   await page.locator('.dashboard-root').evaluate((root) => root.classList.add('dashboard-copilot-enabled'));
   await expect(page.locator('.org-sidebar')).toHaveCSS('width', '200px');
