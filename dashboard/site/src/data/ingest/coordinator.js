@@ -71,7 +71,7 @@ function serializeIngestion(indexedDB, task) {
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, preserveWorkflowPackageMappings?: boolean }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
@@ -90,7 +90,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   let batch = capCanonicalBatchSize(mergeRetainedRecords(retained, incoming, {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
-    retentionWindowMsByStore: options.retentionWindowMsByStore
+    retentionWindowMsByStore: options.retentionWindowMsByStore,
+    preserveWorkflowPackageMappings: options.preserveWorkflowPackageMappings
   }), targetDatabaseBytes);
   for (;;) {
     try {
@@ -200,7 +201,10 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, batch, options);
+    return await ingestCanonicalBatch(indexedDB, batch, {
+      ...options,
+      preserveWorkflowPackageMappings: true
+    });
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -247,7 +251,10 @@ async function ingestCachedGhAwJsonlNow(indexedDB, content, options) {
       context: options.context,
       workflowHints: options.workflowHints
     });
-    const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
+    const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), {
+      ...options,
+      preserveWorkflowPackageMappings: true
+    });
     await recordTransaction(indexedDB, {
       id: await transactionId('ingest-jsonl', scope),
       kind: 'ingest-jsonl',

@@ -28,6 +28,12 @@ const STORES = /** @type {const} */ ([
   'sessions',
   'events'
 ]);
+const WORKFLOW_PACKAGE_FIELDS = /** @type {const} */ ([
+  'packageId',
+  'package',
+  'packageName',
+  'packageIcon'
+]);
 const RECORD_OVERHEAD_BYTES = 512;
 
 /** @param {Record<string, unknown>} record */
@@ -139,8 +145,16 @@ function newestObservation(batch) {
  * @param {number} reference
  * @param {number} defaultRetentionWindowMs
  * @param {Partial<Record<typeof STORES[number], number>>} retentionWindowMsByStore
+ * @param {boolean} preserveWorkflowPackageMappings
  */
-function upsertRecords(previous, incoming, reference, defaultRetentionWindowMs, retentionWindowMsByStore) {
+function upsertRecords(
+  previous,
+  incoming,
+  reference,
+  defaultRetentionWindowMs,
+  retentionWindowMsByStore,
+  preserveWorkflowPackageMappings
+) {
   /** @type {Record<string, Map<string, Record<string, unknown>>>} */
   const merged = {};
   for (const storeName of STORES) {
@@ -160,7 +174,18 @@ function upsertRecords(previous, incoming, reference, defaultRetentionWindowMs, 
     for (const record of incoming[storeName] ?? []) {
       const timestamp = recordTimestamp(storeName, record);
       if (timeBound && (timestamp === null || timestamp < horizon)) continue;
-      records.set(String(record.id), record);
+      const id = String(record.id);
+      if (storeName === 'workflows' && preserveWorkflowPackageMappings) {
+        const existing = records.get(id);
+        if (existing) {
+          const preserved = Object.fromEntries(WORKFLOW_PACKAGE_FIELDS
+            .filter((field) => existing[field] !== undefined)
+            .map((field) => [field, existing[field]]));
+          records.set(id, { ...record, ...preserved });
+          continue;
+        }
+      }
+      records.set(id, record);
     }
     merged[storeName] = records;
   }
@@ -255,7 +280,8 @@ function collectUnreferencedParents(merged, incoming) {
  *   retentionWindowMs?: number,
  *   retentionWindowMsByStore?: Partial<Record<typeof STORES[number], number>>,
  *   includePreviousInReference?: boolean,
- *   preserveUnreferencedParents?: boolean
+ *   preserveUnreferencedParents?: boolean,
+ *   preserveWorkflowPackageMappings?: boolean
  * }} [options]
  * @returns {import('../model/schema.js').CanonicalBatch}
  */
@@ -274,7 +300,8 @@ export function mergeRetainedRecords(previous, incoming, options = {}) {
     incoming,
     reference,
     retentionWindowMs,
-    options.retentionWindowMsByStore ?? {}
+    options.retentionWindowMsByStore ?? {},
+    options.preserveWorkflowPackageMappings === true
   );
   pruneOrphans(merged);
   if (!options.preserveUnreferencedParents) collectUnreferencedParents(merged, incoming);

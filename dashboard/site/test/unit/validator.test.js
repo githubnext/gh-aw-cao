@@ -711,9 +711,9 @@ dashboard:
       'Workflows',
       'Roles',
       'Modes',
-      'Registration',
       'Runs',
-      'AIC'
+      'AIC',
+      'Registration'
     ]);
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'modes')?.display).toBe('mode');
     expect(packagesView.encoding.columns.find((/** @type {{ field: string }} */ column) => column.field === 'registration')?.display).toBe('active-state');

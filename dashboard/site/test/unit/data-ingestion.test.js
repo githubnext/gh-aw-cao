@@ -165,7 +165,27 @@ describe('canonical source ingestion and queries', () => {
   });
 
   it('upserts complete gh-aw transaction logs onto retained canonical records', async () => {
-    await ingestDashboardSources(indexedDB, sources);
+    await ingestDashboardSources(indexedDB, {
+      ...sources,
+      packages: {
+        rows: [{
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'observed-at': metadata['as-of']
+        }],
+        metadata
+      },
+      workflows: {
+        ...sources.workflows,
+        rows: sources.workflows.rows.map((workflow) => ({
+          ...workflow,
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'package-icon': 'dashboard'
+        }))
+      }
+    });
+    const [packagedWorkflow] = await createCanonicalQueries(indexedDB).workflows.list();
     const input = {
       generation: 'gh-aw-generation-b',
       observedAt: '2026-09-09T05:00:00Z',
@@ -186,6 +206,14 @@ describe('canonical source ingestion and queries', () => {
     const queries = createCanonicalQueries(indexedDB);
     const activeRuns = await queries.runs.list();
     const activeSessions = await queries.sessions.forRun('github:run:303:attempt:1');
+    expect(await queries.workflows.list()).toEqual([
+      expect.objectContaining({
+        packageId: packagedWorkflow.packageId,
+        package: 'dashboard',
+        packageName: 'CAO Dashboard',
+        packageIcon: 'dashboard'
+      })
+    ]);
     expect(activeRuns.map((run) => run.id)).toEqual([
       'github:run:12345:attempt:2',
       'github:run:303:attempt:1'
