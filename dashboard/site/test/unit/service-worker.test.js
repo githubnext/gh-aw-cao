@@ -74,7 +74,7 @@ async function dispatchExtendedEvent(listener, event) {
 }
 
 describe('dashboard service worker', () => {
-  it('downloads configured dashboard data during periodic background sync', async () => {
+  it('downloads configured dashboard data during periodic background sync with no page open', async () => {
     const { listeners, worker, fetch } = serviceWorkerHarness();
     const configured = vi.fn();
     await dispatchExtendedEvent(listeners.message, {

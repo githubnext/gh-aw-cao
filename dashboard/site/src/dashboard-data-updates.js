@@ -1,6 +1,8 @@
 const ENABLED_STORAGE_KEY = 'central-agentic-ops.dashboard.automatic-data-updates';
 const LAST_SUCCESS_STORAGE_KEY = 'central-agentic-ops.dashboard.automatic-data-update-last-success';
+const BACKGROUND_ACTIVE_STORAGE_KEY = 'central-agentic-ops.dashboard.background-data-updates-active';
 const SETTING_EVENT = 'dashboard-automatic-data-updates-setting-change';
+const BACKGROUND_STATUS_EVENT = 'dashboard-background-data-updates-status-change';
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 const RETRY_INTERVAL_MS = 5 * 60 * 1000;
 const LOW_BATTERY_LEVEL = 0.2;
@@ -16,12 +18,33 @@ export function automaticDashboardDataUpdatesEnabled(storage = localStorage) {
   return storage.getItem(ENABLED_STORAGE_KEY) === 'true';
 }
 
+/** @param {Storage} [storage] */
+export function automaticDashboardBackgroundUpdatesActive(storage = localStorage) {
+  return storage.getItem(BACKGROUND_ACTIVE_STORAGE_KEY) === 'true';
+}
+
+/** @param {EventListener} listener */
+export function onAutomaticDashboardBackgroundUpdateStatus(listener) {
+  const eventTarget = window;
+  eventTarget.addEventListener(BACKGROUND_STATUS_EVENT, listener);
+  return () => {
+    if (typeof eventTarget.removeEventListener === 'function') {
+      eventTarget.removeEventListener(BACKGROUND_STATUS_EVENT, listener);
+    }
+  };
+}
+
 /** @param {boolean} enabled @param {Storage} [storage] */
 export function setAutomaticDashboardDataUpdatesEnabled(enabled, storage = localStorage) {
-  if (enabled) storage.setItem(ENABLED_STORAGE_KEY, 'true');
+  if (enabled) {
+    storage.setItem(ENABLED_STORAGE_KEY, 'true');
+    storage.removeItem(BACKGROUND_ACTIVE_STORAGE_KEY);
+  }
   else {
     storage.removeItem(ENABLED_STORAGE_KEY);
     storage.removeItem(LAST_SUCCESS_STORAGE_KEY);
+    storage.removeItem(BACKGROUND_ACTIVE_STORAGE_KEY);
+    window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
   }
   window.dispatchEvent(new Event(SETTING_EVENT));
 }
@@ -62,8 +85,9 @@ function requestWorker(worker, message, timeoutMs) {
  * @param {ServiceWorkerRegistration} registration
  * @param {ServiceWorker} worker
  * @param {string[]} dataUrls
+ * @param {Permissions | undefined} permissions
  */
-async function configureBackgroundDashboardDataUpdates(registration, worker, dataUrls) {
+async function configureBackgroundDashboardDataUpdates(registration, worker, dataUrls, permissions) {
   const response = await requestWorker(
     worker,
     {
@@ -81,10 +105,20 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
     throw new Error('Service worker background data configuration failed.');
   }
   const lastSuccess = Number(/** @type {{ lastSuccess?: unknown }} */ (response).lastSuccess ?? 0);
-  const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { register: (tag: string, options: { minInterval: number }) => Promise<void> } }} */ (registration).periodicSync;
-  await periodicSync?.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS }).catch(() => {
-    // The foreground timer remains the fallback when background sync is unavailable or denied.
-  });
+  const periodicSync = /** @type {ServiceWorkerRegistration & { periodicSync?: { register: (tag: string, options: { minInterval: number }) => Promise<void>, getTags: () => Promise<string[]> } }} */ (registration).periodicSync;
+  if (!periodicSync || !permissions?.query) {
+    throw new Error('Periodic Background Sync is not supported by this browser.');
+  }
+  const permission = await permissions.query(
+    /** @type {PermissionDescriptor} */ (/** @type {unknown} */ ({ name: 'periodic-background-sync' }))
+  );
+  if (permission.state !== 'granted') {
+    throw new Error('Periodic Background Sync permission was not granted.');
+  }
+  await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
+  if (!(await periodicSync.getTags()).includes(PERIODIC_SYNC_TAG)) {
+    throw new Error('Periodic Background Sync registration could not be verified.');
+  }
   return Number.isFinite(lastSuccess) && lastSuccess > 0 ? lastSuccess : 0;
 }
 
@@ -231,6 +265,7 @@ export async function ensureHealthyDashboardServiceWorker(serviceWorkers, script
  *   storage?: Storage,
  *   connection?: ConnectionState,
  *   getBattery?: () => Promise<BatteryState>,
+ *   permissions?: Permissions,
  *   online?: () => boolean,
  *   scriptUrl?: URL,
  *   now?: () => number,
@@ -245,6 +280,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
     ?? /** @type {Navigator & { connection?: ConnectionState }} */ (navigator).connection;
   const getBattery = dependencies.getBattery
     ?? /** @type {Navigator & { getBattery?: () => Promise<BatteryState> }} */ (navigator).getBattery?.bind(navigator);
+  const permissions = dependencies.permissions ?? navigator.permissions;
   const online = dependencies.online ?? (() => navigator.onLine);
   const scriptUrl = dependencies.scriptUrl ?? new URL('../service-worker.js', import.meta.url);
   const now = dependencies.now ?? Date.now;
@@ -284,7 +320,10 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       backgroundConfigured = false;
       return;
     }
-    if (!serviceWorkers) return;
+    if (!serviceWorkers) {
+      setAutomaticDashboardDataUpdatesEnabled(false, storage);
+      return;
+    }
     if (!online()) return schedule(RETRY_INTERVAL_MS);
     if (!healthyWorker || !registration) {
       try {
@@ -293,7 +332,11 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         healthyWorker = healthy.worker;
       } catch (error) {
         console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
-        return schedule(RETRY_INTERVAL_MS);
+        setAutomaticDashboardDataUpdatesEnabled(false, storage);
+        await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+        registration = undefined;
+        healthyWorker = undefined;
+        return;
       }
     }
     const worker = healthyWorker;
@@ -304,15 +347,30 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         const backgroundLastSuccess = await configureBackgroundDashboardDataUpdates(
           currentRegistration,
           worker,
-          dataUrls
+          dataUrls,
+          permissions
         );
         const foregroundLastSuccess = Number(storage.getItem(LAST_SUCCESS_STORAGE_KEY) ?? 0);
         if (backgroundLastSuccess > foregroundLastSuccess) {
           storage.setItem(LAST_SUCCESS_STORAGE_KEY, String(backgroundLastSuccess));
         }
+        if (!automaticDashboardDataUpdatesEnabled(storage)) {
+          await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, currentRegistration);
+          registration = undefined;
+          healthyWorker = undefined;
+          return;
+        }
         backgroundConfigured = true;
+        storage.setItem(BACKGROUND_ACTIVE_STORAGE_KEY, 'true');
+        window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
       } catch (error) {
         console.error(`Unable to configure background dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
+        setAutomaticDashboardDataUpdatesEnabled(false, storage);
+        await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
+        registration = undefined;
+        healthyWorker = undefined;
+        backgroundConfigured = false;
+        return;
       }
     }
     if (!battery && getBattery) {

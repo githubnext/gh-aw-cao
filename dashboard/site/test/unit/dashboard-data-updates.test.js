@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
@@ -46,10 +47,15 @@ function registration(worker) {
     unregister: vi.fn().mockResolvedValue(true),
     periodicSync: {
       register: vi.fn().mockResolvedValue(undefined),
+      getTags: vi.fn().mockResolvedValue(['central-agentic-ops-dashboard-data']),
       unregister: vi.fn().mockResolvedValue(undefined)
     }
   };
 }
+
+const grantedPermissions = /** @type {Permissions} */ (/** @type {unknown} */ ({
+  query: vi.fn().mockResolvedValue({ state: 'granted' })
+}));
 
 describe('automatic dashboard data updates', () => {
   beforeEach(() => {
@@ -77,6 +83,39 @@ describe('automatic dashboard data updates', () => {
     expect(dashboardDataUpdateBlockedReason(undefined, { charging: false, level: 0.21 })).toBeNull();
   });
 
+  it('turns the setting off when service workers are unsupported', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (false))
+      }
+    );
+
+    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    stop();
+  });
+
+  it('turns the setting off when service worker registration fails', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const serviceWorkers = {
+      register: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'SecurityError')),
+      getRegistrations: vi.fn().mockResolvedValue([])
+    };
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js')
+      }
+    );
+
+    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    stop();
+  });
+
   it('registers background sync but does not download while battery constraints block updates', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     const worker = new FakeWorker();
@@ -87,6 +126,7 @@ describe('automatic dashboard data updates', () => {
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: false, level: 0.1 }),
+        permissions: grantedPermissions,
         online: () => true
       }
     );
@@ -113,6 +153,7 @@ describe('automatic dashboard data updates', () => {
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
+        permissions: grantedPermissions,
         online: () => true,
         scriptUrl: new URL('https://example.test/service-worker.js'),
         now: () => now
@@ -127,6 +168,7 @@ describe('automatic dashboard data updates', () => {
       'central-agentic-ops-dashboard-data',
       { minInterval: 60 * 60 * 1000 }
     );
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(true);
     expect(worker.messages).toContainEqual(expect.objectContaining({
       type: 'CONFIGURE_BACKGROUND_DATA',
       urls: [
@@ -155,6 +197,7 @@ describe('automatic dashboard data updates', () => {
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
+        permissions: grantedPermissions,
         online: () => true,
         scriptUrl: new URL('https://example.test/service-worker.js')
       }
@@ -167,6 +210,40 @@ describe('automatic dashboard data updates', () => {
       .toHaveBeenCalledWith('central-agentic-ops-dashboard-data'));
     expect(worker.messages).toContainEqual({ type: 'CLEAR_BACKGROUND_DATA' });
     expect(currentRegistration.unregister).toHaveBeenCalledOnce();
+    stop();
+  });
+
+  it('unregisters background sync when disabled during configuration', async () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    const worker = new FakeWorker();
+    const currentRegistration = registration(worker);
+    const serviceWorkers = {
+      register: vi.fn().mockResolvedValue(currentRegistration)
+    };
+    /** @type {(value: { state: string }) => void} */
+    let resolvePermission = () => {};
+    const permissions = /** @type {Permissions} */ (/** @type {unknown} */ ({
+      query: vi.fn().mockReturnValue(new Promise((resolve) => {
+        resolvePermission = resolve;
+      }))
+    }));
+    const stop = startAutomaticDashboardDataUpdates(
+      ['https://example.test/gh-aw-logs.jsonl'],
+      {
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
+        permissions,
+        online: () => true,
+        scriptUrl: new URL('https://example.test/service-worker.js')
+      }
+    );
+    await vi.waitFor(() => expect(permissions.query).toHaveBeenCalledOnce());
+
+    setAutomaticDashboardDataUpdatesEnabled(false);
+    resolvePermission({ state: 'granted' });
+
+    await vi.waitFor(() => expect(currentRegistration.unregister).toHaveBeenCalledOnce());
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
     stop();
   });
 
@@ -193,11 +270,10 @@ describe('automatic dashboard data updates', () => {
     stop();
   });
 
-  it('keeps foreground updates when periodic background sync is denied', async () => {
+  it('turns the setting off when periodic background sync is denied', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     const worker = new FakeWorker();
     const currentRegistration = registration(worker);
-    currentRegistration.periodicSync.register.mockRejectedValue(new Error('Not allowed'));
     const serviceWorkers = {
       register: vi.fn().mockResolvedValue(currentRegistration)
     };
@@ -206,18 +282,22 @@ describe('automatic dashboard data updates', () => {
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
+        permissions: /** @type {Permissions} */ (/** @type {unknown} */ ({
+          query: vi.fn().mockResolvedValue({ state: 'denied' })
+        })),
         online: () => true,
         scriptUrl: new URL('https://example.test/service-worker.js')
       }
     );
 
-    await vi.waitFor(() => expect(
-      worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')
-    ).toHaveLength(1));
+    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
+    expect(currentRegistration.unregister).toHaveBeenCalledOnce();
     stop();
   });
 
-  it('keeps foreground updates when periodic background sync is unsupported', async () => {
+  it('turns the setting off when periodic background sync is unsupported', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
     const worker = new FakeWorker();
     const currentRegistration = { ...registration(worker), periodicSync: undefined };
@@ -234,9 +314,10 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(
-      worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')
-    ).toHaveLength(1));
+    await vi.waitFor(() => expect(automaticDashboardDataUpdatesEnabled()).toBe(false));
+    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    expect(worker.messages.filter((message) => message.type === 'DOWNLOAD_DATA')).toHaveLength(0);
+    expect(currentRegistration.unregister).toHaveBeenCalledOnce();
     stop();
   });
 

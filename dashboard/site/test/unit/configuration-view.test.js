@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { indexedDB } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'configuration-fixture',
@@ -51,7 +52,29 @@ describe('Configuration dashboard view', () => {
     checkbox.click();
     expect(localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
     expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
-      .toContain('schedule background downloads');
+      .toContain('Waiting for this browser');
+  });
+
+  it('reflects background registration failures while the setting is mounted', () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+    const checkbox = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('#configuration-automatic-dashboard-data-updates')
+    );
+
+    setAutomaticDashboardDataUpdatesEnabled(false);
+
+    expect(checkbox?.checked).toBe(false);
+    expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
+      .toContain('Off.');
+    rendered.remove();
   });
 
   it('exposes Control in the clean navigation without a chart', () => {
