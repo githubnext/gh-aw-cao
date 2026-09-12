@@ -7,12 +7,9 @@ on:
   push:
     branches: [main]
     paths:
-      - dashboard/**
       - .github/cao/**
       - .github/workflows/docs.yml
-      - .github/workflows/dashboard-build.yml
       - .github/workflows/activity.yml
-      - .github/workflows/cao.json
       - .github/workflows/*.lock.yml
       - .github/workflows/*.md
       - "*/aw.yml"
@@ -24,7 +21,6 @@ on:
       - public/**
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
@@ -32,38 +28,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  dashboard:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    outputs:
-      run-id: ${{ steps.dispatch.outputs.run-id }}
-      run-attempt: ${{ steps.dispatch.outputs.run-attempt }}
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Checkout trusted dashboard source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.workflow_sha }}
-          persist-credentials: false
-
-      - name: Dispatch dashboard build
-        id: dispatch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DISPATCH_WORKFLOW: dashboard-build.yml
-          DISPATCH_REF: ${{ github.ref_name }}
-          DISPATCH_RUN_NAME: CAO Dashboard Build / docs-${{ github.run_id }}-${{ github.run_attempt }}
-          DISPATCH_INPUTS: >-
-            {"request-id":"docs-${{ github.run_id }}-${{ github.run_attempt }}"}
-        run: node dashboard/dispatch-workflow.mjs
-
   build:
-    needs: dashboard
     runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: read
       pages: write
     steps:
@@ -101,22 +68,6 @@ jobs:
           # Commit that triggered this run (push or scheduled tip of default branch).
           PUBLIC_PAGES_BUILD_COMMIT: ${{ github.sha }}
         run: npm run docs:build
-
-      - name: Restore dashboard from cache
-        id: dashboard-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: dist
-          key: cao-dashboard-${{ needs.dashboard.outputs.run-id }}-${{ needs.dashboard.outputs.run-attempt }}
-
-      - name: Mount dashboard at /cao
-        if: steps.dashboard-cache.outputs.cache-hit != 'true'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: central-agentic-ops-dashboard
-          path: dist
-          github-token: ${{ github.token }}
-          run-id: ${{ needs.dashboard.outputs.run-id }}
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

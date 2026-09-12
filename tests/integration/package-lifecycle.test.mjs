@@ -403,8 +403,11 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?request-id:/);
     assert.match(buildWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
     assert.doesNotMatch(buildWorkflow, /actions\/(?:upload-pages-artifact|deploy-pages)@/);
+    assert.match(deployWorkflow, /name: CAO Dashboard/);
     assert.match(deployWorkflow, /enablement: false/);
     assert.doesNotMatch(deployWorkflow, /schedule:/);
+    assert.match(deployWorkflow, /push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json/);
+    assert.match(deployWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
