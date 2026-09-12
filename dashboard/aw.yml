@@ -166,6 +166,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/configuration-view.js
   - source: site/src/components/configuration-actions.js
     destination: .github/aw/dashboard/site/src/components/configuration-actions.js
+  - source: site/src/components/cli-actions.js
+    destination: .github/aw/dashboard/site/src/components/cli-actions.js
   - source: site/src/components/chart-elements.js
     destination: .github/aw/dashboard/site/src/components/chart-elements.js
   - source: site/src/components/count-formatters.js

@@ -11,11 +11,12 @@ import {
   startDashboardServer,
 } from "../../dashboard/local-server.mjs";
 
-const dashboard = (pageId) => JSON.stringify({
+const dashboard = (pageId, cliActions) => JSON.stringify({
   "language-version": "0.1.0",
   dashboard: {
     id: "preview",
     title: "Preview",
+    ...(cliActions ? { "cli-actions": cliActions } : {}),
     navigation: [{ label: "Preview", pages: [pageId] }],
     pages: [{
       id: pageId,
@@ -286,6 +287,100 @@ test("local dashboard server fails when dashboard data cannot be downloaded", as
       /artifact unavailable/,
     );
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("canvas dashboard executes only declared CLI actions through the provided executor", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-canvas-actions-"));
+  const calls = [];
+  await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
+  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [{
+    id: "compile-workflows",
+    label: "Compile workflows",
+    icon: "play",
+    command: "gh aw compile --strict",
+    arguments: [{
+      id: "pre-releases",
+      label: "Include pre-releases",
+      type: "boolean",
+      flag: "--pre-releases",
+      default: false,
+    }],
+  }]));
+
+  const preview = await startDashboardServer({
+    siteRoot: root,
+    catalogRoot: null,
+    installedDashboardsDirectory: path.join(root, "dashboards"),
+    downloadData: async (destination) => {
+      await mkdir(destination, { recursive: true });
+      await writeFile(path.join(destination, "sources.json"), "{}");
+    },
+    canvas: true,
+    executeCliAction: async ({ onOutput, ...action }) => {
+      calls.push(action);
+      onOutput({ stream: "stdout", data: "comp" });
+      onOutput({ stream: "stdout", data: "iled\n" });
+      return { ok: true, exitCode: 0, stdout: "compiled\n", stderr: "" };
+    },
+    allowMissingOrigin: true,
+    workingDirectory: root,
+    port: 0,
+  });
+  try {
+    const previewUrl = new URL(`${preview.url}/`);
+    const origin = previewUrl.origin;
+    const response = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "compile-workflows",
+        arguments: { "pre-releases": true },
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(
+      (await response.text()).trim().split("\n").map((line) => JSON.parse(line)),
+      [
+        { type: "output", stream: "stdout", data: "comp" },
+        { type: "output", stream: "stdout", data: "iled\n" },
+        {
+          type: "complete",
+          result: {
+            ok: true,
+            exitCode: 0,
+            stdout: "compiled\n",
+            stderr: "",
+          },
+        },
+      ],
+    );
+    assert.deepEqual(calls, [{
+      id: "compile-workflows",
+      command: "gh aw compile --strict --pre-releases",
+    }]);
+
+    const undeclared = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({ id: "not-declared" }),
+    });
+    assert.equal(undeclared.status, 404);
+    assert.equal(calls.length, 1);
+
+    const invalidArgument = await fetch(new URL("__cli_action", previewUrl), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: origin },
+      body: JSON.stringify({
+        id: "compile-workflows",
+        arguments: { arbitrary: true },
+      }),
+    });
+    assert.equal(invalidArgument.status, 400);
+    assert.equal(calls.length, 1);
+  } finally {
+    await preview.close();
     await rm(root, { recursive: true, force: true });
   }
 });

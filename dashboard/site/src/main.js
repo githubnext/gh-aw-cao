@@ -11,6 +11,7 @@
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
       import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
+      import { renderCliActions } from "./components/cli-actions.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
         () => collectFullDiagnostics();
@@ -221,6 +222,23 @@
           }
         }
         attachCopilotPanel(dashboard);
+        if (previewMode === "canvas") {
+          const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
+          const toolbarActions = renderCliActions(
+            declaredActions.filter((action) => action.placement !== "settings")
+          );
+          if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
+          const settingsActions = renderCliActions(
+            declaredActions.filter((action) => action.placement === "settings"),
+            { presentation: "settings" }
+          );
+          if (settingsActions) {
+            const dialogs = [...settingsActions.querySelectorAll("dialog")];
+            dashboard.querySelector(".account-menu-popover .reset-dashboard-control")
+              ?.before(settingsActions);
+            for (const dialog of dialogs) dashboard.append(dialog);
+          }
+        }
         const previousDashboard = root.firstElementChild;
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
         root.replaceChildren(dashboard);
