@@ -455,7 +455,6 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
 
     const removedFiles = [
-      ".github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh",
       ".github/workflows/dependabot-release-train-updater.md",
       ".github/workflows/shared/control.md",
     ];
