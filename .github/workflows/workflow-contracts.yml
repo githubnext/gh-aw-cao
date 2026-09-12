@@ -113,10 +113,10 @@ jobs:
       - name: Run package lifecycle integration
         if: steps.package-api.outputs.ready == 'true'
         env:
-          CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE: ${{ github.event_name == 'pull_request' && format('{0}@{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.head.ref) || format('{0}@{1}', github.repository, github.sha) }}
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: '--test-name-pattern="${{ matrix.test-pattern }}"'
         run: |
+          export CENTRAL_AGENTIC_OPS_PACKAGE_SOURCE="${GITHUB_REPOSITORY}@$(git rev-parse --short=12 "$GITHUB_SHA")"
           set +e
           output="$(npm run test:package-lifecycle 2>&1)"
           status=$?
