@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { indexedDB } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
 
 const metadata = /** @type {import('../../src/presenter.js').SourceMetadata} */ ({
   'source-id': 'configuration-fixture',
@@ -35,6 +36,47 @@ function context(row) {
 }
 
 describe('Configuration dashboard view', () => {
+  it('renders hourly data downloads off by default and persists opt-in', () => {
+    localStorage.clear();
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+
+    const checkbox = rendered.querySelector('#configuration-automatic-dashboard-data-updates');
+    if (!(checkbox instanceof HTMLInputElement)) throw new Error('automatic update checkbox did not render');
+    document.body.append(rendered);
+    expect(checkbox.checked).toBe(false);
+    checkbox.click();
+    expect(localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
+    expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
+      .toContain('Waiting for this browser');
+  });
+
+  it('reflects background registration failures while the setting is mounted', () => {
+    localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+    if (!rendered) throw new Error('configuration view did not render');
+    document.body.append(rendered);
+    const checkbox = /** @type {HTMLInputElement | null} */ (
+      rendered.querySelector('#configuration-automatic-dashboard-data-updates')
+    );
+
+    setAutomaticDashboardDataUpdatesEnabled(false);
+
+    expect(checkbox?.checked).toBe(false);
+    expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
+      .toContain('Off.');
+    rendered.remove();
+  });
+
   it('exposes Control in the clean navigation without a chart', () => {
     const dashboard = JSON.parse(readFileSync(resolve('dashboard.json'), 'utf8')).dashboard;
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'configuration');
@@ -110,7 +152,7 @@ describe('Configuration dashboard view', () => {
     if (!(maintenanceGroup instanceof HTMLDetailsElement)) throw new Error('maintenance group did not render');
     expect(maintenanceGroup.open).toBe(false);
     expect(rendered.textContent).not.toContain('Targets');
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.configuration-editor .configuration-setting-row')).toHaveLength(0);
 
     maintenanceGroup.open = true;
     maintenanceGroup.dispatchEvent(new Event('toggle'));
@@ -118,12 +160,12 @@ describe('Configuration dashboard view', () => {
       .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Targets');
     if (!(targetsGroup instanceof HTMLDetailsElement)) throw new Error('targets group did not render');
     expect(targetsGroup.open).toBe(false);
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.configuration-editor .configuration-setting-row')).toHaveLength(0);
 
     targetsGroup.open = true;
     targetsGroup.dispatchEvent(new Event('toggle'));
     expect(targetsGroup.querySelectorAll(':scope > .configuration-setting-children > details')).toHaveLength(100);
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.configuration-editor .configuration-setting-row')).toHaveLength(0);
   });
 
   it('edits lists without losing the nested policy path', () => {

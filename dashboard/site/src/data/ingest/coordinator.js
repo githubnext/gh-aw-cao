@@ -3,14 +3,19 @@ import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { normalize } from '../normalize/index.js';
 import { readCanonicalBatch, recordTransaction, replaceCanonicalBatch } from '../storage/indexeddb.js';
-import { mergeRetainedRecords } from '../storage/retention.js';
-import { inspectStorage, requestPersistentStorage } from '../storage/quota.js';
+import { capCanonicalBatchSize, estimateCanonicalBatchBytes, mergeRetainedRecords } from '../storage/retention.js';
+import {
+  inspectDatabaseUsage,
+  inspectStorage,
+  MAX_DASHBOARD_DATABASE_BYTES,
+  requestPersistentStorage
+} from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
 /**
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} incoming
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} options
  */
 async function ingestCanonicalBatch(indexedDB, incoming, options) {
   if (options.storage) {
@@ -20,12 +25,39 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     ]);
   }
   const retained = await readCanonicalBatch(indexedDB);
-  const batch = mergeRetainedRecords(retained, incoming, {
+  const maxDatabaseBytes = Number.isFinite(options.maxDatabaseBytes)
+    ? Math.max(0, Number(options.maxDatabaseBytes))
+    : MAX_DASHBOARD_DATABASE_BYTES;
+  // Leave conservative room for structured-clone and index overhead on
+  // browsers that do not report per-IndexedDB usage.
+  const targetDatabaseBytes = Math.floor(maxDatabaseBytes * 0.75);
+  let batch = capCanonicalBatchSize(mergeRetainedRecords(retained, incoming, {
     now: options.now,
     retentionWindowMs: options.retentionWindowMs,
     retentionWindowMsByStore: options.retentionWindowMsByStore
-  });
-  await replaceCanonicalBatch(indexedDB, batch);
+  }), targetDatabaseBytes);
+  for (;;) {
+    try {
+      await replaceCanonicalBatch(indexedDB, batch);
+      break;
+    } catch (error) {
+      if (!(error instanceof DOMException) || error.name !== 'QuotaExceededError') throw error;
+      const reduced = capCanonicalBatchSize(batch, Math.floor(estimateCanonicalBatchBytes(batch) * 0.75));
+      if (reduced.runs.length === batch.runs.length) throw error;
+      batch = reduced;
+    }
+  }
+  if (options.storage) {
+    for (;;) {
+      const databaseUsage = await inspectDatabaseUsage(options.storage).catch(() => null);
+      if (databaseUsage === null || databaseUsage <= maxDatabaseBytes || batch.runs.length === 0) break;
+      const target = Math.floor(estimateCanonicalBatchBytes(batch) * (maxDatabaseBytes / databaseUsage) * 0.9);
+      const reduced = capCanonicalBatchSize(batch, target);
+      if (reduced.runs.length === batch.runs.length) break;
+      batch = reduced;
+      await replaceCanonicalBatch(indexedDB, batch);
+    }
+  }
   return {
     updated: true,
     committedBatches: 0,
@@ -38,7 +70,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} [options]
  */
 export async function ingestDashboardSources(indexedDB, sources, options = {}) {
   let phase = 'adapting';
@@ -59,7 +91,7 @@ export async function ingestDashboardSources(indexedDB, sources, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} [options]
  */
 export async function ingestSqlExport(indexedDB, input, options = {}) {
   let phase = 'adapting';
@@ -80,7 +112,7 @@ export async function ingestSqlExport(indexedDB, input, options = {}) {
  *
  * @param {IDBFactory} indexedDB
  * @param {unknown} input
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} [options]
  */
 export async function ingestGhAwLogs(indexedDB, input, options = {}) {
   let phase = 'adapting';
@@ -100,7 +132,7 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
  */
 export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();

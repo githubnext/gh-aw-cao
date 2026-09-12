@@ -10,6 +10,7 @@
       import { DASHBOARD_DATA_EVENT, emitDashboardDebugEvent } from "./debug-events.js";
       import { collectFullDiagnostics } from "./diagnostics.js";
       import { renderLoadingPlaceholderBlocks } from "./components/ui-primitives.js";
+      import { startAutomaticDashboardDataUpdates } from "./dashboard-data-updates.js";
       import { renderCliActions, setDeclaredCliActions } from "./components/cli-actions.js";
 
       /** @type {Window & { collectFullDiagnostics?: typeof collectFullDiagnostics }} */ (window).collectFullDiagnostics =
@@ -926,6 +927,13 @@
       } else {
         renderSources({}, "loading");
         const sourceUrl = new URL("./gh-aw-logs.jsonl", window.location.href).href;
+        const stopAutomaticDataUpdates = startAutomaticDashboardDataUpdates([
+          sourceUrl,
+          new URL("./inventory-sources.json", sourceUrl).href,
+        ]);
+        window.addEventListener("pagehide", (event) => {
+          if (!event.persisted) stopAutomaticDataUpdates();
+        });
         /** @type {Record<string, import('./presenter.js').LogicalSourceInput> | null} */
         let cachedSources = null;
 

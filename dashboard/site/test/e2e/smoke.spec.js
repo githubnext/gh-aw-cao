@@ -36,6 +36,47 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('Settings keeps hourly dashboard downloads off until the user opts in', async ({ page }) => {
+  await page.setContent(`
+    <div id="root"></div>
+    <script type="module">
+      import { renderConfigurationView } from 'http://dashboard.test/src/components/configuration-view.js';
+      const metadata = {
+        'source-id': 'configuration-fixture',
+        'source-kind': 'fixture',
+        'as-of': '2026-09-12T00:00:00Z',
+        'retrieved-at': '2026-09-12T00:00:00Z',
+        completeness: 'complete',
+        freshness: 'fresh',
+        availability: 'available'
+      };
+      document.querySelector('#root').append(renderConfigurationView({
+        pageId: 'configuration',
+        title: 'Settings',
+        description: 'Dashboard settings.',
+        sourceNames: ['configuration-policy'],
+        sources: {
+          'configuration-policy': {
+            source: 'configuration-policy',
+            rows: [{ document: { version: 1 }, raw: '', diagnostics: [] }],
+            metadata
+          }
+        },
+        contextDetails: [],
+        headingTag: 'h3'
+      }));
+    </script>
+  `);
+
+  const checkbox = page.getByRole('checkbox', { name: 'Download updated data every hour' });
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.check();
+  await expect(checkbox).toBeChecked();
+  await expect.poll(() => page.evaluate(
+    () => localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')
+  )).toBe('true');
+});
+
 /**
  * @param {number} actual
  * @param {number} expected

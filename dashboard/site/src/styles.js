@@ -1170,6 +1170,11 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .attention-item strong { font-size: .875rem; }
 .attention-item p { margin: 2px 0 0; color: var(--muted); font-size: .8125rem; }
 .configuration-view { display: grid; gap: 20px; }
+.configuration-browser-settings { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
+.configuration-browser-settings-heading { padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
+.configuration-browser-settings-heading h3 { margin: 0; font-size: .875rem; }
+.configuration-browser-settings-heading p, .configuration-browser-setting-status { margin: 2px 0 0; color: var(--muted); font-size: .75rem; }
+.configuration-browser-setting-status { padding: 0 12px 10px; }
 .configuration-editor { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .configuration-editor-toolbar { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 12px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .configuration-editor-toolbar > div { display: flex; align-items: center; gap: 10px; }

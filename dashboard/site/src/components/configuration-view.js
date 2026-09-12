@@ -2,6 +2,12 @@ import { h } from '../dom.js';
 import { collectFullDiagnostics } from '../diagnostics.js';
 import { copyTextToClipboard } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
+import {
+  automaticDashboardBackgroundUpdatesActive,
+  automaticDashboardDataUpdatesEnabled,
+  onAutomaticDashboardBackgroundUpdateStatus,
+  setAutomaticDashboardDataUpdatesEnabled
+} from '../dashboard-data-updates.js';
 
 /** @type {Record<string, string>} */
 const EXACT_EXPLANATIONS = {
@@ -269,6 +275,69 @@ function renderSettingsEditor(policyDocument) {
   );
 }
 
+function renderAutomaticDataUpdatesSetting() {
+  const statusText = () => {
+    if (!automaticDashboardDataUpdatesEnabled()) {
+      return 'Off. Dashboard data updates only while the dashboard is open.';
+    }
+    if (!automaticDashboardBackgroundUpdatesActive()) {
+      return 'Turning on. Waiting for this browser to grant and verify background updates.';
+    }
+    return 'On. Hourly downloads continue after the dashboard is closed and pause on metered connections or unsuitable power conditions.';
+  };
+  /** @type {HTMLInputElement} */
+  let checkbox;
+  /** @type {HTMLElement} */
+  let status;
+  const updateStatus = () => {
+    checkbox.checked = automaticDashboardDataUpdatesEnabled();
+    status.textContent = statusText();
+  };
+  checkbox = /** @type {HTMLInputElement} */ (h('input', {
+    id: 'configuration-automatic-dashboard-data-updates',
+    className: 'configuration-setting-toggle',
+    type: 'checkbox',
+    checked: automaticDashboardDataUpdatesEnabled(),
+    onChange: /** @param {Event} event */ (event) => {
+      const enabled = /** @type {HTMLInputElement} */ (event.currentTarget).checked;
+      setAutomaticDashboardDataUpdatesEnabled(enabled);
+      updateStatus();
+    }
+  }));
+  status = h('p', { className: 'configuration-browser-setting-status', 'aria-live': 'polite' },
+    statusText()
+  );
+  const section = h('section', { className: 'configuration-browser-settings', 'aria-labelledby': 'configuration-browser-settings-heading' },
+    h('div', { className: 'configuration-browser-settings-heading' },
+      h('div', null,
+        h('h3', { id: 'configuration-browser-settings-heading' }, 'Dashboard data'),
+        h('p', null, 'Browser preferences apply only to this device.')
+      )
+    ),
+    h('div', { className: 'configuration-setting-row' },
+      h('div', { className: 'configuration-setting-copy' },
+        h('label', { htmlFor: checkbox.id }, 'Download updated data every hour'),
+        h('p', null, 'Uses Periodic Background Sync so downloads continue after the dashboard closes. Unsupported or denied browsers leave this setting off. It is off by default.')
+      ),
+      checkbox
+    ),
+    status
+  );
+  const stopStatusUpdates = onAutomaticDashboardBackgroundUpdateStatus(updateStatus);
+  let wasConnected = section.isConnected;
+  const observer = new MutationObserver(() => {
+    if (section.isConnected) {
+      wasConnected = true;
+      return;
+    }
+    if (!wasConnected) return;
+    observer.disconnect();
+    stopStatusUpdates();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  return section;
+}
+
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
@@ -283,6 +352,7 @@ export function renderConfigurationView(context) {
       description: context.description,
       headingTag: 'h2'
     }),
+    renderAutomaticDataUpdatesSetting(),
     isPlainObject(policyDocument)
       ? renderSettingsEditor(policyDocument)
       : h('p', { className: 'configuration-unavailable' }, 'The policy cannot be edited until it contains valid JSON.')

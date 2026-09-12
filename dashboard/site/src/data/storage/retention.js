@@ -28,6 +28,76 @@ const STORES = /** @type {const} */ ([
   'sessions',
   'events'
 ]);
+const RECORD_OVERHEAD_BYTES = 512;
+
+/** @param {Record<string, unknown>} record */
+function recordSize(record) {
+  return new TextEncoder().encode(JSON.stringify(record)).byteLength + RECORD_OVERHEAD_BYTES;
+}
+
+/** @param {import('../model/schema.js').CanonicalBatch} batch */
+export function estimateCanonicalBatchBytes(batch) {
+  return STORES.reduce((total, storeName) =>
+    total + batch[storeName].reduce((storeTotal, record) => storeTotal + recordSize(record), 0), 0);
+}
+
+/**
+ * Drops whole run subtrees from oldest to newest until the conservative
+ * serialized estimate fits. Structural parents remain so future incremental
+ * collections can reconnect to them.
+ *
+ * @param {import('../model/schema.js').CanonicalBatch} batch
+ * @param {number} maxBytes
+ * @returns {import('../model/schema.js').CanonicalBatch}
+ */
+export function capCanonicalBatchSize(batch, maxBytes) {
+  if (!Number.isFinite(maxBytes) || maxBytes < 0) throw new TypeError('Canonical database byte limit must be non-negative');
+  let estimatedBytes = estimateCanonicalBatchBytes(batch);
+  if (estimatedBytes <= maxBytes) return batch;
+
+  /** @param {Record<string, unknown>[]} records @param {string} field */
+  const groupBy = (records, field) => {
+    /** @type {Map<string, Record<string, unknown>[]>} */
+    const grouped = new Map();
+    for (const record of records) {
+      const key = String(record[field]);
+      grouped.set(key, [...(grouped.get(key) ?? []), record]);
+    }
+    return grouped;
+  };
+  const jobsByRun = groupBy(batch.jobs, 'runId');
+  const sessionsByRun = groupBy(batch.sessions, 'runId');
+  const eventsBySession = groupBy(batch.events, 'sessionId');
+  const evictedRuns = new Set();
+  const oldestRuns = [...batch.runs].sort((left, right) =>
+    (recordTimestamp('runs', left) ?? Number.NEGATIVE_INFINITY)
+      - (recordTimestamp('runs', right) ?? Number.NEGATIVE_INFINITY)
+    || String(left.id).localeCompare(String(right.id)));
+
+  for (const run of oldestRuns) {
+    if (estimatedBytes <= maxBytes) break;
+    const runId = String(run.id);
+    evictedRuns.add(runId);
+    estimatedBytes -= recordSize(run);
+    for (const job of jobsByRun.get(runId) ?? []) estimatedBytes -= recordSize(job);
+    for (const session of sessionsByRun.get(runId) ?? []) {
+      estimatedBytes -= recordSize(session);
+      for (const event of eventsBySession.get(String(session.id)) ?? []) estimatedBytes -= recordSize(event);
+    }
+  }
+
+  const retainedSessions = batch.sessions.filter((record) => !evictedRuns.has(String(record.runId)));
+  const retainedSessionIds = new Set(retainedSessions.map((record) => String(record.id)));
+  return {
+    packages: batch.packages,
+    repositories: batch.repositories,
+    workflows: batch.workflows,
+    runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
+    jobs: batch.jobs.filter((record) => !evictedRuns.has(String(record.runId))),
+    sessions: retainedSessions,
+    events: batch.events.filter((record) => retainedSessionIds.has(String(record.sessionId)))
+  };
+}
 
 /**
  * Reports the observation time that bounds a record's retention. Records in a
