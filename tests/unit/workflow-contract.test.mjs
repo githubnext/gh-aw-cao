@@ -2956,6 +2956,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
 
     const prReviewerSource = workflow("pr-reviewer.md");
     assert.match(prReviewerSource, /types: \[ready_for_review\]/);
+    assert.match(prReviewerSource, /^max-daily-ai-credits: -1$/m);
     assert.match(prReviewerSource, /agentic-workflows: true/);
     assert.match(prReviewerSource, /cli-proxy: true/);
     assert.match(prReviewerSource, /agentic-workflows compile/);
