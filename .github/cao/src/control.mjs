@@ -948,8 +948,8 @@ function authority(args) {
 function compilerVersion(args) {
   if (args.length !== 1) throw new ControlError("usage: control.mjs compiler-version <file|->");
   const document = parsePolicy(readSource(args[0]));
-  const value = document["gh-aw-compiler-version"];
-  if (!value) throw new PolicyError("gh-aw-compiler-version is required for a control plane");
+  const value = document["gh-aw-version"];
+  if (!value) throw new PolicyError("gh-aw-version is required for a control plane");
   process.stdout.write(`${value}\n`);
 }
 

@@ -13,7 +13,7 @@
   "allOf": [
     {
       "if": { "required": ["control-plane"] },
-      "then": { "required": ["gh-aw-compiler-version"] }
+      "then": { "required": ["gh-aw-version"] }
     }
   ],
   "properties": {
@@ -21,7 +21,7 @@
       "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json"
     },
     "version": { "const": 1 },
-    "gh-aw-compiler-version": {
+    "gh-aw-version": {
       "type": "string",
       "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
     },

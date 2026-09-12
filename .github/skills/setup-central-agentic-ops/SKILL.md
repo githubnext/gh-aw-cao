@@ -49,7 +49,7 @@ Resolve these values once before installation and use the same exact values in e
 | `target-repository` | canonical repository name from the selected target's `nameWithOwner` | every `<target-repository>` |
 | `default-branch` | control repository's `defaultBranchRef.name` | `<default-branch>` |
 | `cao-ref` | one resolved 40-64 character CAO commit SHA | `${cao_ref}` |
-| `gh-aw-compiler-version` | `min-version` from root CAO `aw.yml` | `<gh-aw-compiler-version>` |
+| `gh-aw-version` | `min-version` from root CAO `aw.yml` | `<gh-aw-version>` |
 | `initial-package` | package slug for the catalog operation selected for the first proof | `<package-slug>` |
 | `initial-orchestrator` | source filename stem for the selected package orchestrator | `<orchestrator-workflow>` |
 
@@ -122,7 +122,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
    ```json
    {
      "version": 1,
-     "gh-aw-compiler-version": "<gh-aw-compiler-version>",
+     "gh-aw-version": "<gh-aw-version>",
      "control-plane": {
        "scope": {
          "allowed-owners": ["<target-owner>"],
@@ -141,7 +141,7 @@ Do not leave angle-bracket placeholders in authored files or pass placeholders t
    }
    ```
 
-    Replace `<gh-aw-compiler-version>` with the root manifest's `min-version`, both occurrences of `<target-owner>` with `target-owner`, the one occurrence of `<target-repository>` with `target-repository`, `<package-slug>` with `initial-package`, and repeat the worker entry for every worker in the recorded catalog mapping. Each worker entry must preserve its exact worker and workflow slugs; the resolver loads this mapping directly from policy. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through a separate reviewed policy change after the first proof. Do not add broader owners, repositories, packages, optional worker controls, modes, rollout settings, or budgets during initial setup.
+    Replace `<gh-aw-version>` with the root manifest's `min-version`, both occurrences of `<target-owner>` with `target-owner`, the one occurrence of `<target-repository>` with `target-repository`, `<package-slug>` with `initial-package`, and repeat the worker entry for every worker in the recorded catalog mapping. Each worker entry must preserve its exact worker and workflow slugs; the resolver loads this mapping directly from policy. Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository. Keep the omitted defaults: `review`, one repository, and 100 percent rollout. Do not enable the user's other selected catalog operations yet; onboard each through a separate reviewed policy change after the first proof. Do not add broader owners, repositories, packages, optional worker controls, modes, rollout settings, or budgets during initial setup.
 
     Parse the file and reject unresolved placeholders before continuing:
 

@@ -1,7 +1,7 @@
 export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json";
-const ROOT_KEYS = ["$schema", "version", "gh-aw-compiler-version", "control-plane", "target-authority"];
+const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
 const CONTROL_KEYS = ["scope", "inventory", "web", "defaults", "packages", "publishing"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
@@ -138,11 +138,11 @@ function validateDocument(document) {
   if (!("control-plane" in document) && !("target-authority" in document)) {
     throw new PolicyError("policy requires control-plane or target-authority");
   }
-  if ("control-plane" in document && !("gh-aw-compiler-version" in document)) {
-    throw new PolicyError("gh-aw-compiler-version is required for a control plane");
+  if ("control-plane" in document && !("gh-aw-version" in document)) {
+    throw new PolicyError("gh-aw-version is required for a control plane");
   }
-  if ("gh-aw-compiler-version" in document) {
-    assertString(document["gh-aw-compiler-version"], "gh-aw-compiler-version", GH_AW_VERSION_PATTERN);
+  if ("gh-aw-version" in document) {
+    assertString(document["gh-aw-version"], "gh-aw-version", GH_AW_VERSION_PATTERN);
   }
 
   if ("control-plane" in document) validateControlPlane(document["control-plane"]);

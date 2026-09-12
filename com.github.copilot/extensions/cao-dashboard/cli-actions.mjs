@@ -19,7 +19,7 @@ export async function resolveGhAwCompilerVersion(workingDirectory = process.cwd(
   } catch {
     throw new Error("Could not read the gh-aw compiler version from .github/workflows/cao.json.");
   }
-  const version = configuration["gh-aw-compiler-version"];
+  const version = configuration["gh-aw-version"];
   if (typeof version !== "string" || !ghAwVersionPattern.test(version)) {
     throw new Error("The gh-aw compiler version in .github/workflows/cao.json is invalid.");
   }

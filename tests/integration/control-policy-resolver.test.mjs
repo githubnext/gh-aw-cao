@@ -14,7 +14,7 @@ function policy() {
   return {
     $schema: schemaUri,
     version: 1,
-    "gh-aw-compiler-version": "v0.89.8",
+    "gh-aw-version": "v0.89.8",
     "control-plane": {
       scope: {
         "allowed-owners": ["acme"],

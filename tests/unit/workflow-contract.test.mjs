@@ -12,7 +12,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
 const controlPolicy = JSON.parse(readFileSync(join(workflowsDirectory, "cao.json"), "utf8"));
-const ghAwVersion = controlPolicy["gh-aw-compiler-version"];
+const ghAwVersion = controlPolicy["gh-aw-version"];
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -3048,13 +3048,13 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
   assert.match(setupSkill, /one immutable source identity keeps repeated package dependencies consistent/);
   assert.match(setupSkill, /package cannot install this file because it is consumer-owned rollout policy/);
-  assert.match(setupSkill, /Replace `<gh-aw-compiler-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
+  assert.match(setupSkill, /Replace `<gh-aw-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
   assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
   const policyTemplate = setupSkill.match(/```json\n([\s\S]*?)\n\s*```/)?.[1];
   assert.ok(policyTemplate, "setup skill must contain a JSON policy template");
   const initialPolicy = JSON.parse(policyTemplate
-    .replaceAll("<gh-aw-compiler-version>", ghAwVersion)
+    .replaceAll("<gh-aw-version>", ghAwVersion)
     .replaceAll("<target-owner>", "acme")
     .replaceAll("<target-repository>", "service")
     .replaceAll("<package-slug>", "dependabot")
@@ -3062,7 +3062,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
     .replaceAll("<worker-workflow-slug>", "dependabot-release-train-updater"));
   assert.deepEqual(initialPolicy, {
     version: 1,
-    "gh-aw-compiler-version": ghAwVersion,
+    "gh-aw-version": ghAwVersion,
     "control-plane": {
       scope: {
         "allowed-owners": ["acme"],
