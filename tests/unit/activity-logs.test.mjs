@@ -96,6 +96,38 @@ process.stderr.write("Runs: 3 discovered; reports: 1 downloaded, 1 skipped becau
   }
 });
 
+test("activity logs warns and clamps pending when downloaded and cached exceed discovered", async () => {
+  const item = await fixture();
+  await mkdir(path.dirname(item.logsPath), { recursive: true });
+  await writeFile(item.logsPath, '{"schema_version":2,"kind":"run","run":{"database_id":1}}\n');
+  await writeFile(item.exitCodePath, "0\n");
+  await writeFile(
+    item.stderrPath,
+    "Runs: 1 discovered; reports: 2 downloaded, 2 skipped because cached analyses were reused\n",
+  );
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [path.resolve("activity/logs.mjs")], {
+      env: {
+        ...process.env,
+        GITHUB_REPOSITORY: "githubnext/gh-aw-cao",
+        REPORT_ROOT: item.root,
+        REPORT_GH_AW_LOGS: item.logsPath,
+        REPORT_GH_AW_LOGS_STATE: item.statePath,
+        REPORT_GH_AW_LOGS_EXIT_CODE: item.exitCodePath,
+        REPORT_GH_AW_LOGS_STDERR: item.stderrPath,
+        REPORT_AIC_CACHE: item.outputPath,
+        GITHUB_OUTPUT: item.githubOutput,
+      },
+    });
+    const state = JSON.parse(await readFile(item.statePath, "utf8"));
+    assert.deepEqual(state.collectionStats, { discovered: 1, downloaded: 2, cached: 2, pending: 0 });
+    assert.match(stdout, /exceeding 1 discovered runs; pending download count clamped to 0/);
+    assert.match(stdout, /left 0 discovered runs pending download/);
+  } finally {
+    await rm(item.root, { recursive: true, force: true });
+  }
+});
+
 test("activity logs preserves cached runs and records collection failure", async () => {
   const item = await fixture();
   const ghPath = path.join(item.bin, "gh");

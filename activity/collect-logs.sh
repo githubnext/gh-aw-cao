@@ -21,6 +21,9 @@ for workflow_path in "$root"/.github/workflows/*.lock.yml; do
 done
 
 set +e
+# $! reliably holds the PID of the process-substitution subshell started by
+# `exec {fd}> >(...)` because bash launches it as a background job before this
+# statement returns, and no other background job is started in between.
 exec {gh_stderr_fd}> >(tee "$stderr_path" >&2)
 tee_pid=$!
 gh aw logs --audit \
