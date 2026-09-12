@@ -360,11 +360,11 @@ describe('dashboard document validation', () => {
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
 
-  it('defines MCP diagnostics in a dedicated Explore page', () => {
+  it('defines MCP diagnostics in a dedicated Data page', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     const mcps = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'mcps');
     expect(document.dashboard.navigation.find(
-      (/** @type {{ label: string }} */ section) => section.label === 'Explore'
+      (/** @type {{ label: string }} */ section) => section.label === 'Data'
     ).pages).toContain('mcps');
     expect(mcps).toMatchObject({
       kind: 'custom',
@@ -767,7 +767,8 @@ dashboard:
       'runs',
       'events',
       'transactions',
-      'firewall'
+      'firewall',
+      'mcps'
     ]);
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
   });
