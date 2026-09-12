@@ -3,6 +3,7 @@ emoji: ":clipboard:"
 description: "Weekly audit of UK AI Advisory workflow coverage against current UK government AI open-code and vulnerability-risk guidance."
 name: "UK AI Advisory / Maintenance"
 max-ai-credits: 200
+max-daily-ai-credits: -1
 timeout-minutes: 20
 
 on:

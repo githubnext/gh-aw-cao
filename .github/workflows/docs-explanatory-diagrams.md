@@ -17,6 +17,7 @@ permissions:
   copilot-requests: write
 strict: true
 max-ai-credits: 500
+max-daily-ai-credits: -1
 timeout-minutes: 30
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
