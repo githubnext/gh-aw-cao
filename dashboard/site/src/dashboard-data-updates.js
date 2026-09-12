@@ -309,6 +309,10 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   let registration;
   /** @type {ServiceWorker | undefined} */
   let healthyWorker;
+  const markBackgroundUpdatesInactive = () => {
+    storage.removeItem(BACKGROUND_ACTIVE_STORAGE_KEY);
+    window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
+  };
 
   /** @param {number} delay @param {boolean} [checkForWorkerUpdate] */
   const schedule = (delay, checkForWorkerUpdate = false) => {
@@ -332,6 +336,7 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       return;
     }
     if (!serviceWorkers) {
+      markBackgroundUpdatesInactive();
       return;
     }
     if (!online()) return schedule(RETRY_INTERVAL_MS);
@@ -342,9 +347,11 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         healthyWorker = healthy.worker;
       } catch (error) {
         console.error(`Unable to configure automatic dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
+        markBackgroundUpdatesInactive();
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
+        if (automaticDashboardDataUpdatesEnabled(storage)) schedule(RETRY_INTERVAL_MS);
         return;
       }
     }
@@ -374,10 +381,12 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         window.dispatchEvent(new Event(BACKGROUND_STATUS_EVENT));
       } catch (error) {
         console.error(`Unable to configure background dashboard data updates: ${error instanceof Error ? error.message : String(error)}`);
+        markBackgroundUpdatesInactive();
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
         backgroundConfigured = false;
+        if (automaticDashboardDataUpdatesEnabled(storage)) schedule(RETRY_INTERVAL_MS);
         return;
       }
     }

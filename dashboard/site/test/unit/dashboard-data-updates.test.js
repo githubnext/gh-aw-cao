@@ -85,6 +85,7 @@ describe('automatic dashboard data updates', () => {
 
   it('preserves the setting when service workers are unsupported', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
@@ -99,6 +100,7 @@ describe('automatic dashboard data updates', () => {
 
   it('preserves the setting when service worker registration fails', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const serviceWorkers = {
       register: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'SecurityError')),
       getRegistrations: vi.fn().mockResolvedValue([])
@@ -112,9 +114,9 @@ describe('automatic dashboard data updates', () => {
       }
     );
 
-    await vi.waitFor(() => expect(serviceWorkers.register).toHaveBeenCalled());
+    await vi.waitFor(() => expect(automaticDashboardBackgroundUpdatesActive()).toBe(false));
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
-    expect(automaticDashboardBackgroundUpdatesActive()).toBe(false);
+    expect(serviceWorkers.register).toHaveBeenCalled();
     stop();
   });
 
@@ -274,6 +276,7 @@ describe('automatic dashboard data updates', () => {
 
   it('preserves the setting when periodic background sync is denied', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const worker = new FakeWorker();
     const currentRegistration = registration(worker);
     const serviceWorkers = {
@@ -301,6 +304,7 @@ describe('automatic dashboard data updates', () => {
 
   it('preserves the setting when periodic background sync is unsupported', async () => {
     localStorage.setItem('central-agentic-ops.dashboard.automatic-data-updates', 'true');
+    localStorage.setItem('central-agentic-ops.dashboard.background-data-updates-active', 'true');
     const worker = new FakeWorker();
     const currentRegistration = { ...registration(worker), periodicSync: undefined };
     const serviceWorkers = {
