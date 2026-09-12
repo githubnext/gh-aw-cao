@@ -188,9 +188,10 @@
        * @param {() => void} [retryRefresh]
        */
       const renderSources = (sources, state = "ready", prepared = false, loadPageSources, loadHorizonSources, retryRefresh) => {
-        setDeclaredCliActions(previewMode === "canvas"
-          ? dashboardDocument.dashboard["cli-actions"] ?? []
-          : []);
+        const canExecuteCliActions = previewMode === "canvas";
+        setDeclaredCliActions(dashboardDocument.dashboard["cli-actions"] ?? [], {
+          canExecute: canExecuteCliActions
+        });
         renderedSources = sources;
         renderedSourcesPrepared = prepared;
         renderedPageSourceLoader = loadPageSources;
@@ -225,31 +226,30 @@
           }
         }
         attachCopilotPanel(dashboard);
-        if (previewMode === "canvas") {
-          const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
-          /** @type {Record<string, string>} */
-          const actionTemplateValues = {};
-          if (typeof dashboardDocument.dashboard.repository === "string") {
-            actionTemplateValues.repository = dashboardDocument.dashboard.repository;
+        const declaredActions = dashboardDocument.dashboard["cli-actions"] ?? [];
+        /** @type {Record<string, string>} */
+        const actionTemplateValues = {};
+        if (typeof dashboardDocument.dashboard.repository === "string") {
+          actionTemplateValues.repository = dashboardDocument.dashboard.repository;
+        }
+        const toolbarActions = renderCliActions(
+          declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar")),
+          { templateValues: actionTemplateValues, canExecute: canExecuteCliActions }
+        );
+        if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
+        const settingsActions = renderCliActions(
+          declaredActions.filter((action) => action.placement === "settings"),
+          {
+            presentation: "settings",
+            templateValues: actionTemplateValues,
+            canExecute: canExecuteCliActions
           }
-          const toolbarActions = renderCliActions(
-            declaredActions.filter((action) => !["settings", "row"].includes(action.placement ?? "toolbar")),
-            { templateValues: actionTemplateValues }
-          );
-          if (toolbarActions) dashboard.querySelector(".report-actions")?.prepend(toolbarActions);
-          const settingsActions = renderCliActions(
-            declaredActions.filter((action) => action.placement === "settings"),
-            {
-              presentation: "settings",
-              templateValues: actionTemplateValues
-            }
-          );
-          if (settingsActions) {
-            const dialogs = [...settingsActions.querySelectorAll("dialog")];
-            dashboard.querySelector(".account-menu-popover .reset-dashboard-control")
-              ?.before(settingsActions);
-            for (const dialog of dialogs) dashboard.append(dialog);
-          }
+        );
+        if (settingsActions) {
+          const dialogs = [...settingsActions.querySelectorAll("dialog")];
+          dashboard.querySelector(".account-menu-popover .reset-dashboard-control")
+            ?.before(settingsActions);
+          for (const dialog of dialogs) dashboard.append(dialog);
         }
         const previousDashboard = root.firstElementChild;
         if (previousDashboard instanceof HTMLElement) disposeDashboard(previousDashboard);
