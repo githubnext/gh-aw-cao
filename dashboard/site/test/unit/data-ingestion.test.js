@@ -261,6 +261,33 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
+  it('preserves discovery repository records when ingesting complete gh-aw logs', async () => {
+    const discoverySources = structuredClone(sources);
+    Object.assign(discoverySources.repositories.rows[0], { visibility: 'private' });
+    await ingestDashboardSources(indexedDB, discoverySources);
+    const [repositoryBefore] = await createCanonicalQueries(indexedDB).repositories.list();
+    const input = {
+      generation: 'gh-aw-generation-c',
+      observedAt: metadata['as-of'],
+      repository: { githubId: '101', owner: 'githubnext', name: 'gh-aw-cao' },
+      workflow: { githubId: '202', name: 'Dashboard', path: '.github/workflows/dashboard.md' },
+      run: { githubRunId: '303', attempt: 1, status: 'completed', conclusion: 'success' },
+      job: { githubJobId: '404', name: 'agent', status: 'completed', conclusion: 'success' },
+      files: [{
+        path: 'sandbox/agent/logs/copilot-session-state/session-505/events.jsonl',
+        content: '{"type":"user.message","timestamp":"2026-09-09T04:00:01Z","data":{}}\n'
+      }]
+    };
+
+    await ingestGhAwLogs(indexedDB, input);
+
+    const queries = createCanonicalQueries(indexedDB);
+    await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
+    await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+    ]));
+  });
+
   it('ingests schema-v2 cached JSONL, audits it, and expires stale records', async () => {
     const content = `${JSON.stringify({ schema_version: 2, kind: 'workflow_runs', request: {
       host: 'github.com', repository: 'githubnext/gh-aw-cao', args: ['run', 'list']
@@ -408,6 +435,28 @@ describe('canonical source ingestion and queries', () => {
     expect((await createCanonicalQueries(indexedDB).runs.list()).map((run) => run.id).sort()).toEqual([
       'github:run:1:attempt:1', 'github:run:2:attempt:1'
     ]);
+  });
+
+  it('preserves discovery repository records when ingesting cached JSONL runs', async () => {
+    const discoverySources = structuredClone(sources);
+    Object.assign(discoverySources.repositories.rows[0], { visibility: 'private' });
+    await ingestDashboardSources(indexedDB, discoverySources);
+    const [repositoryBefore] = await createCanonicalQueries(indexedDB).repositories.list();
+    const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', classification: 'success', created_at: metadata['as-of']
+    } })}\n`;
+
+    await ingestCachedGhAwJsonl(indexedDB, content, {
+      now: Date.parse(metadata['as-of'])
+    });
+
+    const queries = createCanonicalQueries(indexedDB);
+    await expect(queries.repositories.list()).resolves.toEqual([repositoryBefore]);
+    await expect(queries.runs.list()).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'github:run:303:attempt:1' })
+    ]));
   });
 
   it('preserves package mappings when cached workflow runs are imported', async () => {
