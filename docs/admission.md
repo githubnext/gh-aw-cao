@@ -15,7 +15,7 @@ Admission queries the GitHub rate-limit API and uses the returned core limit, re
 
 ## What Admission Gates
 
-The shared control component prefers the package-installed `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs`, and falls back to `.github/cao/src` in a source-managed control repository. It reads those modules from the exact `github.workflow_sha`. Admission then reads `.github/workflows/cao.json` at that revision, and authorized runs execute the `precompute` command from the same modules. They do not use policy or CAO runtime from another branch or from the agent checkout.
+The shared control component reads the package-installed `.github/aw/cao/src/control.mjs` and `.github/aw/cao/src/policy.mjs`, or the source-managed copies beside `control.md` under `.github/workflows/shared/`, from the exact `github.workflow_sha`. Admission then reads `.github/workflows/cao.json` at that revision, and authorized runs execute the `precompute` command from the same modules. They do not use policy or CAO runtime from another branch or from the agent checkout.
 
 | Check | Admitted when |
 | --- | --- |
@@ -63,7 +63,7 @@ Setup creates one atomic control-plane revision:
 3. Declare the installed package and its worker-to-workflow mapping in `.github/workflows/cao.json`.
 4. Commit the workflows, generated locks, CAO runtime, and policy together, then push before running the operation.
 
-The root CAO package installs the runtime files under `.github/aw/cao` from the same pinned revision as the workflows. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
+The root CAO package installs package-owned runtime copies under `.github/aw/cao` from the same pinned revision as the workflows; source-managed repositories keep the originals beside `control.md` under `.github/workflows/shared`. Follow [Quickstart: add Central Agentic Ops](getting-started.md#step-3---add-central-agentic-ops) to install them and [Quickstart: set the first-run boundary](getting-started.md#step-4---set-the-first-run-boundary) to create the consumer-owned policy.
 
 Root package installation installs the CAO runtime, but it does not declare a package in consumer-owned policy or grant admission. The CAO setup procedure and checked-in control policy own those decisions.
 
@@ -83,7 +83,7 @@ Open the run summary and expand **Central Agentic Ops admission**. An authorized
 
 | Reason | Check marked ❌ | Configuration or setup to check |
 | --- | --- | --- |
-| Cannot read or execute CAO runtime | Runtime revision | Install both `.github/aw/cao/src` runtime files from the same immutable package revision and commit them with the workflows. |
+| Cannot read or execute CAO runtime | Runtime revision | Install both `.github/aw/cao/src` runtime files from the same immutable package revision, or keep both source-managed modules under `.github/workflows/shared`, and commit them with the workflows. |
 | `control policy validation failed` | Policy document | Validate policy keys, types, ranges, unique names, and expressions in `.github/workflows/cao.json`. |
 | `control-plane-absent` | Control plane | Add `control-plane` to `.github/workflows/cao.json`. |
 | `role must be orchestrator or worker`, `worker identity is required`, `worker identity is forbidden for orchestrators` | Workflow identity | Fix the dispatched role and worker identity for the workflow. |

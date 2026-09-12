@@ -70,9 +70,7 @@ jobs:
         with:
           ref: ${{ github.workflow_sha }}
           path: .cao
-          sparse-checkout: |
-            .github/aw/cao/src
-            .github/cao/src
+          sparse-checkout: .github
           sparse-checkout-cone-mode: true
           fetch-depth: 1
           persist-credentials: false
@@ -133,7 +131,7 @@ jobs:
               const checkout = `${process.env.GITHUB_WORKSPACE || '.'}/.cao`;
               const runtime = fs.existsSync(`${checkout}/.github/aw/cao/src/control.mjs`)
                 ? `${checkout}/.github/aw/cao/src/control.mjs`
-                : `${checkout}/.github/cao/src/control.mjs`;
+                : `${checkout}/.github/workflows/shared/control.mjs`;
               control = await import(runtime);
             } catch (error) {
               await failClosed(error);
@@ -240,7 +238,7 @@ jobs:
             const checkout = `${process.env.GITHUB_WORKSPACE || '.'}/.cao`;
             const runtime = fs.existsSync(`${checkout}/.github/aw/cao/src/control.mjs`)
               ? `${checkout}/.github/aw/cao/src/control.mjs`
-              : `${checkout}/.github/cao/src/control.mjs`;
+              : `${checkout}/.github/workflows/shared/control.mjs`;
             const control = await import(runtime);
             process.exitCode = 0;
             await control.main({ core, github, context, exec, io, getOctokit }, ['precompute']);

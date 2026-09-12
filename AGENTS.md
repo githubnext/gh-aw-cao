@@ -42,7 +42,7 @@ Run `npm run check` for complete repository validation. It executes, in order: `
 
 | Command | Purpose |
 |---------|---------|
-| `npm run typecheck:cao` | TypeScript type-check for `.github/cao/src/` (ES2022, NodeNext) |
+| `npm run typecheck:cao` | TypeScript type-check for the control modules in `.github/workflows/shared/` (ES2022, NodeNext) |
 | `npm test` | Unit tests (`tests/unit/`) then integration tests (`tests/integration/control-*.test.mjs`) via the Node.js built-in test runner |
 | `npm run test:unit` | Unit tests only |
 | `npm run test:integration` | Integration tests only (serial) |
@@ -81,7 +81,7 @@ Run these commands from the `dashboard/site/` directory:
 
 ### Choosing which tests to run
 
-- Editing control-plane sources under `.github/cao/src/` → `npm run typecheck:cao && npm test`
+- Editing control-plane sources under `.github/workflows/shared/` → `npm run typecheck:cao && npm test`
 - Editing dashboard site under `dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
 - Debugging downloaded dashboard data → use `npm run dashboard:local -- --repo OWNER/REPOSITORY`
 - Editing the Activity workflow or JSONL parser under `activity/` → run the focused activity tests and `npm run compile`

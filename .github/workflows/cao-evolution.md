@@ -105,7 +105,7 @@ Maintain repositories that operate a Central Agentic Ops control plane. Select c
 
 Read `/tmp/gh-aw/agent/control-precompute.json` before selecting repositories. Treat its candidate repositories, effective maximum, resolved mode, safe-output repository, and worker eligibility as authoritative.
 
-Select a repository only when its default branch contains `.github/workflows/cao.json` and CAO runtime evidence under `.github/cao/` or installed package records under `.github/aw/packages/`. Verify the evidence through read-only repository tools. Do not infer control-plane status from the repository name, catalog manifests, or target-repository files.
+Select a repository only when its default branch contains `.github/workflows/cao.json` and CAO runtime evidence under `.github/workflows/shared/` or installed package records under `.github/aw/packages/`. Verify the evidence through read-only repository tools. Do not infer control-plane status from the repository name, catalog manifests, or target-repository files.
 
 Prioritize control repositories with one or more of these signals:
 

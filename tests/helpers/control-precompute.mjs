@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 export function controlProgram() {
-  return join(root, ".github", "cao", "src", "control.mjs");
+  return join(root, ".github", "workflows", "shared", "control.mjs");
 }
 
 export function controlPolicy({

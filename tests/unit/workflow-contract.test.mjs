@@ -213,8 +213,8 @@ test("operational-value graders cap GitHub API usage while collecting logs", () 
 function controlPrecompute() {
   return [
     workflow("shared/control.md"),
-    readFileSync(join(root, ".github", "cao", "src", "control.mjs"), "utf8"),
-    readFileSync(join(root, ".github", "cao", "src", "policy.mjs"), "utf8"),
+    readFileSync(join(root, ".github", "workflows", "shared", "control.mjs"), "utf8"),
+    readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8"),
   ].join("\n");
 }
 
@@ -618,7 +618,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(sharedControl, /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/);
   assert.match(sharedControl, /ref: \$\{\{ github\.workflow_sha \}\}/);
   assert.match(sharedControl, /path: \.cao\n/);
-  assert.match(sharedControl, /sparse-checkout: \|[\s\S]*\.github\/aw\/cao\/src[\s\S]*\.github\/cao\/src/);
+  assert.match(sharedControl, /sparse-checkout: \.github/);
   assert.match(sharedControl, /sparse-checkout-cone-mode: true/);
   assert.match(sharedControl, /fetch-depth: 1/);
   assert.doesNotMatch(sharedControl, /gh api --method GET "repos\/\$\{GITHUB_REPOSITORY\}\/contents\/\.github\/cao\/src/);
@@ -1135,7 +1135,7 @@ test("root package installs the CAO bootstrap runtime", () => {
   const operations = readFileSync(join(root, "docs", "operations.md"), "utf8");
   const updateSection = operations.match(/## Update CAO[\s\S]*?(?=\n## |\n### Catalog Release Revocation)/)?.[0] ?? "";
   const policy = JSON.parse(execFileSync(process.execPath, [
-    join(root, ".github", "cao", "src", "control.mjs"),
+    join(root, ".github", "workflows", "shared", "control.mjs"),
     "resolve-policy",
     join(root, ".github", "workflows", "cao.json"),
   ], {
@@ -1150,10 +1150,15 @@ test("root package installs the CAO bootstrap runtime", () => {
 
   assert.equal(policy.authorized, true);
   assert.equal(policy.package, "dependabot");
-  for (const path of ["cao.schema.json", "setup-github-apps.mjs", "src/control.mjs", "src/policy.mjs"]) {
-    const source = `.github/cao/${path}`;
-    const destination = `.github/aw/cao/${path}`;
-    assert.match(rootManifest, new RegExp(`source: ${source.replaceAll(".", "\\.")}\\n\\s+destination: ${destination.replaceAll(".", "\\.")}`));
+  for (const [source, destination] of [
+    ["cao.schema.json", "cao.schema.json"],
+    ["setup-github-apps.mjs", "setup-github-apps.mjs"],
+    ["control.mjs", "src/control.mjs"],
+    ["policy.mjs", "src/policy.mjs"],
+  ]) {
+    const sourcePath = `.github/workflows/shared/${source}`;
+    const destinationPath = `.github/aw/cao/${destination}`;
+    assert.match(rootManifest, new RegExp(`source: ${sourcePath.replaceAll(".", "\\.")}\\n\\s+destination: ${destinationPath.replaceAll(".", "\\.")}`));
   }
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
@@ -1485,7 +1490,7 @@ test("orchestrators emit dedicated bounded dispatcher telemetry", () => {
 test("public read-only operation uses the built-in token without widening access", () => {
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
   const configuration = readFileSync(join(root, "docs", "configuration.md"), "utf8");
-  const controlSource = readFileSync(join(root, ".github", "cao", "src", "control.mjs"), "utf8");
+  const controlSource = readFileSync(join(root, ".github", "workflows", "shared", "control.mjs"), "utf8");
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
@@ -2834,7 +2839,7 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       assert.match(preActivation, /actions: read/);
       assert.match(preActivation, /name: Evaluate Central Agentic Ops admission/);
       assert.match(preActivation, /name: Checkout CAO control modules/);
-      assert.match(preActivation, /sparse-checkout: \|[\s\S]*\.github\/aw\/cao\/src[\s\S]*\.github\/cao\/src/);
+      assert.match(preActivation, /sparse-checkout: \.github/);
       assert.match(preActivation, /fs\.existsSync\(`\$\{checkout\}\/\.github\/aw\/cao\/src\/control\.mjs`\)/);
       assert.match(preActivation, /fetch-depth: 1/);
       assert.doesNotMatch(preActivation, /contents\/\.github\/cao\/src\/(?:control|policy)\.mjs/);
@@ -3109,7 +3114,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   const dashboardManifest = readFileSync(join(root, "dashboard", "aw.yml"), "utf8");
   const rootPackage = parse(rootManifest);
   const dashboardPackage = parse(dashboardManifest);
-  const canonicalPolicyResolver = readFileSync(join(root, ".github", "cao", "src", "policy.mjs"), "utf8");
+  const canonicalPolicyResolver = readFileSync(join(root, ".github", "workflows", "shared", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
@@ -3162,7 +3167,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.match(dashboardWorkflow, /name: Assess activity database health[\s\S]*?await exec\.exec\(process\.execPath,[\s\S]*?'doctor'[\s\S]*?'--database'[\s\S]*?process\.env\.ACTIVITY_DATABASE/);
   assert.doesNotMatch(dashboardWorkflow, /control-settings\.mjs|ACTIVITY_ROOT/);
   assert.doesNotMatch(dashboardWorkflow, /Discover deployed agentic workflows|actions\/cache\/save@|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
-  assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/cao\/src\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
+  assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/workflows\/shared\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
   assert.match(activityRunner, /REPORT_CONTROL_SETTINGS[\s\S]*?path\.join\(runnerTemp, "cao-activity", "control-settings\.json"\)/);
   assert.doesNotMatch(dashboardWorkflow, /^\s+run:/m);
   assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 6);
@@ -3292,7 +3297,7 @@ test("Activity package owns the shared collected-data cache contract", () => {
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
   assert.match(workflow, /schedule:[\s\S]*?cron:/);
   assert.doesNotMatch(workflow, /workflow_call:/);
-  assert.match(workflow, /if \[\[ -f \.github\/aw\/cao\/src\/control\.mjs \]\]; then[\s\S]*?elif \[\[ -f \.github\/cao\/src\/control\.mjs \]\]; then[\s\S]*?CAO control runtime is unavailable/);
+  assert.match(workflow, /if \[\[ -f \.github\/aw\/cao\/src\/control\.mjs \]\]; then[\s\S]*?elif \[\[ -f \.github\/workflows\/shared\/control\.mjs \]\]; then[\s\S]*?CAO control runtime is unavailable/);
   assert.match(workflow, /node "\$activity_root\/control-settings\.mjs" \\\n\s+"\$control_runtime"/);
   assert.match(workflow, /workflow_dispatch:[\s\S]*?request-id:/);
   assert.match(workflow, /concurrency:[\s\S]*?cancel-in-progress: false/);

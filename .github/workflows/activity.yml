@@ -95,8 +95,8 @@ jobs:
           fi
           if [[ -f .github/aw/cao/src/control.mjs ]]; then
             control_runtime=.github/aw/cao/src/control.mjs
-          elif [[ -f .github/cao/src/control.mjs ]]; then
-            control_runtime=.github/cao/src/control.mjs
+          elif [[ -f .github/workflows/shared/control.mjs ]]; then
+            control_runtime=.github/workflows/shared/control.mjs
           else
             echo "CAO control runtime is unavailable" >&2
             exit 1

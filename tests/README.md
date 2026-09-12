@@ -34,7 +34,7 @@ The integration suite creates disposable consumer repositories under the system 
 
 | Test result | Scenario | Checked behavior |
 | --- | --- | --- |
-| 🟢 Pass | Pre-activation admission | The actual `.github/cao/src/control.mjs` `admit` command authorizes declared packages and fails closed for disabled packages, malformed policy, and unavailable policy content. |
+| 🟢 Pass | Pre-activation admission | The actual `.github/workflows/shared/control.mjs` `admit` command authorizes declared packages and fails closed for disabled packages, malformed policy, and unavailable policy content. |
 | 🟢 Pass | Control validation and authorization | The actual control precompute shell passes 54 success, failure, disablement, review-isolation, live-authorization, and output-binding cases. |
 | 🟢 Pass | 100,000-repository inventory | Pagination stops at 1,000 pages, retains exactly 100,000 candidates, and applies the 10%/1,000 target cap within 120 seconds. |
 | 🟢 Pass | Deterministic cell and batch selection | Stable repository IDs assign every selected candidate to one cell; bounded batches share an inventory version and have distinct batch IDs. |

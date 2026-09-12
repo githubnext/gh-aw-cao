@@ -13,7 +13,7 @@ import {
   publishedIssueBody,
   validateWorkflowRun,
 } from "../../ops-publish/ops-publish.mjs";
-import { controlSettings, parsePolicy } from "../../.github/cao/src/policy.mjs";
+import { controlSettings, parsePolicy } from "../../.github/workflows/shared/policy.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const packages = controlSettings(

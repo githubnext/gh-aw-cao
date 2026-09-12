@@ -11,13 +11,13 @@ includes:
   - dependabot/aw.yml
   - optimization/aw.yml
 resources:
-  - source: .github/cao/cao.schema.json
+  - source: .github/workflows/shared/cao.schema.json
     destination: .github/aw/cao/cao.schema.json
-  - source: .github/cao/setup-github-apps.mjs
+  - source: .github/workflows/shared/setup-github-apps.mjs
     destination: .github/aw/cao/setup-github-apps.mjs
-  - source: .github/cao/src/control.mjs
+  - source: .github/workflows/shared/control.mjs
     destination: .github/aw/cao/src/control.mjs
-  - source: .github/cao/src/policy.mjs
+  - source: .github/workflows/shared/policy.mjs
     destination: .github/aw/cao/src/policy.mjs
   - source: AGENTS.md
     destination: .github/aw/default-AGENTS.md

@@ -7,7 +7,7 @@ Persistent non-secret policy lives only in `.github/workflows/cao.json` in the p
 
 Keep credentials in Actions secrets. Manual inputs may select a target or narrow a checked-in limit for one run, but they never change policy or widen it.
 
-The policy is plain JSON so Node.js can parse it with the built-in `JSON.parse` API and no runtime dependencies. Its Draft 2020-12 schema is published at `.github/cao/cao.schema.json`; the checked-in policy's `$schema` property enables editor completion and diagnostics. The dependency-free resolver remains the runtime validator for constraints JSON Schema cannot express, including duplicate keys, case-insensitive uniqueness, and `cell-index < cell-count`.
+The policy is plain JSON so Node.js can parse it with the built-in `JSON.parse` API and no runtime dependencies. Its Draft 2020-12 schema is published at `.github/workflows/shared/cao.schema.json`; the checked-in policy's `$schema` property enables editor completion and diagnostics. The dependency-free resolver remains the runtime validator for constraints JSON Schema cannot express, including duplicate keys, case-insensitive uniqueness, and `cell-index < cell-count`.
 
 ## Control Policy
 
@@ -15,7 +15,7 @@ This minimal policy enables the installed Dependabot package and its workers in 
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json",
+  "$schema": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json",
   "version": 1,
   "gh-aw-version": "v0.89.9",
   "control-plane": {
@@ -169,10 +169,10 @@ Installed Central Agentic Ops packages do not include these optional provider fi
 
 ## Sources of Truth
 
-- Machine-readable policy schema: installed at `.github/aw/cao/cao.schema.json`, with `.github/cao/cao.schema.json` as the source-managed location
-- Runtime policy resolution: installed at `.github/aw/cao/src/policy.mjs`, with `.github/cao/src/policy.mjs` as the source-managed location, and [Control Policy Specification](control-policy-specification.md)
+- Machine-readable policy schema: installed at `.github/aw/cao/cao.schema.json`, with `.github/workflows/shared/cao.schema.json` as the source-managed location
+- Runtime policy resolution: installed at `.github/aw/cao/src/policy.mjs`, with `.github/workflows/shared/policy.mjs` as the source-managed location, and [Control Policy Specification](control-policy-specification.md)
 - Checked-in control policy: `.github/workflows/cao.json`
-- Deterministic control commands: installed at `.github/aw/cao/src/control.mjs`, with `.github/cao/src/control.mjs` as the source-managed location
+- Deterministic control commands: installed at `.github/aw/cao/src/control.mjs`, with `.github/workflows/shared/control.mjs` as the source-managed location
 - Shared runtime enforcement: `.github/workflows/shared/control.md`
 - Package inventory: the root and package `aw.yml` manifests
 - Credentials and permissions: [Configure Authentication](authentication.md)

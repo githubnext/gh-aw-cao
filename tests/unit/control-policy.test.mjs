@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { controlSettings, effectivePolicy, parsePolicy } from "../../.github/cao/src/policy.mjs";
+import { controlSettings, effectivePolicy, parsePolicy } from "../../.github/workflows/shared/policy.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const control = join(root, ".github", "cao", "src", "control.mjs");
-const schema = JSON.parse(readFileSync(join(root, ".github", "cao", "cao.schema.json"), "utf8"));
+const control = join(root, ".github", "workflows", "shared", "control.mjs");
+const schema = JSON.parse(readFileSync(join(root, ".github", "workflows", "shared", "cao.schema.json"), "utf8"));
 
 function validate(policy) {
   return spawnSync(process.execPath, [control, "validate-policy", "-"], {

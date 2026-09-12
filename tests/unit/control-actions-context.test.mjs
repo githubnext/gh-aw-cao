@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { controlPolicy } from "../helpers/control-precompute.mjs";
-import { main } from "../../.github/cao/src/control.mjs";
+import { main } from "../../.github/workflows/shared/control.mjs";
 
 test("CAO admission uses the github-script Octokit singleton", async () => {
   const directory = mkdtempSync(join(tmpdir(), "central-ops-actions-"));

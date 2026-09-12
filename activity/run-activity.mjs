@@ -62,7 +62,7 @@ export async function runActivity(actions = {}) {
     const controlSettingsPath =
       process.env.REPORT_CONTROL_SETTINGS || path.join(runnerTemp, "cao-activity", "control-settings.json");
     const controlSettings = await importModule(path.join(activityRoot, "control-settings.mjs"));
-    await controlSettings.main(actions, [".github/cao/src/control.mjs", ".github/workflows/cao.json", controlSettingsPath]);
+    await controlSettings.main(actions, [".github/workflows/shared/control.mjs", ".github/workflows/cao.json", controlSettingsPath]);
 
     const inventory = await importModule(path.join(activityRoot, "inventory.mjs"));
     await inventory.main(actions);

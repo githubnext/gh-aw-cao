@@ -15,10 +15,10 @@ import {
   setRepositoryCredentials,
   validateAppName,
   validateInstallationScope,
-} from "../../.github/cao/setup-github-apps.mjs";
+} from "../../.github/workflows/shared/setup-github-apps.mjs";
 
 const root = process.cwd();
-const script = join(root, ".github", "cao", "setup-github-apps.mjs");
+const script = join(root, ".github", "workflows", "shared", "setup-github-apps.mjs");
 
 test("GitHub App profiles preserve separate permission ceilings", () => {
   const read = APP_PROFILES.find((profile) => profile.role === "read");
@@ -103,7 +103,7 @@ test("cao-setup is exposed as an executable Node CLI", (t) => {
   symlinkSync(script, bin);
   const result = spawnSync(bin, ["--help"], { encoding: "utf8" });
 
-  assert.equal(packageJson.bin["cao-setup"], ".github/cao/setup-github-apps.mjs");
+  assert.equal(packageJson.bin["cao-setup"], ".github/workflows/shared/setup-github-apps.mjs");
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^Usage: cao-setup \[options\]/);
 });
