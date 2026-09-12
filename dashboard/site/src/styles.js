@@ -637,7 +637,7 @@ main.dashboard-prototype { width: 100%; min-height: 0; flex: 1; overflow-y: auto
 .swimlane-empty-state { min-height: 180px; display: grid; place-content: center; text-align: center; }
 .swimlane-empty-state p { margin: 4px 0 0; color: var(--muted); }
 .swimlane-chart-widget svg { width: 100%; max-height: 220px; overflow: visible; }
-.swimlane-summary { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 8px; padding: 0; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; list-style: none; }
+.swimlane-summary { width: 100%; display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 8px; padding: 0; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; list-style: none; }
 .swimlane-summary li:first-child { color: var(--fg); font-weight: 600; }
 .swimlane-label, .swimlane-time-label { fill: var(--muted); font-size: 2.4px; }
 .swimlane-label { font-weight: 600; }
