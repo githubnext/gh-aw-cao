@@ -12,7 +12,7 @@ definition() {
   "schemaVersion": 4,
   "grader": "operational-value",
   "repository": "githubnext/gh-aw-cao",
-  "workflowName": "AW Doctor / Compiler Security",
+  "workflowName": "CAO Evolution / AW Compiler Security",
   "sourcePath": ".github/workflows/aw-maintenance-compiler-security.md",
   "adoption": {
     "commit": "2cc8ea81865e35063b5ea31079dabc7edf557cde",

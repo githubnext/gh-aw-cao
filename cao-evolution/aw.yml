@@ -1,8 +1,10 @@
 name: CAO Evolution
-description: Control-plane integrity, reliability, and efficiency maintenance for Central Agentic Ops repositories.
+description: Control-plane and agentic-workflow integrity, reliability, efficiency, failure investigation, and security maintenance.
 min-version: v0.89.9
 experimental: true
 includes:
+  - .github/workflows/aw-failures-investigator.md
+  - .github/workflows/aw-maintenance-compiler-security.md
   - .github/workflows/cao-evolution-efficiency.md
   - .github/workflows/cao-evolution-integrity.md
   - .github/workflows/cao-evolution-reliability.md
@@ -10,3 +12,7 @@ includes:
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/cao-evolution.json
+  - source: .github/graders/aw-failures-investigator-operational-value.sh
+    destination: .github/aw/cao-evolution/graders/aw-failures-investigator-operational-value.sh
+  - source: .github/graders/aw-maintenance-compiler-security-operational-value.sh
+    destination: .github/aw/cao-evolution/graders/aw-maintenance-compiler-security-operational-value.sh

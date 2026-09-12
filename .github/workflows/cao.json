@@ -36,28 +36,19 @@
           }
         }
       },
-      "aw-doctor": {
-        "icon": "gear",
-        "mode": "live",
-        "workers": {
-          "compiler-security": {
-            "workflow": "aw-maintenance-compiler-security"
-          },
-          "failures-investigator": {
-            "workflow": "aw-failures-investigator"
-          },
-          "upgrade": {
-            "workflow": "aw-maintenance-upgrade"
-          }
-        }
-      },
       "cao-evolution": {
         "icon": "gear",
         "mode": "review",
         "max-repositories": 1,
         "workers": {
+          "compiler-security": {
+            "workflow": "aw-maintenance-compiler-security"
+          },
           "efficiency": {
             "workflow": "cao-evolution-efficiency"
+          },
+          "failures-investigator": {
+            "workflow": "aw-failures-investigator"
           },
           "integrity": {
             "workflow": "cao-evolution-integrity"
@@ -189,7 +180,7 @@
       "self-care": {
         "authority": "githubnext/gh-aw-cao"
       },
-      "aw-doctor": {
+      "cao-evolution": {
         "authority": "githubnext/gh-aw-cao"
       },
       "dependabot": {

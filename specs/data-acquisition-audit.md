@@ -84,8 +84,7 @@ The former two-request Contents API bootstrap in `shared/control.md` has been re
 
 | Source family | API pattern | Rate-limit concern |
 | --- | --- | --- |
-| `.github/workflows/aw-doctor.md` (formerly `aw-maintenance.md`) | GitHub Script reads latest release, repository trees and manifests, open issues, commits, and recent workflow runs. | Per-target prefetch repeats latest-release lookup and repository scans. |
-| `.github/workflows/aw-maintenance-upgrade.md` | GitHub Script paginates gh-aw releases and searches target issues before agent execution. | A 24-hour Actions cache avoids most release-list calls; target issue search remains per run. |
+| `.github/workflows/aw-failures-investigator.md` | GitHub Script and bounded `gh` calls read recent workflow runs, failed job logs, and existing failure issues for one dispatched repository. | Discovery is bounded to five pages, with detailed logs limited to five failed runs and 50 lines per failed job. |
 | `.github/workflows/optimization-agents-md-curator.md` and `optimization-skills-curator.md` (formerly `ambient-context-agents-md-curator.md`/`ambient-context-skills-curator.md`, consolidated under the `AW Optimization` package) | Lists open pull requests, then lists files or review comments for bounded candidate pulls. | N+1 per-pull requests; bounds limit the worst case but no shared target snapshot exists. |
 | `.github/workflows/graders/optimization-agents-md-curator-operational-value.sh` | Paginates evidence issues and target pull requests, then reads files for candidate pull requests before collecting logs. | Full issue/PR pagination is repeated for each evaluation. |
 | `.github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh` | Reads branch protection, the producer run, all target pull requests, files for candidates, pull details, check runs, and commit status. | The per-candidate files/pull/check/status sequence is the largest shell N+1 pattern. |
