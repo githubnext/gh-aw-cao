@@ -48,7 +48,7 @@ describe('maintenance view', () => {
         }
       },
       contextDetails: [],
-      headingTag: 'h2'
+      headingTag: 'h3'
     });
 
     expect(rendered).not.toBeNull();
@@ -60,5 +60,31 @@ describe('maintenance view', () => {
     expect(rendered?.textContent).toContain('Upgrade all');
     expect(rendered?.textContent).toContain('Upgrade recommended');
     expect(rendered?.textContent).not.toContain('update-available');
+
+    const updateButton = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('button[aria-label="Update package"]') ?? null);
+    updateButton?.click();
+    expect(updateButton?.closest('.table-cli-action-control')?.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update alpha');
+    const upgradeButton = /** @type {HTMLButtonElement | null} */ (rendered?.querySelector('button[aria-label="Upgrade repository"]') ?? null);
+    upgradeButton?.click();
+    expect(upgradeButton?.closest('.table-cli-action-control')?.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw upgrade --repo acme/old');
+  });
+
+  it('distinguishes unavailable maintenance evidence from an empty inventory', () => {
+    const rendered = renderUiElement('maintenance-view', {
+      pageId: 'maintenance',
+      title: 'gh-aw maintenance',
+      sourceNames: ['packages', 'maintenance-repositories'],
+      sources: {
+        packages: { source: 'packages', rows: [], metadata: { ...metadata, availability: 'unavailable' } },
+        'maintenance-repositories': { source: 'maintenance-repositories', rows: [], metadata: { ...metadata, availability: 'empty' } }
+      },
+      contextDetails: [],
+      headingTag: 'h3'
+    });
+
+    expect(rendered?.textContent).toContain('Package maintenance data is unavailable.');
+    expect(rendered?.textContent).toContain('No repositories with Agentic Workflows were discovered.');
   });
 });

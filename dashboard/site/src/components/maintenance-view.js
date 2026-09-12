@@ -96,6 +96,26 @@ function maintenanceGroup(title, description, action, list) {
   );
 }
 
+/**
+ * @param {import('../presenter.js').LogicalSourceInput | undefined} source
+ * @param {Record<string, unknown>[]} rows
+ * @param {(row: Record<string, unknown>) => HTMLElement} renderCard
+ * @param {string} emptyMessage
+ * @param {string} unavailableMessage
+ */
+function maintenanceList(source, rows, renderCard, emptyMessage, unavailableMessage) {
+  if (!source || source.metadata?.availability === 'unavailable') {
+    return h('p', { className: 'maintenance-empty' }, unavailableMessage);
+  }
+  return renderListOrEmptyMessage(
+    'maintenance-card-list',
+    rows,
+    renderCard,
+    'maintenance-empty',
+    emptyMessage
+  );
+}
+
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderMaintenanceView(context) {
   const packageSource = context.sources[context.sourceNames[0]];
@@ -114,24 +134,24 @@ export function renderMaintenanceView(context) {
         'Starter updates',
         'Update installed starter packages when a newer package revision is available.',
         renderDeclaredCliAction('update-repository'),
-        renderListOrEmptyMessage(
-          'maintenance-card-list',
+        maintenanceList(
+          packageSource,
           packages,
           packageCard,
-          'maintenance-empty',
-          'No installed packages were discovered.'
+          'No installed packages were discovered.',
+          'Package maintenance data is unavailable.'
         )
       ),
       maintenanceGroup(
         'Compiler upgrades',
         'Upgrade repositories that use an older gh-aw compiler version.',
         renderDeclaredCliAction('upgrade-repository'),
-        renderListOrEmptyMessage(
-          'maintenance-card-list',
+        maintenanceList(
+          repositorySource,
           repositories,
           repositoryCard,
-          'maintenance-empty',
-          'No repositories with Agentic Workflows were discovered.'
+          'No repositories with Agentic Workflows were discovered.',
+          'Repository compiler data is unavailable.'
         )
       )
     ],
