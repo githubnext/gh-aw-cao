@@ -4421,11 +4421,6 @@
                     "type": "nominal"
                   },
                   {
-                    "field": "gh-aw-version",
-                    "type": "nominal",
-                    "title": "gh-aw version"
-                  },
-                  {
                     "field": "requested-model",
                     "type": "nominal"
                   },

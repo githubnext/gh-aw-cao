@@ -288,7 +288,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
     'workflow-inventory': ['package-name', 'repository', 'workflow', 'workflow-role', 'rollout-mode', 'workflow-active', 'aic', 'runs']
   },
   runs: {
-    runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'gh-aw-version', 'requested-model', 'resolved-model', 'started-at']
+    runs: ['run', 'run-status', 'run-conclusion', 'organization', 'repository', 'workflow', 'rollout-mode', 'engine', 'engine-version', 'requested-model', 'resolved-model', 'started-at']
   },
   experiments: {
     experiments: ['experiment']
