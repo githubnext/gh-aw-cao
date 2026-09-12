@@ -2,7 +2,12 @@ import { adaptDashboardSources } from '../adapters/dashboard-sources.js';
 import { adaptCachedGhAwJsonl, adaptGhAwLogs } from '../adapters/gh-aw-logs.js';
 import { adaptSqlExport } from '../adapters/sql-export.js';
 import { normalize } from '../normalize/index.js';
-import { readCanonicalBatch, recordTransaction, replaceCanonicalBatch } from '../storage/indexeddb.js';
+import {
+  readCanonicalBatch,
+  readTransaction,
+  recordTransaction,
+  replaceCanonicalBatch
+} from '../storage/indexeddb.js';
 import { capCanonicalBatchSize, estimateCanonicalBatchBytes, mergeRetainedRecords } from '../storage/retention.js';
 import {
   inspectDatabaseUsage,
@@ -11,6 +16,21 @@ import {
   requestPersistentStorage
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
+
+/**
+ * @param {unknown} payload
+ * @param {string | undefined} identity
+ */
+async function payloadHash(payload, identity) {
+  const value = identity ?? (typeof payload === 'string' ? payload : JSON.stringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/** @param {IDBFactory} indexedDB @param {string} kind @param {string} hash */
+async function previouslyIngested(indexedDB, kind, hash) {
+  return await readTransaction(indexedDB, `${kind}:${hash}`) !== null;
+}
 
 /**
  * @param {IDBFactory} indexedDB
@@ -70,16 +90,28 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
  *
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, payloadIdentity?: string }} [options]
  */
 export async function ingestDashboardSources(indexedDB, sources, options = {}) {
   let phase = 'adapting';
   try {
+    const hash = await payloadHash(sources, options.payloadIdentity);
+    if (await previouslyIngested(indexedDB, 'ingest-dashboard-sources', hash)) {
+      return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+    }
     const adapted = adaptDashboardSources(sources);
     phase = 'normalizing';
     const batch = normalize(adapted.observations);
     phase = 'writing';
-    return await ingestCanonicalBatch(indexedDB, batch, options);
+    const result = await ingestCanonicalBatch(indexedDB, batch, options);
+    await recordTransaction(indexedDB, {
+      id: `ingest-dashboard-sources:${hash}`,
+      kind: 'ingest-dashboard-sources',
+      createdAt: new Date(options.now ?? Date.now()).toISOString(),
+      payloadHash: hash,
+      committedRecords: result.committedRecords
+    });
+    return result;
   } catch (error) {
     if (error instanceof CanonicalIngestionError) throw error;
     throw new CanonicalIngestionError(classifyIngestionError(error, phase), phase, error);
@@ -132,20 +164,25 @@ export async function ingestGhAwLogs(indexedDB, input, options = {}) {
  * Incrementally upserts schema-v2 gh-aw cached JSONL into canonical storage.
  * @param {IDBFactory} indexedDB
  * @param {string} content
- * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[] }} [options]
+ * @param {{ storage?: StorageManager, now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes?: number, context?: unknown, workflowHints?: { owner: string, repository: string, name: string, path: string }[], payloadIdentity?: string }} [options]
  */
 export async function ingestCachedGhAwJsonl(indexedDB, content, options = {}) {
   const createdAt = new Date(options.now ?? Date.now()).toISOString();
   try {
+    const hash = await payloadHash(content, options.payloadIdentity);
+    if (await previouslyIngested(indexedDB, 'ingest-jsonl', hash)) {
+      return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
+    }
     const adapted = adaptCachedGhAwJsonl(content, {
       context: options.context,
       workflowHints: options.workflowHints
     });
     const result = await ingestCanonicalBatch(indexedDB, normalize(adapted.observations), options);
     await recordTransaction(indexedDB, {
-      id: `ingest-jsonl:${createdAt}:${adapted.records}`,
+      id: `ingest-jsonl:${hash}`,
       kind: 'ingest-jsonl',
       createdAt,
+      payloadHash: hash,
       records: adapted.records,
       committedRecords: result.committedRecords,
       rawPayloadRecords: adapted.rawPayloadRecords,

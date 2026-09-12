@@ -228,6 +228,7 @@ export function processDataRequest(request, signal) {
     const context = dashboardContext(request.context);
     return (async () => {
       const jsonl = sourceUrl.pathname.endsWith('.jsonl');
+      let changed = false;
       let sources = jsonl ? {} : await loadDashboardSources(fetch, sourceUrl.href);
       if (jsonl) {
         const inventoryUrl = new URL('./inventory-sources.json', sourceUrl);
@@ -258,25 +259,30 @@ export function processDataRequest(request, signal) {
         });
         const response = await fetch(sourceUrl.href);
         if (!response.ok) throw new Error(`Unable to load gh-aw JSONL: ${response.status}`);
-        await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
+        const etag = response.headers.get('etag');
+        const ingestion = await ingestCachedGhAwJsonl(indexedDB, await response.text(), {
           storage: globalThis.navigator?.storage,
           retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS,
           workflowHints,
+          payloadIdentity: etag ? `${sourceUrl.href}:${etag}` : undefined,
           context: request.context && typeof request.context === 'object'
             ? /** @type {Record<string, unknown>} */ (request.context).collectionContext
             : undefined
         });
+        changed ||= ingestion.updated;
         if (inventoryResponse.ok) {
-          await ingestDashboardSources(indexedDB, sources, {
+          const inventoryIngestion = await ingestDashboardSources(indexedDB, sources, {
             storage: globalThis.navigator?.storage,
             retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
           });
+          changed ||= inventoryIngestion.updated;
         }
       } else {
-        await ingestDashboardSources(indexedDB, sources, {
+        const ingestion = await ingestDashboardSources(indexedDB, sources, {
           storage: globalThis.navigator?.storage,
           retentionWindowMsByStore: BROWSER_RETENTION_WINDOWS_MS
         });
+        changed = ingestion.updated;
       }
       liveDashboard = {
         logicalSources: /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (sources),
@@ -291,7 +297,7 @@ export function processDataRequest(request, signal) {
         /** @type {Record<string, { limit: number, continuationToken?: string }>} */ (request.pagination ?? {})
       );
       return request.reportActivation
-        ? { sources: projected, changed: true }
+        ? { sources: projected, changed }
         : projected;
     })();
   }

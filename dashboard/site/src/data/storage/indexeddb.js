@@ -299,6 +299,19 @@ export async function recordTransaction(indexedDB, transaction) {
   }
 }
 
+/** @param {IDBFactory} indexedDB @param {string} id */
+export async function readTransaction(indexedDB, id) {
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    const result = await requestResult(
+      database.transaction(TRANSACTION_STORE).objectStore(TRANSACTION_STORE).get(id)
+    );
+    return result && typeof result === 'object' ? result : null;
+  } finally {
+    database.close();
+  }
+}
+
 /** @param {IDBFactory} indexedDB */
 export async function readTransactions(indexedDB) {
   const database = await openCanonicalDatabase(indexedDB);
