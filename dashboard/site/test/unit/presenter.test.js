@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation } from '../../src/presenter.js';
+import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageChartSourceNames, dashboardPageLazySourceNames } from '../../src/presenter.js';
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
@@ -32,6 +32,16 @@ async function activatePage(rendered, pageId) {
 }
 
 describe('dashboard DOM provenance', () => {
+  it('reports the chart source shared with a lazy-list table on the runs page', () => {
+    // The "runs" page's swimlane chart and its lazy-list table both read the
+    // "runs-table" source; the chart must drain any pagination applied for
+    // the lazy-list table instead of only rendering the first page.
+    const chartSourceNames = dashboardPageChartSourceNames(authoritativeDashboardDocument, 'runs');
+    const lazySourceNames = dashboardPageLazySourceNames(authoritativeDashboardDocument, 'runs');
+    expect(chartSourceNames).toContain('runs-table');
+    expect(lazySourceNames).toContain('runs-table');
+  });
+
   it('maps every rendered element and dynamic descendant to its owning JSON view when ?debug=1 is set', async () => {
     window.history.pushState(null, '', '?debug=1');
     try {
