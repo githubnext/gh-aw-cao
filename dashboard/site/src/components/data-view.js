@@ -182,7 +182,9 @@ function renderListView(context) {
         : [])
     );
   });
-  const emptyMessage = typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
+  const emptyMessage = metadata.availability === 'unavailable'
+    ? 'Data is unavailable for this view.'
+    : typeof view['empty-message'] === 'string' ? view['empty-message'] : 'No items available.';
   return renderPageSection(
     pageId,
     title,

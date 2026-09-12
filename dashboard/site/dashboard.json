@@ -2307,6 +2307,33 @@
             ]
           },
           {
+            "as": "upgrade-state-unknown",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "gh-aw-update-state"
+              },
+              {
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "as": "upgrade-state-unknown-value",
+            "function": "if",
+            "args": [
+              {
+                "field": "upgrade-state-unknown"
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ]
+          },
+          {
             "as": "upgrade-required-value",
             "function": "if",
             "args": [
@@ -2341,6 +2368,11 @@
               "field": "upgrade-required-value",
               "as": "upgrade-required",
               "reducer": "max"
+            },
+            {
+              "field": "upgrade-state-unknown-value",
+              "as": "upgrade-state-unknown",
+              "reducer": "max"
             }
           ]
         }
@@ -2363,6 +2395,33 @@
             ]
           },
           {
+            "as": "upgrade-status-unavailable",
+            "function": "equals-any",
+            "args": [
+              {
+                "field": "upgrade-state-unknown"
+              },
+              {
+                "value": 1
+              }
+            ]
+          },
+          {
+            "as": "current-or-unavailable",
+            "function": "if",
+            "args": [
+              {
+                "field": "upgrade-status-unavailable"
+              },
+              {
+                "value": "Upgrade status unavailable"
+              },
+              {
+                "value": "Current"
+              }
+            ]
+          },
+          {
             "as": "upgrade-state",
             "function": "if",
             "args": [
@@ -2373,7 +2432,7 @@
                 "value": "Upgrade recommended"
               },
               {
-                "value": "Current"
+                "field": "current-or-unavailable"
               }
             ]
           }

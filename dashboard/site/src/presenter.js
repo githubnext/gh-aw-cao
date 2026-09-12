@@ -1968,7 +1968,7 @@ function renderCustomView(pageId, view, index, sources, units, headingTag = 'h3'
     && isPlainObject(view.metric)
     && view.metric.style === 'card';
 
-  if (state !== 'available' && !(state === 'empty' && ['list', 'table'].includes(String(view.mark))) && !isMetricCard) {
+  if (state !== 'available' && view.mark !== 'list' && !(state === 'empty' && view.mark === 'table') && !isMetricCard) {
     return renderCustomViewState(
       pageId,
       title,

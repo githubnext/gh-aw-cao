@@ -155,6 +155,40 @@ describe('data view renderer', () => {
     expect(rendered?.textContent).not.toContain('update-available');
   });
 
+  it('keeps a list action available when its source is unavailable', () => {
+    setDeclaredCliActions([{
+      id: 'upgrade-repository',
+      label: 'Upgrade all',
+      icon: 'download',
+      command: 'gh aw upgrade',
+      placement: 'settings'
+    }], { canExecute: false });
+
+    const rendered = renderDataView('list', {
+      pageId: 'maintenance',
+      title: 'Compiler upgrades',
+      view: {
+        mark: 'list',
+        list: { style: 'cards', icon: 'repo', action: 'upgrade-repository' },
+        'empty-message': 'No repositories were discovered.',
+        encoding: { columns: [{ field: 'repository', title: 'Repository' }] }
+      },
+      sourceName: 'maintenance-repositories',
+      rows: [],
+      metadata: { ...metadata, availability: 'unavailable' },
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: (rows) => rows,
+      buildChartPoints: () => [],
+      prepareChartPoints: () => [],
+      toText: String
+    });
+
+    expect(rendered?.textContent).toContain('Upgrade all');
+    expect(rendered?.textContent).toContain('Data is unavailable for this view.');
+    expect(rendered?.textContent).not.toContain('No repositories were discovered.');
+  });
+
   it('presents an unavailable metric card as empty', () => {
     const rendered = renderDataView('metric', {
       pageId: 'overview',

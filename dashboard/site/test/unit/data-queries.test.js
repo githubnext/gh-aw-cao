@@ -121,6 +121,14 @@ describe('declarative dashboard queries', () => {
           'gh-aw-version': 'v0.89.0',
           'gh-aw-current-version': 'v0.89.0',
           'gh-aw-update-state': 'current'
+        },
+        {
+          organization: 'acme',
+          repository: 'unknown',
+          workflow: 'd.md',
+          'gh-aw-version': null,
+          'gh-aw-current-version': null,
+          'gh-aw-update-state': 'unknown'
         }
       ],
       metadata: metadata('workflows')
@@ -146,6 +154,13 @@ describe('declarative dashboard queries', () => {
         'gh-aw-current-version': 'v0.89.0',
         'upgrade-required': 1,
         'upgrade-state': 'Upgrade recommended'
+      },
+      {
+        repository: 'acme/unknown',
+        'gh-aw-version': '',
+        'gh-aw-current-version': '',
+        'upgrade-required': 0,
+        'upgrade-state': 'Upgrade status unavailable'
       }
     ]);
   });
