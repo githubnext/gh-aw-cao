@@ -38,7 +38,7 @@ function context(row) {
 }
 
 describe('Configuration dashboard view', () => {
-  it('renders hourly data downloads off by default and persists opt-in', () => {
+  it('disables hourly data downloads when Periodic Background Sync is unsupported', () => {
     localStorage.clear();
     const rendered = renderConfigurationView(context({
       document: { version: 1 },
@@ -50,11 +50,9 @@ describe('Configuration dashboard view', () => {
     const checkbox = rendered.querySelector('#configuration-automatic-dashboard-data-updates');
     if (!(checkbox instanceof HTMLInputElement)) throw new Error('automatic update checkbox did not render');
     document.body.append(rendered);
-    expect(checkbox.checked).toBe(false);
-    checkbox.click();
-    expect(localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
+    expect(checkbox.disabled).toBe(true);
     expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
-      .toContain('Waiting for this browser');
+      .toContain('Periodic Background Sync is not supported');
   });
 
   it('renders browser settings and local database totals on the full settings page', () => {
@@ -157,7 +155,7 @@ describe('Configuration dashboard view', () => {
 
     expect(checkbox?.checked).toBe(false);
     expect(rendered.querySelector('.configuration-browser-setting-status')?.textContent)
-      .toContain('Off.');
+      .toContain('Periodic Background Sync is not supported');
     rendered.remove();
   });
 

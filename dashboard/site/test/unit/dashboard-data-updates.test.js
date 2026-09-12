@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
+  dashboardBackgroundUpdatesUnavailableReason,
+  dashboardInstalled,
   dashboardDataUpdateBlockedReason,
   ensureHealthyDashboardServiceWorker,
   periodicBackgroundSyncSupported,
@@ -86,6 +88,30 @@ describe('automatic dashboard data updates', () => {
       /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
       {}
     )).toBe(false);
+  });
+
+  it('identifies installed dashboard apps and unavailable background updates', () => {
+    expect(dashboardInstalled({ matches: true }, false)).toBe(true);
+    expect(dashboardInstalled({ matches: false }, true)).toBe(true);
+    expect(dashboardInstalled({ matches: false }, false)).toBe(false);
+
+    expect(dashboardBackgroundUpdatesUnavailableReason()).toBe(
+      'Periodic Background Sync is not supported by this browser.'
+    );
+    expect(dashboardBackgroundUpdatesUnavailableReason(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      { periodicSync: {} },
+      { matches: false },
+      false
+    )).toBe('Install this dashboard as an app to enable hourly background downloads.');
+    expect(dashboardBackgroundUpdatesUnavailableReason(
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ ({})),
+      /** @type {Permissions} */ (/** @type {unknown} */ ({ query() {} })),
+      { periodicSync: {} },
+      { matches: true },
+      false
+    )).toBeNull();
   });
 
   it('blocks downloads on metered connections and low battery', () => {

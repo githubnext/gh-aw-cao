@@ -51,6 +51,41 @@ export function periodicBackgroundSyncSupported(
   );
 }
 
+/**
+ * @param {{ matches: boolean } | undefined} [standaloneDisplayMode]
+ * @param {boolean | undefined} [navigatorStandalone]
+ */
+export function dashboardInstalled(
+  standaloneDisplayMode = window.matchMedia?.('(display-mode: standalone)'),
+  navigatorStandalone = /** @type {Navigator & { standalone?: boolean }} */ (navigator).standalone
+) {
+  return standaloneDisplayMode?.matches === true || navigatorStandalone === true;
+}
+
+/**
+ * @param {ServiceWorkerContainer | undefined} [serviceWorkers]
+ * @param {Permissions | undefined} [permissions]
+ * @param {object | undefined} [registrationPrototype]
+ * @param {{ matches: boolean } | undefined} [standaloneDisplayMode]
+ * @param {boolean | undefined} [navigatorStandalone]
+ * @returns {string | null}
+ */
+export function dashboardBackgroundUpdatesUnavailableReason(
+  serviceWorkers,
+  permissions,
+  registrationPrototype,
+  standaloneDisplayMode,
+  navigatorStandalone
+) {
+  if (!periodicBackgroundSyncSupported(serviceWorkers, permissions, registrationPrototype)) {
+    return 'Periodic Background Sync is not supported by this browser.';
+  }
+  if (!dashboardInstalled(standaloneDisplayMode, navigatorStandalone)) {
+    return 'Install this dashboard as an app to enable hourly background downloads.';
+  }
+  return null;
+}
+
 /** @param {EventListener} listener */
 export function onAutomaticDashboardBackgroundUpdateStatus(listener) {
   const eventTarget = window;
