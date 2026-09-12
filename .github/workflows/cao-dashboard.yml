@@ -53,12 +53,14 @@ jobs:
             ) {
               core.exportVariable('DASHBOARD_LAYOUT', 'installed')
               core.exportVariable('DASHBOARD_SITE_ROOT', '.github/aw/dashboard/site')
+              core.info('Resolved dashboard source layout: installed')
             } else if (
               fs.existsSync('dashboard/report/records.mjs')
               && fs.existsSync('dashboard/site/scripts/build.mjs')
             ) {
               core.exportVariable('DASHBOARD_LAYOUT', 'source')
               core.exportVariable('DASHBOARD_SITE_ROOT', 'dashboard/site')
+              core.info('Resolved dashboard source layout: source')
             } else {
               throw new Error('Dashboard package sources are unavailable')
             }
@@ -78,18 +80,22 @@ jobs:
             ) {
               throw new Error('control-plane.packages.dashboard.deploy must be a boolean')
             }
-            core.setOutput('deploy', String(configuredDeploy ?? true))
+            const deploy = configuredDeploy ?? true
+            core.info(`Standalone Pages deployment: ${deploy ? 'enabled' : 'disabled'}`)
+            core.setOutput('deploy', String(deploy))
 
       - name: Install dashboard build dependencies
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
+            core.info(`Installing dashboard dependencies for ${process.env.DASHBOARD_LAYOUT} layout`)
             await exec.exec('npm', [
               'ci',
               '--prefix',
               process.env.DASHBOARD_SITE_ROOT,
               '--ignore-scripts',
             ])
+            core.info('Dashboard build dependencies installed')
 
       - name: Restore collected activity data
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -124,17 +130,18 @@ jobs:
             core.info('Validating restored activity data')
             let validationFailed = false
             for (const activityFile of activityFiles) {
+              const fileName = path.basename(activityFile)
               if (!fs.existsSync(activityFile)) {
-                core.error(`Required activity data file is missing: ${activityFile}`)
+                core.error(`Required activity data file is missing: ${fileName}`)
                 validationFailed = true
                 continue
               }
               const { size } = fs.statSync(activityFile)
               if (size === 0) {
-                core.error(`Required activity data file is empty: ${activityFile}`)
+                core.error(`Required activity data file is empty: ${fileName}`)
                 validationFailed = true
               } else {
-                core.info(`Validated ${activityFile} (${size} bytes)`)
+                core.info(`Validated ${fileName} (${size} bytes)`)
               }
             }
             if (validationFailed) {
@@ -150,6 +157,7 @@ jobs:
               }
               throw new Error('Restored activity data validation failed')
             }
+            core.info(`Restored activity data validation completed (${activityFiles.length} files)`)
 
       - name: Assess activity database health
         env:
@@ -174,6 +182,7 @@ jobs:
               '--database',
               process.env.ACTIVITY_DATABASE,
             ])
+            core.info('Activity database health assessment completed')
 
       - name: Assemble Dashboard Language site
         env:
@@ -194,6 +203,7 @@ jobs:
               process.env.REPORT_OUTPUT,
               controlSettings,
             ])
+            core.info('Dashboard site build completed')
             core.info('Copying collected activity data')
             const collectedFiles = [
               'inventory-sources.json',
@@ -201,11 +211,14 @@ jobs:
               'gh-aw-logs.sqlite',
             ]
             for (const fileName of collectedFiles) {
+              const destination = path.join(process.env.REPORT_OUTPUT, fileName)
               fs.copyFileSync(
                 path.join(process.env.RUNNER_TEMP, 'cao-activity', fileName),
-                path.join(process.env.REPORT_OUTPUT, fileName),
+                destination,
               )
+              core.info(`Copied ${fileName} (${fs.statSync(destination).size} bytes)`)
             }
+            core.info(`Dashboard artifact assembly completed (${collectedFiles.length} collected data files)`)
 
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -3154,13 +3154,17 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.equal((dashboardWorkflow.match(/actions\/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3/g) || []).length, 6);
   assert.match(dashboardWorkflow, /Install dashboard build dependencies[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'ci'[\s\S]*?'--prefix'[\s\S]*?process\.env\.DASHBOARD_SITE_ROOT[\s\S]*?'--ignore-scripts'/);
   assert.match(dashboardWorkflow, /Assemble Dashboard Language site[\s\S]*?await exec\.exec\('npm', \[[\s\S]*?'--prefix'[\s\S]*?process\.env\.DASHBOARD_SITE_ROOT[\s\S]*?'run'[\s\S]*?'build'[\s\S]*?process\.env\.REPORT_OUTPUT[\s\S]*?controlSettings/);
+  assert.match(dashboardWorkflow, /core\.info\('Resolved dashboard source layout: installed'\)[\s\S]*?core\.info\('Resolved dashboard source layout: source'\)/);
+  assert.match(dashboardWorkflow, /core\.info\(`Standalone Pages deployment: \$\{deploy \? 'enabled' : 'disabled'\}`\)/);
+  assert.match(dashboardWorkflow, /core\.info\('Dashboard build dependencies installed'\)[\s\S]*?core\.info\(`Restored activity data validation completed \(\$\{activityFiles\.length\} files\)`\)[\s\S]*?core\.info\('Activity database health assessment completed'\)[\s\S]*?core\.info\('Dashboard site build completed'\)[\s\S]*?core\.info\(`Dashboard artifact assembly completed \(\$\{collectedFiles\.length\} collected data files\)`\)/);
+  assert.doesNotMatch(dashboardWorkflow, /core\.(?:info|error)\(`[^`]*\$\{activityFile\}/);
   assert.match(siteBuildScript, /from "esbuild"/);
   assert.match(dashboardWorkflow, /const collectedFiles = \[[\s\S]*?'inventory-sources\.json'[\s\S]*?'gh-aw-logs\.jsonl'[\s\S]*?'gh-aw-logs\.sqlite'[\s\S]*?for \(const fileName of collectedFiles\)[\s\S]*?fs\.copyFileSync/);
   assert.doesNotMatch(dashboardWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
-  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.packages\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?core\.setOutput\('deploy', String\(configuredDeploy \?\? true\)\)/);
+  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?policy\['control-plane'\]\?\.packages\?\.dashboard\?\.deploy[\s\S]*?typeof configuredDeploy !== 'boolean'[\s\S]*?const deploy = configuredDeploy \?\? true[\s\S]*?core\.setOutput\('deploy', String\(deploy\)\)/);
   assert.match(dashboardWorkflow, /Configure Pages\n\s+if: steps\.deployment-policy\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);
