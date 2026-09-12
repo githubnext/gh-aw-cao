@@ -1245,18 +1245,6 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
           [...replacement.querySelectorAll('details')].forEach((details, index) => {
             if (detailsState[index] !== undefined) details.open = detailsState[index];
           });
-          const preservedFactoryRhythm = root.querySelector('.factory-rhythm[data-preserve-through-refresh="true"]');
-          const replacementFactoryRhythm = replacement.querySelector('.factory-rhythm');
-          if (preservedFactoryRhythm instanceof HTMLElement && replacementFactoryRhythm) {
-            delete preservedFactoryRhythm.dataset.preserveThroughRefresh;
-            replacementFactoryRhythm.replaceWith(preservedFactoryRhythm);
-          }
-          const preservedFactoryRunning = root.querySelector('.factory-running[data-preserve-through-refresh="true"]');
-          const replacementFactoryRunning = replacement.querySelector('.factory-running');
-          if (preservedFactoryRunning instanceof HTMLElement && replacementFactoryRunning) {
-            delete preservedFactoryRunning.dataset.preserveThroughRefresh;
-            replacementFactoryRunning.replaceWith(preservedFactoryRunning);
-          }
           root.replaceChildren(...replacement.children);
           enableLazyViews(root);
           dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');

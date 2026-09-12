@@ -1,5 +1,6 @@
 import { h } from '../dom.js';
 import { octicon } from '../octicons.js';
+import { effect, state } from '../reactive.js';
 import { formatCount } from './count-formatters.js';
 import { rowsFor } from './source-rows.js';
 
@@ -8,6 +9,50 @@ const DELIVERED_STATES = new Set(['accepted', 'completed', 'lifecycle-close']);
 const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 
 /** @typedef {Record<string, unknown>} Row */
+/** @typedef {{ label: string, date: string, start: number, end: number, count: number }} RhythmDay */
+/** @typedef {{ packages: number, operations: number, live: number, review: number }} Motion */
+
+/**
+ * Horizon selected from the factory rhythm. The selection outlives a single
+ * render so a refreshed overview restores the pressed bar and its summary.
+ * @type {import('../reactive.js').State<RhythmDay | null>}
+ */
+const rhythmSelection = state(/** @type {RhythmDay | null} */ (null));
+
+/**
+ * Operations in motion right now. It is not refreshed while the horizon is
+ * scoped to a single rhythm day, because a past day cannot report live motion.
+ * @type {import('../reactive.js').State<Motion>}
+ */
+const factoryMotionState = state(/** @type {Motion} */ ({ packages: 0, operations: 0, live: 0, review: 0 }));
+
+/** @type {import('../reactive.js').EffectHandle | null} */
+let rhythmEffect = null;
+/** @type {import('../reactive.js').EffectHandle | null} */
+let motionEffect = null;
+
+/** Releases the reactive resources owned by a previously rendered overview. */
+export function resetFactoryOverviewState() {
+  releaseFactoryOverviewEffects();
+  rhythmSelection.set(null);
+  factoryMotionState.set({ packages: 0, operations: 0, live: 0, review: 0 });
+}
+
+/** Stops the effects owned by a superseded overview render. */
+function releaseFactoryOverviewEffects() {
+  rhythmEffect?.stop();
+  rhythmEffect = null;
+  motionEffect?.stop();
+  motionEffect = null;
+}
+
+/** @param {Motion} current @param {Motion} next */
+function sameMotion(current, next) {
+  return current.packages === next.packages
+    && current.operations === next.operations
+    && current.live === next.live
+    && current.review === next.review;
+}
 /** @typedef {import('../presenter.js').LogicalSourceInput} LogicalSourceInput */
 /** @typedef {{ singular: string, plural: string }} PluralText */
 
@@ -53,6 +98,10 @@ export function renderFactoryOverview(context) {
   const repositoryCoverage = connectedRepositoryCoverage(workflows, repositories, runs);
   const motion = factoryMotion(runs, workflows);
   const activeRuns = motion.operations;
+  releaseFactoryOverviewEffects();
+  if (rhythmSelection.get() === null) {
+    factoryMotionState.set((current) => (sameMotion(current, motion) ? current : motion));
+  }
   const successfulRunRows = runs.filter((row) => String(row['run-conclusion']) === 'success');
   const successfulRuns = successfulRunRows.length;
   const failedRuns = runs.filter((row) => FAILURE_STATES.has(String(row['run-conclusion']))).length;
@@ -70,7 +119,7 @@ export function renderFactoryOverview(context) {
   return h(
     'section',
     { className: 'agent-factory', 'aria-labelledby': 'agent-factory-heading' },
-    renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, motion, successfulRunRows, latestTimestamp(runs)),
+    renderIntroduction(factoryHeading(context.sources, valueGains, activeRuns, successfulRuns, failedRuns), usefulOutputs, deliveredRepositories, successfulRuns, dispatchRows.length, successfulRunRows, latestTimestamp(runs)),
     renderFactoryFloor(repositoryCoverage, successfulRuns, failedRuns, dispatchRows.length, workers, valueGains, issues, pullRequests, activeRuns, pluralLabelResolver(context.elementConfig))
   );
 }
@@ -81,33 +130,34 @@ export function renderFactoryOverview(context) {
  * @param {number} deliveredRepositories
  * @param {number} successfulRuns
  * @param {number} dispatches
- * @param {{ packages: number, operations: number, live: number, review: number }} motion
  * @param {Row[]} successfulRunRows
  * @param {number} referenceTime
  */
-function renderIntroduction(heading, usefulOutputs, deliveredRepositories, successfulRuns, dispatches, motion, successfulRunRows, referenceTime) {
+function renderIntroduction(heading, usefulOutputs, deliveredRepositories, successfulRuns, dispatches, successfulRunRows, referenceTime) {
   const summary = usefulOutputs > 0
     ? `${formatCount(usefulOutputs)} retained issue and pull request ${usefulOutputs === 1 ? 'output is' : 'outputs are'} backed by Actions evidence${deliveredRepositories > 0 ? ` across ${formatCount(deliveredRepositories)} ${deliveredRepositories === 1 ? 'repository' : 'repositories'}` : ''}.`
     : `${formatCount(successfulRuns)} successful ${successfulRuns === 1 ? 'run' : 'runs'} and ${formatCount(dispatches)} workflow ${dispatches === 1 ? 'dispatch' : 'dispatches'} are retained in this period.`;
+  const running = h('p', { className: 'factory-running' });
+  motionEffect = effect(() => {
+    const motion = factoryMotionState.get();
+    running.className = `factory-running${motion.operations > 0 ? ' factory-running-active' : ''}`;
+    running.replaceChildren(motion.operations > 0
+      ? h(
+        'span',
+        {},
+        h('strong', {}, formatCount(motion.packages)),
+        motion.packages === 1 ? ' package in motion ' : ' packages in motion ',
+        `(${formatCount(motion.live)} ${motion.live === 1 ? 'op' : 'ops'} live, ${formatCount(motion.review)} in review)`
+      )
+      : 'Actions activity observed');
+  });
   return h(
     'header',
     { className: 'factory-intro' },
     h(
       'div',
       { className: 'factory-intro-copy' },
-      h(
-        'p',
-        { className: `factory-running${motion.operations > 0 ? ' factory-running-active' : ''}` },
-        motion.operations > 0
-          ? h(
-            'span',
-            {},
-            h('strong', {}, formatCount(motion.packages)),
-            motion.packages === 1 ? ' package in motion ' : ' packages in motion ',
-            `(${formatCount(motion.live)} ${motion.live === 1 ? 'op' : 'ops'} live, ${formatCount(motion.review)} in review)`
-          )
-          : 'Actions activity observed'
-      ),
+      running,
       h('h2', { id: 'agent-factory-heading' }, heading),
       h('p', {}, summary)
     ),
@@ -223,13 +273,7 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
   const selectDay = (index) => {
     const day = days[index];
     if (!day) return;
-    for (const [buttonIndex, button] of dayButtons.entries()) {
-      button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
-    }
-    summary.textContent = `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}.`;
-    section.dataset.preserveThroughRefresh = 'true';
-    const running = section.closest('.factory-intro')?.querySelector('.factory-running');
-    if (running instanceof HTMLElement) running.dataset.preserveThroughRefresh = 'true';
+    rhythmSelection.set(day);
     section.dispatchEvent(new CustomEvent('dashboard-time-window-change', {
       bubbles: true,
       detail: {
@@ -241,8 +285,8 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
   /** @param {MouseEvent} event */
   const resetDay = (event) => {
     if (event.target instanceof Element && event.target.closest('.factory-rhythm-day')) return;
-    for (const button of dayButtons) button.setAttribute('aria-pressed', 'false');
-    summary.textContent = '';
+    if (rhythmSelection.get() === null) return;
+    rhythmSelection.set(null);
     section.dispatchEvent(new CustomEvent('dashboard-time-window-range-change', {
       bubbles: true,
       detail: { range: '1w' }
@@ -281,6 +325,17 @@ function renderFactoryRhythm(successfulRuns, referenceTime) {
         return button;
       }))
   );
+  rhythmEffect = effect(() => {
+    const selected = rhythmSelection.get();
+    const index = selected ? days.findIndex((day) => day.date === selected.date) : -1;
+    for (const [buttonIndex, button] of dayButtons.entries()) {
+      button.setAttribute('aria-pressed', buttonIndex === index ? 'true' : 'false');
+    }
+    const day = days[index];
+    summary.textContent = day
+      ? `${day.label} ${day.date}: ${formatCount(day.count)} successful ${day.count === 1 ? 'run' : 'runs'}.`
+      : '';
+  });
   return section;
 }
 

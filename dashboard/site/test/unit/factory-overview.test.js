@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { expect, it } from 'vitest';
-import { renderFactoryOverview } from '../../src/components/factory-overview.js';
+import { afterEach, beforeEach, expect, it } from 'vitest';
+import { renderFactoryOverview, resetFactoryOverviewState } from '../../src/components/factory-overview.js';
 
 /** @type {import('../../src/presenter.js').SourceMetadata} */
 const metadata = {
@@ -12,6 +12,14 @@ const metadata = {
   completeness: 'complete',
   freshness: 'unknown'
 };
+
+beforeEach(() => {
+  resetFactoryOverviewState();
+});
+
+afterEach(() => {
+  resetFactoryOverviewState();
+});
 
 it('summarizes retained Actions activity and useful outputs while routing failures to Runs', () => {
   const rendered = renderFactoryOverview({
@@ -188,8 +196,6 @@ it('updates the factory rhythm day summary when selecting a bar', () => {
 
   expect(rendered.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 2 successful runs.');
   expect(dayButtons[4]?.getAttribute('aria-pressed')).toBe('true');
-  expect(rendered.querySelector('.factory-rhythm')?.getAttribute('data-preserve-through-refresh')).toBe('true');
-  expect(rendered.querySelector('.factory-running')?.getAttribute('data-preserve-through-refresh')).toBe('true');
   expect(horizonChange?.detail).toEqual({
     start: '2026-09-09T00:00:00.000Z',
     end: '2026-09-10T00:00:00.000Z'
@@ -279,4 +285,65 @@ it('reflects arity with declared plural text variables and falls back to built-i
   expect([...fallback.querySelectorAll('.factory-station')].map((station) => station.textContent)).toEqual(
     [...declared.querySelectorAll('.factory-station')].map((station) => station.textContent)
   );
+});
+
+it('restores the selected rhythm day and live motion when the dashboard refreshes', () => {
+  const runs = [
+    { run: '1', 'run-conclusion': 'success', 'started-at': '2026-09-09T09:00:00Z' },
+    { run: '2', 'run-conclusion': 'success', 'started-at': '2026-09-09T12:00:00Z' },
+    { run: '3', 'run-conclusion': 'success', 'started-at': '2026-09-11T10:00:00Z' },
+    { run: '4', package: 'cao', 'run-status': 'in-progress', 'rollout-mode': 'live', 'started-at': '2026-09-11T11:00:00Z' }
+  ];
+  const rendered = renderFactoryOverview({
+    sources: {
+      outcomes: { source: 'outcomes', rows: [], metadata },
+      runs: { source: 'runs', rows: runs, metadata }
+    }
+  });
+
+  expect(rendered.querySelector('.factory-running')?.textContent).toBe('1 package in motion (1 op live, 0 in review)');
+
+  const dayButtons = [...rendered.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
+  dayButtons[4]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  const refreshed = renderFactoryOverview({
+    sources: {
+      outcomes: { source: 'outcomes', rows: [], metadata },
+      runs: { source: 'runs', rows: runs.filter((row) => String(row['started-at']).startsWith('2026-09-09')), metadata }
+    }
+  });
+  const refreshedButtons = [...refreshed.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
+
+  expect(refreshed.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 2 successful runs.');
+  expect(refreshedButtons.filter((button) => button.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
+  expect(refreshed.querySelector('.factory-running')?.textContent).toBe('1 package in motion (1 op live, 0 in review)');
+  expect(refreshed.querySelector('.factory-running')?.className).toBe('factory-running factory-running-active');
+
+  refreshed.querySelector('.factory-rhythm-heading')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  expect(refreshedButtons.every((button) => button.getAttribute('aria-pressed') === 'false')).toBe(true);
+  expect(refreshed.querySelector('.factory-rhythm-summary')?.textContent).toBe('');
+});
+
+it('stops the reactive effects owned by a superseded overview render', () => {
+  const sources = {
+    outcomes: { source: 'outcomes', rows: [], metadata },
+    runs: {
+      source: 'runs',
+      rows: [
+        { run: '1', 'run-conclusion': 'success', 'started-at': '2026-09-09T09:00:00Z' },
+        { run: '2', package: 'cao', 'run-status': 'in-progress', 'rollout-mode': 'review', 'started-at': '2026-09-11T11:00:00Z' }
+      ],
+      metadata
+    }
+  };
+  const stale = renderFactoryOverview({ sources });
+  const current = renderFactoryOverview({ sources });
+  const staleSummary = stale.querySelector('.factory-rhythm-summary')?.textContent;
+
+  const dayButtons = [...current.querySelectorAll('.factory-rhythm-bars > .factory-rhythm-day')];
+  dayButtons[4]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+  expect(current.querySelector('.factory-rhythm-summary')?.textContent).toBe('Wed 2026-09-09: 1 successful run.');
+  expect(stale.querySelector('.factory-rhythm-summary')?.textContent).toBe(staleSummary);
 });
