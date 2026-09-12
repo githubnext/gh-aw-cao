@@ -48,14 +48,14 @@ const usage = {
   rows: [
     {
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '1',
-      engine: 'copilot', 'engine-version': '1.2.3', 'requested-model': 'model-a',
-      'resolved-model': 'model-b', 'rollout-mode': 'review', aic: 4,
+      engine: 'copilot', 'engine-version': '1.2.3', 'agent-id': 'copilot', 'model-id': 'model-b',
+      'requested-model': 'model-a', 'resolved-model': 'model-b', 'rollout-mode': 'review', aic: 4,
       'observed-at': '2026-09-01T00:00:00Z', 'run-link': { href: 'run-1' }
     },
     {
       organization: 'githubnext', repository: 'gh-aw-cao', workflow: 'a.md', run: '2',
-      engine: 'copilot', 'engine-version': '1.2.4', 'requested-model': 'model-b',
-      'resolved-model': 'model-b', 'rollout-mode': 'live', aic: 6,
+      engine: 'copilot', 'engine-version': '1.2.4', 'agent-id': 'copilot', 'model-id': 'model-b',
+      'requested-model': 'model-b', 'resolved-model': 'model-b', 'rollout-mode': 'live', aic: 6,
       'observed-at': '2026-09-02T00:00:00Z', 'run-link': { href: 'run-2' }
     }
   ],
@@ -414,24 +414,9 @@ describe('declarative dashboard queries', () => {
       source: 'engines-models-usage',
       rows: [
         {
-          engine: 'copilot',
-          'engine-version': '1.2.4',
-          'resolved-model': 'model-b',
-          'repository-link': { href: 'repo' },
-          repository: 'gh-aw-cao',
-          workflow: 'a.md',
-          'observed-at': '2026-09-02T00:00:00Z',
-          'run-link': { href: 'run-2' }
-        },
-        {
-          engine: 'copilot',
-          'engine-version': '1.2.3',
-          'resolved-model': 'model-b',
-          'repository-link': { href: 'repo' },
-          repository: 'gh-aw-cao',
-          workflow: 'a.md',
-          'observed-at': '2026-09-01T00:00:00Z',
-          'run-link': { href: 'run-1' }
+          summary: 'copilot / model-b',
+          events: 2,
+          'observed-at': '2026-09-02T00:00:00Z'
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }

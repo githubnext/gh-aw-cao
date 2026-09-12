@@ -535,12 +535,8 @@ test('data worker returns the Models & agents query on initial and navigated req
     expect(payload['engines-models-usage']).toMatchObject({
       source: 'engines-models-usage',
       rows: [{
-        engine: 'copilot',
-        'engine-version': '1.2.3',
-        'resolved-model': 'model-b',
-        'repository-link': { href: 'https://github.com/githubnext/gh-aw-cao' },
-        repository: 'gh-aw-cao',
-        workflow: '.github/workflows/dashboard.md',
+        summary: 'copilot / model-b',
+        events: 1,
         'observed-at': '2026-09-09T04:01:00Z'
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }

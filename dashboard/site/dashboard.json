@@ -1014,8 +1014,8 @@
       },
       {
         "name": "engines-models-usage",
-        "intent": "List agent events with their run-level engine, resolved model, version, repository, workflow, and navigation context.",
-        "description": "Observed agent events joined with their engine, resolved model, version, and repository metadata.",
+        "intent": "Summarize agent events by the run-level agent and model identifiers.",
+        "description": "Observed agent events grouped by agent ID and model ID.",
         "from": "events",
         "joins": [
           {
@@ -1045,24 +1045,12 @@
             ],
             "fields": [
               {
-                "field": "engine",
-                "as": "run-engine"
+                "field": "agent-id",
+                "as": "run-agent-id"
               },
               {
-                "field": "engine-version",
-                "as": "run-engine-version"
-              },
-              {
-                "field": "resolved-model",
-                "as": "run-resolved-model"
-              },
-              {
-                "field": "repository-link",
-                "as": "linked-repository"
-              },
-              {
-                "field": "run-link",
-                "as": "linked-run"
+                "field": "model-id",
+                "as": "run-model-id"
               }
             ]
           }
@@ -1075,42 +1063,59 @@
             }
           ]
         },
+        "compute": [
+          {
+            "as": "summary",
+            "function": "concat",
+            "args": [
+              {
+                "field": "run-agent-id"
+              },
+              {
+                "value": " / "
+              },
+              {
+                "field": "run-model-id"
+              }
+            ]
+          }
+        ],
+        "aggregate": {
+          "by": [
+            "summary"
+          ],
+          "values": [
+            {
+              "field": "event",
+              "as": "events",
+              "reducer": "count"
+            },
+            {
+              "field": "event-timestamp",
+              "as": "observed-at",
+              "reducer": "max"
+            }
+          ]
+        },
         "select": [
           {
-            "field": "run-engine",
-            "as": "engine"
+            "field": "summary"
           },
           {
-            "field": "run-engine-version",
-            "as": "engine-version"
+            "field": "events"
           },
           {
-            "field": "run-resolved-model",
-            "as": "resolved-model"
-          },
-          {
-            "field": "linked-repository",
-            "as": "repository-link"
-          },
-          {
-            "field": "repository"
-          },
-          {
-            "field": "workflow"
-          },
-          {
-            "field": "event-timestamp",
-            "as": "observed-at"
-          },
-          {
-            "field": "linked-run",
-            "as": "run-link"
+            "field": "observed-at"
           }
         ],
         "order-by": [
           {
-            "field": "observed-at",
+            "field": "events",
             "direction": "desc"
+          },
+          {
+            "field": "summary",
+            "direction": "asc"
           }
         ]
       },
@@ -5286,7 +5291,7 @@
           {
             "id": "engines-models-usage",
             "title": "Engines and models",
-            "description": "Observed agent events with engine, resolved model, version, repository, and workflow metadata.",
+            "description": "Observed agent events grouped by agent and model identifiers.",
             "data": {
               "source": "engines-models-usage"
             },
@@ -5295,41 +5300,22 @@
             "empty-message": "No engine or model usage metadata is available.",
             "layout": "full-view",
             "encoding": {
-              "href": {
-                "field": "run-link",
-                "type": "nominal"
-              },
               "columns": [
                 {
-                  "field": "engine",
+                  "field": "summary",
                   "type": "nominal",
-                  "title": "Agentic engine"
+                  "title": "Agent / model"
                 },
                 {
-                  "field": "engine-version",
-                  "type": "nominal",
-                  "title": "Engine version"
-                },
-                {
-                  "field": "resolved-model",
-                  "type": "nominal",
-                  "title": "Resolved model"
-                },
-                {
-                  "field": "repository",
-                  "type": "nominal",
-                  "title": "Repository"
-                },
-                {
-                  "field": "workflow",
-                  "type": "nominal",
-                  "title": "Workflow"
+                  "field": "events",
+                  "type": "quantitative",
+                  "title": "Events"
                 },
                 {
                   "field": "observed-at",
                   "type": "temporal",
                   "format": "human-friendly-timestamp",
-                  "title": "Observed"
+                  "title": "Last observed"
                 }
               ]
             },
@@ -5337,7 +5323,7 @@
           }
         ],
         "navigation-label": "Models & agents",
-        "description": "Compare observed model selection by agentic engine and version from agent events."
+        "description": "Compare observed agent and model combinations from agent events."
       },
       {
         "id": "operational-value",
