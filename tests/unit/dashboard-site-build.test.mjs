@@ -73,7 +73,14 @@ test("docs dashboard installs renderer assets and configured package pages", asy
 
     const manifest = parse(await readFile(new URL("../../dashboard/aw.yml", import.meta.url), "utf8"));
     const installedSitePrefix = ".github/aw/dashboard/site/";
-    for (const resource of manifest.resources.filter(({ destination: resourcePath }) => resourcePath.startsWith(installedSitePrefix))) {
+    const buildResources = new Set(["package.json", "package-lock.json", "scripts/build.mjs"]);
+    for (const resource of manifest.resources.filter(({ destination: resourcePath }) => (
+      resourcePath.startsWith(installedSitePrefix)
+      && !buildResources.has(resourcePath.slice(installedSitePrefix.length))
+      && (!resourcePath.endsWith(".js")
+        || resourcePath.endsWith("/main.js")
+        || resourcePath.endsWith("/data-worker.js"))
+    ))) {
       await access(new URL(resource.destination.slice(installedSitePrefix.length), destination));
     }
     await assert.rejects(

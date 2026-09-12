@@ -3102,6 +3102,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
   const buildWorkflow = readFileSync(join(root, ".github", "workflows", "dashboard-build.yml"), "utf8");
+  const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
   const deployWorkflow = readFileSync(join(root, "dashboard", "dashboard.yml"), "utf8");
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
   const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
@@ -3152,9 +3153,9 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.doesNotMatch(buildWorkflow, /actions\/cache\/save@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+path: [^\n]*cao-activity|Collect AI Credit usage|Collect operational-value observations|Collect durable dashboard records/);
   assert.match(activityRunner, /control-settings\.mjs[\s\S]*?\.github\/cao\/src\/control\.mjs[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?controlSettingsPath/);
   assert.match(activityRunner, /REPORT_CONTROL_SETTINGS[\s\S]*?path\.join\(runnerTemp, "cao-activity", "control-settings\.json"\)/);
-  assert.match(buildWorkflow, /cp -R \.github\/aw\/dashboard\/site\/\. "\$REPORT_OUTPUT\/"/);
-  assert.match(buildWorkflow, /configure-site\.mjs[\s\S]*?"\$REPORT_OUTPUT\/index\.html"[\s\S]*?"\$RUNNER_TEMP\/cao-activity\/control-settings\.json"/);
-  assert.match(buildWorkflow, /bundle-dashboards\.mjs[\s\S]*?"\$REPORT_OUTPUT\/dashboard\.json"[\s\S]*?\.github\/aw\/dashboards/);
+  assert.match(buildWorkflow, /npm ci --prefix "\$DASHBOARD_SITE_ROOT" --ignore-scripts/);
+  assert.match(buildWorkflow, /npm --prefix "\$DASHBOARD_SITE_ROOT" run build --[\s\S]*?"\$REPORT_OUTPUT"[\s\S]*?"\$RUNNER_TEMP\/cao-activity\/control-settings\.json"/);
+  assert.match(siteBuildScript, /from "esbuild"/);
   assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.jsonl" "\$REPORT_OUTPUT\/gh-aw-logs\.jsonl"/);
   assert.match(buildWorkflow, /cp "\$RUNNER_TEMP\/cao-activity\/gh-aw-logs\.sqlite" "\$REPORT_OUTPUT\/gh-aw-logs\.sqlite"/);
   assert.doesNotMatch(buildWorkflow, /REPORT_DASHBOARD_SOURCES|\/sources\.json/);
@@ -3236,7 +3237,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
       assert.match(activityRunner, new RegExp(`dashboardReportRoot[\\s\\S]*?${assetName.replace(".", "\\.")}`));
     }
     if (buildEntrypoints.has(assetName)) {
-      assert.match(buildWorkflow, new RegExp(`DASHBOARD_REPORT_ROOT/${assetName.replace(".", "\\.")}`));
+      assert.match(siteBuildScript, new RegExp(`\\.\\./\\.\\./report/${assetName.replace(".", "\\.")}`));
     }
     execFileSync(process.execPath, ["--check", assetPath]);
   }
