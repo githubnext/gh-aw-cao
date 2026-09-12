@@ -190,7 +190,7 @@ function renderCliActionControl(action, options = {}) {
       className: rowPresentation
         ? 'cli-action-trigger table-cli-action-button'
         : settingsPresentation
-        ? 'cli-action-trigger account-menu-action'
+        ? 'cli-action-trigger configuration-cli-action'
         : 'cli-action-trigger',
       title: rowPresentation ? action.label : undefined,
       'aria-label': rowPresentation ? action.label : undefined,
@@ -273,8 +273,28 @@ export function renderCliActions(actions, options = {}) {
   if (!Array.isArray(actions) || actions.length === 0) return null;
 
   const settingsPresentation = options.presentation === 'settings';
+  const settingsList = settingsPresentation
+    ? h('div', { className: 'configuration-cli-action-list' })
+    : null;
   const root = settingsPresentation
-    ? h('div', { className: 'cli-actions-settings' })
+    ? h(
+      'section',
+      {
+        className: 'configuration-browser-settings cli-actions-settings',
+        'aria-labelledby': 'configuration-cli-actions-heading'
+      },
+      h(
+        'div',
+        { className: 'configuration-browser-settings-heading' },
+        h(
+          'div',
+          null,
+          h('h3', { id: 'configuration-cli-actions-heading' }, 'Agentic Workflows'),
+          h('p', null, 'Update installed packages or upgrade this repository’s Agentic Workflows.')
+        )
+      ),
+      settingsList
+    )
     : h(
       'details',
       { className: 'cli-actions-menu' },
@@ -286,8 +306,9 @@ export function renderCliActions(actions, options = {}) {
       )
     );
   const list = settingsPresentation
-    ? root
+    ? settingsList
     : h('div', { className: 'cli-actions-list' });
+  if (!list) return null;
   if (!settingsPresentation) root.append(list);
 
   for (const action of actions) {
@@ -322,6 +343,6 @@ export function attachCliActions(dashboard, actions, options = {}) {
   );
   if (!settingsActions) return;
   const dialogs = [...settingsActions.querySelectorAll('dialog')];
-  dashboard.querySelector('.account-menu-popover')?.append(settingsActions);
+  dashboard.querySelector('.configuration-view > .configuration-browser-settings')?.before(settingsActions);
   for (const dialog of dialogs) dashboard.append(dialog);
 }

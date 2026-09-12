@@ -124,6 +124,9 @@ describe('Configuration dashboard view', () => {
     expect(page.views.every((/** @type {{ mark: string }} */ view) => view.mark !== 'chart')).toBe(true);
     expect(page.views).toHaveLength(1);
     expect(page.views[0].id).toBe('configuration-policy');
+    expect(dashboard['cli-actions']
+      .filter((/** @type {{ id: string }} */ action) => ['update-repository', 'upgrade-repository'].includes(action.id))
+      .every((/** @type {{ placement: string }} */ action) => action.placement === 'settings')).toBe(true);
   });
 
   it('wires the Settings view to a supported UI element', () => {
