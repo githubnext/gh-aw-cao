@@ -76,6 +76,7 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'requested-model': 'model-a',
         'resolved-model': 'model-b',
         'aic-total': 17,
+        'repository-link': { href: 'https://github.com/githubnext/gh-aw-cao' },
         'run-link': { href: `https://github.com/githubnext/gh-aw-cao/actions/runs/${run}` }
       }],
       metadata: { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': generation }
@@ -536,11 +537,8 @@ test('data worker returns the Models & agents query on initial and navigated req
       rows: [{
         engine: 'copilot',
         'engine-version': '1.2.3',
-        'requested-model': 'model-a',
         'resolved-model': 'model-b',
-        'rollout-mode': 'review',
-        'event-type': 'agent_turn',
-        'event-summary': 'Processed the dashboard request',
+        'repository-link': { href: 'https://github.com/githubnext/gh-aw-cao' },
         repository: 'gh-aw-cao',
         workflow: '.github/workflows/dashboard.md',
         'observed-at': '2026-09-09T04:01:00Z'

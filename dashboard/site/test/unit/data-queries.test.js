@@ -395,7 +395,12 @@ describe('declarative dashboard queries', () => {
     };
     const runs = {
       source: 'runs',
-      rows: usage.rows.map((row) => ({ ...row, 'run-attempt': 1, 'run-link': { href: `run-${row.run}` } })),
+      rows: usage.rows.map((row) => ({
+        ...row,
+        'run-attempt': 1,
+        'repository-link': { href: 'repo' },
+        'run-link': { href: `run-${row.run}` }
+      })),
       metadata: metadata('runs')
     };
     const derived = executeDashboardQueries(
@@ -411,11 +416,8 @@ describe('declarative dashboard queries', () => {
         {
           engine: 'copilot',
           'engine-version': '1.2.4',
-          'requested-model': 'model-b',
           'resolved-model': 'model-b',
-          'rollout-mode': 'live',
-          'event-type': 'assistant_message',
-          'event-summary': 'Second turn',
+          'repository-link': { href: 'repo' },
           repository: 'gh-aw-cao',
           workflow: 'a.md',
           'observed-at': '2026-09-02T00:00:00Z',
@@ -424,11 +426,8 @@ describe('declarative dashboard queries', () => {
         {
           engine: 'copilot',
           'engine-version': '1.2.3',
-          'requested-model': 'model-a',
           'resolved-model': 'model-b',
-          'rollout-mode': 'review',
-          'event-type': 'agent_turn',
-          'event-summary': 'First turn',
+          'repository-link': { href: 'repo' },
           repository: 'gh-aw-cao',
           workflow: 'a.md',
           'observed-at': '2026-09-01T00:00:00Z',

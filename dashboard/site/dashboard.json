@@ -1014,8 +1014,8 @@
       },
       {
         "name": "engines-models-usage",
-        "intent": "List agent events with their run-level engine, model, version, rollout, and navigation context.",
-        "description": "Observed agent events joined with their engine, model, version, and rollout metadata.",
+        "intent": "List agent events with their run-level engine, resolved model, version, repository, workflow, and navigation context.",
+        "description": "Observed agent events joined with their engine, resolved model, version, and repository metadata.",
         "from": "events",
         "joins": [
           {
@@ -1053,16 +1053,12 @@
                 "as": "run-engine-version"
               },
               {
-                "field": "requested-model",
-                "as": "run-requested-model"
-              },
-              {
                 "field": "resolved-model",
                 "as": "run-resolved-model"
               },
               {
-                "field": "rollout-mode",
-                "as": "run-rollout-mode"
+                "field": "repository-link",
+                "as": "linked-repository"
               },
               {
                 "field": "run-link",
@@ -1089,22 +1085,12 @@
             "as": "engine-version"
           },
           {
-            "field": "run-requested-model",
-            "as": "requested-model"
-          },
-          {
             "field": "run-resolved-model",
             "as": "resolved-model"
           },
           {
-            "field": "run-rollout-mode",
-            "as": "rollout-mode"
-          },
-          {
-            "field": "event-type"
-          },
-          {
-            "field": "event-summary"
+            "field": "linked-repository",
+            "as": "repository-link"
           },
           {
             "field": "repository"
@@ -5300,7 +5286,7 @@
           {
             "id": "engines-models-usage",
             "title": "Engines and models",
-            "description": "Observed agent events with engine, model, version, and rollout metadata.",
+            "description": "Observed agent events with engine, resolved model, version, repository, and workflow metadata.",
             "data": {
               "source": "engines-models-usage"
             },
@@ -5325,30 +5311,9 @@
                   "title": "Engine version"
                 },
                 {
-                  "field": "requested-model",
-                  "type": "nominal",
-                  "title": "Requested model"
-                },
-                {
                   "field": "resolved-model",
                   "type": "nominal",
                   "title": "Resolved model"
-                },
-                {
-                  "field": "rollout-mode",
-                  "type": "nominal",
-                  "title": "Mode",
-                  "display": "mode"
-                },
-                {
-                  "field": "event-type",
-                  "type": "nominal",
-                  "title": "Agent event"
-                },
-                {
-                  "field": "event-summary",
-                  "type": "nominal",
-                  "title": "Summary"
                 },
                 {
                   "field": "repository",
