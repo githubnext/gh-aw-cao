@@ -10,6 +10,12 @@
     { "required": ["control-plane"] },
     { "required": ["target-authority"] }
   ],
+  "allOf": [
+    {
+      "if": { "required": ["control-plane"] },
+      "then": { "required": ["gh-aw-compiler-version"] }
+    }
+  ],
   "properties": {
     "$schema": {
       "const": "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json"

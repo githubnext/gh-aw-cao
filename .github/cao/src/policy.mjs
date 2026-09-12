@@ -138,6 +138,9 @@ function validateDocument(document) {
   if (!("control-plane" in document) && !("target-authority" in document)) {
     throw new PolicyError("policy requires control-plane or target-authority");
   }
+  if ("control-plane" in document && !("gh-aw-compiler-version" in document)) {
+    throw new PolicyError("gh-aw-compiler-version is required for a control plane");
+  }
   if ("gh-aw-compiler-version" in document) {
     assertString(document["gh-aw-compiler-version"], "gh-aw-compiler-version", GH_AW_VERSION_PATTERN);
   }
