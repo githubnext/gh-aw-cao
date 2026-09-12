@@ -14,6 +14,7 @@ class FakeWorker extends EventTarget {
     super();
     this.healthy = healthy;
     this.state = 'activated';
+    /** @type {{ type?: string }[]} */
     this.messages = [];
   }
 
@@ -60,6 +61,7 @@ describe('automatic dashboard data updates', () => {
   it('blocks downloads on metered connections and low battery', () => {
     expect(dashboardDataUpdateBlockedReason({ saveData: true }, undefined)).toBe('metered connection');
     expect(dashboardDataUpdateBlockedReason({ metered: true }, undefined)).toBe('metered connection');
+    expect(dashboardDataUpdateBlockedReason({ type: 'cellular' }, undefined)).toBe('metered connection');
     expect(dashboardDataUpdateBlockedReason(undefined, { charging: false, level: 0.2 })).toBe('low battery');
     expect(dashboardDataUpdateBlockedReason(undefined, { charging: true, level: 0.1 })).toBeNull();
     expect(dashboardDataUpdateBlockedReason(undefined, { charging: false, level: 0.21 })).toBeNull();
@@ -71,7 +73,7 @@ describe('automatic dashboard data updates', () => {
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
-        serviceWorkers: /** @type {ServiceWorkerContainer} */ (serviceWorkers),
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: false, level: 0.1 }),
         online: () => true
       }
@@ -96,7 +98,7 @@ describe('automatic dashboard data updates', () => {
         'https://example.test/inventory-sources.json'
       ],
       {
-        serviceWorkers: /** @type {ServiceWorkerContainer} */ (serviceWorkers),
+        serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         getBattery: async () => ({ charging: true, level: 1 }),
         online: () => true,
         scriptUrl: new URL('https://example.test/service-worker.js'),
@@ -128,7 +130,7 @@ describe('automatic dashboard data updates', () => {
         .mockResolvedValueOnce(recoveredRegistration)
     };
     const recovery = ensureHealthyDashboardServiceWorker(
-      /** @type {ServiceWorkerContainer} */ (serviceWorkers),
+      /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
       new URL('https://example.test/service-worker.js')
     );
 

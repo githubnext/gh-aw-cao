@@ -46,6 +46,7 @@ describe('Configuration dashboard view', () => {
 
     const checkbox = rendered.querySelector('#configuration-automatic-dashboard-data-updates');
     if (!(checkbox instanceof HTMLInputElement)) throw new Error('automatic update checkbox did not render');
+    document.body.append(rendered);
     expect(checkbox.checked).toBe(false);
     checkbox.click();
     expect(localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBe('true');
@@ -128,7 +129,7 @@ describe('Configuration dashboard view', () => {
     if (!(maintenanceGroup instanceof HTMLDetailsElement)) throw new Error('maintenance group did not render');
     expect(maintenanceGroup.open).toBe(false);
     expect(rendered.textContent).not.toContain('Targets');
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.configuration-editor .configuration-setting-row')).toHaveLength(0);
 
     maintenanceGroup.open = true;
     maintenanceGroup.dispatchEvent(new Event('toggle'));
@@ -136,12 +137,12 @@ describe('Configuration dashboard view', () => {
       .find((group) => group.querySelector(':scope > summary span')?.textContent === 'Targets');
     if (!(targetsGroup instanceof HTMLDetailsElement)) throw new Error('targets group did not render');
     expect(targetsGroup.open).toBe(false);
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.configuration-editor .configuration-setting-row')).toHaveLength(0);
 
     targetsGroup.open = true;
     targetsGroup.dispatchEvent(new Event('toggle'));
     expect(targetsGroup.querySelectorAll(':scope > .configuration-setting-children > details')).toHaveLength(100);
-    expect(rendered.querySelectorAll('.configuration-setting-row')).toHaveLength(0);
+    expect(rendered.querySelectorAll('.configuration-editor .configuration-setting-row')).toHaveLength(0);
   });
 
   it('edits lists without losing the nested policy path', () => {

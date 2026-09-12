@@ -7,7 +7,7 @@ const LOW_BATTERY_LEVEL = 0.2;
 const CANARY_TIMEOUT_MS = 3000;
 const DOWNLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 
-/** @typedef {{ saveData?: boolean, metered?: boolean, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
+/** @typedef {{ saveData?: boolean, metered?: boolean, type?: string, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} ConnectionState */
 /** @typedef {{ charging: boolean, level: number, addEventListener?: EventTarget['addEventListener'], removeEventListener?: EventTarget['removeEventListener'] }} BatteryState */
 
 /** @param {Storage} [storage] */
@@ -30,7 +30,7 @@ export function setAutomaticDashboardDataUpdatesEnabled(enabled, storage = local
  * @param {BatteryState | undefined} battery
  */
 export function dashboardDataUpdateBlockedReason(connection, battery) {
-  if (connection?.saveData || connection?.metered) return 'metered connection';
+  if (connection?.saveData || connection?.metered || connection?.type === 'cellular') return 'metered connection';
   if (battery && !battery.charging && battery.level <= LOW_BATTERY_LEVEL) return 'low battery';
   return null;
 }
@@ -78,6 +78,25 @@ function waitForWorker(worker) {
   });
 }
 
+/** @param {ServiceWorker} worker */
+function waitForActivation(worker) {
+  if (worker.state === 'activated') return Promise.resolve(worker);
+  if (worker.state === 'redundant') return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => {
+      worker.removeEventListener('statechange', onStateChange);
+      resolve(null);
+    }, CANARY_TIMEOUT_MS);
+    const onStateChange = () => {
+      if (!['activated', 'redundant'].includes(worker.state)) return;
+      window.clearTimeout(timeout);
+      worker.removeEventListener('statechange', onStateChange);
+      resolve(worker.state === 'activated' ? worker : null);
+    };
+    worker.addEventListener('statechange', onStateChange);
+  });
+}
+
 /**
  * Updates the registration without HTTP cache reuse, canaries a waiting worker
  * before activation, and force-registers a cache-busted script if the active
@@ -88,12 +107,16 @@ function waitForWorker(worker) {
 export async function ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl) {
   const options = { scope: new URL('./', scriptUrl).pathname, updateViaCache: /** @type {ServiceWorkerUpdateViaCache} */ ('none') };
   let registration = await serviceWorkers.register(scriptUrl, options);
-  await registration.update();
+  if (registration.active) await registration.update();
 
   const candidate = await waitForWorker(registration.waiting ?? registration.installing);
   if (candidate) {
     try {
-      if (await canaryWorker(candidate)) candidate.postMessage({ type: 'ACTIVATE' });
+      if (await canaryWorker(candidate)) {
+        if (candidate.state !== 'activated') candidate.postMessage({ type: 'ACTIVATE' });
+        const activated = await waitForActivation(candidate);
+        if (activated) return { registration, worker: activated };
+      }
     } catch {
       // Keep the healthy active worker; a later update can replace this candidate.
     }
@@ -147,44 +170,53 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
   const now = dependencies.now ?? Date.now;
   const setTimer = dependencies.setTimer ?? window.setTimeout.bind(window);
   const clearTimer = dependencies.clearTimer ?? window.clearTimeout.bind(window);
+  /** @type {number | undefined} */
   let timer;
   let stopped = false;
+  let running = false;
+  let rerun = false;
   /** @type {BatteryState | undefined} */
   let battery;
   /** @type {ServiceWorkerRegistration | undefined} */
   let registration;
 
+  /** @param {number} delay */
   const schedule = (delay) => {
+    if (stopped) return;
     if (timer !== undefined) clearTimer(timer);
     timer = setTimer(() => void reconcile(), delay);
   };
-  const reconcile = async () => {
+  const performReconcile = async () => {
     if (stopped) return;
     if (!automaticDashboardDataUpdatesEnabled(storage)) {
-      if (registration) {
-        await registration.unregister();
-        registration = undefined;
-      }
+      const existing = registration ?? await serviceWorkers?.getRegistration(new URL('./', scriptUrl).href);
+      await existing?.unregister();
+      registration = undefined;
       return;
     }
+    if (!serviceWorkers) return;
     if (!online()) {
       schedule(RETRY_INTERVAL_MS);
       return;
     }
-    if (!battery && getBattery) battery = await getBattery().catch(() => undefined);
+    if (!battery && getBattery) {
+      battery = await getBattery().catch(() => undefined);
+      battery?.addEventListener?.('chargingchange', onConstraintChange);
+      battery?.addEventListener?.('levelchange', onConstraintChange);
+    }
     if (dashboardDataUpdateBlockedReason(connection, battery)) {
       schedule(RETRY_INTERVAL_MS);
+      return;
+    }
+    const lastSuccess = Number(storage.getItem(LAST_SUCCESS_STORAGE_KEY) ?? 0);
+    const remaining = UPDATE_INTERVAL_MS - (now() - lastSuccess);
+    if (lastSuccess > 0 && remaining > 0) {
+      schedule(remaining);
       return;
     }
     try {
       const healthy = await ensureHealthyDashboardServiceWorker(serviceWorkers, scriptUrl);
       registration = healthy.registration;
-      const lastSuccess = Number(storage.getItem(LAST_SUCCESS_STORAGE_KEY) ?? 0);
-      const remaining = UPDATE_INTERVAL_MS - (now() - lastSuccess);
-      if (lastSuccess > 0 && remaining > 0) {
-        schedule(remaining);
-        return;
-      }
       const response = await requestWorker(
         healthy.worker,
         { type: 'DOWNLOAD_DATA', urls: dataUrls },
@@ -201,20 +233,27 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
       schedule(RETRY_INTERVAL_MS);
     }
   };
+  const reconcile = async () => {
+    if (running) {
+      rerun = true;
+      return;
+    }
+    running = true;
+    try {
+      await performReconcile();
+    } finally {
+      running = false;
+      if (rerun && !stopped) {
+        rerun = false;
+        void reconcile();
+      }
+    }
+  };
   const onSettingChange = () => void reconcile();
   const onConstraintChange = () => void reconcile();
   window.addEventListener(SETTING_EVENT, onSettingChange);
   window.addEventListener('online', onConstraintChange);
   connection?.addEventListener?.('change', onConstraintChange);
-  if (getBattery) {
-    void getBattery().then((currentBattery) => {
-      if (stopped) return;
-      battery = currentBattery;
-      battery.addEventListener?.('chargingchange', onConstraintChange);
-      battery.addEventListener?.('levelchange', onConstraintChange);
-      void reconcile();
-    }).catch(() => {});
-  }
   void reconcile();
 
   return () => {
