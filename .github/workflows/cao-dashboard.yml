@@ -59,8 +59,12 @@ jobs:
         id: deployment-policy
         run: |
           deploy="$(jq -er '
-            .["control-plane"].packages.dashboard.deploy // true
-            | if type == "boolean" then tostring else error("control-plane.packages.dashboard.deploy must be a boolean") end
+            .["control-plane"].packages.dashboard.deploy as $deploy
+            | if $deploy == null then true
+              elif ($deploy | type) == "boolean" then $deploy
+              else error("control-plane.packages.dashboard.deploy must be a boolean")
+              end
+            | tostring
           ' .github/workflows/cao.json)"
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
 

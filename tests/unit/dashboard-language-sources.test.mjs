@@ -128,21 +128,6 @@ test("builds deployable package and workflow inventory sources", () => {
     "observed-at": generatedAt,
   });
 
-  test("excludes internal packages from user-facing package inventory", () => {
-    const sources = buildInventoryDashboardSources({
-      repository: "githubnext/control",
-      generatedAt: "2026-09-11T00:00:00Z",
-      inventory: { bundles: [], workflows: [] },
-      controlSettings: {
-        packages: {
-          activity: {},
-          dashboard: { deploy: false },
-        },
-      },
-    });
-
-    assert.deepEqual(sources.packages.rows, []);
-  });
   assert.deepEqual(
     sources.workflows.rows.map((workflow) => ({
       workflow: workflow.workflow,
@@ -180,6 +165,22 @@ test("builds deployable package and workflow inventory sources", () => {
       "observed-at": generatedAt,
     },
   );
+});
+
+test("excludes internal packages from user-facing package inventory", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "githubnext/control",
+    generatedAt: "2026-09-11T00:00:00Z",
+    inventory: { bundles: [], workflows: [] },
+    controlSettings: {
+      packages: {
+        activity: {},
+        dashboard: { deploy: false },
+      },
+    },
+  });
+
+  assert.deepEqual(sources.packages.rows, []);
 });
 
 test("transaction logs retain a session when artifacts contain no timeline", () => {

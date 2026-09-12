@@ -3158,7 +3158,7 @@ test("Dashboard package builds artifacts and deploys Pages in one workflow", () 
   assert.doesNotMatch(dashboardManifest, /redirects\.mjs/);
   assert.doesNotMatch(dashboardWorkflow, /legacy dashboard redirects|redirects\.mjs/);
   assert.match(dashboardWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
-  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?\.packages\.dashboard\.deploy \/\/ true[\s\S]*?deploy=\$deploy/);
+  assert.match(dashboardWorkflow, /Resolve dashboard deployment policy[\s\S]*?\.packages\.dashboard\.deploy as \$deploy[\s\S]*?if \$deploy == null then true[\s\S]*?elif \(\$deploy \| type\) == "boolean" then \$deploy[\s\S]*?deploy=\$deploy/);
   assert.match(dashboardWorkflow, /Configure Pages\n\s+if: steps\.deployment-policy\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /deploy:\n\s+needs: build\n\s+if: needs\.build\.outputs\.deploy == 'true'/);
   assert.match(dashboardWorkflow, /name: CAO Dashboard/);

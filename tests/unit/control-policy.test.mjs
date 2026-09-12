@@ -256,22 +256,6 @@ test("control policy validates and exposes a package octicon", () => {
     },
   });
 
-  test("control policy validates and exposes package deployment settings", () => {
-    const policy = JSON.parse(minimalPolicy);
-    policy["control-plane"].packages.dashboard = { deploy: false };
-
-    assert.equal(validate(JSON.stringify(policy)).status, 0);
-    assert.equal(
-      controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").packages.dashboard.deploy,
-      false,
-    );
-
-    policy["control-plane"].packages.dashboard.deploy = "false";
-    const invalid = validate(JSON.stringify(policy));
-    assert.notEqual(invalid.status, 0);
-    assert.match(invalid.stderr, /control-plane\.packages\.dashboard\.deploy must be a Boolean/);
-  });
-
   assert.equal(validate(policyWithIcon).status, 0, validate(policyWithIcon).stderr);
   const invalidResult = validate(policyWithInvalidIcon);
   assert.notEqual(invalidResult.status, 0);
@@ -281,6 +265,22 @@ test("control policy validates and exposes a package octicon", () => {
     controlSettings(parsePolicy(policyWithIcon), "acme/control").packages.dependabot.icon,
     "dependabot",
   );
+});
+
+test("control policy validates and exposes package deployment settings", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["control-plane"].packages.dashboard = { deploy: false };
+
+  assert.equal(validate(JSON.stringify(policy)).status, 0);
+  assert.equal(
+    controlSettings(parsePolicy(JSON.stringify(policy)), "acme/control").packages.dashboard.deploy,
+    false,
+  );
+
+  policy["control-plane"].packages.dashboard.deploy = "false";
+  const invalid = validate(JSON.stringify(policy));
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stderr, /control-plane\.packages\.dashboard\.deploy must be a Boolean/);
 });
 
 test("control policy validates config-defined worker workflow identities", () => {
