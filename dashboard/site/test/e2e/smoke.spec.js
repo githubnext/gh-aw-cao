@@ -1210,6 +1210,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
   await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();
+  const backgroundServiceWorker = accountMenu.getByRole('checkbox', { name: 'Background service worker' });
+  await expect(backgroundServiceWorker).not.toBeChecked();
   await expect(accountMenu.getByRole('group', { name: 'Appearance' })).toBeVisible();
   await expect(accountMenu.getByRole('button', { name: 'Reset local data' })).toBeVisible();
   await accountMenu.getByRole('button', { name: 'Reset local data' }).click();

@@ -29,6 +29,11 @@ import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHo
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
 import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabaseCounts } from './database-counts.js';
+import {
+  automaticDashboardDataUpdatesEnabled,
+  onAutomaticDashboardDataUpdatesSettingChange,
+  setAutomaticDashboardDataUpdatesEnabled
+} from './dashboard-data-updates.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -790,6 +795,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   octicon('sync'),
                   h('span', null, 'Refresh')
                 ),
+              renderBackgroundServiceWorkerSetting(),
               h(
                 'fieldset',
                 { className: 'appearance-settings' },
@@ -835,6 +841,55 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
       )
     )
   );
+}
+
+function renderBackgroundServiceWorkerSetting() {
+  const enabled = () => {
+    try {
+      return automaticDashboardDataUpdatesEnabled();
+    } catch {
+      return false;
+    }
+  };
+  /** @type {HTMLInputElement} */
+  let checkbox;
+  const update = () => {
+    checkbox.checked = enabled();
+  };
+  checkbox = /** @type {HTMLInputElement} */ (h('input', {
+    type: 'checkbox',
+    checked: enabled(),
+    'aria-label': 'Background service worker',
+    onChange: /** @param {Event} event */ (event) => {
+      try {
+        setAutomaticDashboardDataUpdatesEnabled(
+          /** @type {HTMLInputElement} */ (event.currentTarget).checked
+        );
+      } catch {
+        update();
+      }
+    }
+  }));
+  const control = h(
+    'label',
+    { className: 'background-service-worker-setting account-menu-action' },
+    octicon('sync'),
+    h('span', null, 'Background service worker'),
+    checkbox
+  );
+  const stopSettingUpdates = onAutomaticDashboardDataUpdatesSettingChange(update);
+  let wasConnected = control.isConnected;
+  const observer = new MutationObserver(() => {
+    if (control.isConnected) {
+      wasConnected = true;
+      return;
+    }
+    if (!wasConnected) return;
+    observer.disconnect();
+    stopSettingUpdates();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  return control;
 }
 
 /**
