@@ -92,7 +92,7 @@ concurrency:
   job-discriminator: ${{ github.run_id }}
   cancel-in-progress: true
 
-tracker-id: aw-failures-investigator
+tracker-id: cao-evolution-failures-investigator
 
 tools:
   github:
@@ -104,7 +104,7 @@ tools:
 
 graders:
   operational-value:
-    run: ./graders/aw-failures-investigator-operational-value.sh
+    run: ./graders/cao-evolution-failures-investigator-operational-value.sh
 
 safe-outputs:
   create-issue:

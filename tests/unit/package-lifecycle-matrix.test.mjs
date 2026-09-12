@@ -20,7 +20,7 @@ test("package lifecycle matrix selects only packages owning changed files", () =
     ["root", "Dependabot"],
   );
   assert.deepEqual(
-    names([".github/workflows/graders/aw-maintenance-compiler-security-operational-value.sh"]),
+    names([".github/workflows/graders/cao-evolution-compiler-security-operational-value.sh"]),
     ["root", "CAO Evolution"],
   );
   assert.deepEqual(

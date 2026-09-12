@@ -4,7 +4,7 @@ set -euo pipefail
 export LC_ALL=C
 
 MATURATION_SECONDS=3600
-RESULT_FILE=/tmp/gh-aw/agent/aw-maintenance-compiler-security/result.json
+RESULT_FILE=/tmp/gh-aw/agent/cao-evolution-compiler-security/result.json
 
 definition() {
     cat <<'JSON'
@@ -13,7 +13,7 @@ definition() {
   "grader": "operational-value",
   "repository": "githubnext/gh-aw-cao",
   "workflowName": "CAO Evolution / AW Compiler Security",
-  "sourcePath": ".github/workflows/aw-maintenance-compiler-security.md",
+  "sourcePath": ".github/workflows/cao-evolution-compiler-security.md",
   "adoption": {
     "commit": "2cc8ea81865e35063b5ea31079dabc7edf557cde",
     "adoptedAt": "2026-09-03T12:54:42Z"

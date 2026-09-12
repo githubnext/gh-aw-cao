@@ -19,8 +19,8 @@
                 ".github/workflows/cao-evolution-efficiency.md",
                 ".github/workflows/cao-evolution-integrity.md",
                 ".github/workflows/cao-evolution-reliability.md",
-                ".github/workflows/aw-failures-investigator.md",
-                ".github/workflows/aw-maintenance-compiler-security.md"
+                ".github/workflows/cao-evolution-failures-investigator.md",
+                ".github/workflows/cao-evolution-compiler-security.md"
               ]
             }
           ]
@@ -60,8 +60,8 @@
             {
               "field": "workflow",
               "in": [
-                ".github/workflows/aw-failures-investigator.md",
-                ".github/workflows/aw-maintenance-compiler-security.md"
+                ".github/workflows/cao-evolution-failures-investigator.md",
+                ".github/workflows/cao-evolution-compiler-security.md"
               ]
             }
           ]
@@ -118,8 +118,8 @@
               },
               "filters": {
                 "workflow": [
-                  ".github/workflows/aw-failures-investigator.md",
-                  ".github/workflows/aw-maintenance-compiler-security.md"
+                  ".github/workflows/cao-evolution-failures-investigator.md",
+                  ".github/workflows/cao-evolution-compiler-security.md"
                 ]
               }
             },
@@ -160,8 +160,8 @@
                   ".github/workflows/cao-evolution-efficiency.md",
                   ".github/workflows/cao-evolution-integrity.md",
                   ".github/workflows/cao-evolution-reliability.md",
-                  ".github/workflows/aw-failures-investigator.md",
-                  ".github/workflows/aw-maintenance-compiler-security.md"
+                  ".github/workflows/cao-evolution-failures-investigator.md",
+                  ".github/workflows/cao-evolution-compiler-security.md"
                 ]
               }
             },
@@ -315,8 +315,8 @@
               "source": "cao-evolution-aw-maintenance-attainment",
               "filters": {
                 "workflow": [
-                  ".github/workflows/aw-failures-investigator.md",
-                  ".github/workflows/aw-maintenance-compiler-security.md"
+                  ".github/workflows/cao-evolution-failures-investigator.md",
+                  ".github/workflows/cao-evolution-compiler-security.md"
                 ]
               },
               "limit": 50

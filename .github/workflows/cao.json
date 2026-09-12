@@ -42,13 +42,13 @@
         "max-repositories": 1,
         "workers": {
           "compiler-security": {
-            "workflow": "aw-maintenance-compiler-security"
+            "workflow": "cao-evolution-compiler-security"
           },
           "efficiency": {
             "workflow": "cao-evolution-efficiency"
           },
           "failures-investigator": {
-            "workflow": "aw-failures-investigator"
+            "workflow": "cao-evolution-failures-investigator"
           },
           "integrity": {
             "workflow": "cao-evolution-integrity"

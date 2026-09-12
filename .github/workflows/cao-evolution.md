@@ -90,7 +90,7 @@ network:
 
 safe-outputs:
   dispatch-workflow:
-    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, aw-failures-investigator, aw-maintenance-compiler-security]
+    workflows: [cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-failures-investigator, cao-evolution-compiler-security]
     max: 5
   threat-detection: false
 ---
@@ -127,8 +127,8 @@ Skip archived repositories, repositories without a readable default branch, repo
 - `cao-evolution-integrity`: checks policy/schema validity, authority boundaries, package and worker registration, installed-source ownership, rollout consistency, and dashboard/control-model drift.
 - `cao-evolution-reliability`: checks the last 24 full hours of CAO admission, dispatch, worker, activity-cache, review-bundle, dashboard-build, and dashboard-data-health evidence for actionable recurring failures.
 - `cao-evolution-efficiency`: checks portfolio-level dispatch yield, no-op and incomplete rates, duplicate acquisition, schedule overlap, API pressure, and AI Credit allocation. It does not duplicate per-workflow prompt or ambient-context optimization owned by `optimization`.
-- `aw-failures-investigator`: checks recent agentic workflow runs and failure logs, groups failures by error signature, and publishes focused fix issues for uncovered failure clusters.
-- `aw-maintenance-compiler-security`: compiles all agentic workflows with strict validation, linters, image checks, and the full gh-aw security-scanner suite, then publishes one deduplicated findings report with a local agent fixing loop.
+- `cao-evolution-failures-investigator`: checks recent agentic workflow runs and failure logs, groups failures by error signature, and publishes focused fix issues for uncovered failure clusters.
+- `cao-evolution-compiler-security`: compiles all agentic workflows with strict validation, linters, image checks, and the full gh-aw security-scanner suite, then publishes one deduplicated findings report with a local agent fixing loop.
 
 Dispatch the integrity, reliability, and efficiency workers only for verified control repositories. Dispatch the failure investigator and compiler-security workers only for verified agentic-workflow repositories. Dispatch each eligible worker at most once for each selected repository and effective mode. Do not retry a failed dispatch in the same run. Workers own repository analysis and all durable outputs.
 

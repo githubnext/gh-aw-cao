@@ -66,7 +66,7 @@ test("ops publish derives routing from an allowlisted generated run", () => {
       event: "workflow_dispatch",
       status: "completed",
       conclusion: "success",
-      path: ".github/workflows/aw-failures-investigator.lock.yml",
+      path: ".github/workflows/cao-evolution-failures-investigator.lock.yml",
       head_branch: "main",
       created_at: "2026-08-27T10:00:00Z",
       updated_at: "2026-08-27T10:02:00Z",
@@ -178,7 +178,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
     event: "workflow_dispatch",
     status: "completed",
     conclusion: "success",
-    path: ".github/workflows/aw-failures-investigator.lock.yml",
+    path: ".github/workflows/cao-evolution-failures-investigator.lock.yml",
     head_branch: "main",
     created_at: "2026-08-27T10:00:00Z",
     updated_at: "2026-08-27T10:02:00Z",
@@ -213,7 +213,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
   }), /default branch/);
 
   assert.throws(() => validateWorkflowRun({
-    run: { ...run, path: ".github/workflows/nested/aw-failures-investigator.lock.yml" },
+    run: { ...run, path: ".github/workflows/nested/cao-evolution-failures-investigator.lock.yml" },
     inspection,
     reviewRepository: "acme/review",
     allowedOwners: "acme",

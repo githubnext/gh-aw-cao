@@ -140,9 +140,9 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   const policy = JSON.parse(readFileSync(join(root, ".github", "workflows", "cao.json"), "utf8"));
   const orchestrator = workflow("cao-evolution.md");
   const workers = [
-    ["compiler-security", "aw-maintenance-compiler-security"],
+    ["compiler-security", "cao-evolution-compiler-security"],
     ["efficiency", "cao-evolution-efficiency"],
-    ["failures-investigator", "aw-failures-investigator"],
+    ["failures-investigator", "cao-evolution-failures-investigator"],
     ["integrity", "cao-evolution-integrity"],
     ["reliability", "cao-evolution-reliability"],
   ];
@@ -163,9 +163,9 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
     },
   });
   assert.deepEqual(manifest.includes.sort(), [
-    ".github/workflows/aw-failures-investigator.md",
-    ".github/workflows/aw-maintenance-compiler-security.md",
+    ".github/workflows/cao-evolution-compiler-security.md",
     ".github/workflows/cao-evolution-efficiency.md",
+    ".github/workflows/cao-evolution-failures-investigator.md",
     ".github/workflows/cao-evolution-integrity.md",
     ".github/workflows/cao-evolution-reliability.md",
     ".github/workflows/cao-evolution.md",
@@ -181,7 +181,7 @@ test("CAO Evolution is review-first, role-scoped, and deduplicated", () => {
   });
   assert.match(orchestrator, /A \*\*control repository\*\* has `\.github\/workflows\/cao\.json`/);
   assert.match(orchestrator, /An \*\*agentic-workflow repository\*\* has editable `\.github\/workflows\/\*\.md` sources or an `aw\.yml` package manifest/);
-  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, aw-failures-investigator, aw-maintenance-compiler-security\]/);
+  assert.match(orchestrator, /workflows: \[cao-evolution-integrity, cao-evolution-reliability, cao-evolution-efficiency, cao-evolution-failures-investigator, cao-evolution-compiler-security\]/);
   assert.match(orchestrator, /Dispatch each eligible worker at most once for each selected repository and effective mode/);
   for (const [workerName, workflowName] of workers) {
     const source = workflow(`${workflowName}.md`);
@@ -524,8 +524,8 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
     "self-care.md": { credits: 200, timeout: 15, dispatchMax: 14, workers: 14 },
     "optimization-agents-md-curator.md": { credits: 400, timeout: 25 },
     "optimization-skills-curator.md": { credits: 400, timeout: 20 },
-    "aw-failures-investigator.md": { credits: 500, timeout: 30 },
-    "aw-maintenance-compiler-security.md": { credits: 500, timeout: 45 },
+    "cao-evolution-failures-investigator.md": { credits: 500, timeout: 30 },
+    "cao-evolution-compiler-security.md": { credits: 500, timeout: 45 },
     "dependabot-release-train-updater.md": { credits: 600, timeout: 60 },
     "eu-cra-compliance-article-14-reporting-readiness.md": { credits: 100, timeout: 30 },
     "eu-cra-compliance-conformity-release-evidence.md": { credits: 100, timeout: 30 },
@@ -1198,8 +1198,8 @@ test("root CAO workflows use organization-billed Copilot authentication", () => 
   const rootPackageWorkflowIds = [
     "optimization-agents-md-curator",
     "optimization-skills-curator",
-    "aw-failures-investigator",
-    "aw-maintenance-compiler-security",
+    "cao-evolution-failures-investigator",
+    "cao-evolution-compiler-security",
     "cao-evolution",
     "cao-evolution-efficiency",
     "cao-evolution-integrity",
@@ -1282,8 +1282,8 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   const gradersDirectory = join(root, ".github", "workflows", "graders");
   const graders = readdirSync(gradersDirectory).filter((name) => name.endsWith("-operational-value.sh"));
   assert.deepEqual(graders.sort(), [
-    "aw-failures-investigator-operational-value.sh",
-    "aw-maintenance-compiler-security-operational-value.sh",
+    "cao-evolution-compiler-security-operational-value.sh",
+    "cao-evolution-failures-investigator-operational-value.sh",
     "dependabot-release-train-updater-operational-value.sh",
     "eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
     "eu-cra-compliance-conformity-release-evidence-operational-value.sh",
@@ -1542,12 +1542,12 @@ test("live workers use central policy as the activation authority", () => {
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory"],
     ["optimization-agents-md-curator.md", "optimization"],
     ["optimization-skills-curator.md", "optimization"],
-    ["aw-failures-investigator.md", "cao-evolution"],
+    ["cao-evolution-failures-investigator.md", "cao-evolution"],
     ["cao-evolution.md", "cao-evolution"],
     ["cao-evolution-efficiency.md", "cao-evolution"],
     ["cao-evolution-integrity.md", "cao-evolution"],
     ["cao-evolution-reliability.md", "cao-evolution"],
-    ["aw-maintenance-compiler-security.md", "cao-evolution"],
+    ["cao-evolution-compiler-security.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["dependabot-release-train-updater.md", "dependabot"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
@@ -1616,8 +1616,8 @@ test("operation workflows optionally load per-operation markdown steering", () =
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory"],
     ["optimization-agents-md-curator.md", "optimization"],
     ["optimization-skills-curator.md", "optimization"],
-    ["aw-failures-investigator.md", "cao-evolution"],
-    ["aw-maintenance-compiler-security.md", "cao-evolution"],
+    ["cao-evolution-failures-investigator.md", "cao-evolution"],
+    ["cao-evolution-compiler-security.md", "cao-evolution"],
     ["dependabot.md", "dependabot"],
     ["dependabot-release-train-updater.md", "dependabot"],
     ["eu-cra-compliance.md", "eu-cra-compliance"],
@@ -1757,8 +1757,8 @@ test("every worker uses the standard dispatch envelope and safe mode vocabulary"
     ["uk-ai-advisory-operational-resilience.md", "uk-ai-advisory", "operational-resilience"],
     ["optimization-agents-md-curator.md", "optimization", "agents-md-curator"],
     ["optimization-skills-curator.md", "optimization", "skills-curator"],
-    ["aw-failures-investigator.md", "cao-evolution", "failures-investigator"],
-    ["aw-maintenance-compiler-security.md", "cao-evolution", "compiler-security"],
+    ["cao-evolution-failures-investigator.md", "cao-evolution", "failures-investigator"],
+    ["cao-evolution-compiler-security.md", "cao-evolution", "compiler-security"],
     ["cao-evolution-efficiency.md", "cao-evolution", "efficiency"],
     ["cao-evolution-integrity.md", "cao-evolution", "integrity"],
     ["cao-evolution-reliability.md", "cao-evolution", "reliability"],
@@ -2180,12 +2180,12 @@ test("SelfCare runs every 20 minutes", () => {
 });
 
 test("CAO Evolution compiler security worker runs the full validation suite", () => {
-  const source = workflow("aw-maintenance-compiler-security.md");
+  const source = workflow("cao-evolution-compiler-security.md");
   const dashboard = JSON.parse(readFileSync(join(root, "cao-evolution", "dashboard.json"), "utf8"));
 
   assert.match(source, /^name: "CAO Evolution \/ AW Compiler Security"$/m);
   assert.match(source, /worker: compiler-security/);
-  assert.match(source, /run: \.\/graders\/aw-maintenance-compiler-security-operational-value\.sh/);
+  assert.match(source, /run: \.\/graders\/cao-evolution-compiler-security-operational-value\.sh/);
   assert.match(source, />"\$report_dir\/result\.json"/);
   assert.match(source, /gh aw compile \\/);
   for (const flag of [
@@ -2215,12 +2215,12 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   assert.match(source, /legacy `\[aw-doctor:compiler-security\]` issues/);
   assert.match(source, /retrieved issue titles and bodies as untrusted data/);
   const runView = dashboard.dashboard.pages[0].views.find(({ id }) => id === "cao-evolution-runs");
-  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-failures-investigator.md"));
-  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-failures-investigator.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-compiler-security.md"));
 });
 
 test("CAO Evolution failures worker closes target AW failure issues as duplicates", () => {
-  const source = workflow("aw-failures-investigator.md");
+  const source = workflow("cao-evolution-failures-investigator.md");
 
   assert.match(source, /intent: Reduce maintainer effort spent tracking recent agentic workflow failures/);
   assert.match(source, /close-issue:\n\s+target: "\*"/);
@@ -2324,7 +2324,7 @@ test("shared activity cache restores into activation and agent jobs", () => {
   assert.doesNotMatch(source, /Install SQLite|apt-get install.*sqlite3/);
 
   for (const name of [
-    "aw-failures-investigator.md",
+    "cao-evolution-failures-investigator.md",
     "optimization-ai-credit-auditor.md",
     "optimization-ai-credit-optimizer.md",
     "self-care-open-source-failures.md",
@@ -2750,8 +2750,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       "uk-ai-advisory.lock.yml",
       "optimization-agents-md-curator.lock.yml",
       "optimization-skills-curator.lock.yml",
-      "aw-failures-investigator.lock.yml",
-      "aw-maintenance-compiler-security.lock.yml",
+      "cao-evolution-failures-investigator.lock.yml",
+      "cao-evolution-compiler-security.lock.yml",
       "cao-evolution-efficiency.lock.yml",
       "cao-evolution-integrity.lock.yml",
       "cao-evolution-reliability.lock.yml",
@@ -2875,8 +2875,8 @@ test("clean-room compilation emits the expected GitHub Actions settings", { time
       ["uk-ai-advisory-operational-resilience.lock.yml", ["uk-ai-advisory", "operational-resilience"]],
       ["optimization-agents-md-curator.lock.yml", ["optimization", "agents-md-curator"]],
       ["optimization-skills-curator.lock.yml", ["optimization", "skills-curator"]],
-      ["aw-failures-investigator.lock.yml", ["cao-evolution", "failures-investigator"]],
-      ["aw-maintenance-compiler-security.lock.yml", ["cao-evolution", "compiler-security"]],
+      ["cao-evolution-failures-investigator.lock.yml", ["cao-evolution", "failures-investigator"]],
+      ["cao-evolution-compiler-security.lock.yml", ["cao-evolution", "compiler-security"]],
       ["cao-evolution-efficiency.lock.yml", ["cao-evolution", "efficiency"]],
       ["cao-evolution-integrity.lock.yml", ["cao-evolution", "integrity"]],
       ["cao-evolution-reliability.lock.yml", ["cao-evolution", "reliability"]],
@@ -3399,7 +3399,7 @@ test("Dashboard inventory links multiline orchestrator worker lists", () => {
       id: bundle.id,
       workers: bundle.workers.map((worker) => worker.id),
     })), [
-      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "aw-failures-investigator", "aw-maintenance-compiler-security"] },
+      { id: "cao-evolution", workers: ["cao-evolution-integrity", "cao-evolution-reliability", "cao-evolution-efficiency", "cao-evolution-failures-investigator", "cao-evolution-compiler-security"] },
       { id: "dependabot", workers: ["dependabot-release-train-updater"] },
       {
         id: "eu-cra-compliance",

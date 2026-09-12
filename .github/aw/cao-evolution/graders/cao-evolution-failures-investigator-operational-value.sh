@@ -7,7 +7,7 @@ MATURATION_SECONDS=1209600
 ASSIGNMENT_WINDOW_SECONDS=86400
 MAX_DISCOVERY_PAGES=5
 
-tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/aw-failures-investigator-value.XXXXXX")
+tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/cao-evolution-failures-investigator-value.XXXXXX")
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
 definition() {
@@ -17,7 +17,7 @@ definition() {
   "grader": "operational-value",
   "repository": "githubnext/gh-aw-cao",
   "workflowName": "CAO Evolution / AW Failures",
-  "sourcePath": ".github/workflows/aw-failures-investigator.md",
+  "sourcePath": ".github/workflows/cao-evolution-failures-investigator.md",
   "adoption": {
     "commit": "478d356df17de4f9a0e34f879872ea428e7fe274",
     "adoptedAt": "2026-08-26T22:32:04Z"
