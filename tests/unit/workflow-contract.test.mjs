@@ -3334,7 +3334,7 @@ test("mobile dashboard integration downloads deployed dashboard data", () => {
   assert.match(mobileTest, /horizontal page scrolling/);
   const deployedDataTest = readFileSync(join(root, "tests", "integration", "dashboard-deployed-data.test.mjs"), "utf8");
   assert.match(deployedDataTest, /ingestCachedGhAwJsonl\(indexedDB, logsContent\)/);
-  assert.match(deployedDataTest, /run\?\.firewall_analysis\?\.requests_by_domain/);
+  assert.match(deployedDataTest, /run\?\.firewall_analysis \?\? run\?\.audit\?\.firewall_analysis/);
   for (const source of ["workflows", "runs", "events"]) {
     assert.match(deployedDataTest, new RegExp(`readCollection\\(indexedDB, "${source}"\\)`));
   }

@@ -45,15 +45,15 @@ test("deployed dashboard cache populates canonical workflows, runs, and events",
   }
 });
 
-test("deployed dashboard cache ingests its top-level firewall analysis", async () => {
+test("deployed dashboard cache ingests its firewall analysis", async () => {
   await deleteCanonicalDatabase(indexedDB);
   try {
     const logsContent = await deployedLogs();
     const logs = logsContent.split(/\r?\n/).filter(Boolean).map(JSON.parse);
-    assert.ok(logs.some(({ run }) => (
-      run?.firewall_analysis?.requests_by_domain
-      && Object.keys(run.firewall_analysis.requests_by_domain).length > 0
-    )), "deployed gh-aw logs must contain top-level firewall analysis");
+    assert.ok(logs.some(({ run }) => {
+      const analysis = run?.firewall_analysis ?? run?.audit?.firewall_analysis;
+      return analysis?.requests_by_domain && Object.keys(analysis.requests_by_domain).length > 0;
+    }), "deployed gh-aw logs must contain firewall analysis");
 
     await ingestCachedGhAwJsonl(indexedDB, logsContent);
     const ingestedFirewallEvents = (await readCollection(indexedDB, "events")).filter(
