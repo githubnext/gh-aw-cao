@@ -37,7 +37,11 @@ async function readCollectionStats(file) {
   const discovered = Number(match[1]);
   const downloaded = Number(match[2]);
   const cached = Number(match[3]);
-  return { discovered, downloaded, cached, pending: Math.max(0, discovered - downloaded - cached) };
+  const pending = discovered - downloaded - cached;
+  if (pending < 0) {
+    log.warning`gh aw logs reported ${downloaded} downloaded and ${cached} cached reports exceeding ${discovered} discovered runs; pending download count clamped to 0`;
+  }
+  return { discovered, downloaded, cached, pending: Math.max(0, pending) };
 }
 
 async function writeOutcome(outcome) {
