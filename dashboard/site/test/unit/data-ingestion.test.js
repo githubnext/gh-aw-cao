@@ -103,7 +103,8 @@ describe('canonical source ingestion and queries', () => {
     const stored = await readCanonicalBatch(indexedDB);
 
     await ingestDashboardSources(indexedDB, sources, {
-      maxDatabaseBytes: estimateCanonicalBatchBytes(stored) - 1
+      maxDatabaseBytes: estimateCanonicalBatchBytes(stored) - 1,
+      payloadIdentity: 'cap-policy'
     });
 
     const capped = await readCanonicalBatch(indexedDB);
@@ -134,7 +135,11 @@ describe('canonical source ingestion and queries', () => {
       persist: vi.fn().mockResolvedValue(true)
     }));
 
-    await ingestDashboardSources(indexedDB, sources, { storage, maxDatabaseBytes });
+    await ingestDashboardSources(indexedDB, sources, {
+      storage,
+      maxDatabaseBytes,
+      payloadIdentity: 'storage-policy'
+    });
 
     expect((await readCanonicalBatch(indexedDB)).runs).toEqual([]);
     expect(estimate).toHaveBeenCalledTimes(3);
