@@ -9,6 +9,7 @@ import {
   APP_PROFILES,
   buildGitHubAppManifest,
   deriveAppName,
+  installationIncludesRepository,
   installationInstruction,
   isManifestCode,
   setRepositoryCredentials,
@@ -134,5 +135,17 @@ test("App setup directs installation to only the control repository", () => {
   assert.equal(
     installationInstruction("octo/control"),
     'Choose "Only select repositories", select only octo/control, and save.',
+  );
+});
+
+test("App setup verifies the control repository is selected", () => {
+  const installation = { id: "123", repositorySelection: "selected" };
+  assert.equal(
+    installationIncludesRepository(installation, "octo/control", () => ["octo/other", "octo/control"]),
+    true,
+  );
+  assert.equal(
+    installationIncludesRepository(installation, "octo/control", () => ["octo/other"]),
+    false,
   );
 });

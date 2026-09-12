@@ -368,6 +368,17 @@ function matchingInstallation(app, owner) {
   ));
 }
 
+function listInstallationRepositories(installationId) {
+  const output = runGh([
+    "api",
+    `/user/installations/${installationId}/repositories?per_page=100`,
+    "--paginate",
+    "--jq",
+    ".repositories[].full_name",
+  ]);
+  return output.split("\n").filter(Boolean);
+}
+
 export function validateInstallationScope(installation, owner) {
   if (installation.repositorySelection !== "selected") {
     const settingsUrl = `https://github.com/organizations/${owner}/settings/installations/${installation.id}`;
@@ -381,14 +392,19 @@ export function installationInstruction(repo) {
   return `Choose "Only select repositories", select only ${repo}, and save.`;
 }
 
+export function installationIncludesRepository(installation, repo, listRepositories = listInstallationRepositories) {
+  const [owner] = splitRepo(repo);
+  validateInstallationScope(installation, owner);
+  return listRepositories(installation.id).some((name) => name.toLowerCase() === repo.toLowerCase());
+}
+
 function hasSelectedInstallation(app, repo) {
   const [owner] = splitRepo(repo);
   const installation = matchingInstallation(app, owner);
   if (!installation) {
     return false;
   }
-  validateInstallationScope(installation, owner);
-  return true;
+  return installationIncludesRepository(installation, repo);
 }
 
 function openInstallation(app, openBrowser) {
