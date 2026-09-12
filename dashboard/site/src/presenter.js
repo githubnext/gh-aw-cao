@@ -8,7 +8,7 @@ import { getPrimerStyles } from './styles.js';
 import { octicon, agenticWorkflowMark } from './octicons.js';
 import { renderDataStateMetrics } from './components/data-state.js';
 import { titleCase } from './components/count-formatters.js';
-import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderCheckbox, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
+import { enableDetailsMenuDismissal, formatMediumUtcDateTime, renderEmptyMessage, renderLabeledSpan, renderLoadingPlaceholderBlocks } from './components/ui-primitives.js';
 import { customViewAvailabilityMessage, renderCustomViewStateDetails, renderLayoutSectionChrome, renderPageSection, renderViewDisclosure } from './components/view-chrome.js';
 import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
@@ -16,7 +16,6 @@ import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from '
 import { renderDataView } from './components/data-view.js';
 import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
-import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
 import { processRows } from './data-processor.js';
@@ -28,13 +27,7 @@ import { deriveDataHealthCalloutSources } from './data-health.js';
 import { dashboardHorizonHours, formatDashboardHorizon, formatDashboardHorizonHours, resolveDashboardHorizon } from './horizon.js';
 import { deriveDashboardLinkSources, deriveEntityLinkSources } from './inferred-sources.js';
 import { sourceContinuation } from './data/continuation.js';
-import { createDatabaseCountLoader, formatDatabaseCounts, renderSettingsDatabaseCounts } from './database-counts.js';
-import {
-  automaticDashboardDataUpdatesEnabled,
-  onAutomaticDashboardDataUpdatesSettingChange,
-  periodicBackgroundSyncSupported,
-  setAutomaticDashboardDataUpdatesEnabled
-} from './dashboard-data-updates.js';
+import { createDatabaseCountLoader, formatDatabaseCounts } from './database-counts.js';
 
 /**
  * @typedef {{ availability: 'available'|'empty'|'unavailable', completeness: 'complete'|'partial'|'unknown', freshness: 'fresh'|'stale'|'unknown' }} DataState
@@ -375,7 +368,7 @@ function inferOrganizationName(sources) {
  */
 function renderSidebar(pages, title, navigation) {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
-  const primaryPages = pages.filter((page) => page.id !== 'configuration');
+  const primaryPages = pages;
   const configuredSections = Array.isArray(navigation) && navigation.length > 0
     ? navigation
       .map((section) => ({
@@ -384,7 +377,6 @@ function renderSidebar(pages, title, navigation) {
         pages: (Array.isArray(section?.pages) ? section.pages : [])
           .map((pageId) => pagesById.get(pageId))
           .filter((page) => page !== undefined)
-          .filter((page) => page.id !== 'configuration')
       }))
       .filter((section) => section.pages.length > 0)
     : [{ label: undefined, experimental: false, pages: primaryPages }];
@@ -720,12 +712,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
   const initialPageDescription = initialPage?.description;
   const initialPageHref = initialPage ? `#page-${encodeURIComponent(initialPage.id)}` : '#main-content';
   const overviewPageHref = overviewPage ? `#page-${encodeURIComponent(overviewPage.id)}` : initialPageHref;
-  const settingsPage = pages.find((page) => page.id === 'configuration');
   const loadDatabaseCounts = createDatabaseCountLoader(loadHorizonSources);
-  const settingsDatabaseCounts = renderSettingsDatabaseCounts(
-    loadDatabaseCounts,
-    [renderBackgroundServiceWorkerSetting()]
-  );
   return h(
     'div',
     { className: 'app-main' },
@@ -777,10 +764,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
           h(
             'details',
             {
-              className: 'account-menu',
-              ontoggle: /** @param {Event} event */ (event) => {
-                if (/** @type {HTMLDetailsElement} */ (event.currentTarget).open) settingsDatabaseCounts.load();
-              }
+              className: 'account-menu'
             },
             h(
               'summary',
@@ -795,14 +779,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
             h(
               'div',
               { className: 'account-menu-popover' },
-              settingsPage
-                ? h(
-                  'a',
-                  { className: 'account-menu-settings account-menu-action', href: `#page-${encodeURIComponent(settingsPage.id)}` },
-                  octicon('gear'),
-                  h('span', null, 'Settings')
-                )
-                : null,
               dashboardRepository
                 ? h(
                   'a',
@@ -826,21 +802,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
                   },
                   octicon('sync'),
                   h('span', null, 'Refresh')
-                ),
-              h(
-                'fieldset',
-                { className: 'appearance-settings' },
-                h('legend', null, 'Appearance'),
-                h(
-                  'div',
-                  { className: 'appearance-options' },
-                  h('button', { type: 'button', dataset: { themeValue: 'system' }, 'aria-pressed': 'false' }, octicon('device-desktop'), h('span', null, 'System')),
-                  h('button', { type: 'button', dataset: { themeValue: 'light' }, 'aria-pressed': 'false' }, octicon('sun'), h('span', null, 'Light')),
-                  h('button', { type: 'button', dataset: { themeValue: 'dark' }, 'aria-pressed': 'false' }, octicon('moon'), h('span', null, 'Dark'))
                 )
-              ),
-              settingsDatabaseCounts.element,
-              renderResetDashboardControl()
             )
           )
         )
@@ -872,60 +834,6 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
       )
     )
   );
-}
-
-function renderBackgroundServiceWorkerSetting() {
-  const supported = periodicBackgroundSyncSupported();
-  const enabled = () => {
-    try {
-      return automaticDashboardDataUpdatesEnabled();
-    } catch {
-      return false;
-    }
-  };
-  /** @type {HTMLInputElement} */
-  let checkbox;
-  const update = () => {
-    checkbox.checked = enabled();
-  };
-  checkbox = renderCheckbox({
-    checked: enabled(),
-    disabled: !supported,
-    ariaLabel: 'Background sync',
-    stopClickPropagation: true,
-    onChange: /** @param {Event} event */ (event) => {
-      try {
-        setAutomaticDashboardDataUpdatesEnabled(
-          /** @type {HTMLInputElement} */ (event.currentTarget).checked
-        );
-      } catch {
-        update();
-      }
-    }
-  });
-  const control = h(
-    'label',
-    {
-      className: `background-sync-setting account-menu-action${supported ? '' : ' background-sync-setting-disabled'}`,
-      title: supported ? undefined : 'Periodic Background Sync is not supported by this browser.'
-    },
-    octicon('sync'),
-    h('span', null, 'Background sync'),
-    checkbox
-  );
-  const stopSettingUpdates = onAutomaticDashboardDataUpdatesSettingChange(update);
-  let wasConnected = control.isConnected;
-  const observer = new MutationObserver(() => {
-    if (control.isConnected) {
-      wasConnected = true;
-      return;
-    }
-    if (!wasConnected) return;
-    observer.disconnect();
-    stopSettingUpdates();
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  return control;
 }
 
 /**

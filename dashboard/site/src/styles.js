@@ -386,29 +386,6 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .account-menu-action { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--fg); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
 .account-menu-action:hover { background: var(--neutral-muted); }
 .account-menu-action .octicon { width: 15px; height: 15px; color: var(--muted); }
-.background-sync-setting > span { flex: 1; }
-.background-sync-setting > input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
-.background-sync-setting-disabled { color: var(--muted); cursor: not-allowed; }
-.background-sync-setting-disabled:hover { background: transparent; }
-.appearance-settings { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
-.appearance-settings legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
-.appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.appearance-options button { min-width: 0; min-height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border); background: var(--canvas); color: var(--fg); font: inherit; font-size: .75rem; cursor: pointer; }
-.appearance-options button:first-child { border-radius: 6px 0 0 6px; }
-.appearance-options button + button { margin-left: -1px; }
-.appearance-options button:last-child { border-radius: 0 6px 6px 0; }
-.appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
-.appearance-options .octicon { width: 14px; height: 14px; }
-.database-counts { display: grid; gap: 7px; margin: 0; padding: 9px 8px 8px; border: 0; border-top: 1px solid var(--border); }
-.database-counts legend { padding-top: 9px; color: var(--muted); font-size: .6875rem; font-weight: 600; }
-.database-count-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.database-count-grid > span { min-width: 0; display: grid; gap: 2px; padding: 6px 3px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
-.database-count-grid strong { overflow: hidden; font-size: .8125rem; text-overflow: ellipsis; }
-.database-count-grid small, .database-counts-status { overflow: hidden; color: var(--muted); font-size: .625rem; text-overflow: ellipsis; }
-.reset-dashboard-control { padding-top: 8px; border-top: 1px solid var(--border); }
-.account-menu-reset { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 500; text-align: left; cursor: pointer; }
-.account-menu-reset:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
-.account-menu-reset .octicon { width: 15px; height: 15px; }
 .reset-dashboard-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; max-height: calc(100vh - 32px); height: fit-content; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--canvas); box-shadow: 0 16px 48px color-mix(in srgb, var(--canvas-inset) 70%, transparent); color: var(--fg); }
 .reset-dashboard-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .reset-dashboard-dialog::backdrop { background: color-mix(in srgb, var(--canvas-inset) 72%, transparent); }
@@ -1203,6 +1180,21 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .configuration-browser-settings-heading h3 { margin: 0; font-size: .875rem; }
 .configuration-browser-settings-heading p, .configuration-browser-setting-status { margin: 2px 0 0; color: var(--muted); font-size: .75rem; }
 .configuration-browser-setting-status { padding: 0 12px 10px; }
+.configuration-appearance-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; }
+.configuration-appearance-options button { min-width: 0; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); background: var(--canvas); color: var(--fg); font: inherit; font-size: .8125rem; cursor: pointer; }
+.configuration-appearance-options button:first-child { border-radius: 6px 0 0 6px; }
+.configuration-appearance-options button + button { margin-left: -1px; }
+.configuration-appearance-options button:last-child { border-radius: 0 6px 6px 0; }
+.configuration-appearance-options button[aria-pressed="true"] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-muted); color: var(--accent); }
+.configuration-appearance-options .octicon { width: 14px; height: 14px; }
+.configuration-database-counts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+.configuration-database-counts > span { min-width: 0; display: grid; gap: 3px; padding: 10px 6px; border-radius: 6px; background: var(--canvas-subtle); text-align: center; }
+.configuration-database-counts strong { overflow: hidden; font-size: .875rem; text-overflow: ellipsis; }
+.configuration-database-counts small { overflow: hidden; color: var(--muted); font-size: .6875rem; text-overflow: ellipsis; }
+.configuration-danger-settings .reset-dashboard-control { padding: 12px; }
+.reset-dashboard-trigger { min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--danger); border-radius: 6px; background: var(--canvas); color: var(--danger); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
+.reset-dashboard-trigger:hover { background: var(--danger-muted, color-mix(in srgb, var(--danger) 10%, transparent)); }
+.reset-dashboard-trigger .octicon { width: 15px; height: 15px; }
 .configuration-editor { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); }
 .configuration-editor-toolbar { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 12px; border-bottom: 1px solid var(--border); background: var(--canvas-subtle); }
 .configuration-editor-toolbar > div { display: flex; align-items: center; gap: 10px; }
@@ -2295,6 +2287,7 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .configuration-editor-toolbar > div { justify-content: space-between; }
   .configuration-editor-actions { justify-content: flex-start; }
   .configuration-setting-row { grid-template-columns: 1fr; gap: 12px; }
+  .configuration-database-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .configuration-setting-toggle { justify-self: start; }
   .configuration-setting-group .configuration-setting-group { margin-inline: 8px; }
   .package-marketplace-header { align-items: stretch; flex-direction: column; gap: 14px; }

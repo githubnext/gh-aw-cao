@@ -7,7 +7,6 @@ import { renderDashboard, enableDashboardKeyboardNavigation, enableDashboardPage
 import { composeDashboardDocuments } from '../../../report/compose-dashboard-documents.mjs';
 import { packageDashboardSources } from '../package-dashboard-documents.js';
 import { applyDashboardQueries } from '../workflow-inventory-query.js';
-import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
 
 const fixtureDirectory = dirname(fileURLToPath(import.meta.url));
 const builtInDashboardDocument = JSON.parse(
@@ -935,47 +934,21 @@ describe('presenter built-in and custom pages', () => {
     expect([...rendered.querySelectorAll('.primary-nav > [data-nav-page-id] .nav-label')].map((node) => node.textContent)).toEqual([
       'Overview',
       'Repositories',
-      'Packages'
+      'Packages',
+      'Settings'
     ]);
     expect(rendered.querySelector('[data-nav-page-id="workflows"] .octicon-workflow')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
-    expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
-    expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
+    expect(rendered.querySelector('[data-nav-page-id="configuration"]')?.textContent).toContain('Settings');
+    expect(rendered.querySelector('.account-menu-settings')).toBeNull();
     expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open dashboard menu');
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
     expect(rendered.querySelector('.account-menu-avatar .octicon-kebab-horizontal')).not.toBeNull();
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
-    const backgroundSync = /** @type {HTMLInputElement | null} */ (
-      rendered.querySelector('.database-counts .background-sync-setting input')
-    );
-    expect(backgroundSync?.getAttribute('aria-label')).toBe('Background sync');
-    expect(backgroundSync?.checked).toBe(false);
-    expect(backgroundSync?.disabled).toBe(true);
-    expect(backgroundSync?.closest('label')?.getAttribute('title')).toBe('Periodic Background Sync is not supported by this browser.');
-    backgroundSync?.click();
-    expect(window.localStorage.getItem('central-agentic-ops.dashboard.automatic-data-updates')).toBeNull();
-    setAutomaticDashboardDataUpdatesEnabled(false);
-    expect(backgroundSync?.checked).toBe(false);
-    expect(rendered.querySelector('.appearance-settings legend')?.textContent).toBe('Appearance');
-    expect([...rendered.querySelectorAll('[data-theme-value]')].map((node) => node.textContent)).toEqual(['System', 'Light', 'Dark']);
-    const systemTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="system"]'));
-    const darkTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="dark"]'));
-    const lightTheme = /** @type {HTMLButtonElement | null} */ (rendered.querySelector('[data-theme-value="light"]'));
-    expect(rendered.hasAttribute('data-theme')).toBe(false);
-    expect(systemTheme?.getAttribute('aria-pressed')).toBe('true');
-    darkTheme?.click();
-    expect(rendered.dataset.theme).toBe('dark');
-    expect(darkTheme?.getAttribute('aria-pressed')).toBe('true');
-    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
-    lightTheme?.click();
-    expect(rendered.dataset.theme).toBe('light');
-    expect(lightTheme?.getAttribute('aria-pressed')).toBe('true');
-    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('light');
-    systemTheme?.click();
-    expect(rendered.hasAttribute('data-theme')).toBe(false);
-    expect(systemTheme?.getAttribute('aria-pressed')).toBe('true');
-    expect(window.localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('system');
+    expect(rendered.querySelector('.appearance-settings')).toBeNull();
+    expect(rendered.querySelector('.database-counts')).toBeNull();
+    expect(rendered.querySelector('.reset-dashboard-control')).toBeNull();
     expect(sections.map((section) => /** @type {HTMLDetailsElement} */ (section).open)).toEqual([false, false]);
     expect(rendered.querySelector('[data-experimental-toggle]')).toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="workflows"]')?.closest('.nav-section')).toBe(sections[0]);
@@ -989,6 +962,7 @@ describe('presenter built-in and custom pages', () => {
       'Overview',
       'Repositories',
       'Packages',
+      'Settings',
       'Workflows',
       'Runs',
       'Events',
@@ -1335,6 +1309,7 @@ describe('presenter built-in and custom pages', () => {
       'Overview',
       'Repositories',
       'Packages',
+      'Settings',
       'Workflows',
       'Runs',
       'Events',
@@ -1586,15 +1561,6 @@ describe('presenter built-in and custom pages', () => {
     });
     expect(loadHorizonSources).toHaveBeenCalledOnce();
 
-    const accountMenu = /** @type {HTMLDetailsElement | null} */ (rendered.querySelector('.account-menu'));
-    if (!accountMenu) throw new Error('account menu did not render');
-    accountMenu.open = true;
-    accountMenu.dispatchEvent(new Event('toggle'));
-    await vi.waitFor(() => {
-      expect([...rendered.querySelectorAll('[data-database-count]')].map((node) => node.textContent))
-        .toEqual(['2', '3', '4', '12', '89']);
-    });
-    expect(rendered.querySelector('.database-counts-status')?.textContent).toBe('Database totals');
     expect(loadHorizonSources).toHaveBeenCalledOnce();
 
     rendered.querySelector('.horizon-toggle')?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
