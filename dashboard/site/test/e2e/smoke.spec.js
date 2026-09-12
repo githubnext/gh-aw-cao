@@ -1514,7 +1514,9 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
-  expect(await overviewPage.locator('.factory-station a').evaluateAll((links) => links.every((link) => {
+  const factoryLinks = overviewPage.locator('.factory-station a');
+  await expect(factoryLinks).toHaveCount(4);
+  expect(await factoryLinks.evaluateAll((links) => links.every((link) => {
     const style = getComputedStyle(link);
     return style.minWidth === '24px' && style.minHeight === '24px';
   }))).toBe(true);
