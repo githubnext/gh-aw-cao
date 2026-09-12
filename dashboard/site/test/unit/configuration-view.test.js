@@ -90,9 +90,8 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
     const transactions = rendered.querySelector('.configuration-transactions-button');
-    expect(transactions?.textContent).toContain('Transactions');
-    transactions?.dispatchEvent(new MouseEvent('click'));
-    expect(window.location.hash).toBe('#page-transactions');
+    expect(transactions?.textContent).toContain('View retained transactions');
+    expect(transactions?.getAttribute('href')).toBe('#page-transactions');
   });
 
   it('renders repository actions when the settings view is activated lazily', () => {

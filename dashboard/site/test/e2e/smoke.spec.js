@@ -571,8 +571,8 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
   await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
   await page.evaluate(() => { window.location.hash = '#page-configuration'; });
-  await expect(page.getByRole('button', { name: 'Transactions' })).toBeVisible();
-  await page.getByRole('button', { name: 'Transactions' }).click();
+  await expect(page.getByRole('link', { name: 'View retained transactions' })).toBeVisible();
+  await page.getByRole('link', { name: 'View retained transactions' }).click();
 
   const root = page.locator('.dashboard-root');
   const transactionsPage = page.locator('[data-page-id="transactions"]');

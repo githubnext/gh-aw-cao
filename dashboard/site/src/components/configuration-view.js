@@ -375,13 +375,10 @@ function renderDatabaseSetting(context) {
 }
 
 function renderLocalDataSetting() {
-  const transactions = h('button', {
-    type: 'button',
+  const transactions = h('a', {
+    href: '#page-transactions',
     className: 'configuration-transactions-button',
-    onClick: () => {
-      if (globalThis.window) globalThis.window.location.hash = '#page-transactions';
-    }
-  }, 'Transactions');
+  }, 'View retained transactions');
   return h('section', { className: 'configuration-browser-settings configuration-danger-settings', 'aria-labelledby': 'configuration-local-data-heading' },
     h('div', { className: 'configuration-browser-settings-heading' },
       h('div', null,
