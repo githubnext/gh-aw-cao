@@ -40,23 +40,38 @@ const SWIMLANE_DEFINITIONS = [
   ['success', 'Success']
 ];
 /**
- * Swimlane coordinates are expressed in SVG viewBox units. `topY` and
- * `laneGap` place the categorical lanes, while `axisY` anchors the time axis
- * below the final lane.
+ * Swimlane coordinates are expressed in SVG viewBox units. `viewBoxWidth` and
+ * `viewBoxHeight` define the drawing plane; `startX` and `endX` bound the
+ * timeline; `labelX` and `labelBaselineOffset` align lane labels beside their
+ * separators; `topY` and `laneGap` place the categorical lanes; and `axisY`,
+ * `tickEndY`, and `axisLabelY` anchor the time axis below the final lane.
  */
-export const SWIMLANE_LAYOUT = Object.freeze({
-  viewBoxWidth: 120,
-  startX: 19,
-  endX: 116,
-  labelX: 17.5,
-  labelBaselineOffset: 1,
-  topY: 5,
-  laneGap: 7.25,
-  axisY: 41.25,
-  tickEndY: 43.25,
-  axisLabelY: 47.25,
-  viewBoxHeight: 48.75
-});
+export const SWIMLANE_LAYOUT = (() => {
+  const viewBoxWidth = 120;
+  const startX = 19;
+  const endX = 116;
+  const labelX = startX - 1.5;
+  const labelBaselineOffset = 1;
+  const topY = 5;
+  const laneGap = 7.25;
+  const axisY = topY + (laneGap * SWIMLANE_DEFINITIONS.length);
+  const tickEndY = axisY + 2;
+  const axisLabelY = axisY + 6;
+  const viewBoxHeight = axisLabelY + 1.5;
+  return Object.freeze({
+    viewBoxWidth,
+    startX,
+    endX,
+    labelX,
+    labelBaselineOffset,
+    topY,
+    laneGap,
+    axisY,
+    tickEndY,
+    axisLabelY,
+    viewBoxHeight
+  });
+})();
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
 const SEMANTIC_SERIES_TERMS = {
