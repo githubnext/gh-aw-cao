@@ -3,10 +3,10 @@ description: Deploy an access-controlled, read-only Central Agentic Ops report w
 min-version: v0.89.8
 experimental: true
 includes:
-  - source: dashboard.yml
-    destination: .github/workflows/dashboard.yml
+  - source: cao-dashboard.yml
+    destination: .github/workflows/cao-dashboard.yml
     kind: action-workflow
-  - .github/workflows/dashboard-build.yml
+  - .github/workflows/cao-dashboard-build.yml
 resources:
   - source: local-server.mjs
     destination: .github/aw/dashboard/local-server.mjs

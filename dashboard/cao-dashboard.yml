@@ -6,8 +6,8 @@ on:
     paths:
       - .github/aw/dashboard/**
       - .github/workflows/cao.json
-      - .github/workflows/dashboard.yml
-      - .github/workflows/dashboard-build.yml
+      - .github/workflows/cao-dashboard.yml
+      - .github/workflows/cao-dashboard-build.yml
       - dashboard/**
 
 permissions:
@@ -39,7 +39,7 @@ jobs:
         id: dispatch
         env:
           GH_TOKEN: ${{ github.token }}
-          DISPATCH_WORKFLOW: dashboard-build.yml
+          DISPATCH_WORKFLOW: cao-dashboard-build.yml
           DISPATCH_REF: ${{ github.ref_name }}
           DISPATCH_RUN_NAME: CAO Dashboard Build / dashboard-${{ github.run_id }}-${{ github.run_attempt }}
           DISPATCH_INPUTS: '{"site-path":".","request-id":"dashboard-${{ github.run_id }}-${{ github.run_attempt }}"}'

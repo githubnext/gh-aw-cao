@@ -13,8 +13,8 @@ The dashboard package publishes an access-controlled static view of Central Agen
 
 ## Contents
 
-- `.github/workflows/dashboard-build.yml`: independently dispatchable, path-aware report build that uploads a mergeable Actions artifact.
-- `.github/workflows/dashboard.yml`: manual standalone GitHub Pages deployment.
+- `.github/workflows/cao-dashboard-build.yml`: independently dispatchable, path-aware report build that uploads a mergeable Actions artifact.
+- `.github/workflows/cao-dashboard.yml`: standalone GitHub Pages deployment.
 - `.github/workflows/activity.yml`: shared data collector and cache publisher installed by the core activity package.
 - `.github/cao/src/policy.mjs`: dependency-free checked-in policy parser and resolver.
 - `.github/cao/src/control.mjs`: deterministic policy command adapter used by the build workflow.
@@ -182,7 +182,7 @@ jobs:
 				id: dispatch
 				env:
 					GH_TOKEN: ${{ github.token }}
-					DISPATCH_WORKFLOW: dashboard-build.yml
+					DISPATCH_WORKFLOW: cao-dashboard-build.yml
 					DISPATCH_REF: ${{ github.ref_name }}
 					DISPATCH_RUN_NAME: CAO Dashboard Build / pages-${{ github.run_id }}-${{ github.run_attempt }}
 					DISPATCH_INPUTS: '{"site-path":"operations/dashboard","request-id":"pages-${{ github.run_id }}-${{ github.run_attempt }}"}'

@@ -21,7 +21,7 @@ test("dispatch helper waits for the correlated workflow run", async () => {
 
     if (request.method === "POST") {
       response.writeHead(204).end();
-    } else if (request.url.startsWith("/repos/acme/control/actions/workflows/dashboard-build.yml/runs?")) {
+    } else if (request.url.startsWith("/repos/acme/control/actions/workflows/cao-dashboard-build.yml/runs?")) {
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify({
         workflow_runs: [{
@@ -57,7 +57,7 @@ test("dispatch helper waits for the correlated workflow run", async () => {
         DISPATCH_REF: "main",
         DISPATCH_RUN_NAME: "CAO Dashboard Build / request-1",
         DISPATCH_TIMEOUT_MINUTES: "1",
-        DISPATCH_WORKFLOW: "dashboard-build.yml",
+        DISPATCH_WORKFLOW: "cao-dashboard-build.yml",
         GH_TOKEN: "test-token",
         GITHUB_API_URL: `http://127.0.0.1:${port}`,
         GITHUB_OUTPUT: outputPath,
@@ -109,7 +109,7 @@ test("dispatch helper skips rate limits with a summary warning", async () => {
         DISPATCH_INPUTS: "{}",
         DISPATCH_REF: "main",
         DISPATCH_RUN_NAME: "CAO Dashboard Build / request-1",
-        DISPATCH_WORKFLOW: "dashboard-build.yml",
+        DISPATCH_WORKFLOW: "cao-dashboard-build.yml",
         GH_TOKEN: "test-token",
         GITHUB_API_URL: `http://127.0.0.1:${port}`,
         GITHUB_OUTPUT: outputPath,

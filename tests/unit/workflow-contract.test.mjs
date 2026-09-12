@@ -957,8 +957,8 @@ test("deterministic workflows pin third-party actions by commit SHA", () => {
     join(".github", "workflows", "enterprise-stress.yml"),
     join(".github", "workflows", "review-smoke.yml"),
     join(".github", "workflows", "activity.yml"),
-    join(".github", "workflows", "dashboard-build.yml"),
-    join("dashboard", "dashboard.yml"),
+    join(".github", "workflows", "cao-dashboard-build.yml"),
+    join("dashboard", "cao-dashboard.yml"),
   ]) {
     const source = readFileSync(join(root, relativePath), "utf8");
     for (const action of source.matchAll(/^\s*uses:\s+([^./\s][^@\s]+)@([^\s#]+)/gm)) {
@@ -2988,7 +2988,7 @@ test("Agent customizations preserve deterministic core package boundaries", () =
   assert.match(packageSkill, /site-path/);
   assert.match(packageSkill, /complete workflow `name` at 32 characters or fewer/);
   assert.match(packageSkill, /omitting redundant role words/);
-  assert.match(repositoryInstructions, /Keep `\.github\/workflows\/dashboard-build\.yml` independently runnable through `workflow_dispatch` and package it through both dashboard manifests/);
+  assert.match(repositoryInstructions, /Keep `\.github\/workflows\/cao-dashboard-build\.yml` independently runnable through `workflow_dispatch` and package it through both dashboard manifests/);
   assert.match(repositoryInstructions, /existing Pages site, retain one Pages artifact uploader and deployer/);
   assert.match(repositoryInstructions, /must not add a schedule or another enable variable/);
   assert.match(repositoryInstructions, /Keep data collection and cache publication out of operational packages and dashboard build jobs/);
@@ -3101,9 +3101,9 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   const canonicalPolicyResolver = readFileSync(join(root, ".github", "cao", "src", "policy.mjs"), "utf8");
   const activityWorkflow = readFileSync(join(root, ".github", "workflows", "activity.yml"), "utf8");
   const maintenanceWorkflow = readFileSync(join(root, ".github", "workflows", "cao-maintenance.yml"), "utf8");
-  const buildWorkflow = readFileSync(join(root, ".github", "workflows", "dashboard-build.yml"), "utf8");
+  const buildWorkflow = readFileSync(join(root, ".github", "workflows", "cao-dashboard-build.yml"), "utf8");
   const siteBuildScript = readFileSync(join(root, "dashboard", "site", "scripts", "build.mjs"), "utf8");
-  const deployWorkflow = readFileSync(join(root, "dashboard", "dashboard.yml"), "utf8");
+  const deployWorkflow = readFileSync(join(root, "dashboard", "cao-dashboard.yml"), "utf8");
   const aicUsage = readFileSync(join(root, "dashboard", "report", "aic-usage.mjs"), "utf8");
   const deployedWorkflows = readFileSync(join(root, "activity", "index.mjs"), "utf8");
   const activityCollector = readFileSync(join(root, "activity", "collect-logs.sh"), "utf8");
@@ -3120,8 +3120,8 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.ok(rootPackage.includes.includes("dashboard/aw.yml"));
   assert.match(dashboardManifest, /name: CAO Dashboard/);
   assert.match(rootManifest, /^\s+- dashboard\/aw\.yml$/m);
-  assert.match(dashboardManifest, /source: dashboard\.yml\n\s+destination: \.github\/workflows\/dashboard\.yml\n\s+kind: action-workflow/);
-  assert.match(dashboardManifest, /^\s+- \.github\/workflows\/dashboard-build\.yml$/m);
+  assert.match(dashboardManifest, /source: cao-dashboard\.yml\n\s+destination: \.github\/workflows\/cao-dashboard\.yml\n\s+kind: action-workflow/);
+  assert.match(dashboardManifest, /^\s+- \.github\/workflows\/cao-dashboard-build\.yml$/m);
   assert.doesNotMatch(dashboardManifest, /destination: \.github\/cao\//);
   assert.match(dashboardManifest, /source: local-server\.mjs\n\s+destination: \.github\/aw\/dashboard\/local-server\.mjs/);
   assert.match(canonicalPolicyResolver, /export function parsePolicy/);
@@ -3165,11 +3165,11 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.match(buildWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
   assert.doesNotMatch(buildWorkflow, /actions\/(?:configure-pages|upload-pages-artifact|deploy-pages)@/);
   assert.doesNotMatch(buildWorkflow, /pages: write|id-token: write/);
-  assert.doesNotMatch(deployWorkflow, /uses: \.\/\.github\/workflows\/dashboard-build\.yml/);
+  assert.doesNotMatch(deployWorkflow, /uses: \.\/\.github\/workflows\/cao-dashboard-build\.yml/);
   assert.match(deployWorkflow, /name: CAO Dashboard/);
   assert.match(deployWorkflow, /workflow_dispatch:[\s\S]*?push:[\s\S]*?\.github\/aw\/dashboard\/\*\*[\s\S]*?\.github\/workflows\/cao\.json[\s\S]*?dashboard\/\*\*/);
   assert.match(deployWorkflow, /if: github\.event_name == 'workflow_dispatch' \|\| github\.ref_name == github\.event\.repository\.default_branch/);
-  assert.match(deployWorkflow, /DISPATCH_WORKFLOW: dashboard-build\.yml[\s\S]*?node \.github\/aw\/dashboard\/dispatch-workflow\.mjs/);
+  assert.match(deployWorkflow, /DISPATCH_WORKFLOW: cao-dashboard-build\.yml[\s\S]*?node \.github\/aw\/dashboard\/dispatch-workflow\.mjs/);
   assert.match(deployWorkflow, /site-path["']?:["']?\.["']?/);
   assert.match(deployWorkflow, /run-id: \$\{\{ needs\.build\.outputs\.run-id \}\}/);
   assert.match(deployWorkflow, /enablement: false/);
@@ -3301,10 +3301,10 @@ test("Activity package owns the shared collected-data cache contract", () => {
 
 test("Documentation Pages deploys docs independently from the dashboard", () => {
   const workflow = readFileSync(join(root, ".github", "workflows", "docs.yml"), "utf8");
-  const dashboardBuild = readFileSync(join(root, ".github", "workflows", "dashboard-build.yml"), "utf8");
+  const dashboardBuild = readFileSync(join(root, ".github", "workflows", "cao-dashboard-build.yml"), "utf8");
   const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");
 
-  assert.equal(existsSync(join(root, ".github", "workflows", "cao-dashboard-build.yml")), false);
+  assert.equal(existsSync(join(root, ".github", "workflows", "dashboard-build.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-pages.yml")), false);
   assert.equal(existsSync(join(root, ".github", "workflows", "documentation-build.yml")), false);
 

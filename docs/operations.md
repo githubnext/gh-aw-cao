@@ -176,8 +176,8 @@ A deliberate custom extension should mint a short-lived GitHub App token install
 
 The package installs the following components in the control-plane repository:
 
-- `.github/workflows/dashboard-build.yml`, the dispatchable path-aware builder;
-- `.github/workflows/dashboard.yml`, the manual standalone publisher;
+- `.github/workflows/cao-dashboard-build.yml`, the dispatchable path-aware builder;
+- `.github/workflows/cao-dashboard.yml`, the standalone publisher;
 - `.github/workflows/activity.yml`, the scheduled and manually dispatchable data collector and cache publisher;
 - `.github/aw/dashboard/dispatch-workflow.mjs`, the same-repository dispatcher that waits for one correlated child run;
 - `.github/aw/activity/logs.mjs`, the single bounded `gh aw logs` acquisition entrypoint;
@@ -199,7 +199,7 @@ For a standalone Pages site:
 
 The standalone workflow passes `enablement: false` to `actions/configure-pages` and has no schedule. It cannot enable Pages or replace an existing site merely because the package was installed.
 
-For a repository with an existing Pages site, keep its current workflow as the only Pages artifact uploader and deployer. Add a job with `actions: write` that dispatches `dashboard-build.yml` with a relative `site-path`, waits for that exact run, and exposes its run ID. Download the `central-agentic-ops-dashboard` artifact with `github-token` and that `run-id` into the existing site's build directory before its `actions/upload-pages-artifact` step. For example, `site-path: cao` combined with download `path: dist` publishes the dashboard under `dist/cao/` while preserving the rest of the site. Do not run the standalone dashboard workflow for an embedded installation.
+For a repository with an existing Pages site, keep its current workflow as the only Pages artifact uploader and deployer. Add a job with `actions: write` that dispatches `cao-dashboard-build.yml` with a relative `site-path`, waits for that exact run, and exposes its run ID. Download the `central-agentic-ops-dashboard` artifact with `github-token` and that `run-id` into the existing site's build directory before its `actions/upload-pages-artifact` step. For example, `site-path: cao` combined with download `path: dist` publishes the dashboard under `dist/cao/` while preserving the rest of the site. Do not run the standalone dashboard workflow for an embedded installation.
 
 The Activity workflow restores its log cache, runs one bounded `gh aw logs --audit --artifacts usage` command for compiled workflows in the checked-out control repository, and saves only the refreshed JSONL. It does not index, normalize, collect telemetry, or generate dashboard records. Consumers restore the JSONL cache and apply their own bounded processing without publishing secondary Activity cache files.
 

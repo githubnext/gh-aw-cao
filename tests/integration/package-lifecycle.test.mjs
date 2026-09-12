@@ -89,7 +89,7 @@ const craExpectedFiles = [
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
-  ".github/workflows/dashboard-build.yml",
+  ".github/workflows/cao-dashboard-build.yml",
   ...[...readFileSync(
     new URL("../../dashboard/aw.yml", import.meta.url),
     "utf8",
@@ -397,8 +397,8 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
       "dashboard package manifest must own both workflows and every report module",
     );
 
-    const buildWorkflow = readFileSync(join(consumer, ".github", "workflows", "dashboard-build.yml"), "utf8");
-    const deployWorkflow = readFileSync(join(consumer, ".github", "workflows", "dashboard.yml"), "utf8");
+    const buildWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard-build.yml"), "utf8");
+    const deployWorkflow = readFileSync(join(consumer, ".github", "workflows", "cao-dashboard.yml"), "utf8");
     assert.doesNotMatch(buildWorkflow, /workflow_call:/);
     assert.match(buildWorkflow, /workflow_dispatch:[\s\S]*?site-path:[\s\S]*?request-id:/);
     assert.match(buildWorkflow, /actions\/upload-artifact@[0-9a-f]{40}/);
@@ -417,14 +417,14 @@ test("gh aw add --force restores dashboard workflows, producers, and renderer as
   const consumer = await installPackage(dashboardPackageSource);
 
   try {
-    const deployPath = join(consumer, ".github", "workflows", "dashboard.yml");
+    const deployPath = join(consumer, ".github", "workflows", "cao-dashboard.yml");
     const deployWorkflow = readFileSync(deployPath, "utf8");
     writeFileSync(deployPath, `${deployWorkflow}\n# local integration-test change\n`);
 
     const removedFiles = [
       ".github/aw/dashboard/report/records.mjs",
       ".github/aw/dashboard/site/index.html",
-      ".github/workflows/dashboard-build.yml",
+      ".github/workflows/cao-dashboard-build.yml",
     ];
     for (const relativePath of removedFiles) {
       rmSync(join(consumer, relativePath));
