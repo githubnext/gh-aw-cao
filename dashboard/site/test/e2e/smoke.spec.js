@@ -1514,6 +1514,15 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
+  const factoryLinks = overviewPage.locator('.factory-station a');
+  expect(await factoryLinks.count()).toBeGreaterThan(0);
+  for (const link of await factoryLinks.evaluateAll((links) => links.map((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return { text: element.textContent?.trim(), width, height };
+  }))) {
+    expect(link.width, `${link.text} link width`).toBeGreaterThanOrEqual(24);
+    expect(link.height, `${link.text} link height`).toBeGreaterThanOrEqual(24);
+  }
   await overviewPage.locator('.factory-station small a').click();
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
