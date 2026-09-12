@@ -18,8 +18,15 @@ export const LANGUAGE_VERSION = '0.1.0';
 export const IDENTIFIER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 export const ROOT_KEYS = ['language-version', 'dashboard'];
-export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts'];
+export const DASHBOARD_KEYS = ['id', 'title', 'description', 'defaults', 'units', 'queries', 'pages', 'github-url-base', 'repository', 'navigation', 'horizon', 'callouts', 'cli-actions'];
 export const DASHBOARD_HORIZON_KEYS = ['label', 'tooltip'];
+export const CLI_ACTION_KEYS = ['id', 'label', 'description', 'icon', 'command', 'placement', 'arguments'];
+export const CLI_ACTION_PLACEMENT_VALUES = ['toolbar', 'settings'];
+export const CLI_ACTION_ARGUMENT_KEYS = ['id', 'label', 'description', 'type', 'flag', 'default'];
+export const CLI_ACTION_ARGUMENT_TYPE_VALUES = ['boolean'];
+export const MAX_CLI_ACTIONS = 20;
+export const MAX_CLI_ACTION_ARGUMENTS = 10;
+export const MAX_CLI_ACTION_COMMAND_LENGTH = 1000;
 
 export const QUERY_KEYS = ['name', 'intent', 'description', 'from', 'joins', 'filter', 'compute', 'aggregate', 'select', 'order-by', 'limit'];
 export const QUERY_JOIN_KEYS = ['source', 'type', 'on', 'fields'];

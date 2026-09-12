@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 export async function startLocalDashboardPreview({
   workingDirectory,
   repository,
+  executeCliAction,
 }) {
   const localServerPath = await findLocalServer(workingDirectory);
   const localServer = await import(pathToFileURL(localServerPath).href);
@@ -17,6 +18,8 @@ export async function startLocalDashboardPreview({
   return localServer.startDashboardServer({
     workingDirectory,
     repository,
+    canvas: true,
+    executeCliAction,
     port: 0,
     output: () => {},
     requestOutput: () => {},

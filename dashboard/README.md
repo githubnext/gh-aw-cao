@@ -61,6 +61,40 @@ Open only the unguessable URL printed by the server. The server uses only Node.j
 
 The preview composes `.github/aw/dashboard/site/dashboard.json` with every installed `.github/aw/dashboards/*.json` package dashboard. It watches those files and sends the new composed `dashboard.json` over a capability-protected WebSocket after a valid update. The browser re-renders that document without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
 
+### Canvas CLI actions
+
+Dashboard documents may declare canvas-only CLI actions. They are hidden from
+the published site and ordinary local previews. In the dashboard canvas, each
+action appears in the **Actions** menu and always requires the user to review
+and approve the exact command for that invocation; approval is never remembered
+and there is no unattended mode.
+
+```yaml
+dashboard:
+  cli-actions:
+    - id: upgrade-repository
+      label: Upgrade
+      description: Upgrade the repository's Agentic Workflows files.
+      icon: download
+      command: gh aw upgrade
+      placement: settings
+      arguments:
+        - id: pre-releases
+          label: Include pre-releases
+          type: boolean
+          flag: --pre-releases
+          default: false
+```
+
+Commands must be single-line `gh aw ...` invocations. The canvas extension runs
+GitHub CLI directly without a shell and supplies the user-approved
+`GITHUB_TOKEN` as `GH_TOKEN` to that process. When `gh aw` is unavailable, an
+approved action first attempts `gh extension install github/gh-aw`. If that
+installation fails, it downloads and runs the pinned `v0.89.7` installer from
+the official `github/gh-aw` repository, then verifies `gh aw` before continuing.
+Boolean action arguments render as checkboxes and may append only their declared
+canonical long option to the command preview and executed argv.
+
 Catalog contributors can run `npm run dashboard:local`; the same server discovers top-level package `dashboard.json` files automatically. Pass a control repository explicitly with `npm run dashboard:local -- --repo OWNER/REPOSITORY`.
 
 To reproduce the deployed dashboard's mobile DOM budget locally with live Pages data, run:

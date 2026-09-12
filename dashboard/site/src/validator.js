@@ -35,6 +35,10 @@ import {
   BUILT_IN_PAGE_DEFINITION_KEYS,
   DEFAULTS_KEYS,
   CALLOUT_KEYS,
+  CLI_ACTION_KEYS,
+  CLI_ACTION_ARGUMENT_KEYS,
+  CLI_ACTION_ARGUMENT_TYPE_VALUES,
+  CLI_ACTION_PLACEMENT_VALUES,
   ERROR_CODES,
   LINK_FIELD_NAMES,
   LINK_OBJECT_KEYS,
@@ -53,6 +57,9 @@ import {
   IDENTIFIER_PATTERN,
   LANGUAGE_VERSION,
   MAX_ESSENTIAL_VIEWS_PER_PAGE,
+  MAX_CLI_ACTIONS,
+  MAX_CLI_ACTION_ARGUMENTS,
+  MAX_CLI_ACTION_COMMAND_LENGTH,
   NAVIGATION_SECTION_KEYS,
   NON_ADDITIVE_MEASURE_FIELDS,
   ORDER_BY_KEYS,
@@ -506,6 +513,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
   declaredQueries = validateQueries(dashboard.queries, getValueNodeByKey(dashboardNode, 'queries'), errors);
   const unitIds = validateUnits(dashboard.units, getValueNodeByKey(dashboardNode, 'units'), errors);
   validateSiteCallouts(dashboard.callouts, getValueNodeByKey(dashboardNode, 'callouts'), errors);
+  validateCliActions(dashboard['cli-actions'], getValueNodeByKey(dashboardNode, 'cli-actions'), errors);
 
   if (!Array.isArray(dashboard.pages) || dashboard.pages.length === 0) {
     errors.push(createError(
@@ -514,6 +522,192 @@ function validateDashboard(dashboard, dashboardNode, errors) {
       '$.dashboard.pages'
     ));
     return;
+  }
+
+  /**
+   * @param {unknown} actions
+   * @param {unknown} actionsNode
+   * @param {ValidationError[]} errors
+   */
+  function validateCliActions(actions, actionsNode, errors) {
+    if (actions === undefined) return;
+    if (!Array.isArray(actions) || actions.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'cli-actions must be a non-empty sequence.',
+        '$.dashboard.cli-actions'
+      ));
+      return;
+    }
+    if (actions.length > MAX_CLI_ACTIONS) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        `cli-actions is limited to ${MAX_CLI_ACTIONS} actions.`,
+        '$.dashboard.cli-actions'
+      ));
+    }
+
+    const ids = new Set();
+    actions.forEach((action, index) => {
+      const path = `$.dashboard.cli-actions[${index}]`;
+      const actionNode = getSequenceItemNode(actionsNode, index);
+      if (!isPlainObject(action)) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'CLI action must be a mapping.',
+          path
+        ));
+        return;
+      }
+      validateObjectKeys(actionNode, CLI_ACTION_KEYS, path, errors);
+      validateRequiredIdentifier(action.id, `${path}.id`, 'CLI action id', errors);
+      if (typeof action.id === 'string') {
+        if (ids.has(action.id)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action id must be unique within dashboard.cli-actions.',
+            `${path}.id`
+          ));
+        }
+        ids.add(action.id);
+      }
+      validateStringField(action.label, `${path}.label`, true, errors);
+      validateOptionalStringField(action.description, `${path}.description`, errors);
+      validateStringField(action.icon, `${path}.icon`, true, errors);
+      if (typeof action.icon === 'string' && !PAGE_ICON_VALUES.includes(action.icon)) {
+        errors.push(createError(
+          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          'CLI action icon must use one canonical icon value.',
+          `${path}.icon`
+        ));
+      }
+      if (action.placement !== undefined) {
+        validateStringField(action.placement, `${path}.placement`, true, errors);
+        if (typeof action.placement === 'string' && !CLI_ACTION_PLACEMENT_VALUES.includes(action.placement)) {
+          errors.push(createError(
+            ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+            'CLI action placement must use toolbar or settings.',
+            `${path}.placement`
+          ));
+        }
+      }
+      validateStringField(action.command, `${path}.command`, true, errors);
+      if (typeof action.command === 'string') {
+        if (action.command.length > MAX_CLI_ACTION_COMMAND_LENGTH) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            `CLI action command is limited to ${MAX_CLI_ACTION_COMMAND_LENGTH} characters.`,
+            `${path}.command`
+          ));
+        }
+        if (!/^gh\s+aw(?:\s|$)/.test(action.command)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action command must start with "gh aw".',
+            `${path}.command`
+          ));
+        }
+        if (/[\r\n]/.test(action.command) || action.command.includes('\0')) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action command must be a single line without null characters.',
+            `${path}.command`
+          ));
+        }
+      }
+      validateCliActionArguments(
+        action.arguments,
+        getValueNodeByKey(actionNode, 'arguments'),
+        `${path}.arguments`,
+        errors
+      );
+    });
+  }
+
+  /**
+   * @param {unknown} actionArguments
+   * @param {unknown} argumentsNode
+   * @param {string} path
+   * @param {ValidationError[]} errors
+   */
+  function validateCliActionArguments(actionArguments, argumentsNode, path, errors) {
+    if (actionArguments === undefined) return;
+    if (!Array.isArray(actionArguments) || actionArguments.length === 0) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        'CLI action arguments must be a non-empty sequence.',
+        path
+      ));
+      return;
+    }
+    if (actionArguments.length > MAX_CLI_ACTION_ARGUMENTS) {
+      errors.push(createError(
+        ERROR_CODES.missingOrInvalidRequiredField,
+        `CLI action arguments are limited to ${MAX_CLI_ACTION_ARGUMENTS} controls.`,
+        path
+      ));
+    }
+    const ids = new Set();
+    const flags = new Set();
+    actionArguments.forEach((argument, index) => {
+      const argumentPath = `${path}[${index}]`;
+      const argumentNode = getSequenceItemNode(argumentsNode, index);
+      if (!isPlainObject(argument)) {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'CLI action argument must be a mapping.',
+          argumentPath
+        ));
+        return;
+      }
+      validateObjectKeys(argumentNode, CLI_ACTION_ARGUMENT_KEYS, argumentPath, errors);
+      validateRequiredIdentifier(argument.id, `${argumentPath}.id`, 'CLI action argument id', errors);
+      if (typeof argument.id === 'string') {
+        if (ids.has(argument.id)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action argument id must be unique within the action.',
+            `${argumentPath}.id`
+          ));
+        }
+        ids.add(argument.id);
+      }
+      validateStringField(argument.label, `${argumentPath}.label`, true, errors);
+      validateOptionalStringField(argument.description, `${argumentPath}.description`, errors);
+      validateStringField(argument.type, `${argumentPath}.type`, true, errors);
+      if (typeof argument.type === 'string' && !CLI_ACTION_ARGUMENT_TYPE_VALUES.includes(argument.type)) {
+        errors.push(createError(
+          ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
+          'CLI action argument type must be boolean.',
+          `${argumentPath}.type`
+        ));
+      }
+      validateStringField(argument.flag, `${argumentPath}.flag`, true, errors);
+      if (typeof argument.flag === 'string') {
+        if (!/^--[a-z0-9]+(?:-[a-z0-9]+)*$/.test(argument.flag)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action argument flag must be a canonical long option.',
+            `${argumentPath}.flag`
+          ));
+        }
+        if (flags.has(argument.flag)) {
+          errors.push(createError(
+            ERROR_CODES.missingOrInvalidRequiredField,
+            'CLI action argument flag must be unique within the action.',
+            `${argumentPath}.flag`
+          ));
+        }
+        flags.add(argument.flag);
+      }
+      if (argument.default !== undefined && typeof argument.default !== 'boolean') {
+        errors.push(createError(
+          ERROR_CODES.missingOrInvalidRequiredField,
+          'Boolean CLI action argument default must be a boolean.',
+          `${argumentPath}.default`
+        ));
+      }
+    });
   }
 
   /** @type {Set<string>} */
