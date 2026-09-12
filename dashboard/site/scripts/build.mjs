@@ -101,11 +101,11 @@ function rewriteLocalReferences(source, sourcePath, sourceRoot, hashes) {
 
   return source
     .replace(
-      /^(\s*import\s+(?:[^"'()\n]+\s+from\s+)?)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
+      /^(\s*import\s+(?:[^"'()]*?\s+from\s+)?)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
       (match, prefix, quote, specifier) => rewrite(match, prefix, quote, specifier),
     )
     .replace(
-      /^(\s*export\s+(?:\*|\{[^}\n]*\})\s+from\s+)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
+      /^(\s*export\s+(?:\*|\{[^}]*\})\s+from\s+)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
       (match, prefix, quote, specifier) => rewrite(match, prefix, quote, specifier),
     )
     .replace(

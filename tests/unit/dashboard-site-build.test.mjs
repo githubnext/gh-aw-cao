@@ -52,6 +52,12 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       await readFile(new URL("src/data-processor.js", destination), "utf8"),
       new RegExp(`new URL\\('./data-worker\\.js\\?sha=${workerHash}', import\\.meta\\.url\\)`),
     );
+    const specificationSource = await readFile(new URL("../../dashboard/site/src/specification.js", import.meta.url));
+    const specificationHash = createHash("sha256").update(specificationSource).digest("hex");
+    assert.match(
+      await readFile(new URL("src/validator.js", destination), "utf8"),
+      new RegExp(`} from './specification\\.js\\?sha=${specificationHash}';`),
+    );
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
     }
