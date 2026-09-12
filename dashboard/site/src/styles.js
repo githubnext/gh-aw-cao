@@ -1504,7 +1504,7 @@ h3 { margin: 16px 0 8px; font-size: 1rem; font-weight: 600; }
 .factory-station > span:nth-child(2) { color: var(--muted); font-size: .6875rem; font-weight: 700; text-transform: uppercase; }
 .factory-station strong { margin-top: 3px; font-size: 1.8rem; font-variant-numeric: tabular-nums; line-height: 1; }
 .factory-station small { margin-top: 5px; color: var(--muted); font-size: .6875rem; }
-.factory-station a { color: inherit; text-decoration: none; }
+.factory-station a { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center; color: inherit; text-decoration: none; }
 .factory-station a:hover { color: var(--accent); text-decoration: underline; }
 .factory-rhythm { min-width: 0; display: grid; grid-template-columns: minmax(180px, .35fr) minmax(0, 1fr); align-items: center; gap: 32px; padding: 24px 40px; border-bottom: 1px solid var(--border); background: var(--canvas); }
 .factory-intro .factory-rhythm { grid-template-columns: minmax(0, 1fr); align-self: stretch; gap: 16px; padding: 0; border: 0; background: transparent; }

@@ -1514,6 +1514,8 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
     return { width, height };
   });
 
+  await expect(overviewPage.locator('.factory-station strong a')).toHaveCSS('min-height', '24px');
+  await expect(overviewPage.locator('.factory-station small a')).toHaveCSS('min-height', '24px');
   await overviewPage.locator('.factory-station small a').click();
   await expect(page).toHaveURL(/#page-runs\?runs-runs-source\.run-conclusion=failure$/);
   await expect(page.getByRole('heading', { name: 'Runs', exact: true, level: 1 })).toBeVisible();
