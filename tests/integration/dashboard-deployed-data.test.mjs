@@ -7,7 +7,10 @@ import test from "node:test";
 import "fake-indexeddb/auto";
 import { readRunTimeline } from "../../dashboard/report/aic-usage.mjs";
 import { loadDashboardSources } from "../../dashboard/site/src/source-loader.js";
-import { ingestDashboardSources } from "../../dashboard/site/src/data/ingest/coordinator.js";
+import {
+  ingestCachedGhAwJsonl,
+  ingestDashboardSources,
+} from "../../dashboard/site/src/data/ingest/coordinator.js";
 import { runId, sourceId } from "../../dashboard/site/src/data/model/ids.js";
 import {
   DATABASE_NAME,
@@ -159,8 +162,19 @@ test("deployed gh-aw logs produce the published firewall events", async () => {
       fetch(deployedLogsUrl, { signal: AbortSignal.timeout(60_000) }),
     ]);
     assert.equal(logsResponse.ok, true, `failed to download ${deployedLogsUrl}: ${logsResponse.status}`);
-    const logs = (await logsResponse.text()).split(/\r?\n/).filter(Boolean).map(JSON.parse);
+    const logsContent = await logsResponse.text();
+    const logs = logsContent.split(/\r?\n/).filter(Boolean).map(JSON.parse);
     assert.ok(logs.length > 0, "deployed gh-aw logs must contain runs");
+    await deleteCanonicalDatabase(indexedDB);
+    await ingestCachedGhAwJsonl(indexedDB, logsContent);
+    const ingestedFirewallEvents = (await readCollection(indexedDB, "events")).filter(
+      (event) => event.source === "firewall" && /^net_/.test(String(event.type)),
+    );
+    assert.ok(ingestedFirewallEvents.length > 0, "deployed gh-aw logs must ingest firewall events");
+    assert.ok(
+      ingestedFirewallEvents.every((event) => Number(event.requestCount) > 0),
+      "ingested firewall events must retain positive request counts",
+    );
 
     const firewallEvents = sources.events.rows.filter(
       (event) => event["event-source"] === "firewall" || /^net_/.test(String(event["event-type"])),
@@ -211,6 +225,7 @@ test("deployed gh-aw logs produce the published firewall events", async () => {
     })).toSorted((left, right) => left.event.localeCompare(right.event));
     assert.deepEqual(collectedPayload, publishedPayload);
   } finally {
+    await deleteCanonicalDatabase(indexedDB);
     await rm(root, { recursive: true, force: true });
   }
 });
