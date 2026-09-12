@@ -14,6 +14,11 @@ function localDependencies(source) {
   return dependencies;
 }
 
+async function builtSiteSha(destination) {
+  const index = await readFile(new URL("index.html", destination), "utf8");
+  return index.match(/src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"/)?.[1];
+}
+
 test("docs dashboard installs renderer assets and configured package pages", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-build-"));
   const destination = pathToFileURL(`${root}/cao/`);
@@ -32,6 +37,29 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     assert.match(
       await readFile(new URL("index.html", destination), "utf8"),
       /<link rel="icon" href="https:\/\/example\.com\/dashboard\.svg">/,
+    );
+    const builtIndex = await readFile(new URL("index.html", destination), "utf8");
+    const mainHash = builtIndex.match(/<script type="module" src="\.\/src\/main\.js\?sha=([a-f0-9]{64})"><\/script>/)?.[1];
+    assert.ok(mainHash, "entry module includes the site content SHA");
+    assert.match(
+      builtIndex,
+      new RegExp(`<script type="module" src="./src/main\\.js\\?sha=${mainHash}"></script>`),
+    );
+    assert.match(
+      await readFile(new URL("src/main.js", destination), "utf8"),
+      new RegExp(`from "./presenter\\.js\\?sha=${mainHash}";`),
+    );
+    assert.match(
+      await readFile(new URL("src/data-processor.js", destination), "utf8"),
+      new RegExp(`new URL\\('./data-worker\\.js\\?sha=${mainHash}', import\\.meta\\.url\\)`),
+    );
+    assert.match(
+      await readFile(new URL("src/validator.js", destination), "utf8"),
+      new RegExp(`} from './specification\\.js\\?sha=${mainHash}';`),
+    );
+    assert.match(
+      await readFile(new URL("src/presenter.js", destination), "utf8"),
+      new RegExp(`from '../dashboard\\.json\\?sha=${mainHash}' with`),
     );
     for (const pageId of ["uk-ai-advisory-dashboard", "dependabot-dashboard"]) {
       assert.match(await readFile(new URL(`${pageId}/index.html`, destination), "utf8"), new RegExp(`#page-${pageId}`));
@@ -54,6 +82,36 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       readFile(new URL("README.md", destination), "utf8"),
       (error) => error?.code === "ENOENT",
       "build copied a dashboard source that gh aw add would not install",
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("dashboard cache hashes are stable and change with assembled site content", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-cache-hash-"));
+  const firstDestination = pathToFileURL(`${root}/first/`);
+  const secondDestination = pathToFileURL(`${root}/second/`);
+  const changedDestination = pathToFileURL(`${root}/changed/`);
+  const controlSettings = { web: { favicon: "https://example.com/dashboard.svg" } };
+
+  try {
+    await buildDashboardSite({ destination: firstDestination, controlSettings });
+    await buildDashboardSite({ destination: secondDestination, controlSettings });
+    await buildDashboardSite({
+      destination: changedDestination,
+      controlSettings: { web: { favicon: "https://example.com/changed.svg" } },
+    });
+
+    const firstSha = await builtSiteSha(firstDestination);
+    const secondSha = await builtSiteSha(secondDestination);
+    const changedSha = await builtSiteSha(changedDestination);
+    assert.ok(firstSha, "first build includes a cache hash");
+    assert.equal(secondSha, firstSha, "identical content produces the same cache hash");
+    assert.notEqual(changedSha, firstSha, "changed content produces a different cache hash");
+    assert.match(
+      await readFile(new URL("src/main.js", changedDestination), "utf8"),
+      new RegExp(`from "./presenter\\.js\\?sha=${changedSha}";`),
     );
   } finally {
     await rm(root, { recursive: true, force: true });
