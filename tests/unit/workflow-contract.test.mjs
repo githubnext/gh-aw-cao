@@ -2217,6 +2217,8 @@ test("CAO Evolution compiler security worker runs the full validation suite", ()
   const runView = dashboard.dashboard.pages[0].views.find(({ id }) => id === "cao-evolution-runs");
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-failures-investigator.md"));
   assert.ok(runView.data.filters.workflow.includes(".github/workflows/cao-evolution-compiler-security.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-failures-investigator.md"));
+  assert.ok(runView.data.filters.workflow.includes(".github/workflows/aw-maintenance-compiler-security.md"));
 });
 
 test("CAO Evolution failures worker closes target AW failure issues as duplicates", () => {
