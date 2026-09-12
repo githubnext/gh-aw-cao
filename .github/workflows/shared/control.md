@@ -86,7 +86,12 @@ jobs:
           workflow_ref="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/}"
           workflow_path="${workflow_ref%@*}"
           source="$(sed -n 's/^# Source: //p' "$GITHUB_WORKSPACE/.cao/$workflow_path" | head -n 1)"
-          if [[ -z "$source" && -f "$local_runtime" ]]; then
+          source_repository=
+          if [[ "$source" =~ ^([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(/[A-Za-z0-9_./-]+)?@[^@]+$ ]]; then
+            source_repository="${BASH_REMATCH[1]}"
+          fi
+          if [[ -f "$local_runtime" ]] &&
+             { [[ -z "$source" ]] || [[ "${source_repository,,}" == "${GITHUB_REPOSITORY,,}" ]]; }; then
             echo "external=false" >> "$GITHUB_OUTPUT"
             echo "runtime=$local_runtime" >> "$GITHUB_OUTPUT"
             exit 0

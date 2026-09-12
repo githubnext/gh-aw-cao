@@ -1156,7 +1156,8 @@ test("root package resolves the single CAO bootstrap runtime", () => {
   for (const path of ["cao.schema.json", "setup-github-apps.mjs", "control.mjs", "policy.mjs"]) {
     assert.ok(existsSync(join(root, ".github", "workflows", "shared", path)));
   }
-  assert.ok(control.indexOf("source=\"$(sed") < control.indexOf("if [[ -z \"$source\""));
+  assert.ok(control.indexOf("source=\"$(sed") < control.indexOf("if [[ -f \"$local_runtime\""));
+  assert.match(control, /\[\[ "\$\{source_repository,,\}" == "\$\{GITHUB_REPOSITORY,,\}" \]\]/);
   assert.ok(activity.indexOf("const record =") < activity.indexOf("if (!record)"));
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /setup-central-agentic-ops/);
