@@ -1,5 +1,6 @@
-import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { access, cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleDashboardFiles } from "../../report/bundle-dashboards.mjs";
 import { configureSite } from "../../report/configure-site.mjs";
@@ -32,6 +33,7 @@ export async function buildDashboardSite({
 
   const indexPath = join(destinationPath, "index.html");
   await writeFile(indexPath, configureSite(await readFile(indexPath, "utf8"), controlSettings));
+  await cacheBustSiteImports(destinationPath);
 
   const packageDashboards = [];
   for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
@@ -51,6 +53,70 @@ export async function buildDashboardSite({
     await mkdir(routeDirectory, { recursive: true });
     await writeFile(join(routeDirectory, "index.html"), redirectDocument(page.id));
   }
+}
+
+async function cacheBustSiteImports(destinationPath) {
+  const sourceRoot = join(destinationPath, "src");
+  const sourceFiles = await listFiles(sourceRoot);
+  const hashes = new Map();
+
+  for (const sourceFile of sourceFiles) {
+    const contents = await readFile(join(sourceRoot, sourceFile));
+    hashes.set(sourceFile, createHash("sha256").update(contents).digest("hex"));
+  }
+
+  for (const sourceFile of sourceFiles.filter((file) => file.endsWith(".js"))) {
+    const sourcePath = join(sourceRoot, sourceFile);
+    const contents = await readFile(sourcePath, "utf8");
+    await writeFile(sourcePath, rewriteLocalReferences(contents, sourcePath, sourceRoot, hashes));
+  }
+
+  const indexPath = join(destinationPath, "index.html");
+  const index = await readFile(indexPath, "utf8");
+  await writeFile(
+    indexPath,
+    index.replace(
+      /(<script\b[^>]*\bsrc=["'])(\.\/src\/main\.js)(["'][^>]*>)/,
+      `$1$2?sha=${hashes.get("main.js")}$3`,
+    ),
+  );
+}
+
+async function listFiles(directory, root = directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await listFiles(path, root));
+    else if (entry.isFile()) files.push(relative(root, path));
+  }
+  return files;
+}
+
+function rewriteLocalReferences(source, sourcePath, sourceRoot, hashes) {
+  const rewrite = (match, prefix, quote, specifier, suffix = "") => {
+    const target = relative(sourceRoot, resolve(dirname(sourcePath), specifier));
+    const hash = hashes.get(target);
+    return hash ? `${prefix}${quote}${specifier}?sha=${hash}${quote}${suffix}` : match;
+  };
+
+  return source
+    .replace(
+      /^(\s*import\s+(?:[^"'()\n]+\s+from\s+)?)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
+      (match, prefix, quote, specifier) => rewrite(match, prefix, quote, specifier),
+    )
+    .replace(
+      /^(\s*export\s+(?:\*|\{[^}\n]*\})\s+from\s+)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2/gm,
+      (match, prefix, quote, specifier) => rewrite(match, prefix, quote, specifier),
+    )
+    .replace(
+      /(\b(?:import|new\s+URL)\s*\(\s*)(["'])(\.{1,2}\/[^"'?#]+)(?:\?[^"']*)?\2(\s*,?)/g,
+      (match, prefix, quote, specifier, suffix, offset) => {
+        const linePrefix = source.slice(source.lastIndexOf("\n", offset) + 1, offset);
+        return /^\s*(?:\/\/|\/?\*)/.test(linePrefix)
+          ? match
+          : rewrite(match, prefix, quote, specifier, suffix);
+      },
+    );
 }
 
 function requiresHashQueryParameter(page) {
