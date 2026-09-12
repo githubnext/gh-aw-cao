@@ -68,10 +68,9 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       await readFile(new URL("service-worker.js", destination), "utf8"),
       /periodicsync/,
     );
-    assert.equal(
-      JSON.parse(await readFile(new URL("manifest.webmanifest", destination), "utf8")).scope,
-      "./",
-    );
+    const webManifest = JSON.parse(await readFile(new URL("manifest.webmanifest", destination), "utf8"));
+    assert.equal(webManifest.scope, "./");
+    assert.equal(webManifest.display, "fullscreen");
 
     const manifest = parse(await readFile(new URL("../../dashboard/aw.yml", import.meta.url), "utf8"));
     const installedSitePrefix = ".github/aw/dashboard/site/";
