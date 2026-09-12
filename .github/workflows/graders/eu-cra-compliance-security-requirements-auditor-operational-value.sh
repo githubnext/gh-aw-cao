@@ -9,4 +9,4 @@ OPPORTUNITY="A dispatched target repository whose applicable CRA essential produ
 ACCEPTED="A non-bot human explicitly accepts the report for the frozen target commit after reviewing its requirement-to-evidence matrix, regulatory provenance, cross-cutting gaps, remediation backlog, and human-review questions."
 METRIC_ID="human-accepted-security-requirements-record"
 
-source "${BASH_SOURCE[0]%/*}/../../aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"
+source "${GITHUB_WORKSPACE:-.}/.github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"

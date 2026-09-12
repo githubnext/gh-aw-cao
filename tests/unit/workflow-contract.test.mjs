@@ -1300,6 +1300,18 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
       `${name}: workflow must execute the frozen operational-value evaluator`,
     );
     const definition = JSON.parse(execFileSync(executable, ["--definition"], { encoding: "utf8" }));
+    const materializedDirectory = mkdtempSync(join(tmpdir(), "cao-grader-"));
+    const materializedEvaluator = join(materializedDirectory, "operational_value_evaluator.sh");
+    try {
+      cpSync(executable, materializedEvaluator);
+      const materializedDefinition = JSON.parse(execFileSync(materializedEvaluator, ["--definition"], {
+        encoding: "utf8",
+        env: { ...process.env, GITHUB_WORKSPACE: root },
+      }));
+      assert.deepEqual(materializedDefinition, definition, `${name}: materialized evaluator`);
+    } finally {
+      rmSync(materializedDirectory, { recursive: true, force: true });
+    }
     assert.equal(definition.schemaVersion, 4, name);
     assert.equal(definition.grader, "operational-value", name);
     const score = (example) => JSON.parse(execFileSync(executable, ["--metric"], {

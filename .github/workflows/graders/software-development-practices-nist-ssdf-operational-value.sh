@@ -9,4 +9,4 @@ OPPORTUNITY="A dispatched target repository that ships or supports software with
 ACCEPTED="A non-bot human explicitly accepts the guidance for the frozen target commit after reviewing its final-publication provenance, practice-to-evidence matrix, prioritized backlog, limitations, and human-review questions."
 METRIC_ID="human-accepted-nist-ssdf-guidance"
 
-source "${BASH_SOURCE[0]%/*}/../../aw/software-development-practices/software-development-guidance-operational-value-runtime.bash"
+source "${GITHUB_WORKSPACE:-.}/.github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash"

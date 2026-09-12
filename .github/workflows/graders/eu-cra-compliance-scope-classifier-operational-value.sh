@@ -9,4 +9,4 @@ OPPORTUNITY="A dispatched target repository for which CRA scope, economic-operat
 ACCEPTED="A non-bot human explicitly accepts the report for the frozen target commit after reviewing its scope, role, FOSS-treatment, distribution, classification, provenance, gap, and human-decision record."
 METRIC_ID="human-accepted-scope-record"
 
-source "${BASH_SOURCE[0]%/*}/../../aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"
+source "${GITHUB_WORKSPACE:-.}/.github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash"
