@@ -698,6 +698,7 @@ test('Runs renders a last-week swimlane above its responsive table and scrolls i
   }
   const swimlaneChartMaxHeight = await swimlane.locator('[data-chart-widget="swimlane"] svg')
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
+  expect(Number.isFinite(swimlaneChartMaxHeight)).toBe(true);
   expect(Math.abs(swimlaneHeadingBox.x - swimlaneSummaryBox.x)).toBeLessThanOrEqual(1);
   expect(swimlaneChartBox.height).toBeLessThanOrEqual(swimlaneChartMaxHeight);
   await expect(table).toBeVisible();

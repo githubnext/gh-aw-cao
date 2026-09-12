@@ -234,6 +234,9 @@ describe('chart element helpers', () => {
       'Success'
     ]);
     expect([...chart.querySelectorAll('.swimlane-label')].map((label) => Number(label.getAttribute('x')))).toEqual(Array(5).fill(SWIMLANE_LAYOUT.labelX));
+    expect([...chart.querySelectorAll('.swimlane-label')].map((label) => Number(label.getAttribute('y')))).toEqual(
+      Array.from({ length: 5 }, (_, index) => SWIMLANE_LAYOUT.topY + (index * SWIMLANE_LAYOUT.laneGap) + SWIMLANE_LAYOUT.labelBaselineOffset)
+    );
     const laneYs = [...chart.querySelectorAll('.swimlane-separator')].map((separator) => Number(separator.getAttribute('y1')));
     expect(laneYs[0]).toBe(SWIMLANE_LAYOUT.topY);
     for (let index = 1; index < laneYs.length; index += 1) {
