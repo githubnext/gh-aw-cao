@@ -129,6 +129,9 @@ it('summarizes packages in motion by package rollout mode', () => {
     })),
     {
       'run-status': 'in-progress'
+    },
+    {
+      'run-status': 'queued'
     }
   ];
   const rendered = renderFactoryOverview({

@@ -9,6 +9,7 @@ const DELIVERED_STATES = new Set(['accepted', 'completed', 'lifecycle-close']);
 const FAILURE_STATES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 /** @typedef {'review'|'live'|'unknown'} RolloutMode */
 /** @type {Record<RolloutMode, number>} */
+// A package with any live activity is live; otherwise review outranks unknown.
 const MODE_PRIORITY = { unknown: 0, review: 1, live: 2 };
 
 /** @typedef {Record<string, unknown>} Row */
@@ -181,22 +182,21 @@ function factoryMotion(runs, workflows) {
   }
   /** @type {Map<string, RolloutMode>} */
   const packages = new Map();
-  for (const [index, operation] of active.entries()) {
+  for (const operation of active) {
     const workflow = workflowDetails.get(workflowIdentity(operation))
       ?? workflowDetails.get(String(operation.workflow ?? ''));
     const packageId = String(operation.package ?? workflow?.package ?? operation.workflow ?? operation.run ?? '').trim();
-    const identity = packageId || `unknown:${index}`;
+    const identity = packageId || 'unknown';
     const mode = packageId ? normalizedMode(operation['rollout-mode'] ?? workflow?.['rollout-mode']) : 'unknown';
     const previousMode = packages.get(identity);
     if (!previousMode || MODE_PRIORITY[mode] > MODE_PRIORITY[previousMode]) packages.set(identity, mode);
   }
-  const modes = [...packages.values()];
+  const counts = { live: 0, review: 0, unknown: 0 };
+  for (const mode of packages.values()) counts[mode] += 1;
   return {
     packages: packages.size,
     operations: active.length,
-    live: modes.filter((mode) => mode === 'live').length,
-    review: modes.filter((mode) => mode === 'review').length,
-    unknown: modes.filter((mode) => mode === 'unknown').length
+    ...counts
   };
 }
 
