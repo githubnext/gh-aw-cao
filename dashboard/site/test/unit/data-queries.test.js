@@ -415,8 +415,7 @@ describe('declarative dashboard queries', () => {
       rows: [
         {
           summary: 'copilot / model-b',
-          events: 2,
-          'observed-at': '2026-09-02T00:00:00Z'
+          events: 2
         }
       ],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }

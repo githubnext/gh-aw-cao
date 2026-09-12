@@ -1086,14 +1086,9 @@
           ],
           "values": [
             {
-              "field": "event",
+              "field": "event-type",
               "as": "events",
               "reducer": "count"
-            },
-            {
-              "field": "event-timestamp",
-              "as": "observed-at",
-              "reducer": "max"
             }
           ]
         },
@@ -1103,9 +1098,6 @@
           },
           {
             "field": "events"
-          },
-          {
-            "field": "observed-at"
           }
         ],
         "order-by": [
@@ -5310,12 +5302,6 @@
                   "field": "events",
                   "type": "quantitative",
                   "title": "Events"
-                },
-                {
-                  "field": "observed-at",
-                  "type": "temporal",
-                  "format": "human-friendly-timestamp",
-                  "title": "Last observed"
                 }
               ]
             },
