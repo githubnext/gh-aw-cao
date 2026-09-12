@@ -4,6 +4,7 @@ import { copyTextToClipboard, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import { renderThemeSettings } from './theme-settings.js';
+import { renderSettingsCliActions } from './cli-actions.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
@@ -382,8 +383,7 @@ function renderLocalDataSetting() {
 /** @param {import('./ui-elements.js').ElementRenderContext} context */
 export function renderConfigurationView(context) {
   const row = context.sources['configuration-policy']?.rows?.[0];
-  if (!row) return null;
-  const policyDocument = row.document;
+  const policyDocument = row?.document;
   const headingId = `${context.pageId}-configuration-heading`;
   return h('section', { className: 'configuration-view', 'aria-labelledby': headingId },
     renderSectionHeading({
@@ -394,6 +394,7 @@ export function renderConfigurationView(context) {
       headingTag: 'h2'
     }),
     renderThemeSettings(),
+    renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),
     renderDatabaseSetting(context),
     renderLocalDataSetting(),

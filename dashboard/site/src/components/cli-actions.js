@@ -7,11 +7,14 @@ const endpoint = './__cli_action';
 /** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
+/** @type {Record<string, string>} */
+let declaredCliActionTemplateValues = {};
 
-/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean }} [options] */
+/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean, templateValues?: Record<string, string> }} [options] */
 export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActions = Array.isArray(actions) ? actions : [];
   declaredCliActionsCanExecute = options.canExecute !== false;
+  declaredCliActionTemplateValues = options.templateValues ?? {};
 }
 
 /**
@@ -190,7 +193,7 @@ function renderCliActionControl(action, options = {}) {
       className: rowPresentation
         ? 'cli-action-trigger table-cli-action-button'
         : settingsPresentation
-        ? 'cli-action-trigger account-menu-action'
+        ? 'cli-action-trigger configuration-cli-action'
         : 'cli-action-trigger',
       title: rowPresentation ? action.label : undefined,
       'aria-label': rowPresentation ? action.label : undefined,
@@ -273,8 +276,28 @@ export function renderCliActions(actions, options = {}) {
   if (!Array.isArray(actions) || actions.length === 0) return null;
 
   const settingsPresentation = options.presentation === 'settings';
+  const settingsList = settingsPresentation
+    ? h('div', { className: 'configuration-cli-action-list' })
+    : null;
   const root = settingsPresentation
-    ? h('div', { className: 'cli-actions-settings' })
+    ? h(
+      'section',
+      {
+        className: 'configuration-browser-settings cli-actions-settings',
+        'aria-labelledby': 'configuration-cli-actions-heading'
+      },
+      h(
+        'div',
+        { className: 'configuration-browser-settings-heading' },
+        h(
+          'div',
+          null,
+          h('h3', { id: 'configuration-cli-actions-heading' }, 'Agentic Workflows'),
+          h('p', null, 'Update installed packages or upgrade this repository’s Agentic Workflows.')
+        )
+      ),
+      settingsList
+    )
     : h(
       'details',
       { className: 'cli-actions-menu' },
@@ -286,8 +309,9 @@ export function renderCliActions(actions, options = {}) {
       )
     );
   const list = settingsPresentation
-    ? root
+    ? settingsList
     : h('div', { className: 'cli-actions-list' });
+  if (!list) return null;
   if (!settingsPresentation) root.append(list);
 
   for (const action of actions) {
@@ -298,6 +322,17 @@ export function renderCliActions(actions, options = {}) {
   return root;
 }
 
+export function renderSettingsCliActions() {
+  return renderCliActions(
+    declaredCliActions.filter((action) => action.placement === 'settings'),
+    {
+      presentation: 'settings',
+      templateValues: declaredCliActionTemplateValues,
+      canExecute: declaredCliActionsCanExecute
+    }
+  );
+}
+
 /**
  * Attach dashboard-declared CLI actions to their toolbar, settings, and row placements.
  * @param {HTMLElement} dashboard
@@ -306,22 +341,27 @@ export function renderCliActions(actions, options = {}) {
  */
 export function attachCliActions(dashboard, actions, options = {}) {
   const canExecute = options.canExecute !== false;
-  setDeclaredCliActions(actions, { canExecute });
   /** @type {Record<string, string>} */
   const templateValues = {};
   if (typeof options.repository === 'string') templateValues.repository = options.repository;
+  setDeclaredCliActions(actions, { canExecute, templateValues });
   const toolbarActions = renderCliActions(
     actions.filter((action) => !['settings', 'row'].includes(action.placement ?? 'toolbar')),
     { templateValues, canExecute }
   );
   if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);
 
-  const settingsActions = renderCliActions(
-    actions.filter((action) => action.placement === 'settings'),
-    { presentation: 'settings', templateValues, canExecute }
-  );
-  if (!settingsActions) return;
+  const settingsActions = renderSettingsCliActions();
+  const existingSettingsActions = dashboard.querySelector('.configuration-view > .cli-actions-settings');
+  if (!settingsActions) {
+    existingSettingsActions?.remove();
+    return;
+  }
   const dialogs = [...settingsActions.querySelectorAll('dialog')];
-  dashboard.querySelector('.account-menu-popover')?.append(settingsActions);
+  if (existingSettingsActions) {
+    existingSettingsActions.replaceWith(settingsActions);
+  } else {
+    dashboard.querySelector('.configuration-view > .configuration-browser-settings')?.before(settingsActions);
+  }
   for (const dialog of dialogs) dashboard.append(dialog);
 }
