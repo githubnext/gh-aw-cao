@@ -1047,9 +1047,10 @@ export function adaptCachedGhAwJsonl(content, options = {}) {
     emitAuditEvents('noops', 'audit.noop', 'message', 'status');
     emitAuditEvents('mcp_failures', 'audit.mcp_failure', 'server_name', 'status');
     emitAuditEvents('skill_activations', 'audit.skill_activation', 'name', 'status');
-    const firewallAnalysis = audit.firewall_analysis && typeof audit.firewall_analysis === 'object'
-      && !Array.isArray(audit.firewall_analysis)
-      ? /** @type {Record<string, unknown>} */ (audit.firewall_analysis)
+    const firewallAnalysisValue = run.firewall_analysis ?? audit.firewall_analysis;
+    const firewallAnalysis = firewallAnalysisValue && typeof firewallAnalysisValue === 'object'
+      && !Array.isArray(firewallAnalysisValue)
+      ? /** @type {Record<string, unknown>} */ (firewallAnalysisValue)
       : {};
     const requestsByDomain = firewallAnalysis.requests_by_domain
       && typeof firewallAnalysis.requests_by_domain === 'object'
