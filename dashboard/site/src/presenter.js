@@ -14,7 +14,7 @@ import { formatString, toNumber, stringOrFallback } from './view-formatters.js';
 import { findLink } from './components/link-content.js';
 import { elementHandlesEmptyRows, renderUiElement, renderUiElementAsync } from './components/ui-elements.js';
 import { renderDataView } from './components/data-view.js';
-import { enableHorizonOutsideClickDismissal, renderFilterBar } from './components/filter-bar.js';
+import { enableHorizonOutsideClickDismissal, renderFilterBar, setTimeWindowFilter, setTimeWindowRange } from './components/filter-bar.js';
 import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
@@ -248,6 +248,14 @@ export function renderDashboard(input) {
   enableThemeToggle(root);
   enableMobileNavigationMenu(root);
   enableHorizonOutsideClickDismissal(root);
+  root.addEventListener('dashboard-time-window-change', (event) => {
+    if (!(event instanceof CustomEvent)) return;
+    setTimeWindowFilter(event.detail?.start, event.detail?.end, root);
+  });
+  root.addEventListener('dashboard-time-window-range-change', (event) => {
+    if (!(event instanceof CustomEvent)) return;
+    setTimeWindowRange(event.detail?.range, root);
+  });
   enableResponsiveReportActions(root);
   enableDashboardPageNavigation(
     root,
@@ -1235,6 +1243,18 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, withFi
           [...replacement.querySelectorAll('details')].forEach((details, index) => {
             if (detailsState[index] !== undefined) details.open = detailsState[index];
           });
+          const preservedFactoryRhythm = root.querySelector('.factory-rhythm[data-preserve-through-refresh="true"]');
+          const replacementFactoryRhythm = replacement.querySelector('.factory-rhythm');
+          if (preservedFactoryRhythm instanceof HTMLElement && replacementFactoryRhythm) {
+            delete preservedFactoryRhythm.dataset.preserveThroughRefresh;
+            replacementFactoryRhythm.replaceWith(preservedFactoryRhythm);
+          }
+          const preservedFactoryRunning = root.querySelector('.factory-running[data-preserve-through-refresh="true"]');
+          const replacementFactoryRunning = replacement.querySelector('.factory-running');
+          if (preservedFactoryRunning instanceof HTMLElement && replacementFactoryRunning) {
+            delete preservedFactoryRunning.dataset.preserveThroughRefresh;
+            replacementFactoryRunning.replaceWith(preservedFactoryRunning);
+          }
           root.replaceChildren(...replacement.children);
           enableLazyViews(root);
           dispatchPageRoute(root, root.dataset.routeParameter ?? '', root.dataset.routeValue ?? '');

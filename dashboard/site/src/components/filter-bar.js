@@ -327,6 +327,38 @@ export function clearTimeWindowFilter(root = globalThis.document) {
   select.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+/** @param {string} range @param {ParentNode} [root] */
+export function setTimeWindowRange(range, root = globalThis.document) {
+  if (!TIME_RANGE_OPTIONS.includes(range) && range !== ALL_RECORDED) return;
+  const select = root?.querySelector?.(`[aria-label="${TIME_WINDOW_SELECT_LABEL}"]`);
+  if (!(select instanceof HTMLSelectElement)) return;
+  select.value = range;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/**
+ * Applies a custom time window through the rendered horizon controls so the
+ * existing persistence and filter refresh behavior remains authoritative.
+ * @param {string} start
+ * @param {string} end
+ * @param {ParentNode} [root]
+ */
+export function setTimeWindowFilter(start, end, root = globalThis.document) {
+  if (!validTimeWindow(start, end)) return;
+  const select = root?.querySelector?.(`[aria-label="${TIME_WINDOW_SELECT_LABEL}"]`);
+  const startInput = root?.querySelector?.('[aria-label="Window start time"]');
+  const endInput = root?.querySelector?.('[aria-label="Window stop time"]');
+  if (!(select instanceof HTMLSelectElement)
+      || !(startInput instanceof HTMLInputElement)
+      || !(endInput instanceof HTMLInputElement)) return;
+  select.value = 'custom';
+  startInput.value = localDateTimeValue(start);
+  endInput.value = localDateTimeValue(end);
+  const apply = [...(root?.querySelectorAll?.('.time-window-control button') ?? [])]
+    .find((button) => button.textContent === 'Apply');
+  if (apply instanceof HTMLButtonElement) apply.click();
+}
+
 /** @param {string} range @param {string | undefined} referenceEnd @returns {TimeWindow} */
 export function relativeTimeWindow(range, referenceEnd) {
   const parsedEnd = Date.parse(referenceEnd ?? '');
