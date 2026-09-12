@@ -368,6 +368,45 @@ describe('canonical source ingestion and queries', () => {
     ]);
   });
 
+  it('preserves package mappings when cached workflow runs are imported', async () => {
+    await ingestDashboardSources(indexedDB, {
+      packages: {
+        rows: [{
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard',
+          'observed-at': metadata['as-of']
+        }],
+        metadata
+      },
+      repositories: sources.repositories,
+      workflows: {
+        rows: [{
+          ...sources.workflows.rows[0],
+          package: 'dashboard',
+          'package-name': 'CAO Dashboard'
+        }],
+        metadata
+      }
+    });
+    const content = `${JSON.stringify({ schema_version: 2, kind: 'run', run: {
+      run_id: 303, run_attempt: '1', organization: 'githubnext', repository: 'gh-aw-cao',
+      workflow_name: 'Dashboard', workflow_path: '.github/workflows/dashboard.md',
+      status: 'completed', classification: 'success', created_at: '2026-09-09T05:00:00Z'
+    } })}\n`;
+
+    await ingestCachedGhAwJsonl(indexedDB, content, {
+      now: Date.parse(metadata['as-of'])
+    });
+
+    await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
+      expect.objectContaining({
+        packageId: 'package:dashboard-sources:dashboard',
+        package: 'dashboard',
+        packageName: 'CAO Dashboard'
+      })
+    ]);
+  });
+
   it('records failed JSONL ingestion without storing partial entities', async () => {
     await expect(ingestCachedGhAwJsonl(indexedDB, '{"schema_version":2,"kind":"run","run":')).rejects.toThrow();
     await expect(createCanonicalQueries(indexedDB).runs.list()).resolves.toEqual([]);

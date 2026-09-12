@@ -3702,12 +3702,6 @@
                   "display": "mode"
                 },
                 {
-                  "field": "workflow-active",
-                  "type": "nominal",
-                  "title": "Registration",
-                  "display": "active-state"
-                },
-                {
                   "field": "runs",
                   "type": "quantitative",
                   "title": "Runs"
@@ -3717,6 +3711,12 @@
                   "type": "quantitative",
                   "title": "Total AIC",
                   "unit": "aic"
+                },
+                {
+                  "field": "workflow-active",
+                  "type": "nominal",
+                  "title": "Registration",
+                  "display": "active-state"
                 }
               ]
             },
@@ -4115,12 +4115,6 @@
                     "display": "mode"
                   },
                   {
-                    "field": "workflow-active",
-                    "type": "nominal",
-                    "title": "Registration",
-                    "display": "active-state"
-                  },
-                  {
                     "field": "aic",
                     "type": "quantitative",
                     "title": "AIC",
@@ -4130,6 +4124,12 @@
                     "field": "runs",
                     "type": "quantitative",
                     "title": "Runs"
+                  },
+                  {
+                    "field": "workflow-active",
+                    "type": "nominal",
+                    "title": "Registration",
+                    "display": "active-state"
                   }
                 ]
               }
