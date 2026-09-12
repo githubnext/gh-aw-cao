@@ -54,6 +54,9 @@ describe('chart element helpers', () => {
     expect(chartSeriesClassName('cancelled', 6)).toBe('chart-series-7 chart-series-semantic-attention');
     expect(chartSeriesClassName('skipped', 7)).toBe('chart-series-8 chart-series-semantic-neutral');
     expect(chartSeriesClassName('repository', 8)).toBe('chart-series-9');
+    expect(chartSeriesClassName('0', 9)).toBe('chart-series-10 chart-series-semantic-failure');
+    expect(chartSeriesClassName('false', 10)).toBe('chart-series-11 chart-series-semantic-failure');
+    expect(chartSeriesClassName('no', 11)).toBe('chart-series-12 chart-series-semantic-failure');
   });
 
   it('DLS-SAFE-009 renders reusable visual chart legends', () => {

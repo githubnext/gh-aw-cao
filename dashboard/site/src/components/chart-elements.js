@@ -44,7 +44,7 @@ const SWIMLANE_DEFINITIONS = [
 const SWIMLANE_FAILURES = new Set(['failure', 'startup-failure', 'stale', 'timed-out']);
 const CHART_SERIES_COLOR_COUNT = 12;
 const SEMANTIC_SERIES_TERMS = {
-  failure: new Set(['denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'invalid', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
+  failure: new Set(['0', 'denied', 'error', 'errored', 'fail', 'failed', 'failing', 'failure', 'false', 'invalid', 'no', 'rejected', 'stale', 'timeout', 'unhealthy', 'unsuccessful']),
   success: new Set(['approved', 'complete', 'completed', 'healthy', 'pass', 'passed', 'passing', 'resolved', 'succeed', 'succeeded', 'success', 'successful']),
   waiting: new Set(['awaiting', 'pending', 'queued', 'waiting']),
   attention: new Set(['cancelled', 'canceled', 'degraded', 'warning']),
