@@ -23,6 +23,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    outputs:
+      layout: ${{ steps.dashboard-layout.outputs.layout }}
     permissions:
       actions: read
       contents: read
@@ -35,14 +37,17 @@ jobs:
           persist-credentials: false
 
       - name: Resolve dashboard source layout
+        id: dashboard-layout
         run: |
           echo "Resolving dashboard source layout"
           if [[ -f .github/aw/dashboard/report/dashboard-language-sources.mjs && -f .github/aw/dashboard/site/scripts/build.mjs ]]; then
             echo "DASHBOARD_LAYOUT=installed" >> "$GITHUB_ENV"
             echo "DASHBOARD_SITE_ROOT=.github/aw/dashboard/site" >> "$GITHUB_ENV"
+            echo "layout=installed" >> "$GITHUB_OUTPUT"
           elif [[ -f dashboard/report/records.mjs && -f dashboard/site/scripts/build.mjs ]]; then
             echo "DASHBOARD_LAYOUT=source" >> "$GITHUB_ENV"
             echo "DASHBOARD_SITE_ROOT=dashboard/site" >> "$GITHUB_ENV"
+            echo "layout=source" >> "$GITHUB_OUTPUT"
           else
             echo "Dashboard package sources are unavailable" >&2
             exit 1
@@ -132,17 +137,20 @@ jobs:
           retention-days: 1
 
       - name: Configure Pages
+        if: steps.dashboard-layout.outputs.layout == 'installed'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         with:
           enablement: false
 
       - name: Upload Pages artifact
+        if: steps.dashboard-layout.outputs.layout == 'installed'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ${{ runner.temp }}/central-agentic-ops-dashboard
 
   deploy:
     needs: build
+    if: needs.build.outputs.layout == 'installed'
     runs-on: ubuntu-latest
     permissions:
       contents: read

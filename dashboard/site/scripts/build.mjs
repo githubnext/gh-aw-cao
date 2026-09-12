@@ -29,6 +29,7 @@ export async function buildDashboardSite({
     cp(new URL("manifest.webmanifest", siteRoot), join(destinationPath, "manifest.webmanifest")),
     cp(new URL("service-worker.js", siteRoot), join(destinationPath, "service-worker.js")),
     cp(new URL("dashboard.json", siteRoot), join(destinationPath, "dashboard.json")),
+    cp(new URL("src/smells.svg", siteRoot), join(destinationPath, "smells.svg")),
     cp(new URL("src", siteRoot), join(destinationPath, "src"), { recursive: true }),
   ]);
 
