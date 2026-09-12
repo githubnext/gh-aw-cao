@@ -12,7 +12,7 @@
         "description": "Update all installed Agentic Workflow packages in this repository.",
         "icon": "sync",
         "command": "gh aw update --repo {{repository}}",
-        "placement": "settings",
+        "placement": "view",
         "arguments": [
           {
             "id": "create-pull-request",
@@ -30,7 +30,7 @@
         "description": "Upgrade the gh-aw compiler version across this repository's Agentic Workflows files.",
         "icon": "download",
         "command": "gh aw upgrade --repo {{repository}}",
-        "placement": "settings",
+        "placement": "view",
         "arguments": [
           {
             "id": "create-pull-request",

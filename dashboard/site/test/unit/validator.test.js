@@ -201,7 +201,7 @@ describe('dashboard document validation', () => {
       ok: false,
       errors: expect.arrayContaining([
         expect.objectContaining({
-          message: 'list.action must reference a settings-placed dashboard CLI action.'
+          message: 'list.action must reference a view-placed dashboard CLI action.'
         })
       ])
     });

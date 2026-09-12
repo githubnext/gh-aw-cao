@@ -4,7 +4,7 @@ import { renderCliActionCommand } from '../cli-action-template.js';
 import { createCopyControl, createModalDialog, renderCloseButton } from './ui-primitives.js';
 
 const endpoint = './__cli_action';
-/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
+/** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'view'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
 /** @type {Record<string, string>} */
@@ -351,7 +351,8 @@ export function renderSettingsCliActions() {
 }
 
 /**
- * Attach dashboard-declared CLI actions to their toolbar, settings, and row placements.
+ * Attach dashboard-declared CLI actions to their toolbar and settings placements.
+ * View and row actions are rendered by their declaring views.
  * @param {HTMLElement} dashboard
  * @param {typeof declaredCliActions} actions
  * @param {{ repository?: string, canExecute?: boolean }} [options]
@@ -363,7 +364,7 @@ export function attachCliActions(dashboard, actions, options = {}) {
   if (typeof options.repository === 'string') templateValues.repository = options.repository;
   setDeclaredCliActions(actions, { canExecute, templateValues });
   const toolbarActions = renderCliActions(
-    actions.filter((action) => !['settings', 'row'].includes(action.placement ?? 'toolbar')),
+    actions.filter((action) => (action.placement ?? 'toolbar') === 'toolbar'),
     { templateValues, canExecute }
   );
   if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);

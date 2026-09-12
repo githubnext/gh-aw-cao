@@ -89,7 +89,7 @@ describe('data view renderer', () => {
         label: 'Update all',
         icon: 'sync',
         command: 'gh aw update',
-        placement: 'settings'
+        placement: 'view'
       },
       {
         id: 'update-package',
@@ -161,7 +161,7 @@ describe('data view renderer', () => {
       label: 'Upgrade all',
       icon: 'download',
       command: 'gh aw upgrade',
-      placement: 'settings'
+      placement: 'view'
     }], { canExecute: false });
 
     const rendered = renderDataView('list', {

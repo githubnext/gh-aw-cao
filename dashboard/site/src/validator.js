@@ -593,7 +593,7 @@ function validateDashboard(dashboard, dashboardNode, errors) {
         if (typeof action.placement === 'string' && !CLI_ACTION_PLACEMENT_VALUES.includes(action.placement)) {
           errors.push(createError(
             ERROR_CODES.nonCanonicalVocabularyOrIdentifier,
-            'CLI action placement must use toolbar, settings, or row.',
+            'CLI action placement must use toolbar, settings, view, or row.',
             `${path}.placement`
           ));
         }
@@ -2088,8 +2088,8 @@ function validateView(view, viewNode, path, viewIds, errors) {
         : undefined;
       if (typeof view.list.action === 'string' && !declaredAction) {
         errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list action must reference a declared dashboard CLI action.', `${listPath}.action`));
-      } else if (declaredAction?.placement !== 'settings') {
-        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a settings-placed dashboard CLI action.', `${listPath}.action`));
+      } else if (declaredAction?.placement !== 'view') {
+        errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference, 'list.action must reference a view-placed dashboard CLI action.', `${listPath}.action`));
       }
     }
     if (view.mark !== 'list') {
