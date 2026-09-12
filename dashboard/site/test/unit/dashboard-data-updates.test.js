@@ -119,18 +119,21 @@ describe('automatic dashboard data updates', () => {
       register: vi.fn().mockRejectedValue(new DOMException('Not allowed', 'SecurityError')),
       getRegistrations: vi.fn().mockResolvedValue([])
     };
+    const setTimer = vi.fn();
     const stop = startAutomaticDashboardDataUpdates(
       ['https://example.test/gh-aw-logs.jsonl'],
       {
         serviceWorkers: /** @type {ServiceWorkerContainer} */ (/** @type {unknown} */ (serviceWorkers)),
         online: () => true,
-        scriptUrl: new URL('https://example.test/service-worker.js')
+        scriptUrl: new URL('https://example.test/service-worker.js'),
+        setTimer: /** @type {typeof window.setTimeout} */ (/** @type {unknown} */ (setTimer))
       }
     );
 
     await vi.waitFor(() => expect(automaticDashboardBackgroundUpdatesActive()).toBe(false));
     expect(automaticDashboardDataUpdatesEnabled()).toBe(true);
     expect(serviceWorkers.register).toHaveBeenCalled();
+    expect(setTimer).not.toHaveBeenCalled();
     stop();
   });
 

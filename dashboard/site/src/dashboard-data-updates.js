@@ -15,6 +15,14 @@ const PERIODIC_SYNC_TAG = 'central-agentic-ops-dashboard-data';
 
 class NonRetryableBackgroundSyncError extends Error {}
 
+/** @param {unknown} error */
+function isPermissionDeniedError(error) {
+  const errorName = error && typeof error === 'object'
+    ? /** @type {{ name?: unknown }} */ (error).name
+    : undefined;
+  return errorName === 'NotAllowedError' || errorName === 'SecurityError';
+}
+
 /** @param {Storage} [storage] */
 export function automaticDashboardDataUpdatesEnabled(storage = localStorage) {
   return storage.getItem(ENABLED_STORAGE_KEY) === 'true';
@@ -149,10 +157,7 @@ async function configureBackgroundDashboardDataUpdates(registration, worker, dat
   try {
     await periodicSync.register(PERIODIC_SYNC_TAG, { minInterval: UPDATE_INTERVAL_MS });
   } catch (error) {
-    const errorName = error && typeof error === 'object'
-      ? /** @type {{ name?: unknown }} */ (error).name
-      : undefined;
-    if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
+    if (isPermissionDeniedError(error)) {
       throw new NonRetryableBackgroundSyncError('Periodic Background Sync registration was not allowed.');
     }
     throw error;
@@ -384,7 +389,11 @@ export function startAutomaticDashboardDataUpdates(dataUrls, dependencies = {}) 
         await disableDashboardServiceWorkers(serviceWorkers, scriptUrl, registration);
         registration = undefined;
         healthyWorker = undefined;
-        if (automaticDashboardDataUpdatesEnabled(storage)) schedule(RETRY_INTERVAL_MS);
+        backgroundSyncUnavailable = isPermissionDeniedError(error);
+        if (automaticDashboardDataUpdatesEnabled(storage)
+            && !backgroundSyncUnavailable) {
+          schedule(RETRY_INTERVAL_MS);
+        }
         return;
       }
     }
