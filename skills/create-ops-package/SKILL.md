@@ -33,7 +33,7 @@ Add `copilot-requests: write` directly to every Copilot-backed orchestrator and 
 5. Create the orchestrator and every worker under `.github/workflows/` in the same change.
 6. Compile and validate all new source workflows. Repair failures before finishing.
 7. Before finalizing the package, compare the intended package state with the current `.github/workflows/cao.json` and the dashboard's live control-plane view. Confirm what is actually running, in which mode, and on which repositories. If the configuration drifts from reality, raise the mismatch to the user on the dashboard before proceeding.
-8. When an adopted worker already has an operational-value evaluator, preserve it under `.github/aw/<package>/graders/`, declare its source and destination in the package manifest, and keep its `graders.operational-value` registration. Evaluator design remains a separate post-adoption maintenance task.
+8. When an adopted worker already has an operational-value evaluator, preserve it under `.github/workflows/graders/` and keep its workflow-relative `graders.operational-value` registration. Evaluator design remains a separate post-adoption maintenance task.
 
 ## Deterministic Add-on Exception
 
@@ -166,7 +166,7 @@ Follow the GitHub/gh-aw report conventions for every human-facing durable worker
 Measure operational value per worker because workers have independently dispatchable responsibilities and outcomes. gh-aw freezes each registered evaluator into the compiled workflow and publishes its observation with the workflow run artifacts.
 
 - Design from the worker's adoption-time intent and pre-adoption evidence. Never derive a measure from the orchestrator's dispatch activity or from post-adoption results.
-- Keep the canonical evaluator at `.github/aw/<package>/graders/<worker-stem>-operational-value.sh`, explicitly map that source and destination in the package manifest, and register the same path under `graders.operational-value.run`.
+- Keep the canonical evaluator at `.github/workflows/graders/<worker-stem>-operational-value.sh` and register it as `./graders/<worker-stem>-operational-value.sh` under `graders.operational-value.run`.
 - Treat evaluator creation as post-adoption work; never create placeholder commits, evidence, scores, or reports while authoring an unadopted package.
 - If the package is new in the current change, finish workflow validation and report the pending per-worker value follow-up explicitly.
 - A worker may be baseline-comparable, attainment-only, or not measurable. Preserve that independently determined classification rather than forcing every worker into the same package-level model.
@@ -210,7 +210,7 @@ Before finishing:
 8. Check permissions, tools, network hosts, safe-output limits, credits, timeouts, and dispatch maximums against actual need; confirm issue- and pull-request-creating workers configure both their package and package-worker labels, every issue-creating worker configures `deduplicate-by-title: true`, explicit expiry, bounded `max`, stable subject, and existing-item reuse instructions, control-plane workflows inherit silent no-ops without local overrides, standalone workflows set `noop.report-as-issue: false`, and every other repeatable safe output has a stable identity and search-and-reuse or supersession rule.
 9. Confirm the orchestrator disables threat detection and every worker omits `evals`.
 10. Confirm dispatcher telemetry is inherited only through `shared/control.md`; require an explicit backend-routing need before adding a provider-specific observability import.
-11. Confirm every existing operational-value evaluator remains under `.github/aw/<package>/graders/`, is explicitly mapped by the package manifest, and is registered by its worker, or identify each new worker whose value design is pending adoption.
+11. Confirm every existing operational-value evaluator remains under `.github/workflows/graders/` and is registered workflow-relatively by its worker, or explicitly identify each new worker whose value design is pending adoption.
 12. Run `gh aw compile <workflow.md>` for every new orchestrator and worker. Then run the repository's narrowest relevant tests or validation command if one exists.
 13. Review the generated diff for accidental lockfile churn, secret exposure, unsafe live defaults, fabricated value evidence, and deviations from the nearest package that are not justified by the strategy.
 14. Confirm every orchestrator and worker uses the same optional `.github/cao/<package-slug>.md` runtime import and that no package-owned steering file was added.

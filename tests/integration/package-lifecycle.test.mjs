@@ -40,9 +40,11 @@ const activityExpectedFiles = [
   ".github/workflows/cao-maintenance.yml",
 ];
 const awDoctorExpectedFiles = [
-  ".github/aw/dashboards/aw-doctor.json",
   ".github/aw/aw-doctor/graders/aw-failures-investigator-operational-value.sh",
   ".github/aw/aw-doctor/graders/aw-maintenance-compiler-security-operational-value.sh",
+  ".github/aw/dashboards/aw-doctor.json",
+  ".github/workflows/graders/aw-failures-investigator-operational-value.sh",
+  ".github/workflows/graders/aw-maintenance-compiler-security-operational-value.sh",
   ".github/workflows/aw-failures-investigator.md",
   ".github/workflows/aw-maintenance-compiler-security.md",
   ".github/workflows/aw-maintenance-upgrade.md",
@@ -64,10 +66,17 @@ const craExpectedFiles = [
   ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
+  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
   ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
   ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
   ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
   ".github/workflows/eu-cra-compliance-package-maintainer.md",
@@ -76,7 +85,7 @@ const craExpectedFiles = [
   ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
   ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
   ".github/workflows/eu-cra-compliance.md",
-  ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
+  ".github/workflows/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
   ".github/workflows/shared/control.md",
 ];
 const dashboardExpectedFiles = [
@@ -89,6 +98,7 @@ const dashboardExpectedFiles = [
 const selfCareExpectedFiles = [
   ".github/aw/dashboards/self-care.json",
   ".github/aw/self-care/graders/self-care-docs-build-time-investigator-operational-value.sh",
+  ".github/workflows/graders/self-care-docs-build-time-investigator-operational-value.sh",
   ".github/workflows/self-care-accessibility-checker.md",
   ".github/workflows/self-care-code-improvement.md",
   ".github/workflows/self-care-dashboard-data-schema.md",
@@ -111,6 +121,8 @@ const softwareDevelopmentPracticesExpectedFiles = [
   ".github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash",
   ".github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh",
   ".github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh",
+  ".github/workflows/graders/software-development-practices-github-well-architected-operational-value.sh",
+  ".github/workflows/graders/software-development-practices-nist-ssdf-operational-value.sh",
   ".github/workflows/shared/control.md",
   ".github/workflows/software-development-practices-github-well-architected.md",
   ".github/workflows/software-development-practices-nist-ssdf.md",
@@ -237,12 +249,12 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
         ".github/aw/dashboards/eu-cra-compliance.json",
         ".github/aw/eu-cra-compliance/implementation-status.md",
         ".github/aw/eu-cra-compliance/eu-cra-report-operational-value-runtime.bash",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-article-14-reporting-readiness-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-scope-classifier-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-security-requirements-auditor-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-supply-chain-sbom-auditor-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-vulnerability-handling-auditor-operational-value.sh",
         ".github/workflows/eu-cra-compliance-article-14-reporting-readiness.md",
         ".github/workflows/eu-cra-compliance-conformity-release-evidence.md",
         ".github/workflows/eu-cra-compliance-package-maintainer.md",
@@ -251,7 +263,7 @@ test("gh aw add installs the focused EU CRA package contract", { timeout: 180_00
         ".github/workflows/eu-cra-compliance-supply-chain-sbom-auditor.md",
         ".github/workflows/eu-cra-compliance-vulnerability-handling-auditor.md",
         ".github/workflows/eu-cra-compliance.md",
-        ".github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
+        ".github/workflows/graders/eu-cra-compliance-package-maintainer-operational-value.sh",
       ].sort(),
       "focused CRA package manifest must own its entry workflows, evaluator, and ledger",
     );
@@ -342,8 +354,8 @@ test("gh aw add installs the focused Software Development Practices package cont
       [
         ".github/aw/dashboards/software-development-practices.json",
         ".github/aw/software-development-practices/software-development-guidance-operational-value-runtime.bash",
-        ".github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh",
-        ".github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh",
+        ".github/workflows/graders/software-development-practices-github-well-architected-operational-value.sh",
+        ".github/workflows/graders/software-development-practices-nist-ssdf-operational-value.sh",
         ".github/workflows/software-development-practices-github-well-architected.md",
         ".github/workflows/software-development-practices-nist-ssdf.md",
         ".github/workflows/software-development-practices.md",
@@ -434,7 +446,9 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     writeFileSync(orchestratorPath, `${orchestrator}\n# local integration-test change\n`);
 
     const removedFiles = [
+      ".github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh",
       ".github/workflows/dependabot-release-train-updater.md",
+      ".github/workflows/graders/dependabot-release-train-updater-operational-value.sh",
       ".github/workflows/shared/control.md",
     ];
     for (const relativePath of removedFiles) {

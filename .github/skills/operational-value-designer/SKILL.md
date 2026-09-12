@@ -18,7 +18,7 @@ Operational value is the degree to which the workflow's intended repository outc
 Create one executable evaluator at:
 
 ```text
-.github/aw/PACKAGE/graders/WORKFLOW-NAME-operational-value.sh
+.github/workflows/graders/WORKFLOW-NAME-operational-value.sh
 ```
 
 Configure the workflow:
@@ -26,7 +26,7 @@ Configure the workflow:
 ```yaml
 graders:
   operational-value:
-    run: .github/aw/PACKAGE/graders/WORKFLOW-NAME-operational-value.sh
+    run: ./graders/WORKFLOW-NAME-operational-value.sh
 ```
 
 The grader's primary operational value (`value`) is absolute attainment in `[0,1]`. A comparable frozen baseline may be reported separately as `baselineValue`; gh-aw derives `deltaFromBaseline`. Never define the primary operational value as a difference from baseline.
@@ -47,10 +47,10 @@ The grader's primary operational value (`value`) is absolute attainment in `[0,1
 7. Implement the evaluator interface below and run:
 
    ```bash
-   .github/skills/operational-value-designer/scripts/verify-operational-value-evaluator.sh .github/aw/PACKAGE/graders/WORKFLOW-NAME-operational-value.sh
+   .github/skills/operational-value-designer/scripts/verify-operational-value-evaluator.sh .github/workflows/graders/WORKFLOW-NAME-operational-value.sh
    gh aw compile .github/workflows/WORKFLOW-NAME.md
    ```
-8. For a packaged workflow, declare the evaluator's `.github/aw/PACKAGE/graders/` source and destination in the package manifest, then install into a clean consumer and confirm it exists at the registered path before declaring the grader distributable.
+8. For a packaged workflow, install the package into a clean consumer and confirm the evaluator exists at the registered `.github/workflows/graders/` path before declaring the grader distributable. A source checkout compiling successfully does not prove package transport.
 
 ## Evaluator Interface
 

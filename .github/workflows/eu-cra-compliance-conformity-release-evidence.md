@@ -109,7 +109,7 @@ tools:
 
 graders:
   operational-value:
-    run: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh
+    run: ./graders/eu-cra-compliance-conformity-release-evidence-operational-value.sh
 
 safe-outputs:
   create-issue:

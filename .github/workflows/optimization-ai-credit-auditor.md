@@ -93,7 +93,7 @@ concurrency:
 
 graders:
   operational-value:
-    run: .github/aw/optimization/graders/optimization-ai-credit-auditor-operational-value.sh
+    run: ./graders/optimization-ai-credit-auditor-operational-value.sh
 
 tracker-id: optimization-ai-credit-auditor
 

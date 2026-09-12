@@ -13,6 +13,10 @@ const suites = [
       ".github/aw/aw-doctor/graders/",
       ".github/aw/dependabot/graders/",
       ".github/aw/optimization/graders/",
+      ".github/workflows/graders/aw-failures-",
+      ".github/workflows/graders/aw-maintenance-",
+      ".github/workflows/graders/dependabot-",
+      ".github/workflows/graders/optimization-",
       ".github/workflows/shared/",
     ],
   },
@@ -28,6 +32,8 @@ const suites = [
     testPattern: "focused AW Doctor package contract",
     prefixes: [
       ".github/aw/aw-doctor/graders/",
+      ".github/workflows/graders/aw-failures-",
+      ".github/workflows/graders/aw-maintenance-",
       ".github/workflows/aw-",
       ".github/workflows/shared/",
     ],
@@ -37,8 +43,9 @@ const suites = [
     manifest: "eu-cra-compliance/aw.yml",
     testPattern: "focused EU CRA package contract",
     prefixes: [
-      ".github/workflows/eu-cra-compliance",
       ".github/aw/eu-cra-compliance/graders/",
+      ".github/workflows/eu-cra-compliance",
+      ".github/workflows/graders/eu-cra-compliance",
       ".github/workflows/shared/",
     ],
   },
@@ -57,6 +64,7 @@ const suites = [
     testPattern: "focused SelfCare package contract",
     prefixes: [
       ".github/aw/self-care/graders/",
+      ".github/workflows/graders/self-care-",
       ".github/workflows/self-care",
       ".github/workflows/shared/",
     ],
@@ -67,6 +75,7 @@ const suites = [
     testPattern: "focused Software Development Practices package contract",
     prefixes: [
       ".github/aw/software-development-practices/graders/",
+      ".github/workflows/graders/software-development-practices-",
       ".github/workflows/shared/",
       ".github/workflows/software-development-practices",
     ],
@@ -83,6 +92,7 @@ const suites = [
     testPattern: "update replaces",
     prefixes: [
       ".github/aw/dependabot/graders/",
+      ".github/workflows/graders/dependabot-",
       ".github/workflows/dependabot",
       ".github/workflows/shared/",
     ],

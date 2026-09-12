@@ -62,7 +62,7 @@ tools:
 
 graders:
   operational-value:
-    run: .github/aw/eu-cra-compliance/graders/eu-cra-compliance-package-maintainer-operational-value.sh
+    run: ./graders/eu-cra-compliance-package-maintainer-operational-value.sh
 
 safe-outputs:
   create-pull-request:

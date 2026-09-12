@@ -98,7 +98,7 @@ tracker-id: software-development-practices-github-well-architected
 
 graders:
   operational-value:
-    run: .github/aw/software-development-practices/graders/software-development-practices-github-well-architected-operational-value.sh
+    run: ./graders/software-development-practices-github-well-architected-operational-value.sh
 
 tools:
   cli-proxy: true

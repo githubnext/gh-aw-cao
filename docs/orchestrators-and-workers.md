@@ -63,12 +63,12 @@ It does not receive a token, discovery query, or permission to dispatch another 
 
 Operational value is measured per worker, not per orchestrator or operation. Dispatch counts, generated outputs, and model assessments do not prove that a worker attained its intended repository outcome.
 
-Each adopted worker registers a frozen schema-version 4 evaluator under `.github/aw/<package>/graders/<worker-stem>-operational-value.sh`. The package manifest explicitly installs the evaluator to that destination. gh-aw executes it for the workflow run, records its assigned opportunity and evidence provenance, and publishes the result in the unified `agent` artifact's `grader_results.json`.
+Each adopted worker registers a frozen schema-version 4 evaluator under `.github/workflows/graders/<worker-stem>-operational-value.sh` using the workflow-relative path `./graders/<worker-stem>-operational-value.sh`. gh-aw executes that evaluator for the workflow run, records its assigned opportunity and evidence provenance, and publishes the result in the unified `agent` artifact's `grader_results.json`.
 
 An evaluator exposes its contract with `--definition`, scores evidence with `--metric`, and observes one run with `--grade-run`. gh-aw owns canonical evaluation and adoption-to-current replay. Pages consumes its versioned report observations, falls back to actual workflow artifacts when full replay is unavailable for one workflow, and never renders committed live timelines. CAO preserves retries and evaluator generations by observation identity, presents only the latest comparable evaluator series, and collapses repeated opportunities independently for aggregation.
 
 ```bash
-EVALUATOR=".github/aw/<package>/graders/<worker-stem>-operational-value.sh"
+EVALUATOR=".github/workflows/graders/<worker-stem>-operational-value.sh"
 
 "$EVALUATOR" --definition
 "$EVALUATOR" --metric < evidence.json
@@ -81,7 +81,7 @@ Count an outcome only when accepted evidence satisfies the worker's frozen contr
 :::
 
 :::caution[Verify package transport]
-A packaged worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/aw/<package>/graders/*.sh` evaluator. The package manifest must declare the evaluator's source and destination explicitly.
+A packaged worker is grader-enabled only when a clean `gh aw add` consumer receives both its Markdown workflow and referenced `.github/workflows/graders/*.sh` evaluator. Keeping the evaluator beside the workflow under `graders/` lets the compiler and package installer resolve the same workflow-relative path.
 :::
 
 Apply the process independently to every worker in an operation. Workers may receive different classifications because their outcomes and available history differ:

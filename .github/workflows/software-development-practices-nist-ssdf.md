@@ -100,7 +100,7 @@ tracker-id: software-development-practices-nist-ssdf
 
 graders:
   operational-value:
-    run: .github/aw/software-development-practices/graders/software-development-practices-nist-ssdf-operational-value.sh
+    run: ./graders/software-development-practices-nist-ssdf-operational-value.sh
 
 tools:
   cli-proxy: true

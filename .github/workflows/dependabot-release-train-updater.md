@@ -141,7 +141,7 @@ tools:
 
 graders:
   operational-value:
-    run: .github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh
+    run: ./graders/dependabot-release-train-updater-operational-value.sh
 
 safe-outputs:
   create-pull-request:
