@@ -4,7 +4,13 @@ import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ingestCachedGhAwJsonl, ingestDashboardSources, ingestGhAwLogs, ingestSqlExport } from '../../src/data/ingest/coordinator.js';
 import { createCanonicalQueries } from '../../src/data/queries/index.js';
-import { DATABASE_NAME, readCanonicalBatch, readTransactions } from '../../src/data/storage/indexeddb.js';
+import {
+  DATABASE_NAME,
+  readCanonicalBatch,
+  readTransactions,
+  recordTransaction,
+  replaceCanonicalBatch
+} from '../../src/data/storage/indexeddb.js';
 import { estimateCanonicalBatchBytes } from '../../src/data/storage/retention.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
@@ -94,6 +100,38 @@ describe('canonical source ingestion and queries', () => {
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
+      })
+    ]);
+  });
+
+  it('reimports inventory cached before package mapping preservation', async () => {
+    const packagedSources = {
+      ...sources,
+      packages: {
+        rows: [{ package: 'dashboard', 'observed-at': metadata['as-of'] }],
+        metadata
+      },
+      workflows: {
+        rows: [{ ...sources.workflows.rows[0], package: 'dashboard' }],
+        metadata
+      }
+    };
+    await ingestDashboardSources(indexedDB, packagedSources);
+    const stored = await readCanonicalBatch(indexedDB);
+    delete stored.workflows[0].packageId;
+    delete stored.workflows[0].package;
+    await replaceCanonicalBatch(indexedDB, stored);
+    const [transaction] = await readTransactions(indexedDB);
+    delete transaction.ingestionVersion;
+    await recordTransaction(indexedDB, transaction);
+
+    await expect(ingestDashboardSources(indexedDB, packagedSources)).resolves.toMatchObject({
+      updated: true
+    });
+    await expect(createCanonicalQueries(indexedDB).workflows.list()).resolves.toEqual([
+      expect.objectContaining({
+        packageId: 'package:dashboard-sources:dashboard',
+        package: 'dashboard'
       })
     ]);
   });

@@ -18,6 +18,8 @@ import {
 } from '../storage/quota.js';
 import { CanonicalIngestionError, classifyIngestionError } from './errors.js';
 
+const DASHBOARD_SOURCE_INGESTION_VERSION = 2;
+
 /**
  * @param {unknown} payload
  * @param {string | undefined} identity
@@ -52,10 +54,12 @@ export async function readCurrentIngestion(indexedDB, kind, scope) {
  * @param {string} kind
  * @param {string} scope
  * @param {string} hash
+ * @param {number} ingestionVersion
  */
-async function previouslyIngested(indexedDB, kind, scope, hash) {
+async function previouslyIngested(indexedDB, kind, scope, hash, ingestionVersion) {
   const transaction = await readCurrentIngestion(indexedDB, kind, scope);
-  return transaction?.payloadHash === hash;
+  return transaction?.payloadHash === hash
+    && transaction.ingestionVersion === ingestionVersion;
 }
 
 let ingestionQueue = Promise.resolve();
@@ -143,7 +147,13 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
   try {
     const hash = await payloadHash(sources, options.payloadIdentity);
     const scope = options.payloadScope ?? 'dashboard-sources';
-    if (await previouslyIngested(indexedDB, 'ingest-dashboard-sources', scope, hash)) {
+    if (await previouslyIngested(
+      indexedDB,
+      'ingest-dashboard-sources',
+      scope,
+      hash,
+      DASHBOARD_SOURCE_INGESTION_VERSION
+    )) {
       return { updated: false, skipped: true, committedBatches: 0, committedRecords: 0 };
     }
     const adapted = adaptDashboardSources(sources);
@@ -157,6 +167,7 @@ async function ingestDashboardSourcesNow(indexedDB, sources, options) {
       createdAt: new Date(options.now ?? Date.now()).toISOString(),
       payloadScope: scope,
       payloadHash: hash,
+      ingestionVersion: DASHBOARD_SOURCE_INGESTION_VERSION,
       committedRecords: result.committedRecords
     });
     return result;
