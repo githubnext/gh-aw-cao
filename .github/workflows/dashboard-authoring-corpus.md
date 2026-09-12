@@ -21,6 +21,7 @@ permissions:
 tracker-id: dashboard-authoring-corpus
 max-turns: 300
 max-ai-credits: 600
+max-daily-ai-credits: -1
 engine:
   id: pi
   model: copilot/gpt-5.4

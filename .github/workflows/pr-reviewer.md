@@ -8,6 +8,7 @@ on:
       - ".github/workflows/*.md"
   workflow_dispatch:
 max-ai-credits: 350
+max-daily-ai-credits: -1
 timeout-minutes: 45
 run-name: "PR workflow review · #${{ github.event.pull_request.number || github.run_number }}"
 concurrency:

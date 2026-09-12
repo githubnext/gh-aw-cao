@@ -21,6 +21,7 @@ checkout:
   fetch: ["*"]
 strict: true
 max-ai-credits: 300
+max-daily-ai-credits: -1
 timeout-minutes: 15
 concurrency:
   group: "${{ github.workflow }}-${{ github.event_name == 'schedule' && github.repository || fromJSON(github.event.inputs.aw_context || '{}').item_number || github.run_id }}"

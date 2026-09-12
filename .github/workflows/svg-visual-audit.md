@@ -9,6 +9,7 @@ on:
       - ".github/workflows/svg-visual-audit.md"
   workflow_dispatch:
 max-ai-credits: 400
+max-daily-ai-credits: -1
 timeout-minutes: 30
 run-name: "SVG visual audit · ${{ github.event.pull_request.number || github.run_number }}"
 concurrency:

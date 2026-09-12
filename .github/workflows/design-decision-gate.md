@@ -14,6 +14,7 @@ permissions:
   copilot-requests: write
 strict: true
 max-ai-credits: 500
+max-daily-ai-credits: -1
 timeout-minutes: 20
 concurrency:
   group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || fromJSON(github.event.inputs.aw_context || '{}').item_number || github.run_id }}"

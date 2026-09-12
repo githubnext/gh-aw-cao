@@ -3,6 +3,7 @@ emoji: ":clipboard:"
 description: "Daily review of CRA operation-workflow coverage against current authoritative requirements."
 name: "EU CRA / Maintenance"
 max-ai-credits: 200
+max-daily-ai-credits: -1
 timeout-minutes: 20
 
 on:

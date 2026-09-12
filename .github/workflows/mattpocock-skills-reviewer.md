@@ -4,6 +4,7 @@ engine:
   id: copilot
   max-continuations: 6
 max-ai-credits: 500
+max-daily-ai-credits: -1
 name: Matt Pocock Skills Reviewer
 "on":
   reaction: none

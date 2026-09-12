@@ -16,6 +16,7 @@ permissions:
 
 tracker-id: multi-device-docs-tester
 strict: true
+max-daily-ai-credits: -1
 timeout-minutes: 30
 runtimes:
   node:
