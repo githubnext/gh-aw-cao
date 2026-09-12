@@ -83,8 +83,6 @@ import { createDatabaseCountLoader, formatDatabaseCounts } from './database-coun
  */
 
 const DEFAULT_GITHUB_URL_BASE = 'https://github.com';
-const REFRESH_CONTROL_DESCRIPTION = 'Reload the dashboard to refresh cached data';
-const REFRESH_WORKFLOW_DESCRIPTION = 'Open the dashboard workflow on GitHub Actions';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'central-agentic-ops.dashboard.sidebar-collapsed';
 const NAVIGATION_INDEX_STATE_KEY = 'centralAgenticOpsNavigationIndex';
 const TOP_LEVEL_VIEW_PAGE_IDS = new Set(['home', 'work', 'agents', 'insights']);
@@ -259,7 +257,6 @@ export function renderDashboard(input) {
     root.dataset.domProvenanceError = String(error?.message ?? error);
   });
   enableSidebarToggle(root);
-  enableAccountMenuDismissal(root);
   restoreDashboardTheme(root);
   enableMobileNavigationMenu(root);
   enableHorizonOutsideClickDismissal(root);
@@ -589,17 +586,6 @@ function enableSidebarToggle(root) {
 }
 
 /**
- * Restores and persists the dashboard color theme.
- * @param {HTMLElement} root
- */
-function enableAccountMenuDismissal(root) {
-  const menu = root.querySelector('.account-menu');
-  if (menu instanceof HTMLDetailsElement) {
-    enableDetailsMenuDismissal(root, menu, '.account-menu-action');
-  }
-}
-
-/**
  * Closes the mobile view menu after selection or when focus moves elsewhere.
  * @param {HTMLElement} root
  */
@@ -724,51 +710,7 @@ function renderMainContent(document, pages, sources, githubUrlBase, dashboardRep
               octicon('mark-github'),
               h('span', { className: 'sr-only action-label' }, dashboardRepository)
             )
-            : null,
-          h(
-            'details',
-            {
-              className: 'account-menu'
-            },
-            h(
-              'summary',
-              {
-                className: 'account-menu-avatar account-menu-icon',
-                'aria-label': 'Open dashboard menu',
-                title: 'Menu'
-              },
-              octicon('kebab-horizontal'),
-              h('span', { className: 'sr-only action-label' }, 'Menu')
-            ),
-            h(
-              'div',
-              { className: 'account-menu-popover' },
-              dashboardRepository
-                ? h(
-                  'a',
-                  {
-                    className: 'refresh-button account-menu-action',
-                    href: `${githubUrlBase}/${dashboardRepository}/actions/workflows/dashboard.yml`,
-                    title: REFRESH_WORKFLOW_DESCRIPTION,
-                    'aria-label': REFRESH_WORKFLOW_DESCRIPTION
-                  },
-                  octicon('sync'),
-                  h('span', null, 'Refresh')
-                )
-                : h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'refresh-button account-menu-action',
-                    title: REFRESH_CONTROL_DESCRIPTION,
-                    'aria-label': REFRESH_CONTROL_DESCRIPTION,
-                    onclick: () => window.location.reload()
-                  },
-                  octicon('sync'),
-                  h('span', null, 'Refresh')
-                )
-            )
-          )
+            : null
         )
       )
     ),
