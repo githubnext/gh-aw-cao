@@ -250,6 +250,8 @@ resources:
     destination: .github/aw/dashboard/site/src/components/table-region.js
   - source: site/src/components/table-summary.js
     destination: .github/aw/dashboard/site/src/components/table-summary.js
+  - source: site/src/components/theme-settings.js
+    destination: .github/aw/dashboard/site/src/components/theme-settings.js
   - source: site/src/components/ui-elements.js
     destination: .github/aw/dashboard/site/src/components/ui-elements.js
   - source: site/src/components/ui-primitives.js
