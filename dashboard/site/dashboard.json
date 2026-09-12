@@ -820,6 +820,14 @@
             ],
             "fields": [
               {
+                "field": "repository-link",
+                "as": "linked-repository"
+              },
+              {
+                "field": "workflow-link",
+                "as": "linked-workflow"
+              },
+              {
                 "field": "run-link",
                 "as": "linked-run"
               }
@@ -907,7 +915,15 @@
             "field": "repository"
           },
           {
+            "field": "linked-repository",
+            "as": "repository-link"
+          },
+          {
             "field": "workflow"
+          },
+          {
+            "field": "linked-workflow",
+            "as": "workflow-link"
           },
           {
             "field": "run"
@@ -2662,16 +2678,19 @@
                 },
                 {
                   "field": "repository",
-                  "type": "nominal"
+                  "type": "nominal",
+                  "display": "repository-link"
                 },
                 {
                   "field": "workflow",
-                  "type": "nominal"
+                  "type": "nominal",
+                  "display": "workflow-link"
                 },
                 {
                   "field": "run",
                   "type": "nominal",
-                  "title": "Run"
+                  "title": "Run",
+                  "display": "run-link"
                 },
                 {
                   "field": "observed-at",
@@ -6339,7 +6358,8 @@
           "runs",
           "events",
           "transactions",
-          "firewall"
+          "firewall",
+          "mcps"
         ]
       },
       {
@@ -6378,7 +6398,6 @@
           "safe-outputs",
           "detection",
           "dispatches",
-          "mcps",
           "engines-models"
         ]
       }

@@ -28,6 +28,19 @@ const ENTITY_LINK_FIELDS = {
 };
 const RUN_FIELD = 'run';
 const RUN_LINK_FIELD = 'run-link';
+const REPOSITORY_LINK_DISPLAY = 'repository-link';
+const WORKFLOW_LINK_DISPLAY = 'workflow-link';
+
+/**
+ * @param {{ href: string, label: string, externalHref?: string } | null} link
+ * @returns {{ href: string, label: string } | null}
+ */
+function preferExternalLink(link) {
+  if (!link) return null;
+  return typeof link.externalHref === 'string' && link.externalHref.length > 0
+    ? { href: link.externalHref, label: link.label }
+    : link;
+}
 
 /**
  * @typedef {{ field: string, aggregate?: string, as?: string, direction?: string, display?: string } & Record<string, unknown>} TableField
@@ -188,8 +201,12 @@ function renderTableView(context) {
           ? renderWorkflowRunLink(row, toText(row[outputField]))
           : column.display === 'run-link'
             ? renderWorkflowRunLink(row, toText(row[outputField]))
+          : column.display === REPOSITORY_LINK_DISPLAY
+            ? renderLinkedValue(toText(row[outputField]), preferExternalLink(findLink(row, 'repository-link')))
+          : column.display === WORKFLOW_LINK_DISPLAY
+            ? renderLinkedValue(toText(row[outputField]), preferExternalLink(findLink(row, 'workflow-link')))
           : column.display === 'evidence-link'
-            ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
+              ? renderLinkedValue(toText(row[outputField]), findLink(row, 'evidence-link'))
           : column.display === 'outcome-link'
             ? renderOutcomeLink(row, toText(row[outputField]))
             : renderCellValue(column, row[outputField], row);
