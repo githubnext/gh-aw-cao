@@ -230,6 +230,7 @@ a:focus-visible, [tabindex]:focus-visible, button:focus-visible { outline: 2px s
 .sidebar-toggle:hover { background: var(--neutral-muted); color: var(--fg); }
 .mobile-nav-menu-actions { display: none; }
 .mobile-page-header { display: none; }
+.mobile-brand-name { display: none; }
 .sidebar-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .sidebar-collapsed .org-sidebar { padding-inline: 8px 7px; }
 .sidebar-collapsed .sidebar-header { justify-content: center; gap: 0; margin-left: 0; }
@@ -1900,7 +1901,8 @@ footer { min-height: 44px; display: flex; flex: none; align-items: center; justi
   .mobile-history-back:not([hidden]) { width: 44px; height: 44px; display: grid; flex: 0 0 44px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--canvas-subtle); color: var(--fg); cursor: pointer; }
   .mobile-history-back:hover { background: var(--neutral-muted); }
   .sidebar-brand { display: none; }
-  .mobile-page-header { min-width: 0; display: flex; flex: 1 1 auto; align-items: center; overflow: hidden; margin: 0 4px; }
+  .mobile-page-header { min-width: 0; display: flex; flex: 1 1 auto; flex-direction: column; align-items: flex-start; justify-content: center; overflow: hidden; margin: 0 4px; }
+  .mobile-brand-name { max-width: 100%; display: block; overflow: hidden; color: var(--muted); font-size: .75rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-page-header .overview-header { width: 100%; min-width: 0; flex-basis: auto; }
   .mobile-page-header .breadcrumb-context, .mobile-page-header .overview-header .lede { display: none; }
   .mobile-page-header .overview-header .title-area { display: flex; align-items: center; gap: 4px; min-width: 0; }

@@ -392,7 +392,11 @@ function renderSidebar(pages, title, navigation) {
         agenticWorkflowMark(),
         h('span', null, title)
       ),
-      h('div', { className: 'mobile-page-header' }),
+      h(
+        'div',
+        { className: 'mobile-page-header' },
+        h('span', { className: 'mobile-brand-name' }, title)
+      ),
       h(
         'details',
         { className: 'mobile-nav-menu' },
@@ -621,7 +625,8 @@ function enableMobileNavigationMenu(root) {
  * relationships. On narrow viewports the page title also moves into the
  * compact mobile header row (replacing the app brand) so the page no longer
  * shows a full-width secondary header that repeats the current page title,
- * matching the single-row title bar used by the GitHub mobile app.
+ * matching the title bar used by the GitHub mobile app. The factory name stays
+ * visible as a secondary line below that page title.
  * @param {HTMLElement} root
  */
 function enableResponsiveReportActions(root) {
@@ -640,7 +645,7 @@ function enableResponsiveReportActions(root) {
     if (actions.parentElement !== destination) destination.append(actions);
     if (overviewHeader instanceof HTMLElement && mobileHeaderSlot instanceof HTMLElement && headerDesktopSlot) {
       if (media.matches) {
-        if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.append(overviewHeader);
+        if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.prepend(overviewHeader);
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
       }

@@ -4173,6 +4173,15 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
+  const mobileBrandName = page.locator('.mobile-page-header .mobile-brand-name');
+  await expect(mobileBrandName).toBeVisible();
+  await expect(mobileBrandName).toHaveText('gh-aw-cao');
+  expect(await page.evaluate(() => {
+    const title = document.querySelector('.mobile-page-header #page-title');
+    const brand = document.querySelector('.mobile-page-header .mobile-brand-name');
+    if (!title || !brand) return false;
+    return brand.getBoundingClientRect().top >= title.getBoundingClientRect().bottom;
+  })).toBe(true);
   await expect(activeItem.locator('.nav-label')).toBeHidden();
   await expect(activeItem).toHaveCSS('min-height', '52px');
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');
