@@ -11,6 +11,7 @@ const siteRoot = new URL("../", import.meta.url);
 export async function buildDashboardSite({
   destination,
   controlSettings,
+  inventorySources,
   repositoryRoot = new URL("../../../", import.meta.url),
 }) {
   if (!destination) throw new Error("dashboard destination is required");
@@ -36,7 +37,10 @@ export async function buildDashboardSite({
   const indexPath = join(destinationPath, "index.html");
   await writeFile(indexPath, configureSite(await readFile(indexPath, "utf8"), controlSettings));
 
-  const packageDashboards = await findPackageDashboards(repositoryPath, controlSettings);
+  const visiblePackages = Array.isArray(inventorySources?.packages?.rows)
+    ? new Set(inventorySources.packages.rows.map((row) => row.package))
+    : null;
+  const packageDashboards = await findPackageDashboards(repositoryPath, controlSettings, visiblePackages);
 
   const dashboardPath = join(destinationPath, "dashboard.json");
   await bundleDashboardFiles(dashboardPath, packageDashboards);
@@ -52,11 +56,12 @@ export async function buildDashboardSite({
   }
 }
 
-async function findPackageDashboards(repositoryPath, controlSettings) {
+async function findPackageDashboards(repositoryPath, controlSettings, visiblePackages) {
   const installedDashboardsPath = join(repositoryPath, "dashboards");
   try {
     return (await readdir(installedDashboardsPath, { withFileTypes: true }))
       .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .filter((entry) => visiblePackages === null || visiblePackages.has(entry.name.slice(0, -5)))
       .map((entry) => join(installedDashboardsPath, entry.name));
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
@@ -64,6 +69,7 @@ async function findPackageDashboards(repositoryPath, controlSettings) {
 
   const packageDashboards = [];
   for (const packageName of Object.keys(controlSettings.packages ?? {}).toSorted()) {
+    if (visiblePackages !== null && !visiblePackages.has(packageName)) continue;
     const source = join(repositoryPath, packageName, "dashboard.json");
     await access(source).then(() => packageDashboards.push(source)).catch((error) => {
       if (error?.code !== "ENOENT") throw error;
@@ -161,11 +167,18 @@ function redirectDocument(pageId) {
 `;
 }
 
-async function main([destination, settingsPath]) {
+async function main([destination, settingsPath, inventorySourcesPath]) {
   const controlSettings = settingsPath
     ? JSON.parse(await readFile(resolve(settingsPath), "utf8"))
     : {};
-  await buildDashboardSite({ destination: destination ?? new URL("dist/", siteRoot), controlSettings });
+  const inventorySources = inventorySourcesPath
+    ? JSON.parse(await readFile(resolve(inventorySourcesPath), "utf8"))
+    : undefined;
+  await buildDashboardSite({
+    destination: destination ?? new URL("dist/", siteRoot),
+    controlSettings,
+    inventorySources,
+  });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {

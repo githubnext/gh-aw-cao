@@ -80,7 +80,7 @@ test("landing wizard client imports its prompt generation dependencies", () => {
 
 test("landing wizard operations come from the checked-in control policy", () => {
   assert.match(catalog, /import controlPolicy from "\.\.\/\.\.\/\.github\/workflows\/cao\.json"/);
-  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, catalogEntries\)/);
+  assert.match(catalog, /selectConfiguredOperations\(controlPolicy, allCatalogEntries\)/);
   assert.match(wizard, /configuredOperationEntries as operations/);
   assert.doesNotMatch(wizard, /operation\.slug === "dependabot"/);
 });

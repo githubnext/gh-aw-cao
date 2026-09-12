@@ -26,9 +26,17 @@ test("docs dashboard installs renderer assets and configured package pages", asy
     web: { favicon: "https://example.com/dashboard.svg" },
     packages: { "uk-ai-advisory": {}, dependabot: {} },
   };
+  const inventorySources = {
+    packages: {
+      rows: [
+        { package: "uk-ai-advisory" },
+        { package: "dependabot" },
+      ],
+    },
+  };
 
   try {
-    await buildDashboardSite({ destination, controlSettings });
+    await buildDashboardSite({ destination, controlSettings, inventorySources });
     const dashboard = JSON.parse(await readFile(new URL("dashboard.json", destination), "utf8"));
     const pageIds = dashboard.dashboard.pages.map(({ id }) => id);
     assert.ok(pageIds.includes("uk-ai-advisory-dashboard"));
@@ -88,6 +96,25 @@ test("docs dashboard installs renderer assets and configured package pages", asy
       (error) => error?.code === "ENOENT",
       "build copied a dashboard source that gh aw add would not install",
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("docs dashboard omits package pages hidden from inventory", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "dashboard-site-experimental-"));
+  const destination = pathToFileURL(`${root}/cao/`);
+
+  try {
+    await buildDashboardSite({
+      destination,
+      controlSettings: { packages: { "uk-ai-advisory": {}, dependabot: {} } },
+      inventorySources: { packages: { rows: [{ package: "uk-ai-advisory" }] } },
+    });
+    const dashboard = JSON.parse(await readFile(new URL("dashboard.json", destination), "utf8"));
+    const pageIds = dashboard.dashboard.pages.map(({ id }) => id);
+    assert.ok(pageIds.includes("uk-ai-advisory-dashboard"));
+    assert.ok(!pageIds.includes("dependabot-dashboard"));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

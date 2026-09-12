@@ -65,7 +65,7 @@ function workflowList(value: unknown, manifestPath: string): string[] {
   });
 }
 
-export const catalogEntries: CatalogEntry[] = Object.entries(manifests)
+const allCatalogEntries: CatalogEntry[] = Object.entries(manifests)
   .map(([manifestPath, source]) => {
     const slug = manifestPath.split("/").at(-2);
     if (!slug) throw new Error(`Could not derive a package slug from ${manifestPath}`);
@@ -90,10 +90,12 @@ export const catalogEntries: CatalogEntry[] = Object.entries(manifests)
     };
   })
   .filter((entry) => !entry.private)
-  .filter((entry) => !entry.experimental || controlPolicy.experimental === true)
   .sort((left, right) => {
     const advisoryRank = (entry: CatalogEntry) => /advisor(y|ies)?/i.test(entry.name) ? 1 : 0;
     return advisoryRank(left) - advisoryRank(right) || left.name.localeCompare(right.name);
   });
 
-export const configuredOperationEntries = selectConfiguredOperations(controlPolicy, catalogEntries);
+export const catalogEntries = allCatalogEntries.filter(
+  (entry) => !entry.experimental || controlPolicy.experimental === true,
+);
+export const configuredOperationEntries = selectConfiguredOperations(controlPolicy, allCatalogEntries);

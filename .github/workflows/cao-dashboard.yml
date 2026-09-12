@@ -201,6 +201,7 @@ jobs:
               '--',
               process.env.REPORT_OUTPUT,
               controlSettings,
+              process.env.REPORT_INVENTORY_SOURCES,
             ])
             core.info('Dashboard site build completed')
             core.info('Copying collected activity data')
