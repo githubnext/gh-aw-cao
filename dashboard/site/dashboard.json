@@ -51,24 +51,6 @@
         ]
       },
       {
-        "id": "update-target-repository",
-        "label": "Update repository",
-        "description": "Update installed Agentic Workflow packages in the selected repository.",
-        "icon": "sync",
-        "command": "gh aw update --repo {{repository}}",
-        "placement": "row",
-        "arguments": [
-          {
-            "id": "create-pull-request",
-            "label": "Create pull request",
-            "description": "Create a pull request with the workflow package updates.",
-            "type": "boolean",
-            "flag": "--create-pull-request",
-            "default": true
-          }
-        ]
-      },
-      {
         "id": "upgrade-target-repository",
         "label": "Upgrade repository",
         "description": "Upgrade Agentic Workflows in the selected repository and create a pull request.",

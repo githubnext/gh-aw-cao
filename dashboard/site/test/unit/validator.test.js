@@ -152,6 +152,9 @@ describe('dashboard document validation', () => {
       command: 'gh aw update {{package}}',
       placement: 'row'
     });
+    expect(document.dashboard['cli-actions'].some(
+      (/** @type {{ id: string }} */ candidate) => candidate.id === 'update-target-repository'
+    )).toBe(false);
     expect(packagesPage.definition.views[0].encoding.actions).toBeUndefined();
     expect(listAction).toMatchObject({
       action: 'update-package',
