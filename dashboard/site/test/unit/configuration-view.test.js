@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { indexedDB } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { renderConfigurationView } from '../../src/components/configuration-view.js';
+import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { renderUiElement } from '../../src/components/ui-elements.js';
 import { setAutomaticDashboardDataUpdatesEnabled } from '../../src/dashboard-data-updates.js';
 
@@ -77,6 +78,7 @@ describe('Configuration dashboard view', () => {
         'database-event-count': { source: 'database-event-count', rows: [{ events: 13 }], metadata }
       }
     });
+
     if (!rendered) throw new Error('configuration view did not render');
     const root = document.createElement('div');
     root.className = 'dashboard-root';
@@ -89,6 +91,32 @@ describe('Configuration dashboard view', () => {
     expect(localStorage.getItem('central-agentic-ops.dashboard.theme')).toBe('dark');
     expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
+  });
+
+  it('renders repository actions when the settings view is activated lazily', () => {
+    setDeclaredCliActions([{
+      id: 'update-repository',
+      label: 'Update',
+      icon: 'sync',
+      command: 'gh aw update --repo {{repository}}',
+      placement: 'settings'
+    }], {
+      canExecute: false,
+      templateValues: { repository: 'octo/example' }
+    });
+
+    const rendered = renderConfigurationView(context({
+      document: { version: 1 },
+      raw: '',
+      diagnostics: []
+    }));
+
+    expect(rendered?.querySelector('.cli-actions-settings')).not.toBeNull();
+    expect(rendered?.querySelector('.cli-action-trigger')?.textContent).toContain('Update');
+    rendered?.querySelector('.cli-action-trigger')?.dispatchEvent(new MouseEvent('click'));
+    expect(rendered?.querySelector('.cli-action-command')?.textContent)
+      .toBe('gh aw update --repo octo/example');
+    setDeclaredCliActions([]);
   });
 
   it('reflects background registration failures while the setting is mounted', () => {

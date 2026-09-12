@@ -7,11 +7,14 @@ const endpoint = './__cli_action';
 /** @type {Array<{ id: string, label: string, description?: string, icon: string, command: string, placement?: 'toolbar'|'settings'|'row', arguments?: Array<{ id: string, label: string, description?: string, type: 'boolean', flag: string, default?: boolean }> }>} */
 let declaredCliActions = [];
 let declaredCliActionsCanExecute = true;
+/** @type {Record<string, string>} */
+let declaredCliActionTemplateValues = {};
 
-/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean }} [options] */
+/** @param {typeof declaredCliActions} actions @param {{ canExecute?: boolean, templateValues?: Record<string, string> }} [options] */
 export function setDeclaredCliActions(actions, options = {}) {
   declaredCliActions = Array.isArray(actions) ? actions : [];
   declaredCliActionsCanExecute = options.canExecute !== false;
+  declaredCliActionTemplateValues = options.templateValues ?? {};
 }
 
 /**
@@ -319,6 +322,17 @@ export function renderCliActions(actions, options = {}) {
   return root;
 }
 
+export function renderSettingsCliActions() {
+  return renderCliActions(
+    declaredCliActions.filter((action) => action.placement === 'settings'),
+    {
+      presentation: 'settings',
+      templateValues: declaredCliActionTemplateValues,
+      canExecute: declaredCliActionsCanExecute
+    }
+  );
+}
+
 /**
  * Attach dashboard-declared CLI actions to their toolbar, settings, and row placements.
  * @param {HTMLElement} dashboard
@@ -327,20 +341,18 @@ export function renderCliActions(actions, options = {}) {
  */
 export function attachCliActions(dashboard, actions, options = {}) {
   const canExecute = options.canExecute !== false;
-  setDeclaredCliActions(actions, { canExecute });
   /** @type {Record<string, string>} */
   const templateValues = {};
   if (typeof options.repository === 'string') templateValues.repository = options.repository;
+  setDeclaredCliActions(actions, { canExecute, templateValues });
   const toolbarActions = renderCliActions(
     actions.filter((action) => !['settings', 'row'].includes(action.placement ?? 'toolbar')),
     { templateValues, canExecute }
   );
   if (toolbarActions) dashboard.querySelector('.report-actions')?.prepend(toolbarActions);
 
-  const settingsActions = renderCliActions(
-    actions.filter((action) => action.placement === 'settings'),
-    { presentation: 'settings', templateValues, canExecute }
-  );
+  if (dashboard.querySelector('.configuration-view > .cli-actions-settings')) return;
+  const settingsActions = renderSettingsCliActions();
   if (!settingsActions) return;
   const dialogs = [...settingsActions.querySelectorAll('dialog')];
   dashboard.querySelector('.configuration-view > .configuration-browser-settings')?.before(settingsActions);

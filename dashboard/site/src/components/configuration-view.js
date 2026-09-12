@@ -4,6 +4,7 @@ import { copyTextToClipboard, renderCheckbox } from './ui-primitives.js';
 import { isPlainObject, renderLazyDisclosure, renderSectionHeading } from './ui-primitives.js';
 import { renderResetDashboardControl } from './reset-dashboard-control.js';
 import { renderThemeSettings } from './theme-settings.js';
+import { renderSettingsCliActions } from './cli-actions.js';
 import {
   automaticDashboardBackgroundUpdatesActive,
   automaticDashboardDataUpdatesEnabled,
@@ -394,6 +395,7 @@ export function renderConfigurationView(context) {
       headingTag: 'h2'
     }),
     renderThemeSettings(),
+    renderSettingsCliActions(),
     renderAutomaticDataUpdatesSetting(),
     renderDatabaseSetting(context),
     renderLocalDataSetting(),
