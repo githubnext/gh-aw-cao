@@ -1291,7 +1291,9 @@ test("operational-value graders expose deterministic run-scoped contracts", () =
   for (const name of graders) {
     const executable = join(gradersDirectory, name);
     const workflowName = name.replace(/-operational-value\.sh$/, ".md");
-    const runPath = `./graders/${name}`;
+    const runPath = name === "dependabot-release-train-updater-operational-value.sh"
+      ? `.github/aw/dependabot/graders/${name}`
+      : `./graders/${name}`;
     assert.match(
       workflow(workflowName),
       new RegExp(`graders:\\s+operational-value:\\s+run: ${runPath.replaceAll(".", "\\.")}`),

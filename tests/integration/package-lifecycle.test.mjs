@@ -457,7 +457,6 @@ test("gh aw update replaces workflows and restores package-owned assets", { time
     const removedFiles = [
       ".github/aw/dependabot/graders/dependabot-release-train-updater-operational-value.sh",
       ".github/workflows/dependabot-release-train-updater.md",
-      ".github/workflows/graders/dependabot-release-train-updater-operational-value.sh",
       ".github/workflows/shared/control.md",
     ];
     for (const relativePath of removedFiles) {
