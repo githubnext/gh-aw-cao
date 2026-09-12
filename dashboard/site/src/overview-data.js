@@ -491,7 +491,7 @@ function buildReadiness(input) {
       detail: sourceHealthDetail(input.sources[name]),
       evidence: 'Required source',
       action: 'Review coverage',
-      'navigation-page': 'data-health'
+      'navigation-page': 'coverage'
     })),
     ...(attributionGapCount > 0 ? [{
       priority: 1,
@@ -504,7 +504,7 @@ function buildReadiness(input) {
       detail: 'The runtime repository and Actions workflow path did not match authoritative workflow inventory.',
       evidence: 'Workflow inventory join',
       action: 'Review coverage',
-      'navigation-page': 'data-health'
+      'navigation-page': 'coverage'
     }] : []),
     ...policyBlocks.map((row) => ({
       priority: 1,
@@ -517,7 +517,7 @@ function buildReadiness(input) {
       detail: String(row.effect || 'The authoritative control policy could not be resolved.'),
       evidence: 'Control policy',
       action: 'Review coverage',
-      'navigation-page': 'data-health'
+      'navigation-page': 'coverage'
     })),
     ...admissionBlocks.map((row) => ({
       priority: 1,

@@ -47,9 +47,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Set up gh-aw
-        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.6
+        uses: github/gh-aw-actions/setup-cli@c9a91649fa6263a455ef783f7c06a96940052fec # v0.89.7 tag resolves to this commit
         with:
-          version: v0.89.6
+          version: v0.89.7
       - name: Test deployed dashboard data ingestion
         run: node --test tests/integration/dashboard-deployed-data.test.mjs
         env:

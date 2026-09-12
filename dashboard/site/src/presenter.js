@@ -19,7 +19,7 @@ import { renderSiteCallouts } from './components/site-callout.js';
 import { renderResetDashboardControl } from './components/reset-dashboard-control.js';
 import { disconnectLazyViews, enableLazyViews, renderLazyView, trackViewTransition } from './components/lazy-view.js';
 import { DASHBOARD_RENDER_EVENT, emitDashboardDebugEvent } from './debug-events.js';
-import { processDataHealthSources, processRows } from './data-processor.js';
+import { processRows } from './data-processor.js';
 import { deriveOverviewSources } from './overview-data.js';
 import { deriveRepositorySources } from './repository-data.js';
 import { deriveRuntimeSources } from './runtime-data.js';
@@ -258,19 +258,7 @@ export function renderDashboard(input) {
       if (input.loadPageSources) {
         return input.loadPageSources(pageId).then(render);
       }
-      /** @param {Record<string, LogicalSourceInput>} resolved */
-      const withDataHealth = (resolved) => ({
-        ...derivedSources,
-        ...Object.fromEntries(Object.entries(resolved).filter(([name]) => name.startsWith('data-health-')))
-      });
-      const dataHealth = pageId === 'data-health'
-        ? processDataHealthSources(rawSources, { githubUrlBase, dashboardRepository })
-        : null;
-      const renderedPage = dataHealth instanceof Promise
-        ? dataHealth.then((resolved) => render(withDataHealth(resolved)))
-        : dataHealth
-          ? render(withDataHealth(dataHealth))
-          : render(sources);
+      const renderedPage = render(sources);
       /** @param {HTMLElement} rendered */
       const annotate = (rendered) => {
         void annotateLazyPageDomWhenDebugging(root, rendered, page, pageIndex).catch((error) => {
@@ -404,7 +392,11 @@ function renderSidebar(pages, title, navigation) {
         agenticWorkflowMark(),
         h('span', null, title)
       ),
-      h('div', { className: 'mobile-page-header' }),
+      h(
+        'div',
+        { className: 'mobile-page-header' },
+        h('span', { className: 'mobile-brand-name' }, title)
+      ),
       h(
         'details',
         { className: 'mobile-nav-menu' },
@@ -633,7 +625,8 @@ function enableMobileNavigationMenu(root) {
  * relationships. On narrow viewports the page title also moves into the
  * compact mobile header row (replacing the app brand) so the page no longer
  * shows a full-width secondary header that repeats the current page title,
- * matching the single-row title bar used by the GitHub mobile app.
+ * matching the title bar used by the GitHub mobile app. The factory name stays
+ * visible as a secondary line below that page title.
  * @param {HTMLElement} root
  */
 function enableResponsiveReportActions(root) {
@@ -652,7 +645,7 @@ function enableResponsiveReportActions(root) {
     if (actions.parentElement !== destination) destination.append(actions);
     if (overviewHeader instanceof HTMLElement && mobileHeaderSlot instanceof HTMLElement && headerDesktopSlot) {
       if (media.matches) {
-        if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.append(overviewHeader);
+        if (overviewHeader.parentElement !== mobileHeaderSlot) mobileHeaderSlot.prepend(overviewHeader);
       } else if (overviewHeader.parentElement !== headerDesktopSlot) {
         headerDesktopSlot.prepend(overviewHeader);
       }
@@ -2322,7 +2315,7 @@ function renderElementView(pageId, title, view, sources, contextDetails, heading
   if (!rendered) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'Unsupported UI element.'], headingTag);
   }
-  return ['summary-grid', 'readiness-verdict', 'data-health-domain-list'].includes(elementName)
+  return ['summary-grid', 'readiness-verdict'].includes(elementName)
     ? renderPageSection(pageId, title, [rendered], headingTag, typeof view.description === 'string' ? view.description : undefined)
     : rendered;
 }

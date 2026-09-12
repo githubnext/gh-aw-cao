@@ -91,7 +91,7 @@ async function queryLiveDashboard(requested, context, requestContext, signal, pa
     )
   );
   const healthSources = [...requested].some((name) => name.startsWith('data-health-'))
-    ? { ...derivedSources, ...deriveDataHealthSources(derivedSources, requestContext) }
+    ? { ...derivedSources, ...deriveDataHealthSources(derivedSources) }
     : derivedSources;
   const querySources = {
     ...healthSources,
@@ -327,18 +327,6 @@ export function processDataRequest(request, signal) {
       throw new TypeError('Scatter clustering requests require a positive integer limit.');
     }
     return clusterScatterPoints(request.data, limit);
-  }
-  if (request?.operation === 'derive-data-health') {
-    if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {
-      throw new TypeError('Data health requests require a sources object.');
-    }
-    if (request.context !== undefined && (!request.context || typeof request.context !== 'object' || Array.isArray(request.context))) {
-      throw new TypeError('Data health requests require an object context.');
-    }
-    return deriveDataHealthSources(
-      /** @type {Record<string, import('./presenter.js').LogicalSourceInput>} */ (request.sources),
-      /** @type {{ githubUrlBase?: string, dashboardRepository?: string | null }} */ (request.context ?? {})
-    );
   }
   if (request?.operation === 'canonicalize-dashboard-sources') {
     if (!request.sources || typeof request.sources !== 'object' || Array.isArray(request.sources)) {

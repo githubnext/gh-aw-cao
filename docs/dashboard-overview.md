@@ -105,6 +105,3 @@ the required outcome, run, repository, and workflow source metadata:
 Only trusted evidence with no observed failures can show **No maintenance
 needed**. Empty, partial, stale, unknown, and unavailable evidence are never
 coerced into a healthy-system verdict.
-
-See [Dashboard data health](dashboard-data-health.md) for the availability,
-completeness, freshness, coverage, and confidence contracts.

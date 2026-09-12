@@ -344,97 +344,6 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders cached source health without mixing in presentation-only sources', async () => {
-    const rendered = renderDashboard({
-      document: authoritativeDashboardDocument,
-      sources: {
-        runs: {
-          source: 'runs',
-          rows: [{ run: '1', 'run-conclusion': 'success' }],
-          metadata: {
-            'source-id': 'runs-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        },
-        usage: {
-          source: 'usage',
-          rows: [],
-          metadata: {
-            'source-id': 'usage-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
-          }
-        }
-      }
-    });
-
-    const page = await activatePage(rendered, 'data-health');
-    const sourceView = page?.querySelector('[data-view-id="data-health-sources"]');
-    expect(page?.querySelector('.chart-view-pie')).toBeNull();
-    expect(page?.querySelector('.layout-section')).toBeNull();
-    expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
-    expect(sourceView?.querySelector('[data-lazy-list]')).not.toBeNull();
-    expect(sourceView?.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain('runs');
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain('usage');
-    expect(sourceView?.querySelector('tbody')?.textContent).toContain('unavailable');
-    expect(sourceView?.querySelector('tbody')?.textContent).not.toContain('overview');
-    expect(page?.textContent).toContain('Fields populated');
-    rendered.remove();
-  });
-
-  it('renders data-health diagnostics when a cached source is unavailable', async () => {
-    const rendered = renderDashboard({
-      document: authoritativeDashboardDocument,
-      sources: {
-        runs: {
-          source: 'runs',
-          rows: [],
-          metadata: {
-            'source-id': 'runs-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'unknown',
-            freshness: 'unknown',
-            availability: 'unavailable'
-          }
-        },
-        usage: {
-          source: 'usage',
-          rows: [{ run: '1', aic: 3 }],
-          metadata: {
-            'source-id': 'usage-fixture',
-            'source-kind': 'fixture',
-            'as-of': '2026-09-03T12:00:00Z',
-            'retrieved-at': '2026-09-03T12:01:00Z',
-            completeness: 'complete',
-            freshness: 'fresh',
-            availability: 'available'
-          }
-        }
-      }
-    });
-
-    const page = await activatePage(rendered, 'data-health');
-    expect(page?.querySelector('.chart-view-pie')).toBeNull();
-    expect(page?.querySelector('[data-view-availability="unavailable"]')).toBeNull();
-    expect(page?.textContent).toContain('insufficient');
-    expect(page?.querySelector('[data-view-id="data-health-sources"] .status-danger')?.textContent).toBe('insufficient');
-    expect(page?.textContent).toContain('runs');
-    expect(page?.textContent).toContain('unavailable');
-    rendered.remove();
-  });
-
   it('renders engine and model usage as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
@@ -860,6 +769,7 @@ describe('presenter built-in and custom pages', () => {
     expect(repositoryLink?.getAttribute('aria-label')).toBe('View octo-org/agentic-operations on GitHub');
     expect(repositoryLink?.getAttribute('title')).toBe('View octo-org/agentic-operations on GitHub');
     expect(rendered.querySelector('.sidebar-brand > span')?.textContent).toBe('agentic-operations');
+    expect(rendered.querySelector('.mobile-page-header .mobile-brand-name')?.textContent).toBe('agentic-operations');
   });
 
   it('routes repository entity links to the repository detail view while retaining GitHub Actions links', async () => {
@@ -1023,6 +933,7 @@ describe('presenter built-in and custom pages', () => {
       'Workflows',
       'Runs',
       'Events',
+      'Firewall',
       'Work',
       'Operations',
       'Insights',
@@ -1036,13 +947,11 @@ describe('presenter built-in and custom pages', () => {
       'Admission',
       'Preview',
       'Readiness',
-      'Data health',
       'GitHub API',
       'Updates',
       'Safe Outputs',
       'Detection',
       'Dispatches',
-      'Firewall',
       'MCPs',
       'Models & agents',
       'UK AI advisory',
@@ -1234,7 +1143,7 @@ describe('presenter built-in and custom pages', () => {
             title: 'Dashboard data is partial',
             description: 'Some data could not be downloaded.',
             icon: 'alert',
-            'navigation-page': 'data-health',
+            'navigation-page': 'coverage',
             'visible-when': {
               source: 'coverage-diagnostics',
               field: 'kind',
@@ -1272,8 +1181,8 @@ describe('presenter built-in and custom pages', () => {
     const detailsLink = /** @type {HTMLAnchorElement | null} */ (
       rendered.querySelector('[data-site-callout="rate-limit-message"] .site-callout-link')
     );
-    expect(detailsLink?.getAttribute('href')).toBe('#page-data-health');
-    expect(detailsLink?.textContent).toBe('View data health');
+    expect(detailsLink?.getAttribute('href')).toBe('#page-coverage');
+    expect(detailsLink?.textContent).toBe('View coverage');
     const navigationLink = /** @type {HTMLAnchorElement | null} */ (
       rendered.querySelector('[data-site-callout="operator-message"] .site-callout-link')
     );
@@ -1369,6 +1278,7 @@ describe('presenter built-in and custom pages', () => {
       'Workflows',
       'Runs',
       'Events',
+      'Firewall',
       'Work',
       'Operations',
       'Insights',
@@ -1382,13 +1292,11 @@ describe('presenter built-in and custom pages', () => {
       'Admission',
       'Preview',
       'Readiness',
-      'Data health',
       'GitHub API',
       'Updates',
       'Safe Outputs',
       'Detection',
       'Dispatches',
-      'Firewall',
       'MCPs',
       'Models & agents',
       'UK AI advisory',

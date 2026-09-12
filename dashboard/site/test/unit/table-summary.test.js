@@ -135,6 +135,17 @@ describe('renderTableSummaryRow', () => {
     expect(rendered.textContent).not.toContain('missing');
   });
 
+  it.each([0, false, 'no'])('uses the failure color for a false-like value of %j', (value) => {
+    const rendered = renderSummaries([{
+      label: 'Ready',
+      type: 'boolean',
+      values: [value]
+    }]);
+
+    expect(rendered.querySelector('[data-chart-category="no"]')?.classList.contains('chart-series-semantic-failure')).toBe(true);
+    expect(rendered.querySelector('.chart-legend i')?.classList.contains('chart-series-semantic-failure')).toBe(true);
+  });
+
   it('leaves the summary empty when a typed boolean column has no observed values', () => {
     const rendered = renderSummaries([{
       label: 'Ready',

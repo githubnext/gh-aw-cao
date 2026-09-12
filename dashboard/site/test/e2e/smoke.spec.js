@@ -1161,7 +1161,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Firewall']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
@@ -2631,8 +2631,8 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
           callouts: [{
             id: 'partial-data',
             title: 'Dashboard data is partial',
-            description: 'Data Health reports a collection gap.',
-            'navigation-page': 'data-health'
+            description: 'Coverage diagnostics report a collection gap.',
+            'navigation-page': 'coverage'
           }],
           pages: [{
             id: 'cost',
@@ -2704,7 +2704,7 @@ test('DLS-PAGE-017 renders an editable filter bar and applies changes automatica
   await filterBar.locator('.horizon-toggle').click();
 
   await page.setViewportSize({ width: 400, height: 900 });
-  expect((await page.getByRole('link', { name: 'View data health' }).boundingBox())?.height)
+  expect((await page.getByRole('link', { name: 'View coverage' }).boundingBox())?.height)
     .toBeGreaterThanOrEqual(24);
   await page.locator('.mobile-nav-menu > summary').click();
   const horizonBox = await filterBar.locator('.dashboard-horizon').boundingBox();
@@ -4173,6 +4173,15 @@ test('phone navigation uses overview actions and a full-label view menu without 
   await expect(historyBack).toBeHidden();
   await expect(activeItem).toBeVisible();
   await expect(page.locator('.dashboard-root')).toHaveClass(/dashboard-mobile-overview-actions/);
+  const mobileBrandName = page.locator('.mobile-page-header .mobile-brand-name');
+  await expect(mobileBrandName).toBeVisible();
+  await expect(mobileBrandName).toHaveText('gh-aw-cao');
+  expect(await page.evaluate(() => {
+    const title = document.querySelector('.mobile-page-header #page-title');
+    const brand = document.querySelector('.mobile-page-header .mobile-brand-name');
+    if (!title || !brand) return false;
+    return brand.getBoundingClientRect().top >= title.getBoundingClientRect().bottom;
+  })).toBe(true);
   await expect(activeItem.locator('.nav-label')).toBeHidden();
   await expect(activeItem).toHaveCSS('min-height', '52px');
   expect(await activeItem.evaluate((item) => getComputedStyle(item, '::before').content)).toBe('none');

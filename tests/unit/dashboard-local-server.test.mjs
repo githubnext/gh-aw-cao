@@ -537,7 +537,18 @@ test("local dashboard CLI runs directly without a permission sandbox relaunch", 
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /usage: local-server\.mjs/);
+  assert.match(result.stdout, /--canvas/);
   assert.match(result.stdout, /--replace-existing/);
+});
+
+test("dashboard local server declares canvas readiness output", async () => {
+  const source = await readFile(
+    new URL("../../dashboard/local-server.mjs", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /options\.canvas \? 0 : 4173/);
+  assert.match(source, /CAO_CANVAS_READY \$\{preview\.url\}\//);
 });
 
 test("local dashboard server downloads dashboard-build data with GitHub CLI", async () => {

@@ -2,13 +2,6 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
-import {
-  normalizeRepository,
-  pagesUrlForRepository,
-  repositoryFromRemote,
-  resolveDashboardUrl,
-} from "../../com.github.copilot/extensions/cao-dashboard/dashboard-url.mjs";
-
 const root = new URL("../../", import.meta.url);
 
 test("Agent Plugins manifest exposes portable skills and Copilot namespace", async () => {
@@ -20,6 +13,7 @@ test("Agent Plugins manifest exposes portable skills and Copilot namespace", asy
   );
   assert.equal(manifest.name, "central-agentic-ops");
   assert.match(manifest.description, /analyze activity data/);
+  assert.match(manifest.description, /local CAO dashboard previews/);
   assert.deepEqual(manifest.extensions, { "com.github.copilot": {} });
   await readFile(new URL("skills/create-ops-package/SKILL.md", root), "utf8");
   await readFile(new URL("skills/analyze-agentic-ops/SKILL.md", root), "utf8");
@@ -40,91 +34,14 @@ test("Copilot extension uses the current Canvas provider contract", async () => 
 
   assert.deepEqual(metadata, { name: "cao-dashboard", version: 1 });
   assert.match(source, /@github\/copilot-sdk\/extension/);
-  assert.match(source, /joinSession\(\{\s*canvases:/);
+  assert.match(source, /joinSession\(\{[\s\S]*canvases:/);
   assert.match(source, /createCanvas\(\{/);
   assert.match(source, /context\.session\?\.workingDirectory/);
-  assert.match(source, /oneOf:/);
-  assert.match(source, /minLength: 1/);
+  assert.match(source, /startLocalDashboardPreview/);
+  assert.match(source, /cao_dashboard_execute_query/);
+  assert.match(source, /cao_dashboard_read_data_specification/);
+  assert.match(source, /onSessionStart:/);
+  assert.match(source, /onClose:/);
   assert.match(source, /additionalProperties: false/);
-});
-
-test("repository parsing accepts common GitHub remotes", () => {
-  assert.equal(normalizeRepository("githubnext/gh-aw-cao"), "githubnext/gh-aw-cao");
-  assert.equal(
-    repositoryFromRemote("git@github.com:githubnext/gh-aw-cao.git"),
-    "githubnext/gh-aw-cao",
-  );
-  assert.equal(
-    repositoryFromRemote("https://github.com/octo-org/control-plane.git"),
-    "octo-org/control-plane",
-  );
-  assert.equal(repositoryFromRemote("https://example.com/owner/repo"), undefined);
-});
-
-test("Pages URLs handle CAO catalog, control, and account sites", () => {
-  assert.equal(
-    pagesUrlForRepository("githubnext/gh-aw-cao"),
-    "https://githubnext.github.io/gh-aw-cao/cao/",
-  );
-  assert.equal(
-    pagesUrlForRepository("octo-org/control-plane"),
-    "https://octo-org.github.io/control-plane/",
-  );
-  assert.equal(
-    pagesUrlForRepository("octocat/octocat.github.io"),
-    "https://octocat.github.io/",
-  );
-  assert.equal(
-    pagesUrlForRepository("octo-org/control-plane", "/ops/current/"),
-    "https://octo-org.github.io/control-plane/ops/current/",
-  );
-});
-
-test("dashboard resolution supports explicit and detected targets", async () => {
-  assert.equal(
-    await resolveDashboardUrl({ url: "https://cao.example.test/dashboard" }),
-    "https://cao.example.test/dashboard",
-  );
-  assert.equal(
-    await resolveDashboardUrl(
-      {},
-      {
-        environment: {},
-        readRemote: async () => "git@github.com:octo-org/control-plane.git\n",
-      },
-    ),
-    "https://octo-org.github.io/control-plane/",
-  );
-  await assert.rejects(
-    resolveDashboardUrl({ url: "http://cao.example.test" }),
-    /must use HTTPS/,
-  );
-  await assert.rejects(
-    resolveDashboardUrl({
-      url: "https://cao.example.test",
-      repository: "octo-org/control-plane",
-    }),
-    /either an HTTPS dashboard URL or repository-derived options/,
-  );
-  const credentialUrl = new URL("https://cao.example.test");
-  credentialUrl.username = "user";
-  await assert.rejects(
-    resolveDashboardUrl({ url: credentialUrl.href }),
-    /must not include credentials/,
-  );
-  await assert.rejects(
-    resolveDashboardUrl({ unexpected: "value" }),
-    /Unsupported dashboard input field/,
-  );
-  await assert.rejects(
-    resolveDashboardUrl(
-      { repository: "not-a-repository" },
-      { environment: { GITHUB_REPOSITORY: "octo-org/control-plane" } },
-    ),
-    /OWNER\/REPOSITORY format/,
-  );
-  assert.throws(
-    () => pagesUrlForRepository("octo-org/control-plane", "../private"),
-    /safe relative URL path/,
-  );
+  assert.doesNotMatch(source, /github\.io|https:/);
 });
