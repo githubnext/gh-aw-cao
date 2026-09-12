@@ -1161,7 +1161,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Firewall']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
