@@ -945,6 +945,14 @@ function authority(args) {
   process.stdout.write(`${value}\n`);
 }
 
+function compilerVersion(args) {
+  if (args.length !== 1) throw new ControlError("usage: control.mjs compiler-version <file|->");
+  const document = parsePolicy(readSource(args[0]));
+  const value = document["gh-aw-compiler-version"];
+  if (!value) throw new PolicyError("gh-aw-compiler-version is required for a control plane");
+  process.stdout.write(`${value}\n`);
+}
+
 /**
  * @param {Record<string, unknown>|string[]} actionsOrArguments
  * @param {string[]=} maybeArguments
@@ -962,11 +970,12 @@ export async function main(actionsOrArguments = {}, maybeArguments = undefined) 
       return await withLogGroup("Central Agentic Ops precompute", precompute);
     }
     if (command === "authority") return authority(args);
+    if (command === "compiler-version") return compilerVersion(args);
     if (["validate-policy", "resolve-policy", "control-settings"].includes(command)) {
       process.stdout.write(`${JSON.stringify(policyCommand(command, args), null, 2)}\n`);
       return;
     }
-    throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | authority <file|-> <package>");
+    throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | compiler-version <file|-> | authority <file|-> <package>");
   } catch (error) {
     if (error instanceof ControlError || error instanceof PolicyError || error?.code === "ENOENT") {
       process.stderr.write(`[CAO failure] ${error.message}\n`);

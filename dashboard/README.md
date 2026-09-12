@@ -99,7 +99,8 @@ author and committer identity from the currently authenticated GitHub CLI user
 so pull-request actions can create commits without changing global or
 repository Git configuration. When `gh aw` is unavailable, an approved action first attempts
 `gh extension install github/gh-aw`. If that installation fails, it downloads
-and runs the pinned `v0.89.8` installer from the official `github/gh-aw`
+and runs the installer version declared by `gh-aw-compiler-version` in
+`.github/workflows/cao.json` from the official `github/gh-aw`
 repository, then verifies `gh aw` before continuing. Boolean action arguments
 render as checkboxes and may append only their declared
 canonical long option to the command preview and executed argv.

@@ -11,7 +11,8 @@ import { policyCases, userFacingScenarios } from "./workflow-contract.matrix.mjs
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const workflowsDirectory = join(root, ".github", "workflows");
 const modes = ["review", "live"];
-const ghAwVersion = "v0.89.8";
+const controlPolicy = JSON.parse(readFileSync(join(workflowsDirectory, "cao.json"), "utf8"));
+const ghAwVersion = controlPolicy["gh-aw-compiler-version"];
 const escapedGhAwVersion = ghAwVersion.replaceAll(".", "\\.");
 
 function workflow(name, directory = workflowsDirectory) {
@@ -42,9 +43,16 @@ test("packages and repository workflows pin the supported gh-aw version", () => 
 
   for (const name of ["activity.yml", "copilot-setup-steps.yml", "release.yml", "workflow-contracts.yml"]) {
     const source = workflow(name);
-    assert.match(source, new RegExp(`github/gh-aw-actions/setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} tag resolves to this commit`));
-    assert.match(source, new RegExp(`version: ${escapedGhAwVersion}`));
+    assert.match(source, /uses: \.\/\.github\/actions\/setup-gh-aw/);
   }
+  const setupAction = readFileSync(join(root, ".github", "actions", "setup-gh-aw", "action.yml"), "utf8");
+  assert.match(setupAction, /control\.mjs compiler-version \.github\/workflows\/cao\.json/);
+  assert.match(setupAction, new RegExp(`setup-cli@[0-9a-f]{40} # ${escapedGhAwVersion} tag resolves to this commit`));
+  assert.match(setupAction, /version: \$\{\{ steps\.compiler\.outputs\.version \}\}/);
+  assert.match(
+    JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts["install:gh-aw"],
+    /control\.mjs compiler-version \.github\/workflows\/cao\.json/,
+  );
 });
 
 test("catalog packages declare their current experimental maturity", () => {
@@ -3040,12 +3048,13 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /do not replace `auto` with an explicit model/);
   assert.match(setupSkill, /one immutable source identity keeps repeated package dependencies consistent/);
   assert.match(setupSkill, /package cannot install this file because it is consumer-owned rollout policy/);
-  assert.match(setupSkill, /Replace both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
+  assert.match(setupSkill, /Replace `<gh-aw-compiler-version>`[\s\S]*?both occurrences of `<target-owner>`[\s\S]*?one occurrence of `<target-repository>`/);
   assert.match(setupSkill, /Do not put `control-owner` or `control-repository` into this policy unless the selected target is the control repository/);
   assert.match(setupSkill, /if \(\/<\[\^>\]\+>\/\.test\(source\)\) throw new Error\('unresolved policy placeholder'\)/);
   const policyTemplate = setupSkill.match(/```json\n([\s\S]*?)\n\s*```/)?.[1];
   assert.ok(policyTemplate, "setup skill must contain a JSON policy template");
   const initialPolicy = JSON.parse(policyTemplate
+    .replaceAll("<gh-aw-compiler-version>", ghAwVersion)
     .replaceAll("<target-owner>", "acme")
     .replaceAll("<target-repository>", "service")
     .replaceAll("<package-slug>", "dependabot")
@@ -3053,6 +3062,7 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
     .replaceAll("<worker-workflow-slug>", "dependabot-release-train-updater"));
   assert.deepEqual(initialPolicy, {
     version: 1,
+    "gh-aw-compiler-version": ghAwVersion,
     "control-plane": {
       scope: {
         "allowed-owners": ["acme"],
@@ -3209,7 +3219,7 @@ test("Dashboard package supports embedded and explicit standalone deployment", (
   assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 1);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
-  assert.match(activityWorkflow, new RegExp(`Install gh-aw CLI[\\s\\S]*?version: ${escapedGhAwVersion}`));
+  assert.match(activityWorkflow, /Install gh-aw CLI[\s\S]*?uses: \.\/\.github\/actions\/setup-gh-aw/);
   assert.doesNotMatch(deployedWorkflows, /fetch\(|api\.github\.com|gh api|spawn\(/);
   assert.match(deployedWorkflows, /Build activity index from local workflow inventory/);
   assert.match(deployedWorkflows, /usageArtifactGaps/);

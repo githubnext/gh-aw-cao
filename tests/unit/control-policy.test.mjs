@@ -92,6 +92,8 @@ test("control policy schema accepts config-defined package and worker catalogs",
 
   assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.equal(policy.$schema, schema.$id);
+  assert.match(policy["gh-aw-compiler-version"], /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/);
+  assert.equal(schema.properties["gh-aw-compiler-version"].type, "string");
   assert.equal(schema.$defs.controlPlane.properties.web.$ref, "#/$defs/web");
   assert.equal(policy["control-plane"].web.favicon, "./favicon.svg");
   assert.equal(schema.$defs.controlPackages.additionalProperties.$ref, "#/$defs/packagePolicy");
@@ -102,6 +104,16 @@ test("control policy schema accepts config-defined package and worker catalogs",
     }
   }
   assert.equal(validate(JSON.stringify(policy)).status, 0);
+});
+
+test("control policy rejects malformed gh-aw compiler versions", () => {
+  const policy = JSON.parse(minimalPolicy);
+  policy["gh-aw-compiler-version"] = "latest";
+
+  const result = validate(JSON.stringify(policy));
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /gh-aw-compiler-version has an invalid value/);
 });
 
 test("checked-in control policy selects seven repositories with live Dependabot and local SelfCare authority", () => {

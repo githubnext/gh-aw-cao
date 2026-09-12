@@ -197,6 +197,8 @@ The orchestrator is the rollout decision point. Each worker is an independent en
 
 **CAO-CFG-005:** Implementations MUST NOT read `CENTRAL_AGENTIC_OPS_*` Actions variables as policy defaults, overrides, aliases, or compatibility fallbacks.
 
+**CAO-CFG-006:** A control repository SHOULD declare `gh-aw-compiler-version` as a `v`-prefixed semantic version. Infrastructure that installs the gh-aw CLI SHOULD use this value as its compiler-version source of truth. The field does not grant execution capability or rollout authority.
+
 The `$schema` property SHOULD identify `https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/cao/cao.schema.json`.
 
 ### 5.2 Document Roles
