@@ -409,6 +409,17 @@ test("gh aw add installs the dashboard package contract", { timeout: 180_000 }, 
     assert.match(dashboardWorkflow, /\.github\/aw\/dashboards\/\*\*/);
     assert.match(dashboardWorkflow, /"\*\/dashboard\.json"/);
     assert.match(dashboardWorkflow, /github\.ref_name == github\.event\.repository\.default_branch/);
+
+    const dashboardSite = join(consumer, ".github", "aw", "dashboard", "site");
+    const dashboardOutput = join(consumer, "dashboard-output");
+    const controlSettings = join(consumer, "control-settings.json");
+    run("gh", ["aw", "add", activityPackageSource, "--force", "--no-security-scanner"], consumer);
+    writeFileSync(controlSettings, "{}\n");
+    run("npm", ["ci", "--ignore-scripts"], dashboardSite);
+    run("npm", ["run", "build", "--", dashboardOutput, controlSettings], dashboardSite);
+    for (const bundle of ["main.js", "main.js.map", "data-worker.js", "data-worker.js.map"]) {
+      assert.ok(existsSync(join(dashboardOutput, "src", bundle)), `dashboard build omitted ${bundle}`);
+    }
   } finally {
     rmSync(consumer, { recursive: true, force: true });
   }
