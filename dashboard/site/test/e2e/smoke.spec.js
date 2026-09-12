@@ -1206,7 +1206,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   const accountMenu = page.locator('.account-menu');
-  await expect(accountMenu.locator('summary .octicon-gear')).toBeVisible();
+  await expect(accountMenu.locator('summary .octicon-kebab-horizontal')).toBeVisible();
   await accountMenu.locator('summary').click();
   await expect(accountMenu.getByRole('link', { name: 'Settings' })).toBeVisible();
   await expect(accountMenu.getByRole('link', { name: 'Open the dashboard workflow on GitHub Actions' })).toBeVisible();

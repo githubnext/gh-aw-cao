@@ -739,7 +739,7 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('.report-footer .refresh-button')).toBeNull();
     expect(rendered.querySelector('.report-footer-status time')?.getAttribute('datetime')).toBeTruthy();
     expect(rendered.querySelector('.repository-link')).toBeNull();
-    expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
+    expect(rendered.querySelector('.account-menu-avatar .octicon-kebab-horizontal')).not.toBeNull();
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
   });
@@ -895,9 +895,9 @@ describe('presenter built-in and custom pages', () => {
     expect(rendered.querySelector('[data-mobile-nav-page-id="agents"] .octicon-sparkles-fill')).not.toBeNull();
     expect(rendered.querySelector('[data-nav-page-id="configuration"]')).toBeNull();
     expect(rendered.querySelector('.account-menu-settings')?.getAttribute('href')).toBe('#page-configuration');
-    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open settings menu');
+    expect(rendered.querySelector('.account-menu-avatar')?.getAttribute('aria-label')).toBe('Open dashboard menu');
     expect(rendered.querySelector('.account-menu-avatar')?.classList.contains('account-menu-icon')).toBe(true);
-    expect(rendered.querySelector('.account-menu-avatar .octicon-gear')).not.toBeNull();
+    expect(rendered.querySelector('.account-menu-avatar .octicon-kebab-horizontal')).not.toBeNull();
     expect(rendered.querySelector('.account-menu-avatar-image')).toBeNull();
     const backgroundServiceWorker = /** @type {HTMLInputElement | null} */ (
       rendered.querySelector('.background-service-worker-setting input')
