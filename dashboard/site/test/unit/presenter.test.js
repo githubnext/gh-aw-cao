@@ -469,7 +469,10 @@ describe('presenter built-in and custom pages', () => {
       }
     });
 
-    const page = await activatePage(rendered, 'transactions');
+    document.body.append(rendered);
+    window.location.hash = '#page-transactions';
+    await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="transactions"]')?.hidden).toBe(false));
+    const page = rendered.querySelector('[data-page-id="transactions"]');
     expect(page?.querySelectorAll('[data-view-layout="full-view"]')).toHaveLength(1);
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('input[type="search"]')).not.toBeNull();
@@ -954,7 +957,6 @@ describe('presenter built-in and custom pages', () => {
       'Workflows',
       'Runs',
       'Events',
-      'Transactions',
       'Firewall',
       'Work',
       'Operations',
@@ -1315,7 +1317,6 @@ describe('presenter built-in and custom pages', () => {
       'Workflows',
       'Runs',
       'Events',
-      'Transactions',
       'Firewall',
       'Work',
       'Operations',

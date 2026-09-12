@@ -90,7 +90,7 @@ describe('Configuration dashboard view', () => {
     expect(rendered.querySelector('.configuration-database-counts')?.textContent).toContain('13Events');
     expect(rendered.querySelector('.reset-dashboard-trigger')).not.toBeNull();
     const transactions = rendered.querySelector('.configuration-transactions-button');
-    expect(transactions).toHaveTextContent('Transactions');
+    expect(transactions?.textContent).toContain('Transactions');
     transactions?.dispatchEvent(new MouseEvent('click'));
     expect(window.location.hash).toBe('#page-transactions');
   });

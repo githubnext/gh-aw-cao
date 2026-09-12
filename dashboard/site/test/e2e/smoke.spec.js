@@ -570,7 +570,7 @@ test('Transactions is a responsive full-view interactive lazy table opened from 
 
   const dataNavigation = page.locator('.nav-section').filter({ hasText: 'Data' });
   await expect(dataNavigation.getByRole('link', { name: 'Transactions' })).toHaveCount(0);
-  window.location.hash = '#page-configuration';
+  await page.evaluate(() => { window.location.hash = '#page-configuration'; });
   await expect(page.getByRole('button', { name: 'Transactions' })).toBeVisible();
   await page.getByRole('button', { name: 'Transactions' }).click();
 
@@ -1413,7 +1413,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(cleanNavigation).toHaveText(['Overview', 'Repositories', 'Packages', 'Settings']);
   await expect(data.locator('summary')).toHaveText('Data');
   await data.locator('summary').click();
-  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Transactions', 'Firewall']);
+  await expect(data.getByRole('link')).toHaveText(['Workflows', 'Runs', 'Events', 'Firewall']);
   await expect(experimental.getByRole('link', { name: /Repositories|Workflows|Runs|Packages/ })).toHaveCount(0);
   await expect(cleanNavigation.first().locator('.octicon-home')).toBeVisible();
   await expect(page.locator('.account-menu')).toHaveCount(0);
