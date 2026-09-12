@@ -32,7 +32,7 @@ const event = {
     title: "Investigate failing workflow",
     created_at: "2026-08-27T10:01:00Z",
     user: { login: "github-actions[bot]", type: "Bot" },
-    body: "Target repository: `acme/service`\n\nGenerated from [AW Doctor / Failures](https://github.com/acme/control/actions/runs/123)",
+    body: "Target repository: `acme/service`\n\nGenerated from [CAO Evolution / AW Failures](https://github.com/acme/control/actions/runs/123)",
   },
 };
 
@@ -66,7 +66,7 @@ test("ops publish derives routing from an allowlisted generated run", () => {
       event: "workflow_dispatch",
       status: "completed",
       conclusion: "success",
-      path: ".github/workflows/aw-failures-investigator.lock.yml",
+      path: ".github/workflows/cao-evolution-failures-investigator.lock.yml",
       head_branch: "main",
       created_at: "2026-08-27T10:00:00Z",
       updated_at: "2026-08-27T10:02:00Z",
@@ -76,7 +76,7 @@ test("ops publish derives routing from an allowlisted generated run", () => {
     },
   });
   assert.deepEqual(validated, {
-    packageName: "aw-doctor",
+    packageName: "cao-evolution",
     targetRepository: "acme/service",
     targetOwner: "acme",
     targetName: "service",
@@ -178,7 +178,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
     event: "workflow_dispatch",
     status: "completed",
     conclusion: "success",
-    path: ".github/workflows/aw-failures-investigator.lock.yml",
+    path: ".github/workflows/cao-evolution-failures-investigator.lock.yml",
     head_branch: "main",
     created_at: "2026-08-27T10:00:00Z",
     updated_at: "2026-08-27T10:02:00Z",
@@ -213,7 +213,7 @@ test("ops publish rejects non-review runs and destinations outside policy", () =
   }), /default branch/);
 
   assert.throws(() => validateWorkflowRun({
-    run: { ...run, path: ".github/workflows/nested/aw-failures-investigator.lock.yml" },
+    run: { ...run, path: ".github/workflows/nested/cao-evolution-failures-investigator.lock.yml" },
     inspection,
     reviewRepository: "acme/review",
     allowedOwners: "acme",

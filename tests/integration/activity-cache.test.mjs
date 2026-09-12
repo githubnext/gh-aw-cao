@@ -2,6 +2,27 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+const cachePaths = [
+  "${{ runner.temp }}/cao-activity/gh-aw-logs.jsonl",
+  "${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite",
+  "${{ runner.temp }}/cao-activity/control-settings.json",
+  "${{ runner.temp }}/cao-activity/inventory-sources.json",
+  "${{ runner.temp }}/cao-gh-aw-logs/drain3_weights.json",
+];
+
+function assertCachePathSets(workflow, expectedCount) {
+  const pathSets = [
+    ...workflow.matchAll(
+      /uses: actions\/cache\/(?:restore|save)@[^\n]+\n\s+with:\n\s+path: \|\n((?:\s+\$\{\{ runner\.temp \}\}\/[^\n]+\n)+)/g,
+    ),
+  ].map((match) => match[1].trim().split("\n").map((line) => line.trim()));
+
+  assert.equal(pathSets.length, expectedCount);
+  for (const pathSet of pathSets) {
+    assert.deepEqual(pathSet, cachePaths);
+  }
+}
+
 test("activity workflow caches gh-aw logs and their SQLite projection", async () => {
   const workflow = await readFile(".github/workflows/activity.yml", "utf8");
 
@@ -37,4 +58,15 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
     workflow,
     /github-script|run-activity\.mjs|REPORT_GH_AW_LOGS_STATE|REPORT_DEPLOYED_WORKFLOWS|REPORT_RECORDS/,
   );
+  assertCachePathSets(workflow, 2);
+});
+
+test("activity cache consumers use the producer cache version paths", async () => {
+  const [dashboardWorkflow, sharedCache] = await Promise.all([
+    readFile(".github/workflows/cao-dashboard.yml", "utf8"),
+    readFile(".github/workflows/shared/activity-cache.md", "utf8"),
+  ]);
+
+  assertCachePathSets(dashboardWorkflow, 1);
+  assertCachePathSets(sharedCache, 2);
 });

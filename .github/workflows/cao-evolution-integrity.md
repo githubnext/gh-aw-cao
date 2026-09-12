@@ -130,7 +130,7 @@ Validate these boundaries together:
 5. Dashboard package metadata and the control-plane view represent the same packages, workers, modes, targets, and workflow sources as policy.
 6. Orchestrators dispatch only declared workers; workers cannot discover repositories, redispatch, broaden mode, or accept credentials through dispatch inputs.
 
-Do not duplicate `AW Doctor`: ignore general gh-aw release upgrades, compiler health, and ordinary target-repository workflow defects unless they prove a CAO policy, authority, ownership, or registration inconsistency.
+Do not duplicate the agentic-workflow health workers: ignore general gh-aw release upgrades, compiler health, and ordinary target-repository workflow defects unless they prove a CAO policy, authority, ownership, or registration inconsistency.
 
 ## Outcome
 

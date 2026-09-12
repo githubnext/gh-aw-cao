@@ -1200,7 +1200,7 @@ dashboard:
   it('keeps one focused custom dashboard for every operation package', () => {
     const documents = packageDashboardSources.map((source) => JSON.parse(source));
     const packagePageIds = [
-      'aw-doctor-dashboard',
+      'cao-evolution-dashboard',
       'dependabot-dashboard',
       'uk-ai-advisory-dashboard',
       'eu-cra-compliance-dashboard',
@@ -1213,7 +1213,7 @@ dashboard:
       const page = document.dashboard.pages[0];
       expect(document.dashboard.navigation).toEqual([{ label: 'Package operations', experimental: true, pages: [pageId] }]);
       expect(page).toMatchObject({ kind: 'custom' });
-      expect(page.views).toHaveLength(4);
+      expect(page.views).toHaveLength(pageId === 'cao-evolution-dashboard' ? 5 : 4);
       const tables = page.views.filter(
         (/** @type {{ mark?: string }} */ view) => view.mark === 'table'
       );
@@ -1234,32 +1234,41 @@ dashboard:
       const sources = page.views.map(
         (/** @type {{ data: { source: string } }} */ view) => canonicalSource(view.data.source)
       );
-      expect(sources.sort()).toEqual(['operational-values', 'operational-values', 'outcomes', 'runs'].sort());
+      const expectedSources = pageId === 'cao-evolution-dashboard'
+        ? ['operational-values', 'operational-values', 'outcomes', 'outcomes', 'runs']
+        : ['operational-values', 'operational-values', 'outcomes', 'runs'];
+      expect(sources.sort()).toEqual(expectedSources.sort());
     }
   });
 
-  it('keeps the AW Doctor run inventory aligned with the built-in run table', () => {
+  it('keeps the CAO Evolution run inventory aligned with the built-in run table', () => {
     const builtInDocument = JSON.parse(authoritativeDashboardSource);
     const builtInRunView = builtInDocument.dashboard.pages
       .find((/** @type {{ id: string }} */ page) => page.id === 'runs')
       .definition.views.find((/** @type {{ id: string }} */ view) => view.id === 'runs-runs-source');
-    const awMaintenanceDocument = packageDashboardSources
+    const evolutionDocument = packageDashboardSources
       .map((source) => JSON.parse(source))
-      .find((document) => document.dashboard.id === 'aw-doctor-dashboard');
-    const runView = awMaintenanceDocument.dashboard.pages[0].views
-      .find((/** @type {{ id: string }} */ view) => view.id === 'aw-doctor-runs');
+      .find((document) => document.dashboard.id === 'cao-evolution-dashboard');
+    const runView = evolutionDocument.dashboard.pages[0].views
+      .find((/** @type {{ id: string }} */ view) => view.id === 'cao-evolution-runs');
 
     expect(runView).toMatchObject({
       mark: 'table',
       controls: 'interactive',
-      encoding: {
-        href: builtInRunView.encoding.href,
-        columns: builtInRunView.encoding.columns.filter(
-          (/** @type {{ field: string }} */ column) => column.field !== 'engine-version'
-        )
-      }
+      encoding: { href: builtInRunView.encoding.href }
     });
-    expect(runView.description).toContain('which AW Doctor failures need attention first');
+    expect(runView.encoding.columns.map(
+      (/** @type {{ field: string }} */ column) => column.field
+    )).toEqual([
+      'run',
+      'run-status',
+      'run-conclusion',
+      'repository',
+      'workflow',
+      'rollout-mode',
+      'started-at'
+    ]);
+    expect(runView.description).toContain('maintenance checks');
     expect(runView.encoding.columns.some(
       (/** @type {{ field: string }} */ column) => column.field === 'engine-version'
     )).toBe(false);
