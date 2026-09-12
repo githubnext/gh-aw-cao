@@ -31,6 +31,15 @@ const dirtyDashboardSubscriptions = new Set();
 let subscriptionFlushScheduled = false;
 let subscriptionFlushRunning = false;
 
+/**
+ * Publishes a user-facing notification from the data worker.
+ * @param {{ message: string, tone?: 'info' | 'success' | 'warning' | 'error', duration?: number }} notification
+ * @param {{ postMessage: (message: unknown) => void }} [target]
+ */
+export function publishWorkerNotification(notification, target = self) {
+  target.postMessage({ type: 'notification', notification });
+}
+
 async function loadActiveDashboard() {
   if (liveDashboard) return liveDashboard;
   liveDashboard = {

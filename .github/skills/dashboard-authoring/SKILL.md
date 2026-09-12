@@ -34,6 +34,8 @@ Before implementing a data-backed feature or modifying a database, write or upda
 
 Follow the data-injection boundary documented in [`docs/dashboard-data-model.md`](../../../docs/dashboard-data-model.md): authoritative inputs pass through source adapters, canonical normalization, canonical storage, and the query layer before reaching a view. Views must not parse upstream logs or query storage directly. Treat browser IndexedDB and the local SQLite projection as disposable, reconstructable derived state.
 
+Use the shared dashboard notification service only for brief, actionable runtime feedback. Keep durable findings, workflow outcomes, and operator attention items in Dashboard Language sources and views rather than transient notifications.
+
 Use [`gh aw logs`](https://github.com/github/gh-aw/blob/main/docs/src/content/docs/troubleshooting/debugging.md) as the source of workflow-run evidence. The published `gh-aw-logs.jsonl` format is defined by the gh-aw [`logs-jsonl.schema.json`](https://github.com/github/gh-aw/blob/main/schemas/logs-jsonl.schema.json); consult that schema rather than inferring fields from fixtures or individual deployed records.
 
 For live feature-development data, run `cao download`. It downloads the deployed Pages site's `gh-aw-logs.jsonl` and `gh-aw-logs.sqlite` unchanged into `.cao/` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL` for another deployment, and pass `--output DIRECTORY` for another destination. Query the downloaded SQLite database with `cao query`, and use `cao help` for the supported collections and filters. Live data is development evidence, not a schema authority; keep code aligned with the specifications and JSONL schema.

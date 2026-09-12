@@ -36,6 +36,28 @@ function buildPresenterModuleUrl() {
   return 'http://dashboard.test/src/presenter.js';
 }
 
+test('notifications move in at the lower right and center on mobile', async ({ page }) => {
+  await page.setContent(`
+    <style id="notification-styles"></style>
+    <script type="module">
+      import { getPrimerStyles } from 'http://dashboard.test/src/styles.js';
+      import { publishNotification } from 'http://dashboard.test/src/notification-service.js';
+      document.querySelector('#notification-styles').textContent = getPrimerStyles();
+      publishNotification({ message: 'Dashboard refreshed.', duration: 0 });
+    </script>
+  `);
+
+  const notifications = page.locator('.dashboard-notifications');
+  await expect(notifications).toBeVisible();
+  await expect(notifications).toHaveCSS('right', '16px');
+  await expect(page.locator('.dashboard-notification')).toHaveCSS('opacity', '1');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bounds = await notifications.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(Math.abs((bounds?.x ?? 0) + (bounds?.width ?? 0) / 2 - 195)).toBeLessThan(1);
+});
+
 test('Settings keeps hourly dashboard downloads off until the user opts in', async ({ page }) => {
   await page.setContent(`
     <div id="root"></div>

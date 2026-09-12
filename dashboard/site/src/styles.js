@@ -5,6 +5,30 @@
 /**
  * @returns {string}
  */
+export function notificationStylesheet() {
+  return `
+.dashboard-notifications { width: min(360px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 8px; position: fixed; z-index: 1001; right: 16px; bottom: 16px; pointer-events: none; }
+.dashboard-notifications[hidden] { display: none; }
+.dashboard-notification { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border, ButtonBorder); border-left: 3px solid var(--accent, Highlight); border-radius: 6px; background: var(--canvas, Canvas); box-shadow: 0 8px 24px color-mix(in srgb, var(--canvas-inset, CanvasText) 45%, transparent); color: var(--fg, CanvasText); font: .8125rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; pointer-events: auto; transition: transform 180ms ease-out, opacity 180ms ease-out; }
+.dashboard-notification-success { border-left-color: var(--success, #1a7f37); }
+.dashboard-notification-warning { border-left-color: var(--attention, #9a6700); }
+.dashboard-notification-error { border-left-color: var(--danger, #cf222e); }
+.dashboard-notification-enter, .dashboard-notification-exit { transform: translateY(16px); opacity: 0; }
+.dashboard-notification-message { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.dashboard-notification-action { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--border, ButtonBorder); border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.dashboard-notification-action:hover { border-color: var(--accent, Highlight); background: var(--neutral-muted, color-mix(in srgb, CanvasText 12%, transparent)); }
+.dashboard-notification-action:focus-visible { outline: 2px solid var(--focus, Highlight); outline-offset: 2px; }
+@media (max-width: 700px) {
+  .dashboard-notifications { right: auto; left: 50%; transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-notification { transition: none; }
+}`;
+}
+
+/**
+ * @returns {string}
+ */
 export function primerStylesheet() {
   return `:root {
   color-scheme: dark;

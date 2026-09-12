@@ -118,6 +118,8 @@ resources:
     destination: .github/aw/dashboard/site/src/loading-progress.js
   - source: site/src/notification-stories.js
     destination: .github/aw/dashboard/site/src/notification-stories.js
+  - source: site/src/notification-service.js
+    destination: .github/aw/dashboard/site/src/notification-service.js
   - source: site/src/octicon-names.json
     destination: .github/aw/dashboard/site/src/octicon-names.json
   - source: site/src/octicons.js
