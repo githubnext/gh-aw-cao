@@ -4,6 +4,7 @@ min-version: v0.89.6
 experimental: true
 includes:
   - .github/workflows/dependabot.md
+  - .github/workflows/dependabot-release-train-updater.md
 resources:
   - source: dashboard.json
     destination: .github/aw/dashboards/dependabot.json
