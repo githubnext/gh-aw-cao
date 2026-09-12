@@ -354,7 +354,7 @@ describe('presenter built-in and custom pages', () => {
     rendered.remove();
   });
 
-  it('renders engine and model usage as one full-view lazy table', async () => {
+  it('renders agent and model summaries as one full-view lazy table', async () => {
     const metadata = {
       'source-id': 'usage-fixture',
       'source-kind': 'fixture',
@@ -379,9 +379,8 @@ describe('presenter built-in and custom pages', () => {
         'engines-models-usage': {
           source: 'engines-models-usage',
           rows: [
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/daily.yml', engine: 'copilot', 'engine-version': '0.87.6', 'resolved-model': 'gpt-5.6-sol', 'repository-link': { relation: 'repository', href: 'https://github.com/github/gh-aw-cao', label: 'View github/gh-aw-cao on GitHub' } },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/review.yml', engine: 'copilot', 'engine-version': '0.87.9', 'resolved-model': 'gpt-5.6-sol', 'repository-link': { relation: 'repository', href: 'https://github.com/github/gh-aw-cao', label: 'View github/gh-aw-cao on GitHub' } },
-            { organization: 'github', repository: 'gh-aw-cao', workflow: '.github/workflows/audit.yml', engine: 'copilot', 'engine-version': '1.2.0', 'resolved-model': 'claude-sonnet-5', 'repository-link': { relation: 'repository', href: 'https://github.com/github/gh-aw-cao', label: 'View github/gh-aw-cao on GitHub' } }
+            { summary: 'copilot / gpt-5.6-sol', events: 2 },
+            { summary: 'pi / claude-sonnet-5', events: 1 }
           ],
           metadata
         },
@@ -394,14 +393,13 @@ describe('presenter built-in and custom pages', () => {
     expect(page?.querySelector('[data-lazy-list]')).not.toBeNull();
     expect(page?.querySelector('[data-chart-widget]')).toBeNull();
     expect(page?.textContent).toContain('copilot');
-    expect(page?.textContent).toContain('0.87.6');
-    expect(page?.textContent).toContain('0.87.9');
+    expect(page?.textContent).toContain('gpt-5.6-sol');
+    expect(page?.textContent).toContain('claude-sonnet-5');
     expect(page?.textContent).not.toContain('Requested model');
     expect(page?.textContent).not.toContain('Mode');
     expect(page?.textContent).not.toContain('Agent event');
     expect(page?.textContent).not.toContain('Summary');
-    expect(page?.querySelector('td[data-field="repository"] a')?.getAttribute('href')).toBe('#page-repository-detail?repository=github%2Fgh-aw-cao');
-    expect(page?.querySelectorAll('tbody tr')).toHaveLength(3);
+    expect(page?.querySelectorAll('tbody tr')).toHaveLength(2);
   });
 
   it('renders event inspection as one full-view lazy table', async () => {

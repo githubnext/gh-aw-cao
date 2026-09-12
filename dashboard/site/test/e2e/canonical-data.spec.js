@@ -71,6 +71,8 @@ function canonicalSources(generation = 'browser-generation', run = '12345') {
         'run-conclusion': 'failure',
         'started-at': '2026-09-09T04:00:00Z',
         'rollout-mode': 'review',
+        'agent-id': 'copilot',
+        'model-id': 'model-b',
         engine: 'copilot',
         'engine-version': '1.2.3',
         'requested-model': 'model-a',
@@ -535,13 +537,8 @@ test('data worker returns the Models & agents query on initial and navigated req
     expect(payload['engines-models-usage']).toMatchObject({
       source: 'engines-models-usage',
       rows: [{
-        engine: 'copilot',
-        'engine-version': '1.2.3',
-        'resolved-model': 'model-b',
-        'repository-link': { href: 'https://github.com/githubnext/gh-aw-cao' },
-        repository: 'gh-aw-cao',
-        workflow: '.github/workflows/dashboard.md',
-        'observed-at': '2026-09-09T04:01:00Z'
+        summary: 'copilot / model-b',
+        events: 1
       }],
       metadata: { 'source-kind': 'derived', 'query-name': 'engines-models-usage' }
     });
